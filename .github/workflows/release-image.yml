@@ -48,7 +48,7 @@ jobs:
       id-token: write
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      AWS_RELEASE_ROLE_ARN: ${{ vars.AWS_RELEASE_ROLE_ARN }}
+      AWS_PUBLISH_ROLE_ARN: ${{ vars.AWS_PUBLISH_ROLE_ARN }}
       ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
       ORBIT_RELEASE_SHA: ${{ needs.trusted.outputs.sha }}
       ORBIT_RELEASE_IMAGE: orbit-release:${{ needs.trusted.outputs.sha }}
@@ -61,7 +61,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$ORBIT_RELEASE_SHA"
           test "$AWS_REGION" = us-east-2
-          [[ "$AWS_RELEASE_ROLE_ARN" =~ ^arn:aws:iam::888782969020:role/.+ ]]
+          [[ "$AWS_PUBLISH_ROLE_ARN" =~ ^arn:aws:iam::888782969020:role/.+ ]]
           [[ "$ECR_REPOSITORY_URL" =~ ^888782969020\.dkr\.ecr\.us-east-2\.amazonaws\.com/[a-z0-9][a-z0-9/_-]*$ ]]
       - name: Build release once
         run: make release-image
@@ -74,7 +74,7 @@ jobs:
       - name: Assume scoped publication role
         uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
         with:
-          role-to-assume: ${{ vars.AWS_RELEASE_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_PUBLISH_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           allowed-account-ids: '888782969020'
           role-session-name: orbit-image-${{ github.run_id }}-${{ github.run_attempt }}

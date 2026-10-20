@@ -21,11 +21,11 @@ fail before the image build:
 | Variable | Contract |
 | --- | --- |
 | `AWS_REGION` | `us-east-2` |
-| `AWS_RELEASE_ROLE_ARN` | Infrastructure-supplied publication role in account `888782969020` |
-| `ECR_REPOSITORY_URL` | Infrastructure-supplied private repository URL under `888782969020.dkr.ecr.us-east-2.amazonaws.com` |
+| `AWS_PUBLISH_ROLE_ARN` | `arn:aws:iam::888782969020:role/unbought-orbit-imperium-publish` |
+| `ECR_REPOSITORY_URL` | `888782969020.dkr.ecr.us-east-2.amazonaws.com/unbought/orbit-imperium` |
 
 Use GitHub OIDC with audience `sts.amazonaws.com` and exact subject
-`repo:unbought-games/orbit-imperium:ref:refs/heads/main`. The workflow does not use
+`repo:unbought-games@342208397/orbit-imperium@1427640162:ref:refs/heads/main`. The immutable subject includes the owner and repository IDs. The workflow does not use
 a GitHub environment. If infrastructure adopts an environment or customized OIDC
 subject, update both sides together. Never use a wildcard repository/ref subject
 or long-lived AWS access keys. See [GitHub's AWS OIDC guide](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
