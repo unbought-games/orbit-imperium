@@ -1,0 +1,52 @@
+.notice {
+  margin: 20px auto;
+  width: min(720px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-block: 1px solid var(--border-accent);
+  background: transparent;
+  color: var(--text-muted);
+}
+.details {
+  display: grid;
+  gap: 3px;
+}
+.details strong {
+  color: #f0dcc0;
+}
+.details span {
+  font-size: 0.75rem;
+}
+.timer {
+  font-variant-numeric: tabular-nums;
+}
+.action {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  flex-shrink: 0;
+  min-width: min(100%, 14rem);
+}
+.action small {
+  font-size: 0.625rem;
+}
+@media (max-width: 599px) {
+  .notice {
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .details {
+    flex: 1 1 160px;
+  }
+  .action {
+    flex: 1 1 100%;
+  }
+}
+
+.action button {
+  overflow-wrap: normal;
+}

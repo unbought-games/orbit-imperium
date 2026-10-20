@@ -1,0 +1,4274 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-10-19",
+  "tool": "OpenAI built-in image_gen",
+  "provenance": "Original AI-generated artwork for Orbit Imperium. No third-party game artwork; screenshot references are project-owned visual studies. No trademark or logo assets generated.",
+  "recipe": "Astronomical-atlas realism. Upper-right key light, navy shadows, champagne metals and ice-blue details. Complete silhouettes with transparent alpha, no baked text, UI, diagrams or game-state overlays. Art is decorative and supplies no gameplay facts.",
+  "assets": [
+    {
+      "key": "planet-04",
+      "master": "masters/planet-04.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "e219da7b37ef21692946062641d93ccd8582cfcfec17ff4e5492a85e4c2fd704",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-04-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5178,
+          "alpha": true
+        },
+        {
+          "path": "planet-04-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 33924,
+          "alpha": true
+        },
+        {
+          "path": "planet-04-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 119542,
+          "alpha": true
+        },
+        {
+          "path": "planet-04-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 383122,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/robotics-factory",
+      "master": "masters/robotics-factory.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "8472fb1f71890ddd96b98fe9401bcf15af148e334a0de4e010a1844d881a2f6a",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/robotics-factory-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4884,
+          "alpha": true
+        },
+        {
+          "path": "objects/robotics-factory-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 27320,
+          "alpha": true
+        },
+        {
+          "path": "objects/robotics-factory-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 85448,
+          "alpha": true
+        },
+        {
+          "path": "objects/robotics-factory-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 266564,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/small-cargo",
+      "master": "masters/small-cargo.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "c53d4cef0b6fc5b2dc8f16cea23faf4a823f5fe1065a124f0aaf98fd9a28a379",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/small-cargo-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4090,
+          "alpha": true
+        },
+        {
+          "path": "objects/small-cargo-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 22446,
+          "alpha": true
+        },
+        {
+          "path": "objects/small-cargo-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 73108,
+          "alpha": true
+        },
+        {
+          "path": "objects/small-cargo-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 204296,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-01",
+      "master": "masters/planet-01.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "6e5ba7b12e416a43c3d6482b67a18b4b25b33067e0022d1ffc33cd1f9fd3cdfd",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-01-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5252,
+          "alpha": true
+        },
+        {
+          "path": "planet-01-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34396,
+          "alpha": true
+        },
+        {
+          "path": "planet-01-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 125538,
+          "alpha": true
+        },
+        {
+          "path": "planet-01-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 398888,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-02",
+      "master": "masters/planet-02.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "c0dae4fc95dc40d5b38c2583dea58040f11150bb0d81dc7d2c7aa3df605ba351",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-02-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5804,
+          "alpha": true
+        },
+        {
+          "path": "planet-02-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36656,
+          "alpha": true
+        },
+        {
+          "path": "planet-02-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 136164,
+          "alpha": true
+        },
+        {
+          "path": "planet-02-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 437654,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-03",
+      "master": "masters/planet-03.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "e28af557c6e71330451af2bdf6a7151d569e9c8c03299282f27712605a5e5028",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-03-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5400,
+          "alpha": true
+        },
+        {
+          "path": "planet-03-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 33222,
+          "alpha": true
+        },
+        {
+          "path": "planet-03-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 123086,
+          "alpha": true
+        },
+        {
+          "path": "planet-03-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 402868,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-05",
+      "master": "masters/planet-05.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "5e2c381349d6ff7e4bc8e30f84da2348748028aa5ad55a0b8f3753963ad89f99",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-05-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5344,
+          "alpha": true
+        },
+        {
+          "path": "planet-05-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 33052,
+          "alpha": true
+        },
+        {
+          "path": "planet-05-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 116966,
+          "alpha": true
+        },
+        {
+          "path": "planet-05-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 374028,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-06",
+      "master": "masters/planet-06.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "5fc5d41bb0c807b671f26fd1346b582deae5382e2f1871aff5166561520bb892",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-06-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5834,
+          "alpha": true
+        },
+        {
+          "path": "planet-06-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 35880,
+          "alpha": true
+        },
+        {
+          "path": "planet-06-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 128842,
+          "alpha": true
+        },
+        {
+          "path": "planet-06-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 397152,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-07",
+      "master": "masters/planet-07.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "a52a89b4ee1ede342a578b0487b12ab0328df51fadb9c589ff0f12d7b767bccb",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-07-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5798,
+          "alpha": true
+        },
+        {
+          "path": "planet-07-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 35808,
+          "alpha": true
+        },
+        {
+          "path": "planet-07-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 127272,
+          "alpha": true
+        },
+        {
+          "path": "planet-07-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 402574,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-08",
+      "master": "masters/planet-08.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "ade8b8086d8f6842cbeec7afef19b2e6d3bca928fc8a305fb97079e103987a25",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-08-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5558,
+          "alpha": true
+        },
+        {
+          "path": "planet-08-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34912,
+          "alpha": true
+        },
+        {
+          "path": "planet-08-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 124472,
+          "alpha": true
+        },
+        {
+          "path": "planet-08-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 398950,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-09",
+      "master": "masters/planet-09.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "fa8823aa9d612b34a96f3610ea6236b66e92021805437fb1cbd597459f848e4c",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-09-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5074,
+          "alpha": true
+        },
+        {
+          "path": "planet-09-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 31826,
+          "alpha": true
+        },
+        {
+          "path": "planet-09-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 113602,
+          "alpha": true
+        },
+        {
+          "path": "planet-09-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 362834,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-10",
+      "master": "masters/planet-10.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer.",
+      "sha256": "cf721bfe51b0d3311ca5840dcf4bd584f642825f8158544cbb092f33d0e1dc81",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-10-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5548,
+          "alpha": true
+        },
+        {
+          "path": "planet-10-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32240,
+          "alpha": true
+        },
+        {
+          "path": "planet-10-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 115322,
+          "alpha": true
+        },
+        {
+          "path": "planet-10-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 363852,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-11",
+      "master": "masters/planet-11.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset.",
+      "sha256": "c56fba48a06dd192f95e8ac8f543dab9a7f9686757da4795468f358a75ac97d7",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-11-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5392,
+          "alpha": true
+        },
+        {
+          "path": "planet-11-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34082,
+          "alpha": true
+        },
+        {
+          "path": "planet-11-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 120868,
+          "alpha": true
+        },
+        {
+          "path": "planet-11-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 390176,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-12",
+      "master": "masters/planet-12.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset.",
+      "sha256": "5cc2deddc028a81465172cd8b4497e1aa4eb071c5fb97abf45ed2ead29978fdd",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-12-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5528,
+          "alpha": true
+        },
+        {
+          "path": "planet-12-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36314,
+          "alpha": true
+        },
+        {
+          "path": "planet-12-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 135066,
+          "alpha": true
+        },
+        {
+          "path": "planet-12-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 437712,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-13",
+      "master": "masters/planet-13.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset.",
+      "sha256": "b583ba36ec27f54188199a09e84090564cdabbc5f94d9f27dc53bb5444a8cb93",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-13-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5830,
+          "alpha": true
+        },
+        {
+          "path": "planet-13-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36444,
+          "alpha": true
+        },
+        {
+          "path": "planet-13-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 134056,
+          "alpha": true
+        },
+        {
+          "path": "planet-13-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 442960,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-14",
+      "master": "masters/planet-14.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset.",
+      "sha256": "58eecf5889c81d30824a10ea824c4583ac4455456b23988e3e1cd966e4d98951",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-14-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5206,
+          "alpha": true
+        },
+        {
+          "path": "planet-14-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32346,
+          "alpha": true
+        },
+        {
+          "path": "planet-14-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 119918,
+          "alpha": true
+        },
+        {
+          "path": "planet-14-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 396044,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "planet-15",
+      "master": "masters/planet-15.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset.",
+      "sha256": "7626aa3e789b697cf9e19930eaffccc8d9c0b27b80424887798f248334505eca",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-15-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5058,
+          "alpha": true
+        },
+        {
+          "path": "planet-15-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32372,
+          "alpha": true
+        },
+        {
+          "path": "planet-15-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 120414,
+          "alpha": true
+        },
+        {
+          "path": "planet-15-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 391580,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "atmosphere",
+      "master": "masters/atmosphere.png",
+      "sizes": [
+        800,
+        1600
+      ],
+      "crop": "Quiet center/right reading space; texture concentrated left/bottom.",
+      "sha256": "cb90025083cea7d6f16753d1cacb2e90e593d871fbb64822ebc93141c5c34a95",
+      "effectiveSourceDimensions": {
+        "width": 1586,
+        "height": 992
+      },
+      "dimensions": {
+        "width": 1586,
+        "height": 992
+      },
+      "alpha": false,
+      "variants": [
+        {
+          "path": "atmosphere-800.webp",
+          "width": 800,
+          "height": 500,
+          "bytes": 45634,
+          "alpha": false
+        },
+        {
+          "path": "atmosphere-1600.webp",
+          "width": 1600,
+          "height": 1000,
+          "bytes": 171278,
+          "alpha": false
+        }
+      ]
+    },
+    {
+      "key": "moon-01",
+      "master": "masters/moon-01.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "sha256": "c39f0388a1667610445ef8e61350f154c50304c0ffedb109b1a74b8a1a0aa34e",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "moon-01-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4656,
+          "alpha": true
+        },
+        {
+          "path": "moon-01-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 30440,
+          "alpha": true
+        },
+        {
+          "path": "moon-01-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 113740,
+          "alpha": true
+        },
+        {
+          "path": "moon-01-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 366686,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "moon-02",
+      "master": "masters/moon-02.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "sha256": "21ad374baf468d031d050589ab8af0b64547eb7737306d102a9ed817bbebc7b5",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "moon-02-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4930,
+          "alpha": true
+        },
+        {
+          "path": "moon-02-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32024,
+          "alpha": true
+        },
+        {
+          "path": "moon-02-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 118804,
+          "alpha": true
+        },
+        {
+          "path": "moon-02-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 386196,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "moon-03",
+      "master": "masters/moon-03.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "sha256": "46180f79eb13cce1500f08c0c6d3d2d103d374533beb5736a2a10345688a1631",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "moon-03-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4738,
+          "alpha": true
+        },
+        {
+          "path": "moon-03-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 31068,
+          "alpha": true
+        },
+        {
+          "path": "moon-03-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 112152,
+          "alpha": true
+        },
+        {
+          "path": "moon-03-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 363874,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/metal-mine",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 32,
+        "top": 18,
+        "width": 590,
+        "height": 584
+      },
+      "sha256": "f75005bd00d0a325ed8e547c4879c06a84af0f0cd1760608f9dd5b30ff0f1f53",
+      "effectiveSourceDimensions": {
+        "width": 590,
+        "height": 584
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/metal-mine-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5502,
+          "alpha": true
+        },
+        {
+          "path": "objects/metal-mine-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36316,
+          "alpha": true
+        },
+        {
+          "path": "objects/metal-mine-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 122364,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/crystal-mine",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 656,
+        "top": 14,
+        "width": 569,
+        "height": 581
+      },
+      "sha256": "f75005bd00d0a325ed8e547c4879c06a84af0f0cd1760608f9dd5b30ff0f1f53",
+      "effectiveSourceDimensions": {
+        "width": 569,
+        "height": 581
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/crystal-mine-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5382,
+          "alpha": true
+        },
+        {
+          "path": "objects/crystal-mine-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34652,
+          "alpha": true
+        },
+        {
+          "path": "objects/crystal-mine-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 117188,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/deuterium-synthesizer",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 33,
+        "top": 589,
+        "width": 625,
+        "height": 614
+      },
+      "sha256": "f75005bd00d0a325ed8e547c4879c06a84af0f0cd1760608f9dd5b30ff0f1f53",
+      "effectiveSourceDimensions": {
+        "width": 625,
+        "height": 614
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/deuterium-synthesizer-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5830,
+          "alpha": true
+        },
+        {
+          "path": "objects/deuterium-synthesizer-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36370,
+          "alpha": true
+        },
+        {
+          "path": "objects/deuterium-synthesizer-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 123234,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/solar-plant",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 676,
+        "top": 602,
+        "width": 547,
+        "height": 617
+      },
+      "sha256": "f75005bd00d0a325ed8e547c4879c06a84af0f0cd1760608f9dd5b30ff0f1f53",
+      "effectiveSourceDimensions": {
+        "width": 547,
+        "height": 617
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/solar-plant-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5548,
+          "alpha": true
+        },
+        {
+          "path": "objects/solar-plant-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36052,
+          "alpha": true
+        },
+        {
+          "path": "objects/solar-plant-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 126088,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/fusion-reactor",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 39,
+        "top": 29,
+        "width": 584,
+        "height": 582
+      },
+      "sha256": "439652f3c4c3788c34a4eb961cb313ff8b2063f4c4a5df29d889f52e423e5dad",
+      "effectiveSourceDimensions": {
+        "width": 584,
+        "height": 582
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/fusion-reactor-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5988,
+          "alpha": true
+        },
+        {
+          "path": "objects/fusion-reactor-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 37008,
+          "alpha": true
+        },
+        {
+          "path": "objects/fusion-reactor-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 122004,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/metal-storage",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 662,
+        "top": 24,
+        "width": 571,
+        "height": 602
+      },
+      "sha256": "439652f3c4c3788c34a4eb961cb313ff8b2063f4c4a5df29d889f52e423e5dad",
+      "effectiveSourceDimensions": {
+        "width": 571,
+        "height": 602
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/metal-storage-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5360,
+          "alpha": true
+        },
+        {
+          "path": "objects/metal-storage-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 31888,
+          "alpha": true
+        },
+        {
+          "path": "objects/metal-storage-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 106904,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/crystal-storage",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 36,
+        "top": 644,
+        "width": 615,
+        "height": 549
+      },
+      "sha256": "439652f3c4c3788c34a4eb961cb313ff8b2063f4c4a5df29d889f52e423e5dad",
+      "effectiveSourceDimensions": {
+        "width": 615,
+        "height": 549
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/crystal-storage-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5470,
+          "alpha": true
+        },
+        {
+          "path": "objects/crystal-storage-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32154,
+          "alpha": true
+        },
+        {
+          "path": "objects/crystal-storage-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 108262,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/deuterium-tank",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 673,
+        "top": 628,
+        "width": 560,
+        "height": 586
+      },
+      "sha256": "439652f3c4c3788c34a4eb961cb313ff8b2063f4c4a5df29d889f52e423e5dad",
+      "effectiveSourceDimensions": {
+        "width": 560,
+        "height": 586
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/deuterium-tank-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5270,
+          "alpha": true
+        },
+        {
+          "path": "objects/deuterium-tank-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32584,
+          "alpha": true
+        },
+        {
+          "path": "objects/deuterium-tank-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 107894,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/research-lab",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 30,
+        "top": 45,
+        "width": 584,
+        "height": 540
+      },
+      "sha256": "0d641edde3252cf2b53c250aecd061e8f45a4c72048d7ffdadd2c8f015a4d9d6",
+      "effectiveSourceDimensions": {
+        "width": 584,
+        "height": 540
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/research-lab-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5498,
+          "alpha": true
+        },
+        {
+          "path": "objects/research-lab-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34036,
+          "alpha": true
+        },
+        {
+          "path": "objects/research-lab-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 113218,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/shipyard",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 645,
+        "top": 32,
+        "width": 586,
+        "height": 569
+      },
+      "sha256": "0d641edde3252cf2b53c250aecd061e8f45a4c72048d7ffdadd2c8f015a4d9d6",
+      "effectiveSourceDimensions": {
+        "width": 586,
+        "height": 569
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/shipyard-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 6348,
+          "alpha": true
+        },
+        {
+          "path": "objects/shipyard-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 41820,
+          "alpha": true
+        },
+        {
+          "path": "objects/shipyard-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 139218,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/nanite-factory",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 32,
+        "top": 657,
+        "width": 594,
+        "height": 559
+      },
+      "sha256": "0d641edde3252cf2b53c250aecd061e8f45a4c72048d7ffdadd2c8f015a4d9d6",
+      "effectiveSourceDimensions": {
+        "width": 594,
+        "height": 559
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/nanite-factory-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5872,
+          "alpha": true
+        },
+        {
+          "path": "objects/nanite-factory-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36686,
+          "alpha": true
+        },
+        {
+          "path": "objects/nanite-factory-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 126162,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/terraformer",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 643,
+        "top": 611,
+        "width": 592,
+        "height": 615
+      },
+      "sha256": "0d641edde3252cf2b53c250aecd061e8f45a4c72048d7ffdadd2c8f015a4d9d6",
+      "effectiveSourceDimensions": {
+        "width": 592,
+        "height": 615
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/terraformer-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4856,
+          "alpha": true
+        },
+        {
+          "path": "objects/terraformer-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 30536,
+          "alpha": true
+        },
+        {
+          "path": "objects/terraformer-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 102192,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/missile-silo",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 32,
+        "top": 40,
+        "width": 599,
+        "height": 572
+      },
+      "sha256": "5a528c49e83717cf5e7cc97ae598dc66eae0de36237cc82372345662215df653",
+      "effectiveSourceDimensions": {
+        "width": 599,
+        "height": 572
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/missile-silo-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5256,
+          "alpha": true
+        },
+        {
+          "path": "objects/missile-silo-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32602,
+          "alpha": true
+        },
+        {
+          "path": "objects/missile-silo-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 110624,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/alliance-depot",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 648,
+        "top": 59,
+        "width": 585,
+        "height": 545
+      },
+      "sha256": "5a528c49e83717cf5e7cc97ae598dc66eae0de36237cc82372345662215df653",
+      "effectiveSourceDimensions": {
+        "width": 585,
+        "height": 545
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/alliance-depot-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5912,
+          "alpha": true
+        },
+        {
+          "path": "objects/alliance-depot-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 35340,
+          "alpha": true
+        },
+        {
+          "path": "objects/alliance-depot-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 119308,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/lunar-base",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 24,
+        "top": 659,
+        "width": 608,
+        "height": 547
+      },
+      "sha256": "5a528c49e83717cf5e7cc97ae598dc66eae0de36237cc82372345662215df653",
+      "effectiveSourceDimensions": {
+        "width": 608,
+        "height": 547
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/lunar-base-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5014,
+          "alpha": true
+        },
+        {
+          "path": "objects/lunar-base-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 31062,
+          "alpha": true
+        },
+        {
+          "path": "objects/lunar-base-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 105446,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/sensor-phalanx",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 668,
+        "top": 623,
+        "width": 568,
+        "height": 590
+      },
+      "sha256": "5a528c49e83717cf5e7cc97ae598dc66eae0de36237cc82372345662215df653",
+      "effectiveSourceDimensions": {
+        "width": 568,
+        "height": 590
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/sensor-phalanx-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5598,
+          "alpha": true
+        },
+        {
+          "path": "objects/sensor-phalanx-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34474,
+          "alpha": true
+        },
+        {
+          "path": "objects/sensor-phalanx-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 114384,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/jump-gate",
+      "master": "masters/gate-missiles.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 61,
+        "top": 33,
+        "width": 608,
+        "height": 571
+      },
+      "sha256": "b8f55f1c1dc94d076721b3714b8e505ed4add06332e293d4c4bf83fcd9427025",
+      "effectiveSourceDimensions": {
+        "width": 608,
+        "height": 571
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/jump-gate-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5780,
+          "alpha": true
+        },
+        {
+          "path": "objects/jump-gate-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32664,
+          "alpha": true
+        },
+        {
+          "path": "objects/jump-gate-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 103192,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/anti-ballistic-missile",
+      "master": "masters/gate-missiles.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 774,
+        "top": 71,
+        "width": 354,
+        "height": 526
+      },
+      "sha256": "b8f55f1c1dc94d076721b3714b8e505ed4add06332e293d4c4bf83fcd9427025",
+      "effectiveSourceDimensions": {
+        "width": 354,
+        "height": 526
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/anti-ballistic-missile-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 3446,
+          "alpha": true
+        },
+        {
+          "path": "objects/anti-ballistic-missile-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 18498,
+          "alpha": true
+        },
+        {
+          "path": "objects/anti-ballistic-missile-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 49218,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/interplanetary-missile",
+      "master": "masters/gate-missiles.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 157,
+        "top": 655,
+        "width": 394,
+        "height": 569
+      },
+      "sha256": "b8f55f1c1dc94d076721b3714b8e505ed4add06332e293d4c4bf83fcd9427025",
+      "effectiveSourceDimensions": {
+        "width": 394,
+        "height": 569
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "objects/interplanetary-missile-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 3084,
+          "alpha": true
+        },
+        {
+          "path": "objects/interplanetary-missile-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 15136,
+          "alpha": true
+        },
+        {
+          "path": "objects/interplanetary-missile-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 45056,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/combustion-drive",
+      "catalogId": "CombustionDrive",
+      "master": "masters/research/combustion-drive.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 44,
+        "top": 44,
+        "width": 1167,
+        "height": 1099
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "81dc8d697e0551658cbb00a741b410994a5b9fd1af78541a2184b5bb21ccf16c",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/combustion-drive-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5296,
+          "alpha": true
+        },
+        {
+          "path": "objects/combustion-drive-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 28508,
+          "alpha": true
+        },
+        {
+          "path": "objects/combustion-drive-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 90100,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/computer-technology",
+      "catalogId": "ComputerTechnology",
+      "master": "masters/research/computer-technology.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 48,
+        "top": 26,
+        "width": 1158,
+        "height": 1187
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "17f132749a797621e55a281265d87164dd6d4cf71c2bda9a0e19fe220a36de97",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/computer-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5210,
+          "alpha": true
+        },
+        {
+          "path": "objects/computer-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 26336,
+          "alpha": true
+        },
+        {
+          "path": "objects/computer-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 82576,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/energy-technology",
+      "catalogId": "EnergyTechnology",
+      "master": "masters/research/energy-technology.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 229,
+        "top": 38,
+        "width": 808,
+        "height": 1158
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "8755ae513889a8adbc58202e89f7f6a47fdef198550e0dfe095817288d291805",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/energy-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4380,
+          "alpha": true
+        },
+        {
+          "path": "objects/energy-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 23986,
+          "alpha": true
+        },
+        {
+          "path": "objects/energy-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 72172,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/espionage-technology",
+      "catalogId": "EspionageTechnology",
+      "master": "masters/research/espionage-technology.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 134,
+        "top": 41,
+        "width": 1015,
+        "height": 1161
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "e976c05c9a28c35e2366017122036c412cac02b4713a7674169f5ed5db6cd679",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/espionage-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5416,
+          "alpha": true
+        },
+        {
+          "path": "objects/espionage-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 27544,
+          "alpha": true
+        },
+        {
+          "path": "objects/espionage-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 83696,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/weapons-technology",
+      "catalogId": "WeaponsTechnology",
+      "master": "masters/research/weapons-technology.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 63,
+        "top": 116,
+        "width": 1157,
+        "height": 1023
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "a6e64d70baf22c2ec3853fab5c273c57eb2b6cf97e0943c455a1f3edd5753001",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/weapons-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5352,
+          "alpha": true
+        },
+        {
+          "path": "objects/weapons-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 31338,
+          "alpha": true
+        },
+        {
+          "path": "objects/weapons-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 94990,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/shielding-technology",
+      "catalogId": "ShieldingTechnology",
+      "master": "masters/research/shielding-technology.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 28,
+        "top": 26,
+        "width": 1196,
+        "height": 1183
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "d3afe8a726ad3f08eebfbbe5807967c32cdd9d64a0e11491304ac8676cf7e206",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/shielding-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 6254,
+          "alpha": true
+        },
+        {
+          "path": "objects/shielding-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 35086,
+          "alpha": true
+        },
+        {
+          "path": "objects/shielding-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 105628,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/armour-technology",
+      "catalogId": "ArmourTechnology",
+      "master": "masters/research/armour-technology.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 64,
+        "top": 27,
+        "width": 1127,
+        "height": 1203
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "5e1108d0a771965548cc19257fe3124909ff03c137d962908edd53fb4588e3b6",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/armour-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5596,
+          "alpha": true
+        },
+        {
+          "path": "objects/armour-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 28178,
+          "alpha": true
+        },
+        {
+          "path": "objects/armour-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 86260,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/laser-technology",
+      "catalogId": "LaserTechnology",
+      "master": "masters/research/laser-technology.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "silhouetteBounds": {
+        "left": 16,
+        "top": 135,
+        "width": 1232,
+        "height": 1027
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "f3271ec63c50c301356c652bd625f7b1304baebe3dbcf760629b0ed79b35f332",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/laser-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4640,
+          "alpha": true
+        },
+        {
+          "path": "objects/laser-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 25786,
+          "alpha": true
+        },
+        {
+          "path": "objects/laser-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 72824,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/ion-technology",
+      "catalogId": "IonTechnology",
+      "master": "masters/research/research-energy-sheet.png",
+      "extract": {
+        "left": 0,
+        "top": 610,
+        "width": 627,
+        "height": 644
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "silhouetteBounds": {
+        "left": 53,
+        "top": 34,
+        "width": 546,
+        "height": 570
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "e906d510f7e3193afb67fd75159ff1cf67932c9694357d861464431e7ef7c1e6",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "variants": [
+        {
+          "path": "objects/ion-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5512,
+          "alpha": true
+        },
+        {
+          "path": "objects/ion-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34740,
+          "alpha": true
+        },
+        {
+          "path": "objects/ion-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 118608,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/plasma-technology",
+      "catalogId": "PlasmaTechnology",
+      "master": "masters/research/research-energy-sheet.png",
+      "extract": {
+        "left": 627,
+        "top": 610,
+        "width": 627,
+        "height": 644
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "silhouetteBounds": {
+        "left": 52,
+        "top": 32,
+        "width": 522,
+        "height": 582
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "e906d510f7e3193afb67fd75159ff1cf67932c9694357d861464431e7ef7c1e6",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "variants": [
+        {
+          "path": "objects/plasma-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5418,
+          "alpha": true
+        },
+        {
+          "path": "objects/plasma-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32928,
+          "alpha": true
+        },
+        {
+          "path": "objects/plasma-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 111486,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/impulse-drive",
+      "catalogId": "ImpulseDrive",
+      "master": "masters/research/research-propulsion-sheet.png",
+      "extract": {
+        "left": 627,
+        "top": 0,
+        "width": 627,
+        "height": 620
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 620
+      },
+      "silhouetteBounds": {
+        "left": 19,
+        "top": 77,
+        "width": 568,
+        "height": 527
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "e96bfc7f65304c422ed9ea1a001f25f90991ffd8856124024143cdb2636db7d4",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 620
+      },
+      "variants": [
+        {
+          "path": "objects/impulse-drive-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5032,
+          "alpha": true
+        },
+        {
+          "path": "objects/impulse-drive-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 30594,
+          "alpha": true
+        },
+        {
+          "path": "objects/impulse-drive-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 105312,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/hyperspace-drive",
+      "catalogId": "HyperspaceDrive",
+      "master": "masters/research/research-propulsion-sheet.png",
+      "extract": {
+        "left": 0,
+        "top": 620,
+        "width": 627,
+        "height": 634
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 634
+      },
+      "silhouetteBounds": {
+        "left": 59,
+        "top": 20,
+        "width": 541,
+        "height": 579
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "e96bfc7f65304c422ed9ea1a001f25f90991ffd8856124024143cdb2636db7d4",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 634
+      },
+      "variants": [
+        {
+          "path": "objects/hyperspace-drive-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5902,
+          "alpha": true
+        },
+        {
+          "path": "objects/hyperspace-drive-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36050,
+          "alpha": true
+        },
+        {
+          "path": "objects/hyperspace-drive-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 124498,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/hyperspace-technology",
+      "catalogId": "HyperspaceTechnology",
+      "master": "masters/research/research-propulsion-sheet.png",
+      "extract": {
+        "left": 627,
+        "top": 620,
+        "width": 627,
+        "height": 634
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 634
+      },
+      "silhouetteBounds": {
+        "left": 29,
+        "top": 32,
+        "width": 565,
+        "height": 556
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "e96bfc7f65304c422ed9ea1a001f25f90991ffd8856124024143cdb2636db7d4",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 634
+      },
+      "variants": [
+        {
+          "path": "objects/hyperspace-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5242,
+          "alpha": true
+        },
+        {
+          "path": "objects/hyperspace-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32996,
+          "alpha": true
+        },
+        {
+          "path": "objects/hyperspace-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 111348,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/astrophysics",
+      "catalogId": "Astrophysics",
+      "master": "masters/research/research-command-sheet.png",
+      "extract": {
+        "left": 0,
+        "top": 600,
+        "width": 627,
+        "height": 654
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 654
+      },
+      "silhouetteBounds": {
+        "left": 59,
+        "top": 20,
+        "width": 539,
+        "height": 597
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "94117dba1955bb9f07b18033d5cb1cfc5de7a92667c8b370fb27c0633c1822f1",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 654
+      },
+      "variants": [
+        {
+          "path": "objects/astrophysics-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5720,
+          "alpha": true
+        },
+        {
+          "path": "objects/astrophysics-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 35630,
+          "alpha": true
+        },
+        {
+          "path": "objects/astrophysics-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 118312,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/intergalactic-research-network",
+      "catalogId": "IntergalacticResearchNetwork",
+      "master": "masters/research/research-command-sheet.png",
+      "extract": {
+        "left": 627,
+        "top": 610,
+        "width": 627,
+        "height": 644
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "silhouetteBounds": {
+        "left": 22,
+        "top": 49,
+        "width": 590,
+        "height": 538
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "94117dba1955bb9f07b18033d5cb1cfc5de7a92667c8b370fb27c0633c1822f1",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "variants": [
+        {
+          "path": "objects/intergalactic-research-network-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4972,
+          "alpha": true
+        },
+        {
+          "path": "objects/intergalactic-research-network-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 30714,
+          "alpha": true
+        },
+        {
+          "path": "objects/intergalactic-research-network-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 103776,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/graviton-technology",
+      "catalogId": "GravitonTechnology",
+      "master": "masters/research/research-combat-sheet.png",
+      "extract": {
+        "left": 627,
+        "top": 610,
+        "width": 627,
+        "height": 644
+      },
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "effectiveDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "silhouetteBounds": {
+        "left": 40,
+        "top": 21,
+        "width": 549,
+        "height": 545
+      },
+      "crop": "Complete silhouette, preserving native alpha. Six-percent transparent delivery inset; contain, never cover. Sheet extraction is lossless with no enlargement.",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated Orbit Imperium artwork. Generated using the project-owned robotics-factory master as material and lighting reference. No external game assets.",
+      "license": "Project-owned generated artwork; no third-party licensed asset incorporated.",
+      "sourceFragment": "research-sources.json",
+      "sha256": "fbadb7b139120b2d80dd13b3329d698f1525564f4e8d3985a52bbd0c14322b1d",
+      "effectiveSourceDimensions": {
+        "width": 627,
+        "height": 644
+      },
+      "variants": [
+        {
+          "path": "objects/graviton-technology-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 6198,
+          "alpha": true
+        },
+        {
+          "path": "objects/graviton-technology-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 36622,
+          "alpha": true
+        },
+        {
+          "path": "objects/graviton-technology-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 121550,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/light-fighter",
+      "master": "masters/ships-defense/light-fighter.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "LightFighter"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "1fa07553df60cbc7521fa4904090a528caafb3324d5e793a2864b3e5af3fc6d9",
+      "silhouetteBounds": {
+        "left": 45,
+        "top": 139,
+        "width": 1193,
+        "height": 993
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/light-fighter-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4664,
+          "alpha": true
+        },
+        {
+          "path": "objects/light-fighter-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 23652,
+          "alpha": true
+        },
+        {
+          "path": "objects/light-fighter-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 72882,
+          "alpha": true
+        },
+        {
+          "path": "objects/light-fighter-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 211044,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/recycler",
+      "master": "masters/ships-defense/recycler.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Recycler"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "42213fdeae59b6a41b235bd4971d6049430976c516c77116734b4cd8f11cf054",
+      "silhouetteBounds": {
+        "left": 41,
+        "top": 133,
+        "width": 1187,
+        "height": 994
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/recycler-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4468,
+          "alpha": true
+        },
+        {
+          "path": "objects/recycler-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 23706,
+          "alpha": true
+        },
+        {
+          "path": "objects/recycler-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 73588,
+          "alpha": true
+        },
+        {
+          "path": "objects/recycler-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 218688,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/espionage-probe",
+      "master": "masters/ships-defense/espionage-probe.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "c3cf4a3c7bea232e60a7573297dfc4e9454799fd5929c68deecd7aca83fa3aa7",
+      "silhouetteBounds": {
+        "left": 60,
+        "top": 87,
+        "width": 1164,
+        "height": 978
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/espionage-probe-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4406,
+          "alpha": true
+        },
+        {
+          "path": "objects/espionage-probe-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 22272,
+          "alpha": true
+        },
+        {
+          "path": "objects/espionage-probe-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 67652,
+          "alpha": true
+        },
+        {
+          "path": "objects/espionage-probe-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 194244,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/large-cargo",
+      "master": "masters/ships-defense/large-cargo.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "LargeCargo"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "f8ab7c8acc6e3de06076590d8f24ad0ea49e63e21289b690d1cdaf3be2d234f2",
+      "silhouetteBounds": {
+        "left": 29,
+        "top": 140,
+        "width": 1180,
+        "height": 984
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/large-cargo-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4564,
+          "alpha": true
+        },
+        {
+          "path": "objects/large-cargo-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 25868,
+          "alpha": true
+        },
+        {
+          "path": "objects/large-cargo-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 84358,
+          "alpha": true
+        },
+        {
+          "path": "objects/large-cargo-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 253618,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/heavy-fighter",
+      "master": "masters/ships-defense/heavy-fighter.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "HeavyFighter"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "21bf9a6b1eace3c6e5c3d33efdafb074bee284e351d5d7e5b6f5e3086083680d",
+      "silhouetteBounds": {
+        "left": 46,
+        "top": 192,
+        "width": 1192,
+        "height": 873
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/heavy-fighter-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4902,
+          "alpha": true
+        },
+        {
+          "path": "objects/heavy-fighter-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 26072,
+          "alpha": true
+        },
+        {
+          "path": "objects/heavy-fighter-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 84420,
+          "alpha": true
+        },
+        {
+          "path": "objects/heavy-fighter-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 246290,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/cruiser",
+      "master": "masters/ships-defense/cruiser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "9a349ebbfd9d2c563fffc8a2c7dbbbe4d39ea601cca135a316e6516267675c79",
+      "silhouetteBounds": {
+        "left": 18,
+        "top": 157,
+        "width": 1212,
+        "height": 940
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/cruiser-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4008,
+          "alpha": true
+        },
+        {
+          "path": "objects/cruiser-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 21504,
+          "alpha": true
+        },
+        {
+          "path": "objects/cruiser-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 70042,
+          "alpha": true
+        },
+        {
+          "path": "objects/cruiser-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 204336,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/battleship",
+      "master": "masters/ships-defense/battleship.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Battleship"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "adf6179d9d41ee2a7068f3c871f06e5d23c72f94863d2941a4163d2ce588b953",
+      "silhouetteBounds": {
+        "left": 25,
+        "top": 124,
+        "width": 1208,
+        "height": 996
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/battleship-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4298,
+          "alpha": true
+        },
+        {
+          "path": "objects/battleship-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 23704,
+          "alpha": true
+        },
+        {
+          "path": "objects/battleship-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 76828,
+          "alpha": true
+        },
+        {
+          "path": "objects/battleship-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 232146,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/battlecruiser",
+      "master": "masters/ships-defense/battlecruiser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "8019615b1fc27d69e3dac604be36c22f39574b066f82138a34d43afe014207bc",
+      "silhouetteBounds": {
+        "left": 20,
+        "top": 158,
+        "width": 1207,
+        "height": 933
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/battlecruiser-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4476,
+          "alpha": true
+        },
+        {
+          "path": "objects/battlecruiser-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 25408,
+          "alpha": true
+        },
+        {
+          "path": "objects/battlecruiser-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 80190,
+          "alpha": true
+        },
+        {
+          "path": "objects/battlecruiser-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 235152,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/bomber",
+      "master": "masters/ships-defense/bomber.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "7f25d4021f9023ea7766ee4ee12c21baa3af8be386c4700dd5b5e5f4a1258cbb",
+      "silhouetteBounds": {
+        "left": 15,
+        "top": 202,
+        "width": 1230,
+        "height": 806
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/bomber-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4446,
+          "alpha": true
+        },
+        {
+          "path": "objects/bomber-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 24064,
+          "alpha": true
+        },
+        {
+          "path": "objects/bomber-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 78938,
+          "alpha": true
+        },
+        {
+          "path": "objects/bomber-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 231616,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/destroyer",
+      "master": "masters/ships-defense/destroyer.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "a0b17f33c2692c524dea4a685cb1ff7fac331f171630981cb2e896f9e05b9b9c",
+      "silhouetteBounds": {
+        "left": 30,
+        "top": 165,
+        "width": 1203,
+        "height": 935
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/destroyer-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4060,
+          "alpha": true
+        },
+        {
+          "path": "objects/destroyer-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 22750,
+          "alpha": true
+        },
+        {
+          "path": "objects/destroyer-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 71972,
+          "alpha": true
+        },
+        {
+          "path": "objects/destroyer-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 216722,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/deathstar",
+      "master": "masters/ships-defense/deathstar.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Deathstar"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "58610f7af53826f6371f627fd1bbb48d59924c7e4098789364ac7df74fbd3b63",
+      "silhouetteBounds": {
+        "left": 37,
+        "top": 177,
+        "width": 1198,
+        "height": 928
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/deathstar-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4378,
+          "alpha": true
+        },
+        {
+          "path": "objects/deathstar-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 24138,
+          "alpha": true
+        },
+        {
+          "path": "objects/deathstar-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 81188,
+          "alpha": true
+        },
+        {
+          "path": "objects/deathstar-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 238488,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/colony-ship",
+      "master": "masters/ships-defense/colony-ship.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "ColonyShip"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "2d24dd4eeda02bfbb7c9bf8b1655ef28cf6c515d2f29b6dd5297d78dec83a3b7",
+      "silhouetteBounds": {
+        "left": 28,
+        "top": 181,
+        "width": 1183,
+        "height": 913
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/colony-ship-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5286,
+          "alpha": true
+        },
+        {
+          "path": "objects/colony-ship-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 29968,
+          "alpha": true
+        },
+        {
+          "path": "objects/colony-ship-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 99300,
+          "alpha": true
+        },
+        {
+          "path": "objects/colony-ship-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 292220,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/solar-satellite",
+      "master": "masters/ships-defense/solar-satellite.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "SolarSatellite"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "fec65330770082b29025be8d00bba5db169177150b843448fbe08f30236af5cc",
+      "silhouetteBounds": {
+        "left": 27,
+        "top": 199,
+        "width": 1203,
+        "height": 900
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/solar-satellite-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 3510,
+          "alpha": true
+        },
+        {
+          "path": "objects/solar-satellite-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 19652,
+          "alpha": true
+        },
+        {
+          "path": "objects/solar-satellite-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 64726,
+          "alpha": true
+        },
+        {
+          "path": "objects/solar-satellite-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 188930,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/rocket-launcher",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "RocketLauncher"
+      },
+      "master": "masters/ships-defense/rocket-launcher.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "124af98572223201c361dca702db21b1f40bfb5f38f6018bfb745348e101df2c",
+      "silhouetteBounds": {
+        "left": 128,
+        "top": 97,
+        "width": 1038,
+        "height": 1058
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/rocket-launcher-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5098,
+          "alpha": true
+        },
+        {
+          "path": "objects/rocket-launcher-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 26888,
+          "alpha": true
+        },
+        {
+          "path": "objects/rocket-launcher-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 84724,
+          "alpha": true
+        },
+        {
+          "path": "objects/rocket-launcher-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 240136,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/small-shield-dome",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "SmallShieldDome"
+      },
+      "master": "masters/ships-defense/small-shield-dome.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "590bf5274eb584cceca516a8c0bb4fd67d2bd60db314f3675623df52b51889f5",
+      "silhouetteBounds": {
+        "left": 118,
+        "top": 149,
+        "width": 1052,
+        "height": 953
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/small-shield-dome-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5232,
+          "alpha": true
+        },
+        {
+          "path": "objects/small-shield-dome-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 29378,
+          "alpha": true
+        },
+        {
+          "path": "objects/small-shield-dome-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 91760,
+          "alpha": true
+        },
+        {
+          "path": "objects/small-shield-dome-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 275208,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/light-laser",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "LightLaser"
+      },
+      "master": "masters/ships-defense/light-laser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "279718c8e3ddf2233df0a8bf67bd8a54c632874da3789674b49bae4139ef0091",
+      "silhouetteBounds": {
+        "left": 154,
+        "top": 229,
+        "width": 1033,
+        "height": 746
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/light-laser-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 3690,
+          "alpha": true
+        },
+        {
+          "path": "objects/light-laser-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 17912,
+          "alpha": true
+        },
+        {
+          "path": "objects/light-laser-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 54224,
+          "alpha": true
+        },
+        {
+          "path": "objects/light-laser-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 153962,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/heavy-laser",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "HeavyLaser"
+      },
+      "master": "masters/ships-defense/heavy-laser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "ac85589c91d524b8a73c6af5fbcdb21b0b32c78b6b3cf58682b86ec8ff81636c",
+      "silhouetteBounds": {
+        "left": 28,
+        "top": 114,
+        "width": 1208,
+        "height": 1042
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/heavy-laser-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5372,
+          "alpha": true
+        },
+        {
+          "path": "objects/heavy-laser-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 32122,
+          "alpha": true
+        },
+        {
+          "path": "objects/heavy-laser-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 100984,
+          "alpha": true
+        },
+        {
+          "path": "objects/heavy-laser-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 294622,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/gauss-cannon",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "GaussCannon"
+      },
+      "master": "masters/ships-defense/gauss-cannon.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "8e58cc18efc4bd6e8c9c8bdf3f24e74e35e364bbe4b59c7e732095454c61aeba",
+      "silhouetteBounds": {
+        "left": 29,
+        "top": 142,
+        "width": 1206,
+        "height": 889
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/gauss-cannon-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4790,
+          "alpha": true
+        },
+        {
+          "path": "objects/gauss-cannon-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 26158,
+          "alpha": true
+        },
+        {
+          "path": "objects/gauss-cannon-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 83182,
+          "alpha": true
+        },
+        {
+          "path": "objects/gauss-cannon-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 238700,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/ion-cannon",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "IonCannon"
+      },
+      "master": "masters/ships-defense/ion-cannon.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "98269d36bea61a4be3e5c63718518812f2fe15b66fb32707940b47451fd788dd",
+      "silhouetteBounds": {
+        "left": 43,
+        "top": 180,
+        "width": 1165,
+        "height": 948
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/ion-cannon-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4994,
+          "alpha": true
+        },
+        {
+          "path": "objects/ion-cannon-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 29596,
+          "alpha": true
+        },
+        {
+          "path": "objects/ion-cannon-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 90026,
+          "alpha": true
+        },
+        {
+          "path": "objects/ion-cannon-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 272440,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/plasma-turret",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "PlasmaTurret"
+      },
+      "master": "masters/ships-defense/plasma-turret.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "689a3cbf5bd910adb4661a2f080e6604ec31ebbf189f6b870cd781c71f4e988d",
+      "silhouetteBounds": {
+        "left": 45,
+        "top": 115,
+        "width": 1165,
+        "height": 1045
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/plasma-turret-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5380,
+          "alpha": true
+        },
+        {
+          "path": "objects/plasma-turret-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 28596,
+          "alpha": true
+        },
+        {
+          "path": "objects/plasma-turret-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 90392,
+          "alpha": true
+        },
+        {
+          "path": "objects/plasma-turret-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 265850,
+          "alpha": true
+        }
+      ]
+    },
+    {
+      "key": "objects/large-shield-dome",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "LargeShieldDome"
+      },
+      "master": "masters/ships-defense/large-shield-dome.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "db1b578574e0af5a9a37c474eaa8b852c4a686f961112a07b0f57a8632501f72",
+      "silhouetteBounds": {
+        "left": 18,
+        "top": 118,
+        "width": 1218,
+        "height": 1005
+      },
+      "sourceFragment": "ships-defense-sources.json",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "variants": [
+        {
+          "path": "objects/large-shield-dome-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 5490,
+          "alpha": true
+        },
+        {
+          "path": "objects/large-shield-dome-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 34110,
+          "alpha": true
+        },
+        {
+          "path": "objects/large-shield-dome-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 110016,
+          "alpha": true
+        },
+        {
+          "path": "objects/large-shield-dome-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 345058,
+          "alpha": true
+        }
+      ]
+    }
+  ],
+  "license": "CC-BY-SA-4.0, subject to the repository LICENSE scope. Credit Orbit Imperium contributors / Unbought Games, LLC. Generated material is covered only to the extent eligible for protection."
+}

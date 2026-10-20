@@ -1,0 +1,18 @@
+# Dedicated disposable-development PostgreSQL. No public service or public IP.
+primary_region = "ewr"
+kill_signal = "SIGINT"
+kill_timeout = "30s"
+[build]
+  image = "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74"
+[env]
+  POSTGRES_USER = "orbit"
+  POSTGRES_DB = "orbit"
+  PGDATA = "/var/lib/postgresql/data/pgdata"
+[experimental]
+  cmd = ["postgres", "-c", "listen_addresses=*", "-c", "shared_buffers=32MB", "-c", "max_connections=40"]
+[[mounts]]
+  source = "orbit_pgdata"
+  destination = "/var/lib/postgresql/data"
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

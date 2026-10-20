@@ -1,0 +1,14 @@
+nextest-version = "0.9.114"
+
+[profile.default]
+# Measured server maximum 3.02s. Warn at 5s, terminate the test at 10s.
+slow-timeout = { period = "5s", terminate-after = 2, grace-period = "1s" }
+retries = 0
+status-level = "pass"
+final-status-level = "slow"
+
+[[profile.default.overrides]]
+# Measured integration maximum 14.04s with browser contention; allow headroom to 30s.
+# Integration binaries share one database each; Make starts two binaries at a time.
+filter = 'package(orbit-storage-postgres) & kind(test)'
+slow-timeout = { period = "15s", terminate-after = 2, grace-period = "1s" }

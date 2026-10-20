@@ -1,0 +1,126 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync, readdirSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { load } from 'js-yaml'
+
+const directory = new URL('../.github/workflows/', import.meta.url)
+const workflows = readdirSync(directory)
+  .filter((file) => /\.ya?ml$/.test(file))
+  .map((file) => ({
+    file,
+    workflow: load(readFileSync(new URL(file, directory), 'utf8')),
+  }))
+
+test('every workflow job uses an explicitly approved disposable runner', () => {
+  assert.ok(workflows.length > 0)
+  for (const { file, workflow } of workflows) {
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      // Also rejects dynamic routing, runner groups and reusable workflows
+      // whose execution environment has not been reviewed here.
+      assert.equal(job['runs-on'], 'ubuntu-24.04', `${file}: ${name}`)
+    }
+  }
+})
+
+test('browser jobs install Linux system dependencies on fresh runners', () => {
+  for (const { file, workflow } of workflows) {
+    const browserJobs = Object.values(workflow.jobs).filter((job) =>
+      job.steps.some((step) => /make test-(ui|explicit)/.test(step.run ?? '')),
+    )
+    assert.ok(browserJobs.length > 0, file)
+    for (const job of browserJobs) {
+      assert.ok(
+        job.steps.some((step) =>
+          /playwright install --with-deps chromium/.test(step.run ?? ''),
+        ),
+        file,
+      )
+    }
+  }
+})
+
+test('PR checks remain automatic and full validation remains dispatch-only', () => {
+  const ci = workflows.find(({ file }) => file === 'ci.yml').workflow
+  const explicit = workflows.find(
+    ({ file }) => file === 'explicit-tests.yml',
+  ).workflow
+  assert.ok(Object.hasOwn(ci.on, 'pull_request'))
+  assert.ok(!Object.hasOwn(ci.on, 'pull_request_target'))
+  assert.deepEqual(Object.keys(explicit.on), ['workflow_dispatch'])
+  for (const { file, workflow } of workflows) {
+    assert.deepEqual(workflow.permissions, { contents: 'read' }, file)
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      if (file === 'ci.yml' && name === 'check') {
+        // The aggregate gate evaluates job results without fetching PR code.
+        assert.ok(
+          job.steps.every((step) => !step.uses),
+          file,
+        )
+        continue
+      }
+      const checkout = job.steps.find((step) =>
+        step.uses?.startsWith('actions/checkout@'),
+      )
+      assert.equal(checkout?.with?.['persist-credentials'], false, file)
+    }
+  }
+})
+
+test('fixture browsers start independently of native compilation and stay routine-only', () => {
+  const { jobs } = workflows.find(({ file }) => file === 'ci.yml').workflow
+  assert.equal(jobs.native.needs, 'scope')
+  assert.equal(jobs.browser.needs, 'scope')
+  assert.equal(jobs.browser.if, "needs.scope.outputs.ui == 'true'")
+  assert.ok(jobs.native.steps.some((step) => step.run === 'make check'))
+  const database = jobs.native.steps.find((step) => step.run === 'make test-db')
+  assert.equal(database.if, "needs.scope.outputs.database == 'true'")
+  assert.ok(jobs.browser.steps.some((step) => step.run === 'make test-ui'))
+  assert.ok(
+    !jobs.browser.steps.some((step) => /cargo|rustup/.test(step.run ?? '')),
+  )
+  const commands = Object.values(jobs).flatMap((job) =>
+    job.steps.map((step) => step.run ?? ''),
+  )
+  assert.ok(
+    !commands.some((command) =>
+      /make test-(explicit|acceptance|container)/.test(command),
+    ),
+  )
+})
+
+test('the stable required check rejects failed, cancelled or unexpectedly skipped jobs', () => {
+  const { check } = workflows.find(({ file }) => file === 'ci.yml').workflow
+    .jobs
+  assert.equal(check.name, 'Build, lint and unit tests')
+  assert.equal(check.if, 'always()')
+  assert.deepEqual(check.needs, ['scope', 'native', 'browser'])
+  assert.equal(check.steps.length, 1)
+  const gate = check.steps[0]
+  assert.deepEqual(gate.env, {
+    SCOPE_RESULT: '${{ needs.scope.result }}',
+    NATIVE_RESULT: '${{ needs.native.result }}',
+    UI_SELECTED: '${{ needs.scope.outputs.ui }}',
+    BROWSER_RESULT: '${{ needs.browser.result }}',
+  })
+  const success = {
+    SCOPE_RESULT: 'success',
+    NATIVE_RESULT: 'success',
+    UI_SELECTED: 'true',
+    BROWSER_RESULT: 'success',
+  }
+  const run = (overrides) =>
+    spawnSync('bash', ['-e', '-c', gate.run], {
+      env: { ...process.env, ...success, ...overrides },
+    }).status
+  assert.equal(run({}), 0)
+  assert.equal(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'skipped' }), 0)
+  for (const key of ['SCOPE_RESULT', 'NATIVE_RESULT', 'BROWSER_RESULT']) {
+    for (const result of ['failure', 'cancelled', 'skipped']) {
+      assert.notEqual(run({ [key]: result }), 0, `${key}=${result}`)
+    }
+  }
+  assert.notEqual(run({ UI_SELECTED: '' }), 0)
+  assert.notEqual(run({ UI_SELECTED: 'false' }), 0)
+  assert.notEqual(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'failure' }), 0)
+})

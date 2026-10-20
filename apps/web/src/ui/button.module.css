@@ -1,0 +1,54 @@
+:where(.button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-size);
+  min-width: var(--control-size);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  touch-action: manipulation;
+  transition:
+    background var(--motion-press),
+    border-color var(--motion-press),
+    transform var(--motion-press) var(--ease-settle);
+}
+:where(.primary) {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+:where(.primary):hover:enabled,
+a:where(.primary):hover {
+  background: var(--accent-hover);
+}
+:where(.quiet) {
+  background: transparent;
+  color: var(--text);
+}
+:where(.quiet):hover:enabled {
+  background: var(--surface-selected);
+}
+:where(.button):disabled {
+  background: var(--surface-disabled);
+  color: var(--text-disabled);
+  border-color: var(--border-control);
+  cursor: not-allowed;
+}
+:where(.button):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+
+:where(.quiet):disabled {
+  background: transparent;
+  color: var(--text);
+}
+
+:where(.button):active:enabled {
+  transform: translateY(1px);
+}

@@ -1,0 +1,114 @@
+name: Explicit tests
+
+# Deliberately no push, pull_request or schedule trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Existing suite to run
+        type: choice
+        required: true
+        options:
+          [
+            all,
+            acceptance,
+            core,
+            mvp,
+            progression,
+            missions,
+            raiding,
+            recovery,
+            migrations,
+            signup,
+            container,
+            rules-updates,
+          ]
+      previous_ref:
+        description: Released mode-aware bridge ref (required only for rules-updates)
+        type: string
+        required: false
+      expected_sha:
+        description: Full commit SHA expected at the selected ref
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: explicit-${{ github.ref }}-${{ inputs.suite }}
+  cancel-in-progress: false
+
+env:
+  CI: 'true'
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+  ORBIT_RULES_PREVIOUS_REF: ${{ inputs.previous_ref }}
+
+jobs:
+  explicit:
+    name: Explicit ${{ inputs.suite }}
+    # Selected refs also run on disposable VMs, never persistent hosts.
+    runs-on: ubuntu-24.04
+    # Outer runaway guard includes cold setup and sequential bounded suites.
+    # Individual build/test deadlines remain in scripts/test-budgets.json.
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: orbit-explicit-${{ github.run_id }}-${{ github.run_attempt }}
+      ORBIT_DB_PUBLISHED_PORT: '0'
+      ORBIT_TEST_IMAGE: orbit-imperium:explicit-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify requested revision
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install pinned dependencies
+        timeout-minutes: 1
+        run: |
+          npm install --global "npm@$(node --print 'require("./package.json").engines.npm')"
+          npm ci
+      - run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
+        with:
+          key: explicit
+          cache-bin: false
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start disposable PostgreSQL
+        run: |
+          node scripts/test-timeout.mjs database-start make db-up
+          address=$(docker compose port db 5432)
+          echo "ORBIT_TEST_DB_PORT=${address##*:}" >> "$GITHUB_ENV"
+      - name: Run selected validation
+        env:
+          SUITE: ${{ inputs.suite }}
+        run: make test-explicit SUITE="$SUITE"
+      - name: Remove disposable containers and test files
+        if: always()
+        timeout-minutes: 1
+        run: |
+          node scripts/test-timeout.mjs cleanup bash <<'CLEANUP'
+          status=0
+          containers=$(docker ps -aq --filter "network=${COMPOSE_PROJECT_NAME}_default") || status=1
+          if [ -n "$containers" ]; then printf '%s\n' "$containers" | xargs docker rm -f || status=1; fi
+          docker compose down --volumes --remove-orphans || status=1
+          for probe in 0 1; do
+            docker compose -p "${COMPOSE_PROJECT_NAME}-probe-${probe}" down --volumes --remove-orphans || status=1
+          done
+          image=$(docker image ls -q "$ORBIT_TEST_IMAGE") || status=1
+          if [ -n "$image" ]; then docker image rm "$ORBIT_TEST_IMAGE" || status=1; fi
+          if [ "$status" -eq 0 ]; then rm -rf .secrets; fi
+          exit "$status"
+          CLEANUP
+      - name: Verify lockfiles remain unchanged
+        if: always()
+        run: git diff --exit-code -- Cargo.lock package-lock.json

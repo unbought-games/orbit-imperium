@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  scope:
+    name: Select integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      database: ${{ steps.integration.outputs.database }}
+      ui: ${{ steps.integration.outputs.ui }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Select relevant integration tests
+        id: integration
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          database=false
+          ui=false
+          if [ -z "$BASE_SHA" ] || ! git diff --name-only "$BASE_SHA...HEAD" > "$RUNNER_TEMP/changed-paths"; then
+            database=true
+            ui=true
+          else
+            while IFS= read -r path; do
+              case "$path" in
+                docs/*|.agents/*|*.md) ;;
+                apps/web/*) ui=true ;;
+                *) database=true; ui=true ;;
+              esac
+            done < "$RUNNER_TEMP/changed-paths"
+          fi
+          echo "database=$database" >> "$GITHUB_OUTPUT"
+          echo "ui=$ui" >> "$GITHUB_OUTPUT"
+
+  native:
+    name: Build, lint, unit and PostgreSQL tests
+    needs: scope
+    # PR code must run on a fresh GitHub-hosted VM, never a persistent host.
+    runs-on: ubuntu-24.04
+    # Cold Linux compilation plus database integration can exceed 15m.
+    # Native per-test limits remain unchanged; this is only the outer guard.
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      ORBIT_DB_PUBLISHED_PORT: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install pinned npm and dependencies
+        timeout-minutes: 1
+        run: |
+          npm install --global "npm@$(node --print 'require("./package.json").engines.npm')"
+          npm ci
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
+        with:
+          key: check
+          cache-bin: false
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install pinned nextest
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2
+        with:
+          tool: cargo-nextest@0.9.114
+      - name: Run checks
+        run: make check
+      - name: Start disposable PostgreSQL
+        if: needs.scope.outputs.database == 'true'
+        run: |
+          make db-up
+          address=$(docker compose port db 5432)
+          echo "ORBIT_TEST_DB_PORT=${address##*:}" >> "$GITHUB_ENV"
+      # Make runs isolated database binaries with its bounded parallelism.
+      - name: Run PostgreSQL integration tests
+        if: needs.scope.outputs.database == 'true'
+        run: make test-db
+      - name: Remove disposable database and test files
+        if: always() && needs.scope.outputs.database == 'true'
+        timeout-minutes: 1
+        run: |
+          bash -e <<'CLEANUP'
+          docker compose down --volumes --remove-orphans
+          rm -rf .secrets
+          CLEANUP
+      - name: Verify lockfiles remain unchanged
+        if: always()
+        run: git diff --exit-code -- Cargo.lock package-lock.json
+
+  browser:
+    name: Fixture browser tests
+    needs: scope
+    if: needs.scope.outputs.ui == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install pinned npm and dependencies
+        timeout-minutes: 1
+        run: |
+          npm install --global "npm@$(node --print 'require("./package.json").engines.npm')"
+          npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run fixture browser tests
+        run: make test-ui
+      - name: Verify lockfiles remain unchanged
+        if: always()
+        run: git diff --exit-code -- Cargo.lock package-lock.json
+
+  check:
+    # Preserve the required-check name while covering both independent jobs.
+    name: Build, lint and unit tests
+    needs: [scope, native, browser]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Require all selected checks to pass
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+          UI_SELECTED: ${{ needs.scope.outputs.ui }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+        run: |
+          test "$SCOPE_RESULT" = success
+          test "$NATIVE_RESULT" = success
+          case "$UI_SELECTED:$BROWSER_RESULT" in
+            true:success|false:skipped) ;;
+            *) exit 1 ;;
+          esac

@@ -1,0 +1,29 @@
+.popover {
+  z-index: 20;
+  width: 270px;
+  max-width: calc(100vw - 24px);
+  padding: 12px 14px;
+  border: 1px solid #5b7991;
+  border-radius: 3px;
+  background: linear-gradient(#1c2d3d, #0b141e);
+  box-shadow:
+    0 8px 30px #000b,
+    inset 0 0 0 3px #070d1466;
+  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.title {
+  display: block;
+  color: var(--link);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.popover p {
+  margin: 4px 0;
+}
+.popover strong {
+  font-variant-numeric: tabular-nums;
+}

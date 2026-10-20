@@ -1,0 +1,35 @@
+:where(.form) {
+  display: grid;
+  gap: var(--space-4);
+}
+:where(.field) {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--font-size-base);
+}
+:where(.control) {
+  min-height: var(--control-size);
+  min-width: var(--control-size);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  padding: 10px 14px;
+  font: inherit;
+  background: var(--surface-input);
+  color: var(--text);
+  width: 100%;
+  touch-action: manipulation;
+}
+:where(.control):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+:where(.grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: var(--space-4);
+}
+@media (max-width: 599px) {
+  :where(.grid) {
+    grid-template-columns: 1fr;
+  }
+}

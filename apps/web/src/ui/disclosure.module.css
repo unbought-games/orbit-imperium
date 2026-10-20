@@ -1,0 +1,11 @@
+.summary {
+  min-height: var(--control-size);
+  min-width: var(--control-size);
+  cursor: pointer;
+  padding: 10px 0;
+  color: var(--link);
+}
+.summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}

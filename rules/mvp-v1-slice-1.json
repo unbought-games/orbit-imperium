@@ -1,0 +1,183 @@
+{
+  "id": "mvp-v1-slice-1",
+  "resource_scale": 1000000,
+  "hour_ms": 3600000,
+  "growth": [
+    11,
+    10
+  ],
+  "base_income": [
+    30,
+    15,
+    0
+  ],
+  "production": [
+    30,
+    20,
+    10
+  ],
+  "energy_demand": [
+    10,
+    10,
+    20
+  ],
+  "energy_supply": 20,
+  "temperature": [
+    144,
+    -4,
+    100,
+    1000
+  ],
+  "construction_divisor": 2500,
+  "buildings": {
+    "MetalMine": {
+      "base": [
+        60,
+        15,
+        0
+      ],
+      "growth": [
+        3,
+        2
+      ]
+    },
+    "CrystalMine": {
+      "base": [
+        48,
+        24,
+        0
+      ],
+      "growth": [
+        8,
+        5
+      ]
+    },
+    "DeuteriumSynthesizer": {
+      "base": [
+        225,
+        75,
+        0
+      ],
+      "growth": [
+        3,
+        2
+      ]
+    },
+    "SolarPlant": {
+      "base": [
+        75,
+        30,
+        0
+      ],
+      "growth": [
+        3,
+        2
+      ]
+    }
+  },
+  "ships": {
+    "SmallCargo": {
+      "base_speed": 5000,
+      "drive_coefficient": [
+        1,
+        10
+      ],
+      "fuel": 10,
+      "capacity": 5000
+    }
+  },
+  "catalog": [
+    {
+      "key": {
+        "kind": "Building",
+        "id": "MetalMine"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "CrystalMine"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "DeuteriumSynthesizer"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "SolarPlant"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "CombustionDrive"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "ComputerTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "SmallCargo"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": true
+    }
+  ],
+  "universe": {
+    "id": "mvp-v1",
+    "galaxies": 1,
+    "systems_per_galaxy": 5,
+    "positions_per_system": 15,
+    "players": 5,
+    "homeworld_policy": "oi-homeworld-frontier-v1"
+  }
+}

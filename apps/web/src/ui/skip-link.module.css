@@ -1,0 +1,17 @@
+.link {
+  position: fixed;
+  top: -100px;
+  left: var(--space-3);
+  z-index: 10;
+  padding: var(--space-3);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  min-height: var(--control-size);
+  clip-path: inset(100%);
+}
+.link:focus {
+  top: var(--space-3);
+  clip-path: none;
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}

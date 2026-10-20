@@ -1,0 +1,308 @@
+{
+  "after_hash": "81e0a248fabf98369ae640c9f884d691cc704574f1ed7e53eddee4084c1699d0",
+  "change": {
+    "affected_viewers": [
+      "00000000-0000-0000-0000-000000000001"
+    ],
+    "bodies": [
+      {
+        "capacity": {
+          "crystal": 10000000000,
+          "deuterium": 10000000000,
+          "metal": 10000000000
+        },
+        "checkpoint": {
+          "amounts": {
+            "crystal": 999985000000,
+            "deuterium": 1000000000000,
+            "metal": 999940000000
+          },
+          "at": 0,
+          "carry": {
+            "crystal": 0,
+            "deuterium": 0,
+            "metal": 0
+          }
+        },
+        "coordinates": {
+          "galaxy": 1,
+          "position": 8,
+          "system": 1
+        },
+        "fields": 163,
+        "id": "00000000-0000-0000-0000-000000000002",
+        "kind": "Planet",
+        "levels": {
+          "CrystalMine": 0,
+          "CrystalStorage": 0,
+          "DeuteriumSynthesizer": 0,
+          "DeuteriumTank": 0,
+          "MetalMine": 0,
+          "MetalStorage": 0,
+          "ResearchLab": 6,
+          "RoboticsFactory": 2,
+          "Shipyard": 4,
+          "SolarPlant": 0
+        },
+        "max_temperature": 40,
+        "owner": "00000000-0000-0000-0000-000000000001",
+        "revision": 1,
+        "universe": "00000000-0000-0000-0000-000000000003"
+      }
+    ],
+    "cancelled_events": [],
+    "constructions": [
+      {
+        "body": "00000000-0000-0000-0000-000000000002",
+        "building": "MetalMine",
+        "due_at": 3000,
+        "generation": 0,
+        "id": "8dde0a75-5921-b226-a391-c0f553d39e65",
+        "owner": "00000000-0000-0000-0000-000000000001",
+        "paid": {
+          "crystal": 15000000,
+          "deuterium": 0,
+          "metal": 60000000
+        },
+        "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+        "progression": {
+          "action": "Upgrade",
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalMine",
+          "duration_ms": 3000,
+          "facilities": [
+            {
+              "building": "NaniteFactory",
+              "level": 0
+            },
+            {
+              "building": "RoboticsFactory",
+              "level": 2
+            }
+          ],
+          "formula": "BuildingRedesign2011",
+          "paid": {
+            "crystal": "15000000",
+            "deuterium": "0",
+            "metal": "60000000"
+          },
+          "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+          "required_energy": "0",
+          "reserve_fields": 1,
+          "source_level": 0,
+          "target_level": 1,
+          "type": "Building"
+        },
+        "revision": 0,
+        "started_at": 0,
+        "status": "Active",
+        "target_level": 1,
+        "terms_hash": "35fd400a662d0a9d4efb7d6781ba2bb99fc2cca1e2e9184604994cec9774bf3a"
+      }
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "event": {
+          "generation": 0,
+          "operation": "8dde0a75-5921-b226-a391-c0f553d39e65",
+          "type": "ConstructionDue"
+        },
+        "id": "796e2f4e-e2bf-e3d6-5b24-6af953d39d29"
+      }
+    ],
+    "expected_collection_revisions": {
+      "constructions:00000000-0000-0000-0000-000000000002": 0,
+      "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+      "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+      "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+      "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+      "production:00000000-0000-0000-0000-000000000002": 0,
+      "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+      "research-operations:00000000-0000-0000-0000-000000000001": 0,
+      "research:00000000-0000-0000-0000-000000000001": 0
+    },
+    "expected_facts_hash": "02eb6568a22865a4d2af289b3ec6a06ca757ef3b47da4b969d3de38aee63240a",
+    "fleets": [],
+    "input": "00000000-0000-0000-0000-0000000003de",
+    "inventories": [],
+    "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+    "progression_reservations": [
+      {
+        "body": "00000000-0000-0000-0000-000000000002",
+        "field_operation": "8dde0a75-5921-b226-a391-c0f553d39e65",
+        "large_dome_operation": null,
+        "missile_slots": 0,
+        "revision": 1,
+        "small_dome_operation": null
+      }
+    ],
+    "reports": [],
+    "research": []
+  },
+  "facts": {
+    "bodies": {
+      "00000000-0000-0000-0000-000000000002": {
+        "capacity": {
+          "crystal": 10000000000,
+          "deuterium": 10000000000,
+          "metal": 10000000000
+        },
+        "checkpoint": {
+          "amounts": {
+            "crystal": 1000000000000,
+            "deuterium": 1000000000000,
+            "metal": 1000000000000
+          },
+          "at": 0,
+          "carry": {
+            "crystal": 0,
+            "deuterium": 0,
+            "metal": 0
+          }
+        },
+        "coordinates": {
+          "galaxy": 1,
+          "position": 8,
+          "system": 1
+        },
+        "fields": 163,
+        "id": "00000000-0000-0000-0000-000000000002",
+        "kind": "Planet",
+        "levels": {
+          "CrystalMine": 0,
+          "CrystalStorage": 0,
+          "DeuteriumSynthesizer": 0,
+          "DeuteriumTank": 0,
+          "MetalMine": 0,
+          "MetalStorage": 0,
+          "ResearchLab": 6,
+          "RoboticsFactory": 2,
+          "Shipyard": 4,
+          "SolarPlant": 0
+        },
+        "max_temperature": 40,
+        "owner": "00000000-0000-0000-0000-000000000001",
+        "revision": 0,
+        "universe": "00000000-0000-0000-0000-000000000003"
+      }
+    },
+    "collection_revisions": {
+      "constructions:00000000-0000-0000-0000-000000000002": 0,
+      "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+      "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+      "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+      "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+      "production:00000000-0000-0000-0000-000000000002": 0,
+      "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+      "research-operations:00000000-0000-0000-0000-000000000001": 0,
+      "research:00000000-0000-0000-0000-000000000001": 0
+    },
+    "constructions": {},
+    "coverage": {
+      "bodies": [
+        "00000000-0000-0000-0000-000000000002"
+      ],
+      "construction_bodies": [
+        "00000000-0000-0000-0000-000000000002"
+      ],
+      "fleet_ids": [],
+      "fleet_owners": [
+        "00000000-0000-0000-0000-000000000001"
+      ],
+      "inventory_owners": [
+        [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000001"
+        ]
+      ],
+      "lab_construction_players": [
+        "00000000-0000-0000-0000-000000000001"
+      ],
+      "manufacturing_bodies": [
+        "00000000-0000-0000-0000-000000000002"
+      ],
+      "manufacturing_operation_ids": [
+        "676f6512-8bfd-09f2-95c9-33773575e278",
+        "8a6915f9-cc08-a420-d4b8-514cbe2ab613",
+        "8dde0a75-5921-b226-a391-c0f553d39e65"
+      ],
+      "operations": [
+        "676f6512-8bfd-09f2-95c9-33773575e278",
+        "8a6915f9-cc08-a420-d4b8-514cbe2ab613",
+        "8dde0a75-5921-b226-a391-c0f553d39e65"
+      ],
+      "owned_body_players": [
+        "00000000-0000-0000-0000-000000000001"
+      ],
+      "production_bodies": [
+        "00000000-0000-0000-0000-000000000002"
+      ],
+      "research_operation_ids": [
+        "676f6512-8bfd-09f2-95c9-33773575e278",
+        "8a6915f9-cc08-a420-d4b8-514cbe2ab613",
+        "8dde0a75-5921-b226-a391-c0f553d39e65"
+      ],
+      "research_players": [
+        "00000000-0000-0000-0000-000000000001"
+      ],
+      "research_slot_players": [
+        "00000000-0000-0000-0000-000000000001"
+      ],
+      "reservation_bodies": [
+        "00000000-0000-0000-0000-000000000002"
+      ]
+    },
+    "epoch": "00000000-0000-0000-0000-000000000004",
+    "fleets": {},
+    "inventories": [],
+    "players": {
+      "00000000-0000-0000-0000-000000000001": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "universe": "00000000-0000-0000-0000-000000000003"
+      }
+    },
+    "production_settings": {
+      "00000000-0000-0000-0000-000000000002": {
+        "body": "00000000-0000-0000-0000-000000000002",
+        "revision": 0,
+        "settings": {
+          "crystal_mine": 100,
+          "deuterium_synthesizer": 100,
+          "fusion_reactor": 100,
+          "metal_mine": 100,
+          "solar_plant": 100,
+          "solar_satellite": 100
+        }
+      }
+    },
+    "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+    "progression_reservations": {
+      "00000000-0000-0000-0000-000000000002": {
+        "body": "00000000-0000-0000-0000-000000000002",
+        "field_operation": null,
+        "large_dome_operation": null,
+        "missile_slots": 0,
+        "revision": 0,
+        "small_dome_operation": null
+      }
+    },
+    "reports": {},
+    "research": {
+      "00000000-0000-0000-0000-000000000001": {
+        "levels": {
+          "ArmourTechnology": 0,
+          "CombustionDrive": 6,
+          "ComputerTechnology": 0,
+          "EnergyTechnology": 3,
+          "EspionageTechnology": 2,
+          "ShieldingTechnology": 2,
+          "WeaponsTechnology": 0
+        },
+        "owner": "00000000-0000-0000-0000-000000000001",
+        "revision": 0
+      }
+    },
+    "universe": "00000000-0000-0000-0000-000000000003"
+  }
+}

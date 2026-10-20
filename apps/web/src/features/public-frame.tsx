@@ -1,0 +1,86 @@
+import type { ReactNode } from 'react'
+import { Brand, BrandLogo, BrandWordmark } from '../ui/brand'
+import { atmosphereArt, resolvePlanetArt } from '../ui/artwork'
+import styles from './public-frame.module.css'
+import { SourceLink } from '../ui/source-link'
+
+const publicWorld = resolvePlanetArt(4)
+
+/** Public illustration only: it never depicts a signed-in player's world. */
+export function PublicFrame({
+  children,
+  variant = 'auth',
+}: {
+  children: ReactNode
+  variant?: 'landing' | 'auth' | 'recovery'
+}) {
+  return (
+    <main
+      id="main"
+      tabIndex={-1}
+      className={`${styles.frame} ${styles[variant]}`}
+    >
+      <header className={styles.header}>
+        {variant === 'recovery' ? (
+          <span className={styles.staticBrand}>
+            <BrandLogo alt="" />
+            <BrandWordmark />
+          </span>
+        ) : (
+          <Brand className={styles.brand} to="/" />
+        )}
+        <span className={styles.endorsement}>by unbought games</span>
+      </header>
+      <div className={styles.composition}>
+        <div className={styles.world} aria-hidden="true">
+          <img
+            className={styles.atmosphere}
+            src={atmosphereArt.src}
+            srcSet={atmosphereArt.srcSet}
+            sizes="(max-width: 767px) 390px, 800px"
+            width={atmosphereArt.width}
+            height={atmosphereArt.height}
+            alt=""
+            decoding="async"
+            onError={({ currentTarget }) => {
+              currentTarget.hidden = true
+            }}
+          />
+          <img
+            className={styles.planet}
+            src={publicWorld.src}
+            srcSet={publicWorld.srcSet}
+            sizes="(max-width: 767px) 290px, (max-width: 1700px) 48vw, 800px"
+            width={publicWorld.width}
+            height={publicWorld.height}
+            alt=""
+            decoding="async"
+            onError={({ currentTarget }) => {
+              currentTarget.hidden = true
+            }}
+            fetchPriority="high"
+          />
+          <svg className={styles.orbits} viewBox="0 0 700 700" fill="none">
+            <circle cx="350" cy="350" r="293" />
+            <circle cx="350" cy="350" r="312" strokeDasharray="1 9" />
+            <ellipse
+              cx="350"
+              cy="350"
+              rx="340"
+              ry="106"
+              transform="rotate(-24 350 350)"
+            />
+            <path d="M350 18v42m0 580v42M18 350h42m580 0h42" />
+          </svg>
+          <span className={styles.worldCaption}>A larger horizon.</span>
+        </div>
+        <section className={styles.content}>{children}</section>
+      </div>
+      <footer className={styles.footer}>
+        <span>Deep games. Clear decisions. Fair competition.</span>
+        <span className={styles.footerNote}>An independent universe</span>
+        <SourceLink />
+      </footer>
+    </main>
+  )
+}

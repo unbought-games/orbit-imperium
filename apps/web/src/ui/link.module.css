@@ -1,0 +1,16 @@
+:where(.link) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-size);
+  min-width: var(--control-size);
+  color: var(--link);
+  overflow-wrap: anywhere;
+  touch-action: manipulation;
+}
+:where(.link):hover {
+  color: var(--link-hover);
+}
+:where(.link):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}

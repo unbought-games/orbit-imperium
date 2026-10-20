@@ -1,0 +1,43 @@
+:where(.brand) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-size);
+  letter-spacing: 2px;
+  color: var(--text);
+  text-decoration: none;
+  gap: var(--brand-gap, 12px);
+  touch-action: manipulation;
+}
+:where(.wordmark) strong {
+  color: var(--accent);
+  font-weight: 650;
+}
+.logo {
+  display: block;
+  width: var(--brand-mark-size, 32px);
+  height: var(--brand-mark-size, 32px);
+  flex-shrink: 0;
+}
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25em 0.55em;
+  line-height: 1.2;
+  font-weight: 450;
+  letter-spacing: inherit;
+}
+:where(.brand):hover {
+  color: var(--link-hover);
+}
+:where(.brand):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+@media (max-width: 599px) {
+  :where(.brand) {
+    font-size: var(--font-size-sm);
+    letter-spacing: 1px;
+    flex: 1;
+  }
+}

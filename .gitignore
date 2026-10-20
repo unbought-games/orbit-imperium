@@ -1,0 +1,11 @@
+/target/
+/node_modules/
+/apps/web/node_modules/
+/apps/web/dist/
+/apps/web/public/source.tar.gz*
+/apps/web/public/LICENSE.txt
+/.env
+/.secrets/
+/test-results/
+/playwright-report/
+.superpowers/

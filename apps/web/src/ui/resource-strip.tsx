@@ -1,0 +1,76 @@
+import styles from './resource-strip.module.css'
+import type { BoundView } from '../client-model/commands'
+import { formatExactResource } from './format'
+import { ResourceAmount } from './resource-amount'
+import { currentResourceRates } from './resource-rates'
+export function ResourceStrip({
+  view,
+  body,
+}: {
+  view: BoundView
+  body: BoundView['bodies'][number]
+}) {
+  const rates = currentResourceRates(view, body)
+  const balance = BigInt(body.energy.supply) - BigInt(body.energy.demand)
+  return (
+    <div className={styles.resources} aria-label="Current resources">
+      {(['metal', 'crystal', 'deuterium'] as const).map((name) => {
+        const value = body.amounts[name]
+        const full = BigInt(value) >= BigInt(body.capacity[name])
+        return (
+          <ResourceAmount
+            key={name}
+            resource={name}
+            amount={value}
+            capacity={body.capacity[name]}
+            variant="stock"
+            rate={rates ? rates[name] : null}
+            warning={full}
+          >
+            <p>
+              Available <strong>{formatExactResource(value)}</strong>
+            </p>
+            <p>
+              Capacity{' '}
+              <strong>{formatExactResource(body.capacity[name])}</strong>
+            </p>
+            <p>
+              {name === 'deuterium' ? 'Net production' : 'Production'}{' '}
+              <strong>
+                {rates
+                  ? `${BigInt(rates[name]) > 0n ? '+' : ''}${formatExactResource(rates[name])} / hour`
+                  : 'Flow unavailable'}
+              </strong>
+            </p>
+            {full && (
+              <p className={styles.warning}>
+                {BigInt(value) > BigInt(body.capacity[name])
+                  ? 'Above capacity'
+                  : 'Storage full'}{' '}
+                · production suppressed
+              </p>
+            )}
+          </ResourceAmount>
+        )
+      })}
+      <ResourceAmount
+        resource="energy"
+        amount={balance.toString()}
+        variant="stock"
+        warning={balance < 0n}
+      >
+        <p>
+          Balance <strong>{formatExactResource(balance.toString())}</strong>
+        </p>
+        <p>
+          {formatExactResource(body.energy.supply)} supplied /{' '}
+          {formatExactResource(body.energy.demand)} demanded
+        </p>
+        <p>
+          {balance < 0n ? 'Energy shortfall' : 'Energy balance'} ·{' '}
+          {(BigInt(body.energy.utilization) / 10000n).toString()}% utilization
+        </p>
+      </ResourceAmount>
+    </div>
+  )
+}

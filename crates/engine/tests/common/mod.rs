@@ -1,0 +1,122 @@
+use orbit_engine::*;
+use std::collections::{BTreeMap, BTreeSet};
+use uuid::Uuid;
+pub fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
+    let rules =
+        Ruleset::from_json(include_bytes!("../../../../rules/first-slice-v1.json")).unwrap();
+    let player = PlayerId(Uuid::from_u128(1));
+    let body = BodyId(Uuid::from_u128(2));
+    let u = UniverseId(Uuid::from_u128(3));
+    let b = Body {
+        id: body,
+        universe: u,
+        owner: player,
+        kind: BodyKind::Planet,
+        coordinates: Coordinates {
+            galaxy: 1,
+            system: 1,
+            position: 8,
+        },
+        fields: 163,
+        max_temperature: 40,
+        retained_capacity: Some(Resources::all(10_000 * SCALE)),
+        checkpoint: ResourceCheckpoint {
+            amounts: Resources::all(1000 * SCALE),
+            carry: Resources::default(),
+            at: 0,
+        },
+        levels: BTreeMap::from([
+            (Building::MetalMine, 1),
+            (Building::CrystalMine, 1),
+            (Building::DeuteriumSynthesizer, 0),
+            (Building::SolarPlant, 2),
+        ]),
+        revision: 0,
+    };
+    let s = GameState {
+        world: None,
+        production_settings: Default::default(),
+        research_operations: Default::default(),
+        manufacturing_batches: Default::default(),
+        progression_reservations: Default::default(),
+        fleets: BTreeMap::new(),
+        reports: BTreeMap::new(),
+        universe: u,
+        epoch: Epoch(Uuid::from_u128(4)),
+        profile_hash: rules.hash.clone(),
+        bodies: BTreeMap::from([(body, b)]),
+        players: BTreeMap::from([(
+            player,
+            Player {
+                id: player,
+                universe: u,
+            },
+        )]),
+        inventories: vec![],
+        research: BTreeMap::from([(
+            player,
+            ResearchLevels {
+                owner: player,
+                levels: BTreeMap::from([
+                    (ResearchId::CombustionDrive, 1),
+                    (ResearchId::ComputerTechnology, 0),
+                ]),
+                revision: 0,
+            },
+        )]),
+        constructions: BTreeMap::new(),
+        coverage: FactCoverage {
+            production_bodies: Default::default(),
+            research_operation_ids: Default::default(),
+            research_slot_players: Default::default(),
+            owned_body_players: Default::default(),
+            lab_construction_players: Default::default(),
+            manufacturing_operation_ids: Default::default(),
+            manufacturing_bodies: Default::default(),
+            reservation_bodies: Default::default(),
+            operations: Default::default(),
+            fleet_ids: Default::default(),
+            bodies: BTreeSet::from([body]),
+            construction_bodies: BTreeSet::from([body]),
+            inventory_owners: BTreeSet::from([(body, player)]),
+            research_players: BTreeSet::from([player]),
+            fleet_owners: BTreeSet::from([player]),
+        },
+        collection_revisions: BTreeMap::new(),
+    };
+    (s, rules, player, body)
+}
+pub fn input(
+    s: &GameState,
+    r: &Ruleset,
+    p: Actor,
+    at: i64,
+    n: u128,
+    payload: Input,
+) -> OrderedInput {
+    OrderedInput {
+        schema_version: 2,
+        id: InputId(Uuid::from_u128(n)),
+        universe: s.universe,
+        epoch: s.epoch,
+        actor: p,
+        at,
+        phase: if matches!(payload, Input::Event(_)) {
+            0
+        } else {
+            1
+        },
+        sequence: i64::try_from(n).unwrap(),
+        protocol: 1,
+        profile_hash: r.hash.clone(),
+        payload,
+    }
+}
+pub fn applied(s: &mut GameState, result: TransitionResult) -> ChangeSet {
+    if let TransitionResult::Applied(changes) = result {
+        changes.apply_to(s).unwrap();
+        *changes
+    } else {
+        panic!("expected applied, got {result:?}")
+    }
+}

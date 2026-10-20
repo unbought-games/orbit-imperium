@@ -1,0 +1,61 @@
+.observation {
+  overflow-wrap: anywhere;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.observation dt {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.observation dd {
+  margin: var(--space-1) 0 var(--space-3);
+}
+.observation ol {
+  padding-left: var(--space-5);
+}
+.observation h4 {
+  margin-block: var(--space-3);
+}
+.observation details {
+  margin-block: var(--space-3);
+}
+.observation {
+  border: 0;
+  border-top: 1px solid #cbb68d60;
+  border-radius: 0;
+  padding: 1.5rem 0;
+  background: transparent;
+  box-shadow: none;
+}
+.observation section {
+  padding-block: 1.2rem;
+  border-bottom: 1px solid #cbb68d30;
+}
+.observation h3 {
+  font:
+    400 1.4rem Georgia,
+    serif;
+  color: #efdfc4;
+}
+.observation dd {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.observation summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 0.7rem;
+}
+.observation section {
+  padding-block: 0.8rem;
+}
+.observation section > p:last-child {
+  margin-bottom: 0;
+}
+.observation section h3 {
+  margin-bottom: 0.6rem;
+}

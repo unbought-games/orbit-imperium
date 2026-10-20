@@ -1,0 +1,27 @@
+:where(.panel) {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+:where(.panel) > p:last-child {
+  margin-bottom: 0;
+}
+:where(.normal) {
+  padding: var(--space-5);
+}
+:where(.compact) {
+  padding: var(--space-4);
+}
+:where(.log) {
+  padding: var(--space-3) var(--space-4);
+}
+:where(.accent) {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+}
+@media (max-width: 599px) {
+  :where(.normal) {
+    padding: var(--space-4);
+  }
+}

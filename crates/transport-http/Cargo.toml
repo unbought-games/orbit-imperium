@@ -1,0 +1,24 @@
+[package]
+name = "orbit-transport-http"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+unbought-auth.workspace = true
+orbit-application.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+axum.workspace = true
+tower-http.workspace = true
+tokio.workspace = true
+tokio-stream = "=0.1.19"
+percent-encoding = "=2.3.2"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+orbit-engine.workspace = true
+tower.workspace = true

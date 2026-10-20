@@ -1,0 +1,76 @@
+.rail {
+  align-self: start;
+  background: #101d29;
+  border: 1px solid #35546b55;
+}
+.rail h2 {
+  margin: 0;
+  padding: 9px 4px;
+  color: #88b8d7;
+  text-align: center;
+  font-size: 0.8125rem;
+  background: linear-gradient(#1e303e, #0a121b);
+  border: 3px solid #050c13;
+  box-shadow:
+    inset 0 1px #4c687b,
+    0 2px #243b4c;
+}
+.bodies {
+  padding: 10px 7px;
+  display: grid;
+  gap: 8px;
+}
+.bodies button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 12px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: #9eb7cb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+}
+.bodies button:hover {
+  background: #304c6277;
+}
+.bodies button[aria-pressed='true'] {
+  border-color: #50748b88;
+  background: #10233499;
+}
+.bodies strong {
+  color: #8cbddd;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.bodies small {
+  font-size: 0.5625rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 6px;
+  color: #c8af7c;
+}
+.orb {
+  height: 58px;
+  width: 58px;
+  margin-bottom: 5px;
+  border-radius: 50%;
+  background: url('/art/planet-overview.jpg') 72% 36% / 230%;
+  box-shadow:
+    inset -12px -5px 15px #020711,
+    inset 2px 1px 4px #ffd5a0,
+    0 0 14px #6ba4c12b;
+}
+.moon {
+  height: 42px;
+  width: 42px;
+  filter: grayscale(1);
+}
+@media (max-width: 1023px) {
+  .rail {
+    display: none;
+  }
+}

@@ -1,0 +1,30 @@
+.reports {
+  display: grid;
+  gap: var(--space-4);
+}
+.fleet {
+  margin-bottom: var(--space-4);
+}
+
+.payload {
+  margin-bottom: 0;
+}
+
+.fleet {
+  border: 0;
+  border-block: 1px solid #cbb68d40;
+  border-radius: 0;
+  padding: 1.5rem 0;
+  background: transparent;
+  box-shadow: none;
+}
+.fleet h3 {
+  color: #efdfc4;
+  font:
+    400 1.5rem Georgia,
+    serif;
+}
+.reports {
+  border-top: 1px solid #cbb68d40;
+  padding-top: 1.5rem;
+}

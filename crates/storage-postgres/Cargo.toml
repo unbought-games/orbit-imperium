@@ -1,0 +1,100 @@
+[package]
+name = "orbit-storage-postgres"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+unbought-auth.workspace = true
+orbit-engine.workspace = true
+orbit-application.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+rand.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+orbit-transport-http.workspace = true
+tower.workspace = true
+http-body-util.workspace = true
+
+[features]
+test-support = []
+migration-upgrade-test = ["test-support"]
+
+[[test]]
+name = "identity"
+required-features = ["test-support"]
+
+[[test]]
+name = "views"
+required-features = ["test-support"]
+
+[[test]]
+name = "http"
+required-features = ["test-support"]
+
+[[test]]
+name = "ordering"
+required-features = ["test-support"]
+
+[[test]]
+name = "transport"
+required-features = ["test-support"]
+
+[[test]]
+name = "recovery"
+required-features = ["test-support"]
+
+[[test]]
+name = "security"
+required-features = ["test-support"]
+
+
+[[test]]
+name = "deadlines"
+required-features = ["test-support"]
+
+[[test]]
+name = "login_limits"
+required-features = ["test-support"]
+
+[[test]]
+name = "fact_bounds"
+required-features = ["test-support"]
+
+[[test]]
+name = "corruption"
+required-features = ["test-support"]
+
+[[test]]
+name = "signup"
+required-features = ["test-support"]
+
+[[test]]
+name = "migrations"
+required-features = ["test-support"]
+
+[[test]]
+name = "frontend_bootstrap"
+required-features = ["test-support"]
+
+[[test]]
+name = "signup_topology"
+required-features = ["test-support"]
+
+[[test]]
+name = "rules_updates"
+required-features = ["test-support"]
+
+[[test]]
+name = "oidc"
+required-features = ["test-support"]

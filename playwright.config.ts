@@ -1,0 +1,61 @@
+import { defineConfig } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { availableParallelism } from 'node:os'
+import { browserTimeout } from './scripts/fixtures/browser-budget.mjs'
+const budgets: Record<string, number> = JSON.parse(readFileSync(new URL('./scripts/test-budgets.json', import.meta.url), 'utf8'))
+const suite = process.env.ORBIT_TEST_SUITE ?? 'core'
+const uiFiles = ['shell.spec.ts', 'resources.spec.ts', 'catalog-pages.spec.ts', 'galaxy-cards.spec.ts', 'bootstrap-ui.spec.ts']
+const coreFiles = ['bootstrap.spec.ts', 'construction.spec.ts', 'login.spec.ts', 'reconnect.spec.ts', 'transport.spec.ts', 'zfoundation.spec.ts']
+export default defineConfig({
+  // Explicit validation keeps its existing defaults until separately calibrated.
+  globalTimeout: process.env.ORBIT_UI_E2E ? 0 : browserTimeout(budgets[suite], process.env.ORBIT_TEST_DEADLINE_MS),
+  // Per test, including beforeEach and fixture setup. No routine suite-wide allowance.
+  // Fixture UI max measured at 11.6s; explicit browser tests retain their 30s default.
+  timeout: process.env.ORBIT_UI_E2E ? 25_000 : 30_000,
+  outputDir: process.env.ORBIT_TEST_OUTPUT_DIR ?? 'test-results/browser',
+  testDir: 'apps/web/tests',
+  testMatch: process.env.ORBIT_UI_E2E
+    ? uiFiles
+    : process.env.ORBIT_CORE_E2E
+      ? coreFiles
+      : process.env.ORBIT_SIGNUP_E2E
+    ? 'signup.spec.ts'
+    : process.env.ORBIT_RAIDING_E2E
+      ? 'raiding.spec.ts'
+      : process.env.ORBIT_MISSIONS_E2E
+        ? 'missions.spec.ts'
+        : process.env.ORBIT_PROGRESSION_E2E
+          ? ['progression.spec.ts', 'responsive.spec.ts', 'routing.spec.ts']
+          : process.env.ORBIT_MVP_E2E
+            ? 'mvp.spec.ts'
+            : '**/*.spec.ts',
+  testIgnore: process.env.ORBIT_SIGNUP_E2E
+    ? []
+    : process.env.ORBIT_RAIDING_E2E
+      ? []
+      : process.env.ORBIT_MISSIONS_E2E
+        ? []
+        : process.env.ORBIT_PROGRESSION_E2E
+          ? []
+          : process.env.ORBIT_MVP_E2E
+            ? []
+            : [
+                ...(process.env.ORBIT_UI_E2E
+                  ? []
+                  : ['**/bootstrap-ui.spec.ts']),
+                '**/signup.spec.ts',
+                '**/raiding.spec.ts',
+                '**/missions.spec.ts',
+                '**/mvp.spec.ts',
+                '**/progression.spec.ts',
+                '**/responsive.spec.ts',
+                '**/routing.spec.ts',
+              ],
+  fullyParallel: !!process.env.ORBIT_UI_E2E,
+  workers: process.env.ORBIT_UI_E2E ? Math.min(3, availableParallelism()) : 1,
+  use: {
+    baseURL: process.env.ORBIT_TEST_BASE_URL ?? 'http://localhost:18080',
+    headless: true,
+  },
+  reporter: [['list'], ['json', { outputFile: `${process.env.ORBIT_TEST_OUTPUT_DIR ?? 'test-results/browser'}/results.json` }]],
+})

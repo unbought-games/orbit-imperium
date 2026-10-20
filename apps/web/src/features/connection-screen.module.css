@@ -1,0 +1,24 @@
+.eyebrow {
+  color: var(--champagne);
+  letter-spacing: 0.18em;
+}
+.title {
+  color: var(--champagne-light);
+  font:
+    400 clamp(2.5rem, 4.8vw, 4.8rem) / 1.08 Georgia,
+    'Times New Roman',
+    serif;
+  letter-spacing: -0.035em;
+  margin-block: var(--space-5) var(--space-6);
+  text-wrap: balance;
+}
+.message {
+  max-width: 40ch;
+  line-height: 1.75;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}

@@ -1,0 +1,358 @@
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: clamp(24px, 3vw, 64px);
+}
+.world {
+  position: relative;
+  align-self: start;
+  min-height: 640px;
+  aspect-ratio: 1;
+}
+.globe {
+  position: absolute;
+  top: -4%;
+  left: -4%;
+  width: 108%;
+  aspect-ratio: 1;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.orbits {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke: var(--accent);
+  stroke-width: 0.8;
+  color: var(--accent);
+  opacity: 0.8;
+}
+.designation {
+  position: absolute;
+  z-index: 1;
+  top: 3%;
+  left: 0;
+  font-family: var(--font-editorial);
+}
+.designation span {
+  display: block;
+  color: var(--accent);
+  letter-spacing: 2px;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+.designation small {
+  display: block;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+.facts {
+  position: absolute;
+  inset: auto 0 2%;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0;
+  font: 1rem var(--font-editorial);
+}
+.facts > div {
+  padding-top: 12px;
+  border-top: 1px solid var(--border-accent);
+}
+.facts dt {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 6px;
+}
+.facts dd {
+  margin: 0;
+  font-size: 1.375rem;
+  color: var(--accent);
+}
+.facts small {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 6px;
+  color: var(--text-muted);
+}
+.editorial {
+  padding-block: 0 16px;
+}
+.eyebrow {
+  font-size: 0.625rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 12px;
+}
+.introduction h2 {
+  font: clamp(3rem, 4.1vw, 4.75rem) / 1.02 var(--font-editorial);
+  letter-spacing: -0.035em;
+  color: #f4d7b6;
+  margin: 0 0 18px;
+}
+.introduction > p:last-child {
+  font: 1.1875rem/1.55 var(--font-editorial);
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+.sectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-accent);
+}
+.sectionHeading h2 {
+  color: var(--champagne-light);
+  font: 2rem/1.2 var(--font-editorial);
+  margin: 0 0 14px;
+}
+.sectionHeading > span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.empty {
+  color: var(--text-muted);
+  font: 1rem var(--font-editorial);
+  margin: 6px 0 28px;
+}
+.arrivalList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+}
+.arrivalList li {
+  display: grid;
+  grid-template-columns: auto 1fr minmax(100px, 0.8fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.arrivalList li > svg {
+  color: var(--accent);
+}
+.arrivalList strong {
+  font: 1rem var(--font-editorial);
+}
+.arrivalList small,
+.deadline time {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.deadline > span {
+  font-size: 0.8125rem;
+  color: var(--link);
+}
+.arrivalList a {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  min-width: 44px;
+}
+.manage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin-top: 4px;
+  text-decoration: none;
+  font: 1rem var(--font-editorial);
+}
+.inventory {
+  margin-top: 20px;
+}
+.inventory h2 {
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+.inventory dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+}
+.inventory dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+.inventory dd {
+  margin: 0;
+  color: var(--accent);
+}
+@media (max-width: 1100px) and (min-width: 768px) {
+  .overview {
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 24px;
+  }
+  .world {
+    min-height: 520px;
+  }
+  .arrivalList li {
+    grid-template-columns: 1fr auto;
+  }
+  .arrivalList li > svg {
+    display: none;
+  }
+  .deadline {
+    grid-row: 2;
+  }
+}
+@media (max-width: 767px) {
+  .overview {
+    display: block;
+    position: relative;
+  }
+  .world {
+    position: absolute;
+    top: 0;
+    right: calc(-1 * var(--shell-inline-gutter, 18px));
+    width: 74%;
+    min-height: 0;
+    height: 330px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .globe {
+    width: 420px;
+    top: -5px;
+    left: 0;
+  }
+  .orbits {
+    width: 400px;
+    height: 400px;
+    left: 5%;
+    top: -1px;
+  }
+  .designation,
+  .facts {
+    display: none;
+  }
+  .introduction {
+    position: relative;
+    min-height: 330px;
+    padding-top: 22px;
+    background: linear-gradient(
+      90deg,
+      #071620 5%,
+      #071620bb 42%,
+      transparent 80%
+    );
+  }
+  .introduction h2 {
+    font-size: clamp(2.4rem, 8.5vw, 3.7rem);
+    max-width: 82%;
+  }
+  .introduction > p:last-child {
+    font-size: 1rem;
+    max-width: 62%;
+  }
+  .eyebrow {
+    font-size: 0.5625rem;
+  }
+  .sectionHeading h2 {
+    font-size: 1.75rem;
+  }
+  .arrivalList li {
+    grid-template-columns: 1fr auto;
+    gap: 8px 12px;
+  }
+  .arrivalList li > svg {
+    display: none;
+  }
+  .arrivalList li > a {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+  .deadline {
+    grid-row: 2;
+  }
+  .inventory dl {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 768px) {
+  .world {
+    min-height: 0;
+  }
+  .introduction h2 {
+    font-size: clamp(2rem, 3.35vw, 3.75rem);
+    line-height: 1.08;
+    white-space: nowrap;
+    margin-bottom: 18px;
+  }
+  .introduction > p:last-child {
+    font-weight: 400;
+    font-size: 1.125rem;
+    margin-bottom: 24px;
+  }
+  .eyebrow {
+    margin-bottom: 8px;
+  }
+  .sectionHeading {
+    padding-top: 14px;
+  }
+  .sectionHeading h2 {
+    margin-bottom: 10px;
+  }
+  .arrivalList {
+    margin-bottom: 20px;
+  }
+  .facts {
+    bottom: 0;
+  }
+}
+@media (max-width: 767px) {
+  .world {
+    height: 280px;
+  }
+  .introduction {
+    min-height: 280px;
+    padding-top: 18px;
+    background: linear-gradient(
+      90deg,
+      #071620 8%,
+      #071620e8 35%,
+      #07162080 57%,
+      transparent 88%
+    );
+  }
+  .introduction h2 {
+    max-width: 80%;
+  }
+  .introduction > p:last-child {
+    max-width: 55%;
+    font-weight: 400;
+    font-size: 0.9375rem;
+  }
+}
+
+.globe img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.38;
+  mask-image: radial-gradient(ellipse, #000 30%, transparent 73%);
+  pointer-events: none;
+}

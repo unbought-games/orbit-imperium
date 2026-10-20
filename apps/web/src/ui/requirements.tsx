@@ -1,0 +1,50 @@
+import styles from './requirements.module.css'
+import { Text } from './typography'
+import { Link } from './link'
+import type { components } from '../contracts'
+import { label } from './format'
+import { routeTarget } from '../shell/route-target'
+type S = components['schemas']
+export function Requirements({
+  requirements,
+  view,
+  body,
+}: {
+  requirements: S['CatalogEntry3']['requirements']
+  view: S['BoundView3'] | S['BoundView4']
+  body: S['BodyV3']
+}) {
+  return requirements.length ? (
+    <ul className={styles['requirements']} aria-label="Prerequisites">
+      {requirements.map((r, i) => {
+        const id = r.type === 'BodyBuilding' ? r.building : r.research
+        const current =
+          r.type === 'BodyBuilding'
+            ? body.levels[r.building as keyof typeof body.levels]
+            : view.research.find((x) => x.research === r.research)?.level
+        const page =
+          r.type === 'BodyBuilding'
+            ? ['RoboticsFactory', 'ResearchLab', 'Shipyard'].includes(
+                r.building,
+              )
+              ? 'facilities'
+              : 'resources'
+            : 'research'
+        return (
+          <li key={i}>
+            <Link {...routeTarget(view.binding.universe, page, body.id)}>
+              {label(id)} {r.level}
+            </Link>
+            <span>
+              {current === undefined
+                ? 'Level unavailable'
+                : ` · current ${current}${current < r.level ? ' · required' : ' · met'}`}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
+  ) : (
+    <Text>Prerequisites: None</Text>
+  )
+}

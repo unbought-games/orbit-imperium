@@ -1,0 +1,275 @@
+use crate::*;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BuildingRule {
+    pub base: [i64; 3],
+    pub growth: [i64; 2],
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShipRule {
+    pub base_speed: i64,
+    pub drive_coefficient: [i64; 2],
+    pub fuel: i64,
+    pub capacity: i64,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RulesArtifact {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub world: Option<WorldRules>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progression: Option<ProgressionRules>,
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub universe: Option<UniverseProfile>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub catalog: Vec<CatalogEntry>,
+    pub resource_scale: i64,
+    pub hour_ms: i64,
+    pub growth: [i64; 2],
+    pub base_income: [i64; 3],
+    pub production: [i64; 3],
+    pub energy_demand: [i64; 3],
+    pub energy_supply: i64,
+    pub temperature: [i64; 4],
+    pub construction_divisor: i64,
+    pub buildings: BTreeMap<Building, BuildingRule>,
+    pub ships: BTreeMap<ShipType, ShipRule>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Ruleset {
+    pub artifact: RulesArtifact,
+    pub speed: i32,
+    pub hash: Hash,
+}
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum RulesError {
+    #[error("unsupported rules policy")]
+    Unsupported,
+    #[error("malformed rules")]
+    Malformed,
+    #[error("invalid catalog reference")]
+    InvalidReference,
+    #[error("numeric range or precision")]
+    Range,
+    #[error("rules hash mismatch")]
+    HashMismatch,
+}
+impl Ruleset {
+    pub fn world(&self) -> bool {
+        self.artifact.world.is_some()
+    }
+    pub fn mvp_fleets() -> Result<Self, RulesError> {
+        Self::from_json(include_bytes!("../../../rules/mvp-v1-slice-4.json"))
+    }
+
+    pub fn mvp_raids() -> Result<Self, RulesError> {
+        Self::from_json(include_bytes!("../../../rules/mvp-v1-slice-5.json"))
+    }
+    /// Retained 10× constructor for historical fixtures and existing callers.
+    pub fn signup(profile: UniverseProfile) -> Result<Self, RulesError> {
+        Self::signup_with_speed(profile, 10)
+    }
+    pub fn signup_with_speed(profile: UniverseProfile, speed: i32) -> Result<Self, RulesError> {
+        profile.validate()?;
+        if profile.id != "signup-v2" {
+            return Err(RulesError::InvalidReference);
+        }
+        let mut artifact = Self::mvp_raids()?.artifact;
+        artifact.universe = Some(profile);
+        Self::from_artifact(artifact, speed)
+    }
+    pub fn attacks(&self) -> bool {
+        self.artifact
+            .world
+            .as_ref()
+            .is_some_and(|w| w.raiding.is_some())
+    }
+    pub fn progression(&self) -> bool {
+        self.artifact.progression.is_some()
+    }
+    pub fn protocol(&self) -> i32 {
+        if self.world() {
+            4
+        } else if self.progression() {
+            3
+        } else if self.artifact.id == "first-slice-v1" {
+            1
+        } else {
+            2
+        }
+    }
+    pub fn mvp_progression() -> Result<Self, RulesError> {
+        Self::from_json(include_bytes!("../../../rules/mvp-v1-slice-2.json"))
+    }
+    pub fn from_json(bytes: &[u8]) -> Result<Self, RulesError> {
+        let artifact: RulesArtifact =
+            serde_json::from_slice(bytes).map_err(|_| RulesError::Malformed)?;
+        let speed = if artifact.universe.is_some() { 10 } else { 1 };
+        Self::from_artifact(artifact, speed)
+    }
+    pub fn from_artifact(artifact: RulesArtifact, speed: i32) -> Result<Self, RulesError> {
+        if artifact.id.trim().is_empty()
+            || !(1..=100).contains(&speed)
+            || (artifact.universe.as_ref().is_some_and(|p| p.id == "mvp-v1") && speed != 10)
+            || Building::ALL
+                .iter()
+                .any(|k| !artifact.buildings.contains_key(k))
+            || artifact
+                .buildings
+                .keys()
+                .any(|k| !Building::MVP.contains(k))
+        {
+            return Err(RulesError::InvalidReference);
+        }
+        if let Some(universe) = &artifact.universe {
+            universe.validate()?;
+        }
+        if artifact
+            .universe
+            .as_ref()
+            .is_some_and(|p| p.id == "signup-v2")
+            && (artifact.world.as_ref().is_none_or(|w| w.raiding.is_none())
+                || artifact.progression.is_none())
+        {
+            return Err(RulesError::InvalidReference);
+        }
+        if artifact.world.is_some()
+            && (artifact.progression.is_none() || artifact.universe.is_none())
+        {
+            return Err(RulesError::InvalidReference);
+        }
+        if artifact.progression.is_none()
+            && !matches!(
+                artifact.id.as_str(),
+                "first-slice-v1" | "shared-foundation-r1" | "mvp-v1-slice-1"
+            )
+        {
+            return Err(RulesError::InvalidReference);
+        }
+        if artifact.resource_scale != SCALE
+            || artifact.hour_ms != 3_600_000
+            || artifact.growth[1] <= 0
+            || artifact.growth[0] <= 0
+            || artifact.construction_divisor <= 0
+            || artifact.energy_supply < 0
+            || artifact.temperature[2] <= 0
+            || artifact.temperature[3] <= 0
+            || artifact
+                .base_income
+                .iter()
+                .chain(&artifact.production)
+                .chain(&artifact.energy_demand)
+                .any(|x| *x < 0)
+        {
+            return Err(RulesError::Range);
+        }
+        if artifact.universe.is_some() {
+            // The linear temperature factor must also be valid for homeworlds
+            // admitted after activation, including when this universe is empty.
+            let (low, high) = crate::universe::homeworld_temperature_bounds();
+            let t = artifact.temperature;
+            for temperature in [low, high] {
+                let factor = crate::numeric::ratio(t[0], t[2]).map_err(|_| RulesError::Range)?
+                    + crate::numeric::ratio(t[1], t[3]).map_err(|_| RulesError::Range)?
+                        * crate::numeric::integer(i64::from(temperature));
+                if factor < crate::numeric::integer(0) {
+                    return Err(RulesError::Range);
+                }
+            }
+        }
+        if let Some(w) = &artifact.world {
+            w.validate()?;
+            let progression = artifact
+                .progression
+                .as_ref()
+                .ok_or(RulesError::InvalidReference)?;
+            if w.combat.units.len() != progression.unit_costs.len() {
+                return Err(RulesError::InvalidReference);
+            }
+            for unit in &w.combat.units {
+                if !progression
+                    .unit_costs
+                    .iter()
+                    .any(|cost| cost.item == unit.item && cost.cost.values() == unit.cost)
+                {
+                    return Err(RulesError::InvalidReference);
+                }
+            }
+        }
+        if let Some(p) = &artifact.progression {
+            p.validate(&artifact)?;
+        }
+        for b in artifact.buildings.keys() {
+            let r = artifact
+                .buildings
+                .get(b)
+                .ok_or(RulesError::InvalidReference)?;
+            if r.base.iter().any(|v| *v < 0) || r.growth[0] <= r.growth[1] || r.growth[1] <= 0 {
+                return Err(RulesError::Range);
+            }
+        }
+        for r in artifact.ships.values() {
+            if r.base_speed <= 0
+                || r.drive_coefficient[0] < 0
+                || r.drive_coefficient[1] <= 0
+                || r.fuel <= 0
+                || r.capacity < 0
+                || (r.capacity == 0 && artifact.world.is_none())
+            {
+                return Err(RulesError::Range);
+            }
+        }
+        if artifact.id != "first-slice-v1" {
+            crate::catalog::validate_catalog(&artifact)?;
+        } else if !artifact.catalog.is_empty() {
+            return Err(RulesError::InvalidReference);
+        }
+        let hash = hash(&(&artifact, speed));
+        Ok(Self {
+            artifact,
+            speed,
+            hash,
+        })
+    }
+    pub fn building_keys(&self) -> BTreeSet<Building> {
+        self.artifact.buildings.keys().copied().collect()
+    }
+    pub fn research_keys(&self) -> BTreeSet<ResearchId> {
+        self.artifact.progression.as_ref().map_or_else(
+            || ResearchId::ALL.into_iter().collect(),
+            |p| p.research.keys().copied().collect(),
+        )
+    }
+    pub fn with_speed(mut self, speed: i32) -> Result<Self, RulesError> {
+        if !(1..=100).contains(&speed)
+            || (self
+                .artifact
+                .universe
+                .as_ref()
+                .is_some_and(|p| p.id == "mvp-v1")
+                && speed != 10)
+        {
+            return Err(RulesError::Range);
+        }
+        self.speed = speed;
+        self.hash = hash(&(&self.artifact, speed));
+        Ok(self)
+    }
+    pub fn mvp() -> Result<Self, RulesError> {
+        Self::from_json(include_bytes!("../../../rules/mvp-v1-slice-1.json"))?.with_speed(10)
+    }
+    pub fn validate(&self) -> Result<(), RulesError> {
+        let rebuilt = Self::from_json(
+            &serde_json::to_vec(&self.artifact).map_err(|_| RulesError::Malformed)?,
+        )?
+        .with_speed(self.speed)?;
+        if rebuilt.hash != self.hash {
+            return Err(RulesError::HashMismatch);
+        }
+        Ok(())
+    }
+}

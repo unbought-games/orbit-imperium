@@ -1,0 +1,16 @@
+{
+  "full-system": 180,
+  "container": 120,
+  "core": 100,
+  "mvp": 20,
+  "progression": 75,
+  "missions": 90,
+  "raiding": 60,
+  "recovery": 75,
+  "migrations": 25,
+  "signup": 15,
+  "compile": 120,
+  "web-build": 15,
+  "database-start": 30,
+  "cleanup": 10
+}

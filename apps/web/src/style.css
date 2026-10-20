@@ -1,0 +1,95 @@
+@import './styles/tokens.css';
+
+:root {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: var(--text);
+  background: var(--surface-page);
+  font-synthesis: none;
+  color-scheme: dark;
+  font-size: 16px;
+  line-height: 1.5;
+}
+* {
+  box-sizing: border-box;
+  min-width: 0;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background:
+    radial-gradient(1px 1px at 12% 24%, #b5d9f055 40%, transparent 70%) 0 0 /
+      197px 179px,
+    radial-gradient(1px 1px at 76% 68%, #c0dfff33 40%, transparent 70%) 0 0 /
+      283px 251px,
+    radial-gradient(ellipse at 15% 65%, #12364b55, transparent 55%),
+    var(--surface-page);
+  background-attachment: fixed;
+}
+strong,
+time {
+  font-variant-numeric: tabular-nums;
+}
+html {
+  scroll-padding: 16px 0 calc(6rem + 16px);
+}
+:focus-visible {
+  scroll-margin-block: 16px calc(6rem + 16px);
+}
+[tabindex]:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* Keep the live shell outside route snapshots. A mounted GameShell enables only
+   its identity-specific surface; old-account/universe snapshots stay hidden. */
+:root {
+  view-transition-name: none;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(*) {
+  visibility: hidden;
+}
+@keyframes surface-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+    transition: none !important;
+  }
+  ::view-transition-old(*) {
+    display: none !important;
+  }
+  ::view-transition-new(*) {
+    opacity: 1 !important;
+    transform: none !important;
+    mix-blend-mode: normal;
+  }
+}

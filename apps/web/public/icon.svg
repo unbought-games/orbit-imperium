@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 64 64">
+  <title>Orbit Imperium</title>
+  <rect width="64" height="64" rx="12" fill="#0d1827"/>
+<defs>
+    <linearGradient id="moon" x1="10" y1="8" x2="39" y2="57" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f4ead2"/>
+      <stop offset="1" stop-color="#cbb68d"/>
+    </linearGradient>
+  </defs>
+  <path d="M34 6.3A26 26 0 1 0 48 50.8C31 52 16 37 22 21C25 14 29 9 34 6.3Z" fill="url(#moon)"/>
+  <g transform="rotate(38 44 28)">
+    <path d="M44 9 33 39 44 34 55 39Z" fill="#a4dbef"/>
+    <path d="M44 9 44 34 33 39Z" fill="#e4faff"/>
+    <path d="M44 9V34" stroke="#e4faff" stroke-width=".6"/>
+  </g>
+</svg>

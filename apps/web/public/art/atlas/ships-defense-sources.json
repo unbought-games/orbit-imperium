@@ -1,0 +1,575 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-10-19",
+  "tool": "OpenAI built-in image_gen",
+  "provenance": "Original AI-generated artwork for Orbit Imperium. Approved project-owned Small Cargo master used for material and perspective reference only. No third-party game artwork.",
+  "assets": [
+    {
+      "key": "objects/light-fighter",
+      "master": "masters/ships-defense/light-fighter.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "LightFighter"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "1fa07553df60cbc7521fa4904090a528caafb3324d5e793a2864b3e5af3fc6d9",
+      "silhouetteBounds": {
+        "left": 45,
+        "top": 139,
+        "width": 1193,
+        "height": 993
+      }
+    },
+    {
+      "key": "objects/recycler",
+      "master": "masters/ships-defense/recycler.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Recycler"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "42213fdeae59b6a41b235bd4971d6049430976c516c77116734b4cd8f11cf054",
+      "silhouetteBounds": {
+        "left": 41,
+        "top": 133,
+        "width": 1187,
+        "height": 994
+      }
+    },
+    {
+      "key": "objects/espionage-probe",
+      "master": "masters/ships-defense/espionage-probe.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "c3cf4a3c7bea232e60a7573297dfc4e9454799fd5929c68deecd7aca83fa3aa7",
+      "silhouetteBounds": {
+        "left": 60,
+        "top": 87,
+        "width": 1164,
+        "height": 978
+      }
+    },
+    {
+      "key": "objects/large-cargo",
+      "master": "masters/ships-defense/large-cargo.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "LargeCargo"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "f8ab7c8acc6e3de06076590d8f24ad0ea49e63e21289b690d1cdaf3be2d234f2",
+      "silhouetteBounds": {
+        "left": 29,
+        "top": 140,
+        "width": 1180,
+        "height": 984
+      }
+    },
+    {
+      "key": "objects/heavy-fighter",
+      "master": "masters/ships-defense/heavy-fighter.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "HeavyFighter"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "21bf9a6b1eace3c6e5c3d33efdafb074bee284e351d5d7e5b6f5e3086083680d",
+      "silhouetteBounds": {
+        "left": 46,
+        "top": 192,
+        "width": 1192,
+        "height": 873
+      }
+    },
+    {
+      "key": "objects/cruiser",
+      "master": "masters/ships-defense/cruiser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "9a349ebbfd9d2c563fffc8a2c7dbbbe4d39ea601cca135a316e6516267675c79",
+      "silhouetteBounds": {
+        "left": 18,
+        "top": 157,
+        "width": 1212,
+        "height": 940
+      }
+    },
+    {
+      "key": "objects/battleship",
+      "master": "masters/ships-defense/battleship.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Battleship"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "adf6179d9d41ee2a7068f3c871f06e5d23c72f94863d2941a4163d2ce588b953",
+      "silhouetteBounds": {
+        "left": 25,
+        "top": 124,
+        "width": 1208,
+        "height": 996
+      }
+    },
+    {
+      "key": "objects/battlecruiser",
+      "master": "masters/ships-defense/battlecruiser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "8019615b1fc27d69e3dac604be36c22f39574b066f82138a34d43afe014207bc",
+      "silhouetteBounds": {
+        "left": 20,
+        "top": 158,
+        "width": 1207,
+        "height": 933
+      }
+    },
+    {
+      "key": "objects/bomber",
+      "master": "masters/ships-defense/bomber.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "7f25d4021f9023ea7766ee4ee12c21baa3af8be386c4700dd5b5e5f4a1258cbb",
+      "silhouetteBounds": {
+        "left": 15,
+        "top": 202,
+        "width": 1230,
+        "height": 806
+      }
+    },
+    {
+      "key": "objects/destroyer",
+      "master": "masters/ships-defense/destroyer.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "a0b17f33c2692c524dea4a685cb1ff7fac331f171630981cb2e896f9e05b9b9c",
+      "silhouetteBounds": {
+        "left": 30,
+        "top": 165,
+        "width": 1203,
+        "height": 935
+      }
+    },
+    {
+      "key": "objects/deathstar",
+      "master": "masters/ships-defense/deathstar.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "Deathstar"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "58610f7af53826f6371f627fd1bbb48d59924c7e4098789364ac7df74fbd3b63",
+      "silhouetteBounds": {
+        "left": 37,
+        "top": 177,
+        "width": 1198,
+        "height": 928
+      }
+    },
+    {
+      "key": "objects/colony-ship",
+      "master": "masters/ships-defense/colony-ship.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "ColonyShip"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "2d24dd4eeda02bfbb7c9bf8b1655ef28cf6c515d2f29b6dd5297d78dec83a3b7",
+      "silhouetteBounds": {
+        "left": 28,
+        "top": 181,
+        "width": 1183,
+        "height": 913
+      }
+    },
+    {
+      "key": "objects/solar-satellite",
+      "master": "masters/ships-defense/solar-satellite.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "catalogKey": {
+        "kind": "Ship",
+        "id": "SolarSatellite"
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "fec65330770082b29025be8d00bba5db169177150b843448fbe08f30236af5cc",
+      "silhouetteBounds": {
+        "left": 27,
+        "top": 199,
+        "width": 1203,
+        "height": 900
+      }
+    },
+    {
+      "key": "objects/rocket-launcher",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "RocketLauncher"
+      },
+      "master": "masters/ships-defense/rocket-launcher.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "124af98572223201c361dca702db21b1f40bfb5f38f6018bfb745348e101df2c",
+      "silhouetteBounds": {
+        "left": 128,
+        "top": 97,
+        "width": 1038,
+        "height": 1058
+      }
+    },
+    {
+      "key": "objects/small-shield-dome",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "SmallShieldDome"
+      },
+      "master": "masters/ships-defense/small-shield-dome.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "590bf5274eb584cceca516a8c0bb4fd67d2bd60db314f3675623df52b51889f5",
+      "silhouetteBounds": {
+        "left": 118,
+        "top": 149,
+        "width": 1052,
+        "height": 953
+      }
+    },
+    {
+      "key": "objects/light-laser",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "LightLaser"
+      },
+      "master": "masters/ships-defense/light-laser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "279718c8e3ddf2233df0a8bf67bd8a54c632874da3789674b49bae4139ef0091",
+      "silhouetteBounds": {
+        "left": 154,
+        "top": 229,
+        "width": 1033,
+        "height": 746
+      }
+    },
+    {
+      "key": "objects/heavy-laser",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "HeavyLaser"
+      },
+      "master": "masters/ships-defense/heavy-laser.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "ac85589c91d524b8a73c6af5fbcdb21b0b32c78b6b3cf58682b86ec8ff81636c",
+      "silhouetteBounds": {
+        "left": 28,
+        "top": 114,
+        "width": 1208,
+        "height": 1042
+      }
+    },
+    {
+      "key": "objects/gauss-cannon",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "GaussCannon"
+      },
+      "master": "masters/ships-defense/gauss-cannon.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "8e58cc18efc4bd6e8c9c8bdf3f24e74e35e364bbe4b59c7e732095454c61aeba",
+      "silhouetteBounds": {
+        "left": 29,
+        "top": 142,
+        "width": 1206,
+        "height": 889
+      }
+    },
+    {
+      "key": "objects/ion-cannon",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "IonCannon"
+      },
+      "master": "masters/ships-defense/ion-cannon.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "98269d36bea61a4be3e5c63718518812f2fe15b66fb32707940b47451fd788dd",
+      "silhouetteBounds": {
+        "left": 43,
+        "top": 180,
+        "width": 1165,
+        "height": 948
+      }
+    },
+    {
+      "key": "objects/plasma-turret",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "PlasmaTurret"
+      },
+      "master": "masters/ships-defense/plasma-turret.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "689a3cbf5bd910adb4661a2f080e6604ec31ebbf189f6b870cd781c71f4e988d",
+      "silhouetteBounds": {
+        "left": 45,
+        "top": 115,
+        "width": 1165,
+        "height": 1045
+      }
+    },
+    {
+      "key": "objects/large-shield-dome",
+      "catalogKey": {
+        "kind": "Defense",
+        "id": "LargeShieldDome"
+      },
+      "master": "masters/ships-defense/large-shield-dome.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "sha256": "db1b578574e0af5a9a37c474eaa8b852c4a686f961112a07b0f57a8632501f72",
+      "silhouetteBounds": {
+        "left": 18,
+        "top": 118,
+        "width": 1218,
+        "height": 1005
+      }
+    }
+  ]
+}

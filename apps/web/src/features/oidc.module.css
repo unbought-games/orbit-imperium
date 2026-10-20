@@ -1,0 +1,20 @@
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #bdcbd3;
+  background: #081a25;
+  border-bottom: 1px solid #31444d;
+}
+.identity a {
+  color: #9edced;
+  text-underline-offset: 0.2em;
+}
+.identity span {
+  color: #eee4cc;
+  font-weight: 600;
+}

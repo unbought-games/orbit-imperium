@@ -1,0 +1,36 @@
+[workspace]
+members = ["crates/engine", "crates/application", "crates/storage-postgres", "crates/transport-http", "crates/server"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "AGPL-3.0-only"
+
+[workspace.dependencies]
+orbit-engine = { path = "crates/engine" }
+orbit-application = { path = "crates/application" }
+orbit-storage-postgres = { path = "crates/storage-postgres" }
+orbit-transport-http = { path = "crates/transport-http" }
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.145"
+uuid = { version = "=1.18.1", features = ["serde"] }
+sha2 = "=0.10.9"
+hex = "=0.4.3"
+thiserror = "=2.0.17"
+tokio = { version = "=1.48.0", features = ["full"] }
+sqlx = { version = "=0.8.6", default-features = false, features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "migrate", "macros"] }
+argon2 = "=0.5.3"
+rand = "=0.8.5"
+axum = "=0.8.6"
+tower-http = { version = "=0.6.11", features = ["fs", "trace", "limit"] }
+num-bigint = "=0.4.6"
+num-rational = "=0.4.2"
+num-traits = "=0.2.19"
+tower = { version = "=0.5.2", features = ["util"] }
+http-body-util = "=0.1.3"
+hmac = "=0.12.1"
+
+# Public versioned account contract; independent of a sibling checkout.
+unbought-auth = "=0.1.1"

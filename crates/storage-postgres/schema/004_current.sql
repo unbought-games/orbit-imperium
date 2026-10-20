@@ -1,0 +1,40 @@
+CREATE TABLE IF NOT EXISTS schema_meta (version integer PRIMARY KEY CHECK(version=4));
+INSERT INTO schema_meta VALUES (4) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS accounts (id uuid PRIMARY KEY, name text UNIQUE NOT NULL, password_hash text NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions (digest text PRIMARY KEY, account uuid NOT NULL REFERENCES accounts, csrf text NOT NULL, expires_at bigint NOT NULL);
+CREATE TABLE IF NOT EXISTS rulesets (hash text PRIMARY KEY, id text NOT NULL, profile jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS universes (id uuid PRIMARY KEY, epoch uuid NOT NULL, development boolean NOT NULL, speed integer NOT NULL CHECK(speed BETWEEN 1 AND 100), started_at bigint NOT NULL, profile_hash text NOT NULL REFERENCES rulesets);
+CREATE TABLE IF NOT EXISTS universe_memberships (universe uuid REFERENCES universes ON DELETE CASCADE, account uuid REFERENCES accounts, player uuid NOT NULL, PRIMARY KEY(universe,account), UNIQUE(universe,player));
+CREATE TABLE IF NOT EXISTS players (id uuid PRIMARY KEY, universe uuid NOT NULL REFERENCES universes ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS bodies (id uuid PRIMARY KEY, universe uuid NOT NULL REFERENCES universes ON DELETE CASCADE, owner uuid NOT NULL REFERENCES players, kind text NOT NULL, galaxy integer NOT NULL, system integer NOT NULL, position integer NOT NULL, fields bigint NOT NULL CHECK(fields BETWEEN 0 AND 4294967295), max_temperature integer NOT NULL, amounts jsonb NOT NULL, carry jsonb NOT NULL, capacity jsonb NOT NULL, checkpoint_at bigint NOT NULL, revision bigint NOT NULL DEFAULT 0, UNIQUE(universe,galaxy,system,position,kind));
+CREATE TABLE IF NOT EXISTS building_levels (body uuid REFERENCES bodies ON DELETE CASCADE, building text NOT NULL, level bigint NOT NULL CHECK(level BETWEEN 0 AND 4294967295), PRIMARY KEY(body,building));
+CREATE TABLE IF NOT EXISTS inventories (body uuid REFERENCES bodies ON DELETE CASCADE, owner uuid REFERENCES players, item jsonb NOT NULL, count bigint NOT NULL CHECK(count>=0), revision bigint NOT NULL DEFAULT 0, PRIMARY KEY(body,owner,item));
+CREATE TABLE IF NOT EXISTS viewer_heads (universe uuid REFERENCES universes ON DELETE CASCADE, player uuid REFERENCES players, revision bigint NOT NULL DEFAULT 0, PRIMARY KEY(universe,player));
+
+CREATE TABLE IF NOT EXISTS universe_runtime (universe uuid PRIMARY KEY REFERENCES universes ON DELETE CASCADE, frontier bigint NOT NULL, next_sequence bigint NOT NULL DEFAULT 1, cursor bigint NOT NULL DEFAULT 0, fence bigint NOT NULL DEFAULT 0, claim_input uuid, claim_owner uuid, claim_token uuid, lease_until bigint, blocked text);
+CREATE TABLE IF NOT EXISTS collection_heads (universe uuid REFERENCES universes ON DELETE CASCADE, kind text NOT NULL, key uuid NOT NULL, revision bigint NOT NULL DEFAULT 0, PRIMARY KEY(universe,kind,key));
+CREATE TABLE IF NOT EXISTS constructions (id uuid PRIMARY KEY, universe uuid REFERENCES universes ON DELETE CASCADE, body uuid NOT NULL REFERENCES bodies, owner uuid NOT NULL REFERENCES players, status text NOT NULL, generation bigint NOT NULL, revision bigint NOT NULL, building text NOT NULL, target_level bigint NOT NULL CHECK(target_level BETWEEN 0 AND 4294967295), paid jsonb NOT NULL, profile_hash text NOT NULL REFERENCES rulesets, terms_hash text NOT NULL, started_at bigint NOT NULL, due_at bigint NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_construction ON constructions(body) WHERE status='Active';
+CREATE TABLE IF NOT EXISTS commands (universe uuid REFERENCES universes ON DELETE CASCADE, epoch uuid NOT NULL, actor uuid NOT NULL REFERENCES players, command_id uuid NOT NULL, input_id uuid UNIQUE NOT NULL, intent_hash text NOT NULL, at_ms bigint NOT NULL, sequence bigint NOT NULL, input jsonb NOT NULL, receipt jsonb NOT NULL, done boolean NOT NULL DEFAULT false, PRIMARY KEY(universe,epoch,actor,command_id));
+CREATE INDEX IF NOT EXISTS command_head ON commands(universe,at_ms,sequence) WHERE NOT done;
+CREATE TABLE IF NOT EXISTS scheduled_events (id uuid PRIMARY KEY, universe uuid NOT NULL REFERENCES universes ON DELETE CASCADE, at_ms bigint NOT NULL, sequence bigint NOT NULL, input jsonb NOT NULL, event jsonb NOT NULL, done boolean NOT NULL DEFAULT false, cancelled boolean NOT NULL DEFAULT false);
+CREATE INDEX IF NOT EXISTS event_head ON scheduled_events(universe,at_ms,sequence) WHERE NOT done AND NOT cancelled;
+CREATE TABLE IF NOT EXISTS transition_journal (universe uuid REFERENCES universes ON DELETE CASCADE, cursor bigint NOT NULL, input_id uuid UNIQUE NOT NULL, input jsonb NOT NULL, facts jsonb NOT NULL, outcome jsonb NOT NULL, PRIMARY KEY(universe,cursor));
+CREATE TABLE IF NOT EXISTS fleets (id uuid PRIMARY KEY, universe uuid NOT NULL REFERENCES universes ON DELETE CASCADE, owner uuid NOT NULL REFERENCES players, origin uuid NOT NULL, target uuid NOT NULL, target_owner uuid NOT NULL, target_kind text NOT NULL, payload jsonb NOT NULL, paid_fuel bigint NOT NULL CHECK(paid_fuel>=0), profile_hash text NOT NULL REFERENCES rulesets, terms_hash text NOT NULL, launched_at bigint NOT NULL, duration bigint NOT NULL CHECK(duration>0), due_at bigint NOT NULL, generation bigint NOT NULL, status text NOT NULL CHECK(status IN ('Outbound','Returning','Completed')), revision bigint NOT NULL);
+CREATE TABLE IF NOT EXISTS fleet_ships (fleet uuid REFERENCES fleets ON DELETE CASCADE, owner uuid NOT NULL REFERENCES players, ship_type text NOT NULL, count bigint NOT NULL CHECK(count>0), PRIMARY KEY(fleet,owner,ship_type));
+CREATE TABLE IF NOT EXISTS reports (id uuid PRIMARY KEY, universe uuid NOT NULL REFERENCES universes ON DELETE CASCADE, fleet uuid NOT NULL REFERENCES fleets, kind text NOT NULL, at_ms bigint NOT NULL, origin uuid NOT NULL, target uuid NOT NULL, cargo jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS report_recipients (report uuid REFERENCES reports ON DELETE CASCADE, player uuid NOT NULL REFERENCES players, PRIMARY KEY(report,player));
+CREATE INDEX IF NOT EXISTS fleet_active_owner ON fleets(universe,owner,id) WHERE status<>'Completed';
+
+CREATE TABLE IF NOT EXISTS research_levels (owner uuid REFERENCES players ON DELETE CASCADE, research text NOT NULL, level bigint NOT NULL CHECK(level BETWEEN 0 AND 4294967295), revision bigint NOT NULL DEFAULT 0, PRIMARY KEY(owner,research));
+
+-- Private creation evidence, never returned by player projections.
+CREATE TABLE mvp_bootstraps (universe uuid PRIMARY KEY REFERENCES universes ON DELETE CASCADE, secret bytea NOT NULL CHECK(octet_length(secret)=32), manifest jsonb NOT NULL);
+
+ALTER TABLE constructions ADD COLUMN progression jsonb;
+CREATE TABLE production_settings (body uuid PRIMARY KEY REFERENCES bodies, data jsonb NOT NULL, revision bigint NOT NULL CHECK(revision>=0));
+CREATE TABLE progression_reservations (body uuid PRIMARY KEY REFERENCES bodies, data jsonb NOT NULL, revision bigint NOT NULL CHECK(revision>=0));
+CREATE TABLE research_operations (id uuid PRIMARY KEY, universe uuid NOT NULL REFERENCES universes, owner uuid NOT NULL REFERENCES players, body uuid NOT NULL REFERENCES bodies, status text NOT NULL CHECK(status IN ('Active','Completed','Cancelled')), data jsonb NOT NULL, revision bigint NOT NULL CHECK(revision>=0));
+CREATE UNIQUE INDEX one_active_research ON research_operations(owner) WHERE status='Active';
+CREATE TABLE manufacturing_batches (id uuid PRIMARY KEY, universe uuid NOT NULL REFERENCES universes, owner uuid NOT NULL REFERENCES players, body uuid NOT NULL REFERENCES bodies, status text NOT NULL CHECK(status IN ('Active','Completed')), queue_sequence bigint NOT NULL, data jsonb NOT NULL, revision bigint NOT NULL CHECK(revision>=0), UNIQUE(body,queue_sequence));
+CREATE INDEX active_manufacturing ON manufacturing_batches(body,queue_sequence) WHERE status='Active';

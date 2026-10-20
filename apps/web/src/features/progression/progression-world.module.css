@@ -1,0 +1,333 @@
+.heading {
+  padding-block: 20px 24px;
+}
+.heading h2 {
+  font:
+    400 clamp(2.15rem, 4.4vw, 4.5rem) / 1.06 Georgia,
+    serif;
+  letter-spacing: -0.025em;
+  color: var(--champagne-light);
+  margin: 12px 0;
+  text-wrap: balance;
+}
+.heading p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1.0625rem;
+}
+.heading .eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+}
+.eyebrow span {
+  margin-left: auto;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.heading .context {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: var(--link);
+}
+.resourceWorld {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(200px, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.planetStage {
+  min-width: 0;
+  position: relative;
+  aspect-ratio: 1.5;
+  display: grid;
+  place-items: center;
+}
+.planet {
+  position: absolute;
+  width: 115%;
+  height: 130%;
+  object-fit: contain;
+}
+.orbits {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  stroke: var(--accent);
+  stroke-width: 0.8;
+  opacity: 0.65;
+  pointer-events: none;
+}
+.energy {
+  position: relative;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  width: 45%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--surface-backdrop);
+  padding: 14px;
+  text-align: center;
+}
+.energy > span {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+}
+.energy > strong {
+  font:
+    400 clamp(1.8rem, 4vw, 3.2rem) / 1.2 Georgia,
+    serif;
+  color: var(--ice);
+}
+.energy dl {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+}
+.energy dt {
+  color: var(--text-muted);
+}
+.energy dd {
+  margin: 3px 0 0;
+}
+.ledger {
+  margin: 0;
+}
+.ledger > div {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  padding-block: 20px;
+  border-bottom: 1px solid var(--border-accent);
+}
+.ledger dt {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+  padding-top: 6px;
+}
+.ledger dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ledger strong {
+  font:
+    400 1.6rem Georgia,
+    serif;
+}
+.ledger span,
+.ledger small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.ledger small {
+  color: var(--accent);
+}
+.objectWorld {
+  position: relative;
+  padding: 16px 0 0;
+}
+.objects {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 18px;
+  position: relative;
+}
+.objects button,
+.singleObject button {
+  color: var(--champagne-light);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  padding: 12px;
+  min-width: 0;
+}
+.objects button:nth-child(2) {
+  transform: translateY(-12px);
+}
+.objects span,
+.singleObject span {
+  display: block;
+  font:
+    400 1.35rem Georgia,
+    serif;
+}
+.objects small,
+.singleObject small {
+  display: block;
+  color: var(--link);
+  padding-top: 8px;
+  font-size: 0.875rem;
+}
+.objects button:hover,
+.singleObject button:hover {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.objects button:focus-visible,
+.singleObject button:focus-visible {
+  outline: var(--focus-ring);
+}
+.singleObject {
+  position: relative;
+  width: min(100%, 580px);
+  margin-inline: auto;
+}
+.singleObject button {
+  width: 100%;
+}
+.singleObject button > span:first-child {
+  aspect-ratio: 1.8;
+}
+.worldCaption {
+  position: relative;
+  padding-block: 15px;
+  margin: 0;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+.objectOrbit {
+  position: relative;
+  min-width: 0;
+  align-self: center;
+}
+.objectOrbit > span {
+  position: relative;
+}
+@media (max-width: 650px) {
+  .heading {
+    padding-block: 16px 20px;
+  }
+  .heading h2 {
+    font-size: 2.5rem;
+  }
+  .heading p {
+    font-size: 1rem;
+  }
+  .eyebrow span {
+    margin-left: 0;
+  }
+  .resourceWorld {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .planetStage {
+    aspect-ratio: 1.35;
+  }
+  .energy {
+    width: 47%;
+  }
+  .energy dl {
+    gap: 8px;
+  }
+  .ledger > div {
+    padding-block: 14px;
+  }
+  .ledger dd {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+  }
+  .ledger strong,
+  .ledger small {
+    grid-column: 1 / -1;
+  }
+  .ledger span {
+    font-size: 0.75rem;
+  }
+  .objects {
+    gap: 0;
+  }
+  .objects button {
+    padding: 10px 2px;
+  }
+  .objects span {
+    font-size: 1rem;
+  }
+  .objects small {
+    font-size: 0.75rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .objects button:nth-child(2) {
+    transform: none;
+  }
+}
+.compact {
+  padding-block: 12px;
+}
+.compact h2,
+.compact > p:not(.eyebrow):not(.context) {
+  display: none;
+}
+.materialNode {
+  z-index: 2;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-accent);
+  background: var(--surface-backdrop);
+  color: var(--champagne-light);
+  min-height: 44px;
+  padding: 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.materialNode svg {
+  color: var(--accent);
+}
+.materialNode:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.materialNode:disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+.node0 {
+  top: 12%;
+  left: 0;
+}
+.node1 {
+  top: 12%;
+  right: 0;
+}
+.node1 svg {
+  color: var(--resource-crystal);
+}
+.node2 {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.node2 svg {
+  color: var(--resource-deuterium);
+}
+.materialNode strong {
+  display: block;
+  margin-top: 4px;
+  font:
+    400 1.125rem Georgia,
+    serif;
+  letter-spacing: 0;
+  color: var(--text);
+}

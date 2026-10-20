@@ -1,0 +1,1358 @@
+{
+  "id": "mvp-v1-slice-4",
+  "resource_scale": 1000000,
+  "hour_ms": 3600000,
+  "growth": [
+    11,
+    10
+  ],
+  "base_income": [
+    30,
+    15,
+    0
+  ],
+  "production": [
+    30,
+    20,
+    10
+  ],
+  "energy_demand": [
+    10,
+    10,
+    20
+  ],
+  "energy_supply": 20,
+  "temperature": [
+    144,
+    -4,
+    100,
+    1000
+  ],
+  "construction_divisor": 2500,
+  "buildings": {
+    "MetalMine": {
+      "base": [
+        60,
+        15,
+        0
+      ],
+      "growth": [
+        3,
+        2
+      ]
+    },
+    "CrystalMine": {
+      "base": [
+        48,
+        24,
+        0
+      ],
+      "growth": [
+        8,
+        5
+      ]
+    },
+    "DeuteriumSynthesizer": {
+      "base": [
+        225,
+        75,
+        0
+      ],
+      "growth": [
+        3,
+        2
+      ]
+    },
+    "SolarPlant": {
+      "base": [
+        75,
+        30,
+        0
+      ],
+      "growth": [
+        3,
+        2
+      ]
+    },
+    "MetalStorage": {
+      "base": [
+        1000,
+        0,
+        0
+      ],
+      "growth": [
+        2,
+        1
+      ]
+    },
+    "CrystalStorage": {
+      "base": [
+        1000,
+        500,
+        0
+      ],
+      "growth": [
+        2,
+        1
+      ]
+    },
+    "DeuteriumTank": {
+      "base": [
+        1000,
+        1000,
+        0
+      ],
+      "growth": [
+        2,
+        1
+      ]
+    },
+    "RoboticsFactory": {
+      "base": [
+        400,
+        120,
+        200
+      ],
+      "growth": [
+        2,
+        1
+      ]
+    },
+    "ResearchLab": {
+      "base": [
+        200,
+        400,
+        200
+      ],
+      "growth": [
+        2,
+        1
+      ]
+    },
+    "Shipyard": {
+      "base": [
+        400,
+        200,
+        100
+      ],
+      "growth": [
+        2,
+        1
+      ]
+    }
+  },
+  "ships": {
+    "SmallCargo": {
+      "base_speed": 5000,
+      "drive_coefficient": [
+        1,
+        10
+      ],
+      "fuel": 10,
+      "capacity": 5000
+    },
+    "LightFighter": {
+      "base_speed": 12500,
+      "drive_coefficient": [
+        1,
+        10
+      ],
+      "fuel": 20,
+      "capacity": 50
+    },
+    "Recycler": {
+      "base_speed": 2000,
+      "drive_coefficient": [
+        1,
+        10
+      ],
+      "fuel": 300,
+      "capacity": 20000
+    },
+    "EspionageProbe": {
+      "base_speed": 100000000,
+      "drive_coefficient": [
+        1,
+        10
+      ],
+      "fuel": 1,
+      "capacity": 0
+    }
+  },
+  "catalog": [
+    {
+      "key": {
+        "kind": "Building",
+        "id": "MetalMine"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "CrystalMine"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "DeuteriumSynthesizer"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "SolarPlant"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "MetalStorage"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "CrystalStorage"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "DeuteriumTank"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "RoboticsFactory"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "ResearchLab"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "Shipyard"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "RoboticsFactory",
+          "level": 2
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "FusionReactor"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "NaniteFactory"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "Terraformer"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "MissileSilo"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "AllianceDepot"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "LunarBase"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "SensorPhalanx"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Building",
+        "id": "JumpGate"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "CombustionDrive"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "ResearchLab",
+          "level": 1
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "EnergyTechnology",
+          "level": 1
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "ComputerTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "ResearchLab",
+          "level": 1
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "EnergyTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "ResearchLab",
+          "level": 1
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "EspionageTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "ResearchLab",
+          "level": 3
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "WeaponsTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "ResearchLab",
+          "level": 4
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "ShieldingTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "ResearchLab",
+          "level": 6
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "EnergyTechnology",
+          "level": 3
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "ArmourTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "ResearchLab",
+          "level": 2
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "LaserTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "IonTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "PlasmaTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "HyperspaceTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "ImpulseDrive"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "HyperspaceDrive"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "Astrophysics"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "IntergalacticResearchNetwork"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Research",
+        "id": "GravitonTechnology"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "SmallCargo"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 2
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "CombustionDrive",
+          "level": 2
+        }
+      ],
+      "enabled": true,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "LightFighter"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 1
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "CombustionDrive",
+          "level": 1
+        }
+      ],
+      "enabled": true,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "Recycler"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 4
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "CombustionDrive",
+          "level": 6
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "ShieldingTechnology",
+          "level": 2
+        }
+      ],
+      "enabled": true,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 3
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "CombustionDrive",
+          "level": 3
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "EspionageTechnology",
+          "level": 2
+        }
+      ],
+      "enabled": true,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "LargeCargo"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "HeavyFighter"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "Battleship"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "Deathstar"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "ColonyShip"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": true
+    },
+    {
+      "key": {
+        "kind": "Ship",
+        "id": "SolarSatellite"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "RocketLauncher"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 1
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "SmallShieldDome"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 1
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "ShieldingTechnology",
+          "level": 2
+        }
+      ],
+      "enabled": true,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "LightLaser"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "HeavyLaser"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "GaussCannon"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "IonCannon"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "PlasmaTurret"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Defense",
+        "id": "LargeShieldDome"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Missile",
+        "id": "AntiBallisticMissile"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    },
+    {
+      "key": {
+        "kind": "Missile",
+        "id": "InterplanetaryMissile"
+      },
+      "body_kinds": [
+        "Planet"
+      ],
+      "requirements": [],
+      "enabled": false,
+      "mobile": false
+    }
+  ],
+  "universe": {
+    "id": "mvp-v1",
+    "galaxies": 1,
+    "systems_per_galaxy": 5,
+    "positions_per_system": 15,
+    "players": 5,
+    "homeworld_policy": "oi-homeworld-frontier-v1"
+  },
+  "progression": {
+    "building_formula": "BuildingRedesign2011",
+    "demolition_formula": "DemolitionClassic",
+    "storage_capacities": [
+      10000,
+      20000,
+      40000,
+      75000,
+      140000,
+      255000,
+      470000,
+      865000,
+      1590000,
+      2920000,
+      5355000,
+      9820000,
+      18005000,
+      33005000,
+      60510000,
+      110925000,
+      203350000,
+      372785000,
+      683385000,
+      1252785000,
+      2296600000,
+      4210115000,
+      7717970000,
+      14148545000,
+      25937050000,
+      47547690000,
+      87164210000,
+      159789040000,
+      292924545000,
+      536987950000,
+      984403885000,
+      1804604750000,
+      3308193270000,
+      6064564940000
+    ],
+    "research": {
+      "CombustionDrive": {
+        "base": [
+          400,
+          0,
+          600
+        ],
+        "growth": [
+          2,
+          1
+        ]
+      },
+      "ComputerTechnology": {
+        "base": [
+          0,
+          400,
+          600
+        ],
+        "growth": [
+          2,
+          1
+        ]
+      },
+      "EnergyTechnology": {
+        "base": [
+          0,
+          800,
+          400
+        ],
+        "growth": [
+          2,
+          1
+        ]
+      },
+      "EspionageTechnology": {
+        "base": [
+          200,
+          1000,
+          200
+        ],
+        "growth": [
+          2,
+          1
+        ]
+      },
+      "WeaponsTechnology": {
+        "base": [
+          800,
+          200,
+          0
+        ],
+        "growth": [
+          2,
+          1
+        ]
+      },
+      "ShieldingTechnology": {
+        "base": [
+          200,
+          600,
+          0
+        ],
+        "growth": [
+          2,
+          1
+        ]
+      },
+      "ArmourTechnology": {
+        "base": [
+          1000,
+          0,
+          0
+        ],
+        "growth": [
+          2,
+          1
+        ]
+      }
+    },
+    "unit_costs": [
+      {
+        "item": {
+          "kind": "Ship",
+          "id": "SmallCargo"
+        },
+        "cost": {
+          "metal": 2000,
+          "crystal": 2000,
+          "deuterium": 0
+        }
+      },
+      {
+        "item": {
+          "kind": "Ship",
+          "id": "LightFighter"
+        },
+        "cost": {
+          "metal": 3000,
+          "crystal": 1000,
+          "deuterium": 0
+        }
+      },
+      {
+        "item": {
+          "kind": "Ship",
+          "id": "Recycler"
+        },
+        "cost": {
+          "metal": 10000,
+          "crystal": 6000,
+          "deuterium": 2000
+        }
+      },
+      {
+        "item": {
+          "kind": "Ship",
+          "id": "EspionageProbe"
+        },
+        "cost": {
+          "metal": 0,
+          "crystal": 1000,
+          "deuterium": 0
+        }
+      },
+      {
+        "item": {
+          "kind": "Defense",
+          "id": "RocketLauncher"
+        },
+        "cost": {
+          "metal": 2000,
+          "crystal": 0,
+          "deuterium": 0
+        }
+      },
+      {
+        "item": {
+          "kind": "Defense",
+          "id": "SmallShieldDome"
+        },
+        "cost": {
+          "metal": 10000,
+          "crystal": 10000,
+          "deuterium": 0
+        }
+      }
+    ],
+    "max_active_manufacturing_entries": 256
+  },
+  "world": {
+    "combat": {
+      "id": "oi-classic-combat-v1",
+      "max_rounds": 6,
+      "technology_bonus": [
+        1,
+        10
+      ],
+      "base_hull_fraction": [
+        1,
+        10
+      ],
+      "shield_step": [
+        1,
+        100
+      ],
+      "bounce_threshold": [
+        1,
+        100
+      ],
+      "explosion_hull_threshold": [
+        7,
+        10
+      ],
+      "explosion_inclusive": true,
+      "defense_recovery_probability": [
+        7,
+        10
+      ],
+      "ship_debris_bps": 3000,
+      "units": [
+        {
+          "item": {
+            "kind": "Ship",
+            "id": "SmallCargo"
+          },
+          "cost": [
+            2000,
+            2000,
+            0
+          ],
+          "attack_hundredths": 500,
+          "shield_hundredths": 1000
+        },
+        {
+          "item": {
+            "kind": "Ship",
+            "id": "LightFighter"
+          },
+          "cost": [
+            3000,
+            1000,
+            0
+          ],
+          "attack_hundredths": 5000,
+          "shield_hundredths": 1000
+        },
+        {
+          "item": {
+            "kind": "Ship",
+            "id": "Recycler"
+          },
+          "cost": [
+            10000,
+            6000,
+            2000
+          ],
+          "attack_hundredths": 100,
+          "shield_hundredths": 1000
+        },
+        {
+          "item": {
+            "kind": "Ship",
+            "id": "EspionageProbe"
+          },
+          "cost": [
+            0,
+            1000,
+            0
+          ],
+          "attack_hundredths": 1,
+          "shield_hundredths": 1
+        },
+        {
+          "item": {
+            "kind": "Defense",
+            "id": "RocketLauncher"
+          },
+          "cost": [
+            2000,
+            0,
+            0
+          ],
+          "attack_hundredths": 8000,
+          "shield_hundredths": 2000
+        },
+        {
+          "item": {
+            "kind": "Defense",
+            "id": "SmallShieldDome"
+          },
+          "cost": [
+            10000,
+            10000,
+            0
+          ],
+          "attack_hundredths": 100,
+          "shield_hundredths": 200000
+        }
+      ],
+      "rapid_fire": [
+        {
+          "shooter": {
+            "kind": "Ship",
+            "id": "SmallCargo"
+          },
+          "target": {
+            "kind": "Ship",
+            "id": "EspionageProbe"
+          },
+          "factor": 5
+        },
+        {
+          "shooter": {
+            "kind": "Ship",
+            "id": "LightFighter"
+          },
+          "target": {
+            "kind": "Ship",
+            "id": "EspionageProbe"
+          },
+          "factor": 5
+        },
+        {
+          "shooter": {
+            "kind": "Ship",
+            "id": "Recycler"
+          },
+          "target": {
+            "kind": "Ship",
+            "id": "EspionageProbe"
+          },
+          "factor": 5
+        }
+      ],
+      "strategy": "WholeMaxShieldPercentWithRawOverflowV1/LostHullFractionV1/NonBouncingHitV1/IndependentBernoulliV1/EncounterTimeV1/UniformRoundStartIndividualsV1/RoundEndV1/ResetAfterEncounterV1"
+    },
+    "detector": "oi-counterespionage-reconstructed-v1",
+    "rng": "oi-hmac-sha256-stream-v1",
+    "protection": "exact-invested-5to1-5000-v1",
+    "debris_cleanup": "monday-utc-existing-marker-v1",
+    "moons": false
+  }
+}

@@ -1,0 +1,172 @@
+.costs {
+  container-type: inline-size;
+  min-width: 0;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.costs table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.costs caption {
+  text-align: left;
+  padding-block: 6px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.costs th,
+.costs td {
+  text-align: right;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+.costs thead th {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.costs th:first-child {
+  text-align: left;
+  width: 38%;
+}
+.material {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  min-height: 44px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.material svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.material > span {
+  min-width: 0;
+}
+.material > span > span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.material strong {
+  font-weight: 400;
+}
+.material:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.shortfall {
+  color: var(--danger);
+}
+
+.cellLabel,
+.material .cellLabel {
+  display: none;
+}
+.number {
+  white-space: nowrap;
+}
+@container (max-width: 22rem) {
+  .costs thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .costs tbody,
+  .costs tr {
+    display: block;
+  }
+  .costs tr {
+    padding-block: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .costs th,
+  .costs td,
+  .costs th:first-child {
+    display: block;
+    width: 100%;
+    border: 0;
+    text-align: left;
+    padding: 4px 0;
+    font-size: 0.875rem;
+  }
+  .costs .cellLabel {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+  .costs .material strong .cellLabel {
+    display: inline;
+  }
+  .costs .material {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+  .costs .material > span {
+    display: contents;
+  }
+  .costs .material strong {
+    grid-column: 1 / -1;
+  }
+}
+@container (max-width: 40rem) {
+  .longBalances .number {
+    /* Keep exact balances whole with wide system fonts and enlarged text. */
+    font-size: min(0.875rem, 7cqi);
+  }
+  .longBalances thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .longBalances tbody,
+  .longBalances tr {
+    display: block;
+  }
+  .longBalances tr {
+    padding-block: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .longBalances th,
+  .longBalances td,
+  .longBalances th:first-child {
+    display: block;
+    width: 100%;
+    border: 0;
+    text-align: left;
+    padding: 4px 0;
+    font-size: 0.875rem;
+  }
+  .longBalances .cellLabel {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+  .longBalances .material strong .cellLabel {
+    display: block;
+  }
+  .longBalances .material {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+  .longBalances .material > span {
+    display: contents;
+  }
+  .longBalances .material strong {
+    grid-column: 1 / -1;
+  }
+}

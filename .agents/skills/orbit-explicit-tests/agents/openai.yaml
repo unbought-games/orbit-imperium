@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orbit Explicit Tests"
+  short_description: "Run requested Orbit validation locally or in CI"
+  default_prompt: "Use $orbit-explicit-tests to run the requested Orbit Imperium validation suite."

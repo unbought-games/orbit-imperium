@@ -1,0 +1,89 @@
+.title {
+  color: var(--champagne-light);
+  font-family: var(--font-editorial, Georgia, 'Times New Roman', serif);
+  font-weight: 400;
+  font-size: clamp(2.8rem, 4.8vw, 4.8rem);
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 18px 0 24px;
+  text-wrap: balance;
+}
+.introduction {
+  font-size: var(--font-size-md);
+  line-height: 1.75;
+  max-width: 42ch;
+}
+.eyebrow {
+  color: var(--champagne);
+  letter-spacing: 0.18em;
+}
+.form {
+  margin-top: var(--space-8);
+  max-width: 420px;
+  gap: var(--space-5);
+}
+.input {
+  min-height: 52px;
+  background: color-mix(in srgb, var(--surface-page) 75%, var(--surface-input));
+  border-radius: 2px;
+}
+.submit {
+  min-height: 52px;
+  margin-top: var(--space-1);
+  border-radius: 2px;
+}
+.modeSwitch {
+  margin-top: var(--space-4);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  margin-top: var(--space-8);
+}
+.primary {
+  min-height: 52px;
+  padding-inline: var(--space-6);
+  border-radius: 2px;
+}
+.statement {
+  border-top: 1px solid var(--border-accent);
+  margin-top: 48px;
+  padding-top: var(--space-5);
+  color: var(--champagne-light);
+  font:
+    1.15rem/1.5 Georgia,
+    serif;
+}
+.error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  overflow-wrap: anywhere;
+}
+.error:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .title {
+    font-size: clamp(2.5rem, 9.5vw, 3.5rem);
+    max-width: 15ch;
+  }
+  .introduction {
+    font-size: var(--font-size-base);
+  }
+  .form {
+    max-width: none;
+    margin-top: var(--space-6);
+  }
+  .statement {
+    margin-top: var(--space-8);
+  }
+}
+
+.actions a {
+  gap: var(--space-2);
+}

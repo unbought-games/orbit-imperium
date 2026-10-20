@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest'
+import {
+  arrivalCountdown,
+  incomingManifest,
+  observationAge,
+  recallEstimate,
+  shipManifest,
+} from './mission-presentation'
+import type { components } from '../contracts'
+
+describe('mission presentation', () => {
+  it('counts down exact seconds and never asserts arrival from the clock', () => {
+    expect(arrivalCountdown(3661001, 0)).toBe('1h 1m 2s')
+    expect(arrivalCountdown(1000, 0)).toBe('1s')
+    expect(arrivalCountdown(1000, 1000)).toBe('Awaiting confirmation')
+    expect(arrivalCountdown(1000, 2000)).toBe('Awaiting confirmation')
+  })
+  it('preserves counts above safe integer range and incoming visibility', () => {
+    expect(
+      shipManifest([{ ship_type: 'SmallCargo', count: '9007199254740993' }]),
+    ).toBe('9007199254740993 Small Cargo')
+    expect(incomingManifest({ visibility: 'Unknown' })).toBe(
+      'Ship composition unknown',
+    )
+    expect(incomingManifest({ visibility: 'Total', total: '0' })).toBe(
+      '0 ships · Types unknown',
+    )
+    expect(
+      incomingManifest({
+        visibility: 'Types',
+        total: '3',
+        types: ['SmallCargo'],
+      }),
+    ).toBe('3 ships · Small Cargo')
+  })
+  it('estimates recall from elapsed outbound travel only while recall is available', () => {
+    const fleet = {
+      launched_at: 1000,
+      due_at: 10000,
+      leg: 'Outbound',
+      can_recall: true,
+    } as components['schemas']['OwnMission4']
+    expect(recallEstimate(fleet, 3000)).toBe(5000)
+    expect(recallEstimate(fleet, 10000)).toBeNull()
+    expect(recallEstimate({ ...fleet, leg: 'Returning' }, 3000)).toBeNull()
+    expect(recallEstimate({ ...fleet, can_recall: false }, 3000)).toBeNull()
+  })
+  it('labels observation age without presenting historical data as current', () => {
+    expect(observationAge(1000, 0)).toBe('Less than a minute ago')
+    expect(observationAge(1000, 61000)).toBe('1m 0s ago')
+  })
+})

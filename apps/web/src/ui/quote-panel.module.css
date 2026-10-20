@@ -1,0 +1,15 @@
+.panel {
+  margin-bottom: var(--space-6);
+}
+.panel ul {
+  padding-left: var(--space-6);
+}
+.action {
+  margin: var(--space-2) var(--space-2) 0 0;
+}
+@media (max-width: 599px) {
+  .action {
+    width: 100%;
+    margin-right: 0;
+  }
+}

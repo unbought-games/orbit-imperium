@@ -1,0 +1,543 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-10-19",
+  "tool": "OpenAI built-in image_gen",
+  "provenance": "Original AI-generated artwork for Orbit Imperium. No third-party game artwork; screenshot references are project-owned visual studies. No trademark or logo assets generated.",
+  "recipe": "Astronomical-atlas realism. Upper-right key light, navy shadows, champagne metals and ice-blue details. Complete silhouettes with transparent alpha, no baked text, UI, diagrams or game-state overlays. Art is decorative and supplies no gameplay facts.",
+  "assets": [
+    {
+      "key": "planet-04",
+      "master": "masters/planet-04.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "objects/robotics-factory",
+      "master": "masters/robotics-factory.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "objects/small-cargo",
+      "master": "masters/small-cargo.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-01",
+      "master": "masters/planet-01.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-02",
+      "master": "masters/planet-02.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-03",
+      "master": "masters/planet-03.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-05",
+      "master": "masters/planet-05.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-06",
+      "master": "masters/planet-06.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-07",
+      "master": "masters/planet-07.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-08",
+      "master": "masters/planet-08.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-09",
+      "master": "masters/planet-09.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-10",
+      "master": "masters/planet-10.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Centered complete silhouette. Delivery adds 6% transparent inset per edge; use contain for object views. Reframe only at the composition layer."
+    },
+    {
+      "key": "planet-11",
+      "master": "masters/planet-11.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset."
+    },
+    {
+      "key": "planet-12",
+      "master": "masters/planet-12.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset."
+    },
+    {
+      "key": "planet-13",
+      "master": "masters/planet-13.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset."
+    },
+    {
+      "key": "planet-14",
+      "master": "masters/planet-14.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset."
+    },
+    {
+      "key": "planet-15",
+      "master": "masters/planet-15.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered globe; delivery includes transparent inset."
+    },
+    {
+      "key": "atmosphere",
+      "master": "masters/atmosphere.png",
+      "sizes": [
+        800,
+        1600
+      ],
+      "crop": "Quiet center/right reading space; texture concentrated left/bottom."
+    },
+    {
+      "key": "moon-01",
+      "master": "masters/moon-01.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source."
+    },
+    {
+      "key": "moon-02",
+      "master": "masters/moon-02.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source."
+    },
+    {
+      "key": "moon-03",
+      "master": "masters/moon-03.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete silhouette. Centered transparent delivery includes inset; do not upscale native source."
+    },
+    {
+      "key": "objects/metal-mine",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 32,
+        "top": 18,
+        "width": 590,
+        "height": 584
+      }
+    },
+    {
+      "key": "objects/crystal-mine",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 656,
+        "top": 14,
+        "width": 569,
+        "height": 581
+      }
+    },
+    {
+      "key": "objects/deuterium-synthesizer",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 33,
+        "top": 589,
+        "width": 625,
+        "height": 614
+      }
+    },
+    {
+      "key": "objects/solar-plant",
+      "master": "masters/resource-extraction.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 676,
+        "top": 602,
+        "width": 547,
+        "height": 617
+      }
+    },
+    {
+      "key": "objects/fusion-reactor",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 39,
+        "top": 29,
+        "width": 584,
+        "height": 582
+      }
+    },
+    {
+      "key": "objects/metal-storage",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 662,
+        "top": 24,
+        "width": 571,
+        "height": 602
+      }
+    },
+    {
+      "key": "objects/crystal-storage",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 36,
+        "top": 644,
+        "width": 615,
+        "height": 549
+      }
+    },
+    {
+      "key": "objects/deuterium-tank",
+      "master": "masters/resource-storage.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 673,
+        "top": 628,
+        "width": 560,
+        "height": 586
+      }
+    },
+    {
+      "key": "objects/research-lab",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 30,
+        "top": 45,
+        "width": 584,
+        "height": 540
+      }
+    },
+    {
+      "key": "objects/shipyard",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 645,
+        "top": 32,
+        "width": 586,
+        "height": 569
+      }
+    },
+    {
+      "key": "objects/nanite-factory",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 32,
+        "top": 657,
+        "width": 594,
+        "height": 559
+      }
+    },
+    {
+      "key": "objects/terraformer",
+      "master": "masters/facility-primary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 643,
+        "top": 611,
+        "width": 592,
+        "height": 615
+      }
+    },
+    {
+      "key": "objects/missile-silo",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 32,
+        "top": 40,
+        "width": 599,
+        "height": 572
+      }
+    },
+    {
+      "key": "objects/alliance-depot",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 648,
+        "top": 59,
+        "width": 585,
+        "height": 545
+      }
+    },
+    {
+      "key": "objects/lunar-base",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 24,
+        "top": 659,
+        "width": 608,
+        "height": 547
+      }
+    },
+    {
+      "key": "objects/sensor-phalanx",
+      "master": "masters/facility-secondary.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 668,
+        "top": 623,
+        "width": 568,
+        "height": 590
+      }
+    },
+    {
+      "key": "objects/jump-gate",
+      "master": "masters/gate-missiles.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 61,
+        "top": 33,
+        "width": 608,
+        "height": 571
+      }
+    },
+    {
+      "key": "objects/anti-ballistic-missile",
+      "master": "masters/gate-missiles.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 774,
+        "top": 71,
+        "width": 354,
+        "height": 526
+      }
+    },
+    {
+      "key": "objects/interplanetary-missile",
+      "master": "masters/gate-missiles.png",
+      "sizes": [
+        96,
+        320,
+        640
+      ],
+      "crop": "Extracted complete object from native source sheet. Deliver at up to 300 CSS pixels for high density; never upscale for a large hero.",
+      "extract": {
+        "left": 157,
+        "top": 655,
+        "width": 394,
+        "height": 569
+      }
+    }
+  ],
+  "license": "CC-BY-SA-4.0, subject to the repository LICENSE scope. Credit Orbit Imperium contributors / Unbought Games, LLC. Generated material is covered only to the extent eligible for protection."
+}

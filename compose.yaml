@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16.10-bookworm@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74
+    environment:
+      POSTGRES_USER: orbit
+      POSTGRES_DB: orbit
+      POSTGRES_PASSWORD: ${ORBIT_DB_PASSWORD:-orbit}
+    # CI requests port 0 so Docker allocates a distinct host port per job.
+    ports: ["127.0.0.1:${ORBIT_DB_PUBLISHED_PORT:-55432}:5432"]
+    volumes: ["orbit-db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbit"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+volumes:
+  orbit-db:

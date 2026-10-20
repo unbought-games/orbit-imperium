@@ -1,0 +1,21 @@
+{
+  "profile": "first-slice-v1",
+  "speed": 1,
+  "description": "Seed, accrue across construction completion, launch and recall, launch and deliver, return. Values independently derived with rational arithmetic.",
+  "inputs": [
+    {"at": 0, "action": "upgrade"},
+    {"at": 161000, "action": "event"},
+    {"at": 3600000, "action": "launch"},
+    {"at": 3601000, "action": "recall"},
+    {"at": 3602000, "action": "event"},
+    {"at": 7200000, "action": "launch"},
+    {"at": 11941000, "action": "event"},
+    {"at": 16682000, "action": "event"}
+  ],
+  "source_final_micro": {"metal": 1283666000, "crystal": 1099453888, "deuterium": 984000000},
+  "target_final_micro": {"metal": 1391935000, "crystal": 1221453888, "deuterium": 1010000000},
+  "source_carry": {"metal": 0, "crystal": 3200000, "deuterium": 0},
+  "reports": 4,
+  "source_ships": 2,
+  "burned_fuel_micro": 6000000
+}

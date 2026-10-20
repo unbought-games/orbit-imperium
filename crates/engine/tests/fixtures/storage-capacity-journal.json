@@ -1,0 +1,4184 @@
+[
+  {
+    "facts": {
+      "bodies": {
+        "00000000-0000-0000-0000-000000000002": {
+          "capacity": {
+            "crystal": 6789000000,
+            "deuterium": 4321000000,
+            "metal": 12345000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 5000000000,
+              "deuterium": 5000000000,
+              "metal": 5000000000
+            },
+            "at": 0,
+            "carry": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 0
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000002",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 1,
+            "DeuteriumSynthesizer": 0,
+            "MetalMine": 1,
+            "SolarPlant": 2
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "collection_revisions": {},
+      "constructions": {},
+      "coverage": {
+        "bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "construction_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "fleet_ids": [],
+        "fleet_owners": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "inventory_owners": [
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000001"
+          ]
+        ],
+        "manufacturing_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "operations": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ]
+      },
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "fleets": {},
+      "inventories": [],
+      "players": {
+        "00000000-0000-0000-0000-000000000001": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+      "reports": {},
+      "research": {
+        "00000000-0000-0000-0000-000000000001": {
+          "levels": {
+            "CombustionDrive": 1,
+            "ComputerTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        }
+      },
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "input": {
+      "actor": {
+        "Player": "00000000-0000-0000-0000-000000000001"
+      },
+      "at": 17,
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "id": "00000000-0000-0000-0000-000000002328",
+      "payload": {
+        "Command": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalMine",
+          "expected_terms_hash": "e71095b8e55355170ce68df9ae7c14c33d4b3a7a8ed1e2713944884806d9ef17",
+          "type": "StartUpgrade"
+        }
+      },
+      "phase": 1,
+      "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+      "protocol": 2,
+      "schema_version": 2,
+      "sequence": 9000,
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "outcome": {
+      "Applied": {
+        "affected_viewers": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "bodies": [
+          {
+            "capacity": {
+              "crystal": 6789000000,
+              "deuterium": 4321000000,
+              "metal": 12345000000
+            },
+            "checkpoint": {
+              "amounts": {
+                "crystal": 4978000174,
+                "deuterium": 5000000000,
+                "metal": 4910000297
+              },
+              "at": 17,
+              "carry": {
+                "crystal": 2600000,
+                "deuterium": 0,
+                "metal": 1800000
+              }
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 8,
+              "system": 1
+            },
+            "fields": 163,
+            "id": "00000000-0000-0000-0000-000000000002",
+            "kind": "Planet",
+            "levels": {
+              "CrystalMine": 1,
+              "DeuteriumSynthesizer": 0,
+              "MetalMine": 1,
+              "SolarPlant": 2
+            },
+            "max_temperature": 40,
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "revision": 1,
+            "universe": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "cancelled_events": [],
+        "constructions": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalMine",
+            "due_at": 161017,
+            "generation": 0,
+            "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "paid": {
+              "crystal": 22000000,
+              "deuterium": 0,
+              "metal": 90000000
+            },
+            "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+            "revision": 0,
+            "started_at": 17,
+            "status": "Active",
+            "target_level": 2,
+            "terms_hash": "e71095b8e55355170ce68df9ae7c14c33d4b3a7a8ed1e2713944884806d9ef17"
+          }
+        ],
+        "events": [
+          {
+            "at": 161017,
+            "event": {
+              "generation": 0,
+              "operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+              "type": "ConstructionDue"
+            },
+            "id": "ea24951b-cd9a-be22-81da-7e89b082a2c7"
+          }
+        ],
+        "expected_collection_revisions": {},
+        "expected_facts_hash": "feea8340f3908cf8eace000bee8c3962cae99ac1207d4f5100e6578ff4e9db3f",
+        "fleets": [],
+        "input": "00000000-0000-0000-0000-000000002328",
+        "inventories": [],
+        "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+        "reports": [],
+        "research": []
+      }
+    }
+  },
+  {
+    "facts": {
+      "bodies": {
+        "00000000-0000-0000-0000-000000000002": {
+          "capacity": {
+            "crystal": 6789000000,
+            "deuterium": 4321000000,
+            "metal": 12345000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 4978000174,
+              "deuterium": 5000000000,
+              "metal": 4910000297
+            },
+            "at": 17,
+            "carry": {
+              "crystal": 2600000,
+              "deuterium": 0,
+              "metal": 1800000
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000002",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 1,
+            "DeuteriumSynthesizer": 0,
+            "MetalMine": 1,
+            "SolarPlant": 2
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 1,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "collection_revisions": {},
+      "constructions": {
+        "f6b0a80d-24f7-626a-a23f-f86d489f4060": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalMine",
+          "due_at": 161017,
+          "generation": 0,
+          "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "paid": {
+            "crystal": 22000000,
+            "deuterium": 0,
+            "metal": 90000000
+          },
+          "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+          "revision": 0,
+          "started_at": 17,
+          "status": "Active",
+          "target_level": 2,
+          "terms_hash": "e71095b8e55355170ce68df9ae7c14c33d4b3a7a8ed1e2713944884806d9ef17"
+        }
+      },
+      "coverage": {
+        "bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "construction_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "fleet_ids": [],
+        "fleet_owners": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "inventory_owners": [
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000001"
+          ]
+        ],
+        "manufacturing_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "operations": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ]
+      },
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "fleets": {},
+      "inventories": [],
+      "players": {
+        "00000000-0000-0000-0000-000000000001": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+      "reports": {},
+      "research": {
+        "00000000-0000-0000-0000-000000000001": {
+          "levels": {
+            "CombustionDrive": 1,
+            "ComputerTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        }
+      },
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "input": {
+      "actor": "Scheduler",
+      "at": 161017,
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "id": "00000000-0000-0000-0000-000000002329",
+      "payload": {
+        "Event": {
+          "generation": 0,
+          "operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "type": "ConstructionDue"
+        }
+      },
+      "phase": 0,
+      "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+      "protocol": 2,
+      "schema_version": 2,
+      "sequence": 9001,
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "outcome": {
+      "Applied": {
+        "affected_viewers": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "bodies": [
+          {
+            "capacity": {
+              "crystal": 6789000000,
+              "deuterium": 4321000000,
+              "metal": 12345000000
+            },
+            "checkpoint": {
+              "amounts": {
+                "crystal": 4979654896,
+                "deuterium": 5000000000,
+                "metal": 4912817797
+              },
+              "at": 161017,
+              "carry": {
+                "crystal": 3400000,
+                "deuterium": 0,
+                "metal": 1800000
+              }
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 8,
+              "system": 1
+            },
+            "fields": 163,
+            "id": "00000000-0000-0000-0000-000000000002",
+            "kind": "Planet",
+            "levels": {
+              "CrystalMine": 1,
+              "DeuteriumSynthesizer": 0,
+              "MetalMine": 2,
+              "SolarPlant": 2
+            },
+            "max_temperature": 40,
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "revision": 2,
+            "universe": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "cancelled_events": [],
+        "constructions": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalMine",
+            "due_at": 161017,
+            "generation": 0,
+            "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "paid": {
+              "crystal": 22000000,
+              "deuterium": 0,
+              "metal": 90000000
+            },
+            "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+            "revision": 1,
+            "started_at": 17,
+            "status": "Completed",
+            "target_level": 2,
+            "terms_hash": "e71095b8e55355170ce68df9ae7c14c33d4b3a7a8ed1e2713944884806d9ef17"
+          }
+        ],
+        "events": [],
+        "expected_collection_revisions": {},
+        "expected_facts_hash": "e8756ed24e2668a314aa614d53d63b4bbdadb825877d5b2a86b3920fc073076a",
+        "fleets": [],
+        "input": "00000000-0000-0000-0000-000000002329",
+        "inventories": [],
+        "profile_hash": "842cd1b24cdb0ae1fdd6e0fd60185784bf7c7ba754535d3b549b3a7d8fb4f367",
+        "reports": [],
+        "research": []
+      }
+    }
+  },
+  {
+    "facts": {
+      "bodies": {
+        "00000000-0000-0000-0000-000000000002": {
+          "capacity": {
+            "crystal": 10000000000,
+            "deuterium": 10000000000,
+            "metal": 10000000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 5000000000,
+              "deuterium": 5000000000,
+              "metal": 5000000000
+            },
+            "at": 0,
+            "carry": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 0
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000002",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 0,
+            "CrystalStorage": 0,
+            "DeuteriumSynthesizer": 0,
+            "DeuteriumTank": 0,
+            "MetalMine": 0,
+            "MetalStorage": 0,
+            "ResearchLab": 0,
+            "RoboticsFactory": 0,
+            "Shipyard": 0,
+            "SolarPlant": 0
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "collection_revisions": {
+        "constructions:00000000-0000-0000-0000-000000000002": 0,
+        "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+        "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+        "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+        "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+        "production:00000000-0000-0000-0000-000000000002": 0,
+        "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+        "research-operations:00000000-0000-0000-0000-000000000001": 0,
+        "research:00000000-0000-0000-0000-000000000001": 0
+      },
+      "constructions": {},
+      "coverage": {
+        "bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "construction_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "fleet_ids": [],
+        "fleet_owners": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "inventory_owners": [
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000001"
+          ]
+        ],
+        "lab_construction_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "manufacturing_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "manufacturing_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "operations": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "owned_body_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "production_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "research_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "research_slot_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "reservation_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ]
+      },
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "fleets": {},
+      "inventories": [],
+      "players": {
+        "00000000-0000-0000-0000-000000000001": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "production_settings": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "revision": 0,
+          "settings": {
+            "crystal_mine": 100,
+            "deuterium_synthesizer": 100,
+            "fusion_reactor": 100,
+            "metal_mine": 100,
+            "solar_plant": 100,
+            "solar_satellite": 100
+          }
+        }
+      },
+      "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+      "progression_reservations": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "field_operation": null,
+          "large_dome_operation": null,
+          "missile_slots": 0,
+          "revision": 0,
+          "small_dome_operation": null
+        }
+      },
+      "reports": {},
+      "research": {
+        "00000000-0000-0000-0000-000000000001": {
+          "levels": {
+            "ArmourTechnology": 0,
+            "CombustionDrive": 0,
+            "ComputerTechnology": 0,
+            "EnergyTechnology": 0,
+            "EspionageTechnology": 0,
+            "ShieldingTechnology": 0,
+            "WeaponsTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        }
+      },
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "input": {
+      "actor": {
+        "Player": "00000000-0000-0000-0000-000000000001"
+      },
+      "at": 17,
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "id": "00000000-0000-0000-0000-000000002328",
+      "payload": {
+        "Command": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalStorage",
+          "expected_terms_hash": "cd77b14ffe280689602136047bd816131db8647c90366eaf6259e050030460ce",
+          "type": "StartUpgrade"
+        }
+      },
+      "phase": 1,
+      "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+      "protocol": 3,
+      "schema_version": 3,
+      "sequence": 9000,
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "outcome": {
+      "Applied": {
+        "affected_viewers": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "bodies": [
+          {
+            "capacity": {
+              "crystal": 10000000000,
+              "deuterium": 10000000000,
+              "metal": 10000000000
+            },
+            "checkpoint": {
+              "amounts": {
+                "crystal": 5000000708,
+                "deuterium": 5000000000,
+                "metal": 4000001416
+              },
+              "at": 17,
+              "carry": {
+                "crystal": 1200000,
+                "deuterium": 0,
+                "metal": 2400000
+              }
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 8,
+              "system": 1
+            },
+            "fields": 163,
+            "id": "00000000-0000-0000-0000-000000000002",
+            "kind": "Planet",
+            "levels": {
+              "CrystalMine": 0,
+              "CrystalStorage": 0,
+              "DeuteriumSynthesizer": 0,
+              "DeuteriumTank": 0,
+              "MetalMine": 0,
+              "MetalStorage": 0,
+              "ResearchLab": 0,
+              "RoboticsFactory": 0,
+              "Shipyard": 0,
+              "SolarPlant": 0
+            },
+            "max_temperature": 40,
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "revision": 1,
+            "universe": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "cancelled_events": [],
+        "constructions": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalStorage",
+            "due_at": 54017,
+            "generation": 0,
+            "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "paid": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 1000000000
+            },
+            "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+            "progression": {
+              "action": "Upgrade",
+              "body": "00000000-0000-0000-0000-000000000002",
+              "building": "MetalStorage",
+              "duration_ms": 54000,
+              "facilities": [
+                {
+                  "building": "NaniteFactory",
+                  "level": 0
+                },
+                {
+                  "building": "RoboticsFactory",
+                  "level": 0
+                }
+              ],
+              "formula": "BuildingRedesign2011",
+              "paid": {
+                "crystal": "0",
+                "deuterium": "0",
+                "metal": "1000000000"
+              },
+              "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+              "required_energy": "0",
+              "reserve_fields": 1,
+              "source_level": 0,
+              "target_level": 1,
+              "type": "Building"
+            },
+            "revision": 0,
+            "started_at": 17,
+            "status": "Active",
+            "target_level": 1,
+            "terms_hash": "cd77b14ffe280689602136047bd816131db8647c90366eaf6259e050030460ce"
+          }
+        ],
+        "events": [
+          {
+            "at": 54017,
+            "event": {
+              "generation": 0,
+              "operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+              "type": "ConstructionDue"
+            },
+            "id": "ea24951b-cd9a-be22-81da-7e89b082a2c7"
+          }
+        ],
+        "expected_collection_revisions": {
+          "constructions:00000000-0000-0000-0000-000000000002": 0,
+          "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+          "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+          "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+          "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+          "production:00000000-0000-0000-0000-000000000002": 0,
+          "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+          "research-operations:00000000-0000-0000-0000-000000000001": 0,
+          "research:00000000-0000-0000-0000-000000000001": 0
+        },
+        "expected_facts_hash": "7027222d2d5515d90c8aa0404e60bdc28184f78ad2aa7dd4e1e88befbb1e2447",
+        "fleets": [],
+        "input": "00000000-0000-0000-0000-000000002328",
+        "inventories": [],
+        "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+        "progression_reservations": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "field_operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+            "large_dome_operation": null,
+            "missile_slots": 0,
+            "revision": 1,
+            "small_dome_operation": null
+          }
+        ],
+        "reports": [],
+        "research": []
+      }
+    }
+  },
+  {
+    "facts": {
+      "bodies": {
+        "00000000-0000-0000-0000-000000000002": {
+          "capacity": {
+            "crystal": 10000000000,
+            "deuterium": 10000000000,
+            "metal": 10000000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 5000000708,
+              "deuterium": 5000000000,
+              "metal": 4000001416
+            },
+            "at": 17,
+            "carry": {
+              "crystal": 1200000,
+              "deuterium": 0,
+              "metal": 2400000
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000002",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 0,
+            "CrystalStorage": 0,
+            "DeuteriumSynthesizer": 0,
+            "DeuteriumTank": 0,
+            "MetalMine": 0,
+            "MetalStorage": 0,
+            "ResearchLab": 0,
+            "RoboticsFactory": 0,
+            "Shipyard": 0,
+            "SolarPlant": 0
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 1,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "collection_revisions": {
+        "constructions:00000000-0000-0000-0000-000000000002": 0,
+        "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+        "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+        "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+        "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+        "production:00000000-0000-0000-0000-000000000002": 0,
+        "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+        "research-operations:00000000-0000-0000-0000-000000000001": 0,
+        "research:00000000-0000-0000-0000-000000000001": 0
+      },
+      "constructions": {
+        "f6b0a80d-24f7-626a-a23f-f86d489f4060": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalStorage",
+          "due_at": 54017,
+          "generation": 0,
+          "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "paid": {
+            "crystal": 0,
+            "deuterium": 0,
+            "metal": 1000000000
+          },
+          "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+          "progression": {
+            "action": "Upgrade",
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalStorage",
+            "duration_ms": 54000,
+            "facilities": [
+              {
+                "building": "NaniteFactory",
+                "level": 0
+              },
+              {
+                "building": "RoboticsFactory",
+                "level": 0
+              }
+            ],
+            "formula": "BuildingRedesign2011",
+            "paid": {
+              "crystal": "0",
+              "deuterium": "0",
+              "metal": "1000000000"
+            },
+            "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+            "required_energy": "0",
+            "reserve_fields": 1,
+            "source_level": 0,
+            "target_level": 1,
+            "type": "Building"
+          },
+          "revision": 0,
+          "started_at": 17,
+          "status": "Active",
+          "target_level": 1,
+          "terms_hash": "cd77b14ffe280689602136047bd816131db8647c90366eaf6259e050030460ce"
+        }
+      },
+      "coverage": {
+        "bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "construction_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "fleet_ids": [],
+        "fleet_owners": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "inventory_owners": [
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000001"
+          ]
+        ],
+        "lab_construction_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "manufacturing_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "manufacturing_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "operations": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "owned_body_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "production_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "research_operation_ids": [
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "research_slot_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "reservation_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ]
+      },
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "fleets": {},
+      "inventories": [],
+      "players": {
+        "00000000-0000-0000-0000-000000000001": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "production_settings": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "revision": 0,
+          "settings": {
+            "crystal_mine": 100,
+            "deuterium_synthesizer": 100,
+            "fusion_reactor": 100,
+            "metal_mine": 100,
+            "solar_plant": 100,
+            "solar_satellite": 100
+          }
+        }
+      },
+      "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+      "progression_reservations": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "field_operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "large_dome_operation": null,
+          "missile_slots": 0,
+          "revision": 1,
+          "small_dome_operation": null
+        }
+      },
+      "reports": {},
+      "research": {
+        "00000000-0000-0000-0000-000000000001": {
+          "levels": {
+            "ArmourTechnology": 0,
+            "CombustionDrive": 0,
+            "ComputerTechnology": 0,
+            "EnergyTechnology": 0,
+            "EspionageTechnology": 0,
+            "ShieldingTechnology": 0,
+            "WeaponsTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        }
+      },
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "input": {
+      "actor": "Scheduler",
+      "at": 54017,
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "id": "00000000-0000-0000-0000-000000002329",
+      "payload": {
+        "Event": {
+          "generation": 0,
+          "operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "type": "ConstructionDue"
+        }
+      },
+      "phase": 0,
+      "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+      "protocol": 3,
+      "schema_version": 3,
+      "sequence": 9001,
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "outcome": {
+      "Applied": {
+        "affected_viewers": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "bodies": [
+          {
+            "capacity": {
+              "crystal": 10000000000,
+              "deuterium": 10000000000,
+              "metal": 20000000000
+            },
+            "checkpoint": {
+              "amounts": {
+                "crystal": 5002250708,
+                "deuterium": 5000000000,
+                "metal": 4004501416
+              },
+              "at": 54017,
+              "carry": {
+                "crystal": 1200000,
+                "deuterium": 0,
+                "metal": 2400000
+              }
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 8,
+              "system": 1
+            },
+            "fields": 163,
+            "id": "00000000-0000-0000-0000-000000000002",
+            "kind": "Planet",
+            "levels": {
+              "CrystalMine": 0,
+              "CrystalStorage": 0,
+              "DeuteriumSynthesizer": 0,
+              "DeuteriumTank": 0,
+              "MetalMine": 0,
+              "MetalStorage": 1,
+              "ResearchLab": 0,
+              "RoboticsFactory": 0,
+              "Shipyard": 0,
+              "SolarPlant": 0
+            },
+            "max_temperature": 40,
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "revision": 2,
+            "universe": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "cancelled_events": [],
+        "constructions": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalStorage",
+            "due_at": 54017,
+            "generation": 0,
+            "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "paid": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 1000000000
+            },
+            "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+            "progression": {
+              "action": "Upgrade",
+              "body": "00000000-0000-0000-0000-000000000002",
+              "building": "MetalStorage",
+              "duration_ms": 54000,
+              "facilities": [
+                {
+                  "building": "NaniteFactory",
+                  "level": 0
+                },
+                {
+                  "building": "RoboticsFactory",
+                  "level": 0
+                }
+              ],
+              "formula": "BuildingRedesign2011",
+              "paid": {
+                "crystal": "0",
+                "deuterium": "0",
+                "metal": "1000000000"
+              },
+              "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+              "required_energy": "0",
+              "reserve_fields": 1,
+              "source_level": 0,
+              "target_level": 1,
+              "type": "Building"
+            },
+            "revision": 1,
+            "started_at": 17,
+            "status": "Completed",
+            "target_level": 1,
+            "terms_hash": "cd77b14ffe280689602136047bd816131db8647c90366eaf6259e050030460ce"
+          }
+        ],
+        "events": [],
+        "expected_collection_revisions": {
+          "constructions:00000000-0000-0000-0000-000000000002": 0,
+          "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+          "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+          "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+          "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+          "production:00000000-0000-0000-0000-000000000002": 0,
+          "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+          "research-operations:00000000-0000-0000-0000-000000000001": 0,
+          "research:00000000-0000-0000-0000-000000000001": 0
+        },
+        "expected_facts_hash": "387a4acb267a1155b03d796e981921b2c740057175a1a2aa014dde7b98cf41e1",
+        "fleets": [],
+        "input": "00000000-0000-0000-0000-000000002329",
+        "inventories": [],
+        "profile_hash": "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584",
+        "progression_reservations": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "field_operation": null,
+            "large_dome_operation": null,
+            "missile_slots": 0,
+            "revision": 2,
+            "small_dome_operation": null
+          }
+        ],
+        "reports": [],
+        "research": []
+      }
+    }
+  },
+  {
+    "facts": {
+      "bodies": {
+        "00000000-0000-0000-0000-000000000002": {
+          "capacity": {
+            "crystal": 10000000000,
+            "deuterium": 10000000000,
+            "metal": 10000000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 10000000000,
+              "deuterium": 10000000000,
+              "metal": 9000000000
+            },
+            "at": 1000,
+            "carry": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 0
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000002",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 0,
+            "CrystalStorage": 0,
+            "DeuteriumSynthesizer": 0,
+            "DeuteriumTank": 0,
+            "MetalMine": 0,
+            "MetalStorage": 0,
+            "ResearchLab": 0,
+            "RoboticsFactory": 0,
+            "Shipyard": 0,
+            "SolarPlant": 0
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 1,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        },
+        "00000000-0000-0000-0000-000000000014": {
+          "capacity": {
+            "crystal": 10000000000,
+            "deuterium": 10000000000,
+            "metal": 10000000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 10000000000,
+              "deuterium": 10000000000,
+              "metal": 10000000000
+            },
+            "at": 0,
+            "carry": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 0
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 9,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000014",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 0,
+            "CrystalStorage": 0,
+            "DeuteriumSynthesizer": 0,
+            "DeuteriumTank": 0,
+            "MetalMine": 0,
+            "MetalStorage": 0,
+            "ResearchLab": 0,
+            "RoboticsFactory": 0,
+            "Shipyard": 0,
+            "SolarPlant": 0
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "collection_revisions": {
+        "constructions:00000000-0000-0000-0000-000000000002": 0,
+        "constructions:00000000-0000-0000-0000-000000000014": 0,
+        "fleets:00000000-0000-0000-0000-000000000001": 0,
+        "fleets:00000000-0000-0000-0000-000000000015": 0,
+        "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+        "inventory:00000000-0000-0000-0000-000000000014:00000000-0000-0000-0000-000000000015": 0,
+        "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+        "lab-constructions:00000000-0000-0000-0000-000000000015": 0,
+        "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+        "manufacturing:00000000-0000-0000-0000-000000000014": 0,
+        "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+        "owned-bodies:00000000-0000-0000-0000-000000000015": 0,
+        "production:00000000-0000-0000-0000-000000000002": 0,
+        "production:00000000-0000-0000-0000-000000000014": 0,
+        "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+        "progression-reservations:00000000-0000-0000-0000-000000000014": 0,
+        "research-operations:00000000-0000-0000-0000-000000000001": 0,
+        "research-operations:00000000-0000-0000-0000-000000000015": 0,
+        "research:00000000-0000-0000-0000-000000000001": 0,
+        "research:00000000-0000-0000-0000-000000000015": 0
+      },
+      "constructions": {
+        "f6b0a80d-24f7-626a-a23f-f86d489f4060": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalStorage",
+          "due_at": 55000,
+          "generation": 0,
+          "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "paid": {
+            "crystal": 0,
+            "deuterium": 0,
+            "metal": 1000000000
+          },
+          "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+          "progression": {
+            "action": "Upgrade",
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalStorage",
+            "duration_ms": 54000,
+            "facilities": [
+              {
+                "building": "NaniteFactory",
+                "level": 0
+              },
+              {
+                "building": "RoboticsFactory",
+                "level": 0
+              }
+            ],
+            "formula": "BuildingRedesign2011",
+            "paid": {
+              "crystal": "0",
+              "deuterium": "0",
+              "metal": "1000000000"
+            },
+            "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+            "required_energy": "0",
+            "reserve_fields": 1,
+            "source_level": 0,
+            "target_level": 1,
+            "type": "Building"
+          },
+          "revision": 0,
+          "started_at": 1000,
+          "status": "Active",
+          "target_level": 1,
+          "terms_hash": "d9681dfb4f16107e5c02cc7969a6d9b692b37b860586665092e24cbcc7d502ba"
+        }
+      },
+      "coverage": {
+        "bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "construction_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "fleet_ids": [],
+        "fleet_owners": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "inventory_owners": [
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000001"
+          ],
+          [
+            "00000000-0000-0000-0000-000000000014",
+            "00000000-0000-0000-0000-000000000015"
+          ]
+        ],
+        "lab_construction_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "manufacturing_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "manufacturing_operation_ids": [
+          "500929c1-7b15-5adb-071e-65b36ee9ccab",
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "operations": [
+          "500929c1-7b15-5adb-071e-65b36ee9ccab",
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "owned_body_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "production_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "research_operation_ids": [
+          "500929c1-7b15-5adb-071e-65b36ee9ccab",
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "research_slot_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "reservation_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ]
+      },
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "fleets": {},
+      "inventories": [
+        {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "count": 2,
+          "item": {
+            "id": "SmallCargo",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "count": 2,
+          "item": {
+            "id": "Recycler",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "count": 2,
+          "item": {
+            "id": "EspionageProbe",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "count": 2,
+          "item": {
+            "id": "SmallCargo",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "count": 2,
+          "item": {
+            "id": "Recycler",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "count": 2,
+          "item": {
+            "id": "EspionageProbe",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        }
+      ],
+      "players": {
+        "00000000-0000-0000-0000-000000000001": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        },
+        "00000000-0000-0000-0000-000000000015": {
+          "id": "00000000-0000-0000-0000-000000000015",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "production_settings": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "revision": 0,
+          "settings": {
+            "crystal_mine": 100,
+            "deuterium_synthesizer": 100,
+            "fusion_reactor": 100,
+            "metal_mine": 100,
+            "solar_plant": 100,
+            "solar_satellite": 100
+          }
+        },
+        "00000000-0000-0000-0000-000000000014": {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "revision": 0,
+          "settings": {
+            "crystal_mine": 100,
+            "deuterium_synthesizer": 100,
+            "fusion_reactor": 100,
+            "metal_mine": 100,
+            "solar_plant": 100,
+            "solar_satellite": 100
+          }
+        }
+      },
+      "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+      "progression_reservations": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "field_operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "large_dome_operation": null,
+          "missile_slots": 0,
+          "revision": 1,
+          "small_dome_operation": null
+        },
+        "00000000-0000-0000-0000-000000000014": {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "field_operation": null,
+          "large_dome_operation": null,
+          "missile_slots": 0,
+          "revision": 0,
+          "small_dome_operation": null
+        }
+      },
+      "reports": {},
+      "research": {
+        "00000000-0000-0000-0000-000000000001": {
+          "levels": {
+            "ArmourTechnology": 0,
+            "CombustionDrive": 0,
+            "ComputerTechnology": 0,
+            "EnergyTechnology": 0,
+            "EspionageTechnology": 0,
+            "ShieldingTechnology": 0,
+            "WeaponsTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        },
+        "00000000-0000-0000-0000-000000000015": {
+          "levels": {
+            "ArmourTechnology": 0,
+            "CombustionDrive": 0,
+            "ComputerTechnology": 0,
+            "EnergyTechnology": 0,
+            "EspionageTechnology": 0,
+            "ShieldingTechnology": 0,
+            "WeaponsTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        }
+      },
+      "universe": "00000000-0000-0000-0000-000000000003",
+      "world": {
+        "covered_coordinates": [
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            2
+          ],
+          [
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            1,
+            1,
+            5
+          ],
+          [
+            1,
+            1,
+            6
+          ],
+          [
+            1,
+            1,
+            7
+          ],
+          [
+            1,
+            1,
+            8
+          ],
+          [
+            1,
+            1,
+            9
+          ],
+          [
+            1,
+            1,
+            10
+          ],
+          [
+            1,
+            1,
+            11
+          ],
+          [
+            1,
+            1,
+            12
+          ],
+          [
+            1,
+            1,
+            13
+          ],
+          [
+            1,
+            1,
+            14
+          ],
+          [
+            1,
+            1,
+            15
+          ],
+          [
+            1,
+            2,
+            1
+          ],
+          [
+            1,
+            2,
+            2
+          ],
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            1,
+            2,
+            4
+          ],
+          [
+            1,
+            2,
+            5
+          ],
+          [
+            1,
+            2,
+            6
+          ],
+          [
+            1,
+            2,
+            7
+          ],
+          [
+            1,
+            2,
+            8
+          ],
+          [
+            1,
+            2,
+            9
+          ],
+          [
+            1,
+            2,
+            10
+          ],
+          [
+            1,
+            2,
+            11
+          ],
+          [
+            1,
+            2,
+            12
+          ],
+          [
+            1,
+            2,
+            13
+          ],
+          [
+            1,
+            2,
+            14
+          ],
+          [
+            1,
+            2,
+            15
+          ],
+          [
+            1,
+            3,
+            1
+          ],
+          [
+            1,
+            3,
+            2
+          ],
+          [
+            1,
+            3,
+            3
+          ],
+          [
+            1,
+            3,
+            4
+          ],
+          [
+            1,
+            3,
+            5
+          ],
+          [
+            1,
+            3,
+            6
+          ],
+          [
+            1,
+            3,
+            7
+          ],
+          [
+            1,
+            3,
+            8
+          ],
+          [
+            1,
+            3,
+            9
+          ],
+          [
+            1,
+            3,
+            10
+          ],
+          [
+            1,
+            3,
+            11
+          ],
+          [
+            1,
+            3,
+            12
+          ],
+          [
+            1,
+            3,
+            13
+          ],
+          [
+            1,
+            3,
+            14
+          ],
+          [
+            1,
+            3,
+            15
+          ],
+          [
+            1,
+            4,
+            1
+          ],
+          [
+            1,
+            4,
+            2
+          ],
+          [
+            1,
+            4,
+            3
+          ],
+          [
+            1,
+            4,
+            4
+          ],
+          [
+            1,
+            4,
+            5
+          ],
+          [
+            1,
+            4,
+            6
+          ],
+          [
+            1,
+            4,
+            7
+          ],
+          [
+            1,
+            4,
+            8
+          ],
+          [
+            1,
+            4,
+            9
+          ],
+          [
+            1,
+            4,
+            10
+          ],
+          [
+            1,
+            4,
+            11
+          ],
+          [
+            1,
+            4,
+            12
+          ],
+          [
+            1,
+            4,
+            13
+          ],
+          [
+            1,
+            4,
+            14
+          ],
+          [
+            1,
+            4,
+            15
+          ],
+          [
+            1,
+            5,
+            1
+          ],
+          [
+            1,
+            5,
+            2
+          ],
+          [
+            1,
+            5,
+            3
+          ],
+          [
+            1,
+            5,
+            4
+          ],
+          [
+            1,
+            5,
+            5
+          ],
+          [
+            1,
+            5,
+            6
+          ],
+          [
+            1,
+            5,
+            7
+          ],
+          [
+            1,
+            5,
+            8
+          ],
+          [
+            1,
+            5,
+            9
+          ],
+          [
+            1,
+            5,
+            10
+          ],
+          [
+            1,
+            5,
+            11
+          ],
+          [
+            1,
+            5,
+            12
+          ],
+          [
+            1,
+            5,
+            13
+          ],
+          [
+            1,
+            5,
+            14
+          ],
+          [
+            1,
+            5,
+            15
+          ]
+        ],
+        "covered_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "covered_reports": [],
+        "records": {
+          "activity": {},
+          "debris": {},
+          "fleets": {},
+          "lots": [
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 1,
+              "id": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+              "item": {
+                "id": "Recycler",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000002"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+              "unit_value_micro": 18000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 2,
+              "id": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+              "item": {
+                "id": "EspionageProbe",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000014"
+              },
+              "owner": "00000000-0000-0000-0000-000000000015",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+              "unit_value_micro": 1000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 0,
+              "id": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+              "item": {
+                "id": "SmallCargo",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000002"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+              "unit_value_micro": 4000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 2,
+              "id": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+              "item": {
+                "id": "EspionageProbe",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000002"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+              "unit_value_micro": 1000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 1,
+              "id": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+              "item": {
+                "id": "Recycler",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000014"
+              },
+              "owner": "00000000-0000-0000-0000-000000000015",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+              "unit_value_micro": 18000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 0,
+              "id": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+              "item": {
+                "id": "SmallCargo",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000014"
+              },
+              "owner": "00000000-0000-0000-0000-000000000015",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+              "unit_value_micro": 4000000000
+            }
+          ],
+          "policies": {
+            "00000000-0000-0000-0000-000000000001": {
+              "last_presence_at": 0,
+              "lifecycle": "Active",
+              "player": "00000000-0000-0000-0000-000000000001",
+              "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "revision": 0,
+              "vacation": false
+            },
+            "00000000-0000-0000-0000-000000000015": {
+              "last_presence_at": 0,
+              "lifecycle": "Active",
+              "player": "00000000-0000-0000-0000-000000000015",
+              "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "revision": 0,
+              "vacation": false
+            }
+          },
+          "presence": {
+            "00000000-0000-0000-0000-000000002328": {
+              "at": 1000,
+              "body": "00000000-0000-0000-0000-000000000002",
+              "gameplay": "00000000-0000-0000-0000-000000002328",
+              "player": "00000000-0000-0000-0000-000000000001",
+              "presence": "00000000-0000-0000-0000-000000004a38"
+            }
+          },
+          "report_states": [],
+          "reports": {}
+        },
+        "requested_pair": null,
+        "revision": 0,
+        "secret": [
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7
+        ]
+      }
+    },
+    "input": {
+      "actor": "Scheduler",
+      "at": 55000,
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "id": "00000000-0000-0000-0000-000000002329",
+      "payload": {
+        "Event": {
+          "generation": 0,
+          "operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "type": "ConstructionDue"
+        }
+      },
+      "phase": 0,
+      "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+      "protocol": 4,
+      "schema_version": 4,
+      "sequence": 9001,
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "outcome": {
+      "Applied": {
+        "affected_viewers": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "bodies": [
+          {
+            "capacity": {
+              "crystal": 10000000000,
+              "deuterium": 10000000000,
+              "metal": 20000000000
+            },
+            "checkpoint": {
+              "amounts": {
+                "crystal": 10000000000,
+                "deuterium": 10000000000,
+                "metal": 9004500000
+              },
+              "at": 55000,
+              "carry": {
+                "crystal": 0,
+                "deuterium": 0,
+                "metal": 0
+              }
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 8,
+              "system": 1
+            },
+            "fields": 163,
+            "id": "00000000-0000-0000-0000-000000000002",
+            "kind": "Planet",
+            "levels": {
+              "CrystalMine": 0,
+              "CrystalStorage": 0,
+              "DeuteriumSynthesizer": 0,
+              "DeuteriumTank": 0,
+              "MetalMine": 0,
+              "MetalStorage": 1,
+              "ResearchLab": 0,
+              "RoboticsFactory": 0,
+              "Shipyard": 0,
+              "SolarPlant": 0
+            },
+            "max_temperature": 40,
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "revision": 2,
+            "universe": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "cancelled_events": [],
+        "constructions": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalStorage",
+            "due_at": 55000,
+            "generation": 0,
+            "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "paid": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 1000000000
+            },
+            "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+            "progression": {
+              "action": "Upgrade",
+              "body": "00000000-0000-0000-0000-000000000002",
+              "building": "MetalStorage",
+              "duration_ms": 54000,
+              "facilities": [
+                {
+                  "building": "NaniteFactory",
+                  "level": 0
+                },
+                {
+                  "building": "RoboticsFactory",
+                  "level": 0
+                }
+              ],
+              "formula": "BuildingRedesign2011",
+              "paid": {
+                "crystal": "0",
+                "deuterium": "0",
+                "metal": "1000000000"
+              },
+              "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "required_energy": "0",
+              "reserve_fields": 1,
+              "source_level": 0,
+              "target_level": 1,
+              "type": "Building"
+            },
+            "revision": 1,
+            "started_at": 1000,
+            "status": "Completed",
+            "target_level": 1,
+            "terms_hash": "d9681dfb4f16107e5c02cc7969a6d9b692b37b860586665092e24cbcc7d502ba"
+          }
+        ],
+        "events": [],
+        "expected_collection_revisions": {
+          "constructions:00000000-0000-0000-0000-000000000002": 0,
+          "constructions:00000000-0000-0000-0000-000000000014": 0,
+          "fleets:00000000-0000-0000-0000-000000000001": 0,
+          "fleets:00000000-0000-0000-0000-000000000015": 0,
+          "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+          "inventory:00000000-0000-0000-0000-000000000014:00000000-0000-0000-0000-000000000015": 0,
+          "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+          "lab-constructions:00000000-0000-0000-0000-000000000015": 0,
+          "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+          "manufacturing:00000000-0000-0000-0000-000000000014": 0,
+          "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+          "owned-bodies:00000000-0000-0000-0000-000000000015": 0,
+          "production:00000000-0000-0000-0000-000000000002": 0,
+          "production:00000000-0000-0000-0000-000000000014": 0,
+          "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+          "progression-reservations:00000000-0000-0000-0000-000000000014": 0,
+          "research-operations:00000000-0000-0000-0000-000000000001": 0,
+          "research-operations:00000000-0000-0000-0000-000000000015": 0,
+          "research:00000000-0000-0000-0000-000000000001": 0,
+          "research:00000000-0000-0000-0000-000000000015": 0
+        },
+        "expected_facts_hash": "49b7b6b7de88a066df4bbc46407c4b4cc13a37ff04b39f86e30acf797e19c146",
+        "fleets": [],
+        "input": "00000000-0000-0000-0000-000000002329",
+        "inventories": [],
+        "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+        "progression_reservations": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "field_operation": null,
+            "large_dome_operation": null,
+            "missile_slots": 0,
+            "revision": 2,
+            "small_dome_operation": null
+          }
+        ],
+        "reports": [],
+        "research": [],
+        "world": {
+          "audits": [],
+          "records": {
+            "activity": {},
+            "debris": {},
+            "fleets": {},
+            "lots": [
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 1,
+                "id": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+                "item": {
+                  "id": "Recycler",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+                "unit_value_micro": 18000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 2,
+                "id": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+                "item": {
+                  "id": "EspionageProbe",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000014"
+                },
+                "owner": "00000000-0000-0000-0000-000000000015",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+                "unit_value_micro": 1000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 0,
+                "id": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+                "unit_value_micro": 4000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 2,
+                "id": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+                "item": {
+                  "id": "EspionageProbe",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+                "unit_value_micro": 1000000000
+              },
+              {
+                "acquired_at": 55000,
+                "acquired_sequence": 9001,
+                "id": "a7a6386a-5f10-ca79-f5bc-a2329d15ea84",
+                "item": {
+                  "id": "MetalStorage",
+                  "kind": "Building"
+                },
+                "level": 1,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 1,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+                "unit_value_micro": 1000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 1,
+                "id": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+                "item": {
+                  "id": "Recycler",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000014"
+                },
+                "owner": "00000000-0000-0000-0000-000000000015",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+                "unit_value_micro": 18000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 0,
+                "id": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000014"
+                },
+                "owner": "00000000-0000-0000-0000-000000000015",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+                "unit_value_micro": 4000000000
+              }
+            ],
+            "policies": {
+              "00000000-0000-0000-0000-000000000001": {
+                "last_presence_at": 0,
+                "lifecycle": "Active",
+                "player": "00000000-0000-0000-0000-000000000001",
+                "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "revision": 0,
+                "vacation": false
+              },
+              "00000000-0000-0000-0000-000000000015": {
+                "last_presence_at": 0,
+                "lifecycle": "Active",
+                "player": "00000000-0000-0000-0000-000000000015",
+                "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "revision": 0,
+                "vacation": false
+              }
+            },
+            "presence": {
+              "00000000-0000-0000-0000-000000002328": {
+                "at": 1000,
+                "body": "00000000-0000-0000-0000-000000000002",
+                "gameplay": "00000000-0000-0000-0000-000000002328",
+                "player": "00000000-0000-0000-0000-000000000001",
+                "presence": "00000000-0000-0000-0000-000000004a38"
+              }
+            },
+            "report_states": [],
+            "reports": {}
+          },
+          "score_deltas": [
+            {
+              "delta": 1000000000,
+              "input": "00000000-0000-0000-0000-000000002329",
+              "lot": "a7a6386a-5f10-ca79-f5bc-a2329d15ea84",
+              "player": "00000000-0000-0000-0000-000000000001",
+              "valuation_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df"
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "facts": {
+      "bodies": {
+        "00000000-0000-0000-0000-000000000002": {
+          "capacity": {
+            "crystal": 10000000000,
+            "deuterium": 10000000000,
+            "metal": 20000000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 10000000000,
+              "deuterium": 9998000000,
+              "metal": 8994500000
+            },
+            "at": 55000,
+            "carry": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 0
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000002",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 0,
+            "CrystalStorage": 0,
+            "DeuteriumSynthesizer": 0,
+            "DeuteriumTank": 0,
+            "MetalMine": 0,
+            "MetalStorage": 1,
+            "ResearchLab": 0,
+            "RoboticsFactory": 0,
+            "Shipyard": 0,
+            "SolarPlant": 0
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 3,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        },
+        "00000000-0000-0000-0000-000000000014": {
+          "capacity": {
+            "crystal": 10000000000,
+            "deuterium": 10000000000,
+            "metal": 10000000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 10000000000,
+              "deuterium": 10000000000,
+              "metal": 10000000000
+            },
+            "at": 0,
+            "carry": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 0
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 9,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000014",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 0,
+            "CrystalStorage": 0,
+            "DeuteriumSynthesizer": 0,
+            "DeuteriumTank": 0,
+            "MetalMine": 0,
+            "MetalStorage": 0,
+            "ResearchLab": 0,
+            "RoboticsFactory": 0,
+            "Shipyard": 0,
+            "SolarPlant": 0
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "collection_revisions": {
+        "constructions:00000000-0000-0000-0000-000000000002": 0,
+        "constructions:00000000-0000-0000-0000-000000000014": 0,
+        "fleets:00000000-0000-0000-0000-000000000001": 0,
+        "fleets:00000000-0000-0000-0000-000000000015": 0,
+        "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+        "inventory:00000000-0000-0000-0000-000000000014:00000000-0000-0000-0000-000000000015": 0,
+        "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+        "lab-constructions:00000000-0000-0000-0000-000000000015": 0,
+        "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+        "manufacturing:00000000-0000-0000-0000-000000000014": 0,
+        "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+        "owned-bodies:00000000-0000-0000-0000-000000000015": 0,
+        "production:00000000-0000-0000-0000-000000000002": 0,
+        "production:00000000-0000-0000-0000-000000000014": 0,
+        "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+        "progression-reservations:00000000-0000-0000-0000-000000000014": 0,
+        "research-operations:00000000-0000-0000-0000-000000000001": 0,
+        "research-operations:00000000-0000-0000-0000-000000000015": 0,
+        "research:00000000-0000-0000-0000-000000000001": 0,
+        "research:00000000-0000-0000-0000-000000000015": 0
+      },
+      "constructions": {
+        "f6b0a80d-24f7-626a-a23f-f86d489f4060": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalStorage",
+          "due_at": 55000,
+          "generation": 0,
+          "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "paid": {
+            "crystal": 0,
+            "deuterium": 0,
+            "metal": 1000000000
+          },
+          "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+          "progression": {
+            "action": "Upgrade",
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalStorage",
+            "duration_ms": 54000,
+            "facilities": [
+              {
+                "building": "NaniteFactory",
+                "level": 0
+              },
+              {
+                "building": "RoboticsFactory",
+                "level": 0
+              }
+            ],
+            "formula": "BuildingRedesign2011",
+            "paid": {
+              "crystal": "0",
+              "deuterium": "0",
+              "metal": "1000000000"
+            },
+            "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+            "required_energy": "0",
+            "reserve_fields": 1,
+            "source_level": 0,
+            "target_level": 1,
+            "type": "Building"
+          },
+          "revision": 1,
+          "started_at": 1000,
+          "status": "Completed",
+          "target_level": 1,
+          "terms_hash": "d9681dfb4f16107e5c02cc7969a6d9b692b37b860586665092e24cbcc7d502ba"
+        }
+      },
+      "coverage": {
+        "bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "construction_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "fleet_ids": [],
+        "fleet_owners": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "inventory_owners": [
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000001"
+          ],
+          [
+            "00000000-0000-0000-0000-000000000014",
+            "00000000-0000-0000-0000-000000000015"
+          ]
+        ],
+        "lab_construction_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "manufacturing_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "manufacturing_operation_ids": [
+          "0ea79207-daa6-55fe-9185-76e1c0281e54",
+          "3007a685-2b47-3bf3-6ce5-b85f45e2594b",
+          "500929c1-7b15-5adb-071e-65b36ee9ccab",
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "operations": [
+          "0ea79207-daa6-55fe-9185-76e1c0281e54",
+          "3007a685-2b47-3bf3-6ce5-b85f45e2594b",
+          "500929c1-7b15-5adb-071e-65b36ee9ccab",
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "owned_body_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "production_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ],
+        "research_operation_ids": [
+          "0ea79207-daa6-55fe-9185-76e1c0281e54",
+          "3007a685-2b47-3bf3-6ce5-b85f45e2594b",
+          "500929c1-7b15-5adb-071e-65b36ee9ccab",
+          "f6b0a80d-24f7-626a-a23f-f86d489f4060"
+        ],
+        "research_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "research_slot_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "reservation_bodies": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000014"
+        ]
+      },
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "fleets": {},
+      "inventories": [
+        {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "count": 1,
+          "item": {
+            "id": "SmallCargo",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 1
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "count": 2,
+          "item": {
+            "id": "Recycler",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "count": 2,
+          "item": {
+            "id": "EspionageProbe",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "count": 2,
+          "item": {
+            "id": "SmallCargo",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "count": 2,
+          "item": {
+            "id": "Recycler",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        },
+        {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "count": 2,
+          "item": {
+            "id": "EspionageProbe",
+            "kind": "Ship"
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        }
+      ],
+      "players": {
+        "00000000-0000-0000-0000-000000000001": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        },
+        "00000000-0000-0000-0000-000000000015": {
+          "id": "00000000-0000-0000-0000-000000000015",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "production_settings": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "revision": 0,
+          "settings": {
+            "crystal_mine": 100,
+            "deuterium_synthesizer": 100,
+            "fusion_reactor": 100,
+            "metal_mine": 100,
+            "solar_plant": 100,
+            "solar_satellite": 100
+          }
+        },
+        "00000000-0000-0000-0000-000000000014": {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "revision": 0,
+          "settings": {
+            "crystal_mine": 100,
+            "deuterium_synthesizer": 100,
+            "fusion_reactor": 100,
+            "metal_mine": 100,
+            "solar_plant": 100,
+            "solar_satellite": 100
+          }
+        }
+      },
+      "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+      "progression_reservations": {
+        "00000000-0000-0000-0000-000000000002": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "field_operation": null,
+          "large_dome_operation": null,
+          "missile_slots": 0,
+          "revision": 2,
+          "small_dome_operation": null
+        },
+        "00000000-0000-0000-0000-000000000014": {
+          "body": "00000000-0000-0000-0000-000000000014",
+          "field_operation": null,
+          "large_dome_operation": null,
+          "missile_slots": 0,
+          "revision": 0,
+          "small_dome_operation": null
+        }
+      },
+      "reports": {},
+      "research": {
+        "00000000-0000-0000-0000-000000000001": {
+          "levels": {
+            "ArmourTechnology": 0,
+            "CombustionDrive": 0,
+            "ComputerTechnology": 0,
+            "EnergyTechnology": 0,
+            "EspionageTechnology": 0,
+            "ShieldingTechnology": 0,
+            "WeaponsTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        },
+        "00000000-0000-0000-0000-000000000015": {
+          "levels": {
+            "ArmourTechnology": 0,
+            "CombustionDrive": 0,
+            "ComputerTechnology": 0,
+            "EnergyTechnology": 0,
+            "EspionageTechnology": 0,
+            "ShieldingTechnology": 0,
+            "WeaponsTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000015",
+          "revision": 0
+        }
+      },
+      "universe": "00000000-0000-0000-0000-000000000003",
+      "world": {
+        "covered_coordinates": [
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            2
+          ],
+          [
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            1,
+            1,
+            5
+          ],
+          [
+            1,
+            1,
+            6
+          ],
+          [
+            1,
+            1,
+            7
+          ],
+          [
+            1,
+            1,
+            8
+          ],
+          [
+            1,
+            1,
+            9
+          ],
+          [
+            1,
+            1,
+            10
+          ],
+          [
+            1,
+            1,
+            11
+          ],
+          [
+            1,
+            1,
+            12
+          ],
+          [
+            1,
+            1,
+            13
+          ],
+          [
+            1,
+            1,
+            14
+          ],
+          [
+            1,
+            1,
+            15
+          ],
+          [
+            1,
+            2,
+            1
+          ],
+          [
+            1,
+            2,
+            2
+          ],
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            1,
+            2,
+            4
+          ],
+          [
+            1,
+            2,
+            5
+          ],
+          [
+            1,
+            2,
+            6
+          ],
+          [
+            1,
+            2,
+            7
+          ],
+          [
+            1,
+            2,
+            8
+          ],
+          [
+            1,
+            2,
+            9
+          ],
+          [
+            1,
+            2,
+            10
+          ],
+          [
+            1,
+            2,
+            11
+          ],
+          [
+            1,
+            2,
+            12
+          ],
+          [
+            1,
+            2,
+            13
+          ],
+          [
+            1,
+            2,
+            14
+          ],
+          [
+            1,
+            2,
+            15
+          ],
+          [
+            1,
+            3,
+            1
+          ],
+          [
+            1,
+            3,
+            2
+          ],
+          [
+            1,
+            3,
+            3
+          ],
+          [
+            1,
+            3,
+            4
+          ],
+          [
+            1,
+            3,
+            5
+          ],
+          [
+            1,
+            3,
+            6
+          ],
+          [
+            1,
+            3,
+            7
+          ],
+          [
+            1,
+            3,
+            8
+          ],
+          [
+            1,
+            3,
+            9
+          ],
+          [
+            1,
+            3,
+            10
+          ],
+          [
+            1,
+            3,
+            11
+          ],
+          [
+            1,
+            3,
+            12
+          ],
+          [
+            1,
+            3,
+            13
+          ],
+          [
+            1,
+            3,
+            14
+          ],
+          [
+            1,
+            3,
+            15
+          ],
+          [
+            1,
+            4,
+            1
+          ],
+          [
+            1,
+            4,
+            2
+          ],
+          [
+            1,
+            4,
+            3
+          ],
+          [
+            1,
+            4,
+            4
+          ],
+          [
+            1,
+            4,
+            5
+          ],
+          [
+            1,
+            4,
+            6
+          ],
+          [
+            1,
+            4,
+            7
+          ],
+          [
+            1,
+            4,
+            8
+          ],
+          [
+            1,
+            4,
+            9
+          ],
+          [
+            1,
+            4,
+            10
+          ],
+          [
+            1,
+            4,
+            11
+          ],
+          [
+            1,
+            4,
+            12
+          ],
+          [
+            1,
+            4,
+            13
+          ],
+          [
+            1,
+            4,
+            14
+          ],
+          [
+            1,
+            4,
+            15
+          ],
+          [
+            1,
+            5,
+            1
+          ],
+          [
+            1,
+            5,
+            2
+          ],
+          [
+            1,
+            5,
+            3
+          ],
+          [
+            1,
+            5,
+            4
+          ],
+          [
+            1,
+            5,
+            5
+          ],
+          [
+            1,
+            5,
+            6
+          ],
+          [
+            1,
+            5,
+            7
+          ],
+          [
+            1,
+            5,
+            8
+          ],
+          [
+            1,
+            5,
+            9
+          ],
+          [
+            1,
+            5,
+            10
+          ],
+          [
+            1,
+            5,
+            11
+          ],
+          [
+            1,
+            5,
+            12
+          ],
+          [
+            1,
+            5,
+            13
+          ],
+          [
+            1,
+            5,
+            14
+          ],
+          [
+            1,
+            5,
+            15
+          ]
+        ],
+        "covered_players": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "covered_reports": [],
+        "records": {
+          "activity": {
+            "00000000-0000-0000-0000-000000000002": {
+              "body": "00000000-0000-0000-0000-000000000002",
+              "cause": "Launch",
+              "input": "00000000-0000-0000-0000-00000000232a",
+              "last_signal_at": 55000
+            }
+          },
+          "debris": {},
+          "fleets": {
+            "2a4678a2-4b74-a270-4c8a-606e08d448fd": {
+              "authorization": {
+                "actor": "00000000-0000-0000-0000-000000000001",
+                "at": 55000,
+                "input": "00000000-0000-0000-0000-00000000232a",
+                "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "target_owner": "00000000-0000-0000-0000-000000000015"
+              },
+              "cargo": {
+                "crystal": 0,
+                "deuterium": 0,
+                "metal": 10000000
+              },
+              "destination_coordinates": {
+                "galaxy": 1,
+                "position": 9,
+                "system": 1
+              },
+              "due_at": 552000,
+              "generation": 0,
+              "id": "2a4678a2-4b74-a270-4c8a-606e08d448fd",
+              "intent": {
+                "cargo": {
+                  "crystal": "0",
+                  "deuterium": "0",
+                  "metal": "10000000"
+                },
+                "destination": {
+                  "expected_kind": "Planet",
+                  "expected_owner": "00000000-0000-0000-0000-000000000015",
+                  "id": "00000000-0000-0000-0000-000000000014",
+                  "type": "Body"
+                },
+                "mission": "Transport",
+                "origin": "00000000-0000-0000-0000-000000000002",
+                "ships": [
+                  {
+                    "count": "1",
+                    "owner": "00000000-0000-0000-0000-000000000001",
+                    "ship_type": "SmallCargo"
+                  }
+                ],
+                "speed_percent": 100
+              },
+              "launched_at": 55000,
+              "leg": "Outbound",
+              "origin_coordinates": {
+                "galaxy": 1,
+                "position": 8,
+                "system": 1
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "revision": 0,
+              "ships": [
+                {
+                  "count": 1,
+                  "owner": "00000000-0000-0000-0000-000000000001",
+                  "ship_type": "SmallCargo"
+                }
+              ],
+              "terms": {
+                "capacity": "5000000000",
+                "distance": 1005,
+                "duration_ms": 497000,
+                "fuel": "2000000",
+                "intent": {
+                  "cargo": {
+                    "crystal": "0",
+                    "deuterium": "0",
+                    "metal": "10000000"
+                  },
+                  "destination": {
+                    "expected_kind": "Planet",
+                    "expected_owner": "00000000-0000-0000-0000-000000000015",
+                    "id": "00000000-0000-0000-0000-000000000014",
+                    "type": "Body"
+                  },
+                  "mission": "Transport",
+                  "origin": "00000000-0000-0000-0000-000000000002",
+                  "ships": [
+                    {
+                      "count": "1",
+                      "owner": "00000000-0000-0000-0000-000000000001",
+                      "ship_type": "SmallCargo"
+                    }
+                  ],
+                  "speed_percent": 100
+                },
+                "maximum_payload": "4998000000",
+                "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "slot_limit": "1",
+                "speeds": [
+                  [
+                    "SmallCargo",
+                    "5000"
+                  ]
+                ],
+                "terms_hash": "743f1cccf7c87a4c3e88af61ea8b287f89281bf5478e4e5071ff75521059989c"
+              }
+            }
+          },
+          "lots": [
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 1,
+              "id": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+              "item": {
+                "id": "Recycler",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000002"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+              "unit_value_micro": 18000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 2,
+              "id": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+              "item": {
+                "id": "EspionageProbe",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000014"
+              },
+              "owner": "00000000-0000-0000-0000-000000000015",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+              "unit_value_micro": 1000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 0,
+              "id": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+              "item": {
+                "id": "SmallCargo",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000002"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 1,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+              "unit_value_micro": 4000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 0,
+              "id": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+              "item": {
+                "id": "SmallCargo",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Fleet": "2a4678a2-4b74-a270-4c8a-606e08d448fd"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 1,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+              "unit_value_micro": 4000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 2,
+              "id": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+              "item": {
+                "id": "EspionageProbe",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000002"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+              "unit_value_micro": 1000000000
+            },
+            {
+              "acquired_at": 55000,
+              "acquired_sequence": 9001,
+              "id": "a7a6386a-5f10-ca79-f5bc-a2329d15ea84",
+              "item": {
+                "id": "MetalStorage",
+                "kind": "Building"
+              },
+              "level": 1,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000002"
+              },
+              "owner": "00000000-0000-0000-0000-000000000001",
+              "quantity": 1,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+              "unit_value_micro": 1000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 1,
+              "id": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+              "item": {
+                "id": "Recycler",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000014"
+              },
+              "owner": "00000000-0000-0000-0000-000000000015",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+              "unit_value_micro": 18000000000
+            },
+            {
+              "acquired_at": 0,
+              "acquired_sequence": 0,
+              "id": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+              "item": {
+                "id": "SmallCargo",
+                "kind": "Ship"
+              },
+              "level": null,
+              "location": {
+                "Body": "00000000-0000-0000-0000-000000000014"
+              },
+              "owner": "00000000-0000-0000-0000-000000000015",
+              "quantity": 2,
+              "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "source_operation": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+              "unit_value_micro": 4000000000
+            }
+          ],
+          "policies": {
+            "00000000-0000-0000-0000-000000000001": {
+              "last_presence_at": 0,
+              "lifecycle": "Active",
+              "player": "00000000-0000-0000-0000-000000000001",
+              "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "revision": 0,
+              "vacation": false
+            },
+            "00000000-0000-0000-0000-000000000015": {
+              "last_presence_at": 0,
+              "lifecycle": "Active",
+              "player": "00000000-0000-0000-0000-000000000015",
+              "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "revision": 0,
+              "vacation": false
+            }
+          },
+          "presence": {
+            "00000000-0000-0000-0000-000000002328": {
+              "at": 1000,
+              "body": "00000000-0000-0000-0000-000000000002",
+              "gameplay": "00000000-0000-0000-0000-000000002328",
+              "player": "00000000-0000-0000-0000-000000000001",
+              "presence": "00000000-0000-0000-0000-000000004a38"
+            },
+            "00000000-0000-0000-0000-00000000232a": {
+              "at": 55000,
+              "body": "00000000-0000-0000-0000-000000000002",
+              "gameplay": "00000000-0000-0000-0000-00000000232a",
+              "player": "00000000-0000-0000-0000-000000000001",
+              "presence": "00000000-0000-0000-0000-000000004a3a"
+            }
+          },
+          "report_states": [],
+          "reports": {}
+        },
+        "requested_pair": null,
+        "revision": 0,
+        "secret": [
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7,
+          7
+        ]
+      }
+    },
+    "input": {
+      "actor": "Scheduler",
+      "at": 552000,
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "id": "00000000-0000-0000-0000-00000000232b",
+      "payload": {
+        "Event": {
+          "expected_leg": "Outbound",
+          "fleet": "2a4678a2-4b74-a270-4c8a-606e08d448fd",
+          "generation": 0,
+          "type": "FleetLegDue"
+        }
+      },
+      "phase": 0,
+      "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+      "protocol": 4,
+      "schema_version": 4,
+      "sequence": 9003,
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "outcome": {
+      "Applied": {
+        "affected_viewers": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000015"
+        ],
+        "bodies": [
+          {
+            "capacity": {
+              "crystal": 10000000000,
+              "deuterium": 10000000000,
+              "metal": 10000000000
+            },
+            "checkpoint": {
+              "amounts": {
+                "crystal": 10000000000,
+                "deuterium": 10000000000,
+                "metal": 10010000000
+              },
+              "at": 552000,
+              "carry": {
+                "crystal": 0,
+                "deuterium": 0,
+                "metal": 0
+              }
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 9,
+              "system": 1
+            },
+            "fields": 163,
+            "id": "00000000-0000-0000-0000-000000000014",
+            "kind": "Planet",
+            "levels": {
+              "CrystalMine": 0,
+              "CrystalStorage": 0,
+              "DeuteriumSynthesizer": 0,
+              "DeuteriumTank": 0,
+              "MetalMine": 0,
+              "MetalStorage": 0,
+              "ResearchLab": 0,
+              "RoboticsFactory": 0,
+              "Shipyard": 0,
+              "SolarPlant": 0
+            },
+            "max_temperature": 40,
+            "owner": "00000000-0000-0000-0000-000000000015",
+            "revision": 1,
+            "universe": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "cancelled_events": [],
+        "constructions": [],
+        "events": [
+          {
+            "at": 1049000,
+            "event": {
+              "expected_leg": "Returning",
+              "fleet": "2a4678a2-4b74-a270-4c8a-606e08d448fd",
+              "generation": 1,
+              "type": "FleetLegDue"
+            },
+            "id": "921fbc51-1784-46d2-3e0a-37db7683e9ea"
+          }
+        ],
+        "expected_collection_revisions": {
+          "constructions:00000000-0000-0000-0000-000000000002": 0,
+          "constructions:00000000-0000-0000-0000-000000000014": 0,
+          "fleets:00000000-0000-0000-0000-000000000001": 0,
+          "fleets:00000000-0000-0000-0000-000000000015": 0,
+          "inventory:00000000-0000-0000-0000-000000000002:00000000-0000-0000-0000-000000000001": 0,
+          "inventory:00000000-0000-0000-0000-000000000014:00000000-0000-0000-0000-000000000015": 0,
+          "lab-constructions:00000000-0000-0000-0000-000000000001": 0,
+          "lab-constructions:00000000-0000-0000-0000-000000000015": 0,
+          "manufacturing:00000000-0000-0000-0000-000000000002": 0,
+          "manufacturing:00000000-0000-0000-0000-000000000014": 0,
+          "owned-bodies:00000000-0000-0000-0000-000000000001": 0,
+          "owned-bodies:00000000-0000-0000-0000-000000000015": 0,
+          "production:00000000-0000-0000-0000-000000000002": 0,
+          "production:00000000-0000-0000-0000-000000000014": 0,
+          "progression-reservations:00000000-0000-0000-0000-000000000002": 0,
+          "progression-reservations:00000000-0000-0000-0000-000000000014": 0,
+          "research-operations:00000000-0000-0000-0000-000000000001": 0,
+          "research-operations:00000000-0000-0000-0000-000000000015": 0,
+          "research:00000000-0000-0000-0000-000000000001": 0,
+          "research:00000000-0000-0000-0000-000000000015": 0
+        },
+        "expected_facts_hash": "cf8b7c2f9ed73f046b210c2f41eccbaf27e441f772079b245203c413f0ecc640",
+        "fleets": [],
+        "input": "00000000-0000-0000-0000-00000000232b",
+        "inventories": [],
+        "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+        "reports": [],
+        "research": [],
+        "world": {
+          "audits": [
+            {
+              "at": 552000,
+              "cargo": {
+                "crystal": "0",
+                "deuterium": "0",
+                "metal": "10000000"
+              },
+              "fleet": "2a4678a2-4b74-a270-4c8a-606e08d448fd",
+              "input": "00000000-0000-0000-0000-00000000232b",
+              "kind": "TransportDeliveryEvidence",
+              "origin": "00000000-0000-0000-0000-000000000002",
+              "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+              "recipient": "00000000-0000-0000-0000-000000000015",
+              "recipient_score_value_micro": "46000000000",
+              "sender": "00000000-0000-0000-0000-000000000001",
+              "sender_score_value_micro": "47000000000",
+              "sequence": 9003,
+              "target": "00000000-0000-0000-0000-000000000014"
+            }
+          ],
+          "records": {
+            "activity": {
+              "00000000-0000-0000-0000-000000000002": {
+                "body": "00000000-0000-0000-0000-000000000002",
+                "cause": "Launch",
+                "input": "00000000-0000-0000-0000-00000000232a",
+                "last_signal_at": 55000
+              },
+              "00000000-0000-0000-0000-000000000014": {
+                "body": "00000000-0000-0000-0000-000000000014",
+                "cause": "Contact",
+                "input": "00000000-0000-0000-0000-00000000232b",
+                "last_signal_at": 552000
+              }
+            },
+            "debris": {},
+            "fleets": {
+              "2a4678a2-4b74-a270-4c8a-606e08d448fd": {
+                "authorization": {
+                  "actor": "00000000-0000-0000-0000-000000000001",
+                  "at": 55000,
+                  "input": "00000000-0000-0000-0000-00000000232a",
+                  "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                  "target_owner": "00000000-0000-0000-0000-000000000015"
+                },
+                "cargo": {
+                  "crystal": 0,
+                  "deuterium": 0,
+                  "metal": 0
+                },
+                "destination_coordinates": {
+                  "galaxy": 1,
+                  "position": 9,
+                  "system": 1
+                },
+                "due_at": 1049000,
+                "generation": 1,
+                "id": "2a4678a2-4b74-a270-4c8a-606e08d448fd",
+                "intent": {
+                  "cargo": {
+                    "crystal": "0",
+                    "deuterium": "0",
+                    "metal": "10000000"
+                  },
+                  "destination": {
+                    "expected_kind": "Planet",
+                    "expected_owner": "00000000-0000-0000-0000-000000000015",
+                    "id": "00000000-0000-0000-0000-000000000014",
+                    "type": "Body"
+                  },
+                  "mission": "Transport",
+                  "origin": "00000000-0000-0000-0000-000000000002",
+                  "ships": [
+                    {
+                      "count": "1",
+                      "owner": "00000000-0000-0000-0000-000000000001",
+                      "ship_type": "SmallCargo"
+                    }
+                  ],
+                  "speed_percent": 100
+                },
+                "launched_at": 55000,
+                "leg": "Returning",
+                "origin_coordinates": {
+                  "galaxy": 1,
+                  "position": 8,
+                  "system": 1
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "revision": 1,
+                "ships": [
+                  {
+                    "count": 1,
+                    "owner": "00000000-0000-0000-0000-000000000001",
+                    "ship_type": "SmallCargo"
+                  }
+                ],
+                "terms": {
+                  "capacity": "5000000000",
+                  "distance": 1005,
+                  "duration_ms": 497000,
+                  "fuel": "2000000",
+                  "intent": {
+                    "cargo": {
+                      "crystal": "0",
+                      "deuterium": "0",
+                      "metal": "10000000"
+                    },
+                    "destination": {
+                      "expected_kind": "Planet",
+                      "expected_owner": "00000000-0000-0000-0000-000000000015",
+                      "id": "00000000-0000-0000-0000-000000000014",
+                      "type": "Body"
+                    },
+                    "mission": "Transport",
+                    "origin": "00000000-0000-0000-0000-000000000002",
+                    "ships": [
+                      {
+                        "count": "1",
+                        "owner": "00000000-0000-0000-0000-000000000001",
+                        "ship_type": "SmallCargo"
+                      }
+                    ],
+                    "speed_percent": 100
+                  },
+                  "maximum_payload": "4998000000",
+                  "profile_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                  "slot_limit": "1",
+                  "speeds": [
+                    [
+                      "SmallCargo",
+                      "5000"
+                    ]
+                  ],
+                  "terms_hash": "743f1cccf7c87a4c3e88af61ea8b287f89281bf5478e4e5071ff75521059989c"
+                }
+              }
+            },
+            "lots": [
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 1,
+                "id": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+                "item": {
+                  "id": "Recycler",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "030b6a73-a825-96b4-7ade-52ed95a3fe63",
+                "unit_value_micro": 18000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 2,
+                "id": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+                "item": {
+                  "id": "EspionageProbe",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000014"
+                },
+                "owner": "00000000-0000-0000-0000-000000000015",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "2e98b838-d5b6-6295-c0bd-8c0d807787eb",
+                "unit_value_micro": 1000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 0,
+                "id": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 1,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+                "unit_value_micro": 4000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 0,
+                "id": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Fleet": "2a4678a2-4b74-a270-4c8a-606e08d448fd"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 1,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "5dd7e3cc-5370-dfa1-f2fa-9e62ee8f40b6",
+                "unit_value_micro": 4000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 2,
+                "id": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+                "item": {
+                  "id": "EspionageProbe",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "8c832883-f7b3-b117-93e5-d1a6b7fac0e1",
+                "unit_value_micro": 1000000000
+              },
+              {
+                "acquired_at": 55000,
+                "acquired_sequence": 9001,
+                "id": "a7a6386a-5f10-ca79-f5bc-a2329d15ea84",
+                "item": {
+                  "id": "MetalStorage",
+                  "kind": "Building"
+                },
+                "level": 1,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000002"
+                },
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "quantity": 1,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+                "unit_value_micro": 1000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 1,
+                "id": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+                "item": {
+                  "id": "Recycler",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000014"
+                },
+                "owner": "00000000-0000-0000-0000-000000000015",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "d0be7c88-91f7-f8ed-ac44-1e9d3f340acd",
+                "unit_value_micro": 18000000000
+              },
+              {
+                "acquired_at": 0,
+                "acquired_sequence": 0,
+                "id": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "level": null,
+                "location": {
+                  "Body": "00000000-0000-0000-0000-000000000014"
+                },
+                "owner": "00000000-0000-0000-0000-000000000015",
+                "quantity": 2,
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "source_operation": "d257a819-1d86-47d8-db44-7618e2b7dd67",
+                "unit_value_micro": 4000000000
+              }
+            ],
+            "policies": {
+              "00000000-0000-0000-0000-000000000001": {
+                "last_presence_at": 0,
+                "lifecycle": "Active",
+                "player": "00000000-0000-0000-0000-000000000001",
+                "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "revision": 0,
+                "vacation": false
+              },
+              "00000000-0000-0000-0000-000000000015": {
+                "last_presence_at": 0,
+                "lifecycle": "Active",
+                "player": "00000000-0000-0000-0000-000000000015",
+                "policy_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df",
+                "revision": 0,
+                "vacation": false
+              }
+            },
+            "presence": {
+              "00000000-0000-0000-0000-000000002328": {
+                "at": 1000,
+                "body": "00000000-0000-0000-0000-000000000002",
+                "gameplay": "00000000-0000-0000-0000-000000002328",
+                "player": "00000000-0000-0000-0000-000000000001",
+                "presence": "00000000-0000-0000-0000-000000004a38"
+              },
+              "00000000-0000-0000-0000-00000000232a": {
+                "at": 55000,
+                "body": "00000000-0000-0000-0000-000000000002",
+                "gameplay": "00000000-0000-0000-0000-00000000232a",
+                "player": "00000000-0000-0000-0000-000000000001",
+                "presence": "00000000-0000-0000-0000-000000004a3a"
+              }
+            },
+            "report_states": [],
+            "reports": {
+              "04aa8d19-e3c4-0c4e-0af5-4744af24a0e5": {
+                "at": 552000,
+                "event": "00000000-0000-0000-0000-00000000232b",
+                "fleet": "2a4678a2-4b74-a270-4c8a-606e08d448fd",
+                "id": "04aa8d19-e3c4-0c4e-0af5-4744af24a0e5",
+                "kind": "Delivered",
+                "payloads": {
+                  "00000000-0000-0000-0000-000000000001": {
+                    "at": 552000,
+                    "cargo": {
+                      "crystal": "0",
+                      "deuterium": "0",
+                      "metal": "10000000"
+                    },
+                    "kind": "Delivered",
+                    "origin": {
+                      "galaxy": 1,
+                      "position": 8,
+                      "system": 1
+                    },
+                    "recipient": "00000000-0000-0000-0000-000000000015",
+                    "sender": "00000000-0000-0000-0000-000000000001",
+                    "target": {
+                      "galaxy": 1,
+                      "position": 9,
+                      "system": 1
+                    }
+                  },
+                  "00000000-0000-0000-0000-000000000015": {
+                    "at": 552000,
+                    "cargo": {
+                      "crystal": "0",
+                      "deuterium": "0",
+                      "metal": "10000000"
+                    },
+                    "kind": "Delivered",
+                    "origin": {
+                      "galaxy": 1,
+                      "position": 8,
+                      "system": 1
+                    },
+                    "recipient": "00000000-0000-0000-0000-000000000015",
+                    "sender": "00000000-0000-0000-0000-000000000001",
+                    "target": {
+                      "galaxy": 1,
+                      "position": 9,
+                      "system": 1
+                    }
+                  }
+                },
+                "rules_hash": "02e1d2161d93f5d858de2f07d60e1d2e5891ecb9a1553c78ecfdd80ab27957df"
+              }
+            }
+          },
+          "score_deltas": []
+        }
+      }
+    }
+  },
+  {
+    "facts": {
+      "bodies": {
+        "00000000-0000-0000-0000-000000000002": {
+          "capacity": {
+            "crystal": 6789000000,
+            "deuterium": 4321000000,
+            "metal": 12345000000
+          },
+          "checkpoint": {
+            "amounts": {
+              "crystal": 1000000000,
+              "deuterium": 1000000000,
+              "metal": 1000000000
+            },
+            "at": 0,
+            "carry": {
+              "crystal": 0,
+              "deuterium": 0,
+              "metal": 0
+            }
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 1
+          },
+          "fields": 163,
+          "id": "00000000-0000-0000-0000-000000000002",
+          "kind": "Planet",
+          "levels": {
+            "CrystalMine": 1,
+            "DeuteriumSynthesizer": 0,
+            "MetalMine": 1,
+            "SolarPlant": 2
+          },
+          "max_temperature": 40,
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0,
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "collection_revisions": {},
+      "constructions": {},
+      "coverage": {
+        "bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "construction_bodies": [
+          "00000000-0000-0000-0000-000000000002"
+        ],
+        "fleet_ids": [],
+        "fleet_owners": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "inventory_owners": [
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000001"
+          ]
+        ],
+        "operations": [],
+        "research_players": [
+          "00000000-0000-0000-0000-000000000001"
+        ]
+      },
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "fleets": {},
+      "inventories": [],
+      "players": {
+        "00000000-0000-0000-0000-000000000001": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "universe": "00000000-0000-0000-0000-000000000003"
+        }
+      },
+      "profile_hash": "0c7f61a79b714b3a67d9cc062f5baba29adf2bcdf347bb05a739dc987f1304cc",
+      "reports": {},
+      "research": {
+        "00000000-0000-0000-0000-000000000001": {
+          "levels": {
+            "CombustionDrive": 1,
+            "ComputerTechnology": 0
+          },
+          "owner": "00000000-0000-0000-0000-000000000001",
+          "revision": 0
+        }
+      },
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "input": {
+      "actor": {
+        "Player": "00000000-0000-0000-0000-000000000001"
+      },
+      "at": 17,
+      "epoch": "00000000-0000-0000-0000-000000000004",
+      "id": "00000000-0000-0000-0000-000000002328",
+      "payload": {
+        "Command": {
+          "body": "00000000-0000-0000-0000-000000000002",
+          "building": "MetalMine",
+          "expected_terms_hash": "612eadc68b320d9cb6115b866a7cb4d28aa99a892613f01ae4204b728e112f2a",
+          "type": "StartUpgrade"
+        }
+      },
+      "phase": 1,
+      "profile_hash": "0c7f61a79b714b3a67d9cc062f5baba29adf2bcdf347bb05a739dc987f1304cc",
+      "protocol": 1,
+      "schema_version": 2,
+      "sequence": 9000,
+      "universe": "00000000-0000-0000-0000-000000000003"
+    },
+    "outcome": {
+      "Applied": {
+        "affected_viewers": [
+          "00000000-0000-0000-0000-000000000001"
+        ],
+        "bodies": [
+          {
+            "capacity": {
+              "crystal": 6789000000,
+              "deuterium": 4321000000,
+              "metal": 12345000000
+            },
+            "checkpoint": {
+              "amounts": {
+                "crystal": 978000174,
+                "deuterium": 1000000000,
+                "metal": 910000297
+              },
+              "at": 17,
+              "carry": {
+                "crystal": 2600000,
+                "deuterium": 0,
+                "metal": 1800000
+              }
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 8,
+              "system": 1
+            },
+            "fields": 163,
+            "id": "00000000-0000-0000-0000-000000000002",
+            "kind": "Planet",
+            "levels": {
+              "CrystalMine": 1,
+              "DeuteriumSynthesizer": 0,
+              "MetalMine": 1,
+              "SolarPlant": 2
+            },
+            "max_temperature": 40,
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "revision": 1,
+            "universe": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "cancelled_events": [],
+        "constructions": [
+          {
+            "body": "00000000-0000-0000-0000-000000000002",
+            "building": "MetalMine",
+            "due_at": 161017,
+            "generation": 0,
+            "id": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "paid": {
+              "crystal": 22000000,
+              "deuterium": 0,
+              "metal": 90000000
+            },
+            "profile_hash": "0c7f61a79b714b3a67d9cc062f5baba29adf2bcdf347bb05a739dc987f1304cc",
+            "revision": 0,
+            "started_at": 17,
+            "status": "Active",
+            "target_level": 2,
+            "terms_hash": "612eadc68b320d9cb6115b866a7cb4d28aa99a892613f01ae4204b728e112f2a"
+          }
+        ],
+        "events": [
+          {
+            "at": 161017,
+            "event": {
+              "generation": 0,
+              "operation": "f6b0a80d-24f7-626a-a23f-f86d489f4060",
+              "type": "ConstructionDue"
+            },
+            "id": "ea24951b-cd9a-be22-81da-7e89b082a2c7"
+          }
+        ],
+        "expected_collection_revisions": {},
+        "expected_facts_hash": "f232ab37dd3aeb1a52df6a1ad25819251c55aa70d6308f87829e632c914cba7f",
+        "fleets": [],
+        "input": "00000000-0000-0000-0000-000000002328",
+        "inventories": [],
+        "profile_hash": "0c7f61a79b714b3a67d9cc062f5baba29adf2bcdf347bb05a739dc987f1304cc",
+        "reports": [],
+        "research": []
+      }
+    }
+  }
+]

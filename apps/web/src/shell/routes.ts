@@ -1,0 +1,101 @@
+import type { BoundView } from '../client-model/commands'
+export type Page =
+  | 'overview'
+  | 'resources'
+  | 'facilities'
+  | 'research'
+  | 'shipyard'
+  | 'defense'
+  | 'settings'
+  | 'fleets'
+  | 'dispatch'
+  | 'reports'
+  | 'galaxy'
+export type Destination = {
+  universe?: string
+  page: Page | null
+  body?: string
+  item?: string
+}
+export type Route = {
+  page: Page
+  body: string | null
+  item: string | null
+  available: boolean
+  reason: string
+}
+export const bodyPages: Page[] = [
+  'overview',
+  'resources',
+  'facilities',
+  'shipyard',
+  'defense',
+]
+export function validateBodySearch(search: Record<string, unknown>): {
+  body?: string
+} {
+  if (search.body === undefined) return {}
+  if (typeof search.body !== 'string' || !search.body.trim())
+    throw new Error('This address contains an invalid funding planet.')
+  return { body: search.body }
+}
+// These are domain checks against confirmed state. TanStack owns URL matching.
+export function resolveDestination(
+  destination: Destination,
+  view: BoundView,
+): Route {
+  const unavailable = (reason: string): Route => ({
+    page: 'overview',
+    body: null,
+    item: null,
+    available: false,
+    reason,
+  })
+  if (destination.universe !== view.binding.universe)
+    return unavailable(
+      'This universe is unavailable. Choose your current universe below.',
+    )
+  const { page, item } = destination
+  if (!page)
+    return unavailable('This destination is not available in this universe.')
+  if (!destination.body && bodyPages.includes(page) && page !== 'overview')
+    return unavailable('This destination requires an accessible planet.')
+  const body = destination.body ?? view.bodies[0]?.id ?? null
+  if (destination.body && !view.bodies.some((b) => b.id === destination.body))
+    return unavailable(
+      'Planet unavailable. This address does not identify a planet you can access.',
+    )
+  if (page === 'facilities' && view.protocol === 2)
+    return unavailable('This destination requires supported facilities.')
+  const capability =
+    page === 'galaxy'
+      ? 'Galaxy'
+      : page === 'research'
+        ? 'Research'
+        : ['shipyard', 'defense'].includes(page)
+          ? 'Manufacturing'
+          : ['fleets', 'dispatch', 'reports'].includes(page)
+            ? 'Transport'
+            : null
+  if (
+    capability &&
+    !view.capabilities.some((c) => c.capability === capability && c.enabled)
+  )
+    return unavailable('This destination is not available in this universe.')
+  if (
+    item &&
+    !(view.protocol === 4
+      ? page === 'reports'
+        ? /^[0-9a-f-]{36}$/.test(item)
+        : view.missions.fleets.some((f) => f.id === item)
+      : (page === 'fleets' ? view.fleets : view.reports).some(
+          (x) => x.id === item,
+        ))
+  )
+    return unavailable(
+      'This item is unavailable or outside the current authorized view.',
+    )
+  if (!body && page !== 'settings')
+    return unavailable('No planet is available for this membership.')
+  return { page, body, item: item ?? null, available: true, reason: '' }
+}

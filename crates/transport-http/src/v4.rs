@@ -1,0 +1,226 @@
+use super::*;
+use axum::extract::Query;
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct Discovery {
+    pub(super) request_id: uuid::Uuid,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ReceiptQuery {
+    pub(super) epoch: Epoch,
+}
+pub(super) fn principal(
+    session: &AuthenticatedSession,
+    u: UniverseId,
+) -> Result<Principal, Problem> {
+    let Actor::Player(player) = player_for(session, u)? else {
+        return Err(ServiceError::NotFound.into());
+    };
+    Ok(Principal {
+        account: session.account,
+        player,
+        universe: u,
+    })
+}
+pub(super) fn path_binding(u: UniverseId, b: Binding) -> Result<(), Problem> {
+    if u != b.universe {
+        return Err(ServiceError::NotFound.into());
+    }
+    Ok(())
+}
+pub(super) fn response<T: serde::Serialize>(value: T) -> Response {
+    ([(header::CACHE_CONTROL, "no-store")], Json(value)).into_response()
+}
+pub(super) async fn binding<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    q: Result<Query<Discovery>, axum::extract::rejection::QueryRejection>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, false).await?;
+    let Query(q) = q.map_err(|_| ServiceError::Malformed)?;
+    s.game
+        .require_protocol(session.account, UniverseId(id), 4)
+        .await?;
+    Ok(response(
+        s.game
+            .current_binding(session.account, UniverseId(id), q.request_id)
+            .await?,
+    ))
+}
+pub(super) async fn overview<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(c): ApiJson<QueryContext>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, c.binding)?;
+    Ok(super::snapshot_response(
+        &h,
+        s.game.world_view(principal(&session, u)?, c).await?,
+    ))
+}
+pub(super) async fn quotes<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(q): ApiJson<QuoteQuery3>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, q.context.binding)?;
+    Ok(super::snapshot_response(
+        &h,
+        s.game
+            .progression_quote(principal(&session, u)?, q.context, q.request)
+            .await?,
+    ))
+}
+pub(super) async fn commands<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(e): ApiJson<ForegroundAction>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, e.gameplay.binding)?;
+    let r = s.game.world_submit(principal(&session, u)?, e).await?;
+    if let Some(wake) = &s.config.wake {
+        wake.notify_one();
+    }
+    Ok((StatusCode::ACCEPTED, response(r)).into_response())
+}
+pub(super) async fn receipt<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path((id, command)): Path<(uuid::Uuid, uuid::Uuid)>,
+    q: Result<Query<ReceiptQuery>, axum::extract::rejection::QueryRejection>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, false).await?;
+    let Query(q) = q.map_err(|_| ServiceError::Malformed)?;
+    s.game
+        .require_protocol(session.account, UniverseId(id), 4)
+        .await?;
+    let p = principal(&session, UniverseId(id))?;
+    Ok(response(
+        s.game
+            .bound_receipt(
+                p,
+                Binding {
+                    account: p.account,
+                    player: p.player,
+                    universe: p.universe,
+                    epoch: q.epoch,
+                },
+                CommandId(command),
+            )
+            .await?,
+    ))
+}
+
+pub(super) async fn settings<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(c): ApiJson<QueryContext>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, c.binding)?;
+    Ok(response(
+        s.game.bound_settings(principal(&session, u)?, c).await?,
+    ))
+}
+pub(super) async fn options<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(q): ApiJson<QuoteQuery3>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, q.context.binding)?;
+    if matches!(q.request.clone().domain()?, QuoteRequest::Transport { .. }) {
+        return Err(ServiceError::Malformed.into());
+    }
+    Ok(super::snapshot_response(
+        &h,
+        s.game
+            .progression_options(principal(&session, u)?, q.context, q.request)
+            .await?,
+    ))
+}
+
+pub(super) async fn query<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(q): ApiJson<WorldQuery>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, q.context.binding)?;
+    Ok(super::snapshot_response(
+        &h,
+        s.game.world_query(principal(&session, u)?, q).await?,
+    ))
+}
+pub(super) async fn reports<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(q): ApiJson<ReportsQuery4>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, q.context.binding)?;
+    Ok(super::snapshot_response(
+        &h,
+        s.game.reports4(principal(&session, u)?, q).await?,
+    ))
+}
+pub(super) async fn report<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path((id, report)): Path<(uuid::Uuid, uuid::Uuid)>,
+    ApiJson(c): ApiJson<QueryContext>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, c.binding)?;
+    Ok(super::snapshot_response(
+        &h,
+        s.game
+            .report4(principal(&session, u)?, c, ReportId(report))
+            .await?,
+    ))
+}
+
+pub(super) async fn presence<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(e): ApiJson<CommandEnvelopeV4>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, e.binding)?;
+    let r = s.game.world_presence(principal(&session, u)?, e).await?;
+    if let Some(wake) = &s.config.wake {
+        wake.notify_one();
+    }
+    Ok((StatusCode::ACCEPTED, response(r)).into_response())
+}
