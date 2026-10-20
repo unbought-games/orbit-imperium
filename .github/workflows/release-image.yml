@@ -1,0 +1,110 @@
+name: Release image
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-image-main
+  cancel-in-progress: false
+
+jobs:
+  trusted:
+    if: >-
+      github.repository_id == '1427640162' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.id == 1427640162
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.verify.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify successful CI for current main
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-gate.mjs
+
+  publish:
+    needs: trusted
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_PUBLISH_ROLE_ARN: ${{ vars.AWS_PUBLISH_ROLE_ARN }}
+      ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+      ORBIT_RELEASE_SHA: ${{ needs.trusted.outputs.sha }}
+      ORBIT_RELEASE_IMAGE: orbit-release:${{ needs.trusted.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.trusted.outputs.sha }}
+          persist-credentials: false
+      - name: Check release configuration and checkout
+        run: |
+          test "$(git rev-parse HEAD)" = "$ORBIT_RELEASE_SHA"
+          test "$AWS_REGION" = us-east-2
+          [[ "$AWS_PUBLISH_ROLE_ARN" =~ ^arn:aws:iam::888782969020:role/.+ ]]
+          [[ "$ECR_REPOSITORY_URL" =~ ^888782969020\.dkr\.ecr\.us-east-2\.amazonaws\.com/[a-z0-9][a-z0-9/_-]*$ ]]
+      - name: Build release once
+        run: make release-image
+      - name: Inspect source and notices in the built image
+        run: make inspect-release-image
+      - name: Recheck main and CI before obtaining AWS credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-gate.mjs
+      - name: Assume scoped publication role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ vars.AWS_PUBLISH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: '888782969020'
+          role-session-name: orbit-image-${{ github.run_id }}-${{ github.run_attempt }}
+          role-duration-seconds: 900
+          unset-current-credentials: true
+      - name: Publish immutable image and record digest
+        env:
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          CI_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: |
+          registry="${ECR_REPOSITORY_URL%%/*}"
+          repository="${ECR_REPOSITORY_URL#*/}"
+          tag="sha-${ORBIT_RELEASE_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          export DOCKER_CONFIG="$RUNNER_TEMP/release-docker"
+          mkdir -p "$DOCKER_CONFIG"
+          trap 'docker logout "$registry"; rm -rf "$DOCKER_CONFIG"' EXIT
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$registry"
+          docker tag "$ORBIT_RELEASE_IMAGE" "$ECR_REPOSITORY_URL:$tag"
+          docker push "$ECR_REPOSITORY_URL:$tag"
+          digest=$(aws ecr describe-images --repository-name "$repository" --image-ids "imageTag=$tag" --query 'imageDetails[0].imageDigest' --output text)
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          jq -n --arg commit "$ORBIT_RELEASE_SHA" --arg image "$ECR_REPOSITORY_URL@$digest" \
+            --arg tag "$tag" --arg ci_run "$CI_RUN_ID" --arg ci_attempt "$CI_RUN_ATTEMPT" \
+            --arg release_run "$GITHUB_RUN_ID" --arg release_attempt "$GITHUB_RUN_ATTEMPT" \
+            '{commit: $commit, image: $image, tag: $tag, platform: "linux/amd64", ci_run: $ci_run, ci_attempt: $ci_attempt, release_run: $release_run, release_attempt: $release_attempt}' > release-image.json
+          cat release-image.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Save commit and digest record
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-image-${{ needs.trusted.outputs.sha }}-${{ github.run_attempt }}
+          path: release-image.json
+          if-no-files-found: error
+          retention-days: 90

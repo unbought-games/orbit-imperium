@@ -24,20 +24,18 @@ Fixture browsers use at most three workers, bounded by available CPUs. Responsiv
 catalog checks keep routes mounted across viewport changes to avoid redundant
 application startup while retaining every viewport and control assertion.
 
-## Required access changes before public release
+## Public repository runner isolation
 
-Workflow migration does not remove runner registrations. As verified on
-October 20, 2026, `mini-orbit-imperium` and `mini-orbit-imperium-2` are still
-registered. Disconnecting them and excluding this repository from shared runner
-groups is the next operational step, before publication. This PR changes workflow
-routing only; it does not establish that the repository is safe to publish.
+The public repository has no registered self-hosted runners, verified on
+October 20, 2026. Keep it excluded from organization runner groups that expose
+persistent hosts. Workflow routing alone does not enforce that isolation.
 
-Do not register persistent self-hosted runners with this repository, even while
-it is private. A PR can change workflow routing; labels, read-only tokens, and
+Do not register persistent self-hosted runners with this repository.
+A PR can change workflow routing; labels, read-only tokens, and
 workflow conditions do not protect a host that is available to the repository.
 See GitHub's [self-hosted runner security guidance](https://docs.github.com/en/actions/reference/security/secure-use#hardening-for-self-hosted-runners).
 
-Before publication, the repository runner list must be empty:
+The repository runner list must remain empty:
 
 ```sh
 gh api repos/unbought-games/orbit-imperium/actions/runners \
@@ -83,9 +81,14 @@ The test starts two databases concurrently, checks their distinct loopback ports
 and credentials, and verifies that removing one leaves the other operational.
 The container CI job runs this test automatically.
 
-After the access changes, older workflow revisions targeting the macOS pool can
-remain queued. Run the updated workflow revision to use GitHub-hosted machines;
-do not reconnect the old pool to service those revisions.
+Do not reconnect an old runner pool to service stale workflow revisions.
+
+## Image publication
+
+The [release image workflow](../../.github/workflows/release-image.yml) uses
+separate trusted-main gates and short-lived AWS OIDC credentials. See the
+[image release contract](../operations/image-releases.md) for the CI identity,
+repository variables, packaged-source inspection and immutable digest records.
 
 ## Explicit validation
 

@@ -105,6 +105,15 @@ build-universe-final:
 build-universe-bridge:
 	cargo build --locked --release -p orbit-server --features universe-config-bridge --target-dir target/universe-bridge
 
+# Artifact inspection only; full-system/container acceptance remains explicit.
+.PHONY: release-image inspect-release-image
+release-image:
+	test -n "$(ORBIT_RELEASE_IMAGE)" && test -n "$(ORBIT_RELEASE_SHA)"
+	docker build --platform linux/amd64 --label "org.opencontainers.image.revision=$(ORBIT_RELEASE_SHA)" --label "org.opencontainers.image.source=https://github.com/unbought-games/orbit-imperium" -t "$(ORBIT_RELEASE_IMAGE)" .
+
+inspect-release-image:
+	node scripts/inspect-release-image.mjs
+
 dev: db-up
 	cargo build -p orbit-server
 	npm run build
