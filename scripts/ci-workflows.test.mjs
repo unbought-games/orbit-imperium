@@ -28,7 +28,8 @@ test('browser jobs install Linux system dependencies on fresh runners', () => {
     const browserJobs = Object.values(workflow.jobs).filter((job) =>
       job.steps.some((step) => /make test-(ui|explicit)/.test(step.run ?? '')),
     )
-    assert.ok(browserJobs.length > 0, file)
+    if (file === 'ci.yml' || file === 'explicit-tests.yml')
+      assert.ok(browserJobs.length > 0, file)
     for (const job of browserJobs) {
       assert.ok(
         job.steps.some((step) =>

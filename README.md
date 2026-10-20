@@ -88,6 +88,10 @@ After disposable database setup, use `make test-explicit SUITE=signup` for signu
 
 ## Deployment
 
+Trusted `main` revisions publish one API/worker image to private ECR after CI
+passes. The [image release contract](docs/operations/image-releases.md) describes
+OIDC setup, packaged source and notice inspection, and the commit/digest record.
+
 Production requires PostgreSQL, a `DATABASE_URL`, an `ORBIT_ORIGIN` matching the public URL, and HTTPS. See the [production setup guide](docs/operations/signup.md) for build commands and configuration, and the [operator runbook](docs/runbooks/development-server.md) for deployment and database maintenance.
 
 For Fly.io deployments:
