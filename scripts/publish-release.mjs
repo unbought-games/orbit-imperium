@@ -11,7 +11,8 @@ const descriptor=JSON.parse(readFileSync('docs/news/release.json','utf8'))
 const {version,preparedFrom}=descriptor
 if(!versionPattern.test(version)||!/^[a-f0-9]{40}$/.test(preparedFrom))throw new Error('Invalid release descriptor')
 const tag='v'+version,sha=git('rev-parse','HEAD')
-git('merge-base','--is-ancestor',preparedFrom,sha)
+// preparedFrom is an editorial snapshot, not an ancestry gate: squash-merging
+// a release PR does not retain its branch commits as ancestors of the release.
 const metadata=JSON.parse(readFileSync('package.json','utf8'))
 if(metadata.version!==version||!readFileSync('Cargo.toml','utf8').includes(`version = "${version}"`))throw new Error('Package versions disagree')
 const note=readNote(readFileSync(`docs/news/releases/${tag}.md`,'utf8'))

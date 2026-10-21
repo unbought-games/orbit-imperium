@@ -14,7 +14,9 @@ test('publication tags the prepared commit, retries idempotently, and rejects a 
     writeFileSync(join(repo,'package.json'),JSON.stringify({version:'0.1.0'}));writeFileSync(join(repo,'Cargo.toml'),'[workspace.package]\nversion = "0.1.0"\n')
     git('add','.');git('commit','-qm','feat: game');const base=git('rev-parse','HEAD')
     mkdirSync(join(repo,'docs/news/releases'),{recursive:true})
-    writeFileSync(join(repo,'docs/news/release.json'),JSON.stringify({version:'0.1.0',preparedFrom:base}))
+    // A preparation snapshot can be a branch commit dropped by squash merge.
+    const snapshot=execFileSync('git',['-C',repo,'commit-tree',git('rev-parse',base+'^{tree}'),'-p',base],{input:'editorial snapshot\n',encoding:'utf8'}).trim()
+    writeFileSync(join(repo,'docs/news/release.json'),JSON.stringify({version:'0.1.0',preparedFrom:snapshot}))
     writeFileSync(join(repo,'docs/news/releases/v0.1.0.md'),"---\nid: orbit-v0-1-0\ntitle: First release\ndate: '2026-10-21T12:00:00Z'\nversion: 0.1.0\nkind: release\n---\nPrepared editorial")
     git('add','.');git('commit','-qm','chore(release): prepare 0.1.0');const sha=git('rev-parse','HEAD');git('push','-q','origin','HEAD:main')
     writeFileSync(join(bin,'gh'),`#!/usr/bin/env node\nconst {execFileSync}=require('node:child_process');const args=process.argv.slice(2);const ref=args.find(a=>a.startsWith('ref=')).slice(4);const sha=args.find(a=>a.startsWith('sha=')).slice(4);execFileSync('git',['--git-dir',process.env.FIXTURE_REMOTE,'update-ref',ref,sha]);`,{mode:0o755})
