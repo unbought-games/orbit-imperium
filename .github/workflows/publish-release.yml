@@ -104,7 +104,8 @@ jobs:
           repository: unbought-games/www
           ref: main
           path: website
-          token: ${{ secrets.WWW_PUBLISH_TOKEN }}
+          ssh-key: ${{ secrets.WWW_PUBLISH_KEY }}
+          token: ${{ secrets.WWW_PUBLISH_TOKEN || github.token }}
       - name: Publish the release announcement on www
         if: steps.select.outputs.release == 'true'
         env:

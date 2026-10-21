@@ -59,7 +59,9 @@ pages describe the installed build, not the official server's deployment history
 
 ## Website integration
 
-`WWW_PUBLISH_TOKEN` is a fine-grained token limited to Contents read/write on `unbought-games/www`. Only the
+`WWW_PUBLISH_KEY` is a write deploy key limited to `unbought-games/www`.
+If organization policy disallows deploy keys, `WWW_PUBLISH_TOKEN` can instead hold
+a fine-grained token limited to Contents read/write on that repository. Only the
 trusted release workflow receives it, after the GitHub release has published. It
 commits an immutable publication record containing the version tag, commit, and
 GitHub publication timestamp. That push starts the normal website build and deployment.
