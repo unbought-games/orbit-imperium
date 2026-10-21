@@ -41,6 +41,7 @@ async function nextUpdate(stream) {
   }
 }
 async function scenario(crashIndex = null, stage = null, overlap = false) {
+  const began = performance.now(); let preparedAt, cleanupAt
   const database = `orbit_recovery_${randomBytes(6).toString('hex')}`, universe = randomUUID()
   const passwords = [randomUUID(), randomUUID()]
   const secret = `${process.env.ORBIT_TEST_SECRET_DIR ?? '.secrets'}/${database}`
@@ -88,16 +89,20 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
       }, `${role} readiness`)
       return process
     }
-    api = await start('api', apiLease)
-    worker = await start('worker', workerLease)
-    if (overlap) { peer = await start('api', peerLease); peerWorker = await start('worker', peerWorkerLease) }
+    // Roles have independent ports/pools; await every startup before proceeding.
+    const starts = await Promise.allSettled([
+      start('api', apiLease), start('worker', workerLease),
+      ...(overlap ? [start('api', peerLease), start('worker', peerWorkerLease)] : []),
+    ])
+    for (const result of starts) if (result.status === 'rejected') throw result.reason
     const login = async (name, password) => {
       const response = await fetch(base + '/api/v1/session', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({ name, password }) })
       assert.equal(response.status, 200)
       const session = await response.json()
       return { session, headers: { Origin: base, 'Content-Type': 'application/json', Cookie: response.headers.get('set-cookie').split(';')[0], 'X-CSRF-Token': session.csrf } }
     }
-    const a = await login('alpha', passwords[0]), b = await login('beta', passwords[1])
+    const [a, b] = await Promise.all([login('alpha', passwords[0]), login('beta', passwords[1])])
+    preparedAt = performance.now()
     const getView = async (auth, endpoint = base) => {
       const discovery = await fetch(`${endpoint}/api/v2/universes/${universe}/binding?request_id=${randomUUID()}`, { headers: auth.headers })
       assert.equal(discovery.status, 200)
@@ -193,14 +198,24 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
     assert.deepEqual(counts, { pending_commands: '0', pending_events: '0', journal: String(8 + extra) })
     console.log(`PASS ${overlap ? 'separate redundant API/workers, paused work and stream replay' : crashIndex === null ? 'scoped baseline' : `${stage} worker kill at transition ${crashIndex + 1}`} — exact balances, ships, reports and journal`)
   } finally {
+    cleanupAt = performance.now()
     await cleanupAll([
       () => stream?.reader.cancel(), () => replay?.reader.cancel(),
       () => db?.query('SELECT pg_advisory_unlock(901322)'),
-      () => stop(peerWorker, peerWorkerLease), () => stop(worker, workerLease),
-      () => stop(peer, peerLease), () => stop(api, apiLease), () => db?.end(),
+      async () => {
+        // Drain independent processes together, but settle every stop before DB cleanup.
+        const stopped = await Promise.allSettled([
+          stop(peerWorker, peerWorkerLease), stop(worker, workerLease),
+          stop(peer, peerLease), stop(api, apiLease),
+        ])
+        const failures = stopped.filter(result => result.status === 'rejected').map(result => result.reason)
+        if (failures.length) throw new AggregateError(failures, 'Recovery process cleanup failed')
+      },
+      () => db?.end(),
       () => admin.query(`DROP DATABASE ${database} WITH (FORCE)`),
       () => { try { unlinkSync(secret) } catch (error) { if (error.code !== 'ENOENT') throw error } },
     ])
+    console.log(`TIMING recovery setup=${((preparedAt-began)/1000).toFixed(2)}s scenario=${((cleanupAt-preparedAt)/1000).toFixed(2)}s cleanup=${((performance.now()-cleanupAt)/1000).toFixed(2)}s`)
   }
 }
 try {

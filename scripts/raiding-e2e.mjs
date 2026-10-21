@@ -40,7 +40,12 @@ try {
  const discover=async(auth)=>valid('BindingCandidate4',await(await fetch(`${base}/api/v4/universes/${u}/binding?request_id=${randomUUID()}`,{headers:auth.headers})).json()).binding;
  let ab=await discover(a),bb=await discover(b),context=binding=>({binding,request_id:randomUUID()});
  const view=async(auth=a,binding=ab)=>{const res=await post(auth,'overview',context(binding));if(res.status===503)return null;assert.equal(res.status,200);return valid('BoundView4',await res.json())};
- const fresh=()=>until(()=>view(),'view');
+ // HTTP 200 is a committed snapshot, not a scheduler catch-up barrier.
+ // Wait for this fixture's due work before inspecting its resulting projection.
+ const fresh=()=>until(async()=>{
+  const pending=await client.query('SELECT EXISTS(SELECT 1 FROM scheduled_events WHERE universe=$1 AND at_ms<=$2 AND NOT done AND NOT cancelled) AS pending',[u,at]);
+  return !pending.rows[0].pending && await view();
+ },'settled view');
  const initial=await fresh();let body=initial.bodies[0].id;
  assert.equal(initial.bodies.length,1);assert.equal(Object.keys(initial.bodies[0].levels).length,10);assert.ok(Object.values(initial.bodies[0].levels).every(x=>x===0));assert.ok(initial.research.every(x=>x.level===0));assert.deepEqual(initial.bodies[0].amounts,{metal:'1000000000',crystal:'1000000000',deuterium:'0'});assert.deepEqual(initial.bodies[0].inventories,[]);assert.ok(!('production' in initial.bodies[0]));
  assert.equal((await post(a,'overview',context(ab),2)).status,426);

@@ -103,13 +103,21 @@ async function rollingUpgrade() {
   const upgraded = resolve(process.env.ORBIT_CURRENT_SERVER ?? 'target/migration-upgrade/debug/orbit');
   const firstEnv = environment(`${url}?application_name=migration-first`,await port());
   const first = launch(firstEnv, upgraded);
+  // Serving pools assign workload names, overriding URL application_name.
+  // Capture the actual backend at the unique fixture gate, then follow its PID.
+  let firstPid, secondPid;
   await until(async()=>{
     if(first.exited)throw new Error(first.stderr);
-    return (await db.query("SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.application_name='migration-first' AND l.locktype='advisory' AND l.objid=901324 AND NOT l.granted) AS waiting")).rows[0].waiting;
+    firstPid=(await db.query("SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND application_name='orbit-control' AND wait_event='PgSleep' AND query LIKE '%901324%'")).rows[0]?.pid;
+    return !!firstPid;
   },'first upgrade waiting at transactional barrier');
   const secondEnv = environment(`${url}?application_name=migration-second`,await port());
   const second = launch(secondEnv, upgraded);
-  await until(async()=> (await db.query("SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.application_name='migration-second' AND l.locktype='advisory' AND NOT l.granted) AS waiting")).rows[0].waiting,'second upgrade waiting for migration lock');
+  await until(async()=> {
+    if(second.exited)throw new Error(second.stderr);
+    secondPid=(await db.query("SELECT a.pid FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.application_name='orbit-control' AND a.pid<>$1 AND l.locktype='advisory' AND NOT l.granted",[firstPid])).rows[0]?.pid;
+    return !!secondPid;
+  },'second upgrade waiting for migration lock');
   for(const env of [firstEnv,secondEnv]) await assert.rejects(fetch(`${env.ORBIT_ORIGIN}/health/ready`));
   assert.equal((await fetch(`${base}/health/ready`)).status,204);
   const request={type:'Upgrade',body:initial.bodies[0].id,building:'MetalMine'};
@@ -121,7 +129,7 @@ async function rollingUpgrade() {
   await db.query('UPDATE orbit_test_clock SET at_ms=$1',[due]);
   await until(async()=> (await view()).bodies[0].levels.MetalMine===initial.bodies[0].levels.MetalMine+1,'old scheduler completes construction during migration');
   await stop(first,'SIGKILL');
-  await until(async()=> (await db.query("SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.application_name='migration-second' AND l.locktype='advisory' AND l.objid=901324 AND NOT l.granted) AS waiting")).rows[0].waiting,'second migrator recovers after first is killed');
+  await until(async()=> (await db.query("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid=$1 AND wait_event='PgSleep' AND query LIKE '%901324%') AS waiting",[secondPid])).rows[0].waiting,'second migrator recovers after first is killed');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM _sqlx_migrations')).rows[0].n,migrationVersions.length);
   assert.equal((await db.query("SELECT to_regclass('upgrade_probe') AS probe")).rows[0].probe,null);
   await db.query('SELECT pg_advisory_unlock(901324)');

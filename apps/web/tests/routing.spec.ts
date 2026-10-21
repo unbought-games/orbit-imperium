@@ -1,3 +1,4 @@
+import {navigate,menuDestination,signOut} from './fixtures/navigation'
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
@@ -19,7 +20,7 @@ test('browser-history deep links survive login, refresh, history and native new-
   const universe = segments[2], body = segments[4]
   expect(body).toBeTruthy()
   const resources = `/u/${universe}/b/${body}/resources`
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await signOut(page)
   await expect(page).toHaveURL(/\/login$/)
   const direct = await page.goto(resources)
   expect(direct?.status()).toBe(200)
@@ -37,11 +38,10 @@ test('browser-history deep links survive login, refresh, history and native new-
     if (request.method() === 'POST' && request.url().endsWith('/commands')) writes++
   })
   await page.evaluate(() => Reflect.set(window, 'routeNavigationSentinel', 'alive'))
-  const nav = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-  await nav.getByRole('link', { name: 'Research', exact: true }).click()
+  await navigate(page, 'Research')
   await expect(page.getByRole('heading', { name: 'Research', exact: true, level: 1 })).toBeFocused()
   expect(new URL(page.url()).searchParams.get('body')).toBe(body)
-  await nav.getByRole('link', { name: 'Settings', exact: true }).click()
+  await navigate(page, 'Settings')
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeFocused()
   await page.goBack()
   await expect(page.getByRole('heading', { name: 'Research', exact: true, level: 1 })).toBeFocused()
@@ -52,12 +52,12 @@ test('browser-history deep links survive login, refresh, history and native new-
   expect({ documents, discoveries, writes }).toEqual({ documents: 0, discoveries: 0, writes: 0 })
 
   const opened = context.waitForEvent('page')
-  await nav.getByRole('link', { name: 'Resources', exact: true }).click({ button: 'middle' })
+  await (await menuDestination(page, 'Resources')).click({ button: 'middle' })
   const tab = await opened
   await expect(tab.getByRole('heading', { name: 'Resources', exact: true })).toBeVisible()
   expect(new URL(tab.url()).pathname).toBe(resources)
   await tab.close()
-  await nav.getByRole('link', { name: 'Research', exact: true }).click()
+  await navigate(page, 'Research')
   const startupReads: string[]=[]
   page.on('request',r=>{const p=new URL(r.url()).pathname;if(p==='/api/v1/bootstrap'||p==='/api/v1/session'||p==='/api/v1/registration'||p.endsWith('/binding')||p.endsWith('/settings'))startupReads.push(p)})
   const refreshed = await page.reload()

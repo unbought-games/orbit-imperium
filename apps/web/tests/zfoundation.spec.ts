@@ -1,12 +1,16 @@
+import {foreground} from './fixtures/navigation'
 import {test,expect} from '@playwright/test'
 import {execFileSync} from 'node:child_process'
 import {randomUUID} from 'node:crypto'
 import {overview} from './v2'
 import type {Attempt} from '../src/client-model/commands'
 test('two bodies retain independent pending actions through keyboard switching and reload',async({page})=>{
+ // Isolate lost acknowledgments from the independent SSE outcome channel.
+ await page.route('**/updates?epoch=*', route=>route.fulfill({status:503,body:''}));
  await page.setViewportSize({width:390,height:844});await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill('alpha');await page.getByLabel('Password').fill(process.env.ALPHA_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible()
  const view=await overview(page.request),source=view.bodies[0].id,body=randomUUID(),b=view.binding
  execFileSync('docker',['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c',`INSERT INTO bodies SELECT '${body}',universe,owner,kind,galaxy,system,10,fields,max_temperature,amounts,carry,checkpoint_at,revision FROM bodies WHERE id='${source}'; INSERT INTO legacy_body_capacities(body,capacity) SELECT '${body}',capacity FROM legacy_body_capacities WHERE body='${source}'; INSERT INTO building_levels SELECT '${body}',building,level FROM building_levels WHERE body='${source}'; INSERT INTO collection_heads(universe,kind,key) VALUES('${b.universe}','constructions','${body}'),('${b.universe}','inventory:${b.player}','${body}');`],{stdio:'pipe'})
+ await foreground(page)
  await expect(page.getByLabel('Selected body').locator(`option[value="${body}"]`)).toHaveCount(1)
  await expect(page.getByRole('button',{name:'Next body',exact:true})).toBeVisible()
  const sent:string[]=[]
@@ -28,9 +32,9 @@ test('two bodies retain independent pending actions through keyboard switching a
  await page.getByLabel('Selected body').selectOption(source);await expect(page).toHaveURL(new RegExp(`body=${source}`));await page.goBack();await expect(page.getByLabel('Selected body')).toHaveValue(body)
  await page.goForward();await expect(page.getByLabel('Selected body')).toHaveValue(source)
  const second=(await overview(page.request)).bodies[1].id;await page.goto(`/u/${b.universe}/?body=${second}`);await expect(page.getByLabel('Selected body')).toHaveValue(second);await expect(page).toHaveURL(new RegExp(`/b/${second}/overview$`))
- await page.getByRole('region',{name:'Construction status',exact:true}).getByRole('button',{name:'Cancel construction',exact:true}).click()
+ await page.getByRole('button',{name:'Cancel construction · full refund',exact:true}).click()
  await expect.poll(async()=>(await saved()).filter(a=>a.envelope.command.type==='CancelConstruction'&&a.status==='committed'&&a.reconciled).length).toBe(1)
  await expect.poll(async()=>(await overview(page.request)).constructions.map((work:{body:string})=>work.body)).toEqual([source,body].filter(id=>id!==second))
- await expect(page.getByRole('region',{name:'Construction status',exact:true})).toHaveCount(0)
+ await expect(page.getByRole('heading',{name:'Construction in progress',exact:true})).toHaveCount(0)
  await expect(page.getByLabel('Selected body')).toHaveValue(second);await expect(page).toHaveURL(new RegExp(`/b/${second}/overview$`))
 })
