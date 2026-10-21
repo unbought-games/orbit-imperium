@@ -7,7 +7,7 @@ import {
 import { useGameSession } from './session-context'
 import { ConstructionNotice } from '../ui/construction-notice'
 import { ScreenContext } from './screen-context'
-import { resolveDestination } from './routes'
+import { resolveDestination, resolveNamedDestination } from './routes'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
@@ -26,7 +26,7 @@ import { Navigation } from './navigation'
 import { Popover } from '../ui/popover'
 import { Mail, Radar, CircleHelp, WifiOff } from 'lucide-react'
 export function GameShell() {
-  const { commands, view, model, logout } = useGameSession()
+  const { commands, view, model, logout, universeName } = useGameSession()
   // Transition snapshots are visible only while this exact identity owns the shell.
   const surfaceName = `game-${view.binding.account}-${view.binding.player}-${view.binding.universe}-${view.binding.epoch}`
   const navigate = useNavigate()
@@ -42,7 +42,7 @@ export function GameShell() {
     item?: string
   }
   const search = leaf.search as { body?: string }
-  const route = resolveDestination(
+  const route = resolveNamedDestination(
     {
       universe: params.universe,
       page: leaf.staticData.page ?? null,
@@ -50,6 +50,7 @@ export function GameShell() {
       item: params.item,
     },
     view,
+    universeName,
   )
   const body = view.bodies.find((b) => b.id === route.body)
   const { page, available } = route
@@ -63,12 +64,7 @@ export function GameShell() {
       (page === 'overview' || !search.body)
     ) {
       void navigate({
-        ...routeTarget(
-          view.binding.universe,
-          page,
-          body.id,
-          route.item ?? undefined,
-        ),
+        ...routeTarget(universeName, page, body.id, route.item ?? undefined),
         replace: true,
       })
     }
@@ -79,11 +75,11 @@ export function GameShell() {
     search.body,
     page,
     route.item,
-    view.binding.universe,
+    universeName,
     navigate,
   ])
   useLayoutEffect(() => {
-    document.title = `${available ? label(page) : 'Unavailable'} · Orbit Imperium`
+    document.title = `${available ? label(page) : 'Unavailable'} · ${universeName} · Orbit Imperium`
     heading.current?.focus()
     const frame = requestAnimationFrame(() => {
       // Scroll restoration can run after the commit. Never steal focus back
@@ -92,17 +88,17 @@ export function GameShell() {
         heading.current?.scrollIntoView({ block: 'nearest' })
     })
     return () => cancelAnimationFrame(frame)
-  }, [location.pathname, location.searchStr, available, page])
+  }, [location.pathname, location.searchStr, available, page, universeName])
   function prepareDispatch(draft: DispatchDraft) {
     if (!body) return
     setDispatchDraft({ ...draft, origin: body.id })
     void model.recordPresence('BodyVisit', body.id)
-    void navigate(routeTarget(view.binding.universe, 'dispatch', body.id))
+    void navigate(routeTarget(universeName, 'dispatch', body.id))
   }
   function selectBody(id: string) {
     void model.recordPresence('BodyVisit', id)
     void navigate({
-      ...routeTarget(view.binding.universe, available ? page : 'overview', id),
+      ...routeTarget(universeName, available ? page : 'overview', id),
       viewTransition: true,
     })
   }
@@ -165,9 +161,11 @@ export function GameShell() {
         <header className={styles.identity}>
           <Brand
             className={styles.brand}
-            {...routeTarget(view.binding.universe, 'overview', body?.id)}
+            {...routeTarget(universeName, 'overview', body?.id)}
           />
-          <span>by unbought games</span>
+          <span className={styles.universeName} aria-label="Current universe">
+            {universeName}
+          </span>
         </header>
         <Navigation
           view={view}
@@ -236,7 +234,7 @@ export function GameShell() {
               {reportsAvailable ? (
                 <Link
                   aria-label="Reports"
-                  {...routeTarget(view.binding.universe, 'reports', body?.id)}
+                  {...routeTarget(universeName, 'reports', body?.id)}
                 >
                   <Mail size={24} aria-hidden="true" />
                 </Link>
@@ -253,7 +251,7 @@ export function GameShell() {
             {fleetAvailable ? (
               <Link
                 className={styles['fleet-status']}
-                {...routeTarget(view.binding.universe, 'fleets', body?.id)}
+                {...routeTarget(universeName, 'fleets', body?.id)}
               >
                 <Radar size={18} aria-hidden="true" />
                 {fleetLabel}
@@ -285,11 +283,7 @@ export function GameShell() {
               <StatePanel title="Choose an available destination">
                 <Text>{route?.reason}</Text>
                 <Link
-                  {...routeTarget(
-                    view.binding.universe,
-                    'overview',
-                    view.bodies[0]?.id,
-                  )}
+                  {...routeTarget(universeName, 'overview', view.bodies[0]?.id)}
                 >
                   Open your universe overview
                 </Link>
@@ -297,6 +291,7 @@ export function GameShell() {
             ) : (
               <ScreenContext.Provider
                 value={{
+                  universeName,
                   commands,
                   view,
                   model,
@@ -321,7 +316,7 @@ export function GameShell() {
         <PolicyLinks />
         <a href="/updates/index.html">What’s new</a>
         <SourceLink />
-        <Link {...routeTarget(view.binding.universe, 'settings', body?.id)}>
+        <Link {...routeTarget(universeName, 'settings', body?.id)}>
           Universe settings
         </Link>
       </footer>

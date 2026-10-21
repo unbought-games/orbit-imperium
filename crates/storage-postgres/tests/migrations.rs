@@ -791,7 +791,7 @@ async fn account_membership_lookup_is_selective() {
     let identity = include_str!("../src/identity.rs");
     let q = identity
         .split('"')
-        .find(|s| s.starts_with("SELECT universe,player FROM universe_memberships WHERE"))
+        .find(|s| s.starts_with("SELECT universe,player,u.name FROM universe_memberships"))
         .unwrap();
     let account: uuid::Uuid = sqlx::query_scalar("SELECT md5('a42')::uuid")
         .fetch_one(&pool)

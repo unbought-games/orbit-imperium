@@ -1,7 +1,7 @@
 use super::*;
 use uuid::Uuid;
 const USAGE: &str =
-    "use universe create|list|show, or universe config export|diff|apply --universe UUID";
+    "use universe create|list|show|update, or universe config export|diff|apply --universe UUID";
 
 pub fn parse(args: &[String], get: impl Fn(&str) -> Option<String>) -> Result<UniverseCli, String> {
     parse_for_mode(args, get, cfg!(feature = "universe-config-bridge"))
@@ -34,7 +34,7 @@ pub(super) fn parse_for_mode(
         } else {
             let value = args
                 .get(i + 1)
-                .filter(|v| !v.is_empty() && !v.starts_with("--"))
+                .filter(|v| !v.is_empty() && (key == "--name" || !v.starts_with("--")))
                 .ok_or_else(|| format!("{key} requires a value"))?;
             values.insert(key.clone(), value.clone());
             i += 2;
@@ -84,6 +84,13 @@ pub(super) fn parse_for_mode(
     let universe = id(&values
         .remove("--universe")
         .ok_or("--universe is required")?)?;
+    if verb == "update" {
+        let name = values.remove("--name").ok_or("update requires --name")?;
+        finish(values)?;
+        let update = UniverseUpdate { universe, name };
+        update.validate()?;
+        return Ok(UniverseCli::Update(update));
+    }
     if verb == "show" {
         finish(values)?;
         return Ok(UniverseCli::Show(universe));

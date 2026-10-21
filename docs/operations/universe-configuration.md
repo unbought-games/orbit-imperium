@@ -4,6 +4,23 @@ Universes own their saved configuration in PostgreSQL. New production worlds def
 
 Speed is one integer from 1 through 100 and is fixed for a universe's lifetime. Galaxies (1–100), systems per galaxy (1–1000) and positions per system (exactly 15) are also creation-only. Signup availability, optional player ceiling, signup attempts and command admission limits support live policy edits. Capacity is derived as `galaxies × systems × 9`; only the optional ceiling is stored. Lowering the ceiling below the existing population prevents further admission without removing players.
 
+## Universe names and browser addresses
+
+Every universe receives an unused real-galaxy name automatically, including development worlds and retained worlds during migration. The pool starts with familiar names such as Andromeda, Triangulum and Whirlpool, followed by 500 NGC galaxy identifiers. The catalog uses Type G entries from [OpenNGC](https://github.com/mattiaverga/OpenNGC/blob/master/database_files/NGC.csv) (OpenNGC contributors, CC BY-SA 4.0). Selection and uniqueness are enforced transactionally in PostgreSQL. If all 512 names are occupied, creation fails; expand the pool with a migration before provisioning more worlds. The pool contains no numeric suffixes invented to resolve collisions.
+
+Operators can update the name at any time:
+
+```sh
+orbit universe update --universe "$ORBIT_UNIVERSE_ID" --name "My Universe"
+orbit universe show --universe "$ORBIT_UNIVERSE_ID"
+```
+
+Names may be arbitrary text with 1–80 characters, without surrounding spaces or control characters. Name and URL collisions are rejected, including ASCII case differences and space/hyphen equivalents. Updates preserve UUIDs, memberships, gameplay, rules, and policy revisions. Policy changes continue to use the revision-checked config export/diff/apply workflow.
+
+Browser URLs use the name: `Andromeda` becomes `/u/andromeda/...` and `My Universe` becomes `/u/my-universe/...`. Other characters use `~hex~` escapes so punctuation, Unicode and slashes remain one unambiguous path segment. This URL form is derived, never stored separately. API requests and operator selection continue to use UUIDs.
+
+Renaming is allowed after players join. On the next page load or session refresh, the new name appears throughout the UI. Previous name-based links and old UUID-based browser links are unavailable; there are **no redirects or saved aliases**. Share the new address after a rename. Deploy the matching frontend and backend together because session membership metadata now includes the name.
+
 ## Fresh installation
 
 Provision the database and supply `DATABASE_URL` privately. Build the frontend and the final binary:
@@ -24,7 +41,7 @@ target/universe-final/release/orbit universe show --universe "$ORBIT_UNIVERSE_ID
 target/universe-final/release/orbit serve
 ```
 
-Use an installation-specific UUID. Automated provisioning should always supply `--universe`: if a response is lost, `universe show --universe UUID` resolves the outcome. Repeating creation conflicts and never resets the world. Omitting `--universe` generates a new UUID each time. Creation prints JSON containing `status`, `universe` and `configuration`, and a worker-restart reminder on stderr. `universe list` and `universe show` expose safe JSON configuration summaries, including rules hashes/revisions and the derived effective ceiling.
+Use an installation-specific UUID. Automated provisioning should always supply `--universe`: if a response is lost, `universe show --universe UUID` resolves the outcome. Repeating creation conflicts and never resets the world. Omitting `--universe` generates a new UUID each time. Creation prints JSON containing `status`, `universe`, `name` and `configuration`, and a worker-restart reminder on stderr. `universe list` and `universe show` expose safe JSON configuration summaries, including rules hashes/revisions and the derived effective ceiling.
 
 To select other creation settings, for example:
 

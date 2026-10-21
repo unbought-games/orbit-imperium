@@ -35,7 +35,7 @@ impl GatedStore {
 }
 
 impl IdentityStore for GatedStore {
-    async fn oidc_universes(&self) -> Result<Vec<UniverseId>, StoreError> {
+    async fn universe_summaries(&self) -> Result<Vec<UniverseSummary>, StoreError> {
         if *self.oidc_status.lock().unwrap() == 503 {
             Err(StoreError::Unavailable)
         } else {
@@ -80,6 +80,7 @@ impl IdentityStore for GatedStore {
     async fn enroll_oidc(&self, _: AccountId, policy: SignupPolicy) -> Result<(), StoreError> {
         self.entered.send("enroll").unwrap();
         self.memberships.lock().unwrap().push(Membership {
+            universe_name: "Andromeda".into(),
             universe: policy.universe,
             player: uuid::Uuid::new_v4().into(),
         });

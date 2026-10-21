@@ -1,3 +1,4 @@
+import { useUniverseName } from '../shell/session-context'
 import { ResourceNumber } from '../ui/number-value'
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from '../shell/route-target'
@@ -19,6 +20,7 @@ export function PlanetOverview({
   view: BoundView
   body: BoundView['bodies'][number]
 }) {
+  const universeName = useUniverseName()
   const art = resolveBodyArt(body)
   const countdown = useCountdown(view.sampled_at, 'compact')
   const arrivals = overviewArrivals(view, body.id)
@@ -159,7 +161,7 @@ export function PlanetOverview({
                   {fleetAvailable && (
                     <Link
                       {...routeTarget(
-                        view.binding.universe,
+                        universeName,
                         'fleets',
                         body.id,
                         arrival.item,
@@ -174,7 +176,7 @@ export function PlanetOverview({
             </ol>
           )}
           {fleetAvailable && arrivals.length > 3 && (
-            <Link {...routeTarget(view.binding.universe, 'fleets', body.id)}>
+            <Link {...routeTarget(universeName, 'fleets', body.id)}>
               View all {arrivals.length} arrivals
             </Link>
           )}
@@ -186,7 +188,7 @@ export function PlanetOverview({
           <WorkSummaries view={view} body={body} layout="editorial" />
           <Link
             className={styles.manage}
-            {...routeTarget(view.binding.universe, 'resources', body.id)}
+            {...routeTarget(universeName, 'resources', body.id)}
           >
             Manage resources <ArrowRight size={18} aria-hidden="true" />
           </Link>

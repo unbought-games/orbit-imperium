@@ -1,11 +1,13 @@
+import { universeSlug } from '../client-model/universe-name'
 import { linkOptions } from '@tanstack/react-router'
 import type { Page } from './routes'
 export function routeTarget(
-  universe: string,
+  universeName: string,
   page: Page,
   body?: string,
   item?: string,
 ) {
+  const universe = universeSlug(universeName)
   const params = { universe }
   const search = body ? { body } : {}
   const planetParams = () => {

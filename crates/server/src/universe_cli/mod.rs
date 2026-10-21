@@ -13,6 +13,7 @@ mod tests;
 pub enum UniverseCli {
     Create(UniverseCreate),
     List,
+    Update(UniverseUpdate),
     Show(UniverseId),
     Export {
         universe: UniverseId,
@@ -41,6 +42,7 @@ fn write(path: &std::path::Path, document: &UniverseConfigDocument) -> Result<()
     std::fs::write(path, bytes).map_err(|e| format!("cannot write {}: {e}", path.display()))
 }
 async fn summary(store: &PgStore, universe: UniverseId) -> Result<serde_json::Value, String> {
+    let identity = store.universe_summary(universe).await?;
     let rules = store
         .current_rules(universe)
         .await
@@ -51,14 +53,14 @@ async fn summary(store: &PgStore, universe: UniverseId) -> Result<serde_json::Va
         .map_err(|e| e.to_string())?
     {
         return Ok(serde_json::json!({
-            "universe":universe, "policy_status":"uninitialized",
+            "universe":universe, "name": identity.name, "policy_status":"uninitialized",
             "immutable":store.universe_immutable(universe).await?,
             "rules_hash":rules.rules.hash, "rules_revision":rules.revision,
         }));
     }
     let config = store.universe_config(universe).await?;
     Ok(
-        serde_json::json!({"universe":universe,"policy_status":"active",
+        serde_json::json!({"universe":universe,"name":identity.name,"policy_status":"active",
         "configuration":config,"rules_hash":rules.rules.hash,
         "rules_revision":rules.revision,"effective_max_players":config.policy.effective_max_players(&config.immutable)}),
     )
@@ -82,9 +84,15 @@ async fn execute(store: &PgStore, command: UniverseCli) -> Result<(), String> {
         UniverseCli::Create(options) => {
             let config = store.create_universe(&options).await?;
             print(
-                serde_json::json!({"status":"created","universe":config.universe,"configuration":config}),
+                serde_json::json!({"status":"created","universe":config.universe,"configuration":config,"name":store.universe_summary(config.universe).await?.name}),
             )?;
             eprintln!("Restart workers before routing signup traffic to the new universe.");
+        }
+        UniverseCli::Update(update) => {
+            let identity = store.update_universe(&update).await?;
+            print(
+                serde_json::json!({"status":"updated","universe":identity.universe,"name":identity.name}),
+            )?;
         }
         UniverseCli::List => {
             let mut values = Vec::new();

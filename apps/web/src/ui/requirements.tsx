@@ -1,3 +1,4 @@
+import { useUniverseName } from '../shell/session-context'
 import styles from './requirements.module.css'
 import { Text } from './typography'
 import { Link } from './link'
@@ -14,6 +15,7 @@ export function Requirements({
   view: S['BoundView3'] | S['BoundView4']
   body: S['BodyV3']
 }) {
+  const universeName = useUniverseName()
   return requirements.length ? (
     <ul className={styles['requirements']} aria-label="Prerequisites">
       {requirements.map((r, i) => {
@@ -32,7 +34,7 @@ export function Requirements({
             : 'research'
         return (
           <li key={i}>
-            <Link {...routeTarget(view.binding.universe, page, body.id)}>
+            <Link {...routeTarget(universeName, page, body.id)}>
               {label(id)} {r.level}
             </Link>
             <span>

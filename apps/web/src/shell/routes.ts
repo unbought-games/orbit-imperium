@@ -1,3 +1,4 @@
+import { universeSlug } from '../client-model/universe-name'
 import type { BoundView } from '../client-model/commands'
 export type Page =
   | 'overview'
@@ -98,4 +99,22 @@ export function resolveDestination(
   if (!body && page !== 'settings')
     return unavailable('No planet is available for this membership.')
   return { page, body, item: item ?? null, available: true, reason: '' }
+}
+
+// Browser identity is a current name only; UUID and former-name URLs are invalid.
+export function resolveNamedDestination(
+  destination: Destination,
+  view: BoundView,
+  universeName: string,
+): Route {
+  return resolveDestination(
+    {
+      ...destination,
+      universe:
+        destination.universe === universeSlug(universeName)
+          ? view.binding.universe
+          : undefined,
+    },
+    view,
+  )
 }

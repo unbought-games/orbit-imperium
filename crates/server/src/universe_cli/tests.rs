@@ -117,3 +117,30 @@ fn document_identity_and_fields_are_validated_during_parsing() {
     assert!(parse_for_mode(&words, |_| None, false).is_err());
     std::fs::remove_file(file).unwrap();
 }
+
+#[test]
+fn update_accepts_arbitrary_names_and_rejects_missing_or_invalid_fields() {
+    let command = |extra: &[&str]| {
+        let mut words = vec!["orbit", "universe", "update", "--universe", ID];
+        words.extend(extra);
+        parse_for_mode(&args(&words), |_| None, false)
+    };
+    let UniverseCli::Update(update) = command(&["--name", "My Universe / 宇宙 🌌"]).unwrap()
+    else {
+        panic!("expected metadata update")
+    };
+    assert_eq!(update.name, "My Universe / 宇宙 🌌");
+    assert!(command(&["--name", "--World"]).is_ok());
+    for extra in [
+        vec![],
+        vec!["--name", " "],
+        vec!["--name", " name"],
+        vec!["--name", "line\nbreak"],
+        vec!["--name", "Name", "--speed", "5"],
+        vec!["--name", "A", "--name", "B"],
+    ] {
+        assert!(command(&extra).is_err(), "{extra:?}");
+    }
+    assert!(command(&["--name", &"x".repeat(81)]).is_err());
+    assert!(command(&["--name", &"宇".repeat(80)]).is_ok());
+}

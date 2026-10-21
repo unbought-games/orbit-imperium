@@ -43,7 +43,7 @@ test('active research remains cancellable from its details after removing Curren
       },
     })
   })
-  await page.goto(`/u/${binding.universe}/research?body=${body.id}`)
+  await page.goto(`/u/andromeda/research?body=${body.id}`)
   const progress = page
     .getByRole('button', { name: 'Research Energy Technology', exact: true })
     .getByRole('group', { name: 'Research progress' })
@@ -479,7 +479,7 @@ test('object stages preserve source proportions at desktop and phone widths', as
   await setup(page)
   for (const width of [1440, 320]) {
     await page.setViewportSize({ width, height: 900 })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/facilities`)
+    await page.goto(`/u/andromeda/b/${body.id}/facilities`)
     const scene = page.getByRole('region', { name: 'Facilities objects' })
     await expect(scene).toBeVisible()
     await expectUndistortedArt(scene.locator('..'))
@@ -758,8 +758,8 @@ test('catalogs fit narrow screens and enlarged text without losing controls', as
   ]) {
     await page.goto(
       path === 'research'
-        ? `/u/${binding.universe}/research?body=${body.id}`
-        : `/u/${binding.universe}/b/${body.id}/${path}`,
+        ? `/u/andromeda/research?body=${body.id}`
+        : `/u/andromeda/b/${body.id}/${path}`,
     )
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 })
@@ -884,7 +884,7 @@ test('selected unit decisions floor balances and retain large inventory on phone
   await refreshGame(page)
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/shipyard`)
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
     await page.getByRole('button', { name: 'Build Small Cargo', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expectLegibleInspector(pane)
@@ -908,7 +908,7 @@ test('facility and research object stages remain usable when artwork fails', asy
   const { sent } = await setup(page)
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 900 })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/facilities`)
+    await page.goto(`/u/andromeda/b/${body.id}/facilities`)
     const marker = page.getByRole('button', { name: 'Inspect Robotics Factory', exact: true })
     await marker.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
@@ -923,7 +923,7 @@ test('facility and research object stages remain usable when artwork fails', asy
 test('selected facilities research and defense show reviewable decisions at all target widths', async ({ page }) => {
   await setup(page, true)
   for (const [path, tile] of [['facilities', 'Upgrade Robotics Factory'], ['research', 'Research Combustion Drive'], ['defense', 'Build Rocket Launcher']]) {
-    await page.goto(path === 'research' ? `/u/${binding.universe}/research?body=${body.id}` : `/u/${binding.universe}/b/${body.id}/${path}`)
+    await page.goto(path === 'research' ? `/u/andromeda/research?body=${body.id}` : `/u/andromeda/b/${body.id}/${path}`)
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 })
       await page.getByRole('button', { name: tile, exact: true }).click()
@@ -946,7 +946,7 @@ test('active facility remains cancellable without a fresh quote at each target w
   await page.route('**/progression-options', route => route.abort())
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/facilities`)
+    await page.goto(`/u/andromeda/b/${body.id}/facilities`)
     await page.getByRole('button', { name: 'Upgrade Robotics Factory', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
@@ -965,7 +965,7 @@ test('narrow spending ledgers keep whole large balances intact with visible labe
   await refreshGame(page)
   for (const [width, textSize, wideFont] of [[320, 100, false], [390, 100, false], [320, 200, false], [320, 200, true]] as const) {
     await page.setViewportSize({ width, height: 844 })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/shipyard`)
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
     if (textSize === 200) await page.addStyleTag({ content: 'html { font-size: 200% !important }' })
     // Also exercise wider glyphs on hosts whose default system font is narrow.
     if (wideFont) await page.addStyleTag({ content: 'html { font-family: monospace !important }' })

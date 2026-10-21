@@ -63,7 +63,9 @@ export function bootstrapFixture(
         account: id(1),
         csrf: 'csrf',
         expires_at: 9999999999999,
-        memberships: [{ universe: id(3), player: id(2) }],
+        memberships: [
+          { universe_name: 'Andromeda', universe: id(3), player: id(2) },
+        ],
       },
       game: {
         status: 'ready',

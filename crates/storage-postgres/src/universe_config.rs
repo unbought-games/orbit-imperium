@@ -11,6 +11,7 @@ pub struct UniverseConfigChange {
 }
 fn operator_error(error: StoreError) -> String {
     match error {
+        StoreError::UniverseNamesExhausted => "no unused galaxy names remain; expand the automatic name pool with a migration before creating another universe".into(),
         StoreError::Conflict => "universe already exists; use universe show to inspect it".into(),
         StoreError::NotFound => "universe not found; use universe list".into(),
         StoreError::CorruptData => "universe has invalid stored configuration or rules binding".into(),
@@ -19,6 +20,45 @@ fn operator_error(error: StoreError) -> String {
 }
 
 impl PgStore {
+    pub async fn universe_summary(&self, universe: UniverseId) -> Result<UniverseSummary, String> {
+        let mut tx = self.config_tx().await.map_err(operator_error)?;
+        let name = sqlx::query_scalar("SELECT name FROM universes WHERE id=$1")
+            .bind(universe.0)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(db_error)
+            .map_err(operator_error)?
+            .ok_or("universe not found; use universe list")?;
+        Ok(UniverseSummary { universe, name })
+    }
+    pub async fn update_universe(
+        &self,
+        update: &UniverseUpdate,
+    ) -> Result<UniverseSummary, String> {
+        update.validate()?;
+        let mut tx = self.config_tx().await.map_err(operator_error)?;
+        let name = sqlx::query_scalar("UPDATE universes SET name=$2 WHERE id=$1 RETURNING name")
+            .bind(update.universe.0)
+            .bind(&update.name)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|error| match error {
+                sqlx::Error::Database(ref db) if db.is_unique_violation() => {
+                    "another universe already uses that name or URL".to_string()
+                }
+                _ => operator_error(db_error(error)),
+            })?
+            .ok_or("universe not found; use universe list")?;
+        tx.commit()
+            .await
+            .map_err(db_error)
+            .map_err(operator_error)?;
+        Ok(UniverseSummary {
+            universe: update.universe,
+            name,
+        })
+    }
+
     /// Configuration administration validates schema independently of runtime health.
     pub async fn check_universe_config_schema(&self) -> Result<(), String> {
         self.check_migrations().await.map_err(|e| e.to_string())

@@ -1,3 +1,4 @@
+import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useState } from 'react'
 import { useStore } from 'zustand'
@@ -101,6 +102,7 @@ export function MissionFleets({
   item: string | null
   origin: string
 }) {
+  const universeName = useUniverseName()
   const state = useStore(model.store)
   const now = currentServerTime(state)
   const fleets = view.missions.fleets.filter(
@@ -118,13 +120,11 @@ export function MissionFleets({
         <Text>Follow your missions. Prepare the next departure.</Text>
         <div className={styles.actions}>
           {item && (
-            <Link {...routeTarget(view.binding.universe, 'fleets', origin)}>
+            <Link {...routeTarget(universeName, 'fleets', origin)}>
               All fleets
             </Link>
           )}
-          <ButtonLink
-            {...routeTarget(view.binding.universe, 'dispatch', origin)}
-          >
+          <ButtonLink {...routeTarget(universeName, 'dispatch', origin)}>
             Dispatch a fleet
           </ButtonLink>
           <span>
@@ -236,14 +236,7 @@ export function MissionFleets({
                 action: { type: 'RecallMission', fleet: fleet.id },
               })) && <Recall model={model} fleetId={fleet.id} fleet={fleet} />}
             {!item && (
-              <Link
-                {...routeTarget(
-                  view.binding.universe,
-                  'fleets',
-                  origin,
-                  fleet.id,
-                )}
-              >
+              <Link {...routeTarget(universeName, 'fleets', origin, fleet.id)}>
                 Mission details
               </Link>
             )}

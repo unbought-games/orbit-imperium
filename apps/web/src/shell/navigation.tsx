@@ -1,3 +1,4 @@
+import { useUniverseName } from './session-context'
 import {
   Orbit,
   Blocks,
@@ -35,6 +36,7 @@ export function Navigation({
   onVisit?: (page: Page) => void
   onLogout: () => void
 }) {
+  const universeName = useUniverseName()
   const dialog = useRef<HTMLDialogElement>(null)
   const opener = useRef<HTMLElement | null>(null)
   const menuId = useId()
@@ -70,7 +72,7 @@ export function Navigation({
         preload="intent"
         viewTransition
         key={p}
-        {...routeTarget(view.binding.universe, p, body)}
+        {...routeTarget(universeName, p, body)}
         aria-current={
           (primary ? title === selected : p === page) ? 'page' : undefined
         }

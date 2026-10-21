@@ -204,7 +204,11 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
             account: AccountId(Uuid::from_u128(1)),
             csrf: "secret".into(),
             expires_at: 999999,
-            memberships: vec![Membership { universe, player }],
+            memberships: vec![Membership {
+                universe,
+                player,
+                universe_name: "Andromeda".into(),
+            }],
         },
     )
 }

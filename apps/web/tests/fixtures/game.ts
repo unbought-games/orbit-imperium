@@ -1,3 +1,4 @@
+import { universeSlug } from '../../src/client-model/universe-name'
 import { expect, type Page } from '@playwright/test'
 import type { components } from '../../src/contracts'
 
@@ -45,6 +46,7 @@ export const body: components['schemas']['BodyV3'] = {
 export async function shellFixture(
   page: Page,
   options: {
+    universeName?: string
     catalog?: components['schemas']['CatalogEntry3'][]
     research?: components['schemas']['Research3'][]
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
@@ -77,7 +79,7 @@ export async function shellFixture(
       url = new URL(request.url())
     if (url.pathname === '/api/auth/config')
       return route.fulfill({
-        json: { mode: 'local', universes: [binding.universe] },
+        json: { mode: 'local', universes: [{ universe: binding.universe, name: options.universeName ?? "Andromeda" }] },
       })
     const context = request.postDataJSON()
     const common = {
@@ -91,7 +93,7 @@ export async function shellFixture(
       account: binding.account,
       csrf: 'fixture',
       expires_at: Date.now() + 1000000,
-      memberships: [{ universe: binding.universe, player: binding.player }],
+      memberships: [{ universe_name: options.universeName ?? "Andromeda", universe: binding.universe, player: binding.player }],
     }
 
     if (
@@ -266,7 +268,7 @@ export async function shellFixture(
     if (url.pathname.endsWith('/commands')) purchases++
     return route.fulfill({ status: 404, json: { code: 'NotFound' } })
   })
-  await page.goto(`/u/${binding.universe}/b/${body.id}/overview`)
+  await page.goto(`/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`)
   // A startup connection surface also has an H1; mutations need the ready game.
   await expect(page.locator('main h1')).toContainText('Overview —')
   return () => purchases

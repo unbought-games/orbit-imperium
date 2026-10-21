@@ -1,3 +1,4 @@
+import {universeSlug} from '../src/client-model/universe-name'
 import {navigate,foreground} from './fixtures/navigation'
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -33,7 +34,7 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
  await page.getByRole('button',{name:'Menu',exact:true}).last().focus();await page.keyboard.press('Enter');await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Menu',exact:true}).last()).toBeFocused();
  await page.keyboard.press('Enter');await page.getByRole('dialog',{name:'Navigation'}).getByRole('link',{name:'Research'}).focus();await page.keyboard.press('Enter');await expect(page.locator('main h1')).toBeFocused();
  await go('facilities');await page.goBack();await expect(page.locator('main h1')).toHaveText('Research');await page.goForward();await expect(page.locator('main h1')).toHaveText('Facilities');await page.reload();await expect(page.locator('main h1')).toHaveText('Facilities');
- for(const invalid of [`/u/${u}/b/${randomUUID()}/resources`,`/u/${randomUUID()}/overview`,`/u/${u}/galaxy`,`/u/${u}/fleets`]){await page.goto(invalid);await expect(page.locator('main h1')).toHaveText('Destination unavailable');await expect(page.getByRole('button',{name:'Upgrade Metal Mine',exact:true})).toHaveCount(0)}
+ for(const invalid of [`/u/${universeSlug(session.memberships[0].universe_name)}/b/${randomUUID()}/resources`,`/u/${randomUUID()}/overview`,`/u/${universeSlug(session.memberships[0].universe_name)}/galaxy`,`/u/${universeSlug(session.memberships[0].universe_name)}/fleets`]){await page.goto(invalid);await expect(page.locator('main h1')).toHaveText('Destination unavailable');await expect(page.getByRole('button',{name:'Upgrade Metal Mine',exact:true})).toHaveCount(0)}
  await go('shipyard');await page.getByRole('button',{name:'Build Small Cargo',exact:true}).click();await page.getByLabel('Shipyard quantity').fill('9007199254740993');expect(await page.getByLabel('Shipyard quantity').inputValue()).toBe('9007199254740993');await expect(page.getByLabel('Action blockers')).toContainText('Numeric Range');await page.getByRole('button',{name:'Dismiss quote'}).click();
  await page.getByRole('button',{name:'Build Small Cargo',exact:true}).click();await page.getByLabel('Shipyard quantity').fill('0');await expect(page.getByLabel('Shipyard quantity')).toBeFocused();await expect(page.getByRole('alert')).toContainText('positive whole quantity');
 

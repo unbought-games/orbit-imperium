@@ -1,6 +1,6 @@
 export interface OidcConfig {
   mode: 'oidc' | 'local'
-  universes: string[]
+  universes: { universe: string; name: string }[]
   accounts_url?: string
   client_id?: string
 }

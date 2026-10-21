@@ -1,8 +1,8 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
-    fn oidc_universes(
+    fn universe_summaries(
         &self,
-    ) -> impl std::future::Future<Output = Result<Vec<UniverseId>, StoreError>> + Send {
+    ) -> impl std::future::Future<Output = Result<Vec<UniverseSummary>, StoreError>> + Send {
         async { Err(StoreError::Unavailable) }
     }
     fn save_oidc_login(

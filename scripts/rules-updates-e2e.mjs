@@ -147,7 +147,8 @@ try {
   browser = await chromium.launch(); const page = await browser.newPage()
   const split = auth.cookie.indexOf('=')
   await page.context().addCookies([{ name: auth.cookie.slice(0, split), value: auth.cookie.slice(split + 1), domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax' }])
-  await page.goto(`${active.base}/u/${universe}/research`)
+  const browserUniverse = (await db.query('SELECT universe_name_key(name) AS slug FROM universes WHERE id=$1', [universe])).rows[0].slug
+  await page.goto(`${active.base}/u/${browserUniverse}/research`)
   await expect(page.getByRole('button', { name: 'Research Laser Technology', exact: true })).toBeDisabled()
   cli('export'); const document = JSON.parse(readFileSync(rulesFile))
   document.artifact = JSON.parse(readFileSync('scripts/fixtures/rules-expanded.json'))
@@ -190,7 +191,7 @@ try {
   assert.deepEqual(newCommitments, oldCommitments)
   await page.reload()
   await expect(page.getByRole('button', { name: 'Research Laser Technology', exact: true })).toBeEnabled()
-  await page.goto(`${active.base}/u/${universe}/b/${body}/shipyard`)
+  await page.goto(`${active.base}/u/${browserUniverse}/b/${body}/shipyard`)
   await expect(page.getByRole('button', { name: 'Build Large Cargo', exact: true })).toBeEnabled()
   console.log('PASS: atomic activation across new instances, old commitments retained, per-universe isolation, browser refresh exposes content')
   await advance(Math.max(...work, attack.due_at, returning.due_at))
@@ -209,7 +210,7 @@ try {
   }
   const earned = await fresh(); assert.equal(earned.research.find(r => r.research === 'LaserTechnology').level, 1)
   assert.equal(earned.bodies[0].inventories.find(i => i.item.id === 'LargeCargo').count, '1')
-  await page.goto(`${active.base}/u/${universe}/dispatch?body=${body}`)
+  await page.goto(`${active.base}/u/${browserUniverse}/dispatch?body=${body}`)
   await expect(page.getByRole('button', { name: 'All Large Cargo', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'All Large Cargo', exact: true }).click()
   await page.getByLabel('System', { exact: true }).fill(String(target.system))

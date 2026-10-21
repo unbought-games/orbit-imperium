@@ -55,14 +55,23 @@ pub(super) struct LoginQuery {
 pub(super) async fn configuration<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
 ) -> Result<Response, Problem> {
-    let universes = if s.oidc.is_some() {
+    let universes = if s.oidc.is_some() || s.config.signup.is_some() {
         s.updates
-            .oidc_universes()
+            .universe_summaries()
             .await
             .map_err(ServiceError::from)?
     } else {
         vec![]
     };
+    let universes: Vec<_> = universes
+        .into_iter()
+        .filter(|universe| {
+            s.oidc.is_some()
+                || s.config
+                    .signup
+                    .is_some_and(|binding| binding.universe == universe.universe)
+        })
+        .collect();
     Ok(([(header::CACHE_CONTROL, "no-store")], Json(serde_json::json!({"mode":if s.oidc.is_some(){"oidc"}else{"local"},"universes":universes,"client_id":s.oidc.as_ref().map(|r|r.configuration().client_id.as_str()),"accounts_url":s.oidc.as_ref().map(|r|r.configuration().issuer.trim_end_matches("/api/auth"))}))).into_response())
 }
 pub(super) async fn login<S: IdentityStore>(
