@@ -324,10 +324,11 @@ pub(crate) async fn insert_member(
         .execute(&mut **tx)
         .await
         .map_err(db_error)?;
-    sqlx::query("INSERT INTO universe_memberships(universe,account,player) VALUES($1,$2,$3)")
+    sqlx::query("INSERT INTO universe_memberships(universe,account,player,joined_at_ms) VALUES($1,$2,$3,$4)")
         .bind(universe.0)
         .bind(member.account)
         .bind(member.player)
+        .bind(at)
         .execute(&mut **tx)
         .await
         .map_err(db_error)?;

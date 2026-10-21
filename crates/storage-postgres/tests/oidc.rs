@@ -37,11 +37,20 @@ async fn oidc_mapping_enrollment_rename_and_logout_are_account_bound() {
         first.memberships.is_empty(),
         "authentication cannot grant a homeworld"
     );
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    store.set_test_time(1000).await.unwrap();
     let universe = Uuid::new_v4().into();
     let policy = store
         .ensure_signup_universe(Some(universe), Default::default(), Some(10))
         .await
         .unwrap();
+    // A backwards wall clock must respect the universe's authoritative floor.
+    sqlx::query("UPDATE universe_runtime SET ordering_floor=2000 WHERE universe=$1")
+        .bind(universe.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.set_test_time(1500).await.unwrap();
     let (a, b) = tokio::join!(
         store.enroll_oidc(first.account, policy),
         store.enroll_oidc(first.account, policy)
@@ -51,6 +60,24 @@ async fn oidc_mapping_enrollment_rename_and_logout_are_account_bound() {
     let enrolled = store.lookup_session(&digest).await.unwrap().unwrap();
     assert_eq!(enrolled.memberships.len(), 1);
     let player = enrolled.memberships[0].player;
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT joined_at_ms FROM universe_memberships WHERE universe=$1 AND account=$2"
+        )
+        .bind(universe.0)
+        .bind(first.account.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        Some(2000)
+    );
+    store.set_test_time(3000).await.unwrap();
+    let (a, b) = tokio::join!(
+        store.enroll_oidc(first.account, policy),
+        store.enroll_oidc(first.account, policy)
+    );
+    a.unwrap();
+    b.unwrap();
     let mut renamed = tokens.clone();
     renamed.identity.username = format!("renamed_{}", &subject[..8]);
     renamed.identity.email_verified = true;
@@ -61,11 +88,68 @@ async fn oidc_mapping_enrollment_rename_and_logout_are_account_bound() {
         .unwrap();
     assert_eq!(second.account, first.account);
     assert_eq!(second.memberships[0].player, player);
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT joined_at_ms FROM universe_memberships WHERE universe=$1 AND account=$2"
+        )
+        .bind(universe.0)
+        .bind(first.account.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        Some(2000)
+    );
+    // Existing unknown history must remain unknown on enrollment and login retries.
+    sqlx::query(
+        "UPDATE universe_memberships SET joined_at_ms=NULL WHERE universe=$1 AND account=$2",
+    )
+    .bind(universe.0)
+    .bind(first.account.0)
+    .execute(&pool)
+    .await
+    .unwrap();
+    store.enroll_oidc(first.account, policy).await.unwrap();
+    store
+        .complete_oidc_login(tokens.clone(), &Uuid::new_v4().to_string(), "csrf", None)
+        .await
+        .unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT joined_at_ms FROM universe_memberships WHERE universe=$1 AND account=$2"
+        )
+        .bind(universe.0)
+        .bind(first.account.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        None
+    );
     let other = Uuid::new_v4().into();
     store
         .ensure_signup_universe(Some(other), Default::default(), Some(10))
         .await
         .unwrap();
+    // Fail after the membership insert; the account predates enrollment and survives.
+    sqlx::raw_sql("CREATE FUNCTION fail_oidc_enrollment() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected'; END $$; CREATE TRIGGER fail_oidc_enrollment BEFORE INSERT ON building_levels FOR EACH ROW EXECUTE FUNCTION fail_oidc_enrollment();")
+        .execute(&pool).await.unwrap();
+    assert!(
+        store
+            .enroll_oidc(
+                first.account,
+                SignupPolicy {
+                    universe: other,
+                    max_players: 10
+                }
+            )
+            .await
+            .is_err()
+    );
+    let counts: (i64, i64, i64) = sqlx::query_as("SELECT (SELECT count(*) FROM universe_memberships WHERE universe=$1), (SELECT count(*) FROM players WHERE universe=$1), (SELECT count(*) FROM bodies WHERE universe=$1)")
+        .bind(other.0).fetch_one(&pool).await.unwrap();
+    assert_eq!(counts, (0, 0, 0));
+    sqlx::raw_sql("DROP TRIGGER fail_oidc_enrollment ON building_levels; DROP FUNCTION fail_oidc_enrollment();")
+        .execute(&pool).await.unwrap();
+    store.set_test_time(4000).await.unwrap();
     store
         .enroll_oidc(
             first.account,
@@ -85,6 +169,17 @@ async fn oidc_mapping_enrollment_rename_and_logout_are_account_bound() {
             .memberships
             .len(),
         2
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT joined_at_ms FROM universe_memberships WHERE universe=$1 AND account=$2"
+        )
+        .bind(other.0)
+        .bind(first.account.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        Some(4000)
     );
     let event = unbought_auth::Logout {
         iss: identity.issuer.clone(),

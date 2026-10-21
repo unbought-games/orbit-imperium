@@ -81,6 +81,16 @@ async fn empty_start_signup_concurrency_capacity_and_restart() {
         .unwrap();
     assert_eq!(first.session.memberships.len(), 1);
     let first_player = first.session.memberships[0].player;
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT joined_at_ms FROM universe_memberships WHERE player=$1"
+        )
+        .bind(first_player.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        Some(at)
+    );
     let amounts: serde_json::Value =
         sqlx::query_scalar("SELECT amounts FROM bodies WHERE owner=$1")
             .bind(first_player.0)
@@ -245,6 +255,14 @@ async fn empty_start_signup_concurrency_capacity_and_restart() {
     };
     assert!(auth.signup("rollback", password, more, None).await.is_err());
     assert!(store.find_credentials("rollback").await.unwrap().is_none());
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM universe_memberships WHERE universe=$1")
+            .bind(u.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        11
+    );
     sqlx::raw_sql("DROP TRIGGER fail_signup ON building_levels; DROP FUNCTION fail_signup();")
         .execute(&pool)
         .await

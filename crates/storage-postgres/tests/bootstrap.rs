@@ -116,6 +116,9 @@ async fn atomic_five_player_bootstrap_rerun_and_restart() {
             .await
             .unwrap();
     assert_eq!(before, after);
+    let joins: Vec<(bool, Option<i64>)> = sqlx::query_as("SELECT u.development,m.joined_at_ms FROM universe_memberships m JOIN universes u ON u.id=m.universe WHERE u.id=$1")
+        .bind(u.0).fetch_all(&pool).await.unwrap();
+    assert_eq!(joins, vec![(true, Some(1000)); 5]);
     assert!(
         identity
             .login(&accounts[0].name, &accounts[0].password, None)
