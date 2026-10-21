@@ -783,7 +783,7 @@ async fn account_membership_lookup_is_selective() {
         INSERT INTO universes(id,epoch,development,speed,started_at,profile_hash)
         SELECT md5('u'||g)::uuid,md5('e'||g)::uuid,true,1,0,'lookup' FROM generate_series(1,2) g;
         INSERT INTO accounts SELECT md5('a'||g)::uuid,'account'||g,'hash' FROM generate_series(1,5000) g;
-        INSERT INTO universe_memberships SELECT md5('u'||(1+g%2))::uuid,md5('a'||g)::uuid,md5('p'||g)::uuid FROM generate_series(1,5000) g;
+        INSERT INTO universe_memberships(universe,account,player) SELECT md5('u'||(1+g%2))::uuid,md5('a'||g)::uuid,md5('p'||g)::uuid FROM generate_series(1,5000) g;
         ANALYZE")
         .execute(&pool)
         .await
@@ -804,4 +804,99 @@ async fn account_membership_lookup_is_selective() {
             .await
             .unwrap();
     assert_selective(&plan, 10, "memberships by account");
+}
+
+#[tokio::test]
+async fn membership_join_upgrade_preserves_unknowns_and_old_writers() {
+    let (store, pool) = fresh().await;
+    // The exact retained deployment schema, not a current schema with a dropped column.
+    let older = sqlx::migrate::Migrator {
+        migrations: sqlx::migrate!("./migrations")
+            .iter()
+            .filter(|m| m.version <= 10)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into(),
+        ..sqlx::migrate::Migrator::DEFAULT
+    };
+    store.migrate_with_for_test(&older).await.unwrap();
+    sqlx::raw_sql(r#"
+        INSERT INTO rulesets VALUES ('profile','test','{}');
+        INSERT INTO universes VALUES ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002',false,1,1000,'profile');
+        INSERT INTO accounts VALUES ('00000000-0000-0000-0000-000000000003','retained','hash');
+        INSERT INTO players VALUES ('00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000001');
+        INSERT INTO universe_memberships(universe,account,player) SELECT universe,'00000000-0000-0000-0000-000000000003',id FROM players;
+    "#).execute(&pool).await.unwrap();
+    let before: serde_json::Value =
+        sqlx::query_scalar("SELECT to_jsonb(m) FROM universe_memberships m")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    store.migrate().await.unwrap();
+    store.migrate().await.unwrap();
+    // Previous binaries accept the compatible tail and still read/write their columns.
+    store.migrate_with_for_test(&older).await.unwrap();
+    let after: serde_json::Value =
+        sqlx::query_scalar("SELECT to_jsonb(m) - 'joined_at_ms' FROM universe_memberships m")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(before, after);
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>("SELECT joined_at_ms FROM universe_memberships")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        None
+    );
+    sqlx::raw_sql(r#"
+        INSERT INTO accounts VALUES ('00000000-0000-0000-0000-000000000005','old-writer','hash');
+        INSERT INTO players VALUES ('00000000-0000-0000-0000-000000000006','00000000-0000-0000-0000-000000000001');
+        INSERT INTO universe_memberships(universe,account,player) VALUES ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000006');
+    "#).execute(&pool).await.unwrap();
+    let rows: Vec<(uuid::Uuid, uuid::Uuid)> = sqlx::query_as(
+        "SELECT universe,player FROM universe_memberships WHERE account=$1 ORDER BY universe",
+    )
+    .bind(uuid::Uuid::from_u128(5))
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        rows,
+        vec![(uuid::Uuid::from_u128(1), uuid::Uuid::from_u128(6))]
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM universe_memberships WHERE joined_at_ms IS NULL"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        2
+    );
+    let error = sqlx::query("UPDATE universe_memberships SET joined_at_ms=-1")
+        .execute(&pool)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("23514")
+    );
+    // Zero is a valid known timestamp; NULL remains distinct from zero.
+    sqlx::query("UPDATE universe_memberships SET joined_at_ms=0 WHERE account=$1")
+        .bind(uuid::Uuid::from_u128(5))
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT joined_at_ms FROM universe_memberships WHERE account=$1"
+        )
+        .bind(uuid::Uuid::from_u128(5))
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        Some(0)
+    );
 }

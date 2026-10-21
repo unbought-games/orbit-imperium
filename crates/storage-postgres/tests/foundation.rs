@@ -10,6 +10,10 @@ async fn bound_foundation_identity_inventory_races_and_windows() {
     let u = UniverseId(Uuid::new_v4());
     let passwords = [Uuid::new_v4().to_string(), Uuid::new_v4().to_string()];
     store.seed(u, 1000, 1, &passwords).await.unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let joins: Vec<(bool, Option<i64>)> = sqlx::query_as("SELECT u.development,m.joined_at_ms FROM universe_memberships m JOIN universes u ON u.id=m.universe WHERE u.id=$1")
+        .bind(u.0).fetch_all(&pool).await.unwrap();
+    assert_eq!(joins, vec![(true, Some(1000)); 2]);
     store.set_test_time(1000).await.unwrap();
     let login = SessionService::new(store.clone())
         .login("alpha", &passwords[0], None)
