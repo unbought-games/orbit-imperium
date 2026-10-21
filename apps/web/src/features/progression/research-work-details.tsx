@@ -1,8 +1,9 @@
+import { ResourceSummary } from '../../ui/number-value'
 import { useLayoutEffect, useRef } from 'react'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { researchProgress } from '../../client-model/research-progress'
 import { Button } from '../../ui/button'
-import { costs, label } from '../../ui/format'
+import { label } from '../../ui/format'
 import styles from './building-details.module.css'
 
 export function ResearchWorkDetails({
@@ -26,7 +27,9 @@ export function ResearchWorkDetails({
         research.status !== research.countdown && (
           <p role="status">{research.status}</p>
         )}
-      <p>Full refund before completion: {costs(research.paid)}</p>
+      <p>
+        Full refund before completion: <ResourceSummary value={research.paid} />
+      </p>
       <Button
         disabled={!research.canCancel}
         onClick={() => {

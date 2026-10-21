@@ -1,3 +1,4 @@
+import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useState } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
@@ -12,7 +13,7 @@ import { Button, ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { routeTarget } from '../shell/route-target'
-import { formatResource as resource, coordinates } from '../ui/format'
+import { coordinates } from '../ui/format'
 import { MissionTrajectory } from './mission-trajectory'
 import {
   arrivalCountdown,
@@ -211,13 +212,18 @@ export function MissionFleets({
             {(['metal', 'crystal', 'deuterium'] as const).map((key) => (
               <div key={key}>
                 <dt>{key}</dt>
-                <dd>{resource(fleet.cargo[key])}</dd>
+                <dd>
+                  <ResourceNumber value={fleet.cargo[key]} />
+                </dd>
               </div>
             ))}
           </dl>
           <div className={styles.fuel}>
             <span>
-              Fuel spent <strong>{resource(fleet.paid_fuel)} deuterium</strong>
+              Fuel spent{' '}
+              <strong>
+                <ResourceNumber value={fleet.paid_fuel} /> deuterium
+              </strong>
             </span>
             <span>
               Speed <strong>{fleet.intent.speed_percent}%</strong>
@@ -271,9 +277,13 @@ export function MissionFleets({
         <Text>Returning fleets occupy a slot.</Text>
         <Text>
           Completed-asset score:{' '}
-          {(BigInt(view.missions.score_value_micro) / 1000000000n).toString()}{' '}
-          points. Protection uses the exact invested value of{' '}
-          {resource(view.missions.score_value_micro)} resources before rounding.
+          <NumberValue
+            value={view.missions.score_value_micro}
+            divisor={1000000000}
+          />{' '}
+          points. Invested resources:{' '}
+          <ResourceNumber value={view.missions.score_value_micro} /> resources.
+          Protection uses the full value before display rounding.
         </Text>
       </details>
     </section>

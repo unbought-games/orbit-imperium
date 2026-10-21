@@ -1,7 +1,9 @@
+import { ResourceShortfall, ResourceNumber } from './number-value'
 import type { components } from '../contracts'
 import { ResourceMark } from './resource-mark'
 import { Popover } from './popover'
-import { exactResource, resourceDecision } from './resource-cost-values'
+import { resourceDecision } from './resource-cost-values'
+import { formatWholeNumber } from './whole-number'
 import styles from './resource-costs.module.css'
 const materials = [
   { name: 'metal', title: 'Metal' },
@@ -17,7 +19,7 @@ export function ResourceCosts({
 }) {
   const longBalances = materials.some(({ name }) =>
     [cost[name], available[name]].some(
-      (value) => exactResource(value).length > 12,
+      (value) => formatWholeNumber(value, 1000000).length > 12,
     ),
   )
   return (
@@ -60,7 +62,7 @@ export function ResourceCosts({
                               Cost{' '}
                             </span>
                             <span className={styles.number}>
-                              {exactResource(cost[name])}
+                              <ResourceNumber value={cost[name]} />
                             </span>
                           </strong>
                         </span>
@@ -68,15 +70,23 @@ export function ResourceCosts({
                     }
                   >
                     <p>
-                      Required <strong>{exactResource(cost[name])}</strong>
+                      Required{' '}
+                      <strong>
+                        <ResourceNumber value={cost[name]} />
+                      </strong>
                     </p>
                     <p>
                       Available{' '}
-                      <strong>{exactResource(available[name])}</strong>
+                      <strong>
+                        <ResourceNumber value={available[name]} />
+                      </strong>
                     </p>
                     {shortfall && (
                       <p>
-                        Shortfall <strong>{exactResource(shortfall)}</strong>
+                        Shortfall{' '}
+                        <strong>
+                          <ResourceShortfall value={shortfall} />
+                        </strong>
                       </p>
                     )}
                   </Popover>
@@ -86,7 +96,7 @@ export function ResourceCosts({
                     Available
                   </span>
                   <span className={styles.number}>
-                    {exactResource(available[name])}
+                    <ResourceNumber value={available[name]} />
                   </span>
                 </td>
                 <td className={shortfall ? styles.shortfall : undefined}>
@@ -97,13 +107,13 @@ export function ResourceCosts({
                     <>
                       Need{' '}
                       <span className={styles.number}>
-                        {exactResource(shortfall)}
+                        <ResourceShortfall value={shortfall} />
                       </span>{' '}
                       more
                     </>
                   ) : (
                     <span className={styles.number}>
-                      {exactResource(after)}
+                      <ResourceNumber value={after} />
                     </span>
                   )}
                 </td>

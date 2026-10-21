@@ -783,7 +783,7 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   })
 })
 
-test('stockpiles stay whole while energy stays exact and net hourly rates remain visible', async ({
+test('stockpiles, energy, and signed hourly rates round down to whole units', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -797,10 +797,10 @@ test('stockpiles stay whole while energy stays exact and net hourly rates remain
   ).toContainText('(+63/h)')
   await expect(
     strip.getByRole('button', { name: 'Deuterium details' }),
-  ).toContainText('(-3/h)')
+  ).toContainText('(-4/h)')
   await expect(
     strip.getByRole('button', { name: 'Energy details' }).locator('strong'),
-  ).toHaveText('26.4')
+  ).toHaveText('26')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
@@ -1301,4 +1301,28 @@ test('resource orbit and exact decision ledger fit desktop and narrow phones', a
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await captureCatalog(page, `test-results/progression-resources-blocked-${width}.png`)
   }
+})
+
+test('fractional balances stay whole in the ledger and tooltip without enabling an unaffordable upgrade', async ({ page }) => {
+  const { planet, economy, sent } = await setup(page, true)
+  planet.amounts.metal = '59999999'
+  planet.amounts.crystal = '864661927'
+  economy.gross_per_hour.metal = '0'
+  economy.gross_per_hour.crystal = '0'
+  await refreshGame(page)
+  await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+  await page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }).click()
+  const pane = page.getByRole('region', { name: 'Progression quote' })
+  const metal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Metal details' }) })
+  const crystal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Crystal details' }) })
+  await expect(metal.locator('td').nth(0)).toHaveText('Available59')
+  await expect(metal.locator('td').nth(1)).toHaveText('After spendingNeed <1 more')
+  await expect(crystal.locator('td').nth(0)).toHaveText('Available864')
+  await expect(crystal.locator('td').nth(1)).toHaveText('After spending849')
+  await expect(pane.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeDisabled()
+  await metal.getByRole('button', { name: 'Metal details' }).click()
+  const tooltip = page.getByRole('dialog', { name: 'Metal', exact: true })
+  await expect(tooltip).toContainText('Available 59')
+  await expect(tooltip).toContainText('Shortfall <1')
+  expect(sent).toHaveLength(0)
 })

@@ -1,7 +1,7 @@
+import { ResourceNumber } from './number-value'
 import type { ReactNode } from 'react'
 import { ResourceMark } from './resource-mark'
 import { Popover } from './popover'
-import { formatResource, formatExactResource } from './format'
 import { classes } from './classes'
 import styles from './resource-amount.module.css'
 
@@ -52,13 +52,11 @@ export function ResourceAmount({
               <span className={styles.stockName}>{title}</span>
             )}
             <strong>
-              {resource === 'energy' && variant === 'stock'
-                ? formatExactResource(amount)
-                : formatResource(amount)}
+              <ResourceNumber value={amount} />
             </strong>
             {capacity !== undefined && (
               <span className={styles.capacity}>
-                / {formatResource(capacity)}
+                / <ResourceNumber value={capacity} />
               </span>
             )}
             {variant === 'stock' && warning && (
@@ -73,9 +71,15 @@ export function ResourceAmount({
             {rate !== undefined &&
               (rate === null ? variant !== 'stock' : BigInt(rate) !== 0n) && (
                 <span className={styles.rate}>
-                  {rate === null
-                    ? '(—/h)'
-                    : `(${BigInt(rate) > 0n ? '+' : ''}${formatResource(rate)}/h)`}
+                  {rate === null ? (
+                    '(—/h)'
+                  ) : (
+                    <>
+                      ({BigInt(rate) > 0n ? '+' : ''}
+                      <ResourceNumber value={rate} />
+                      /h)
+                    </>
+                  )}
                 </span>
               )}
           </span>

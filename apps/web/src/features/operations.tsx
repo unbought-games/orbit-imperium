@@ -1,3 +1,4 @@
+import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { canFundFleet } from '../client-model/resources'
 import { pendingBody } from '../client-model/game-projection'
 import styles from './operations.module.css'
@@ -7,7 +8,6 @@ import { Field, Form, FormGrid, Input, Select } from '../ui/form'
 import { Section } from '../ui/section'
 import { Panel } from '../ui/panel'
 import { Caption, Heading, Text } from '../ui/typography'
-import { formatResource as units } from '../ui/format'
 import type { Page } from '../shell/routes'
 import { useCountdown } from '../client-model/use-clock'
 import { useState, type FormEvent } from 'react'
@@ -113,10 +113,10 @@ export function Operations({
                       </time>
                     </Text>
                     <Text className={styles.payload}>
-                      On board: {units(f.payload.metal)} M ·{' '}
-                      {units(f.payload.crystal)} C ·{' '}
-                      {units(f.payload.deuterium)} D. Paid fuel:{' '}
-                      {units(f.paid_fuel)} D.
+                      On board: <ResourceNumber value={f.payload.metal} /> M ·{' '}
+                      <ResourceNumber value={f.payload.crystal} /> C ·{' '}
+                      <ResourceNumber value={f.payload.deuterium} /> D. Paid
+                      fuel: <ResourceNumber value={f.paid_fuel} /> D.
                     </Text>
                   </div>
                   {f.status === 'Outbound' && (
@@ -152,8 +152,9 @@ export function Operations({
                       {coordinates(view, r.target)}
                     </Text>
                     <Text>
-                      {units(r.cargo.metal)} metal · {units(r.cargo.crystal)}{' '}
-                      crystal · {units(r.cargo.deuterium)} deuterium
+                      <ResourceNumber value={r.cargo.metal} /> metal ·{' '}
+                      <ResourceNumber value={r.cargo.crystal} /> crystal ·{' '}
+                      <ResourceNumber value={r.cargo.deuterium} /> deuterium
                     </Text>
                     <Caption>{new Date(r.at).toLocaleString()}</Caption>
                   </Panel>
@@ -351,14 +352,16 @@ function Transport({
         <QuotePanel as="div" role="region" aria-label="Transport quote">
           <Heading level={3}>Confirm transport</Heading>
           <Text>
-            {proposal.quote.duration / 1000} seconds each way ·{' '}
-            {units(proposal.quote.fuel)} deuterium fuel ·{' '}
-            {units(proposal.quote.maximum_payload)} maximum payload
+            <NumberValue value={proposal.quote.duration} divisor={1000} />{' '}
+            seconds each way · <ResourceNumber value={proposal.quote.fuel} />{' '}
+            deuterium fuel ·{' '}
+            <ResourceNumber value={proposal.quote.maximum_payload} /> maximum
+            payload
           </Text>
           <Text>
-            Payload: {units(proposal.request.cargo.metal)} M ·{' '}
-            {units(proposal.request.cargo.crystal)} C ·{' '}
-            {units(proposal.request.cargo.deuterium)} D
+            Payload: <ResourceNumber value={proposal.request.cargo.metal} /> M ·{' '}
+            <ResourceNumber value={proposal.request.cargo.crystal} /> C ·{' '}
+            <ResourceNumber value={proposal.request.cargo.deuterium} /> D
           </Text>
           <QuoteAction
             disabled={

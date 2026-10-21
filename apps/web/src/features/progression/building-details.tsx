@@ -1,10 +1,11 @@
+import { DurationValue, ResourceNumber } from '../../ui/number-value'
 import { progressionCommand } from './options'
 import { ArrowLeft, ArrowDown, ArrowUp, Info } from 'lucide-react'
 import { Button } from '../../ui/button'
 import { CatalogImage } from '../../ui/image-catalog'
 import { ResourceCosts } from '../../ui/resource-costs'
 import { Requirements } from '../../ui/requirements'
-import { label, formatResource } from '../../ui/format'
+import { label } from '../../ui/format'
 import { ProgressionBlockers } from './quote-review'
 import { pending, type ProgressionProps } from './shared'
 import type { BoundProgressionOptions } from '../../client-model/commands'
@@ -39,7 +40,6 @@ export function BuildingDetails({
   const title = label(building.id)
   const terms = proposal?.terms?.type === 'Building' ? proposal.terms : null
   const command = progressionCommand(proposal)
-  const duration = terms ? Math.ceil(terms.duration_ms / 1000) : 0
   return (
     <>
       <div className={styles.header}>
@@ -74,13 +74,7 @@ export function BuildingDetails({
                       <div>
                         <dt>Production duration:</dt>
                         <dd>
-                          {duration >= 3600
-                            ? `${Math.floor(duration / 3600)}h `
-                            : ''}
-                          {duration >= 60
-                            ? `${Math.floor(duration / 60) % 60}m `
-                            : ''}
-                          {duration % 60}s
+                          <DurationValue milliseconds={terms.duration_ms} />
                         </dd>
                       </div>
                       <div>
@@ -93,7 +87,9 @@ export function BuildingDetails({
                       </div>
                       <div>
                         <dt>Energy needed:</dt>
-                        <dd>{formatResource(terms.required_energy)}</dd>
+                        <dd>
+                          <ResourceNumber value={terms.required_energy} />
+                        </dd>
                       </div>
                     </dl>
                   )

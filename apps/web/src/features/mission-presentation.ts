@@ -5,7 +5,7 @@ type S = components['schemas']
 
 export function arrivalCountdown(deadline: number, now: number) {
   return formatRemaining(
-    deadline <= now ? null : Math.ceil((deadline - now) / 1000),
+    deadline <= now ? null : Math.floor((deadline - now) / 1000),
   )
 }
 const timestampFormat = new Intl.DateTimeFormat(undefined, {

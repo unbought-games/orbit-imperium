@@ -1,3 +1,4 @@
+import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { canAfford } from '../client-model/resources'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
 import { Button } from '../ui/button'
@@ -109,7 +110,6 @@ export function Economy({
     if (compact && detailOpen && selectedId && !proposalIsCurrent)
       void preview(selectedId as UpgradeRequest['building'])
   }, [compact, detailOpen, selectedId, proposalIsCurrent, preview])
-  const number = (s: string) => (BigInt(s) / 1000000n).toLocaleString()
   if (compact)
     return (
       <>
@@ -187,7 +187,11 @@ export function Economy({
                         Upgrade to level {proposal.quote.target_level}
                       </Heading>
                       <Text>
-                        Production duration: {proposal.quote.duration / 1000}{' '}
+                        Production duration:{' '}
+                        <NumberValue
+                          value={proposal.quote.duration}
+                          divisor={1000}
+                        />{' '}
                         seconds
                       </Text>
                       <ResourceCosts
@@ -285,9 +289,10 @@ export function Economy({
             Upgrade to level {proposal.quote.target_level}
           </Heading>
           <Text>
-            {number(proposal.quote.cost.metal)} metal ·{' '}
-            {number(proposal.quote.cost.crystal)} crystal ·{' '}
-            {proposal.quote.duration / 1000} seconds
+            <ResourceNumber value={proposal.quote.cost.metal} /> metal ·{' '}
+            <ResourceNumber value={proposal.quote.cost.crystal} /> crystal ·{' '}
+            <NumberValue value={proposal.quote.duration} divisor={1000} />{' '}
+            seconds
           </Text>
           <QuoteAction
             disabled={

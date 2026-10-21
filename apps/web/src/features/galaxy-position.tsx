@@ -1,8 +1,8 @@
+import { ResourceNumber } from '../ui/number-value'
 import { Truck, Crosshair, Eye, Recycle, ChevronDown } from 'lucide-react'
 import type { components } from '../contracts'
 import type { DispatchDraft } from './missions'
 import { Button } from '../ui/button'
-import { formatResource } from '../ui/format'
 import styles from './galaxy.module.css'
 import { BodyIllustration } from './body-illustration'
 
@@ -75,10 +75,10 @@ export function GalaxyPosition({
           <>
             <strong>Debris field</strong>
             <span>
-              {formatResource(debris.metal)} <small>metal</small>
+              <ResourceNumber value={debris.metal} /> <small>metal</small>
             </span>
             <span>
-              {formatResource(debris.crystal)} <small>crystal</small>
+              <ResourceNumber value={debris.crystal} /> <small>crystal</small>
             </span>
           </>
         ) : (

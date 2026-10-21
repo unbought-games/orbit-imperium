@@ -1,6 +1,6 @@
+import { NumberValue, ResourceNumber } from './number-value'
 import styles from './resource-strip.module.css'
 import type { BoundView } from '../client-model/commands'
-import { formatExactResource } from './format'
 import { ResourceAmount } from './resource-amount'
 import { currentResourceRates } from './resource-rates'
 export function ResourceStrip({
@@ -28,18 +28,28 @@ export function ResourceStrip({
             warning={full}
           >
             <p>
-              Available <strong>{formatExactResource(value)}</strong>
+              Available{' '}
+              <strong>
+                <ResourceNumber value={value} />
+              </strong>
             </p>
             <p>
               Capacity{' '}
-              <strong>{formatExactResource(body.capacity[name])}</strong>
+              <strong>
+                <ResourceNumber value={body.capacity[name]} />
+              </strong>
             </p>
             <p>
               {name === 'deuterium' ? 'Net production' : 'Production'}{' '}
               <strong>
-                {rates
-                  ? `${BigInt(rates[name]) > 0n ? '+' : ''}${formatExactResource(rates[name])} / hour`
-                  : 'Flow unavailable'}
+                {rates ? (
+                  <>
+                    {BigInt(rates[name]) > 0n ? '+' : ''}
+                    <ResourceNumber value={rates[name]} /> / hour
+                  </>
+                ) : (
+                  'Flow unavailable'
+                )}
               </strong>
             </p>
             {full && (
@@ -60,15 +70,19 @@ export function ResourceStrip({
         warning={balance < 0n}
       >
         <p>
-          Balance <strong>{formatExactResource(balance.toString())}</strong>
+          Balance{' '}
+          <strong>
+            <ResourceNumber value={balance.toString()} />
+          </strong>
         </p>
         <p>
-          {formatExactResource(body.energy.supply)} supplied /{' '}
-          {formatExactResource(body.energy.demand)} demanded
+          <ResourceNumber value={body.energy.supply} /> supplied /{' '}
+          <ResourceNumber value={body.energy.demand} /> demanded
         </p>
         <p>
           {balance < 0n ? 'Energy shortfall' : 'Energy balance'} ·{' '}
-          {(BigInt(body.energy.utilization) / 10000n).toString()}% utilization
+          <NumberValue value={body.energy.utilization} divisor={10000} />%
+          utilization
         </p>
       </ResourceAmount>
     </div>

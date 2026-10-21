@@ -1,10 +1,11 @@
+import { NumberValue, ResourceNumber } from '../../ui/number-value'
 import { Button } from '../../ui/button'
 import { Form, Select } from '../../ui/form'
 import { Section } from '../../ui/section'
 import { Text } from '../../ui/typography'
 import { useProductionDraft } from './use-production-draft'
 import { type Command } from '../../client-model/commands'
-import { label, formatResource as units } from '../../ui/format'
+import { label } from '../../ui/format'
 import { pending, type ProgressionProps } from './shared'
 import styles from './production.module.css'
 export function Production({
@@ -41,7 +42,7 @@ export function Production({
       <div className={styles.factor}>
         <strong>
           Production factor:{' '}
-          {(BigInt(production.utilization) / 10000n).toString()}%
+          <NumberValue value={production.utilization} divisor={10000} />%
         </strong>
         <span>Confirmed economy · per hour</span>
       </div>
@@ -49,7 +50,9 @@ export function Production({
         {(['metal', 'crystal', 'deuterium'] as const).map((name) => (
           <div key={name}>
             <span>{name}</span>
-            <strong>{units(production.gross_per_hour[name])}</strong>
+            <strong>
+              <ResourceNumber value={production.gross_per_hour[name]} />
+            </strong>
             <small>/ hour</small>
           </div>
         ))}
@@ -63,16 +66,16 @@ export function Production({
                 : undefined
             }
           >
-            {units(
-              (
+            <ResourceNumber
+              value={(
                 BigInt(production.energy_supply) -
                 BigInt(production.energy_demand)
-              ).toString(),
-            )}
+              ).toString()}
+            />
           </strong>
           <small>
-            {units(production.energy_supply)} supplied /{' '}
-            {units(production.energy_demand)} demanded
+            <ResourceNumber value={production.energy_supply} /> supplied /{' '}
+            <ResourceNumber value={production.energy_demand} /> demanded
           </small>
         </div>
       </div>
@@ -153,12 +156,18 @@ export function Production({
       </Form>
       <div className={styles.notes}>
         <p>
-          Deuterium fuel: {units(production.fuel_deuterium_per_hour)} / hour ·
+          Deuterium fuel:{' '}
+          <ResourceNumber value={production.fuel_deuterium_per_hour} /> / hour ·
           Net deuterium:{' '}
-          {production.net_deuterium_per_hour.sign === 'Negative' ? '−' : ''}
-          {units(production.net_deuterium_per_hour.magnitude)} / hour · Fuel
-          utilization:{' '}
-          {(BigInt(production.fuel_utilization) / 10000n).toString()}%.
+          <ResourceNumber
+            value={
+              BigInt(production.net_deuterium_per_hour.magnitude) *
+              (production.net_deuterium_per_hour.sign === 'Negative' ? -1n : 1n)
+            }
+          />{' '}
+          / hour · Fuel utilization:{' '}
+          <NumberValue value={production.fuel_utilization} divisor={10000} />
+          %.
         </p>
         <p>
           Totals reflect saved settings, before storage suppression. At full
