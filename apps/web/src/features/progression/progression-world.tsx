@@ -132,13 +132,6 @@ export function ResourceWorld({
             type="button"
             className={`${styles.materialNode} ${styles[`node${index}`]}`}
             aria-label={`Inspect ${label(building)}`}
-            disabled={
-              body.levels[building as keyof typeof body.levels] === undefined ||
-              (view.protocol !== 2 &&
-                view.catalog.find(
-                  (x) => x.key.kind === 'Building' && x.key.id === building,
-                )?.enabled === false)
-            }
             onClick={(event) => onSelect(building, event.currentTarget)}
           >
             <ResourceMark resource={name} width={28} height={28} />

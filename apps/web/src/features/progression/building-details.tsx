@@ -12,6 +12,7 @@ import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { CatalogContent } from './catalog-content'
 import styles from './building-details.module.css'
 import { buildingProgress } from '../../client-model/building-progress'
+import { buildingUnavailableReason } from './building-availability'
 import { ConstructionDetails } from './construction-details'
 import { ObjectOrbit } from './progression-world'
 export function BuildingDetails({
@@ -39,6 +40,10 @@ export function BuildingDetails({
   const work = progress?.building === building.id ? progress : null
   const title = label(building.id)
   const terms = proposal?.terms?.type === 'Building' ? proposal.terms : null
+  const entry = view.catalog.find(
+    (entry) => entry.key.kind === 'Building' && entry.key.id === building.id,
+  )
+  const unavailable = buildingUnavailableReason(entry, body, building.id)
   const command = progressionCommand(proposal)
   return (
     <>
@@ -54,9 +59,26 @@ export function BuildingDetails({
           <CatalogImage art={building.art} className={styles.art} />
         </ObjectOrbit>
         <div className={styles.details}>
+          <section aria-label="Building requirements">
+            <h3>Requirements</h3>
+            {unavailable && <p>{unavailable}</p>}
+            {entry?.requirements.length ? (
+              <Requirements
+                requirements={entry.requirements}
+                view={view}
+                body={body}
+              />
+            ) : (
+              <p>
+                {entry
+                  ? 'No prerequisites listed in this universe’s catalog.'
+                  : 'Prerequisites unavailable.'}
+              </p>
+            )}
+          </section>
           {work ? (
             <ConstructionDetails work={work} model={model} />
-          ) : (
+          ) : unavailable ? null : (
             <>
               <div className={styles.facts}>
                 {loading ? (
@@ -164,16 +186,7 @@ export function BuildingDetails({
         <p>{building.description}</p>
       </div>
       <details className={styles.requirements}>
-        <summary>Requirements &amp; construction terms</summary>
-        <Requirements
-          requirements={
-            view.catalog.find(
-              (c) => c.key.kind === 'Building' && c.key.id === building.id,
-            )?.requirements ?? []
-          }
-          view={view}
-          body={body}
-        />
+        <summary>Construction terms</summary>
         <p>
           Full payment is refunded if cancelled before completion. A quote
           reserves nothing.

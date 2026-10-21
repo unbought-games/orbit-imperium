@@ -56,6 +56,7 @@ export function ProgressionTile({
   return (
     <ImageTile
       {...tile}
+      inspectable={request?.type === 'Upgrade'}
       unaffordable={unaffordable}
       onQuickUpgrade={
         canUpgrade
