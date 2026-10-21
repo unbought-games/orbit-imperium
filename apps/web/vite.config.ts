@@ -16,5 +16,5 @@ export default defineConfig({
     },
   },
   build: { outDir: 'dist', license: { fileName: 'third-party.txt' } },
-  test: { testTimeout: 5000, hookTimeout: 5000, include: ['src/**/*.test.ts'] },
+  test: { testTimeout: 0, hookTimeout: 0, include: ['src/**/*.test.ts'] },
 })

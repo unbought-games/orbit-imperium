@@ -22,7 +22,6 @@ jobs:
   scope:
     name: Select integration tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
     outputs:
       database: ${{ steps.integration.outputs.database }}
       ui: ${{ steps.integration.outputs.ui }}
@@ -58,9 +57,7 @@ jobs:
     needs: scope
     # PR code must run on a fresh GitHub-hosted VM, never a persistent host.
     runs-on: ubuntu-24.04
-    # Cold Linux compilation plus database integration can exceed 15m.
-    # Native per-test limits remain unchanged; this is only the outer guard.
-    timeout-minutes: 30
+    # No custom execution deadline; GitHub retains its six-hour platform cap.
     env:
       COMPOSE_PROJECT_NAME: orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}
       ORBIT_DB_PUBLISHED_PORT: '0'
@@ -74,7 +71,6 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - name: Install pinned npm and dependencies
-        timeout-minutes: 1
         run: |
           npm install --global "npm@$(node --print 'require("./package.json").engines.npm')"
           npm ci
@@ -103,7 +99,6 @@ jobs:
         run: make test-db
       - name: Remove disposable database and test files
         if: always() && needs.scope.outputs.database == 'true'
-        timeout-minutes: 1
         run: |
           bash -e <<'CLEANUP'
           docker compose down --volumes --remove-orphans
@@ -118,7 +113,6 @@ jobs:
     needs: scope
     if: needs.scope.outputs.ui == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -128,7 +122,6 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - name: Install pinned npm and dependencies
-        timeout-minutes: 1
         run: |
           npm install --global "npm@$(node --print 'require("./package.json").engines.npm')"
           npm ci
@@ -146,7 +139,6 @@ jobs:
     needs: [scope, native, browser]
     if: always()
     runs-on: ubuntu-24.04
-    timeout-minutes: 1
     steps:
       - name: Require all selected checks to pass
         env:

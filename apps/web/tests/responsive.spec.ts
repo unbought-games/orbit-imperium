@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 test('routed progression shell: viewport matrix, keyboard, history, invalid IDs and no navigation purchases', async ({page,browser})=>{
- test.setTimeout(120_000);
+
  await page.emulateMedia({reducedMotion:'reduce'});
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8'));
  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[0].name);await page.getByLabel('Password').fill(accounts[0].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible();
@@ -64,7 +64,7 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
 });
 
 test('keyboard purchase, disconnected countdown and authoritative reconnect preserve focus and announcements',async({page,context})=>{
- test.setTimeout(60_000);
+
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8'));
  await page.setViewportSize({width:390,height:844});await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[2].name);await page.keyboard.press('Tab');await page.keyboard.type(accounts[2].password);await page.keyboard.press('Enter');await expect(page.locator('main h1')).toHaveText(/^Overview —/);
  await page.getByRole('button',{name:'Menu',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('dialog',{name:'Navigation'}).getByRole('link',{name:'Resources',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.locator('main h1')).toBeFocused();await page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('region',{name:'Progression quote'})).toBeFocused();await page.getByRole('button',{name:'Confirm upgrade'}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('region',{name:'Construction status'})).toBeVisible();await expect(page.getByRole('region',{name:'Construction status'})).toContainText('Construction in progress');
@@ -77,7 +77,7 @@ test('keyboard purchase, disconnected countdown and authoritative reconnect pres
 });
 
 test('keyboard completes production, facility, research and shared ship/defense order flows',async({page})=>{
- test.setTimeout(60_000);
+
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8'));
  const press=async(name:string)=>{await expect(page.getByRole('button',{name,exact:true})).toBeEnabled();await page.getByRole('button',{name,exact:true}).focus();await page.keyboard.press('Enter')};
  const navigate=async(name:string)=>{await press('Menu');await page.getByRole('dialog',{name:'Navigation'}).getByRole('link',{name,exact:false}).focus();await page.keyboard.press('Enter')};

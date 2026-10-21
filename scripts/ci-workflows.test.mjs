@@ -125,3 +125,15 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
   assert.notEqual(run({ UI_SELECTED: 'false' }), 0)
   assert.notEqual(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'failure' }), 0)
 })
+
+test('routine CI and continuous image publication have no custom execution deadlines', () => {
+  for (const { file, workflow } of workflows.filter(({ file }) =>
+    ['ci.yml', 'release-image.yml'].includes(file),
+  )) {
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      assert.equal(job['timeout-minutes'], undefined, `${file}: ${name}`)
+      for (const step of job.steps)
+        assert.equal(step['timeout-minutes'], undefined, `${file}: ${name}: ${step.name}`)
+    }
+  }
+})

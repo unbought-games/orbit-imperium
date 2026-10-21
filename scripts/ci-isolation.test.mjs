@@ -21,7 +21,7 @@ test('container build and smoke use the same requested image', async (t) => {
   }
   delete env.MAKEFLAGS
   delete env.MFLAGS
-  const { stdout } = await exec('make', ['-s', '_container'], {
+  const { stdout } = await exec('make', ['-s', '_container-build', '_container'], {
     cwd: directory,
     env,
     signal: t.signal,

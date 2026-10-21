@@ -4,7 +4,6 @@ COPY package.json package-lock.json ./
 RUN npm ci
 # Package source and build both halves from this same snapshot. Never omit the
 # backend, build scripts or lockfiles from the source offered to players.
-COPY .agents .agents
 COPY .config .config
 COPY .github .github
 COPY apps apps

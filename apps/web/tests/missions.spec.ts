@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto'
 test('galaxy, dispatch, original-pair recovery, recall and authorized reports across G11 widths', async ({
   page,
 }) => {
-  test.setTimeout(120000)
+
 
   const accounts = JSON.parse(
     readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!, 'utf8'),

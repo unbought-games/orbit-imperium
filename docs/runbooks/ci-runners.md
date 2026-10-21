@@ -2,8 +2,8 @@
 
 Routine CI (including every pull request) and dispatch-only explicit validation
 run on GitHub-hosted `ubuntu-24.04` VMs. Each job gets a disposable host, including
-Docker and Chromium's Linux dependencies. Explicit suites remain opt-in and keep
-their existing deadlines.
+Docker and Chromium's Linux dependencies. Explicit suites remain opt-in with
+generous preparation and execution guards.
 
 Routine fixture-browser tests run on their own VM in parallel with the native
 build/lint/unit and database job, after a short changed-path selection job. This
@@ -14,12 +14,10 @@ scope selection and native checks must succeed, and selected browser tests must
 pass. An intentionally unselected browser job may be skipped; failures,
 cancellations, and unexpected skips cannot pass the gate.
 
-The native job has a thirty-minute outer runaway guard; the independent browser
-job has a fifteen-minute guard. The October 20 cold
-Ubuntu run spent 6m51s in build/lint/unit checks and 5m14s in database preparation
-and tests, both passing, then hit the old fifteen-minute job cap during browser
-validation. The longer job guard accommodates cold compilation and cache setup;
-it does not extend any native test limit or establish a performance target.
+Routine and continuous image-publication jobs have no custom job or step timeout.
+Routine Node, Vitest, Nextest and fixture Playwright execution has no per-test or
+suite deadline. GitHub-hosted jobs retain the platform's six-hour cap. Functional
+network timeouts and assertions about timeout behavior remain unchanged.
 Fixture browsers use at most three workers, bounded by available CPUs. Responsive
 catalog checks keep routes mounted across viewport changes to avoid redundant
 application startup while retaining every viewport and control assertion.
@@ -92,17 +90,27 @@ repository variables, packaged-source inspection and immutable digest records.
 
 ## Explicit validation
 
-The dispatch-only workflow uses a twenty-minute outer job guard and removes the
-former one-minute browser-only installation cap for Chromium's Linux system
-dependencies. This changes setup headroom, not test or build deadlines. The `all`
-path already permits three 120-second preparations, a 15-second web build,
-180-second acceptance and 120-second container validation: 675 seconds before
-dependency setup, database startup and cleanup, exceeding the old ten-minute job
-guard. The previous hosted routine run also took 11m47s overall, including 4m49s
-of database compilation, demonstrating the difference from a warm local host.
+Use `make test-explicit SUITE=<suite>` locally against an isolated disposable
+PostgreSQL instance, or manually dispatch the workflow with the intended ref and
+matching full `expected_sha`. Never use the development or production database.
+Record the tested SHA, dirty state, selected suites, results, timing and cleanup.
 
-Test and build deadlines in `scripts/test-budgets.json` remain unchanged. This
-does not prove that cold full-system/container validation fits those individual
-deadlines, including the 120-second compile/container limits. Run those suites
-only when explicitly requested; any deadline recalibration is a separate decision
-supported by measurements.
+The manual workflow has a two-hour outer guard. Named limits live in
+`scripts/test-budgets.json`: image/Rust preparation 900s, web preparation 300s,
+individual suites 600s (recovery 900s), combined acceptance 1800s, container
+smoke/isolation 600s, database startup and cleanup 180s each. Container image
+preparation runs before the behavior-test deadline, using the same run-specific
+image tag. The prior 120s combined container allowance expired during cold AMD64
+compilation; an existing successful cold release-image build measured 179s.
+
+For local runs, clear inherited database/Compose/test overrides, create a private
+temporary secret directory and unique Compose project/image tag, publish the
+PostgreSQL port dynamically, and install an EXIT cleanup trap before starting
+resources. Cleanup removes only containers on that project's network, its Compose
+volumes/network, its two isolation-probe projects, its image tag and its temporary
+secrets. Keep cleanup under the named guard and preserve both test and cleanup
+exit status. The workflow provides the corresponding scoped CI cleanup.
+
+Failures and timeouts remain failures. Diagnose and fix actual problems, then
+rerun affected validation. Full-system/container suites stay manual; changing
+execution guards does not promote them into routine CI.

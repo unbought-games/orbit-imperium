@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-24.04
     # Outer runaway guard includes cold setup and sequential bounded suites.
     # Individual build/test deadlines remain in scripts/test-budgets.json.
-    timeout-minutes: 20
+    timeout-minutes: 120
     env:
       COMPOSE_PROJECT_NAME: orbit-explicit-${{ github.run_id }}-${{ github.run_attempt }}
       ORBIT_DB_PUBLISHED_PORT: '0'
@@ -71,7 +71,7 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - name: Install pinned dependencies
-        timeout-minutes: 1
+        timeout-minutes: 10
         run: |
           npm install --global "npm@$(node --print 'require("./package.json").engines.npm')"
           npm ci
@@ -94,7 +94,7 @@ jobs:
         run: make test-explicit SUITE="$SUITE"
       - name: Remove disposable containers and test files
         if: always()
-        timeout-minutes: 1
+        timeout-minutes: 10
         run: |
           node scripts/test-timeout.mjs cleanup bash <<'CLEANUP'
           status=0

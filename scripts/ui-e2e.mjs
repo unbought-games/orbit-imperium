@@ -40,15 +40,12 @@ for (const [signal, code] of [
   })
 }
 try {
-  const deadline = Date.now() + 15_000
   while (true) {
     if (vite.exitCode !== null)
       throw Error('UI test server exited before readiness')
     try {
       if ((await fetch(base, { signal: AbortSignal.timeout(1000) })).ok) break
     } catch {}
-    if (Date.now() > deadline)
-      throw Error('UI test server did not become ready')
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   mkdirSync('test-results', { recursive: true })

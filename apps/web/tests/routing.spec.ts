@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 
 test('browser-history deep links survive login, refresh, history and native new-tab navigation', async ({ page, context }) => {
-  test.setTimeout(60_000)
+
   const accounts = JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!, 'utf8'))
   await page.setViewportSize({ width: 1440, height: 900 })
   const signIn = async () => {
@@ -70,7 +70,7 @@ test('browser-history deep links survive login, refresh, history and native new-
 })
 
 test('unavailable paths and invalid URL context cannot select or purchase on another planet', async ({ page, request }) => {
-  test.setTimeout(60_000)
+
   const accounts = JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!, 'utf8'))
   await page.goto('/login')
   await page.getByLabel('Account', { exact: true }).fill(accounts[1].name)

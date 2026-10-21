@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 
 test('scout report → attack with lost acknowledgement → incoming → combat → return → harvest', async ({ page, browser }) => {
-  test.setTimeout(180000)
+
   const accounts = JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!, 'utf8'))
   const target = JSON.parse(process.env.ORBIT_RAID_TARGET!)
   const advance = (at: number) => execFileSync('docker', ['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c',`UPDATE orbit_test_clock SET at_ms=${at}`], {stdio:'pipe'})

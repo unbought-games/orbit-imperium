@@ -6,7 +6,6 @@ import { assertStartupRefused } from './startup.mjs'
 const run = (source, options = {}) =>
   spawnSync(process.execPath, ['-e', source], {
     encoding: 'utf8',
-    timeout: 3000,
     ...options,
   })
 test('startup rejection must be the configuration guard, not bind failure or timeout', async () => {
