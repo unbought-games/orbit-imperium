@@ -182,7 +182,7 @@ async function cancellationFixture(page: Page, lateOptions = false) {
       },
     })
   })
-  await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
   // The six inactive building tiles each load cost inputs before cancellation.
   await expect.poll(() => inspections.filter((x) => x.delivered).length).toBe(6)
   await page
