@@ -1,3 +1,4 @@
+import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useStore } from 'zustand'
 import { occupiedFleetSlots } from '../client-model/game-projection'
@@ -40,6 +41,7 @@ export function Dispatch({
   body: S['BodyV3']
   draft: DispatchDraft | null
 }) {
+  const universeName = useUniverseName()
   const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const {
     mission,
@@ -239,9 +241,7 @@ export function Dispatch({
             Review checks the current destination, fuel, capacity and mission
             eligibility before you commit.
           </Text>
-          <ButtonLink
-            {...routeTarget(view.binding.universe, 'fleets', body.id)}
-          >
+          <ButtonLink {...routeTarget(universeName, 'fleets', body.id)}>
             View fleet activity
           </ButtonLink>
         </aside>

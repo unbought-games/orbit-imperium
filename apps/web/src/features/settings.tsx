@@ -5,7 +5,7 @@ import { Button } from '../ui/button'
 import styles from './settings.module.css'
 import { BetaNotice } from '../ui/beta-notice'
 export function SettingsScreen() {
-  const { view, model, logout } = useGameScreen()
+  const { view, model, logout, universeName } = useGameScreen()
   const settings = model.settings
   return (
     <Section className={styles.screen}>
@@ -43,7 +43,7 @@ export function SettingsScreen() {
         </div>
         <div>
           <dt>Universe</dt>
-          <dd>{view.binding.universe}</dd>
+          <dd>{universeName}</dd>
         </div>
       </dl>
       {view.capabilities.some(

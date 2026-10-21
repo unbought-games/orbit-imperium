@@ -13,6 +13,8 @@ pub use ports::*;
 pub use session::*;
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
+    #[error("automatic universe name pool exhausted")]
+    UniverseNamesExhausted,
     #[error("persisted format or content unsupported by this binary")]
     UnsupportedState,
     #[error("signup closed")]
@@ -74,6 +76,7 @@ pub enum ServiceError {
 impl From<StoreError> for ServiceError {
     fn from(e: StoreError) -> Self {
         match e {
+            StoreError::UniverseNamesExhausted => Self::Unavailable,
             StoreError::SignupClosed => Self::Forbidden,
             StoreError::UniverseFull => Self::UniverseFull,
             StoreError::InvalidCursor => Self::InvalidCursor,

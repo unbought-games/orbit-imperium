@@ -1,3 +1,4 @@
+import { useUniverseName } from '../shell/session-context'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { actionMessage } from '../ui/action-announcements'
@@ -13,6 +14,7 @@ export function DispatchReceipt({
   model: Coordinator
   origin: string
 }) {
+  const universeName = useUniverseName()
   const state = useStore(model.store)
   const latest = [...state.attempts.values()]
     .filter((attempt) => {
@@ -34,7 +36,7 @@ export function DispatchReceipt({
           Resolve saved departure
         </Button>
       )}
-      <ButtonLink {...routeTarget(state.binding.universe, 'fleets', origin)}>
+      <ButtonLink {...routeTarget(universeName, 'fleets', origin)}>
         View fleet activity
       </ButtonLink>
     </section>

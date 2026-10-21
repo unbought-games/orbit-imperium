@@ -37,6 +37,7 @@ export function AuthenticationPage({
       signup={signup}
       redirect={redirect}
       signupEnabled={runtime.signupEnabled}
+      universeName={oidc.config.universes[0]?.name}
       message={message}
       errorRef={errorRef}
       onSubmit={(event) => login(event, signup)}

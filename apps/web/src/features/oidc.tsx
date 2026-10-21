@@ -32,10 +32,10 @@ export function UniverseEnrollment() {
         optional.
       </Text>
       {state.status === 'ready' &&
-        state.config.universes.map((id) => (
-          <p key={id}>
-            <button disabled={busy} onClick={() => void enroll(id)}>
-              Join universe {id}
+        state.config.universes.map(({ universe, name }) => (
+          <p key={universe}>
+            <button disabled={busy} onClick={() => void enroll(universe)}>
+              Join {name}
             </button>
           </p>
         ))}

@@ -10,6 +10,7 @@ export function Login({
   signup,
   redirect,
   signupEnabled,
+  universeName,
   message,
   errorRef,
   onSubmit,
@@ -18,6 +19,7 @@ export function Login({
   signup: boolean
   redirect?: string
   signupEnabled: boolean
+  universeName?: string
   message: string
   errorRef: Ref<HTMLParagraphElement>
   onSubmit: FormEventHandler<HTMLFormElement>
@@ -35,6 +37,7 @@ export function Login({
           ? 'Create your account. Build an economy, advance your technology, and find your place among the stars.'
           : 'Sign in to continue building your place among the stars.'}
       </Text>
+      {signup && universeName && <Text>Join {universeName}</Text>}
       <Form
         key={String(signup)}
         className={styles.form}

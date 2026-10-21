@@ -36,8 +36,16 @@ export function EconomyScreen() {
   )
 }
 export function OperationsScreen() {
-  const { view, body, route, commands, model, dispatchDraft, prepareDispatch } =
-    useGameScreen()
+  const {
+    view,
+    body,
+    route,
+    commands,
+    model,
+    dispatchDraft,
+    prepareDispatch,
+    universeName,
+  } = useGameScreen()
   const settings = model.settings
   if (!body) return null
   if (view.protocol === 4) {
@@ -45,7 +53,7 @@ export function OperationsScreen() {
       return (
         <Galaxy
           model={model}
-          universe={view.binding.universe}
+          universe={universeName}
           origin={body.id}
           onDraft={(coordinates, mission) =>
             prepareDispatch({ coordinates, mission })
@@ -75,7 +83,7 @@ export function OperationsScreen() {
       return (
         <Reports
           model={model}
-          universe={view.binding.universe}
+          universe={universeName}
           origin={body.id}
           item={route.item}
           onDraft={prepareDispatch}

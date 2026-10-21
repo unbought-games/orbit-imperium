@@ -6,7 +6,7 @@ async fn memberships(
     account: AccountId,
 ) -> Result<Vec<Membership>, StoreError> {
     sqlx::query(
-        "SELECT universe,player FROM universe_memberships WHERE account=$1 ORDER BY universe",
+        "SELECT universe,player,u.name FROM universe_memberships m JOIN universes u ON u.id=m.universe WHERE account=$1 ORDER BY universe",
     )
     .bind(account.0)
     .fetch_all(&mut *connection)
@@ -15,6 +15,7 @@ async fn memberships(
     .into_iter()
     .map(|r| {
         Ok(Membership {
+            universe_name: r.try_get("name").map_err(db_error)?,
             universe: r
                 .try_get::<uuid::Uuid, _>("universe")
                 .map_err(db_error)?
@@ -28,13 +29,13 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
-    async fn oidc_universes(&self) -> Result<Vec<UniverseId>, StoreError> {
-        let ids: Vec<uuid::Uuid> =
-            sqlx::query_scalar("SELECT universe FROM universe_policies ORDER BY universe")
-                .fetch_all(self.read_pool()?)
-                .await
-                .map_err(db_error)?;
-        Ok(ids.into_iter().map(UniverseId).collect())
+    async fn universe_summaries(&self) -> Result<Vec<UniverseSummary>, StoreError> {
+        sqlx::query("SELECT universe, u.name FROM universe_policies p JOIN universes u ON u.id=p.universe ORDER BY u.name")
+            .fetch_all(self.read_pool()?).await.map_err(db_error)?
+            .into_iter().map(|r| Ok(UniverseSummary {
+                universe: UniverseId(r.try_get("universe").map_err(db_error)?),
+                name: r.try_get("name").map_err(db_error)?,
+            })).collect()
     }
     async fn save_oidc_login(&self, t: unbought_auth::LoginTransaction) -> Result<(), StoreError> {
         self.oidc_save_login(t).await

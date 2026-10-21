@@ -6,6 +6,26 @@ use serde_json::{Value, json};
 
 pub const UNIVERSE_CONFIG_VERSION: u32 = 1;
 
+/// Partial operator update. Additional editable metadata belongs here.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UniverseUpdate {
+    pub universe: UniverseId,
+    pub name: String,
+}
+impl UniverseUpdate {
+    pub fn validate(&self) -> Result<(), String> {
+        validate_universe(self.universe)?;
+        if self.name.trim().is_empty()
+            || self.name != self.name.trim_matches(' ')
+            || self.name.chars().count() > 80
+            || self.name.chars().any(char::is_control)
+        {
+            return Err("name must contain 1–80 characters, without surrounding spaces or control characters".into());
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UniversePolicy {

@@ -1,3 +1,4 @@
+import {universeSlug} from '../src/client-model/universe-name'
 import { test, expect } from '@playwright/test'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
@@ -19,13 +20,13 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
     const session=await (await p.request.get('/api/v1/session')).json()
     const u=session.memberships[0].universe
     const binding=(await (await p.request.get(`/api/v4/universes/${u}/binding?request_id=${randomUUID()}`)).json()).binding
-    return {u,binding,headers:{Origin:process.env.ORBIT_TEST_BASE_URL!,'X-CSRF-Token':session.csrf}}
+    return {u,slug:universeSlug(session.memberships[0].universe_name),binding,headers:{Origin:process.env.ORBIT_TEST_BASE_URL!,'X-CSRF-Token':session.csrf}}
   }
   const view=async(p=page)=>{const a=await auth(p);const r=await p.request.post(`/api/v4/universes/${a.u}/overview`,{headers:a.headers,data:{binding:a.binding,request_id:randomUUID()}});return r.status()===503?null:r.json()}
   const fresh=async(p=page)=>{let result;await expect.poll(async()=>{result=await view(p);return !!result}).toBe(true);return result as Awaited<ReturnType<typeof view>>}
   await page.setViewportSize({width:390,height:844});await login(page,0)
   const a=await auth(),v=await fresh(),origin=v.bodies[0].id
-  const go=async(name:string)=>{await page.goto(`/u/${a.u}/${name}?body=${origin}`);await expect(page.locator('main h1')).toBeVisible()}
+  const go=async(name:string)=>{await page.goto(`/u/${a.slug}/${name}?body=${origin}`);await expect(page.locator('main h1')).toBeVisible()}
   // Separate adversarial branch: a legally dispatched lone probe meets three defending fighters.
   const post=async(path:string,data:unknown)=>page.request.post(`/api/v4/universes/${a.u}/${path}`,{headers:a.headers,data})
   const context=()=>({binding:a.binding,request_id:randomUUID()})
@@ -92,12 +93,12 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   await go('fleets');await expect(page.getByRole('button',{name:'Review recall'})).toBeVisible()
   const defenderContext=await browser.newContext();const defender=await defenderContext.newPage();await defender.setViewportSize({width:360,height:800});await login(defender,1)
   const da=await auth(defender),dv=await fresh(defender)
-  await defender.goto(`/u/${da.u}/fleets?body=${dv.bodies[0].id}`)
+  await defender.goto(`/u/${da.slug}/fleets?body=${dv.bodies[0].id}`)
   await expect(defender.locator('main')).toContainText('Attack')
   await expect(defender.locator('main')).toContainText('Types unknown')
   await defender.screenshot({path:`${screenshots}/incoming-360.png`,fullPage:true})
   // Defender can still inspect ordinary defense/manufacture controls while incoming.
-  await defender.goto(`/u/${da.u}/b/${dv.bodies[0].id}/defense`)
+  await defender.goto(`/u/${da.slug}/b/${dv.bodies[0].id}/defense`)
   await expect(defender.locator('main')).toContainText('Rocket Launcher')
   await defender.screenshot({path:`${screenshots}/defense-360.png`,fullPage:true})
   const launched=(await fresh()).missions.fleets[0];advance(launched.due_at)
@@ -148,7 +149,7 @@ test('zero-debris combat reports do not offer a harvest shortcut', async ({page}
   expect(reportId).toBeTruthy()
   // Fixture only: render the real authorized report schema with the empty-planet/defense-only debris outcome.
   await page.route('**/api/v4/universes/*/reports/*',async route=>{const response=await route.fetch();const data=await response.json();data.data.payload.debris={metal:'0',crystal:'0',deuterium:'0'};await route.fulfill({response,json:data})})
-  await page.goto(`/u/${u}/reports/${reportId}?body=${view.bodies[0].id}`)
+  await page.goto(`/u/${universeSlug(session.memberships[0].universe_name)}/reports/${reportId}?body=${view.bodies[0].id}`)
   await expect(page.getByRole('region',{name:'Report observation'})).toBeVisible()
   await expect(page.getByRole('button',{name:'Prepare harvest',exact:true})).toHaveCount(0)
   await page.unrouteAll({behavior:'wait'})

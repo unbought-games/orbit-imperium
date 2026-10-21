@@ -1,3 +1,4 @@
+import { useUniverseName } from '../shell/session-context'
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from '../shell/route-target'
 import { resolveDestination, type Page } from '../shell/routes'
@@ -31,6 +32,7 @@ export function WorkSummaries({
   only?: 'buildings' | 'research' | 'manufacturing'
   layout?: 'cards' | 'editorial'
 }) {
+  const universeName = useUniverseName()
   const countdown = useCountdown(
     view.sampled_at,
     layout === 'editorial' ? 'compact' : 'exact',
@@ -248,13 +250,7 @@ export function WorkSummaries({
                     </Button>
                   )}
                   {enabled ? (
-                    <Link
-                      {...routeTarget(
-                        view.binding.universe,
-                        page as Page,
-                        body.id,
-                      )}
-                    >
+                    <Link {...routeTarget(universeName, page as Page, body.id)}>
                       Open{' '}
                       {category === 'manufacturing'
                         ? 'shipyard'
@@ -275,13 +271,7 @@ export function WorkSummaries({
                       },
                       view,
                     ).available && (
-                      <Link
-                        {...routeTarget(
-                          view.binding.universe,
-                          'defense',
-                          body.id,
-                        )}
-                      >
+                      <Link {...routeTarget(universeName, 'defense', body.id)}>
                         Open defenses{' '}
                         <ArrowRight size={12} aria-hidden="true" />
                       </Link>

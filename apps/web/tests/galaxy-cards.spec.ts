@@ -50,7 +50,7 @@ async function setup(page: Page) {
       },
     })
   })
-  await page.goto(`/u/${binding.universe}/galaxy?body=${body.id}`)
+  await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
   return {
     setFailure: (value: boolean) => {
       fail = value
@@ -94,7 +94,7 @@ test('galaxy cards preserve system navigation, eligibility, debris and mission d
     page.getByRole('combobox', { name: 'Mission', exact: true }),
   ).toHaveValue('Harvest')
   await expect(page.getByLabel('Position', { exact: true })).toHaveValue('4')
-  await page.goto(`/u/${binding.universe}/galaxy?body=${body.id}`)
+  await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
   await expect(cards).toHaveCount(15)
   await page.getByLabel('Solar system').selectOption('499')
   await expect(cards.first()).toContainText('[1:499:1]')

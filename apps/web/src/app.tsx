@@ -21,6 +21,10 @@ export function App() {
         <SessionContext.Provider
           key={`${commands.view.protocol}:${bindingKey(commands.view.binding)}`}
           value={{
+            universeName: runtime.session.memberships.find(
+              (membership) =>
+                membership.universe === commands.view!.binding.universe,
+            )!.universe_name,
             commands,
             view: commands.view,
             model: commands.model!,

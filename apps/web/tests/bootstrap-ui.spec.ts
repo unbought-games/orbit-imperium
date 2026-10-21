@@ -30,7 +30,7 @@ test('OIDC configuration selects hosted sign-in and retains the source offer', a
       },
     }),
   )
-  const destination = `/u/${binding.universe}/b/${body.id}/resources`
+  const destination = `/u/andromeda/b/${body.id}/resources`
   await page.goto(`/login?${new URLSearchParams({ redirect: destination })}`)
   await expect(
     page.getByRole('link', { name: 'Continue with Unbought' }),
@@ -79,7 +79,7 @@ test('login and signup preserve the requested game destination', async ({
   await page.route('**/api/v1/session?bootstrap=true', (route) =>
     route.fulfill({ json: payload }),
   )
-  const destination = `/u/${binding.universe}/b/${body.id}/resources`
+  const destination = `/u/andromeda/b/${body.id}/resources`
   await page.goto(destination)
   await expect(page).toHaveURL(/\/login\?/)
   await expect(
@@ -808,7 +808,7 @@ test('starting beta and reset notice appear before public enrollment with approv
 test('signed-in settings retain the beta notice and best-effort support target', async ({ page }) => {
   await shellFixture(page)
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto(`/u/${binding.universe}/settings?body=${body.id}`)
+  await page.goto(`/u/andromeda/settings?body=${body.id}`)
   await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
   const help = page.getByRole('region', { name: 'Help and conduct reports' })
   await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
@@ -816,4 +816,71 @@ test('signed-in settings retain the beta notice and best-effort support target',
   await expect(page.getByRole('navigation', { name: 'Policies and support' }).getByRole('link', { name: 'Conduct', exact: true })).toHaveAttribute('href', 'https://unbought.games/conduct/')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'test-results/open-beta-settings-mobile.png', fullPage: true })
+})
+
+test('universe names appear on desktop and mobile and every game link uses the current name', async ({ page }) => {
+  const options = { universeName: 'Andromeda' }
+  await shellFixture(page, options)
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(page.getByLabel('Current universe', { exact: true })).toHaveText('Andromeda')
+    await expect(page.getByLabel('Current universe', { exact: true })).toBeVisible()
+    await expect(page).toHaveTitle(/ · Andromeda · Orbit Imperium$/)
+    expect(await page.evaluate(() => [...document.querySelectorAll<HTMLAnchorElement>('a[href]')]
+      .map(a => new URL(a.href).pathname).filter(path => path.startsWith('/u/'))
+      .every(path => path.startsWith('/u/andromeda/')))).toBe(true)
+  }
+  await page.goto(`/u/andromeda/settings?body=${body.id}`)
+  await expect(page.locator('dt').filter({ hasText: /^Universe$/ }).locator('..')).toContainText('Andromeda')
+
+  // Rename at the authority, then refresh the old link: no alias or redirect.
+  options.universeName = 'My / Universe? #1'
+  const oldPath = new URL(page.url()).pathname
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
+  expect(new URL(page.url()).pathname).toBe(oldPath)
+  await expect(page.getByLabel('Current universe', { exact: true })).toHaveText(options.universeName)
+  await page.getByRole('link', { name: 'Open your universe overview' }).click()
+  await expect(page).toHaveURL(new RegExp(`/u/my-~2f~-universe~3f~-~23~1/b/${body.id}/overview$`))
+  await expect(page).toHaveTitle(/My \/ Universe\? #1/)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: 'test-results/universe-name-mobile.png', fullPage: true })
+
+  const uuidPath = `/u/${binding.universe}/b/${body.id}/overview`
+  await page.goto(uuidPath)
+  await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
+  expect(new URL(page.url()).pathname).toBe(uuidPath)
+})
+
+test('enrollment displays a universe name and submits its stable UUID', async ({ page }) => {
+  const payload = bootstrapFixture(3)
+  if (payload.result.status !== 'authenticated') throw Error('fixture')
+  payload.result.session.memberships = []
+  payload.result.game = { status: 'no_membership' }
+  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: payload }))
+  await page.route('**/api/v1/session', route => route.fulfill({ json: { csrf: 'fixture' } }))
+  await page.route('**/api/auth/config', route => route.fulfill({ json: {
+    mode: 'oidc', universes: [{ universe: binding.universe, name: 'Whirlpool' }],
+  } }))
+  let enrolled: unknown
+  await page.route('**/api/auth/enroll', async route => {
+    enrolled = route.request().postDataJSON()
+    await route.fulfill({ status: 204 })
+  })
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: 'Join Whirlpool', exact: true })).toBeVisible()
+  await expect(page.locator('body')).not.toContainText(binding.universe)
+  await page.getByRole('button', { name: 'Join Whirlpool', exact: true }).click()
+  await expect.poll(() => enrolled).toEqual({ universe: binding.universe })
+})
+
+test('local signup identifies the named universe', async ({ page }) => {
+  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
+    version: 1, signup_enabled: true, result: { status: 'anonymous' },
+  } }))
+  await page.route('**/api/auth/config', route => route.fulfill({ json: {
+    mode: 'local', universes: [{ universe: binding.universe, name: 'Triangulum' }],
+  } }))
+  await page.goto('/signup')
+  await expect(page.getByText('Join Triangulum', { exact: true })).toBeVisible()
 })

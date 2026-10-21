@@ -114,7 +114,7 @@ async function setup(page: Page, blocked = false, commandReferences = false) {
       },
     })
   })
-  await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
   await expect(page.locator('main h1')).toHaveText('Resources')
   return { economy, sent, planet }
 }
@@ -252,7 +252,7 @@ test('unaffordable tiles stay striped when another building starts and quote ref
       },
     })
   })
-  await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
   const metal = page.getByRole('button', {
     name: 'Upgrade Metal Mine',
     exact: true,
@@ -703,7 +703,7 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
       },
     })
   })
-  await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
   await expect(
     page.getByRole('button', { name: 'Resource settings', exact: true }),
   ).toBeDisabled()
@@ -871,7 +871,7 @@ for (const [pageName, building, title] of [
       if (receipt.status === 'Committed') constructions.length = 0
       await route.fulfill({ json: receipt })
     })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/${pageName}`)
+    await page.goto(`/u/andromeda/b/${body.id}/${pageName}`)
     await expect(
       page.getByRole('complementary', { name: 'Activity' }),
     ).toHaveCount(0)
@@ -941,7 +941,7 @@ for (const [protocol, pageName, building, title] of [
         },
       ],
     })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/${pageName}`)
+    await page.goto(`/u/andromeda/b/${body.id}/${pageName}`)
     const tile = page.getByRole('button', {
       name: `Upgrade ${title}`,
       exact: true,
@@ -1257,7 +1257,7 @@ test('an accepted construction can be cancelled before its engine outcome arrive
     const id = new URL(route.request().url()).pathname.split('/').pop()!
     await route.fulfill({ json: receipts.get(id) })
   })
-  await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
   await page
     .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
     .click()
@@ -1289,7 +1289,7 @@ test('resource orbit and exact decision ledger fit desktop and narrow phones', a
   await refreshGame(page)
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+    await page.goto(`/u/andromeda/b/${body.id}/resources`)
     await expect(page.getByLabel('Planet energy')).toContainText('Supply')
     await page.getByLabel('Planet energy').locator('..').locator('img').evaluate(image => (image as HTMLImageElement).decode())
     await expect(page.getByLabel('Resource economy')).toContainText('Capacity')
@@ -1310,7 +1310,7 @@ test('fractional balances stay whole in the ledger and tooltip without enabling 
   economy.gross_per_hour.metal = '0'
   economy.gross_per_hour.crystal = '0'
   await refreshGame(page)
-  await page.goto(`/u/${binding.universe}/b/${body.id}/resources`)
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
   await page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   const metal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Metal details' }) })

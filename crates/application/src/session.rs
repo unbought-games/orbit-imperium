@@ -29,7 +29,13 @@ pub struct Credentials {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Membership {
     pub universe: UniverseId,
+    pub universe_name: String,
     pub player: PlayerId,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UniverseSummary {
+    pub universe: UniverseId,
+    pub name: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuthenticatedSession {

@@ -47,6 +47,12 @@ impl PgStore {
     }
 }
 fn db_error(error: sqlx::Error) -> StoreError {
+    if let sqlx::Error::Database(ref db) = error
+        && db.code().as_deref() == Some("PON01")
+    {
+        return StoreError::UniverseNamesExhausted;
+    }
+
     if matches!(
         &error,
         sqlx::Error::Decode(_)

@@ -14,15 +14,21 @@
 .identity {
   grid-area: identity;
   display: flex;
-  gap: 20px;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding-block: 12px;
   min-height: 76px;
 }
-.identity > span {
+.identity > .universeName {
   font: 0.75rem var(--font-editorial);
   letter-spacing: 1px;
   color: var(--text-muted);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .brand {
   font: 1.125rem var(--font-editorial);
@@ -158,11 +164,6 @@
   background: var(--surface);
   color: var(--danger);
 }
-@media (max-width: 1250px) {
-  .identity > span {
-    display: none;
-  }
-}
 @media (max-width: 767px) {
   .game-shell {
     padding-inline: 18px;
@@ -212,7 +213,6 @@
     column-gap: 24px;
   }
   .identity {
-    width: max-content;
     min-height: 64px;
   }
   .masthead,

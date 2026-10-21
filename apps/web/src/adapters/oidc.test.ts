@@ -9,7 +9,7 @@ it('passes config cancellation through and preserves local or OIDC configuration
     { mode: 'local', universes: [] },
     {
       mode: 'oidc',
-      universes: ['universe'],
+      universes: [{ universe: 'universe', name: 'Andromeda' }],
       accounts_url: 'https://accounts.example',
       client_id: 'game',
     },

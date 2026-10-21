@@ -48,7 +48,7 @@ test('shipyard and defense show every batch in the same ordered queue', async ({
     ],
   })
   for (const destination of ['overview', 'shipyard', 'defense']) {
-    await page.goto(`/u/${binding.universe}/b/${body.id}/${destination}`)
+    await page.goto(`/u/andromeda/b/${body.id}/${destination}`)
     const queue = page.getByRole('list', { name: 'Manufacturing queue' })
     await expect(queue.getByRole('listitem')).toHaveCount(3)
     await expect(queue.getByRole('listitem').nth(0)).toContainText(
@@ -730,7 +730,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/${binding.universe}/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
   const mission = page.getByRole('article', { name: 'Transport fleet' })
   await expect(mission).toContainText('4 Small Cargo')
   await expect(mission).toContainText(/6m \d+s/)
@@ -887,7 +887,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
       },
     })
   })
-  await page.goto(`/u/${binding.universe}/reports?body=${body.id}`)
+  await page.goto(`/u/andromeda/reports?body=${body.id}`)
   await expect(
     page.getByRole('link', { name: 'Espionage', exact: true }),
   ).toBeVisible()
@@ -931,14 +931,14 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     fullPage: true,
   })
   reportMode = 'empty'
-  await page.goto(`/u/${binding.universe}/reports?body=${body.id}`)
+  await page.goto(`/u/andromeda/reports?body=${body.id}`)
   await expect(page.getByText('No reports yet.', { exact: true })).toBeVisible()
   await page.screenshot({
     path: 'test-results/reports-empty-phone.png',
     fullPage: true,
   })
   reportMode = 'failed'
-  await page.goto(`/u/${binding.universe}/reports/${header.id}?body=${body.id}`)
+  await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
   await expect(
     page.getByRole('button', { name: 'Retry reports', exact: true }),
   ).toBeVisible()
@@ -969,13 +969,13 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
       score_value_micro: '0',
     },
   })
-  await page.goto(`/u/${binding.universe}/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
   await expect(page.getByText('No active fleets.')).toBeVisible()
   await page.screenshot({
     path: 'test-results/fleets-empty-phone.png',
     fullPage: true,
   })
-  await page.goto(`/u/${binding.universe}/fleets/${id(99)}?body=${body.id}`)
+  await page.goto(`/u/andromeda/fleets/${id(99)}?body=${body.id}`)
   await expect(
     page.getByText(
       'This item is unavailable or outside the current authorized view.',
@@ -985,7 +985,7 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
     path: 'test-results/fleets-unavailable-phone.png',
     fullPage: true,
   })
-  await page.goto(`/u/${binding.universe}/settings?body=${body.id}`)
+  await page.goto(`/u/andromeda/settings?body=${body.id}`)
   await expect(
     page.getByRole('heading', { name: 'Universe settings', exact: true }),
   ).toBeVisible()
@@ -1076,7 +1076,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     sent++
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/${binding.universe}/dispatch?body=${body.id}`)
+  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   await page.getByLabel('Position', { exact: true }).fill('2')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
@@ -1199,7 +1199,7 @@ test('legacy fleets retain trajectory, exact arrival and reviewed recall', async
       },
     ],
   })
-  await page.goto(`/u/${binding.universe}/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
   await expect(
     page.getByRole('figure', { name: 'Mission route schematic' }),
   ).toBeVisible()
@@ -1286,7 +1286,7 @@ test('selected body context reflows without clipping and editorial routes retain
     page.getByRole('dialog', { name: 'Planet information', exact: true }),
   ).toContainText('3 fields used + 1 reserved / 163')
   await page.keyboard.press('Escape')
-  await page.goto(`/u/${binding.universe}/b/${id(99)}/resources`)
+  await page.goto(`/u/andromeda/b/${id(99)}/resources`)
   const unavailable = page.getByRole('heading', {
     name: 'Destination unavailable',
     exact: true,
@@ -1453,7 +1453,7 @@ test('server recall eligibility survives an elapsed client countdown', async ({
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/${binding.universe}/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
   await page.route('**/overview', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
   )

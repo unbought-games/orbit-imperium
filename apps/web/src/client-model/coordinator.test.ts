@@ -805,7 +805,13 @@ it('initialization restores saved command identities without startup network rea
       account: binding.account,
       csrf: 'csrf',
       expires_at: 9999999999999,
-      memberships: [{ universe: binding.universe, player: binding.player }],
+      memberships: [
+        {
+          universe_name: 'Andromeda',
+          universe: binding.universe,
+          player: binding.player,
+        },
+      ],
     },
     snapshot,
   )

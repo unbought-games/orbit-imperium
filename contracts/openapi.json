@@ -4079,11 +4079,17 @@
           "player": {
             "type": "string",
             "format": "uuid"
+          },
+          "universe_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
           }
         },
         "required": [
           "universe",
-          "player"
+          "player",
+          "universe_name"
         ],
         "additionalProperties": false
       },

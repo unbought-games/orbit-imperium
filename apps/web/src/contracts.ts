@@ -3709,6 +3709,7 @@ export interface components {
             universe: string;
             /** Format: uuid */
             player: string;
+            universe_name: string;
         };
         Session: {
             /** Format: uuid */
