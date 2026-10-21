@@ -1,3 +1,4 @@
+import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useStore } from 'zustand'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { useDispatch } from './use-dispatch'
@@ -19,7 +20,7 @@ import { DispatchReceipt } from './dispatch-receipt'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
-import { label, formatResource as resource } from '../ui/format'
+import { label } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
   coordinates: S['Coordinates']
@@ -300,13 +301,14 @@ export function Dispatch({
               .join(' · ')}
           </Text>
           <Text>
-            Cargo: {resource(quote.intent.cargo.metal)} metal ·{' '}
-            {resource(quote.intent.cargo.crystal)} crystal ·{' '}
-            {resource(quote.intent.cargo.deuterium)} deuterium
+            Cargo: <ResourceNumber value={quote.intent.cargo.metal} /> metal ·{' '}
+            <ResourceNumber value={quote.intent.cargo.crystal} /> crystal ·{' '}
+            <ResourceNumber value={quote.intent.cargo.deuterium} /> deuterium
           </Text>
           <Text>
-            {quote.intent.mission} · {quote.duration_ms / 1000} seconds one way
-            · {resource(quote.fuel)} deuterium fuel
+            {quote.intent.mission} ·{' '}
+            <NumberValue value={quote.duration_ms} divisor={1000} /> seconds one
+            way · <ResourceNumber value={quote.fuel} /> deuterium fuel
           </Text>
           <Text>
             Estimated contact {exactTime(now + quote.duration_ms)} · Estimated
@@ -314,8 +316,9 @@ export function Dispatch({
             departure now; losses may leave no return fleet.
           </Text>
           <Text>
-            Payload capacity {resource(quote.capacity)} · Maximum with fuel{' '}
-            {resource(quote.maximum_payload)} · Slot limit {quote.slot_limit}
+            Payload capacity <ResourceNumber value={quote.capacity} /> · Maximum
+            with fuel <ResourceNumber value={quote.maximum_payload} /> · Slot
+            limit {quote.slot_limit}
           </Text>
           <Text>
             Fuel is spent once; recall does not refund it. Probes carry fuel

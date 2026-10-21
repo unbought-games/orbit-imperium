@@ -1,7 +1,8 @@
+import { ResourceNumber } from '../ui/number-value'
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from '../shell/route-target'
 import { resolveDestination } from '../shell/routes'
-import { coordinates, label, formatExactResource } from '../ui/format'
+import { coordinates, label } from '../ui/format'
 import { Heading } from '../ui/typography'
 import { Link } from '../ui/link'
 import { ArrowRight, Radar } from 'lucide-react'
@@ -106,11 +107,11 @@ export function PlanetOverview({
           <div>
             <dt>Energy balance</dt>
             <dd>
-              {formatExactResource(
-                (
+              <ResourceNumber
+                value={(
                   BigInt(body.energy.supply) - BigInt(body.energy.demand)
-                ).toString(),
-              )}
+                ).toString()}
+              />
             </dd>
           </div>
         </dl>

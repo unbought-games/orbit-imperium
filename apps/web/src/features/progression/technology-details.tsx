@@ -1,3 +1,4 @@
+import { DurationValue, ResourceSummary } from '../../ui/number-value'
 import { progressionCommand } from './options'
 import { useEffect, useRef } from 'react'
 import { ArrowLeft, Info, Network } from 'lucide-react'
@@ -5,7 +6,7 @@ import { Button } from '../../ui/button'
 import { Field, Input } from '../../ui/form'
 import { CatalogImage } from '../../ui/image-catalog'
 import { ResourceCosts } from '../../ui/resource-costs'
-import { label, costs } from '../../ui/format'
+import { label } from '../../ui/format'
 import { ProgressionBlockers } from './quote-review'
 import { pending, type ProgressionProps } from './shared'
 import { catalogContent } from './catalog-content'
@@ -150,11 +151,13 @@ export function TechnologyDetails({
                           : 'Research time:'}
                       </dt>
                       <dd>
-                        {duration(
-                          material.type === 'Manufacture'
-                            ? material.unit_duration_ms
-                            : material.duration_ms,
-                        )}
+                        <DurationValue
+                          milliseconds={
+                            material.type === 'Manufacture'
+                              ? material.unit_duration_ms
+                              : material.duration_ms
+                          }
+                        />
                       </dd>
                     </div>
                     {material.type === 'Research' && (
@@ -185,7 +188,8 @@ export function TechnologyDetails({
               {material?.type === 'Manufacture' &&
                 material.quantity !== '1' && (
                   <p className={local.note}>
-                    Cost per unit: {costs(material.unit_cost)}
+                    Cost per unit:{' '}
+                    <ResourceSummary value={material.unit_cost} />
                   </p>
                 )}
               {order.error && <p role="alert">{order.error}</p>}
@@ -264,8 +268,4 @@ export function TechnologyDetails({
       </Button>
     </>
   )
-}
-function duration(ms: number) {
-  const seconds = Math.ceil(ms / 1000)
-  return `${seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ` : ''}${seconds >= 60 ? `${Math.floor(seconds / 60) % 60}m ` : ''}${seconds % 60}s`
 }

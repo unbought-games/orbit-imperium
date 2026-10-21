@@ -877,7 +877,7 @@ for (const width of [1440, 390]) {
     })
   })
 }
-test('selected unit decisions expose exact balances and retain large inventory on phones', async ({ page }) => {
+test('selected unit decisions floor balances and retain large inventory on phones', async ({ page }) => {
   const { planet } = await setup(page)
   planet.inventories = [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '9007199254740993' }]
   planet.amounts.metal = '60000001'
@@ -889,8 +889,10 @@ test('selected unit decisions expose exact balances and retain large inventory o
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expectLegibleInspector(pane)
     await expect(pane.getByLabel('Unit inventory')).toContainText('9007199254740993')
-    await expect(pane.getByRole('table')).toContainText('60.000001')
-    await expect(pane.getByRole('table')).toContainText('0.000001')
+    const metal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Metal details' }) })
+    await expect(metal.locator('td').nth(0).getByText('60', { exact: true })).toBeVisible()
+    await expect(metal.locator('td').nth(1).getByText('0', { exact: true })).toBeVisible()
+    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
     await expect(pane.getByRole('button', { name: 'Dismiss quote' })).toHaveText('Back')
     await expect(pane.getByRole('button', { name: 'Build', exact: true })).toHaveText('Order 1 Small Cargo')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -954,7 +956,7 @@ test('active facility remains cancellable without a fresh quote at each target w
   }
 })
 
-test('narrow spending ledgers keep exact large balances intact with visible labels', async ({
+test('narrow spending ledgers keep whole large balances intact with visible labels', async ({
   page,
 }) => {
   const { planet } = await setup(page, false, { metal: '9007199254740993', crystal: '15000000', deuterium: '0' })
@@ -978,9 +980,9 @@ test('narrow spending ledgers keep exact large balances intact with visible labe
     ).toBeVisible()
     const crystal = table.getByRole('row').filter({ has: page.getByRole('button', { name: 'Crystal details' }) })
     const values = [
-      table.getByRole('button', { name: 'Metal details' }).getByText('9,007,199,254.740993', { exact: true }),
-      crystal.getByText('9,007,199,254.740993', { exact: true }),
-      crystal.getByText('9,007,199,239.740993', { exact: true }),
+      table.getByRole('button', { name: 'Metal details' }).getByText('9,007,199,254', { exact: true }),
+      crystal.getByText('9,007,199,254', { exact: true }),
+      crystal.getByText('9,007,199,239', { exact: true }),
     ]
     for (const value of values) {
       await expect(value).toBeVisible()

@@ -1,10 +1,10 @@
+import { ResourceNumber } from '../../ui/number-value'
 import type { BoundView } from '../../client-model/commands'
 import type { ReactNode } from 'react'
 import { ResourceMark } from '../../ui/resource-mark'
 import { resolveBodyArt } from '../../ui/artwork'
 import { CatalogImage } from '../../ui/image-catalog'
-import { coordinates, label, formatResource } from '../../ui/format'
-import { exactResource } from '../../ui/resource-cost-values'
+import { coordinates, label } from '../../ui/format'
 import { currentResourceRates } from '../../ui/resource-rates'
 import { catalogContent } from './catalog-content'
 import type { ProgressionProps } from './shared'
@@ -144,21 +144,29 @@ export function ResourceWorld({
             <ResourceMark resource={name} width={28} height={28} />
             <span>
               {name}
-              <strong>{formatResource(body.amounts[name])}</strong>
+              <strong>
+                <ResourceNumber value={body.amounts[name]} />
+              </strong>
             </span>
           </button>
         ))}
         <div className={styles.energy} aria-label="Planet energy">
           <span>Energy balance</span>
-          <strong>{exactResource(balance)}</strong>
+          <strong>
+            <ResourceNumber value={balance} />
+          </strong>
           <dl>
             <div>
               <dt>Supply</dt>
-              <dd>{exactResource(body.energy.supply)}</dd>
+              <dd>
+                <ResourceNumber value={body.energy.supply} />
+              </dd>
             </div>
             <div>
               <dt>Demand</dt>
-              <dd>{exactResource(body.energy.demand)}</dd>
+              <dd>
+                <ResourceNumber value={body.energy.demand} />
+              </dd>
             </div>
           </dl>
         </div>
@@ -168,12 +176,20 @@ export function ResourceWorld({
           <div key={name}>
             <dt>{name}</dt>
             <dd>
-              <strong>{formatResource(body.amounts[name])}</strong>
-              <span>Capacity {exactResource(body.capacity[name])}</span>
+              <strong>
+                <ResourceNumber value={body.amounts[name]} />
+              </strong>
               <span>
-                {rates
-                  ? `${exactResource(rates[name])} / hour`
-                  : 'Production unavailable'}
+                Capacity <ResourceNumber value={body.capacity[name]} />
+              </span>
+              <span>
+                {rates ? (
+                  <>
+                    <ResourceNumber value={rates[name]} /> / hour
+                  </>
+                ) : (
+                  'Production unavailable'
+                )}
               </span>
               {BigInt(body.amounts[name]) >= BigInt(body.capacity[name]) && (
                 <small>Storage full · production suppressed</small>

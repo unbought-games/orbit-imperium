@@ -1,6 +1,6 @@
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import { label } from '../../ui/format'
-import { exactResource as units } from '../../ui/resource-cost-values'
+import { NumberValue } from '../../ui/number-value'
 import { AlertTriangle } from 'lucide-react'
 import styles from './quote-review.module.css'
 
@@ -20,9 +20,25 @@ export function ProgressionBlockers({
               {b.requirement
                 ? `: ${label(b.requirement.type === 'BodyBuilding' ? b.requirement.building : b.requirement.research)}`
                 : ''}
-              {b.required !== null
-                ? ` — requires ${b.unit === 'MicroResource' ? units(b.required) : b.required}${b.resource ? ' ' + b.resource.toLowerCase() : ''}; current ${b.unit === 'MicroResource' ? units(b.actual ?? '0') : b.actual}`
-                : ''}
+              {b.required !== null && (
+                <>
+                  {' '}
+                  — requires{' '}
+                  <NumberValue
+                    value={b.required}
+                    divisor={b.unit === 'MicroResource' ? 1000000 : 1}
+                  />
+                  {b.resource ? ' ' + b.resource.toLowerCase() : ''}; current{' '}
+                  {b.actual !== null ? (
+                    <NumberValue
+                      value={b.actual}
+                      divisor={b.unit === 'MicroResource' ? 1000000 : 1}
+                    />
+                  ) : (
+                    'Unknown'
+                  )}
+                </>
+              )}
             </span>
           </li>
         ))}

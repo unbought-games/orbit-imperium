@@ -4,8 +4,9 @@ import { Text } from '../ui/typography'
 import { Heading } from '../ui/typography'
 import styles from './report-observation.module.css'
 import type { ReactNode } from 'react'
-import { label, formatResource, formatCombatTicks } from '../ui/format'
-import { detectionPercent } from '../ui/detection'
+import { label } from '../ui/format'
+import { NumberValue, ResourceNumber } from '../ui/number-value'
+import { DetectionPercent } from '../ui/detection'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
   v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -28,9 +29,11 @@ function Resources({ value }: { value: unknown }) {
         <div key={k}>
           <dt>{label(k)}</dt>
           <dd>
-            {typeof r[k] === 'string' && /^(0|[1-9][0-9]*)$/.test(r[k])
-              ? formatResource(r[k])
-              : 'Unknown'}
+            {typeof r[k] === 'string' && /^(0|[1-9][0-9]*)$/.test(r[k]) ? (
+              <ResourceNumber value={r[k]} />
+            ) : (
+              'Unknown'
+            )}
           </dd>
         </div>
       ))}
@@ -97,9 +100,14 @@ function Risk({ value }: { value: unknown }) {
   return (
     <Text>
       Counterespionage:{' '}
-      {typeof r.probability_ppm === 'number'
-        ? `${detectionPercent(r.probability_ppm)} (${r.probability_ppm} parts per million)`
-        : 'Unknown probability'}
+      {typeof r.probability_ppm === 'number' ? (
+        <>
+          <DetectionPercent value={r.probability_ppm} /> ({r.probability_ppm}{' '}
+          parts per million)
+        </>
+      ) : (
+        'Unknown probability'
+      )}
       .{' '}
       {r.detected === true
         ? 'Detected — combat resolved.'
@@ -251,10 +259,10 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
                 Round {text(round.number)} · {text(round.shots)} shots
               </summary>
               <Text>
-                Raw attack {formatCombatTicks(text(round.raw_attack_ticks))}{' '}
+                Raw attack <CombatPoints value={round.raw_attack_ticks} />{' '}
                 points · Shield damage{' '}
-                {formatCombatTicks(text(round.shield_removed_ticks))} · Hull
-                damage {formatCombatTicks(text(round.hull_removed_ticks))} ·{' '}
+                <CombatPoints value={round.shield_removed_ticks} /> · Hull
+                damage <CombatPoints value={round.hull_removed_ticks} /> ·{' '}
                 {text(round.explosions)} explosions.
               </Text>
               <Origins title="Round starting forces" value={round.start} />
@@ -306,4 +314,13 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
       </Panel>
     )
   return <Text>This report version is unavailable in this client.</Text>
+}
+
+function CombatPoints({ value }: { value: unknown }) {
+  const ticks = text(value)
+  return /^(0|[1-9][0-9]*)$/.test(ticks) ? (
+    <NumberValue value={ticks} divisor={100000} />
+  ) : (
+    <>Unknown</>
+  )
 }

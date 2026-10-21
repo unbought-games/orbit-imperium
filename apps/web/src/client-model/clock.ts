@@ -6,7 +6,7 @@ export function remaining(
   monotonicNow: number,
 ): number | null {
   const left = deadline - (sample + Math.max(0, monotonicNow - receivedAt))
-  return left <= 0 ? null : Math.ceil(left / 1000)
+  return left <= 0 ? null : Math.floor(left / 1000)
 }
 
 export function formatRemaining(seconds: number | null): string {

@@ -1,8 +1,9 @@
+import { ResourceSummary } from '../../ui/number-value'
 import { useLayoutEffect, useRef } from 'react'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { buildingProgress } from '../../client-model/building-progress'
 import { Button } from '../../ui/button'
-import { costs, label } from '../../ui/format'
+import { label } from '../../ui/format'
 import styles from './building-details.module.css'
 
 export function ConstructionDetails({
@@ -24,7 +25,9 @@ export function ConstructionDetails({
       </h3>
       <p>{work.countdown}</p>
       {work.status !== 'In progress' && <p role="status">{work.status}</p>}
-      <p>Full refund before completion: {costs(work.paid)}</p>
+      <p>
+        Full refund before completion: <ResourceSummary value={work.paid} />
+      </p>
       <Button
         disabled={!work.canCancel}
         onClick={() => {

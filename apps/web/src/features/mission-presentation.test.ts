@@ -10,7 +10,8 @@ import type { components } from '../contracts'
 
 describe('mission presentation', () => {
   it('counts down exact seconds and never asserts arrival from the clock', () => {
-    expect(arrivalCountdown(3661001, 0)).toBe('1h 1m 2s')
+    expect(arrivalCountdown(3661001, 0)).toBe('1h 1m 1s')
+    expect(arrivalCountdown(1000, 999)).toBe('0s')
     expect(arrivalCountdown(1000, 0)).toBe('1s')
     expect(arrivalCountdown(1000, 1000)).toBe('Awaiting confirmation')
     expect(arrivalCountdown(1000, 2000)).toBe('Awaiting confirmation')
