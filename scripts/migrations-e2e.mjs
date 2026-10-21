@@ -105,7 +105,7 @@ async function rollingUpgrade() {
   const first = launch(firstEnv, upgraded);
   await until(async()=>{
     if(first.exited)throw new Error(first.stderr);
-    return (await db.query("SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.application_name='migration-first' AND l.locktype='advisory' AND l.objid=901324 AND NOT l.granted) AS waiting")).rows[0].waiting;
+    return (await db.query("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name='migration-first' AND wait_event='PgSleep' AND query LIKE '%901324%') AS waiting")).rows[0].waiting;
   },'first upgrade waiting at transactional barrier');
   const secondEnv = environment(`${url}?application_name=migration-second`,await port());
   const second = launch(secondEnv, upgraded);
@@ -121,7 +121,7 @@ async function rollingUpgrade() {
   await db.query('UPDATE orbit_test_clock SET at_ms=$1',[due]);
   await until(async()=> (await view()).bodies[0].levels.MetalMine===initial.bodies[0].levels.MetalMine+1,'old scheduler completes construction during migration');
   await stop(first,'SIGKILL');
-  await until(async()=> (await db.query("SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.application_name='migration-second' AND l.locktype='advisory' AND l.objid=901324 AND NOT l.granted) AS waiting")).rows[0].waiting,'second migrator recovers after first is killed');
+  await until(async()=> (await db.query("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name='migration-second' AND wait_event='PgSleep' AND query LIKE '%901324%') AS waiting")).rows[0].waiting,'second migrator recovers after first is killed');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM _sqlx_migrations')).rows[0].n,migrationVersions.length);
   assert.equal((await db.query("SELECT to_regclass('upgrade_probe') AS probe")).rows[0].probe,null);
   await db.query('SELECT pg_advisory_unlock(901324)');

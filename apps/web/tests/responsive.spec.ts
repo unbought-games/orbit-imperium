@@ -1,8 +1,10 @@
+import {navigate,foreground} from './fixtures/navigation'
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 test('routed progression shell: viewport matrix, keyboard, history, invalid IDs and no navigation purchases', async ({page,browser})=>{
  test.setTimeout(120_000);
+ await page.emulateMedia({reducedMotion:'reduce'});
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8'));
  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[0].name);await page.getByLabel('Password').fill(accounts[0].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible();
  const session=await(await page.request.get('/api/v1/session')).json(),u=session.memberships[0].universe;
@@ -11,9 +13,8 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
  let writes=0;page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/commands'))writes++});
  const go=async(name:string)=>{
   if(await page.getByRole('heading',{name:'Destination unavailable',exact:true}).isVisible()) await page.getByRole('link',{name:'Open your universe overview'}).click();
-  const title=name[0].toUpperCase()+name.slice(1), desktop=page.getByRole('navigation',{name:'Main navigation',exact:true});
-  if(await desktop.isVisible()) await desktop.getByRole('link',{name:title,exact:true}).click();
-  else {await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('dialog',{name:'Navigation'}).getByRole('link',{name:title,exact:true}).click()}
+  const title=name[0].toUpperCase()+name.slice(1);
+  await navigate(page,title);
   await expect(page.locator('main h1')).toHaveText(name==='overview'?/^Overview —/:title)
  };
  for(const [width,height] of [[360,800],[390,844],[768,1024],[1440,900],[844,390],[320,800]]){
@@ -23,7 +24,7 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${dest} overflow`).toBe(true);
    const small=await page.locator('button,input,select,summary,nav a,main a,aside a').evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect();return r.width>0&&r.height>0&&(r.width<(innerWidth<1024?44:24)||r.height<(innerWidth<1024?44:24))}).map(n=>n.textContent));expect(small).toEqual([]);
   }
-  await go('overview');if(width===1440){expect((await page.getByRole('navigation',{name:'Main navigation',exact:true}).boundingBox())?.width).toBe(180);expect((await page.getByRole('main').boundingBox())?.width).toBe(1028);expect((await page.getByRole('complementary',{name:'Planets and moons'}).boundingBox())?.width).toBe(160)}
+  await go('overview');if(width===1440){expect((await page.getByRole('main').boundingBox())?.width).toBe(1368);await expect(page.getByRole('complementary',{name:'Planets and moons'})).toHaveCount(0);const nav=page.getByRole('navigation',{name:'Main navigation',exact:true});const world=await nav.getByRole('link',{name:'World',exact:true}).boundingBox(),build=await nav.getByRole('link',{name:'Build',exact:true}).boundingBox();expect(world!.y).toBe(build!.y);expect(world!.x+world!.width).toBeLessThan(build!.x)}
   await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`test-results/overview-${width}x${height}.png`});
   await go('resources');await page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).click();await expect(page.getByRole('region',{name:'Progression quote'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`test-results/responsive-${width}x${height}.png`,fullPage:true});await page.getByRole('button',{name:'Dismiss quote'}).click();
@@ -53,6 +54,7 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
   fixture.progression.manufacturing=Array.from({length:50},(_,i)=>({id:randomUUID(),body, item:{kind:'Ship',id:'LightFighter'},quantity:'9007199254740994',completed_prefix:'9007199254740993',remaining:'1',paid:{metal:'9223372036854775807',crystal:'0',deuterium:'0'},accepted_at:fixture.as_of_ms,first_start_at:fixture.as_of_ms+i*1000,next_due_at:fixture.as_of_ms+(i+1)*1000,final_due_at:fixture.as_of_ms+(i+1)*1000,unit_duration_ms:1000,state:i===0?'Producing':'PaidQueued',can_cancel:false}));
   await r.fulfill({response,json:fixture});
  });
+ await foreground(page);
  await page.getByRole('button',{name:'Metal details'}).click();
  await expect(page.getByText('9,223,372,036,854',{exact:true}).first()).toBeVisible({timeout:15000});
  await page.keyboard.press('Escape');

@@ -1,3 +1,4 @@
+import {signOut} from './fixtures/navigation'
 import {overview} from './v2';
 import {test,expect} from '@playwright/test';
 test('two keyboard sign-ins expose separate owned planets and revoke logout',async({browser})=>{
@@ -15,7 +16,7 @@ test('two keyboard sign-ins expose separate owned planets and revoke logout',asy
  await beta.setViewportSize({width:390,height:844});
  await expect(beta.getByRole('region',{name:'Completed research'})).toBeVisible();
  await beta.screenshot({path:'target/ui-mobile.png',fullPage:true});
- await alpha.getByRole('button',{name:'Sign out'}).click();await expect(alpha.getByLabel('Password')).toBeVisible();
+ await signOut(alpha);await expect(alpha.getByLabel('Password')).toBeVisible();
  expect((await a.request.get('/api/v1/session')).status()).toBe(401);
  expect((await b.request.get('/api/v1/session')).status()).toBe(200);
  await a.close();await b.close();

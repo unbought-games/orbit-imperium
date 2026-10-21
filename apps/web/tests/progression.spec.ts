@@ -1,9 +1,12 @@
+import {navigate,signOut,foreground} from './fixtures/navigation'
 import {test,expect,type APIResponse} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import type {Attempt} from '../src/client-model/commands';
 test('mobile and desktop progression controls, blocked purchases, pending work, and private relogin',async({page})=>{
+ // Isolate lost acknowledgments from the independent SSE outcome channel.
+ await page.route('**/updates?epoch=*', route=>route.fulfill({status:503,body:''}));
  test.setTimeout(60_000);
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8')) as {name:string,password:string}[];
  const signIn=async(i:number)=>{await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[i].name);await page.getByLabel('Password').fill(accounts[i].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible()};
@@ -16,7 +19,7 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
   return response.json();
  };
  const view=async()=>{const session=await read(()=>page.request.get('/api/v1/session')),u=session.memberships[0].universe;const b=await read(()=>page.request.get(`/api/v3/universes/${u}/binding?request_id=${randomUUID()}`));return read(()=>page.request.post(`/api/v3/universes/${u}/overview`,{headers:{Origin:process.env.ORBIT_TEST_BASE_URL!,'X-CSRF-Token':session.csrf},data:{binding:b.binding,request_id:randomUUID()}}))};
- const go=async(destination:string)=>{if(await page.getByRole('navigation',{name:'Main navigation',exact:true}).isVisible()){await page.getByRole('navigation',{name:'Main navigation',exact:true}).getByRole('link',{name:destination,exact:false}).click()}else{await page.getByRole('button',{name:'Menu',exact:true}).last().click();await page.getByRole('dialog').getByRole('link',{name:destination,exact:false}).click()}};
+ const go=(destination:string)=>navigate(page,destination);
  const advance=(at:number)=>execFileSync('docker',['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c',`UPDATE orbit_test_clock SET at_ms=${at}`],{stdio:'pipe'});
  await page.setViewportSize({width:320,height:900});await signIn(0);
  await expect(page.getByText('Fleet missions unavailable',{exact:false})).toBeVisible();
@@ -37,7 +40,7 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await page.route(receiptRoute,route=>new URL(route.request().url()).pathname.endsWith(`/${originalId}`)?route.fulfill({status:503,contentType:'application/problem+json',body:JSON.stringify({type:'about:blank',status:503,code:'Unavailable'})}):route.continue());
  await page.route('**/api/v3/universes/*/commands',async route=>{originalEnvelope=route.request().postDataJSON();originalId=route.request().postDataJSON().command_id;await route.fetch();await route.abort('failed')},{times:1});
  await go('shipyard');
- await page.getByRole('button',{name:'Build Light Fighter',exact:true}).click();await page.getByLabel('Shipyard quantity').fill('2');await expect(page.getByRole('region',{name:'Progression quote'})).toContainText('cannot be cancelled');await page.getByRole('button',{name:'Build',exact:true}).click();
+ await page.getByRole('button',{name:'Build Light Fighter',exact:true}).click();await page.getByLabel('Shipyard quantity').fill('2');await expect(page.getByRole('region',{name:'Progression quote'})).toContainText('No cancellation, pause, or reordering.');await page.getByRole('button',{name:'Build',exact:true}).click();
  await expect(page.getByRole('button',{name:'Resolve saved command'})).toBeVisible();
  expect(originalId).toBeTruthy();
  await go('resources');await page.reload();
@@ -48,6 +51,7 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await expect.poll(async()=>{const a=await savedManufacture();return a?.status==='committed'&&a.reconciled}).toBe(true);
  const recovered=await view(),attempt=await savedManufacture();expect(recovered.progression.manufacturing).toHaveLength(1);expect(recovered.progression.manufacturing[0].quantity).toBe('2');expect(attempt?.receipt?.status).toBe('Committed');if(attempt?.receipt?.status==='Committed')expect(attempt.receipt.result_ids).toEqual([recovered.progression.manufacturing[0].id]);
 
+ await page.unroute('**/updates?epoch=*');await foreground(page);
  await go('facilities');
  await page.getByRole('button',{name:'Upgrade Research Lab',exact:true}).click();await expect(page.getByLabel('Action blockers')).toContainText('Lab Locked');await expect(page.getByRole('button',{name:'Confirm upgrade'})).toBeDisabled();await page.getByRole('button',{name:'Dismiss quote'}).click();
  await go('resources');
@@ -63,6 +67,6 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await go('defense');
  await page.getByRole('button',{name:'Build Small Shield Dome',exact:true}).click();await expect(page.getByLabel('Action blockers')).toContainText('Capacity Reserved');
  await page.screenshot({path:'test-results/progression-desktop.png',fullPage:true});
- await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),page.getByRole('button',{name:'Sign out',exact:true}).click()]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(1);await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);const other=await view();expect(other.bodies[0].inventories).toEqual([]);expect(other.research.every((x:{level:number})=>x.level===0)).toBe(true);expect(other.bodies[0].id).not.toBe(v.bodies[0].id);expect((await page.evaluate(()=>Object.keys(sessionStorage))).filter(k=>k.startsWith('orbit:attempts:v3:'))).toHaveLength(0);
- await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),page.getByRole('button',{name:'Sign out',exact:true}).click()]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(0);await go('resources');await page.getByRole('button',{name:'Resource settings',exact:true}).click();await expect(page.getByLabel('metal mine production')).toHaveValue('50');await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);
+ await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),signOut(page)]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(1);await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);const other=await view();expect(other.bodies[0].inventories).toEqual([]);expect(other.research.every((x:{level:number})=>x.level===0)).toBe(true);expect(other.bodies[0].id).not.toBe(v.bodies[0].id);expect((await page.evaluate(()=>Object.keys(sessionStorage))).filter(k=>k.startsWith('orbit:attempts:v3:'))).toHaveLength(0);
+ await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),signOut(page)]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(0);await go('resources');await page.getByRole('button',{name:'Resource settings',exact:true}).click();await expect(page.getByLabel('metal mine production')).toHaveValue('50');await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);
 });

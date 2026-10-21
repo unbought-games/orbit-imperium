@@ -1,3 +1,4 @@
+import {navigate,signOut} from './fixtures/navigation'
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
@@ -19,27 +20,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
       page.getByRole('heading', { name: /^Overview —/, exact: true }),
     ).toBeVisible()
   }
-  const go = async (name: string) => {
-    if (
-      await page
-        .getByRole('navigation', { name: 'Main navigation' })
-        .isVisible()
-    )
-      await page
-        .getByRole('navigation', { name: 'Main navigation' })
-        .getByRole('link', { name, exact: false })
-        .click()
-    else {
-      await page
-        .getByRole('button', { name: 'Menu', exact: true })
-        .last()
-        .click()
-      await page
-        .getByRole('dialog')
-        .getByRole('link', { name, exact: false })
-        .click()
-    }
-  }
+  const go = (name: string) => navigate(page, name)
   const auth = async () => {
     const session = await (await page.request.get('/api/v1/session')).json()
     const u = session.memberships[0].universe
@@ -302,7 +283,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
     fullPage: true,
   })
   const foreignReport = page.url()
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await signOut(page)
   await expect(page.getByLabel('Account', { exact: true })).toBeVisible()
   await signIn(1)
   const foreignView = await freshSnapshot()
@@ -317,7 +298,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
     page.getByRole('alert').filter({ hasText: 'Report unavailable' }),
   ).toBeVisible()
   for (let i = 2; i < 5; i++) {
-    await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+    await signOut(page)
     await expect(page.getByLabel('Account', { exact: true })).toBeVisible()
     await signIn(i)
     const v = await snapshot()
@@ -355,10 +336,7 @@ test('paginated inbox remains usable after leaving a pending report detail', asy
     data.data.items = body.cursor ? [] : data.data.items.slice(0, 1)
     await route.fulfill({ response, json: data })
   })
-  await page
-    .getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('link', { name: 'Reports' })
-    .click()
+  await navigate(page, 'Reports')
   await page.getByRole('button', { name: 'Load more reports' }).click()
   await expect.poll(() => pageLoads).toBeGreaterThan(1)
   await expect(
