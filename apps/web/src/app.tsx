@@ -1,4 +1,4 @@
-import { UniverseEnrollment, AccountIdentity } from './features/oidc'
+import { UniverseEnrollment } from './features/oidc'
 import { SkipLink } from './ui/skip-link'
 import { ConnectionScreen } from './features/connection-screen'
 import { Text } from './ui/typography'
@@ -31,7 +31,6 @@ export function App() {
             logout,
           }}
         >
-          <AccountIdentity />
           <Outlet />
         </SessionContext.Provider>
       ) : runtime.status === 'authenticated' &&
