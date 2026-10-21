@@ -3,6 +3,8 @@ import { Brand, BrandLogo, BrandWordmark } from '../ui/brand'
 import { atmosphereArt, resolvePlanetArt } from '../ui/artwork'
 import styles from './public-frame.module.css'
 import { SourceLink } from '../ui/source-link'
+import { BetaNotice } from '../ui/beta-notice'
+import { PolicyLinks } from '../ui/policy-links'
 
 const publicWorld = resolvePlanetArt(4)
 
@@ -74,11 +76,15 @@ export function PublicFrame({
           </svg>
           <span className={styles.worldCaption}>A larger horizon.</span>
         </div>
-        <section className={styles.content}>{children}</section>
+        <section className={styles.content}>
+          <BetaNotice />
+          {children}
+        </section>
       </div>
       <footer className={styles.footer}>
         <span>Deep games. Clear decisions. Fair competition.</span>
         <span className={styles.footerNote}>An independent universe</span>
+        <PolicyLinks />
         <SourceLink />
       </footer>
     </main>

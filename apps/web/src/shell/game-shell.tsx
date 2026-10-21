@@ -14,6 +14,7 @@ import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
 import { Brand } from '../ui/brand'
 import { SourceLink } from '../ui/source-link'
+import { PolicyLinks } from '../ui/policy-links'
 import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -317,6 +318,7 @@ export function GameShell() {
       )}
       <footer className={styles.footer}>
         <span>ORBIT IMPERIUM</span>
+        <PolicyLinks />
         <SourceLink />
         <Link {...routeTarget(view.binding.universe, 'settings', body?.id)}>
           Universe settings

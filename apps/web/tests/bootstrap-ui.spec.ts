@@ -38,6 +38,8 @@ test('OIDC configuration selects hosted sign-in and retains the source offer', a
     'href',
     `/api/auth/login?${new URLSearchParams({ return_to: destination })}`,
   )
+  await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
+  await expect(page.getByRole('navigation', { name: 'Policies and support' })).toBeVisible()
   await expect(page.getByLabel('Password')).toHaveCount(0)
   await expect(
     page.getByRole('link', { name: 'Source', exact: true }),
@@ -779,3 +781,39 @@ for (const mode of ['local', 'oidc']) {
     await expect(page.getByRole('alert')).toHaveCount(0)
   })
 }
+
+test('starting beta and reset notice appear before public enrollment with approved policy links', async ({ page }) => {
+  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
+    version: 1, signup_enabled: true, result: { status: 'anonymous' },
+  } }))
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const path of ['/', '/login', '/signup']) {
+    await page.goto(path)
+    const notice = page.getByRole('region', { name: 'Starting open beta' })
+    await expect(notice).toContainText('The game is incomplete, with more content to come.')
+    await expect(notice).toContainText('We reserve the right to reset the universe and its progress before full public launch.')
+    const policies = page.getByRole('navigation', { name: 'Policies and support' })
+    for (const [name, destination] of [['Terms', 'terms'], ['Privacy', 'privacy'], ['Conduct', 'conduct']])
+      await expect(policies.getByRole('link', { name, exact: true })).toHaveAttribute('href', `https://unbought.games/${destination}/`)
+    await expect(policies.getByRole('link', { name: 'Support', exact: true })).toHaveAttribute('href', 'mailto:ethan@unbought.games')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (path === '/signup') {
+      const action = page.getByRole('button', { name: 'Create account', exact: true })
+      expect((await notice.boundingBox())!.y).toBeLessThan((await action.boundingBox())!.y)
+      await page.screenshot({ path: 'test-results/open-beta-signup-mobile.png', fullPage: true })
+    }
+  }
+})
+
+test('signed-in settings retain the beta notice and best-effort support target', async ({ page }) => {
+  await shellFixture(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`/u/${binding.universe}/settings?body=${body.id}`)
+  await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
+  const help = page.getByRole('region', { name: 'Help and conduct reports' })
+  await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
+  await expect(help.getByRole('link', { name: 'ethan@unbought.games' })).toHaveAttribute('href', 'mailto:ethan@unbought.games')
+  await expect(page.getByRole('navigation', { name: 'Policies and support' }).getByRole('link', { name: 'Conduct', exact: true })).toHaveAttribute('href', 'https://unbought.games/conduct/')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: 'test-results/open-beta-settings-mobile.png', fullPage: true })
+})
