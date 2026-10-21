@@ -71,10 +71,16 @@ export function useProgressionOptions(
   view: ProgressionProps['view'],
   request: ProgressionRequest | null,
 ) {
+  // Server blockers describe confirmed state. An optimistic cancellation can
+  // already look identical to its final snapshot, so it must not supply the
+  // invalidation key. Affordability still follows the projected balances below.
+  const confirmed = model.view
   const response = useServerProgressionOptions(
     model,
     request,
-    progressionContext(view),
+    progressionContext(
+      confirmed && confirmed.protocol !== 2 ? confirmed : view,
+    ),
   )
   return {
     ...response,
