@@ -103,3 +103,9 @@ make fly-deploy FLY_APP=<app-name>
 ```
 
 Provision PostgreSQL separately before launching the application.
+
+## Updates and numbered releases
+
+Read changes from **What’s new** in the game, or browse `docs/news/` in this
+repository. [Release preparation and downloads](docs/operations/open-source-releases.md)
+explain version suggestions, editorial, and automatic publication after a release PR merges.

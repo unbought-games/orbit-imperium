@@ -85,6 +85,7 @@ export function PublicFrame({
         <span>Deep games. Clear decisions. Fair competition.</span>
         <span className={styles.footerNote}>An independent universe</span>
         <PolicyLinks />
+        <a href="/updates/index.html">What’s new</a>
         <SourceLink />
       </footer>
     </main>
