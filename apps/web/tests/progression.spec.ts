@@ -7,7 +7,7 @@ import type {Attempt} from '../src/client-model/commands';
 test('mobile and desktop progression controls, blocked purchases, pending work, and private relogin',async({page})=>{
  // Isolate lost acknowledgments from the independent SSE outcome channel.
  await page.route('**/updates?epoch=*', route=>route.fulfill({status:503,body:''}));
- test.setTimeout(60_000);
+
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8')) as {name:string,password:string}[];
  const signIn=async(i:number)=>{await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[i].name);await page.getByLabel('Password').fill(accounts[i].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible()};
  const read=async(request:()=>Promise<APIResponse>)=>{

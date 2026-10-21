@@ -18,7 +18,6 @@ function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'orbit-source-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const directories = new Set([
-    '.agents',
     '.config',
     '.github',
     'apps',

@@ -13,7 +13,6 @@ import { fileURLToPath } from 'node:url'
 // Include the actual build inputs, including local modifications. Do not depend
 // on Git being installed: released source archives must also be rebuildable.
 export const sourceEntries = [
-  '.agents',
   '.config',
   '.github',
   'apps',

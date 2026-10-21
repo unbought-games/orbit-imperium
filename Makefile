@@ -23,8 +23,8 @@ fly-deploy:
 fly-destroy:
 	@sh scripts/fly.sh destroy
 
-# Native runners enforce per-test limits; Make owns preparation and parallelism.
-# Only explicit validation retains its existing aggregate deadlines.
+# Routine runners have no execution deadlines; Make owns preparation and parallelism.
+# Explicit launch validation retains generous preparation and execution guards.
 TIMEOUT = node scripts/test-timeout.mjs
 SERVER_TESTS = cargo nextest run --workspace --exclude orbit-storage-postgres --all-targets --features orbit-server/test-support
 BRIDGE_TESTS = cargo nextest run -p orbit-server --all-targets --features test-support,universe-config-bridge
@@ -46,7 +46,7 @@ _static:
 	node scripts/check-boundaries.mjs
 
 test-tooling:
-	node --test --test-timeout=3000 scripts/*.test.mjs scripts/fixtures/*.test.mjs
+	node --test scripts/*.test.mjs scripts/fixtures/*.test.mjs
 
 test-client:
 	npm test
@@ -119,8 +119,8 @@ dev: db-up
 	npm run build
 	node scripts/local.mjs serve
 
-# Explicit-only validation. PostgreSQL must already be running; the skill and
-# dispatch workflow provide disposable Compose setup/cleanup.
+# Explicit-only validation. PostgreSQL must already be running in an isolated
+# disposable Compose project; see docs/runbooks/ci-runners.md.
 SUITE ?= all
 EXPLICIT_SUITES = core mvp progression missions raiding recovery migrations signup
 .PHONY: test-explicit test-acceptance test-container _container test-runtime prepare-explicit prepare-migrations prepare-signup _acceptance $(addprefix run-,$(EXPLICIT_SUITES)) $(addprefix test-,$(EXPLICIT_SUITES)) test-e2e
@@ -176,11 +176,17 @@ run-signup:
 
 ORBIT_TEST_IMAGE ?= orbit-imperium:dev
 export ORBIT_TEST_IMAGE
-test-container:
+.PHONY: prepare-container _container-build
+prepare-container:
+	$(TIMEOUT) container-build $(MAKE) _container-build
+
+_container-build:
+	docker build -t "$(ORBIT_TEST_IMAGE)" .
+
+test-container: prepare-container
 	$(TIMEOUT) container $(MAKE) _container
 
 _container:
-	docker build -t "$(ORBIT_TEST_IMAGE)" .
 	node scripts/container-smoke.mjs
 	ORBIT_TEST_CI_DOCKER=1 node --test scripts/ci-isolation.test.mjs
 

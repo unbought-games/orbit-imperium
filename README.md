@@ -66,25 +66,26 @@ Roll out the updated server/frontend to all instances, then use the server's `ru
 
 GitHub Actions runs [CI](.github/workflows/ci.yml) on pull requests and pushes to `main`. It runs tooling, client and server tests; client changes also run fixture-only browser tests, and backend/shared/unknown changes run database and browser tests. Documentation-only changes skip those two integration classes. Unknown diff bases conservatively run both. Fixture browser tests run on a separate disposable Ubuntu VM in parallel with the native checks and PostgreSQL tests, so browser feedback does not wait for Rust compilation. The existing `Build, lint and unit tests` check passes only when every selected job passes.
 
-Routine tests have **per-test limits**, with no fixed allowance for the entire class. Add useful coverage at the cheapest layer that proves the behavior. Use controlled clocks and small deterministic fixtures, investigate slow tests and repeated setup, and never weaken assertions or omit coverage to preserve a suite's elapsed time. The native CI job has a generous 30-minute runaway ceiling and the browser job has a 15-minute ceiling, not runtime targets. The native outer guard accommodates cold Linux builds plus database tests; individual test and build deadlines are unchanged.
+Routine CI has **no configured job, step, suite or per-test execution deadlines**. Node uses its unlimited default, Vitest explicitly sets test/hook timeouts to zero, Nextest only reports slow tests, and fixture Playwright tests use zero test/global timeouts. The continuous release-image workflow also has no custom job deadline. GitHub-hosted jobs still have the platform's six-hour maximum; removing YAML limits cannot remove that cap.
 
-| Routine class | Per-test ceiling | Local command | Configuration |
-|---|---:|---|---|
-| Tooling | 3s | `make test-tooling` | Make's Node test command |
-| Client | 5s | `npm test` | `apps/web/vite.config.ts` |
-| Server without PostgreSQL | 10s; slow warning at 5s | `make test-server` | `.config/nextest.toml` |
-| PostgreSQL integration | 30s; slow warning at 15s | `make test-db` | `.config/nextest.toml` |
-| Browser with HTTP fixtures | 25s | `npm run test:ui` | `playwright.config.ts` |
+Use controlled clocks and deterministic fixtures, investigate slow setup, and retain every assertion. Functional network timeouts and checks that verify timeout behavior remain in place. Native runners report durations and failures normally; no automatic failure retries are enabled.
 
-These limits include work repeated inside a test, including its database seeding or browser fixture setup. Shared installation, compilation and server startup are outside individual-test timing; existing readiness checks remain bounded. Nextest gives a timed-out test one second to shut down, then kills it; it still fails. JavaScript timeouts require the event loop to yield, so the CI ceiling remains a fallback for blocking loops. Native runner summaries expose total time; Node reports individual test durations, Nextest reports individual durations and slow tests, and Playwright prints individual durations and saves `results.json` in its output directory.
+| Routine class | Local command | Configuration |
+|---|---|---|
+| Tooling | `make test-tooling` | Make's Node test command |
+| Client | `npm test` | `apps/web/vite.config.ts` |
+| Server without PostgreSQL | `make test-server` | `.config/nextest.toml` |
+| PostgreSQL integration | `make test-db` | `.config/nextest.toml` |
+| Browser with HTTP fixtures | `npm run test:ui` | `playwright.config.ts` |
 
 Install the pinned Node/npm/Rust tools and npm dependencies. Rust tests additionally need **cargo-nextest 0.9.114** (`cargo install cargo-nextest --version 0.9.114 --locked`, or the [official prebuilt binary](https://nexte.st/docs/installation/pre-built-binaries/)). CI installs that pinned prebuilt version. `make test-tooling` uses Node’s built-in test runner for all tooling tests; no separate environment or test dependencies are needed. No custom test scheduler or timing framework is used.
 
 `make check` runs the three unit classes, static/contract/boundary checks and one frontend build. It does not compile a release binary or start a database. Nextest prepares test binaries before execution; Make runs database suites two at a time, each against its own disposable database, with tests inside each suite serial. Database commands require PostgreSQL already running. CI sets up its own Compose project and removes it in an `always()` step. Install Chromium with `npx playwright install chromium` before browser validation.
 
-Full-system and container validation remain **explicit-only**. Their existing defaults are preserved: full-system validation has a 180s aggregate deadline plus existing per-suite limits, production-container validation has a 120s deadline including image build, and explicit browser tests retain their 30s per-test default. The explicit workflow has a 20-minute outer job guard to accommodate cold hosted-runner setup and sequential bounded suites; individual test/build deadlines have not been recalibrated. The [deadline helper](scripts/test-timeout.mjs) and [named durations](scripts/test-budgets.json) are now used only by explicit validation, including its preparation and cleanup.
+Full-system and container validation remain **explicit-only**. Generous guards allow cold builds and full journeys: Rust and container-image preparation each get 15 minutes, web preparation 5 minutes, individual suites 10 minutes (recovery 15 minutes), combined acceptance 30 minutes, container behavior tests 10 minutes, and database startup/cleanup 3 minutes each. The manual workflow's outer job guard is two hours. The [deadline helper](scripts/test-timeout.mjs) and [named durations](scripts/test-budgets.json) apply only to explicit validation, preparation and cleanup. Image building completes under its own preparation guard before the container smoke/isolation deadline begins.
 
-After disposable database setup, use `make test-explicit SUITE=signup` for signup alone, or choose `core`, `mvp`, `progression`, `missions`, `raiding`, `recovery`, `migrations`, `rules-updates`, `acceptance`, `container`, or `all`. Existing `make test-<suite>` aliases retain those limits. `all` runs acceptance then container validation. The [explicit workflow](.github/workflows/explicit-tests.yml) requires an `expected_sha` and has no push/PR/schedule trigger. The [agent skill](.agents/skills/orbit-explicit-tests/SKILL.md) covers scoped local setup, exact-ref CI dispatch and cleanup. New routine test classes or promoting explicit validation into routine CI require Ethan's approval.
+After [disposable database setup](docs/runbooks/ci-runners.md#disposable-test-resources), use `make test-explicit SUITE=signup` for signup alone, or choose `core`, `mvp`, `progression`, `missions`, `raiding`, `recovery`, `migrations`, `rules-updates`, `acceptance`, `container`, or `all`. `all` runs acceptance then container validation. The [explicit workflow](.github/workflows/explicit-tests.yml) requires an exact `expected_sha` and has no push/PR/schedule trigger. Report real failures and cleanup results; do not omit coverage or claim success from a partial run.
+
 
 ## Deployment
 

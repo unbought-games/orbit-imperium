@@ -7,6 +7,7 @@ import { once } from 'node:events'
 import { temporaryDirectory, exec, root } from './test-helpers.mjs'
 
 const script = join(root, 'scripts/test-timeout.mjs')
+const budgets = JSON.parse(readFileSync(join(root, 'scripts/test-budgets.json'), 'utf8'))
 function fixture(t, seconds = 0.4) {
   const directory = temporaryDirectory(t)
   copyFileSync(script, join(directory, 'test-timeout.mjs'))
@@ -55,7 +56,7 @@ test('child receives the named deadline without extending a parent deadline', as
     signal: t.signal,
   })
   const deadline = Number(fresh.stdout.split('\n')[0])
-  assert.ok(deadline >= before + 15000 && deadline <= Date.now() + 15000)
+  assert.ok(deadline >= before + budgets.signup * 1000 && deadline <= Date.now() + budgets.signup * 1000)
   const parent = Date.now() + 3000
   const inherited = await exec(process.execPath, args, {
     env: { ...env(), ORBIT_TEST_DEADLINE_MS: String(parent) },
@@ -134,7 +135,6 @@ test('nested timeout kills a child that ignores termination and remains a failur
 
 test(
   'interrupt forwards termination and returns promptly after graceful shutdown',
-  { timeout: 1000 },
   async (t) => {
     const directory = fixture(t, 10)
     const marker = join(directory, 'terminated')
@@ -152,8 +152,10 @@ test(
     )
     const exit = once(wrapper, 'exit')
     await once(wrapper.stdout, 'data')
+    const interruptedAt = performance.now()
     wrapper.kill('SIGINT')
     assert.deepEqual(await exit, [130, null])
+    assert.ok(performance.now() - interruptedAt < 1000, 'graceful interruption returns promptly')
     assert.equal(readFileSync(marker, 'utf8'), 'yes')
   },
 )

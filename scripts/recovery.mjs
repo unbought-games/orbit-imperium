@@ -1,4 +1,4 @@
-// Explicit-only process recovery. Keep this under the existing recovery deadline.
+// Explicit-only process recovery. Uses the generous named recovery guard.
 import { cleanupAll } from './fixtures/cleanup.mjs'
 import { reserveTestPort } from './fixtures/ports.mjs'
 import { spawn, execFileSync } from 'node:child_process'

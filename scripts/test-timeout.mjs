@@ -1,4 +1,4 @@
-// Explicit-validation deadlines only; routine tests use native per-test limits.
+// Explicit-validation deadlines only; routine tests have no execution deadline.
 import { readFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { constants } from 'node:os'

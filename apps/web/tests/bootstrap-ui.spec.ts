@@ -283,7 +283,7 @@ for (const width of [390, 1280]) {
 test('development bootstrap uses one request and never inserts login or connection screens', async ({
   page,
 }) => {
-  test.setTimeout(10000)
+
   const requests: string[] = []
   page.on('request', (r) => {
     if (r.url().includes('/api/')) requests.push(new URL(r.url()).pathname)
@@ -323,7 +323,7 @@ test('development bootstrap uses one request and never inserts login or connecti
 test('unavailable startup stays distinct from anonymous and retries only on request', async ({
   page,
 }) => {
-  test.setTimeout(10000)
+
   let reads = 0
   await page.route('**/api/v1/bootstrap', (route) => {
     reads++

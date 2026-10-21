@@ -7,11 +7,10 @@ const suite = process.env.ORBIT_TEST_SUITE ?? 'core'
 const uiFiles = ['shell.spec.ts', 'resources.spec.ts', 'catalog-pages.spec.ts', 'galaxy-cards.spec.ts', 'bootstrap-ui.spec.ts']
 const coreFiles = ['bootstrap.spec.ts', 'construction.spec.ts', 'login.spec.ts', 'reconnect.spec.ts', 'transport.spec.ts', 'zfoundation.spec.ts']
 export default defineConfig({
-  // Explicit validation keeps its existing defaults until separately calibrated.
+  // Routine fixture tests have no execution deadline. Explicit suites retain
+  // their generous enclosing budget and a ten-minute per-test ceiling.
   globalTimeout: process.env.ORBIT_UI_E2E ? 0 : browserTimeout(budgets[suite], process.env.ORBIT_TEST_DEADLINE_MS),
-  // Per test, including beforeEach and fixture setup. No routine suite-wide allowance.
-  // Fixture UI max measured at 11.6s; explicit browser tests retain their 30s default.
-  timeout: process.env.ORBIT_UI_E2E ? 25_000 : 30_000,
+  timeout: process.env.ORBIT_UI_E2E ? 0 : 600_000,
   outputDir: process.env.ORBIT_TEST_OUTPUT_DIR ?? 'test-results/browser',
   testDir: 'apps/web/tests',
   testMatch: process.env.ORBIT_UI_E2E
