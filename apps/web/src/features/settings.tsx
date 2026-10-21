@@ -3,6 +3,7 @@ import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
 import { Button } from '../ui/button'
 import styles from './settings.module.css'
+import { BetaNotice } from '../ui/beta-notice'
 export function SettingsScreen() {
   const { view, model, logout } = useGameScreen()
   const settings = model.settings
@@ -15,6 +16,15 @@ export function SettingsScreen() {
         </Heading>
         <Text>Membership, universe rules and display preferences.</Text>
       </header>
+      <BetaNotice />
+      <Section aria-label="Help and conduct reports">
+        <Heading level={2}>Help & conduct reports</Heading>
+        <Text>
+          Email <a href="mailto:ethan@unbought.games">ethan@unbought.games</a>{' '}
+          for help or to report a conduct concern. Support is best effort: we
+          aim to respond within 24 hours, but response times are not guaranteed.
+        </Text>
+      </Section>
       <Heading level={2}>Universe settings</Heading>
       {settings ? (
         <Text aria-label="Universe settings">
