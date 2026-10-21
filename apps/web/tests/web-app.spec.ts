@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { binding, body, shellFixture } from './fixtures/game'
+import { body, shellFixture } from './fixtures/game'
 
 test.use({
   isMobile: true,
@@ -70,11 +70,11 @@ test('mobile game navigation stays in the same document and app scope', async ({
   const origin = new URL(page.url()).origin
 
   for (const [destination, path] of [
-    ['Build', `/u/${binding.universe}/b/${body.id}/resources`],
-    ['Facilities', `/u/${binding.universe}/b/${body.id}/facilities`],
-    ['Fleet', `/u/${binding.universe}/fleets`],
-    ['Settings', `/u/${binding.universe}/settings`],
-    ['World', `/u/${binding.universe}/b/${body.id}/overview`],
+    ['Build', `/u/andromeda/b/${body.id}/resources`],
+    ['Facilities', `/u/andromeda/b/${body.id}/facilities`],
+    ['Fleet', '/u/andromeda/fleets'],
+    ['Settings', '/u/andromeda/settings'],
+    ['World', `/u/andromeda/b/${body.id}/overview`],
   ]) {
     if (destination === 'Settings') {
       await page.getByRole('button', { name: 'Menu', exact: true }).tap()
