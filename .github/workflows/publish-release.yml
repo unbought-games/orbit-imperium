@@ -1,0 +1,116 @@
+name: Publish open-source release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to resume publishing
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orbit-open-source-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'unbought-games/orbit-imperium' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.id == 1427640162))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select prepared release
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if test -f docs/news/release.json && { test "$EVENT" != workflow_run || git diff-tree --no-commit-id --name-only -r HEAD | grep -qx docs/news/release.json; }; then
+            echo 'release=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.select.outputs.release == 'true'
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+        if: steps.select.outputs.release == 'true'
+      - name: Tag the prepared commit without moving existing tags
+        if: steps.select.outputs.release == 'true'
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: node scripts/publish-release.mjs
+      - name: Inspect publication state
+        if: steps.select.outputs.release == 'true'
+        id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          state=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo missing)
+          if test "$state" = false; then echo 'published=true' >> "$GITHUB_OUTPUT"; fi
+      - name: Build and inspect the versioned container
+        if: steps.select.outputs.release == 'true' && steps.state.outputs.published != 'true'
+        env:
+          ORBIT_RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          ORBIT_RELEASE_IMAGE: orbit-release:${{ steps.release.outputs.sha }}
+        run: |
+          make release-image
+          make inspect-release-image
+      - name: Publish prepared notes, source, and downloadable container
+        if: steps.select.outputs.release == 'true' && steps.state.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          SHA: ${{ steps.release.outputs.sha }}
+          TITLE: ${{ steps.release.outputs.title }}
+        run: |
+          mkdir -p release-assets
+          container=$(docker create "orbit-release:$SHA")
+          trap 'docker rm "$container" >/dev/null' EXIT
+          docker cp "$container:/app/web/source.tar.gz" "release-assets/orbit-imperium-$TAG-source.tar.gz"
+          docker tag "orbit-release:$SHA" "orbit-imperium:${TAG#v}"
+          docker save "orbit-imperium:${TAG#v}" | gzip > "release-assets/orbit-imperium-$TAG-linux-amd64.tar.gz"
+          (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --draft --title "$TITLE" --notes-file release-notes.md
+          fi
+          gh release upload "$TAG" release-assets/* --clobber
+          gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md --draft=false
+      - name: Open the website publication checkout
+        if: steps.select.outputs.release == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: unbought-games/www
+          ref: main
+          path: website
+          token: ${{ secrets.WWW_PUBLISH_TOKEN }}
+      - name: Publish the release announcement on www
+        if: steps.select.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          published=$(gh release view "$TAG" --repo unbought-games/orbit-imperium --json publishedAt --jq .publishedAt)
+          python3 website/scripts/record-publication.py --game orbit-imperium --kind release --commit "$SHA" --tag "$TAG" --published "$published"

@@ -9,16 +9,19 @@
   },
   "scripts": {
     "contracts": "openapi-typescript contracts/openapi.json -o apps/web/src/contracts.ts",
-    "build": "npm run routes && npm run source:package && tsc --noEmit -p apps/web && vite build --config apps/web/vite.config.ts",
+    "build": "npm run news:build && npm run routes && npm run source:package && tsc --noEmit -p apps/web && vite build --config apps/web/vite.config.ts",
     "source:package": "node scripts/package-source.mjs",
     "test": "vitest run --config apps/web/vite.config.ts",
-    "dev": "npm run source:package && vite --config apps/web/vite.config.ts",
+    "dev": "npm run news:build && npm run source:package && vite --config apps/web/vite.config.ts",
     "test:e2e": "make test-core",
     "test:ui": "node scripts/ui-e2e.mjs",
     "lint": "eslint apps/web/src --max-warnings 0",
     "format:check": "prettier --check apps/web/src",
     "routes": "cd apps/web && tsr generate",
-    "art:export": "node scripts/export-atlas-art.mjs"
+    "art:export": "node scripts/export-atlas-art.mjs",
+    "news:build": "node scripts/news-history.mjs && node scripts/news.mjs",
+    "release:suggest": "node scripts/prepare-release.mjs --suggest",
+    "release:prepare": "node scripts/prepare-release.mjs"
   },
   "dependencies": {
     "@floating-ui/react": "0.27.20",
@@ -43,6 +46,7 @@
     "eslint": "9.37.0",
     "globals": "16.4.0",
     "js-yaml": "4.3.2",
+    "markdown-it": "14.3.3",
     "openapi-typescript": "7.10.1",
     "pg": "8.16.3",
     "prettier": "3.6.2",

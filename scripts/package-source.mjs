@@ -30,6 +30,7 @@ export const sourceEntries = [
   '.prettierignore',
   '.prettierrc.json',
   'AGENTS.md',
+  'CHANGELOG.md',
   'Cargo.lock',
   'Cargo.toml',
   'Dockerfile',
@@ -64,7 +65,8 @@ function exclude(path, name) {
     (name.startsWith('.env') && name !== '.env.example') ||
     /\.(pem|key|p12|pfx)$/i.test(name) ||
     path.startsWith('apps/web/public/source.tar.gz') ||
-    path === 'apps/web/public/LICENSE.txt'
+    path === 'apps/web/public/LICENSE.txt' ||
+    path.startsWith('apps/web/public/updates/')
   )
 }
 

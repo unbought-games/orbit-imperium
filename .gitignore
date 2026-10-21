@@ -9,3 +9,7 @@
 /test-results/
 /playwright-report/
 .superpowers/
+
+apps/web/public/updates/
+release-notes.md
+docs/news/history.json

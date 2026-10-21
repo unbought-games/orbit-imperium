@@ -14,7 +14,7 @@ COPY docs docs
 COPY fixtures fixtures
 COPY rules rules
 COPY scripts scripts
-COPY .dockerignore .env.example .gitignore .node-version .prettierignore .prettierrc.json AGENTS.md Cargo.lock Cargo.toml Dockerfile LICENSE Makefile README.md compose.yaml eslint.config.js playwright.config.ts rust-toolchain.toml ./
+COPY .dockerignore .env.example .gitignore .node-version .prettierignore .prettierrc.json AGENTS.md CHANGELOG.md Cargo.lock Cargo.toml Dockerfile LICENSE Makefile README.md compose.yaml eslint.config.js playwright.config.ts rust-toolchain.toml ./
 RUN npm run build
 
 FROM rust:1.99.0-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6 AS rust

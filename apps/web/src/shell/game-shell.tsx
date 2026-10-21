@@ -319,6 +319,7 @@ export function GameShell() {
       <footer className={styles.footer}>
         <span>ORBIT IMPERIUM</span>
         <PolicyLinks />
+        <a href="/updates/index.html">What’s new</a>
         <SourceLink />
         <Link {...routeTarget(view.binding.universe, 'settings', body?.id)}>
           Universe settings

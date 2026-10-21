@@ -109,6 +109,7 @@ build-universe-bridge:
 .PHONY: release-image inspect-release-image
 release-image:
 	test -n "$(ORBIT_RELEASE_IMAGE)" && test -n "$(ORBIT_RELEASE_SHA)"
+	node scripts/news-history.mjs
 	docker build --platform linux/amd64 --label "org.opencontainers.image.revision=$(ORBIT_RELEASE_SHA)" --label "org.opencontainers.image.source=https://github.com/unbought-games/orbit-imperium" -t "$(ORBIT_RELEASE_IMAGE)" .
 
 inspect-release-image:
