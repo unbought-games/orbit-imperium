@@ -1,4 +1,5 @@
 import { useUniverseName } from './session-context'
+import { useAccountIdentity } from '../client-model/use-oidc'
 import {
   Orbit,
   Blocks,
@@ -37,6 +38,7 @@ export function Navigation({
   onLogout: () => void
 }) {
   const universeName = useUniverseName()
+  const { identity } = useAccountIdentity()
   const dialog = useRef<HTMLDialogElement>(null)
   const opener = useRef<HTMLElement | null>(null)
   const menuId = useId()
@@ -172,16 +174,23 @@ export function Navigation({
             </section>
           ))}
         </nav>
-        <Button
-          variant="quiet"
-          onClick={() => {
-            opener.current = null
-            close()
-            onLogout()
-          }}
-        >
-          <LogOut size={18} aria-hidden="true" /> Sign out
-        </Button>
+        <div className={styles.account}>
+          {identity && (
+            <span className={styles.username} aria-label="Username">
+              {identity.username}
+            </span>
+          )}
+          <Button
+            variant="quiet"
+            onClick={() => {
+              opener.current = null
+              close()
+              onLogout()
+            }}
+          >
+            <LogOut size={18} aria-hidden="true" /> Sign out
+          </Button>
+        </div>
       </dialog>
     </>
   )

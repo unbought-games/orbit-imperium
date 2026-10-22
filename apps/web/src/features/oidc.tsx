@@ -1,11 +1,6 @@
 import { PublicFrame } from './public-frame'
 import { Heading, Text } from '../ui/typography'
-import {
-  useUniverseEnrollment,
-  useAccountIdentity,
-  oidcLoginPath,
-} from '../client-model/use-oidc'
-import styles from './oidc.module.css'
+import { useUniverseEnrollment, oidcLoginPath } from '../client-model/use-oidc'
 export function UnboughtLogin({ redirect }: { redirect?: string }) {
   return (
     <PublicFrame>
@@ -43,40 +38,6 @@ export function UniverseEnrollment() {
     </PublicFrame>
   )
 }
-export function AccountIdentity() {
-  const { config, identity } = useAccountIdentity()
-  if (!identity || !config?.accounts_url) return null
-  return (
-    <aside className={styles.identity} aria-label="Unbought account">
-      <span>{identity.username}</span>
-      {!identity.email_verified && (
-        <>
-          {' '}
-          ·{' '}
-          <a
-            href={`${config.accounts_url}/verify-email?${new URLSearchParams({ client_id: config.client_id ?? '', return_path: window.location.pathname + window.location.search })}`}
-          >
-            Verify email
-          </a>{' '}
-          ·{' '}
-          <a
-            href={oidcLoginPath(
-              window.location.pathname + window.location.search,
-              true,
-            )}
-          >
-            I’ve verified — continue
-          </a>
-        </>
-      )}{' '}
-      ·{' '}
-      <a href={`${config.accounts_url}/account/sessions`}>
-        Sign out everywhere
-      </a>
-    </aside>
-  )
-}
-
 export function AuthConfigError({ retry }: { retry: () => void }) {
   return (
     <PublicFrame>
