@@ -1,12 +1,24 @@
 import { playerLabel, type PlayerNames } from './player-label'
 import { ResourceNumber } from '../ui/number-value'
-import { Truck, Crosshair, Eye, Recycle, ChevronDown } from 'lucide-react'
+import {
+  Truck,
+  Crosshair,
+  Eye,
+  Recycle,
+  ChevronDown,
+  Shield,
+} from 'lucide-react'
 import type { components } from '../contracts'
 import type { DispatchDraft } from './missions'
 import { Button } from '../ui/button'
 import styles from './galaxy.module.css'
 import { BodyIllustration } from './body-illustration'
 import type { colonizationStatus } from '../client-model/colonization'
+import { dispatchFailure } from '../client-model/dispatch-validation'
+import { classes } from '../ui/classes'
+
+const protectionExplanation =
+  'Beginner protection blocks attacks and espionage between you and this player because of the difference in empire strength.'
 
 export function GalaxyPosition({
   position,
@@ -30,6 +42,14 @@ export function GalaxyPosition({
 }) {
   const { body, debris, coordinates } = position
   const owned = body?.owner === player
+  const protectedTarget = !owned && body?.attack_blocker === 'BeginnerProtected'
+  const attackReason = protectedTarget
+    ? protectionExplanation
+    : body?.attack_blocker
+      ? dispatchFailure(body.attack_blocker)
+      : !canAttack
+        ? 'Attack unavailable in this universe'
+        : undefined
   const target = `[${coordinates.galaxy}:${coordinates.system}:${coordinates.position}]`
   const canTarget = !!body && body.id !== origin
   const actionable = canTarget || !!debris || (!body && colony.enabled)
@@ -61,6 +81,12 @@ export function GalaxyPosition({
                     : 'Inactive · 28 days'}
                 {body.vacation ? ' · Vacation' : ''}
               </small>
+              {protectedTarget && (
+                <span className={styles.protectionBadge}>
+                  <Shield size={14} aria-hidden="true" />
+                  Beginner protection
+                </span>
+              )}
               {body.activity.type !== 'None' && (
                 <small
                   className={
@@ -96,6 +122,9 @@ export function GalaxyPosition({
           <ChevronDown className={styles.expand} size={16} aria-hidden="true" />
         )}
       </span>
+      {protectedTarget && (
+        <small className={styles.protectionNote}>{protectionExplanation}</small>
+      )}
     </>
   )
   if (!actionable)
@@ -106,7 +135,10 @@ export function GalaxyPosition({
     )
   return (
     <details
-      className={styles.positionCard}
+      className={classes(
+        styles.positionCard,
+        protectedTarget && styles.protected,
+      )}
       name="galaxy-position"
       onKeyDown={(event) => {
         if (event.key === 'Escape' && event.currentTarget.open) {
@@ -141,23 +173,21 @@ export function GalaxyPosition({
             {!owned && (
               <>
                 <Button
-                  disabled={!canAttack}
-                  title={
-                    canAttack
-                      ? undefined
-                      : 'Attack unavailable in this universe'
-                  }
+                  disabled={!!attackReason}
+                  title={attackReason}
                   onClick={() => onDraft(coordinates, 'Attack')}
                 >
                   <Crosshair size={16} aria-hidden="true" />
                   Attack
                 </Button>
                 <Button
-                  disabled={!body.espionage_eligible}
+                  disabled={protectedTarget || !body.espionage_eligible}
                   title={
-                    body.espionage_eligible
-                      ? undefined
-                      : 'Espionage unavailable'
+                    protectedTarget
+                      ? protectionExplanation
+                      : body.espionage_eligible
+                        ? undefined
+                        : 'Espionage unavailable'
                   }
                   onClick={() => onDraft(coordinates, 'Espionage')}
                 >

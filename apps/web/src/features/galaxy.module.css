@@ -203,6 +203,38 @@ summary.positionSummary:focus-visible {
   border-left: 2px solid #cbb68d70;
   padding-left: 0.75rem;
 }
+.protected,
+.protected[open] {
+  border-left: 3px solid #86d8b1;
+  background: #86d8b10c;
+  padding-left: 0.75rem;
+}
+.protected .player {
+  color: #a4e8c8;
+}
+.protectionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.35rem;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid #86d8b155;
+  border-radius: 4px;
+  color: #a4e8c8;
+  background: #86d8b112;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.protectionBadge svg {
+  flex-shrink: 0;
+}
+.positionSummary .protectionNote {
+  grid-column: 1 / -1;
+  padding-right: 0.75rem;
+  color: #b8d8c9;
+  line-height: 1.5;
+  max-width: 48ch;
+}
 .debris {
   display: grid;
   justify-items: end;
