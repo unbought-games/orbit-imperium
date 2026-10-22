@@ -36,9 +36,14 @@ async function firstViewport(page: Page, controls: Locator[]) {
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
   for (const control of controls) {
     await expect(control).toBeInViewport({ ratio: 1 })
-    const box = (await control.boundingBox())!
     // Reserve space for the pinned mobile navigation as well as the browser edge.
-    expect(box.y + box.height).toBeLessThan(page.viewportSize()!.height - 80)
+    // A route reconciliation can replace the control after the visibility check.
+    await expect
+      .poll(async () => {
+        const box = await control.boundingBox()
+        return box ? box.y + box.height : Number.POSITIVE_INFINITY
+      })
+      .toBeLessThan(page.viewportSize()!.height - 80)
   }
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
