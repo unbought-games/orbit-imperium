@@ -83,3 +83,25 @@ for(const success of [true,false])test(`colonization ${success?'success links to
   await expect(page.locator('main h1')).toContainText('Resources')
  }else await expect(report).toContainText('All ships and cargo return')
 })
+
+
+test('occupied colony positions retain the actionable error through shared dispatch validation', async ({ page }) => {
+  const source = { ...body, inventories: [{ item: { kind: 'Ship' as const, id: 'ColonyShip' as const }, count: '1' }] }
+  await setup(page, [source])
+  let resolved = 0
+  await page.route('**/world', async route => {
+    const request = route.request().postDataJSON()
+    expect(request.type).toBe('ResolveDestination')
+    expect(request.selection.type).toBe('EmptyPositionAt')
+    resolved++
+    await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PositionOccupied' } })
+  })
+  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
+  await page.getByLabel('Position', { exact: true }).fill('8')
+  await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
+  await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('This position is occupied. Choose an empty position.')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(resolved).toBe(1)
+})

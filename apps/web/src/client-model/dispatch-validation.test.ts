@@ -79,6 +79,7 @@ it.each([
   'TargetVacation',
   'InvalidInput',
   'NotFound',
+  'PositionOccupied',
   'NoFleetSlot',
   'InsufficientShips',
 ])('translates %s for quote and launch failures', (code) => {
@@ -89,5 +90,23 @@ it.each([
 it('does not expose unknown server errors', () => {
   expect(dispatchFailure(new Error('InternalDatabaseDetails'))).toBe(
     'Unable to validate this mission. Check your connection and review again.',
+  )
+})
+
+it('accepts empty-position colony targets without treating them as body identities', () => {
+  expect(
+    destinationError(
+      'Colonize',
+      {
+        type: 'EmptyPosition',
+        coordinates: { galaxy: 1, system: 1, position: 8 },
+        slot_revision: '0',
+      },
+      'me',
+      'home',
+    ),
+  ).toBe('')
+  expect(dispatchFailure(new Error('PositionOccupied'))).toBe(
+    'This position is occupied. Choose an empty position.',
   )
 })
