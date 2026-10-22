@@ -142,6 +142,9 @@ export class RuntimeController {
       disposeRuntime(runtime)
       return
     }
+    // A current bootstrap response supersedes the previous transport deadline,
+    // even if game preparation still needs its normal recovery backoff.
+    this.retryAt = 0
     if (runtimeModel(runtime)) this.pendingLogin = null
     this.replace(runtime)
   }

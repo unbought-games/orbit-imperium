@@ -400,3 +400,72 @@ it('lets manual retry supersede background work without losing its busy state', 
     vi.useRealTimers()
   }
 })
+
+it.each(['retry', 'login'] as const)(
+  'clears a stale Retry-After after a successful %s that still needs game preparation',
+  async (source) => {
+    vi.useFakeTimers()
+    const { owner, api } = recoveryFixture()
+    const preparing = bootstrapFixture(4)
+    if (preparing.result.status !== 'authenticated') throw Error('fixture')
+    preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
+    api.bootstrap.mockRejectedValueOnce(
+      new HttpError(503, 'Unavailable', 60000),
+    )
+    const recovery = owner.startRecovery()
+    try {
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(api.bootstrap).toHaveBeenCalledTimes(1)
+      if (source === 'retry') {
+        api.bootstrap.mockResolvedValueOnce(preparing)
+        await owner.retry()
+      } else {
+        api.loginBootstrap.mockResolvedValueOnce(preparing)
+        await owner.authenticate(false, 'player', 'password')
+      }
+      expect(owner.store.getState().runtime).toMatchObject({
+        status: 'authenticated',
+        game: { status: 'unavailable' },
+      })
+      const calls = api.bootstrap.mock.calls.length
+      await vi.advanceTimersByTimeAsync(1999)
+      expect(api.bootstrap).toHaveBeenCalledTimes(calls)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(api.bootstrap).toHaveBeenCalledTimes(calls + 1)
+      expect(owner.store.getState().runtime).toMatchObject({
+        status: 'authenticated',
+        game: { status: 'ready' },
+      })
+    } finally {
+      recovery.stop()
+      vi.useRealTimers()
+    }
+  },
+)
+
+it('does not let a stale bootstrap response clear a newer Retry-After', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  const background = deferred<Bootstrap>()
+  api.bootstrap
+    .mockReturnValueOnce(background.promise)
+    .mockRejectedValueOnce(new HttpError(503, 'Unavailable', 60000))
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(1000)
+    await owner.retry()
+    background.resolve(bootstrapFixture(4))
+    await vi.advanceTimersByTimeAsync(59999)
+    expect(api.bootstrap).toHaveBeenCalledTimes(2)
+    expect(owner.store.getState().runtime.status).toBe('unavailable')
+    await vi.advanceTimersByTimeAsync(1)
+    expect(api.bootstrap).toHaveBeenCalledTimes(3)
+    expect(owner.store.getState().runtime).toMatchObject({
+      status: 'authenticated',
+      game: { status: 'ready' },
+    })
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})
