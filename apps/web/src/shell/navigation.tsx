@@ -5,6 +5,7 @@ import {
   Blocks,
   Radar,
   Menu,
+  Mail,
   X,
   LogOut,
   ArrowUpRight,
@@ -66,6 +67,8 @@ export function Navigation({
   }, [])
   const close = () => dialog.current?.close()
   const selected = navigationAnchor(page)
+  const hasUnreadReports =
+    view.protocol === 4 && view.has_unread_reports === true
   const destination = (
     p: Page,
     title = pageTitles[p],
@@ -80,10 +83,23 @@ export function Navigation({
       <>
         {Icon && <Icon size={21} aria-hidden="true" />}
         <span>{title}</span>
+        {p === 'reports' && hasUnreadReports && (
+          <span className={styles.unreadBadge} aria-label="Unread reports">
+            <Mail size={16} aria-hidden="true" />
+          </span>
+        )}
       </>
     )
     return available ? (
       <Link
+        className={
+          p === 'reports' && hasUnreadReports ? styles.unread : undefined
+        }
+        aria-label={
+          p === 'reports' && hasUnreadReports
+            ? 'Reports — unread reports'
+            : undefined
+        }
         preload="intent"
         viewTransition
         key={p}
@@ -122,6 +138,7 @@ export function Navigation({
         <button
           type="button"
           aria-label="Menu"
+          aria-description={hasUnreadReports ? 'Unread reports' : undefined}
           aria-haspopup="dialog"
           aria-controls={menuId}
           aria-current={selected === 'Menu' ? 'page' : undefined}
@@ -132,6 +149,16 @@ export function Navigation({
         >
           <Menu size={21} aria-hidden="true" />
           <span>Menu</span>
+          {hasUnreadReports && (
+            <span
+              className={styles.menuAlert}
+              role="status"
+              aria-label="Unread reports"
+            >
+              <Mail size={16} aria-hidden="true" />
+              <span className={styles.srOnly}>Unread reports</span>
+            </span>
+          )}
         </button>
       </nav>
       <div className={styles.topBar}>

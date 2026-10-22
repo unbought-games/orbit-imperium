@@ -1392,7 +1392,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
 test('reports distinguish zero, known empty and unrevealed historical observations', async ({
   page,
 }) => {
-  await shellFixture(page, { protocol: 4, extraCapabilities: ['Attack'] })
+  let reportRevision = 1
   const observed = Date.now() - 3600000
   const header = {
     id: id(62),
@@ -1401,6 +1401,22 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     read: false,
     hidden: false,
   }
+  await shellFixture(page, {
+    protocol: 4, extraCapabilities: ['Attack', 'Reports'],
+    hasUnreadReports: () => !header.read,
+    viewerRevision: () => String(reportRevision),
+  })
+  await page.route('**/commands', async (route) => {
+    const envelope = route.request().postDataJSON().gameplay
+    expect(envelope.command).toEqual({ type: 'World', action: { type: 'MarkReportRead', report: header.id } })
+    header.read = true
+    reportRevision++
+    await route.fulfill({ json: {
+      protocol: 4, binding, command_id: envelope.command_id,
+      admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed',
+      result_ids: [], minimum_viewer_revision: String(reportRevision),
+    } })
+  })
   const payload = {
     kind: 'Espionage',
     target: {
@@ -1480,6 +1496,11 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
       fullPage: true,
     })
   }
+  const unreadAlert = page.getByRole('button', { name: 'Menu', exact: true }).getByRole('status', { name: 'Unread reports' })
+  await expect(unreadAlert).toBeVisible()
+  await page.getByRole('button', { name: 'Mark read', exact: true }).click()
+  await expect(unreadAlert).toHaveCount(0)
+  await expect(page.locator('main')).toContainText('· Read')
   await page
     .getByRole('button', { name: 'Prepare attack', exact: true })
     .click()
@@ -2160,3 +2181,46 @@ test('reduced motion shows only the new route with no snapshot geometry animatio
   )
   expect(purchases()).toBe(0)
 })
+
+
+for (const width of [390, 1440]) {
+  test(`unread reports light the menu and report link at ${width}px and reconcile`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    let unread = false
+    let revision = 1
+    await shellFixture(page, {
+      protocol: 4,
+      extraCapabilities: ['Reports'],
+      hasUnreadReports: () => unread,
+      viewerRevision: () => String(revision),
+    })
+    const menu = page.getByRole('button', { name: 'Menu', exact: true })
+    const alert = menu.getByRole('status', { name: 'Unread reports' })
+    await expect(alert).toHaveCount(0)
+    unread = true
+    revision++
+    await page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await expect(alert).toBeVisible()
+    await expect(menu).toHaveAccessibleDescription('Unread reports')
+    await page.screenshot({ path: `test-results/unread-reports-${width}.png` })
+    await menu.focus()
+    await page.keyboard.press('Enter')
+    const reports = page.getByRole('link', { name: 'Reports — unread reports' })
+    await expect(reports).toBeVisible()
+    await expect(reports.locator('svg')).toHaveCount(2)
+    await page.screenshot({ path: `test-results/unread-report-menu-${width}.png` })
+    await reports.focus()
+    await expect(reports).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeFocused()
+    await page.reload()
+    await expect(alert).toBeVisible()
+    unread = false
+    revision++
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(alert).toHaveCount(0)
+    await menu.click()
+    await expect(page.getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Reports — unread reports' })).toHaveCount(0)
+  })
+}
