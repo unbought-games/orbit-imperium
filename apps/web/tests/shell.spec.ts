@@ -2048,6 +2048,7 @@ for (const width of [390, 1440]) {
     const reports = page.getByRole('link', { name: 'Reports — unread reports' })
     await expect(reports).toBeVisible()
     await expect(reports.locator('svg')).toHaveCount(2)
+    await page.screenshot({ path: `test-results/unread-report-menu-${width}.png` })
     await reports.focus()
     await expect(reports).toBeFocused()
     await page.keyboard.press('Escape')
