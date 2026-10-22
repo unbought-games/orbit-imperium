@@ -207,3 +207,25 @@ an explicit lease against the prior published head; a local recovery branch,
 `emick/colony-ships-before-rebase`, retains that history. Published CI results are
 tracked by PR #23's checks for the new commit rather than inherited from the old
 head.
+
+## PR review: colonization research gate — October 22, 2026
+
+Validated review thread `PRRT_kwDOVRgPYs6vSFoT`: dispatch allowed review of a
+known locked position and translated `PrerequisiteMissing` into a connection
+error. Dispatch now derives its blocker from the shared colonization selector;
+quote/launch failures explain the required Astrophysics level using the same
+position thresholds. Full planet capacity remains a warning and allows launch.
+
+Exact clean source tested: `f4b8b882c52f640f6eea811642985b6bb92ac801`.
+
+| Command | Result | Measured wall time |
+| --- | --- | --- |
+| `make test-client _static` | Passed: 328 client tests, formatting, lint, contracts and boundaries | 11.18 s |
+| `npm run test:ui -- colonization.spec.ts dispatch-validation.spec.ts galaxy-cards.spec.ts` | All 18 passed, including known position gates, authoritative quote rejection and full-capacity launch | 13.02 s total; 11.2 s browser execution |
+| `npm run build` | Passed | 14.37 s |
+
+No validation failed. The build retained its existing bundle-size advisory.
+The native browser runner stopped its Vite and browser child processes in its
+cleanup handler; no database or Docker resources were needed. Logs remain in
+`/tmp/orbit-colony-review-{check,ui,build}.log`. This entry is documentation-only
+after the tested source.
