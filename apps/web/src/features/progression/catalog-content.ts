@@ -36,10 +36,12 @@ const content: Record<string, string> = {
     'Gathers intelligence about another planet on an espionage mission.',
   RocketLauncher:
     'A stationary missile battery that defends this planet against attacking fleets.',
+  LightLaser:
+    'A stationary laser battery that defends this planet against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
   SmallShieldDome:
     'A planetary shield that supports the defense of this planet. Only one small shield dome can be stationed or queued here.',
   LaserTechnology:
-    'Develops concentrated energy weapons and unlocks advanced technology.',
+    'Unlocks concentrated energy weapons, including Light Lasers at level 3. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',

@@ -1,0 +1,23 @@
+{
+  "research": {
+    "definition": { "base": [200, 100, 0], "growth": [2, 1] },
+    "requirements": [
+      { "type": "BodyBuilding", "building": "ResearchLab", "level": 1 },
+      { "type": "PlayerResearch", "research": "EnergyTechnology", "level": 2 }
+    ]
+  },
+  "defense": {
+    "requirements": [
+      { "type": "BodyBuilding", "building": "Shipyard", "level": 2 },
+      { "type": "PlayerResearch", "research": "EnergyTechnology", "level": 1 },
+      { "type": "PlayerResearch", "research": "LaserTechnology", "level": 3 }
+    ],
+    "cost": { "metal": 1500, "crystal": 500, "deuterium": 0 },
+    "combat": {
+      "item": { "kind": "Defense", "id": "LightLaser" },
+      "cost": [1500, 500, 0],
+      "attack_hundredths": 10000,
+      "shield_hundredths": 2500
+    }
+  }
+}
