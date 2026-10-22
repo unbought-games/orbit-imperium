@@ -38,7 +38,7 @@ account credentials or progress are imported for the official launch.
 
 The shared crate is published as `unbought-auth` on crates.io, with its source in
 the public `https://github.com/unbought-games/unbought-rs` workspace. Orbit pins
-version `=0.1.2` and commits the registry checksum in `Cargo.lock`. Native builds
+version `=0.1.3` and commits the registry checksum in `Cargo.lock`. Native builds
 use `cargo build --locked -p orbit-server`; no private repository, sibling checkout
 or GitHub credentials are required. Temporary local Cargo overrides may be used
 for coordinated library development, but must not enter release manifests.
