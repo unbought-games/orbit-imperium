@@ -948,3 +948,128 @@ async fn astrophysics_activation_is_additive_idempotent_and_preserves_research_o
     destructive.artifact = before.artifact;
     assert!(service.diff(&destructive).await.is_err());
 }
+
+#[tokio::test]
+async fn light_laser_activation_initializes_research_and_preserves_players_across_restart() {
+    let (store, pool, universe, binding) = setup().await;
+    let service = RulesService::new(store.clone());
+    let before = service.export(universe).await.unwrap();
+    let (old_snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    let mut document = before.clone();
+    let content: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../rules/content/light-laser.json")).unwrap();
+    let progression = document.artifact.progression.as_mut().unwrap();
+    progression.research.insert(
+        ResearchId::LaserTechnology,
+        serde_json::from_value(content["research"]["definition"].clone()).unwrap(),
+    );
+    progression.unit_costs.push(UnitCost {
+        item: ManufacturedItem::Defense(DefenseId::LightLaser),
+        cost: serde_json::from_value(content["defense"]["cost"].clone()).unwrap(),
+    });
+    document
+        .artifact
+        .world
+        .as_mut()
+        .unwrap()
+        .combat
+        .units
+        .push(serde_json::from_value(content["defense"]["combat"].clone()).unwrap());
+    for (key, section) in [
+        (
+            CatalogKey::Research(ResearchId::LaserTechnology),
+            "research",
+        ),
+        (CatalogKey::Defense(DefenseId::LightLaser), "defense"),
+    ] {
+        let entry = document
+            .artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == key)
+            .unwrap();
+        entry.enabled = true;
+        entry.requirements =
+            serde_json::from_value(content[section]["requirements"].clone()).unwrap();
+    }
+    let diff = service.diff(&document).await.unwrap();
+    assert_eq!(
+        diff.initialize.add_research,
+        vec![ResearchId::LaserTechnology]
+    );
+    assert!(diff.initialize.add_buildings.is_empty());
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::AlreadyActive { .. }
+    ));
+    let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(snapshot.state.epoch, binding.epoch);
+    let mut expected = old_snapshot.state.research[&binding.player].levels.clone();
+    expected.insert(ResearchId::LaserTechnology, 0);
+    assert_eq!(snapshot.state.research[&binding.player].levels, expected);
+    let mut bodies = old_snapshot.state.bodies.clone();
+    for body in bodies.values_mut() {
+        body.revision += 1;
+    }
+    assert_eq!(snapshot.state.bodies, bodies);
+    assert_eq!(snapshot.state.inventories, old_snapshot.state.inventories);
+    assert_eq!(
+        snapshot.state.manufacturing_batches,
+        old_snapshot.state.manufacturing_batches
+    );
+    let joined = SessionService::new(store.clone())
+        .signup(
+            &format!("laser{}", Uuid::new_v4().simple()),
+            "password",
+            SignupPolicy {
+                universe,
+                max_players: 45,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let new_player = joined.session.memberships[0].player;
+    let level: i64 = sqlx::query_scalar(
+        "SELECT level FROM research_levels WHERE owner=$1 AND research='LaserTechnology'",
+    )
+    .bind(new_player.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(level, 0);
+    let saved = store.load_rules(universe).await.unwrap();
+    drop(store.server_guard_config(None).await.unwrap());
+    assert_eq!(store.load_rules(universe).await.unwrap(), saved);
+    assert!(
+        saved
+            .artifact
+            .catalog
+            .iter()
+            .any(|e| e.key == CatalogKey::Defense(DefenseId::LightLaser) && e.enabled)
+    );
+    // Stop future orders without deleting research, inventory or combat definitions.
+    let mut disabled = service.export(universe).await.unwrap();
+    for key in [
+        CatalogKey::Defense(DefenseId::LightLaser),
+        CatalogKey::Research(ResearchId::LaserTechnology),
+    ] {
+        disabled
+            .artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == key)
+            .unwrap()
+            .enabled = false;
+    }
+    service.apply(&disabled).await.unwrap();
+    let (after, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(after.state.research[&binding.player].levels, expected);
+    let mut destructive = service.export(universe).await.unwrap();
+    destructive.artifact = before.artifact;
+    assert!(service.diff(&destructive).await.is_err());
+}

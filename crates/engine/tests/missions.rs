@@ -1391,7 +1391,21 @@ fn loaded_fleet_losses_trim_only_overflow_before_plunder_and_preserve_paid_lots(
 }
 #[test]
 fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
-    let (mut s, r, p, b, t) = raid_fixture();
+    sequential_defense_raids(DefenseId::RocketLauncher);
+    sequential_defense_raids(DefenseId::LightLaser);
+}
+fn sequential_defense_raids(defense: DefenseId) {
+    let (mut s, mut r, p, b, t) = raid_fixture();
+    if defense == DefenseId::LightLaser {
+        r = common::light_laser_rules(&r);
+        s.profile_hash = r.hash.clone();
+        for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
+            policy.policy_hash = r.hash.clone();
+        }
+        for research in s.research.values_mut() {
+            research.levels.insert(ResearchId::LaserTechnology, 0);
+        }
+    }
     for body in [b, t] {
         set_units(
             &mut s,
@@ -1411,21 +1425,70 @@ fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
     });
     let event = launch_raid(&mut s, &r, p, b, intent.clone(), 1000, 1800);
     clear_units(&mut s, t);
-    set_units(
-        &mut s,
-        &r,
-        t,
-        ManufacturedItem::Defense(DefenseId::RocketLauncher),
-        10,
-    );
+    set_units(&mut s, &r, t, ManufacturedItem::Defense(defense), 10);
     let result = run(&mut s, &r, p, b, event.at, 1801, Input::Event(event.event));
     let c = apply(&mut s, result);
     let previous = s
         .inventories
         .iter()
-        .find(|v| v.body == t && v.item == ManufacturedItem::Defense(DefenseId::RocketLauncher))
+        .find(|v| v.body == t && v.item == ManufacturedItem::Defense(defense))
         .unwrap()
         .count;
+    assert!(
+        previous > 0 && previous < 10,
+        "destroyed defenses recover independently"
+    );
+    let first_report = &s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .reports
+        .values()
+        .find(|v| v.event == InputId(Uuid::from_u128(1801)))
+        .unwrap()
+        .payloads[&s.bodies[&t].owner];
+    let losses = first_report["gross_losses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["side"] == "Defender")
+        .unwrap();
+    assert_eq!(losses["units"][0]["count"], "10");
+    // Defense losses never produce debris; any debris is from lost attacking ships.
+    let attacker_losses = first_report["gross_losses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["side"] == "Attacker")
+        .unwrap();
+    let mut lost = [0i64; 2];
+    for unit in attacker_losses["units"].as_array().unwrap() {
+        let item: ManufacturedItem = serde_json::from_value(unit["item"].clone()).unwrap();
+        let count: i64 = unit["count"].as_str().unwrap().parse().unwrap();
+        let cost = &r
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .units
+            .iter()
+            .find(|v| v.item == item)
+            .unwrap()
+            .cost;
+        for k in 0..2 {
+            lost[k] += count * cost[k];
+        }
+    }
+    assert_eq!(
+        first_report["debris"]["metal"],
+        (lost[0] * 3000 / 10000 * SCALE).to_string()
+    );
+    assert_eq!(
+        first_report["debris"]["crystal"],
+        (lost[1] * 3000 / 10000 * SCALE).to_string()
+    );
     let ret = c
         .events
         .iter()
@@ -1478,7 +1541,7 @@ fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|x| x["item"]["id"] == "RocketLauncher")
+        .find(|x| x["item"]["id"] == serde_json::to_value(defense).unwrap())
         .map_or(0, |x| x["count"].as_str().unwrap().parse::<i64>().unwrap());
     assert_eq!(count, previous);
     for k in 0..3 {

@@ -4,6 +4,9 @@ Deploy the server/frontend across all instances sharing PostgreSQL before changi
 
 Use the deployed `orbit` binary with the same `DATABASE_URL` as the service. These commands are operator CLI commands, not public HTTP endpoints. The database must already have been prepared by server startup.
 
+For the reviewed Laser Technology and Light Laser content patch, see
+[Light Laser activation](light-laser.md).
+
 For Heavy Fighter prerequisites, exact stats, and preparation commands, see the
 [Heavy Fighter rollout](heavy-fighter.md).
 
