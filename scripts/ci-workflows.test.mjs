@@ -40,10 +40,18 @@ test('browser jobs configure Ubuntu mirrors before installing Linux dependencies
       )
       assert.ok(mirrorIndex >= 0 && mirrorIndex < installIndex, file)
       const mirrorSetup = job.steps[mirrorIndex].run
-      assert.match(mirrorSetup, /https:\/\/archive\.ubuntu\.com\/ubuntu priority:0/)
-      assert.match(mirrorSetup, /https:\/\/security\.ubuntu\.com\/ubuntu priority:1/)
-      assert.doesNotMatch(mirrorSetup, /azure\.archive\.ubuntu\.com/)
-      assert.equal(spawnSync('bash', ['-n', '-c', mirrorSetup]).status, 0, file)
+      // Capture the actual shell output without writing the host's apt config.
+      // apt treats space-separated metadata as part of the URL; it needs a tab.
+      const generated = spawnSync('bash', ['-e', '-c', mirrorSetup.replace(
+        'sudo tee /etc/apt/apt-mirrors.txt >/dev/null',
+        'cat',
+      )], { encoding: 'utf8' })
+      assert.equal(generated.status, 0, `${file}: ${generated.stderr}`)
+      assert.equal(generated.stdout,
+        'https://archive.ubuntu.com/ubuntu\tpriority:0\n' +
+        'https://security.ubuntu.com/ubuntu\tpriority:1\n',
+        file,
+      )
     }
   }
 })
