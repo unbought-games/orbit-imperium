@@ -7,6 +7,7 @@ import { buildingProgress } from './building-progress'
 import { researchProgress } from './research-progress'
 import {
   currentServerTime,
+  nextWorkDelay,
   pendingConstruction,
   projectGameView,
   pendingWork,
@@ -868,4 +869,25 @@ it('does not make an accepted construction block an independent manufacturing or
     }),
   ).toBe(false)
   expect(pendingCommand(s, { ...upgrade, building: 'CrystalMine' })).toBe(true)
+})
+
+it('derives due work from confirmed state and the anchored server clock', () => {
+  const store = createGameStore()
+  expect(nextWorkDelay(store.getState())).toBe(Infinity)
+  const view = snapshot()
+  store.setState({ view, receivedAt: 20000, now: 20500 })
+  expect(nextWorkDelay(store.getState())).toBe(Infinity)
+  view.constructions.push({
+    id: 'work',
+    body: 'body',
+    building: 'MetalMine',
+    target_level: 2,
+    due_at: 3000,
+    paid: { metal: '0', crystal: '0', deuterium: '0' },
+  })
+  expect(nextWorkDelay(store.getState())).toBe(1500)
+  store.setState({ now: 22500 })
+  expect(nextWorkDelay(store.getState())).toBe(-500)
+  view.constructions = []
+  expect(nextWorkDelay(store.getState())).toBe(Infinity)
 })
