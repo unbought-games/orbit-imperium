@@ -81,6 +81,7 @@ impl ProgressionRules {
             if !matches!(
                 ship,
                 ShipType::SmallCargo
+                    | ShipType::ColonyShip
                     | ShipType::LargeCargo
                     | ShipType::LightFighter
                     | ShipType::Recycler

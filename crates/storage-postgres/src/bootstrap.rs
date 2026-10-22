@@ -253,7 +253,14 @@ pub(crate) async fn validate_manifest(
         .universe
         .as_ref()
         .ok_or(StoreError::CorruptData)?;
-    let worlds = if profile.id == "mvp-v1" {
+    let worlds = if profile.id == "mvp-v1"
+        && rules
+            .artifact
+            .world
+            .as_ref()
+            .and_then(|w| w.colonization.as_ref())
+            .is_none()
+    {
         homeworlds(secret, u, m.epoch, m.members.len()).map_err(|_| StoreError::CorruptData)?
     } else {
         // Placement is a creation fact. Current occupancy must not relocate or
@@ -282,7 +289,12 @@ pub(crate) async fn validate_manifest(
     }
     let counts:(i64,i64,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM universe_memberships WHERE universe=$1),(SELECT count(*) FROM players WHERE universe=$1),(SELECT count(*) FROM bodies WHERE universe=$1)").bind(u.0).fetch_one(&mut **tx).await.map_err(db_error)?;
     let count = m.members.len() as i64;
-    if counts != (count, count, count) {
+    let colonies: i64 = sqlx::query_scalar("SELECT count(*) FROM colony_genesis WHERE universe=$1")
+        .bind(u.0)
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(db_error)?;
+    if counts != (count, count, count + colonies) {
         return Err(StoreError::CorruptData);
     }
     let mut seen = std::collections::BTreeSet::new();

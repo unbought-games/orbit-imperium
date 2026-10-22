@@ -31,7 +31,7 @@ async function setup(page: Page) {
             body:
               i < 3
                 ? {
-                    id: id(i + 20),
+                    id: i === 0 ? body.id : id(i + 20),
                     kind: 'Planet',
                     owner: i === 0 ? binding.player : id(i === 1 ? 31 : 32),
                     activity: { type: 'Recent' },

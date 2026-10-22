@@ -38,6 +38,14 @@ function empireFixture() {
         deuterium: '4810000000',
       },
       fields_used: 34,
+      fields: 230,
+      colony: {
+        diameter_km: 15191,
+        min_temperature: 24,
+        max_temperature: 64,
+        created_at: now,
+        profile: 'oi-redesign-reconstructed-v1',
+      },
     },
     {
       ...body,
@@ -210,6 +218,7 @@ test('empire shows every body, its own work and resources, and directional fleet
   })
   await expect(planet).toContainText('Metal Mine · Level 8')
   await expect(colony).toContainText('Robotics Factory · Level 7')
+  await expect(colony).toContainText('15191 km · 24 to 64 °C')
   await expect(moon).not.toContainText('Metal Mine · Level 8')
   await expect(planet.getByLabel('Planet resources')).toContainText('25,216')
   await expect(planet).toContainText('1 in')

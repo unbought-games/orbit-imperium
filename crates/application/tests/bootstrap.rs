@@ -149,6 +149,7 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
     };
     let world = GameState {
         world: Some(WorldFacts {
+            planet_slots: vec![],
             records: WorldRecords::default(),
             secret: [0; 32],
             covered_players: Default::default(),

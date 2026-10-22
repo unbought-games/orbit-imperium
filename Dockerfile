@@ -1,6 +1,7 @@
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS web
 WORKDIR /build
 COPY package.json package-lock.json ./
+COPY vendor vendor
 RUN npm ci
 # Package source and build both halves from this same snapshot. Never omit the
 # backend, build scripts or lockfiles from the source offered to players.

@@ -111,7 +111,12 @@ impl PgStore {
                     return Ok(CommitOutcome::Conflict);
                 }
                 for body in &change.bodies {
-                    let previous = facts.bodies.get(&body.id).ok_or(StoreError::CorruptData)?;
+                    let Some(previous) = facts.bodies.get(&body.id) else {
+                        crate::colonization::insert_colony(&mut tx, i, &facts, change, body)
+                            .await?;
+                        result_ids.push(body.id.to_string());
+                        continue;
+                    };
                     let updated=sqlx::query("UPDATE bodies SET amounts=$2,carry=$3,checkpoint_at=$4,revision=$5 WHERE id=$1 AND revision=$6 AND universe=$7").bind(body.id.0).bind(sqlx::types::Json(body.checkpoint.amounts)).bind(sqlx::types::Json(body.checkpoint.carry)).bind(body.checkpoint.at).bind(body.revision).bind(previous.revision).bind(i.universe.0).execute(&mut *tx).await.map_err(db_error)?;
                     if updated.rows_affected() != 1 {
                         return Ok(CommitOutcome::Conflict);

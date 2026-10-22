@@ -15,6 +15,8 @@ pub struct PublicBody {
     pub inactivity: Inactivity,
     pub vacation: bool,
     pub espionage_eligible: bool,
+    #[serde(default)]
+    pub attack_blocker: Option<GameError>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicDebris {
@@ -36,6 +38,7 @@ pub fn resolve_destination(
 ) -> Result<MissionDestination, GameError> {
     let coords = match &selection {
         DestinationSelection::BodyAt { coordinates, .. }
+        | DestinationSelection::EmptyPositionAt { coordinates }
         | DestinationSelection::DebrisAt { coordinates } => *coordinates,
     };
     if !r
@@ -54,6 +57,19 @@ pub fn resolve_destination(
         return Err(GameError::InvalidInput);
     }
     match selection {
+        DestinationSelection::EmptyPositionAt { .. } => {
+            if !r.colonization() {
+                return Err(GameError::UnavailableContent);
+            }
+            let slot = planet_slot(s, coords).map_err(|_| GameError::PolicyUnavailable)?;
+            if slot.occupant.is_some() {
+                return Err(GameError::PositionOccupied);
+            }
+            Ok(MissionDestination::EmptyPosition {
+                coordinates: coords,
+                slot_revision: slot.revision,
+            })
+        }
         DestinationSelection::BodyAt { kind, .. } => s
             .bodies
             .values()
@@ -125,6 +141,15 @@ pub fn galaxy_system(
                 inactivity: inactivity(p.last_presence_at, at)
                     .map_err(|_| GameError::InvalidInput)?,
                 vacation: p.vacation,
+                attack_blocker: check_mission_eligibility(
+                    s,
+                    viewer,
+                    Some(b.owner),
+                    Mission::Attack,
+                    at,
+                    r,
+                )
+                .err(),
                 espionage_eligible: b.owner != viewer
                     && check_mission_eligibility(
                         s,

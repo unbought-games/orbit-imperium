@@ -25,7 +25,9 @@ const content: Record<string, string> = {
   ImpulseDrive:
     'Increases the base speed of ships using impulse propulsion by 20% per level. Small Cargos switch to impulse propulsion at level 5, with higher base speed and fuel consumption.',
   Astrophysics:
-    'Increases colony capacity: level 1 allows one colony, then each odd level adds another. Positions 4–12 unlock at level 1, 3 and 13 at level 4, 2 and 14 at level 6, and 1 and 15 at level 8. Colony Ships, colonization and expeditions are not available yet.',
+    'Increases colony capacity: level 1 allows one colony, then each odd level adds another. Positions 4–12 unlock at level 1, 3 and 13 at level 4, 2 and 14 at level 6, and 1 and 15 at level 8. Colonization requires this universe’s enabled Colony Ship and mission. Expeditions are unavailable.',
+  ColonyShip:
+    'Establishes a planet at an eligible empty position. Requires Shipyard 4 and Impulse Drive 3. Success consumes one ship and deposits cargo; escorts and extra Colony Ships return. Uses impulse propulsion with 7,500 cargo capacity shared with mission fuel.',
   SmallCargo:
     'Transports resources between planets. Cargo capacity is shared by resources and mission fuel.',
   LightFighter: 'A small combat ship for attacking and defending planets.',

@@ -227,3 +227,49 @@ pub(super) async fn logout<S: IdentityStore>(
         .map_err(ServiceError::from)?;
     Ok(StatusCode::NO_CONTENT.into_response())
 }
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct JourneyLogin {
+    return_to: Option<String>,
+    #[serde(default)]
+    verify: bool,
+    handoff: String,
+}
+pub(super) async fn login_journey<S: IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    ApiJson(body): ApiJson<JourneyLogin>,
+) -> Result<Response, Problem> {
+    origin(&s, &h)?;
+    if body.handoff.len() < 16
+        || body.handoff.len() > 128
+        || !body
+            .handoff
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"._~-".contains(&c))
+    {
+        return Err(ServiceError::Forbidden.into());
+    }
+    let response = login(
+        State(s),
+        h,
+        Query(LoginQuery {
+            return_to: body.return_to,
+            verify: body.verify,
+        }),
+    )
+    .await?;
+    let mut headers = response.headers().clone();
+    let url = headers
+        .get(header::LOCATION)
+        .and_then(|v| v.to_str().ok())
+        .ok_or(ServiceError::Unavailable)?
+        .to_owned();
+    headers.remove(header::LOCATION);
+    Ok((
+        headers,
+        Json(serde_json::json!({"url":format!("{url}#analytics_handoff={}",body.handoff)})),
+    )
+        .into_response())
+}

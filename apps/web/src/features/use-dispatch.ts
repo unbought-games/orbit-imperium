@@ -5,6 +5,12 @@ import type { Coordinator } from '../client-model/coordinator'
 import type { Command } from '../client-model/commands'
 import { currentServerTime } from '../client-model/game-projection'
 import type { DispatchDraft } from './missions'
+import { colonizationStatus } from '../client-model/colonization'
+import {
+  coordinateErrors,
+  destinationError,
+  dispatchFailure,
+} from '../client-model/dispatch-validation'
 type S = components['schemas']
 export function useDispatch({
   model,
@@ -34,6 +40,78 @@ export function useDispatch({
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false)
   const now = useStore(model.store, currentServerTime)
+  const coordinateProblems = coordinateErrors(
+    { galaxy, system, position },
+    model.settings,
+  )
+  const coordinatesValid = !Object.values(coordinateProblems).some(Boolean)
+  const [observation, setObservation] = useState<S['GalaxySystem4'] | null>(
+    null,
+  )
+  useEffect(() => {
+    let current = true
+    setObservation(null)
+    if (!coordinatesValid || mission !== 'Attack') return
+    const timer = setTimeout(() => {
+      void model
+        .world({
+          type: 'Galaxy',
+          galaxy: Number(galaxy),
+          system: Number(system),
+        })
+        .then((result) => {
+          if (current && result && 'positions' in result) setObservation(result)
+        })
+        .catch(() => {
+          /* Review still checks eligibility when this advisory read fails. */
+        })
+    }, 250)
+    return () => {
+      current = false
+      clearTimeout(timer)
+    }
+  }, [model, galaxy, system, coordinatesValid, mission, view.viewer_revision])
+  const ownedTarget = coordinatesValid
+    ? view.bodies.find(
+        (candidate) =>
+          candidate.kind === 'Planet' &&
+          candidate.coordinates.galaxy === Number(galaxy) &&
+          candidate.coordinates.system === Number(system) &&
+          candidate.coordinates.position === Number(position),
+      )
+    : undefined
+  const observedTarget =
+    coordinatesValid &&
+    observation?.galaxy === Number(galaxy) &&
+    observation.system === Number(system)
+      ? observation.positions.find(
+          (candidate) => candidate.coordinates.position === Number(position),
+        )?.body
+      : undefined
+  const target = ownedTarget
+    ? { id: ownedTarget.id, owner: view.binding.player, kind: ownedTarget.kind }
+    : observedTarget
+  const colony = colonizationStatus(view, Number(position))
+  const targetProblem =
+    mission === 'Colonize' && colony.reason
+      ? colony.reason
+      : target && mission !== 'Harvest'
+        ? destinationError(
+            mission,
+            {
+              type: 'Body',
+              id: target.id,
+              expected_owner: target.owner,
+              expected_kind: target.kind,
+            },
+            view.binding.player,
+            body.id,
+          )
+        : ''
+  const attackWarning =
+    mission === 'Attack' && observedTarget?.attack_blocker
+      ? dispatchFailure(observedTarget.attack_blocker)
+      : ''
   const types = view.catalog.flatMap((entry) =>
     entry.key.kind === 'Ship' &&
     entry.mobile &&
@@ -80,6 +158,7 @@ export function useDispatch({
     generation.current++
     setQuote(null)
     setBusy(false)
+    setError('')
   }
   async function review() {
     const requestGeneration = ++generation.current
@@ -87,12 +166,15 @@ export function useDispatch({
     setQuote(null)
     setBusy(true)
     try {
-      if (
-        ![galaxy, system, position].every((value) =>
-          /^[1-9][0-9]*$/.test(value),
-        )
-      )
-        throw Error('Enter whole system and position numbers.')
+      const coordinateProblem = Object.values(coordinateProblems).find(Boolean)
+      if (coordinateProblem) {
+        setError(coordinateProblem)
+        return
+      }
+      if (targetProblem) {
+        setError(targetProblem)
+        return
+      }
       const coordinates = {
         galaxy: Number(galaxy),
         system: Number(system),
@@ -101,14 +183,30 @@ export function useDispatch({
       const selection: S['DestinationSelection4'] =
         mission === 'Harvest'
           ? { type: 'DebrisAt', coordinates }
-          : { type: 'BodyAt', coordinates, kind: 'Planet' }
-      const destination = await model.world({
-        type: 'ResolveDestination',
-        selection,
-      })
+          : mission === 'Colonize'
+            ? { type: 'EmptyPositionAt', coordinates }
+            : { type: 'BodyAt', coordinates, kind: 'Planet' }
+      const destination = await model
+        .world({
+          type: 'ResolveDestination',
+          selection,
+        })
+        .catch((failure: unknown) => {
+          throw Error(dispatchFailure(failure))
+        })
       if (requestGeneration !== generation.current) return
       if (!destination || !('type' in destination))
         throw Error('Destination unavailable.')
+      const resolvedProblem = destinationError(
+        mission,
+        destination,
+        view.binding.player,
+        body.id,
+      )
+      if (resolvedProblem) {
+        setError(resolvedProblem)
+        return
+      }
       if (
         draft?.target?.type === 'Body' &&
         (destination.type !== 'Body' ||
@@ -142,7 +240,11 @@ export function useDispatch({
         },
         speed_percent: speed as S['FleetIntent4']['speed_percent'],
       }
-      const terms = await model.world({ type: 'FleetQuote', intent })
+      const terms = await model
+        .world({ type: 'FleetQuote', intent })
+        .catch((failure: unknown) => {
+          throw Error(dispatchFailure(failure, intent))
+        })
       if (requestGeneration !== generation.current) return
       if (!terms || !('terms_hash' in terms))
         throw Error(
@@ -159,6 +261,11 @@ export function useDispatch({
     }
   }
   return {
+    colony,
+    coordinateProblems,
+    coordinatesValid,
+    targetProblem,
+    attackWarning,
     mission,
     setMission,
     galaxy,

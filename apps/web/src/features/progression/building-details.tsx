@@ -178,6 +178,11 @@ export function BuildingDetails({
                     className={
                       action === 'Upgrade' ? styles.improve : styles.destroy
                     }
+                    data-analytics={
+                      action === 'Upgrade'
+                        ? 'confirm_upgrade'
+                        : 'confirm_demolition'
+                    }
                     aria-label={`Confirm ${action.toLowerCase()}`}
                     disabled={
                       loading ||

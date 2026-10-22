@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useStore } from 'zustand'
@@ -24,8 +25,15 @@ import { routeTarget } from '../shell/route-target'
 import { label } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
+  origin?: string
   coordinates: S['Coordinates']
-  mission: 'Transport' | 'Espionage' | 'Harvest' | 'Attack'
+  mission:
+    | 'Transport'
+    | 'Espionage'
+    | 'Harvest'
+    | 'Attack'
+    | 'Colonize'
+    | 'Deploy'
   observedAt?: number
   target?: S['MissionDestination4']
 }
@@ -42,9 +50,15 @@ export function Dispatch({
   draft: DispatchDraft | null
 }) {
   const universeName = useUniverseName()
+  const validationId = useId()
   const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const {
+    coordinateProblems,
+    coordinatesValid,
+    targetProblem,
+    attackWarning,
     mission,
+    colony,
     setMission,
     galaxy,
     setGalaxy,
@@ -81,15 +95,31 @@ export function Dispatch({
       </header>
       <Text className={styles.origin}>
         Origin: [{body.coordinates.galaxy}:{body.coordinates.system}:
-        {body.coordinates.position}]. Surviving ships return on their committed
-        one-way travel duration after contact.
+        {body.coordinates.position}].{' '}
+        {mission === 'Deploy'
+          ? 'Successful deployment ends at the destination; the ships stay there.'
+          : 'Returning ships use their committed one-way travel duration after contact.'}
       </Text>
       <Text>
         {view.capabilities.some((c) => c.capability === 'Attack' && c.enabled)
           ? 'Attack victories can plunder resources into surviving cargo space.'
           : 'Attack is unavailable in this universe.'}{' '}
-        Colonization and deployment are unavailable.
+        {colony.enabled
+          ? 'Colonize an empty position or deploy ships to another owned planet.'
+          : 'Colonization and deployment are unavailable.'}
       </Text>
+      {mission === 'Colonize' && (
+        <Text role="status">
+          Planets: {colony.count} / {colony.capacity}.{' '}
+          {colony.reason ?? colony.warning} Requires at least one Colony Ship.
+        </Text>
+      )}
+      {mission === 'Deploy' && (
+        <Text>
+          Deployment transfers ships and cargo permanently to another owned
+          planet and credits half the paid fuel, rounded down.
+        </Text>
+      )}
       {draft?.observedAt !== undefined && (
         <Text>
           Prepared from an observation at{' '}
@@ -115,7 +145,16 @@ export function Dispatch({
                   clear()
                 }}
               >
-                {(['Transport', 'Espionage', 'Harvest', 'Attack'] as const)
+                {(
+                  [
+                    'Transport',
+                    'Espionage',
+                    'Harvest',
+                    'Attack',
+                    'Colonize',
+                    'Deploy',
+                  ] as const
+                )
                   .filter((m) =>
                     view.capabilities.some(
                       (c) => c.capability === m && c.enabled,
@@ -126,38 +165,84 @@ export function Dispatch({
                   ))}
               </Select>
             </Field>
+            {mission === 'Attack' && !targetProblem && !attackWarning && (
+              <Text className={styles.destinationNotice}>
+                Beginner protection can prevent attacks between players of
+                different strengths. Eligibility is checked again at review and
+                departure.
+              </Text>
+            )}
+            {(targetProblem || attackWarning) && (
+              <Text
+                className={styles.destinationNotice}
+                tone="danger"
+                role="status"
+              >
+                {targetProblem || attackWarning}
+              </Text>
+            )}
             <Field>
-              Galaxy
+              <span id={`${validationId}-galaxy-label`}>Galaxy</span>
               <Input
                 inputMode="numeric"
+                aria-labelledby={`${validationId}-galaxy-label`}
+                aria-invalid={!!coordinateProblems.galaxy}
+                aria-describedby={`${validationId}-galaxy`}
                 value={galaxy}
                 onChange={(e) => {
                   setGalaxy(e.target.value)
                   clear()
                 }}
               />
+              <span
+                className={styles.fieldError}
+                id={`${validationId}-galaxy`}
+                role={coordinateProblems.galaxy ? 'alert' : undefined}
+              >
+                {coordinateProblems.galaxy}
+              </span>
             </Field>
             <Field>
-              System
+              <span id={`${validationId}-system-label`}>System</span>
               <Input
                 inputMode="numeric"
+                aria-labelledby={`${validationId}-system-label`}
+                aria-invalid={!!coordinateProblems.system}
+                aria-describedby={`${validationId}-system`}
                 value={system}
                 onChange={(e) => {
                   setSystem(e.target.value)
                   clear()
                 }}
               />
+              <span
+                className={styles.fieldError}
+                id={`${validationId}-system`}
+                role={coordinateProblems.system ? 'alert' : undefined}
+              >
+                {coordinateProblems.system}
+              </span>
             </Field>
             <Field>
-              Position
+              <span id={`${validationId}-position-label`}>Position</span>
               <Input
                 inputMode="numeric"
+                aria-labelledby={`${validationId}-position-label`}
+                aria-invalid={!!coordinateProblems.position}
+                aria-describedby={`${validationId}-position`}
                 value={position}
                 onChange={(e) => {
                   setPosition(e.target.value)
                   clear()
                 }}
               />
+              <span
+                className={styles.fieldError}
+                id={`${validationId}-position`}
+                role={coordinateProblems.position ? 'alert' : undefined}
+              >
+                {coordinateProblems.position}
+              </span>
             </Field>
             <Field>
               Speed
@@ -223,7 +308,15 @@ export function Dispatch({
               </Field>
             ))}
           </fieldset>
-          <Button ref={reviewButtonRef} disabled={busy}>
+          {error && (
+            <Text tone="danger" role="alert">
+              {error}
+            </Text>
+          )}
+          <Button
+            ref={reviewButtonRef}
+            disabled={busy || !coordinatesValid || !!targetProblem}
+          >
             {busy ? 'Reviewing…' : 'Review fleet'}
           </Button>
         </Form>
@@ -247,11 +340,6 @@ export function Dispatch({
         </aside>
       </div>
       <DispatchReceipt model={model} origin={body.id} />
-      {error && (
-        <Text tone="danger" role="alert">
-          {error}
-        </Text>
-      )}
       {quote && (
         <QuotePanel
           as="section"
@@ -279,10 +367,12 @@ export function Dispatch({
                     id: quote.intent.destination.id,
                     kind: quote.intent.destination.expected_kind,
                   }
-                : {
-                    id: quote.intent.destination.field_identity,
-                    kind: 'Debris',
-                  }
+                : quote.intent.destination.type === 'Debris'
+                  ? {
+                      id: quote.intent.destination.field_identity,
+                      kind: 'Debris',
+                    }
+                  : undefined
             }
             destination={{
               galaxy: Number(galaxy),
@@ -311,9 +401,10 @@ export function Dispatch({
             way · <ResourceNumber value={quote.fuel} /> deuterium fuel
           </Text>
           <Text>
-            Estimated contact {exactTime(now + quote.duration_ms)} · Estimated
-            return {exactTime(now + 2 * quote.duration_ms)}. Estimates assume
-            departure now; losses may leave no return fleet.
+            Estimated contact {exactTime(now + quote.duration_ms)} · Return if
+            needed {exactTime(now + 2 * quote.duration_ms)}. Estimates assume
+            departure now. Successful deployment and a colony with no remaining
+            ships have no return leg.
           </Text>
           <Text>
             Payload capacity <ResourceNumber value={quote.capacity} /> · Maximum

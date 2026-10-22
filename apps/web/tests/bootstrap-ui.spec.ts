@@ -3,6 +3,9 @@ import { binding, body, shellFixture } from './fixtures/game'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/analytics', (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  )
   await page.route('**/api/auth/config', (route) =>
     route.fulfill({ json: { mode: 'local', universes: [] } }),
   )
@@ -323,7 +326,7 @@ test('development bootstrap uses one request and never inserts login or connecti
     await page.evaluate(() => Reflect.get(window, 'startupFlashes')),
   ).toEqual([])
 })
-test('unavailable startup stays distinct from anonymous and retries only on request', async ({
+test('unavailable startup stays distinct from anonymous and still supports manual retry', async ({
   page,
 }) => {
 
@@ -885,4 +888,104 @@ test('local signup identifies the named universe', async ({ page }) => {
   } }))
   await page.goto('/signup')
   await expect(page.getByText('Join Triangulum', { exact: true })).toBeVisible()
+})
+
+
+test('mobile startup automatically recovers from a transient restart without signing in again', async ({ page }) => {
+  // Allow cold route compilation while other validation runs share the host.
+  const ready = expect.configure({ timeout: 30000 })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.clock.install()
+  await page.clock.pauseAt(new Date())
+  const payload = bootstrapFixture(4)
+  if (payload.result.status !== 'authenticated' || payload.result.game.status !== 'ready') throw Error('fixture')
+  const snapshot = payload.result.game.snapshot
+  snapshot.view.bodies = [body]
+  const preparing = structuredClone(payload)
+  if (preparing.result.status !== 'authenticated') throw Error('fixture')
+  preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
+  let reads = 0
+  let releasePreparation!: () => void
+  const preparation = new Promise<void>(resolve => { releasePreparation = resolve })
+  await page.route('**/api/**', async route => {
+    const request = route.request(), path = new URL(request.url()).pathname
+    if (path === '/api/auth/config') return route.fallback()
+    if (path === '/api/v1/bootstrap') {
+      reads++
+      if (reads === 2) {
+        await preparation
+        return route.fulfill({ json: preparing })
+      }
+      return route.fulfill({ json: reads > 2 ? payload : {
+        version: 1, signup_enabled: true,
+        result: { status: 'unavailable', code: 'Unavailable' },
+      } })
+    }
+    if (path.endsWith('/overview')) return route.fulfill({ json: {
+      ...snapshot.view, request_id: request.postDataJSON().request_id,
+    } })
+    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await ready(page.getByText('Connection temporarily unavailable. Reconnecting automatically…')).toBeVisible()
+  await ready(page.getByLabel('Password')).toHaveCount(0)
+  await page.screenshot({ path: 'test-results/transient-recovery-mobile.png', fullPage: true })
+  await page.clock.runFor(1000)
+  await ready.poll(() => reads).toBe(2)
+  // A request reaching the fixture does not mean the client applied its response.
+  // Keep it in flight across a backoff interval, then wait for the authenticated
+  // preparation state before advancing the next retry's clock.
+  await page.clock.runFor(2000)
+  expect(reads).toBe(2)
+  releasePreparation()
+  await ready(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible()
+  await page.clock.runFor(1999)
+  expect(reads).toBe(2)
+  await page.clock.runFor(1)
+  await ready.poll(() => reads).toBe(3)
+  await ready(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
+  expect(reads).toBe(3)
+  await ready(page.getByLabel('Password')).toHaveCount(0)
+  await page.screenshot({ path: 'test-results/transient-recovered-mobile.png', fullPage: true })
+})
+
+
+test('automatic outage retries preserve Retry and Sign out focus without manual-error alerts', async ({ page }) => {
+  const ready = expect.configure({ timeout: 30000 })
+  await page.clock.install()
+  await page.clock.pauseAt(new Date())
+  const payload = bootstrapFixture(4)
+  if (payload.result.status !== 'authenticated') throw Error('fixture')
+  payload.result.game = { status: 'unavailable', code: 'Unavailable' }
+  let reads = 0
+  const release = new Map<number, () => void>()
+  const completed = new Set<number>()
+  await page.route('**/api/v1/bootstrap', async route => {
+    const read = ++reads
+    if (read === 1) return route.fulfill({ json: payload })
+    await new Promise<void>(resolve => release.set(read, resolve))
+    if (read === 2) await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+    else await route.abort('failed')
+    completed.add(read)
+  })
+  await page.goto('/login')
+  const retry = page.getByRole('button', { name: 'Retry connection' })
+  const signout = page.getByRole('button', { name: 'Sign out', exact: true })
+  await ready(retry).toBeVisible()
+  for (const [read, control, delay] of [[2, retry, 1000], [3, signout, 2000]] as const) {
+    await control.focus()
+    await page.clock.runFor(delay)
+    await ready.poll(() => release.has(read)).toBe(true)
+    await ready(control).toBeFocused()
+    await ready(retry).toBeEnabled()
+    await ready(signout).toBeEnabled()
+    release.get(read)!()
+    await ready.poll(() => completed.has(read)).toBe(true)
+    // Flush response handling without crossing the next backoff boundary.
+    await page.clock.runFor(100)
+    await ready(control).toBeFocused()
+    await ready(page.getByRole('alert')).toHaveCount(1)
+    await ready(page.getByRole('alert')).toHaveText('Connection temporarily unavailable. Reconnecting automatically…')
+    await ready(page.getByText('Unable to connect. Please retry.')).toHaveCount(0)
+  }
 })

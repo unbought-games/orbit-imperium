@@ -201,3 +201,7 @@ test-rules-updates: test-runtime prepare-rules-updates
 
 run-rules-updates:
 	$(TIMEOUT) full-system node scripts/rules-updates-e2e.mjs
+
+.PHONY: test-colonization
+test-colonization:
+	cargo nextest run -p orbit-engine --test colonization --test missions

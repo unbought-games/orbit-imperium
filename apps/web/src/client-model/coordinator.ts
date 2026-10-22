@@ -758,6 +758,7 @@ export class Coordinator {
     }
     if (!this.current(g, b)) return
     await this.deliver(a, g)
+    return commandId
   }
   private async deliver(a: Attempt, g: number) {
     try {

@@ -4,6 +4,7 @@ import { Button } from './button'
 import { useEffect, useRef, useState } from 'react'
 import {
   actionLabel,
+  visibleAction,
   actionMessage,
   changedAnnouncements,
 } from './action-announcements'
@@ -15,7 +16,7 @@ export function ActionStatus({
   model: Coordinator
   selectedBody?: string
 }) {
-  const attempts = [...model.ledger.values()]
+  const attempts = [...model.ledger.values()].filter(visibleAction)
   const previous = useRef(new Map<string, string>())
   const [announcement, setAnnouncement] = useState('')
   const signature = attempts

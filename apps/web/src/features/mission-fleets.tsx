@@ -179,10 +179,12 @@ export function MissionFleets({
                     id: fleet.intent.destination.id,
                     kind: fleet.intent.destination.expected_kind,
                   }
-                : {
-                    id: fleet.intent.destination.field_identity,
-                    kind: 'Debris',
-                  }
+                : fleet.intent.destination.type === 'Debris'
+                  ? {
+                      id: fleet.intent.destination.field_identity,
+                      kind: 'Debris',
+                    }
+                  : undefined
             }
             destination={fleet.destination}
             returning={fleet.leg === 'Returning'}
