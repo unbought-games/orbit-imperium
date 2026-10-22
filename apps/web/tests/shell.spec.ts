@@ -1301,8 +1301,10 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     'datetime',
     new Date(fleet.due_at).toISOString(),
   )
-  await expect(mission).toContainText('2,000')
   await expect(page.getByText('No visible incoming fleets.')).toBeVisible()
+  await mission.getByRole('link', { name: 'Mission details' }).click()
+  await expect(mission).toContainText('2,000')
+  await mission.getByText('Flight path', { exact: true }).click()
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     expect(
@@ -1359,8 +1361,8 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await mission
     .getByRole('button', { name: 'Review recall', exact: true })
     .scrollIntoViewIfNeeded()
+  await mission.getByText('Flight path', { exact: true }).click()
   await page.screenshot({ path: 'test-results/fleet-facts-phone.png' })
-  await mission.getByRole('link', { name: 'Mission details' }).click()
   await expect(
     page.getByRole('link', { name: 'All fleets', exact: true }),
   ).toBeVisible()
