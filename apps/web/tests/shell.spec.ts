@@ -1065,9 +1065,9 @@ test('overview preserves rich work, exact inventory, incoming visibility and res
       },
     ],
   })
-  await page.locator('summary').filter({ hasText: 'Stationed inventory' }).click()
+  await page.locator('summary').filter({ hasText: 'Orbital fleet' }).click()
   await expect(
-    page.getByRole('region', { name: 'Stationed inventory' }),
+    page.getByRole('region', { name: 'Orbital fleet' }),
   ).toContainText('9007199254740993')
   await expect(
     page.getByRole('region', { name: 'Fleet movements' }),
@@ -1466,6 +1466,14 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await page.goto(`/u/andromeda/reports?body=${body.id}`)
   await expect(
     page.getByRole('link', { name: 'Espionage', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Historical observations stay as recorded.', {
+      exact: false,
+    }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('checkbox', { name: 'Show hidden reports' }),
   ).toBeVisible()
   await page.screenshot({
     path: 'test-results/reports-list-desktop.png',

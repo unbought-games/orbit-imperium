@@ -208,16 +208,15 @@ export function BuildingDetails({
         <Info size={17} aria-hidden="true" />
         <p>{building.description}</p>
       </div>
-      <details className={styles.requirements}>
-        <summary>Construction terms</summary>
-        <p>
-          Full payment is refunded if cancelled before completion. A quote
-          reserves nothing.
-        </p>
-        {proposal && (
-          <p>Confirmed {new Date(proposal.as_of_ms).toLocaleString()}</p>
-        )}
-      </details>
+      {!work && (
+        <details className={styles.requirements}>
+          <summary>Construction terms</summary>
+          <p>Full refund if cancelled before completion.</p>
+          {proposal && (
+            <p>Confirmed {new Date(proposal.as_of_ms).toLocaleString()}</p>
+          )}
+        </details>
+      )}
     </>
   )
 }

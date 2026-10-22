@@ -321,10 +321,47 @@ test('an open quote refreshes when a confirmed building level changes', async ({
     .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   const quote = page.getByRole('region', { name: 'Progression quote' })
+  await quote.getByText('Construction terms', { exact: true }).click()
+  await expect(
+    quote.getByText('Full refund if cancelled before completion.', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(quote).not.toContainText('A quote reserves nothing')
   await expect(quote).toContainText('Required to improve to level 2')
   planet.levels.MetalMine = 2
   await refreshGame(page)
   await expect(quote).toContainText('Required to improve to level 3')
+})
+
+test('resource settings keep production rules and fuel figures without repeated helpers', async ({
+  page,
+}) => {
+  await setup(page)
+  await page
+    .getByRole('button', { name: 'Resource settings', exact: true })
+    .click()
+  const settings = page.getByRole('region', { name: 'Production controls' })
+  await expect(settings.getByRole('combobox')).toHaveCount(6)
+  await expect(settings).toContainText('Deuterium fuel: 0 / hour')
+  await expect(settings).toContainText('Net deuterium: 10 / hour')
+  await expect(settings).toContainText(
+    'Full storage stops production; excess resources remain usable.',
+  )
+  await expect(settings).toContainText(
+    'Energy shortages reduce output without changing your settings.',
+  )
+  await expect(settings).not.toContainText('Confirmed economy')
+  await expect(settings).not.toContainText('output · energy demand')
+  await expect(settings).not.toContainText('Save applies all settings')
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await page.screenshot({
+      path: `test-results/copy-production-${width}.png`,
+      fullPage: true,
+    })
+  }
 })
 
 test('unedited production controls follow current saved settings', async ({
@@ -1177,6 +1214,10 @@ test('active construction stays visible without covering current work at enlarge
       .getByRole('region', { name: 'Progression quote' })
       .getByRole('button', { name: 'Cancel construction', exact: true }),
   ).toBeEnabled()
+  const quote = page.getByRole('region', { name: 'Progression quote' })
+  await expect(quote.getByText(/Full refund before completion:/)).toHaveCount(1)
+  await expect(quote).not.toContainText('Full payment is refunded')
+  await expect(quote).not.toContainText('A quote reserves nothing')
 })
 
 for (const dismissFirst of ['message', 'saved action'] as const) {
