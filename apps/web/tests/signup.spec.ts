@@ -15,7 +15,7 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  expect((await page.request.get('/api/v1/session')).status()).toBe(200);
  await page.unroute('**/api/v1/registration?bootstrap=true');
  await page.getByRole('button',{name:'Retry connection'}).click();
- await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible();
  const session=await(await page.request.get('/api/v1/session')).json();
  expect(session.memberships).toHaveLength(1);
  await page.getByRole('button',{name:'Menu',exact:true}).last().click();
@@ -45,7 +45,7 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  await page.getByLabel('Account',{exact:true}).fill('NEWPLAYER');
  await page.getByLabel('Password',{exact:true}).fill('simple-password');
  await page.getByRole('button',{name:'Sign in',exact:true}).click();
- await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Menu',exact:true})).toBeVisible();
  expect((await(await page.request.get('/api/v1/session')).json()).account).toBe(session.account);
  await page.screenshot({path:'target/signup-mobile.png',fullPage:true});

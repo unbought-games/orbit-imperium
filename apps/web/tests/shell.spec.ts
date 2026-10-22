@@ -332,7 +332,8 @@ test('shipyard and defense show every batch in the same ordered queue', async ({
   })
   for (const destination of ['overview', 'shipyard', 'defense']) {
     await page.goto(`/u/andromeda/b/${body.id}/${destination}`)
-    const queue = page.getByRole('list', { name: 'Manufacturing queue' })
+    const scope = destination === 'overview' ? page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }) : page
+    const queue = scope.getByRole('list', { name: 'Manufacturing queue' })
     await expect(queue.getByRole('listitem')).toHaveCount(3)
     await expect(queue.getByRole('listitem').nth(0)).toContainText(
       'Small Cargo · 2 remaining',
@@ -413,7 +414,8 @@ for (const kind of ['construction', 'research'] as const) {
         },
       })
     })
-    const summary = page.getByRole('region', {
+    const scope = kind === 'construction' ? page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }) : page
+    const summary = scope.getByRole('region', {
       name: kind === 'construction' ? 'Buildings' : 'Research',
       exact: true,
     })
@@ -444,7 +446,7 @@ for (const kind of ['construction', 'research'] as const) {
     release()
     await expect(cancel).toHaveCount(0)
     await expect(
-      page.getByText(`No ${kind} in progress.`, { exact: true }),
+      summary.getByText(`No ${kind} in progress.`, { exact: true }),
     ).toBeVisible()
   })
 }
@@ -471,7 +473,7 @@ test('compact shell exposes resource details and switches bodies without purchas
     name: 'Main navigation',
     exact: true,
   })
-  await expect(nav.getByRole('link')).toHaveText(['World', 'Build'])
+  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Build'])
   await expect(
     nav.getByRole('button', { name: 'Fleet', exact: true }),
   ).toBeDisabled()
@@ -686,9 +688,9 @@ test('world shell omits the utility row and opens defense production from its su
   ).toHaveCount(0)
   await expect(page.getByText('Rocket Launcher · 2 remaining')).toBeVisible()
   await expect(
-    page.getByRole('link', { name: 'Open defenses' }),
+    page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Open defenses' }),
   ).toHaveAttribute('href', /\/defense$/)
-  await page.getByRole('link', { name: 'Open defenses' }).click()
+  await page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Open defenses' }).click()
   await expect(page.locator('main h1')).toHaveText('Defense')
 })
 
@@ -701,7 +703,7 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
     name: 'Main navigation',
     exact: true,
   })
-  await expect(nav.getByRole('link')).toHaveText(['World', 'Build'])
+  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Build'])
   await expect(nav.getByRole('button')).toHaveText(['Fleet', 'Menu'])
   const dock = await nav.boundingBox()
   expect(dock!.y + dock!.height).toBe(844)
@@ -903,14 +905,15 @@ test('overview preserves rich work, exact inventory, incoming visibility and res
       },
     ],
   })
+  await page.locator('summary').filter({ hasText: 'Stationed inventory' }).click()
   await expect(
     page.getByRole('region', { name: 'Stationed inventory' }),
   ).toContainText('9007199254740993')
   await expect(
-    page.getByRole('region', { name: 'Next to arrive' }),
+    page.getByRole('region', { name: 'Fleet movements' }),
   ).toContainText('Ship composition unknown')
   await expect(
-    page.getByRole('region', { name: 'Next to arrive' }).locator('time'),
+    page.getByRole('region', { name: 'Fleet movements' }).locator('time'),
   ).toHaveAttribute('datetime', /T/)
   for (const width of [1672, 390, 430]) {
     await page.setViewportSize({ width, height: width === 1672 ? 1100 : 844 })
@@ -950,14 +953,14 @@ test('navigation retains the ledger through cold art, rapid routes and reduced m
     )
   await page.getByRole('link', { name: 'Build', exact: true }).click()
   await expect(page).toHaveURL(/resources$/)
-  await page.getByRole('link', { name: 'World', exact: true }).click()
+  await page.getByRole('link', { name: 'Empire', exact: true }).click()
   await expect(page).toHaveURL(/overview$/)
   await expect(page.getByLabel('Current resources')).toHaveAttribute(
     'data-persistent-check',
     'same-ledger',
   )
   await expect(
-    page.getByRole('heading', { name: 'Your foothold in the stars.' }),
+    page.getByRole('heading', { name: 'Your empire. In motion.' }),
   ).toBeVisible()
   await page.goBack()
   await expect(page).toHaveURL(/resources$/)
@@ -1037,7 +1040,7 @@ test('navigation motion is interruptible and keeps shell identity mounted', asyn
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await pending
   try {
-    for (const heading of ['Shipyard', 'Resources', 'Overview']) {
+    for (const heading of ['Shipyard', 'Resources', 'Empire']) {
       await page.goBack()
       await expect(page.locator('main h1')).toContainText(heading)
       await expect(page.getByLabel('Current resources')).toHaveAttribute(
@@ -1046,7 +1049,7 @@ test('navigation motion is interruptible and keeps shell identity mounted', asyn
       )
     }
     await expect(
-      page.getByRole('link', { name: 'World', exact: true }),
+      page.getByRole('link', { name: 'Empire', exact: true }),
     ).toHaveAttribute('aria-current', 'page')
     expect(purchases()).toBe(0)
   } finally {
@@ -1789,6 +1792,7 @@ test('failed world images settle without browser broken-image borders or lost co
   await page.route('**/art/**', (route) => route.abort())
   await shellFixture(page)
   const art = page.locator('img[src*="/art/"]')
+  await art.evaluateAll(images => images.forEach(image => image.setAttribute('loading', 'eager')))
   await expect
     .poll(() =>
       art.evaluateAll((images) =>
@@ -1797,7 +1801,7 @@ test('failed world images settle without browser broken-image borders or lost co
             image instanceof HTMLImageElement &&
             image.complete &&
             !image.naturalWidth &&
-            getComputedStyle(image).opacity === '0',
+            (getComputedStyle(image).opacity === '0' || getComputedStyle(image).visibility === 'hidden'),
         ),
       ),
     )
@@ -1913,7 +1917,7 @@ test('real pointer navigation interrupts an active route transition without disp
   await expect.poll(active).toBe(true)
   for (const [name, heading] of [
     ['Fleet', 'Fleets'],
-    ['World', 'Overview'],
+    ['Empire', 'Empire'],
   ]) {
     const link = page.getByRole('link', { name, exact: true })
     const bounds = await link.boundingBox()
@@ -1971,7 +1975,7 @@ test('reduced motion shows only the new route with no snapshot geometry animatio
       return transition
     }
   })
-  for (const name of ['Build', 'Shipyard', 'Fleet', 'World']) {
+  for (const name of ['Build', 'Shipyard', 'Fleet', 'Empire']) {
     await page.getByRole('link', { name, exact: true }).click()
   }
   await expect

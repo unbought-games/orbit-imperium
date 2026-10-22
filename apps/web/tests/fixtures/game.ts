@@ -270,7 +270,7 @@ export async function shellFixture(
   })
   await page.goto(`/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`)
   // A startup connection surface also has an H1; mutations need the ready game.
-  await expect(page.locator('main h1')).toContainText('Overview —')
+  await expect(page.locator('main h1')).toContainText('Empire —')
   return () => purchases
 }
 

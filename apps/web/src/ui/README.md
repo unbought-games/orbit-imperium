@@ -24,7 +24,7 @@ Use native browser links for external destinations and same-page non-navigation 
 
 ## Editorial game shell
 
-The shell uses a compact horizontal masthead and ledger, with four stable anchors: World, Build, Fleet, Menu. Build defaults to Resources and exposes the five implemented build destinations in secondary navigation. Fleet groups activity and Dispatch. The grouped modal Menu contains real implemented destinations only, with capability-unavailable entries disabled. At phone sizes the same anchors form the safe-area-aware thumb dock. There are no permanent desktop rails or in-game footer.
+The shell uses a compact horizontal masthead and ledger, with four stable anchors: Empire, Build, Fleet, Menu. Build defaults to Resources and exposes the five implemented build destinations in secondary navigation. Fleet groups activity and Dispatch. The grouped modal Menu contains real implemented destinations only, with capability-unavailable entries disabled. At phone sizes the same anchors form the safe-area-aware thumb dock. There are no permanent desktop rails or in-game footer.
 
 On phones, a compact planet box shares one row with the resource ledger. Its image, body kind, and coordinates form one native selection target; text truncates with ellipses while the picker retains full labels. The next-body shortcut stays on desktop. Larger rosters keep their search field on a full-width row below the phone ledger. The selected body remains visible before the ledger on desktop. `BodySelector` preserves route/funding context, offers search for rosters larger than eight worlds, and groups real moons with planets at matching coordinates. No display name is invented when the DTO only supplies kind/coordinates.
 
