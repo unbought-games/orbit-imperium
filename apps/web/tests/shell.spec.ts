@@ -1232,7 +1232,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
 test('reports distinguish zero, known empty and unrevealed historical observations', async ({
   page,
 }) => {
-  await shellFixture(page, { protocol: 4, extraCapabilities: ['Attack'] })
+  let reportRevision = 1
   const observed = Date.now() - 3600000
   const header = {
     id: id(62),
@@ -1241,6 +1241,22 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     read: false,
     hidden: false,
   }
+  await shellFixture(page, {
+    protocol: 4, extraCapabilities: ['Attack', 'Reports'],
+    hasUnreadReports: () => !header.read,
+    viewerRevision: () => String(reportRevision),
+  })
+  await page.route('**/commands', async (route) => {
+    const envelope = route.request().postDataJSON().gameplay
+    expect(envelope.command).toEqual({ type: 'World', action: { type: 'MarkReportRead', report: header.id } })
+    header.read = true
+    reportRevision++
+    await route.fulfill({ json: {
+      protocol: 4, binding, command_id: envelope.command_id,
+      admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed',
+      result_ids: [], minimum_viewer_revision: String(reportRevision),
+    } })
+  })
   const payload = {
     kind: 'Espionage',
     target: {
@@ -1320,6 +1336,11 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
       fullPage: true,
     })
   }
+  const unreadAlert = page.getByRole('button', { name: 'Menu', exact: true }).getByRole('status', { name: 'Unread reports' })
+  await expect(unreadAlert).toBeVisible()
+  await page.getByRole('button', { name: 'Mark read', exact: true }).click()
+  await expect(unreadAlert).toHaveCount(0)
+  await expect(page.locator('main')).toContainText('· Read')
   await page
     .getByRole('button', { name: 'Prepare attack', exact: true })
     .click()
