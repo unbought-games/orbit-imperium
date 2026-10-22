@@ -113,6 +113,9 @@ export const http = {
       await request('/api/v1/session', 'POST', { name, password }),
     )
   },
+  async renewSession(csrf: string) {
+    await request('/api/v1/session/renew', 'POST', undefined, csrf, 15000)
+  },
   async logout(csrf: string) {
     resetAnalytics()
     await request('/api/v1/session', 'DELETE', undefined, csrf)

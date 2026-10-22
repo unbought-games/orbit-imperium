@@ -82,6 +82,14 @@ pub trait IdentityStore: Send + Sync {
         &self,
         digest: &str,
     ) -> impl std::future::Future<Output = Result<Option<AuthenticatedSession>, StoreError>> + Send;
+    /// Called only by the CSRF-protected foreground activity endpoint.
+    fn renew_session(
+        &self,
+        _digest: &str,
+        _rp: Option<&unbought_auth::RelyingParty>,
+    ) -> impl std::future::Future<Output = Result<i64, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
     fn revoke_session(
         &self,
         digest: &str,

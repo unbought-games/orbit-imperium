@@ -49,7 +49,7 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
         }
-        let expires_at = (unbought_auth::now() + 28800) * 1000;
+        let expires_at = (unbought_auth::now() + i64::from(SESSION_IDLE_SECONDS)) * 1000;
         sqlx::query("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,$4)")
             .bind(digest)
             .bind(account)
@@ -75,7 +75,8 @@ impl PgStore {
             digest,
             &rp.configuration().issuer,
             &rp.configuration().client_id,
-            |tokens| async move { rp.revalidate(&tokens).await },
+            false,
+            |tokens| async move { rp.revalidate(&tokens).await.map(|tokens| (tokens, None)) },
         )
         .await
     }
@@ -85,14 +86,15 @@ impl PgStore {
         digest: &str,
         issuer: &str,
         client: &str,
+        activity: bool,
         refresh: F,
     ) -> Result<Identity, StoreError>
     where
         F: FnOnce(Tokens) -> Fut + Send,
-        Fut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send,
+        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
     {
         let tokens = read_tokens(self.read_pool()?, digest, issuer, client).await?;
-        if cached_identity(&tokens, issuer, client, unbought_auth::now())? {
+        if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
             return Ok(tokens.identity);
         }
         // Only refresh capacity waits on the IdP. This deadline includes pool
@@ -104,11 +106,16 @@ impl PgStore {
             if !acquired { return Err(StoreError::Unavailable); }
             // A peer may have already rotated the token since our initial read.
             let tokens = read_tokens(&mut *tx, digest, issuer, client).await?;
-            if cached_identity(&tokens, issuer, client, unbought_auth::now())? {
+            if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
                 tx.commit().await.map_err(db_error)?;
                 return Ok(tokens.identity);
             }
-            let fresh = refresh(tokens).await.map_err(revalidation_error)?;
+            let (fresh, renewed_until) = refresh(tokens).await.map_err(revalidation_error)?;
+            if let Some(expires) = renewed_until {
+                // UPDATE only: logout/expiry always wins over a late renewal.
+                sqlx::query("UPDATE sessions SET expires_at=$2 WHERE digest=$1 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
+                    .bind(digest).bind(expires * 1000).execute(&mut *tx).await.map_err(db_error)?;
+            }
             // The advisory lock serializes refreshers, not logout. A revoked or
             // expired session must never be recreated by a late IdP response.
             let account: Option<uuid::Uuid> = sqlx::query_scalar("UPDATE oidc_session o SET payload=$2 FROM sessions s WHERE o.digest=$1 AND s.digest=o.digest AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint RETURNING s.account")
@@ -119,6 +126,89 @@ impl PgStore {
             tx.commit().await.map_err(db_error)?;
             Ok(fresh.identity)
         }).await.map_err(|_| StoreError::Unavailable)?
+    }
+
+    pub(crate) async fn oidc_renew(
+        &self,
+        digest: &str,
+        rp: &RelyingParty,
+    ) -> Result<Identity, StoreError> {
+        let config = rp.configuration();
+        self.oidc_revalidate_using(
+            digest,
+            &config.issuer,
+            &config.client_id,
+            true,
+            |tokens| async move {
+                let client = reqwest::Client::builder()
+                    .timeout(std::time::Duration::from_secs(5))
+                    .redirect(reqwest::redirect::Policy::none())
+                    .build()
+                    .map_err(|_| unbought_auth::Error::Unavailable)?;
+                let response = client
+                    .post(format!(
+                        "{}/game-session/renew",
+                        config.issuer.trim_end_matches('/')
+                    ))
+                    .basic_auth(&config.client_id, Some(&config.client_secret))
+                    .form(&[(
+                        "token",
+                        tokens
+                            .refresh_token
+                            .as_deref()
+                            .ok_or(unbought_auth::Error::Invalid)?,
+                    )])
+                    .send()
+                    .await
+                    .map_err(|_| unbought_auth::Error::Unavailable)?;
+                if response.status().is_server_error() || response.status().as_u16() == 429 {
+                    return Err(unbought_auth::Error::Unavailable);
+                }
+                if !response.status().is_success() {
+                    return Err(unbought_auth::Error::Invalid);
+                }
+                #[derive(serde::Deserialize)]
+                struct Renewal {
+                    session_expires_at: i64,
+                }
+                let renewal: Renewal = response
+                    .json()
+                    .await
+                    .map_err(|_| unbought_auth::Error::Invalid)?;
+                let now = unbought_auth::now();
+                if renewal.session_expires_at <= now {
+                    return Err(unbought_auth::Error::Invalid);
+                }
+                // Rotate under the same lock as passive refresh. Never mark renewal as
+                // fresh password authentication; Accounts retains the original auth_time.
+                let fresh = rp.refresh(&tokens).await?;
+                Ok((
+                    fresh,
+                    Some(
+                        renewal
+                            .session_expires_at
+                            .min(now + i64::from(SESSION_IDLE_SECONDS)),
+                    ),
+                ))
+            },
+        )
+        .await
+    }
+
+    #[cfg(feature = "test-support")]
+    pub async fn renew_oidc_for_test<F, Fut>(
+        &self,
+        digest: &str,
+        issuer: &str,
+        client: &str,
+        refresh: F,
+    ) -> Result<Identity, StoreError>
+    where
+        F: FnOnce(Tokens) -> Fut + Send,
+        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+    {
+        self.oidc_revalidate_using(digest, issuer, client, true, refresh)
+            .await
     }
 
     /// Controlled remote boundary for deterministic storage/concurrency tests.
@@ -134,8 +224,10 @@ impl PgStore {
         F: FnOnce(Tokens) -> Fut + Send,
         Fut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send,
     {
-        self.oidc_revalidate_using(digest, issuer, client, refresh)
-            .await
+        self.oidc_revalidate_using(digest, issuer, client, false, |tokens| async move {
+            refresh(tokens).await.map(|tokens| (tokens, None))
+        })
+        .await
     }
     pub(crate) async fn oidc_revoke(
         &self,

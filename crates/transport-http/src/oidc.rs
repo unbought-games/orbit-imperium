@@ -159,7 +159,10 @@ pub(super) async fn callback<S: IdentityStore>(
         .map_err(ServiceError::from)?;
     Ok((
         [
-            (header::SET_COOKIE, cookie(&s, &secret, 28800)),
+            (
+                header::SET_COOKIE,
+                cookie(&s, &secret, SESSION_IDLE_SECONDS),
+            ),
             (header::CACHE_CONTROL, "no-store".into()),
         ],
         Redirect::to(&path),

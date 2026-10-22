@@ -9,6 +9,7 @@ rust-version = "1.99"
 license = "AGPL-3.0-only"
 
 [workspace.dependencies]
+reqwest = { version = "=0.12.28", default-features = false, features = ["json", "rustls-tls"] }
 orbit-engine = { path = "crates/engine" }
 orbit-application = { path = "crates/application" }
 orbit-storage-postgres = { path = "crates/storage-postgres" }
