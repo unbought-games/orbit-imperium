@@ -125,6 +125,13 @@ jobs:
         run: |
           npm install --global "npm@$(node --print 'require("./package.json").engines.npm')"
           npm ci
+      # Bypass intermittent Azure archive stalls: actions/runner-images#14823.
+      - name: Use Ubuntu archive mirrors
+        run: |
+          sudo tee /etc/apt/apt-mirrors.txt >/dev/null <<'EOF'
+          https://archive.ubuntu.com/ubuntu priority:0
+          https://security.ubuntu.com/ubuntu priority:1
+          EOF
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run fixture browser tests

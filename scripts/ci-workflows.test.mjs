@@ -23,7 +23,7 @@ test('every workflow job uses an explicitly approved disposable runner', () => {
   }
 })
 
-test('browser jobs install Linux system dependencies on fresh runners', () => {
+test('browser jobs configure Ubuntu mirrors before installing Linux dependencies', () => {
   for (const { file, workflow } of workflows) {
     const browserJobs = Object.values(workflow.jobs).filter((job) =>
       job.steps.some((step) => /make test-(ui|explicit)/.test(step.run ?? '')),
@@ -31,12 +31,19 @@ test('browser jobs install Linux system dependencies on fresh runners', () => {
     if (file === 'ci.yml' || file === 'explicit-tests.yml')
       assert.ok(browserJobs.length > 0, file)
     for (const job of browserJobs) {
-      assert.ok(
-        job.steps.some((step) =>
-          /playwright install --with-deps chromium/.test(step.run ?? ''),
-        ),
-        file,
+      const installIndex = job.steps.findIndex((step) =>
+        /playwright install --with-deps chromium/.test(step.run ?? ''),
       )
+      assert.ok(installIndex >= 0, file)
+      const mirrorIndex = job.steps.findIndex((step) =>
+        /tee \/etc\/apt\/apt-mirrors\.txt/.test(step.run ?? ''),
+      )
+      assert.ok(mirrorIndex >= 0 && mirrorIndex < installIndex, file)
+      const mirrorSetup = job.steps[mirrorIndex].run
+      assert.match(mirrorSetup, /https:\/\/archive\.ubuntu\.com\/ubuntu priority:0/)
+      assert.match(mirrorSetup, /https:\/\/security\.ubuntu\.com\/ubuntu priority:1/)
+      assert.doesNotMatch(mirrorSetup, /azure\.archive\.ubuntu\.com/)
+      assert.equal(spawnSync('bash', ['-n', '-c', mirrorSetup]).status, 0, file)
     }
   }
 })
