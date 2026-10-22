@@ -1,6 +1,166 @@
 import { test, expect } from '@playwright/test'
 import { shellFixture, id, body, resources, binding } from './fixtures/game'
 
+for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
+  test(`work summary links stay contextual with ${building ?? 'idle'} construction`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    const now = Date.now()
+    await page.clock.setFixedTime(now)
+    const purchases = await shellFixture(page, {
+      bodies: [body],
+      constructions: building
+        ? [
+            {
+              id: id(10),
+              body: body.id,
+              building,
+              target_level: 2,
+              due_at: now + 76000,
+              paid: resources,
+            },
+          ]
+        : [],
+      researchOperation: building
+        ? {
+            id: id(11),
+            host: body.id,
+            research: 'EnergyTechnology',
+            source_level: 0,
+            target_level: 1,
+            paid: resources,
+            started_at: now,
+            due_at: now + 76000,
+            labs: [],
+            effective_lab: '1',
+            can_cancel: true,
+          }
+        : null,
+    })
+    const buildings = page.getByRole('region', {
+      name: 'Buildings',
+      exact: true,
+    })
+    await expect(
+      buildings.getByRole('link', { name: 'Open buildings' }),
+    ).toHaveAttribute(
+      'href',
+      `/u/andromeda/b/${body.id}/${building === 'ResearchLab' ? 'facilities' : 'resources'}`,
+    )
+    await expect(
+      page.getByRole('link', { name: 'Open research' }),
+    ).toHaveAttribute('href', `/u/andromeda/research?body=${body.id}`)
+    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    const nav = page.getByRole('navigation', { name: 'Build navigation' })
+    for (const destination of ['Resources', 'Facilities'] as const) {
+      await nav.getByRole('link', { name: destination, exact: true }).click()
+      await expect(page.locator('main h1')).toHaveText(destination)
+      const crossPage =
+        building === 'ResearchLab' && destination === 'Resources'
+          ? 'facilities'
+          : building === 'MetalMine' && destination === 'Facilities'
+            ? 'resources'
+            : null
+      await expect(buildings.getByRole('link')).toHaveCount(crossPage ? 1 : 0)
+      if (crossPage) {
+        const link = buildings.getByRole('link', { name: `Open ${crossPage}` })
+        await expect(link).toHaveAttribute(
+          'href',
+          `/u/andromeda/b/${body.id}/${crossPage}`,
+        )
+        await link.click()
+        await expect(page.locator('main h1')).toHaveText(
+          crossPage === 'resources' ? 'Resources' : 'Facilities',
+        )
+      }
+      if (!building && destination === 'Facilities')
+        await page.screenshot({
+          fullPage: true,
+          animations: 'disabled',
+          path: 'test-results/contextual-facilities-summary.png',
+        })
+    }
+    await nav.getByRole('link', { name: 'Research', exact: true }).click()
+    const research = page.getByRole('region', { name: 'Research', exact: true })
+    await expect(research.getByRole('link')).toHaveCount(0)
+    await expect(research).toContainText(
+      building ? 'Energy Technology · Level 1' : 'No research in progress.',
+    )
+    if (building)
+      await expect(
+        research.getByRole('button', { name: 'Cancel research' }),
+      ).toBeEnabled()
+    for (const destination of ['Shipyard', 'Defense'] as const) {
+      await nav.getByRole('link', { name: destination, exact: true }).click()
+      const manufacturing = page.getByRole('region', {
+        name: 'Shipyard & defense',
+        exact: true,
+      })
+      await expect(manufacturing.getByRole('link')).toHaveText([
+        destination === 'Shipyard' ? 'Open defenses' : 'Open shipyard',
+      ])
+      await manufacturing.getByRole('link').click()
+      await expect(page.locator('main h1')).toHaveText(
+        destination === 'Shipyard' ? 'Defense' : 'Shipyard',
+      )
+    }
+    expect(purchases()).toBe(0)
+  })
+}
+
+test('cold Defense navigation retains named universe and planet through preloading, switching and direct loads', async ({
+  page,
+}) => {
+  test.skip(!process.env.ORBIT_UI_E2E, 'Controls Vite route loading in the fixture browser suite.')
+  await page.setViewportSize({ width: 390, height: 844 })
+  const purchases = await shellFixture(page, {
+    universeName: 'Andromeda Prime',
+    protocol: 4,
+  })
+  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  const nav = page.getByRole('navigation', { name: 'Build navigation' })
+  let loading = false
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route(
+    (url) =>
+      url.pathname.includes('defense') && url.search.includes('tsr-split'),
+    async (route) => {
+      loading = true
+      await gate
+      await route.continue()
+    },
+  )
+  const defense = nav.getByRole('link', { name: 'Defense', exact: true })
+  await defense.focus()
+  await expect.poll(() => loading).toBe(true)
+  await page.getByLabel('Selected body').selectOption(id(6))
+  await expect(defense).toHaveAttribute(
+    'href',
+    `/u/andromeda-prime/b/${id(6)}/defense`,
+  )
+  await defense.click()
+  release()
+  await expect(page.locator('main h1')).toHaveText('Defense')
+  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await expect(page).toHaveURL(`/u/andromeda-prime/b/${id(6)}/defense`)
+  await page.reload()
+  await expect(page.locator('main h1')).toHaveText('Defense')
+  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await page.goto(`/u/andromeda-prime/research?body=${id(6)}`)
+  await nav.getByRole('link', { name: 'Defense', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Defense')
+  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await page.goBack()
+  await expect(page.locator('main h1')).toHaveText('Research')
+  await page.goForward()
+  await expect(page.locator('main h1')).toHaveText('Defense')
+  expect(purchases()).toBe(0)
+})
+
 test('mobile resource stock uses icons and compact balances with capacity details on tap', async ({
   page,
 }) => {

@@ -22,12 +22,14 @@ import {
 export function WorkSummaries({
   view,
   body,
+  currentPage,
   includeResearch = true,
   only,
   layout = 'editorial',
 }: {
   view: BoundView
   body: BoundView['bodies'][number]
+  currentPage: Page
   includeResearch?: boolean
   only?: 'buildings' | 'research' | 'manufacturing'
   layout?: 'cards' | 'editorial' | 'compact'
@@ -148,6 +150,13 @@ export function WorkSummaries({
             work,
             cancelType,
           }) => {
+            const showLink =
+              page !== currentPage &&
+              !(
+                category === 'buildings' &&
+                !construction &&
+                currentPage === 'facilities'
+              )
             const enabled = resolveDestination(
               {
                 universe: view.binding.universe,
@@ -249,20 +258,27 @@ export function WorkSummaries({
                       {work.status === 'Cancelling' ? 'Cancelling…' : 'Cancel'}
                     </Button>
                   )}
-                  {enabled ? (
-                    <Link {...routeTarget(universeName, page as Page, body.id)}>
-                      Open{' '}
-                      {category === 'manufacturing'
-                        ? 'shipyard'
-                        : title.toLowerCase()}{' '}
-                      <ArrowRight size={12} aria-hidden="true" />
-                    </Link>
-                  ) : (
-                    <span className={styles.unavailable}>
-                      Unavailable in this universe
-                    </span>
-                  )}
+                  {showLink &&
+                    (enabled ? (
+                      <Link
+                        {...routeTarget(universeName, page as Page, body.id)}
+                      >
+                        Open{' '}
+                        {category === 'manufacturing'
+                          ? 'shipyard'
+                          : category === 'buildings' &&
+                              ['resources', 'facilities'].includes(currentPage)
+                            ? page
+                            : title.toLowerCase()}{' '}
+                        <ArrowRight size={12} aria-hidden="true" />
+                      </Link>
+                    ) : (
+                      <span className={styles.unavailable}>
+                        Unavailable in this universe
+                      </span>
+                    ))}
                   {category === 'manufacturing' &&
+                    currentPage !== 'defense' &&
                     resolveDestination(
                       {
                         universe: view.binding.universe,
