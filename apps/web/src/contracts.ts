@@ -5039,6 +5039,7 @@ export interface components {
             progression: components["schemas"]["ProgressionView"];
             missions: components["schemas"]["MissionView4"];
             progress?: components["schemas"]["SnapshotProgress"];
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         CapabilityState4: {
             /** @enum {unknown} */
@@ -5095,6 +5096,7 @@ export interface components {
             system: number;
             positions: components["schemas"]["GalaxyPosition4"][];
             observed_at: number;
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         WorldQueryKind4: {
             /** @constant */
@@ -5175,6 +5177,7 @@ export interface components {
         ReportDetail4: {
             header: components["schemas"]["ReportHeader4"];
             payload: components["schemas"]["ReportPayload4"];
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         BoundReport4: {
             /** @constant */
@@ -5503,6 +5506,10 @@ export interface components {
         BuildingEnergy: {
             current_consumption: components["schemas"]["Decimal"];
             target_consumption: components["schemas"]["Decimal"];
+        };
+        /** @description Current public usernames keyed by player ID, limited to identities visible in this response. Missing identities use the client fallback. */
+        PublicPlayerNames4: {
+            [key: string]: string;
         };
     };
     responses: never;

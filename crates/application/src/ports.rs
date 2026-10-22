@@ -88,6 +88,15 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send;
 }
 pub trait GameStore: Send + Sync {
+    /// Public usernames only, for IDs already exposed by an authorized projection.
+    fn public_player_names(
+        &self,
+        _binding: Binding,
+        _players: Vec<PlayerId>,
+    ) -> impl std::future::Future<Output = Result<PublicPlayerNames, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+
     fn bound_world_query(
         &self,
         binding: Binding,

@@ -868,6 +868,7 @@ impl PgStore {
         let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;
         let detail = ReportDetail4 {
+            player_names: Default::default(),
             header: header(&row)?,
             payload: r
                 .payloads

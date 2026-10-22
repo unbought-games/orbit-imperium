@@ -53,6 +53,7 @@ export async function shellFixture(
     protocol?: 2 | 3 | 4
     hasUnreadReports?: () => boolean
     viewerRevision?: () => string
+    playerNames?: components['schemas']['PublicPlayerNames4']
     missions?: components['schemas']['MissionView4']
     fleets?: components['schemas']['Fleet'][]
     destinations?: components['schemas']['Destination'][]
@@ -171,6 +172,7 @@ export async function shellFixture(
       ...(protocol === 4
         ? {
             has_unread_reports: options.hasUnreadReports?.() ?? false,
+            player_names: options.playerNames,
             missions: options.missions ?? {
               fleets: [],
               incoming: [
