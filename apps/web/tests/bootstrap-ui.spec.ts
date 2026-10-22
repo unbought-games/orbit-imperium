@@ -899,12 +899,21 @@ test('mobile startup automatically recovers from a transient restart without sig
   if (payload.result.status !== 'authenticated' || payload.result.game.status !== 'ready') throw Error('fixture')
   const snapshot = payload.result.game.snapshot
   snapshot.view.bodies = [body]
+  const preparing = structuredClone(payload)
+  if (preparing.result.status !== 'authenticated') throw Error('fixture')
+  preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
   let reads = 0
-  await page.route('**/api/**', route => {
+  let releasePreparation!: () => void
+  const preparation = new Promise<void>(resolve => { releasePreparation = resolve })
+  await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname
     if (path === '/api/auth/config') return route.fallback()
     if (path === '/api/v1/bootstrap') {
       reads++
+      if (reads === 2) {
+        await preparation
+        return route.fulfill({ json: preparing })
+      }
       return route.fulfill({ json: reads > 2 ? payload : {
         version: 1, signup_enabled: true,
         result: { status: 'unavailable', code: 'Unavailable' },
@@ -921,9 +930,18 @@ test('mobile startup automatically recovers from a transient restart without sig
   await page.screenshot({ path: 'test-results/transient-recovery-mobile.png', fullPage: true })
   await page.clock.runFor(1000)
   await ready.poll(() => reads).toBe(2)
-  await ready(page.getByRole('button', { name: 'Retry connection' })).toBeVisible()
+  // A request reaching the fixture does not mean the client applied its response.
+  // Keep it in flight across a backoff interval, then wait for the authenticated
+  // preparation state before advancing the next retry's clock.
   await page.clock.runFor(2000)
-  await ready(page.getByRole('heading', { name: /^Overview —/ })).toBeVisible()
+  expect(reads).toBe(2)
+  releasePreparation()
+  await ready(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible()
+  await page.clock.runFor(1999)
+  expect(reads).toBe(2)
+  await page.clock.runFor(1)
+  await ready.poll(() => reads).toBe(3)
+  await ready(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   expect(reads).toBe(3)
   await ready(page.getByLabel('Password')).toHaveCount(0)
   await page.screenshot({ path: 'test-results/transient-recovered-mobile.png', fullPage: true })
