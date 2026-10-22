@@ -31,6 +31,8 @@ const content: Record<string, string> = {
   SmallCargo:
     'Transports resources between planets. Cargo capacity is shared by resources and mission fuel.',
   LightFighter: 'A small combat ship for attacking and defending planets.',
+  HeavyFighter:
+    'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
   Recycler: 'Collects metal and crystal from debris fields.',
   EspionageProbe:
     'Gathers intelligence about another planet on an espionage mission.',
