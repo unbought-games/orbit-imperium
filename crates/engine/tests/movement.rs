@@ -41,3 +41,53 @@ fn exact_half_with_a_non_dyadic_rational_root() {
         (198000, 2 * SCALE)
     );
 }
+
+#[allow(dead_code)]
+mod common;
+#[test]
+fn completed_impulse_selects_entire_cargo_profile_without_stacking_or_recycler_switches() {
+    let r = common::impulse_rules(&Ruleset::mvp_raids().unwrap());
+    let mut levels = ResearchLevels {
+        owner: PlayerId(uuid::Uuid::nil()),
+        revision: 0,
+        levels: r.research_keys().into_iter().map(|k| (k, 0)).collect(),
+    };
+    levels.levels.insert(ResearchId::CombustionDrive, 6);
+    levels.levels.insert(ResearchId::ImpulseDrive, 4);
+    let cargo = &r.artifact.ships[&ShipType::SmallCargo];
+    assert_eq!(ship_propulsion(cargo, &levels).unwrap(), (8000, 10));
+    levels.levels.insert(ResearchId::ImpulseDrive, 5);
+    assert_eq!(ship_propulsion(cargo, &levels).unwrap(), (20000, 20));
+    levels.levels.insert(ResearchId::CombustionDrive, 100);
+    assert_eq!(ship_propulsion(cargo, &levels).unwrap(), (20000, 20));
+    levels.levels.insert(ResearchId::CombustionDrive, 6);
+    levels.levels.insert(ResearchId::ImpulseDrive, 17);
+    for (ship, expected) in [
+        (ShipType::Recycler, (3200, 300)),
+        (ShipType::LightFighter, (20000, 20)),
+        (ShipType::EspionageProbe, (160000000, 1)),
+    ] {
+        assert_eq!(
+            ship_propulsion(&r.artifact.ships[&ship], &levels).unwrap(),
+            expected
+        );
+    }
+    // A retained artifact still selects the old profile, even with high research facts.
+    assert_eq!(
+        ship_propulsion(
+            &Ruleset::mvp_raids().unwrap().artifact.ships[&ShipType::SmallCargo],
+            &levels
+        )
+        .unwrap(),
+        (8000, 10)
+    );
+    let mut extreme = cargo.clone();
+    extreme.impulse_drive = None;
+    extreme.base_speed = i64::MAX;
+    extreme.drive_coefficient = [i64::MAX, 1];
+    levels.levels.insert(ResearchId::CombustionDrive, u32::MAX);
+    assert_eq!(
+        ship_propulsion(&extreme, &levels),
+        Err(GameError::NumericRange)
+    );
+}

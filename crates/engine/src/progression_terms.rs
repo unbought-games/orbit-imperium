@@ -47,7 +47,8 @@ impl ProgressionRules {
             if !ResearchId::MVP.contains(&k)
                 && !matches!(
                     k,
-                    ResearchId::LaserTechnology
+                    ResearchId::ImpulseDrive
+                        | ResearchId::LaserTechnology
                         | ResearchId::IonTechnology
                         | ResearchId::PlasmaTechnology
                         | ResearchId::HyperspaceTechnology

@@ -22,7 +22,8 @@ const content: Record<string, string> = {
     'Improves intelligence gathering and the information available in espionage reports.',
   CombustionDrive:
     'Provides propulsion for early spacecraft. Higher levels improve the speed of ships using this drive.',
-  ImpulseDrive: 'An advanced propulsion technology for compatible spacecraft.',
+  ImpulseDrive:
+    'Increases the base speed of ships using impulse propulsion by 20% per level. Small Cargos switch to impulse propulsion at level 5, with higher base speed and fuel consumption.',
   SmallCargo:
     'Transports resources between planets. Cargo capacity is shared by resources and mission fuel.',
   LightFighter: 'A small combat ship for attacking and defending planets.',

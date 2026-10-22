@@ -47,11 +47,51 @@ fn target(
         }
     }
 }
+/// Derive the active propulsion profile from completed research at quotation/launch.
+/// Disabling further research does not remove bonuses already earned. Retained
+/// artifacts without an upgrade continue using their original combustion terms.
+pub fn ship_propulsion(
+    rule: &ShipRule,
+    research: &ResearchLevels,
+) -> Result<(i64, i64), GameError> {
+    let level = |key| {
+        research
+            .levels
+            .get(&key)
+            .copied()
+            .ok_or(GameError::PolicyUnavailable)
+    };
+    let (base, coefficient, fuel, completed) = match &rule.impulse_drive {
+        Some(upgrade) if level(ResearchId::ImpulseDrive)? >= upgrade.minimum_level => (
+            upgrade.base_speed,
+            [1, 5],
+            upgrade.fuel,
+            level(ResearchId::ImpulseDrive)?,
+        ),
+        _ => (
+            rule.base_speed,
+            rule.drive_coefficient,
+            rule.fuel,
+            level(ResearchId::CombustionDrive)?,
+        ),
+    };
+    let multiplier =
+        i128::from(coefficient[1]) + i128::from(coefficient[0]) * i128::from(completed);
+    let speed = i128::from(base)
+        .checked_mul(multiplier)
+        .and_then(|value| value.checked_div(i128::from(coefficient[1])))
+        .ok_or(GameError::NumericRange)?;
+    Ok((
+        i64::try_from(speed).map_err(|_| GameError::NumericRange)?,
+        fuel,
+    ))
+}
+
 pub fn fleet_terms(
     intent: &FleetIntent,
     origin: Coordinates,
     target: Coordinates,
-    combustion: u32,
+    research: &ResearchLevels,
     r: &Ruleset,
 ) -> Result<FleetTerms, GameError> {
     if !r.world() {
@@ -89,12 +129,8 @@ pub fn fleet_terms(
             .ships
             .get(&stack.ship_type)
             .ok_or(GameError::UnavailableContent)?;
-        let speed = i128::from(rule.base_speed)
-            * (i128::from(rule.drive_coefficient[1])
-                + i128::from(rule.drive_coefficient[0]) * i128::from(combustion))
-            / i128::from(rule.drive_coefficient[1]);
-        let speed = i64::try_from(speed).map_err(|_| GameError::NumericRange)?;
-        profiles.push((speed, rule.fuel, stack.count));
+        let (speed, fuel) = ship_propulsion(rule, research)?;
+        profiles.push((speed, fuel, stack.count));
         speeds.push((stack.ship_type, speed.to_string()));
         capacity = capacity
             .checked_add(
@@ -201,16 +237,8 @@ fn quote_inner(
         .research
         .get(&owner)
         .ok_or_else(|| invariant("missing research"))?;
-    let mut q = fleet_terms(
-        intent,
-        b.coordinates,
-        coords,
-        *research
-            .levels
-            .get(&ResearchId::CombustionDrive)
-            .ok_or_else(|| invariant("missing drive"))?,
-        r,
-    )?;
+    validate_research_catalog(research, r)?;
+    let mut q = fleet_terms(intent, b.coordinates, coords, research, r)?;
     q.slot_limit = fleet_slot_limit(
         *research
             .levels

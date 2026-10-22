@@ -1942,3 +1942,205 @@ fn rules_activation_preserves_flight_terms_and_reports_current_resolution() {
         MissionLeg::Returned
     );
 }
+
+#[test]
+fn impulse_switch_mixed_fuel_stale_quote_and_committed_return() {
+    let (mut s, old, p, b, t) = fixture();
+    let r = common::impulse_rules(&old);
+    s.profile_hash = r.hash.clone();
+    for research in s.research.values_mut() {
+        research.levels.insert(ResearchId::ImpulseDrive, 0);
+    }
+    fixture_research(&mut s, &r, p, ResearchId::ImpulseDrive, 4);
+    fixture_research(&mut s, &r, p, ResearchId::CombustionDrive, 6);
+    let intent = intent(&s, p, b, t);
+    let before = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
+    assert_eq!(before.speeds, vec![(ShipType::SmallCargo, "8000".into())]);
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        1000,
+        8000,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: intent.clone(),
+                expected_terms_hash: before.terms_hash.clone(),
+            },
+        }),
+    );
+    let launched = apply(&mut s, result);
+    fixture_research(&mut s, &r, p, ResearchId::ComputerTechnology, 2);
+    fixture_research(&mut s, &r, p, ResearchId::ImpulseDrive, 5);
+    let after = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
+    assert_eq!(after.speeds, vec![(ShipType::SmallCargo, "20000".into())]);
+    assert!(after.duration_ms < before.duration_ms);
+    assert_eq!(
+        (after.duration_ms, after.fuel),
+        exact_flight_arithmetic(after.distance, &[(20000, 20, 1)], 100, 10).unwrap()
+    );
+    let mut new_launch = s.clone();
+    let stock = new_launch.bodies[&b].checkpoint.amounts;
+    let result = run(
+        &mut new_launch,
+        &r,
+        p,
+        b,
+        1000,
+        8010,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: intent.clone(),
+                expected_terms_hash: after.terms_hash.clone(),
+            },
+        }),
+    );
+    apply(&mut new_launch, result);
+    assert_eq!(
+        new_launch.bodies[&b].checkpoint.amounts.deuterium,
+        stock.deuterium - after.fuel
+    );
+    assert_eq!(
+        new_launch.bodies[&b].checkpoint.amounts.metal,
+        stock.metal - intent.cargo.metal
+    );
+    assert!(
+        new_launch
+            .world
+            .as_ref()
+            .unwrap()
+            .records
+            .fleets
+            .values()
+            .any(|f| f.terms == after)
+    );
+    // Recall uses elapsed time and keeps the original fuel payment after I5.
+    let mut recalling = s.clone();
+    let original = recalling
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let stock = recalling.bodies[&b].checkpoint.clone();
+    let result = run(
+        &mut recalling,
+        &r,
+        p,
+        b,
+        2000,
+        8011,
+        Input::Command(Command::World {
+            action: WorldAction::RecallMission { fleet: original.id },
+        }),
+    );
+    let recalled = apply(&mut recalling, result);
+    assert_eq!(recalled.events[0].at, 3000);
+    assert_eq!(recalling.bodies[&b].checkpoint, stock);
+    assert_eq!(
+        recalling.world.as_ref().unwrap().records.fleets[&original.id].terms,
+        original.terms
+    );
+    let stale = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        1000,
+        8001,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: intent.clone(),
+                expected_terms_hash: before.terms_hash,
+            },
+        }),
+    );
+    assert_eq!(stale, TransitionResult::Rejected(GameError::QuoteChanged));
+    // The mixed fleet uses its slowest ship for duration, each own speed/fuel in the sum.
+    let mut mixed = intent.clone();
+    mixed.ships.push(ManifestStack {
+        owner: p,
+        ship_type: ShipType::Recycler,
+        count: 1,
+    });
+    let mixed = quote_fleet(&s, p, &mixed, 1000, &r).unwrap();
+    assert!(mixed.speeds.contains(&(ShipType::Recycler, "3200".into())));
+    assert_eq!(
+        (mixed.duration_ms, mixed.fuel),
+        exact_flight_arithmetic(mixed.distance, &[(20000, 20, 1), (3200, 300, 1)], 100, 10)
+            .unwrap()
+    );
+    fixture_research(&mut s, &r, p, ResearchId::ImpulseDrive, 17);
+    assert_eq!(
+        ship_propulsion(&r.artifact.ships[&ShipType::Recycler], &s.research[&p]).unwrap(),
+        (3200, 300)
+    );
+    // Serialization/restart and research completion cannot change an outbound obligation.
+    s = serde_json::from_slice(&serde_json::to_vec(&s).unwrap()).unwrap();
+    let arrival = &launched.events[0];
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        arrival.at,
+        8002,
+        Input::Event(arrival.event.clone()),
+    );
+    let arrived = apply(&mut s, result);
+    assert_eq!(arrived.events[0].at, arrival.at + before.duration_ms);
+    let returned = &arrived.events[0];
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        returned.at,
+        8003,
+        Input::Event(returned.event.clone()),
+    );
+    apply(&mut s, result);
+    validate_asset_lineage(&s).unwrap();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .remove(&ResearchId::ImpulseDrive);
+    assert_eq!(
+        quote_fleet(&s, p, &intent, returned.at, &r),
+        Err(GameError::PolicyUnavailable)
+    );
+}
+
+fn fixture_research(s: &mut GameState, r: &Ruleset, p: PlayerId, research: ResearchId, level: u32) {
+    let previous = s.research[&p].levels[&research];
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(research, level);
+    for increment in previous + 1..=level {
+        let id = OperationId(derived_id(
+            InputId(p.0),
+            &format!("fixture:{research:?}:{increment}"),
+        ));
+        s.world.as_mut().unwrap().records.lots.push(AssetLot {
+            id,
+            owner: p,
+            item: CatalogKey::Research(research),
+            level: Some(increment),
+            location: AssetLocation::Player,
+            quantity: 1,
+            unit_value_micro: 1000 * SCALE,
+            rules_hash: r.hash.clone(),
+            source_operation: id,
+            acquired_at: 0,
+            acquired_sequence: 0,
+        });
+    }
+}

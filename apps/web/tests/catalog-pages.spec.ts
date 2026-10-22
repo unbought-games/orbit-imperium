@@ -1005,3 +1005,56 @@ test('narrow spending ledgers keep whole large balances intact with visible labe
     })
   }
 })
+
+test('activated Impulse Drive uses server gates, supports level four, and shows its technology tree', async ({ page }) => {
+  const impulse: S['CatalogEntry3'] = {
+    key: { kind: 'Research', id: 'ImpulseDrive' },
+    requirements: [
+      { type: 'BodyBuilding', building: 'ResearchLab', level: 2 },
+      { type: 'PlayerResearch', research: 'EnergyTechnology', level: 1 },
+    ],
+    enabled: true, mobile: false, body_kinds: ['Planet'],
+  }
+  const planet = structuredClone(body)
+  planet.levels.ResearchLab = 2
+  planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '100000000000' }
+  await shellFixture(page, {
+    bodies: [planet], catalog: [...catalog, impulse],
+    research: [{ research: 'ImpulseDrive', level: 3 }, { research: 'EnergyTechnology', level: 1 }],
+  })
+  let sent: unknown
+  await page.route('**/progression-options', async route => {
+    const { context, request } = route.request().postDataJSON()
+    expect(request).toEqual({ type: 'Research', host: body.id, research: 'ImpulseDrive' })
+    await route.fulfill({ json: {
+      protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',
+      sampled_at: Date.now(), as_of_ms: Date.now(), request,
+      terms: { type: 'Research', profile_hash: 'a'.repeat(64), host: body.id, research: 'ImpulseDrive', source_level: 3, target_level: 4,
+        paid: { metal: '16000000000', crystal: '32000000000', deuterium: '4800000000' },
+        duration_ms: 11520000, formula: 'ResearchClassic', labs: [{ body: body.id, level: 2 }], effective_lab: '2', required_energy: '0' },
+      terms_hash: 'b'.repeat(64), blockers: [], estimates: null,
+    } })
+  })
+  await page.route('**/commands', async route => {
+    const envelope = route.request().postDataJSON()
+    sent = envelope.command
+    await route.fulfill({ json: { protocol: 3, binding, command_id: envelope.command_id,
+      admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1' } })
+  })
+  await page.goto(`/u/andromeda/research?body=${body.id}`)
+  await page.getByRole('button', { name: 'Research Impulse Drive', exact: true }).click()
+  const pane = page.getByRole('region', { name: 'Progression quote' })
+  await expect(pane).toContainText('16,000')
+  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Research Lab')
+  await expect(dialog).toContainText('2 / 2 · Met')
+  await expect(dialog).toContainText('Energy Technology')
+  await expect(dialog).toContainText('1 / 1 · Met')
+  await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
+  await expect(dialog).toContainText('20% per level')
+  await expect(dialog).toContainText('level 5')
+  await dialog.getByRole('button', { name: 'Close technology' }).click()
+  await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
+  await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'ImpulseDrive', expected_terms_hash: 'b'.repeat(64) })
+})

@@ -9,7 +9,17 @@ pub struct BuildingRule {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct ImpulseDriveRule {
+    pub minimum_level: u32,
+    pub base_speed: i64,
+    pub fuel: i64,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ShipRule {
+    /// Optional complete replacement profile; absent in retained rules artifacts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub impulse_drive: Option<ImpulseDriveRule>,
     pub base_speed: i64,
     pub drive_coefficient: [i64; 2],
     pub fuel: i64,
@@ -212,7 +222,21 @@ impl Ruleset {
                 return Err(RulesError::Range);
             }
         }
-        for r in artifact.ships.values() {
+        for (ship, r) in &artifact.ships {
+            if let Some(upgrade) = &r.impulse_drive {
+                if *ship != ShipType::SmallCargo
+                    || artifact.world.is_none()
+                    || artifact
+                        .progression
+                        .as_ref()
+                        .is_none_or(|p| !p.research.contains_key(&ResearchId::ImpulseDrive))
+                {
+                    return Err(RulesError::InvalidReference);
+                }
+                if upgrade.minimum_level == 0 || upgrade.base_speed <= 0 || upgrade.fuel <= 0 {
+                    return Err(RulesError::Range);
+                }
+            }
             if r.base_speed <= 0
                 || r.drive_coefficient[0] < 0
                 || r.drive_coefficient[1] <= 0
@@ -226,6 +250,19 @@ impl Ruleset {
         if artifact.id != "first-slice-v1" {
             crate::catalog::validate_catalog(&artifact)?;
         } else if !artifact.catalog.is_empty() {
+            return Err(RulesError::InvalidReference);
+        }
+        // Enabling the drive in a flying universe must also supply its cargo switch.
+        if artifact.world.is_some()
+            && artifact
+                .catalog
+                .iter()
+                .any(|e| e.key == CatalogKey::Research(ResearchId::ImpulseDrive) && e.enabled)
+            && artifact
+                .ships
+                .get(&ShipType::SmallCargo)
+                .is_some_and(|s| s.impulse_drive.is_none())
+        {
             return Err(RulesError::InvalidReference);
         }
         let hash = hash(&(&artifact, speed));
