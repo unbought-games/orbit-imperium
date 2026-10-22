@@ -4,7 +4,7 @@ import { availableParallelism } from 'node:os'
 import { browserTimeout } from './scripts/fixtures/browser-budget.mjs'
 const budgets: Record<string, number> = JSON.parse(readFileSync(new URL('./scripts/test-budgets.json', import.meta.url), 'utf8'))
 const suite = process.env.ORBIT_TEST_SUITE ?? 'core'
-const uiFiles = ['dispatch-validation.spec.ts', 'empire.spec.ts', 'locked-buildings.spec.ts', 'shell.spec.ts', 'resources.spec.ts', 'catalog-pages.spec.ts', 'galaxy-cards.spec.ts', 'bootstrap-ui.spec.ts', 'progression-cancellation.spec.ts', 'building-quotes.spec.ts', 'web-app.spec.ts']
+const uiFiles = ['colonization.spec.ts', 'dispatch-validation.spec.ts', 'empire.spec.ts', 'locked-buildings.spec.ts', 'shell.spec.ts', 'resources.spec.ts', 'catalog-pages.spec.ts', 'galaxy-cards.spec.ts', 'bootstrap-ui.spec.ts', 'progression-cancellation.spec.ts', 'building-quotes.spec.ts', 'web-app.spec.ts']
 const coreFiles = ['bootstrap.spec.ts', 'construction.spec.ts', 'login.spec.ts', 'reconnect.spec.ts', 'transport.spec.ts', 'zfoundation.spec.ts']
 export default defineConfig({
   // Routine fixture tests have no execution deadline. Explicit suites retain

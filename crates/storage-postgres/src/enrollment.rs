@@ -99,23 +99,24 @@ impl PgStore {
             previous,
         } = request;
         let u = policy.universe;
-        let (mut tx, scoped) = self.begin_enrollment(u).await?;
-        let floor: i64 = sqlx::query_scalar(
-            "SELECT greatest(frontier,ordering_floor) FROM universe_runtime WHERE universe=$1",
-        )
-        .bind(u.0)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(db_error)?;
-        let mut at = ordering::now(&mut tx).await?.max(floor);
-        let rules = crate::facts::rules(&mut tx, u).await?;
-        let profile = signup_profile(&rules)?;
-        if let Some(account) = existing
+        loop {
+            let (mut tx, scoped) = self.begin_enrollment(u).await?;
+            let floor: i64 = sqlx::query_scalar(
+                "SELECT greatest(frontier,ordering_floor) FROM universe_runtime WHERE universe=$1",
+            )
+            .bind(u.0)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db_error)?;
+            let mut at = ordering::now(&mut tx).await?.max(floor);
+            let rules = crate::facts::rules(&mut tx, u).await?;
+            let profile = signup_profile(&rules)?;
+            if let Some(account) = existing
             && sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM universe_memberships WHERE universe=$1 AND account=$2)").bind(u.0).bind(account.0).fetch_one(&mut *tx).await.map_err(db_error)? {
                 tx.commit().await.map_err(db_error)?;
                 return self.create_session(account, &digest, &csrf, previous).await;
         }
-        if existing.is_none()
+            if existing.is_none()
             && sqlx::query_scalar::<_, bool>(
                 "SELECT EXISTS(SELECT 1 FROM accounts WHERE name=$1 AND password_hash <> '!oidc')",
             )
@@ -126,119 +127,168 @@ impl PgStore {
         {
             return Err(StoreError::Conflict);
         }
-        let (secret, mut manifest) = load_manifest(&mut tx, u).await?;
-        let homeworld = if profile.id == "mvp-v1" {
-            homeworlds(&secret, u, manifest.epoch, manifest.members.len() + 1)
-                .map_err(|_| StoreError::UniverseFull)?
-                .pop()
-                .ok_or(StoreError::CorruptData)?
-        } else {
-            let homes: Vec<_> = manifest
-                .members
-                .iter()
-                .map(|m| m.homeworld.coordinates)
-                .collect();
-            let slots: Vec<(i32, i32, i32)> = sqlx::query_as(
+            let (secret, mut manifest) = load_manifest(&mut tx, u).await?;
+            let homeworld = if profile.id == "mvp-v1"
+                && rules
+                    .artifact
+                    .world
+                    .as_ref()
+                    .and_then(|w| w.colonization.as_ref())
+                    .is_none()
+            {
+                homeworlds(&secret, u, manifest.epoch, manifest.members.len() + 1)
+                    .map_err(|_| StoreError::UniverseFull)?
+                    .pop()
+                    .ok_or(StoreError::CorruptData)?
+            } else {
+                let homes: Vec<_> = manifest
+                    .members
+                    .iter()
+                    .map(|m| m.homeworld.coordinates)
+                    .collect();
+                let slots: Vec<(i32, i32, i32)> = sqlx::query_as(
                 "SELECT galaxy,system,position FROM bodies WHERE universe=$1 AND kind='Planet' ORDER BY galaxy,system,position"
             ).bind(u.0).fetch_all(&mut *tx).await.map_err(db_error)?;
-            let occupied: Vec<_> = slots
-                .into_iter()
-                .map(|(galaxy, system, position)| Coordinates {
-                    galaxy: galaxy as u32,
-                    system: system as u32,
-                    position: position as u32,
-                })
-                .collect();
-            balanced_homeworld(
-                &secret,
-                u,
-                manifest.epoch,
-                profile,
-                manifest.members.len(),
-                &homes,
-                &occupied,
-            )
-            .map_err(|_| StoreError::UniverseFull)?
-        };
-        let member = Member {
-            name,
-            account: existing.map(|a| a.0).unwrap_or_else(Uuid::new_v4),
-            player: Uuid::new_v4(),
-            body: Uuid::new_v4(),
-            homeworld,
-        };
-        let _scope_hold = if scoped {
-            let scopes = std::collections::BTreeSet::from([
-                ScopeKey::Player(PlayerId(member.player)),
-                ScopeKey::Location(member.homeworld.coordinates),
-            ]);
-            let (stamped, held) =
-                crate::admission::stamp(&mut tx, u, &scopes, self.observer.clone()).await?;
-            at = stamped.max(at);
-            Some(held)
-        } else {
-            None
-        };
-        let current = self.read_policy(&mut tx, u, true).await?;
-        let max_players = if let Some(current) = current {
-            if !current.policy.signup_enabled {
-                return Err(StoreError::SignupClosed);
+                let occupied: Vec<_> = slots
+                    .into_iter()
+                    .map(|(galaxy, system, position)| Coordinates {
+                        galaxy: galaxy as u32,
+                        system: system as u32,
+                        position: position as u32,
+                    })
+                    .collect();
+                if profile.id == "mvp-v1" {
+                    frontier_homeworld(
+                        &secret,
+                        u,
+                        manifest.epoch,
+                        profile,
+                        manifest.members.len(),
+                        &occupied,
+                    )
+                } else {
+                    balanced_homeworld(
+                        &secret,
+                        u,
+                        manifest.epoch,
+                        profile,
+                        manifest.members.len(),
+                        &homes,
+                        &occupied,
+                    )
+                }
+                .map_err(|_| StoreError::UniverseFull)?
+            };
+            let member = Member {
+                name: name.clone(),
+                account: existing.map(|a| a.0).unwrap_or_else(Uuid::new_v4),
+                player: Uuid::new_v4(),
+                body: Uuid::new_v4(),
+                homeworld,
+            };
+            let _scope_hold = if scoped {
+                let scopes = std::collections::BTreeSet::from([
+                    ScopeKey::Player(PlayerId(member.player)),
+                    ScopeKey::Location(member.homeworld.coordinates),
+                ]);
+                let (stamped, held) =
+                    crate::admission::stamp(&mut tx, u, &scopes, self.observer.clone()).await?;
+                at = stamped.max(at);
+                Some(held)
+            } else {
+                None
+            };
+            if rules
+                .artifact
+                .world
+                .as_ref()
+                .and_then(|w| w.colonization.as_ref())
+                .is_some()
+                && crate::colonization::enrollment_predecessor(
+                    &mut tx,
+                    u,
+                    member.homeworld.coordinates,
+                    at,
+                    scoped,
+                )
+                .await?
+            {
+                // Release both admission and location locks while ordered gameplay
+                // resolves. Recompute placement from current occupancy on retry.
+                tx.rollback().await.map_err(db_error)?;
+                tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+                continue;
             }
-            current.policy.effective_max_players(&current.immutable)
-        } else {
-            admission_policy(u, profile, Some(policy.max_players))?.max_players
-        };
-        if manifest.members.len() >= max_players as usize {
-            return Err(StoreError::UniverseFull);
-        }
-        insert_member(&mut tx, u, &member, &password_hash, at, &rules).await?;
-        let account = AccountId(member.account);
-        let player = PlayerId(member.player);
-        manifest.members.push(member);
-        sqlx::query("UPDATE mvp_bootstraps SET manifest=$2 WHERE universe=$1")
-            .bind(u.0)
-            .bind(sqlx::types::Json(manifest))
-            .execute(&mut *tx)
-            .await
-            .map_err(db_error)?;
-        if !scoped {
-            sqlx::query("UPDATE world_heads SET revision=revision+1 WHERE universe=$1")
+            // A claim may have committed after placement was sampled but before its
+            // location ordering lock was acquired. Never insert into that stale slot.
+            let occupied: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE universe=$1 AND kind='Planet' AND galaxy=$2 AND system=$3 AND position=$4)")
+            .bind(u.0).bind(member.homeworld.coordinates.galaxy as i32).bind(member.homeworld.coordinates.system as i32).bind(member.homeworld.coordinates.position as i32)
+            .fetch_one(&mut *tx).await.map_err(db_error)?;
+            if occupied {
+                tx.rollback().await.map_err(db_error)?;
+                continue;
+            }
+            let current = self.read_policy(&mut tx, u, true).await?;
+            let max_players = if let Some(current) = current {
+                if !current.policy.signup_enabled {
+                    return Err(StoreError::SignupClosed);
+                }
+                current.policy.effective_max_players(&current.immutable)
+            } else {
+                admission_policy(u, profile, Some(policy.max_players))?.max_players
+            };
+            if manifest.members.len() >= max_players as usize {
+                return Err(StoreError::UniverseFull);
+            }
+            insert_member(&mut tx, u, &member, &password_hash, at, &rules).await?;
+            let account = AccountId(member.account);
+            let player = PlayerId(member.player);
+            manifest.members.push(member);
+            sqlx::query("UPDATE mvp_bootstraps SET manifest=$2 WHERE universe=$1")
                 .bind(u.0)
+                .bind(sqlx::types::Json(manifest))
                 .execute(&mut *tx)
                 .await
                 .map_err(db_error)?;
-            sqlx::query("UPDATE universe_runtime SET frontier=$2 WHERE universe=$1")
-                .bind(u.0)
-                .bind(at)
-                .execute(&mut *tx)
-                .await
-                .map_err(db_error)?;
-        }
-        if let Some(old) = previous {
-            sqlx::query("WITH revoked AS (DELETE FROM sessions WHERE digest=$1 RETURNING account) SELECT pg_notify('orbit_game_updates','account:'||account::text) FROM revoked")
+            if !scoped {
+                sqlx::query("UPDATE world_heads SET revision=revision+1 WHERE universe=$1")
+                    .bind(u.0)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(db_error)?;
+                sqlx::query("UPDATE universe_runtime SET frontier=$2 WHERE universe=$1")
+                    .bind(u.0)
+                    .bind(at)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(db_error)?;
+            }
+            if let Some(old) = previous {
+                sqlx::query("WITH revoked AS (DELETE FROM sessions WHERE digest=$1 RETURNING account) SELECT pg_notify('orbit_game_updates','account:'||account::text) FROM revoked")
                 .bind(old)
                 .execute(&mut *tx)
                 .await
                 .map_err(db_error)?;
-        }
-        let expires_at: i64 = sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+28800000) RETURNING expires_at")
+            }
+            let expires_at: i64 = sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+28800000) RETURNING expires_at")
             .bind(digest).bind(account.0).bind(&csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
-        let universe_name = sqlx::query_scalar("SELECT name FROM universes WHERE id=$1")
-            .bind(u.0)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(db_error)?;
-        tx.commit().await.map_err(db_error)?;
-        Ok(AuthenticatedSession {
-            account,
-            csrf,
-            expires_at,
-            memberships: vec![Membership {
-                universe_name,
-                universe: u,
-                player,
-            }],
-        })
+            let universe_name = sqlx::query_scalar("SELECT name FROM universes WHERE id=$1")
+                .bind(u.0)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(db_error)?;
+            tx.commit().await.map_err(db_error)?;
+            return Ok(AuthenticatedSession {
+                account,
+                csrf,
+                expires_at,
+                memberships: vec![Membership {
+                    universe_name,
+                    universe: u,
+                    player,
+                }],
+            });
+        }
     }
 }
 

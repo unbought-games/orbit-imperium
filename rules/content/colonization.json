@@ -1,0 +1,11 @@
+{
+  "colonization": { "profile": "oi-redesign-reconstructed-v1", "enabled": true },
+  "ship": { "drive": "ImpulseDrive", "base_speed": 2500, "drive_coefficient": [1, 5], "fuel": 1000, "capacity": 7500 },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "Shipyard", "level": 4 },
+    { "type": "PlayerResearch", "research": "ImpulseDrive", "level": 3 }
+  ],
+  "cost": { "metal": 10000, "crystal": 20000, "deuterium": 10000 },
+  "combat": { "item": { "kind": "Ship", "id": "ColonyShip" }, "cost": [10000, 20000, 10000], "attack_hundredths": 5000, "shield_hundredths": 10000 },
+  "rapid_fire": { "shooter": { "kind": "Ship", "id": "ColonyShip" }, "target": { "kind": "Ship", "id": "EspionageProbe" }, "factor": 5 }
+}
