@@ -7,6 +7,7 @@ it('accepts known expanded fleet types without a four-type MVP limit', () => {
     'SmallCargo',
     'LargeCargo',
     'LightFighter',
+    'HeavyFighter',
     'Recycler',
     'EspionageProbe',
   ]
