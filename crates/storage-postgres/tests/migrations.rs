@@ -907,7 +907,7 @@ async fn colony_schema_preserves_old_rows_and_old_writer_slot_creation() {
     let older = sqlx::migrate::Migrator {
         migrations: sqlx::migrate!("./migrations")
             .iter()
-            .filter(|m| m.version < 13)
+            .filter(|m| m.version < 14)
             .cloned()
             .collect::<Vec<_>>()
             .into(),
