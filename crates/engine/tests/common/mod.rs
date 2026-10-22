@@ -148,3 +148,24 @@ pub fn impulse_rules(rules: &Ruleset) -> Ruleset {
     }
     Ruleset::from_artifact(artifact, rules.speed).unwrap()
 }
+
+#[allow(dead_code)]
+pub fn astrophysics_rules(rules: &Ruleset) -> Ruleset {
+    let mut artifact = impulse_rules(rules).artifact;
+    let content: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../../rules/content/astrophysics.json"
+    ))
+    .unwrap();
+    artifact.progression.as_mut().unwrap().research.insert(
+        ResearchId::Astrophysics,
+        serde_json::from_value(content["research"].clone()).unwrap(),
+    );
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::Astrophysics))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    Ruleset::from_artifact(artifact, rules.speed).unwrap()
+}

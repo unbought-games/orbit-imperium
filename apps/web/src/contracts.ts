@@ -4432,8 +4432,8 @@ export interface components {
             target_level: number;
             paid: components["schemas"]["Resources"];
             duration_ms: number;
-            /** @constant */
-            formula: "ResearchClassic";
+            /** @enum {string} */
+            formula: "ResearchClassic" | "ResearchAstrophysics";
             labs: components["schemas"]["LabTerm"][];
             effective_lab: components["schemas"]["Decimal"];
             required_energy: components["schemas"]["Decimal"];

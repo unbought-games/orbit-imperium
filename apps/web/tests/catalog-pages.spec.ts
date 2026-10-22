@@ -1058,3 +1058,61 @@ test('activated Impulse Drive uses server gates, supports level four, and shows 
   await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
   await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'ImpulseDrive', expected_terms_hash: 'b'.repeat(64) })
 })
+
+test('activated Astrophysics shows three gates, exact rounded costs, and deferred missions', async ({ page }) => {
+  const astrophysics: S['CatalogEntry3'] = {
+    key: { kind: 'Research', id: 'Astrophysics' },
+    requirements: [
+      { type: 'BodyBuilding', building: 'ResearchLab', level: 3 },
+      { type: 'PlayerResearch', research: 'EspionageTechnology', level: 4 },
+      { type: 'PlayerResearch', research: 'ImpulseDrive', level: 3 },
+    ],
+    enabled: true, mobile: false, body_kinds: ['Planet'],
+  }
+  const dependencies: S['CatalogEntry3'][] = ['ImpulseDrive', 'EspionageTechnology'].map(id => ({
+    key: { kind: 'Research', id: id as 'ImpulseDrive' | 'EspionageTechnology' },
+    requirements: [], enabled: true, mobile: false, body_kinds: ['Planet'],
+  }))
+  const planet = structuredClone(body)
+  planet.levels.ResearchLab = 3
+  planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '100000000000' }
+  await shellFixture(page, {
+    bodies: [planet], catalog: [...catalog, ...dependencies, astrophysics],
+    research: [{ research: 'Astrophysics', level: 4 }, { research: 'ImpulseDrive', level: 3 }, { research: 'EspionageTechnology', level: 4 }],
+  })
+  let sent: unknown
+  await page.route('**/progression-options', async route => {
+    const { context, request } = route.request().postDataJSON()
+    expect(request).toEqual({ type: 'Research', host: body.id, research: 'Astrophysics' })
+    await route.fulfill({ json: {
+      protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',
+      sampled_at: Date.now(), as_of_ms: Date.now(), request,
+      terms: { type: 'Research', profile_hash: 'a'.repeat(64), host: body.id, research: 'Astrophysics', source_level: 4, target_level: 5,
+        paid: { metal: '37500000000', crystal: '75000000000', deuterium: '37500000000' },
+        duration_ms: 20250000, formula: 'ResearchAstrophysics', labs: [{ body: body.id, level: 3 }], effective_lab: '3', required_energy: '0' },
+      terms_hash: 'b'.repeat(64), blockers: [], estimates: null,
+    } })
+  })
+  await page.route('**/commands', async route => {
+    const envelope = route.request().postDataJSON()
+    sent = envelope.command
+    await route.fulfill({ json: { protocol: 3, binding, command_id: envelope.command_id,
+      admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1' } })
+  })
+  await page.goto(`/u/andromeda/research?body=${body.id}`)
+  await page.getByRole('button', { name: 'Research Astrophysics', exact: true }).click()
+  const pane = page.getByRole('region', { name: 'Progression quote' })
+  await expect(pane).toContainText('37,500')
+  await expect(pane).toContainText('75,000')
+  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  for (const name of ['Research Lab', 'Espionage Technology', 'Impulse Drive']) await expect(dialog).toContainText(name)
+  await expect(dialog).toContainText('4 / 4 · Met')
+  await expect(dialog).toContainText('3 / 3 · Met')
+  await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
+  await expect(dialog).toContainText('Positions 4–12 unlock at level 1')
+  await expect(dialog).toContainText('Colony Ships, colonization and expeditions are not available yet')
+  await dialog.getByRole('button', { name: 'Close technology' }).click()
+  await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
+  await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'Astrophysics', expected_terms_hash: 'b'.repeat(64) })
+})
