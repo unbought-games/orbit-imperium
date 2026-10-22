@@ -255,7 +255,7 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
   await expect(bar.locator('..')).toHaveCSS('position', 'sticky')
   await expect(bar).toHaveCSS('border-bottom-width', '1px')
   await expect(bar).toHaveCSS('border-bottom-style', 'solid')
-  await expect(bar).toHaveCSS('backdrop-filter', 'blur(4px)')
+  expect(await bar.evaluate(element => getComputedStyle(element, '::before').backdropFilter)).toBe('blur(4px)')
   const initial = await bar.boundingBox()
   expect(initial!.y).toBe(0)
   expect(initial!.x).toBe(0)
@@ -664,16 +664,17 @@ test('desktop uses a persistent horizontal ledger and no permanent rails', async
   const bar = page.getByRole('group', { name: 'Planet and resources' })
   for (const width of [768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 })
-    await expect(bar).toHaveCSS('border-top-width', '1px')
-    await expect(bar).toHaveCSS('border-bottom-width', '1px')
+    await expect(bar).toHaveCSS('border-top-width', '0px')
+    await expect(bar).toHaveCSS('border-bottom-width', '0px')
+    await expect(bar.locator('../..')).toHaveCSS('border-bottom-width', '1px')
     for (const section of await bar.locator(':scope > div').all()) {
       await expect(section).toHaveCSS('border-top-width', '0px')
       await expect(section).toHaveCSS('border-bottom-width', '0px')
     }
     const bounds = await bar.boundingBox()
     const content = await page.locator('main').boundingBox()
-    expect(bounds!.x).toBe(content!.x)
-    expect(bounds!.width).toBe(content!.width)
+    expect(bounds!.x).toBeGreaterThan(content!.x)
+    expect(bounds!.x + bounds!.width).toBeCloseTo(content!.x + content!.width, 1)
     expect(bounds!.height).toBe(64)
     expect(
       (
@@ -733,7 +734,7 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
       ).toBeLessThan(24)
     } else {
       await expect(brand).toBeVisible()
-      await expect(universe).toBeVisible()
+      await expect(universe).toBeHidden()
     }
     expect(
       await page.evaluate(
@@ -2230,5 +2231,95 @@ for (const width of [390, 1440]) {
     await menu.click()
     await expect(page.getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Reports — unread reports' })).toHaveCount(0)
+  })
+}
+
+for (const width of [768, 1024, 1440, 1800]) {
+  test(`desktop header keeps name, planet, menu and resources in one pinned row at ${width}px`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width, height: 900 })
+    await shellFixture(page, { protocol: 4 })
+    const brand = page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
+    const primary = page.getByRole('navigation', { name: 'Main navigation', exact: true })
+    const planet = page.getByLabel('Selected body')
+    const resources = page.getByLabel('Current resources')
+    const header = brand.locator('../..')
+    await expect(page.getByLabel('Current universe')).toBeHidden()
+    const assertRow = async () => {
+      const boxes = await Promise.all([brand, planet, primary, resources].map(locator => locator.boundingBox()))
+      for (let i = 1; i < boxes.length; i++) {
+        expect(boxes[i]!.x).toBeGreaterThanOrEqual(boxes[i - 1]!.x + boxes[i - 1]!.width)
+        expect(Math.abs(boxes[i]!.y + boxes[i]!.height / 2 - boxes[0]!.y - boxes[0]!.height / 2)).toBeLessThan(2)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      expect((await header.boundingBox())!.y).toBe(0)
+    }
+    await assertRow()
+    await expect(page.getByRole('navigation', { name: /^(Build|Fleet) navigation$/ })).toHaveCount(0)
+    for (const group of ['Build', 'Fleet']) {
+      await primary.getByRole('link', { name: group, exact: true }).click()
+      const secondary = page.getByRole('navigation', { name: `${group} navigation`, exact: true })
+      await expect(secondary).toBeVisible()
+      const row = (await primary.boundingBox())!
+      expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
+      for (const scroll of [0, 300, 100000]) {
+        await page.evaluate(y => window.scrollTo(0, y), scroll)
+        await assertRow()
+        expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
+      }
+    }
+    await page.getByRole('button', { name: 'Metal details', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await planet.selectOption(id(6))
+    await expect(planet).toHaveValue(id(6))
+    await primary.getByRole('link', { name: 'Build', exact: true }).click()
+    await expect(page.locator('main h1')).toHaveText('Resources')
+    await page.mouse.move(width / 2, 300)
+    await page.screenshot({ path: `test-results/desktop-pinned-header-${width}.png` })
+  })
+}
+
+for (const width of [768, 1024, 1440, 1800]) {
+  test(`desktop brand stays aligned above world search at ${width}px`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width, height: 900 })
+    const bodies = Array.from({ length: 9 }, (_, index) => ({
+      ...body,
+      id: index === 0 ? body.id : id(index + 20),
+      coordinates: { galaxy: 1, system: 371, position: index + 1 },
+    }))
+    await shellFixture(page, { protocol: 4, bodies })
+    const brand = page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
+    const primary = page.getByRole('navigation', { name: 'Main navigation', exact: true })
+    const planet = page.getByLabel('Selected body')
+    const resources = page.getByLabel('Current resources')
+    const search = page.getByRole('searchbox', { name: 'Search owned worlds' })
+    await expect(search).toBeVisible()
+    const assertAlignment = async () => {
+      const brandBox = (await brand.boundingBox())!
+      for (const locator of [planet, primary, resources]) {
+        const box = (await locator.boundingBox())!
+        expect(Math.abs(box.y + box.height / 2 - brandBox.y - brandBox.height / 2)).toBeLessThan(2)
+      }
+      const row = (await primary.boundingBox())!
+      expect((await search.boundingBox())!.y).toBeGreaterThanOrEqual(row.y + row.height)
+      expect((await brand.locator('../..').boundingBox())!.y).toBe(0)
+    }
+    await assertAlignment()
+    await primary.getByRole('link', { name: 'Build', exact: true }).click()
+    const secondary = page.getByRole('navigation', { name: 'Build navigation', exact: true })
+    await expect(secondary).toBeVisible()
+    for (const scroll of [0, 300, 100000]) {
+      await page.evaluate(y => window.scrollTo(0, y), scroll)
+      await assertAlignment()
+      const searchBox = (await search.boundingBox())!
+      expect((await secondary.boundingBox())!.y).toBeGreaterThanOrEqual(searchBox.y + searchBox.height)
+    }
+    await search.fill('1:371:9')
+    await planet.selectOption(bodies[8].id)
+    await expect(planet).toHaveValue(bodies[8].id)
+    await expect(search).toHaveValue('')
+    await assertAlignment()
   })
 }

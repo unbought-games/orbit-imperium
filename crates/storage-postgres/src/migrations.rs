@@ -350,7 +350,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn embedded_migration_bundle_has_unique_increasing_versions() {
-        validate_bundle(&MIGRATIONS).expect("the shipped migration bundle must be valid");
+    fn embedded_migration_bundle_is_valid() {
+        validate_bundle(active_migrations()).expect("embedded migrations must form a valid bundle");
     }
 }

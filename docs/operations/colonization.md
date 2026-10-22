@@ -98,7 +98,7 @@ before acting. Do not use retired Fly universe IDs or an old status-file digest.
    Follow that exact run and SSM verification through all role/HTTPS readiness
    checks. Confirm every API, worker and operator binary is compatible before
    activation. The current single-host service can have a restart window.
-4. Normal startup prepares migration 13 while preserving saved rules. Deployment
+4. Normal startup prepares migration 14 while preserving saved rules. Deployment
    alone does not activate colonization. Do not drain future fleets/jobs or reset
    accounts. If migration preparation fails, diagnose it and retry the same
    release; do not edit migration history or bypass its bounded preparation.

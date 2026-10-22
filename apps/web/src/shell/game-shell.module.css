@@ -1,34 +1,47 @@
 .game-shell {
+  --shell-inline-gutter: clamp(18px, 2.5vw, 48px);
   max-width: 1800px;
   min-height: 100dvh;
   margin: auto;
-  padding: 0 clamp(18px, 2.5vw, 48px);
+  padding: 0 var(--shell-inline-gutter);
 }
 .shell-columns {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(0, 2.4fr) auto;
-  grid-template-areas: 'identity navigation connection' 'world world world' 'secondary secondary secondary' 'content content content';
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'header' 'content';
+}
+.header {
+  grid-area: header;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'identity world' 'secondary secondary' 'connection connection';
   align-items: center;
-  column-gap: 28px;
+  column-gap: clamp(12px, 2vw, 32px);
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  align-self: start;
+  margin-inline: calc(-1 * var(--shell-inline-gutter));
+  padding-inline: var(--shell-inline-gutter);
+  background: color-mix(in srgb, var(--surface-page) 95%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid var(--border-accent);
 }
 .identity {
   grid-area: identity;
+  align-self: start;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   gap: 4px;
   min-width: 0;
-  padding-block: 12px;
-  min-height: 76px;
+  padding-block: 8px;
+  min-height: 64px;
 }
 .identity > .universeName {
-  font: 0.75rem var(--font-editorial);
-  letter-spacing: 1px;
-  color: var(--text-muted);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  min-width: 0;
+  display: none;
 }
 .brand {
   font: 1.125rem var(--font-editorial);
@@ -37,20 +50,16 @@
 .worldBar {
   grid-area: world;
   display: grid;
-  grid-template-columns: minmax(280px, 0.32fr) minmax(0, 1fr);
-  grid-template-areas: 'context resources';
+  grid-template-columns: minmax(0, 120px) auto minmax(0, 1fr);
+  grid-template-areas: 'context navigation resources' 'body-search body-search body-search';
+  grid-template-rows: minmax(64px, auto) auto;
   align-items: center;
-  gap: 24px;
+  gap: 0 12px;
   min-width: 0;
   min-height: 64px;
-  border-block: 1px solid var(--border-accent);
 }
 .mobile-context {
-  grid-area: context;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+  display: contents;
 }
 .masthead {
   grid-area: resources;
@@ -60,6 +69,9 @@
 }
 .connectionSlot {
   grid-area: connection;
+}
+.connectionSlot:empty {
+  display: none;
 }
 .connection {
   display: flex;
@@ -122,17 +134,30 @@
     grid-template-areas: 'world' 'connection' 'content';
     gap: 0;
   }
+  .header {
+    display: contents;
+  }
   .identity {
     display: none;
   }
   .worldBar {
     grid-template-columns: minmax(0, 104px) minmax(0, 1fr);
+    grid-template-rows: auto auto;
     grid-template-areas: 'context resources' 'body-search body-search';
     gap: 0 4px;
     min-height: 0;
     padding: max(8px, env(safe-area-inset-top)) var(--shell-inline-gutter) 0;
     border: 0;
     border-bottom: 1px solid var(--border-accent);
+    position: relative;
+    isolation: isolate;
+  }
+  /* Keep blur off the ancestor of the fixed mobile navigation. */
+  .worldBar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
     background: color-mix(in srgb, var(--surface-page) 90%, transparent);
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
@@ -153,19 +178,22 @@
   }
 }
 @media (min-width: 768px) {
-  .shell-columns {
-    grid-template-columns: minmax(20rem, 0.32fr) minmax(0, 1fr) auto;
-    column-gap: 24px;
-  }
-  .identity {
-    min-height: 64px;
+  .page-heading h1,
+  .routeHeading h1 {
+    scroll-margin-top: 120px;
   }
 }
-
 @media (min-width: 768px) and (max-width: 1100px) {
-  .shell-columns {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: 'identity connection' 'navigation navigation' 'world world' 'secondary secondary' 'content content';
+  .brand {
+    --brand-mark-size: 24px;
+    --brand-gap: 6px;
+    max-width: 145px;
+    font-size: 0.875rem;
+    letter-spacing: 1px;
+  }
+  .worldBar {
+    grid-template-columns: minmax(0, 96px) auto minmax(0, 1fr);
+    gap: 0 8px;
   }
 }
 

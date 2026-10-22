@@ -5,7 +5,7 @@
   grid-area: navigation;
   display: flex;
   justify-content: center;
-  gap: clamp(12px, 3vw, 48px);
+  gap: 4px;
   align-self: stretch;
 }
 .primary a,
@@ -32,6 +32,7 @@
 .primary button {
   font-family: var(--font-editorial);
   font-size: 1.125rem;
+  padding-inline: clamp(8px, 1vw, 16px);
 }
 .primary svg {
   display: none;
@@ -65,7 +66,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 28px;
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
 }
 .secondary [aria-current='page'] {
   color: var(--accent);
@@ -188,6 +189,8 @@
     gap: 24px 16px;
   }
   .secondary {
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
     flex-wrap: nowrap;
     overflow-x: auto;
     overscroll-behavior-x: contain;
@@ -238,7 +241,7 @@
 .menuAlert {
   position: absolute;
   top: calc(50% - 12px);
-  right: -26px;
+  right: -6px;
 }
 .srOnly {
   position: absolute;
@@ -252,5 +255,16 @@
   .menuAlert {
     top: 0;
     right: calc(50% - 34px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .primary {
+    gap: 0;
+  }
+  .primary a,
+  .primary button {
+    font-size: 1rem;
+    padding-inline: 8px;
   }
 }
