@@ -1213,6 +1213,18 @@ fn all_attack_outcomes_share_settlement_and_only_victory_plunders() {
             .find(|x| x.kind == "Combat")
             .unwrap()
             .payloads[&defender];
+        for round in report["rounds"].as_array().unwrap() {
+            assert!(
+                round.get("shots").is_none(),
+                "aggregate fire is derived, not stored"
+            );
+            let fire = round["fire"].as_array().unwrap();
+            assert_eq!(fire.len(), 2);
+            assert_eq!(fire[0]["owner"], serde_json::to_value(p).unwrap());
+            assert_eq!(fire[0]["side"], "Attacker");
+            assert_eq!(fire[1]["owner"], serde_json::to_value(defender).unwrap());
+            assert_eq!(fire[1]["side"], "Defender");
+        }
         let outcome = report["outcome"].as_str().unwrap();
         outcomes.insert(outcome.to_string());
         let f = w.fleets.values().next().unwrap();

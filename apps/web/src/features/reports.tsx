@@ -110,12 +110,6 @@ export function Reports({
   }
   return (
     <Section className={styles.screen}>
-      <header className={styles.intro}>
-        <p className={styles.eyebrow}>The mission archive</p>
-        <Heading level={2} className={styles.title}>
-          Dispatches from the frontier.
-        </Heading>
-      </header>
       {error && (
         <>
           <Text tone="danger" role="alert">
@@ -133,49 +127,63 @@ export function Reports({
       )}
       {detail ? (
         <>
-          <Link
-            onClick={() => void model.recordPresence('AccountVisit', null)}
-            {...routeTarget(universe, 'reports', origin)}
-          >
-            Back to reports
-          </Link>
-          <Heading level={2}>{label(detail.header.kind)}</Heading>
-          <Text className={styles.timestamp}>
-            <time dateTime={new Date(detail.header.observed_at).toISOString()}>
-              {exactTime(detail.header.observed_at)}
-            </time>{' '}
-            · {observationAge(detail.header.observed_at, now)} ·{' '}
-            {detail.header.read ? 'Read' : 'Unread'}
-            {detail.header.hidden ? ' · Hidden' : ''}
-          </Text>
-          <div className={styles.controls}>
-            <Button
-              variant="quiet"
-              onClick={() =>
-                void model.send({
-                  type: 'World',
-                  action: { type: 'MarkReportRead', report: detail.header.id },
-                })
-              }
+          <div className={styles.detailToolbar}>
+            <Link
+              onClick={() => void model.recordPresence('AccountVisit', null)}
+              {...routeTarget(universe, 'reports', origin)}
             >
-              Mark read
-            </Button>
-            <Button
-              variant="quiet"
-              onClick={() =>
-                void model.send({
-                  type: 'World',
-                  action: {
-                    type: 'SetReportHidden',
-                    report: detail.header.id,
-                    hidden: !detail.header.hidden,
-                  },
-                })
-              }
-            >
-              {detail.header.hidden ? 'Unhide' : 'Hide'} report
-            </Button>
+              Back to reports
+            </Link>
+            <Text className={styles.timestamp}>
+              <time
+                dateTime={new Date(detail.header.observed_at).toISOString()}
+              >
+                {exactTime(detail.header.observed_at)}
+              </time>{' '}
+              · {observationAge(detail.header.observed_at, now)} ·{' '}
+              {detail.header.read ? 'Read' : 'Unread'}
+              {detail.header.hidden ? ' · Hidden' : ''}
+            </Text>
+            <div className={styles.controls}>
+              <Button
+                variant="quiet"
+                onClick={() =>
+                  void model.send({
+                    type: 'World',
+                    action: {
+                      type: 'MarkReportRead',
+                      report: detail.header.id,
+                    },
+                  })
+                }
+              >
+                Mark read
+              </Button>
+              <Button
+                variant="quiet"
+                onClick={() =>
+                  void model.send({
+                    type: 'World',
+                    action: {
+                      type: 'SetReportHidden',
+                      report: detail.header.id,
+                      hidden: !detail.header.hidden,
+                    },
+                  })
+                }
+              >
+                {detail.header.hidden ? 'Unhide' : 'Hide'} report
+              </Button>
+            </div>
           </div>
+          {detail.payload.kind !== 'Combat' &&
+            detail.payload.kind !== 'ContactLost' && (
+              <Heading level={2}>{label(detail.header.kind)}</Heading>
+            )}
+          <ReportObservation
+            payload={detail.payload}
+            viewer={model.binding?.player}
+          />
           {detail.payload.kind === 'Espionage' &&
             model.view?.capabilities.some(
               (c) => c.capability === 'Attack' && c.enabled,
@@ -204,8 +212,7 @@ export function Reports({
               BigInt(detail.payload.debris.crystal) > 0n) && (
               <>
                 <Text>
-                  Reported debris is historical and unreserved; another fleet
-                  may have collected it.
+                  Debris may already have been collected by another fleet.
                 </Text>
                 <Button
                   onClick={() => {
@@ -221,7 +228,6 @@ export function Reports({
                 </Button>
               </>
             )}
-          <ReportObservation payload={detail.payload} />
         </>
       ) : item ? (
         <Text role="status">
