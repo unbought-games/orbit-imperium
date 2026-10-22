@@ -23,6 +23,7 @@ export const sourceEntries = [
   'fixtures',
   'rules',
   'scripts',
+  'vendor',
   '.dockerignore',
   '.env.example',
   '.gitignore',
