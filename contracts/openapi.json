@@ -7099,7 +7099,10 @@
               },
               "formula": {
                 "type": "string",
-                "enum": ["ResearchClassic", "ResearchAstrophysics"]
+                "enum": [
+                  "ResearchClassic",
+                  "ResearchAstrophysics"
+                ]
               },
               "labs": {
                 "type": "array",
@@ -7904,6 +7907,9 @@
             "items": {
               "$ref": "#/components/schemas/Inventory3"
             }
+          },
+          "colony": {
+            "$ref": "#/components/schemas/Colony4"
           }
         },
         "required": [
@@ -8591,7 +8597,9 @@
           "Outbound",
           "Returning",
           "Returned",
-          "Destroyed"
+          "Destroyed",
+          "Colonized",
+          "Deployed"
         ]
       },
       "MissionDestination4": {
@@ -8645,6 +8653,27 @@
               "field_identity"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "EmptyPosition"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "slot_revision": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              }
+            },
+            "required": [
+              "type",
+              "coordinates",
+              "slot_revision"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -8678,6 +8707,22 @@
             "properties": {
               "type": {
                 "const": "DebrisAt"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              }
+            },
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "EmptyPositionAt"
               },
               "coordinates": {
                 "$ref": "#/components/schemas/Coordinates"
@@ -9106,7 +9151,8 @@
           "ActorDraining",
           "TargetVacation",
           "BeginnerProtected",
-          "PresenceUnavailable"
+          "PresenceUnavailable",
+          "PositionOccupied"
         ]
       },
       "BoundReceipt4": {
@@ -9866,7 +9912,9 @@
                   "Espionage",
                   "Harvest",
                   "Reports",
-                  "Attack"
+                  "Attack",
+                  "Colonize",
+                  "Deploy"
                 ]
               },
               "enabled": {
@@ -9899,7 +9947,9 @@
                   "Espionage",
                   "Harvest",
                   "Reports",
-                  "Attack"
+                  "Attack",
+                  "Colonize",
+                  "Deploy"
                 ]
               },
               "enabled": {
@@ -9998,8 +10048,12 @@
           "attack_blocker": {
             "description": "Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers.",
             "anyOf": [
-              { "$ref": "#/components/schemas/GameError4" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/GameError4"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "espionage_eligible": {
@@ -10974,7 +11028,8 @@
               "Returned",
               "Recalled",
               "Harvested",
-              "MissionFailed"
+              "MissionFailed",
+              "Deployed"
             ]
           },
           "fleet": {
@@ -11380,6 +11435,12 @@
           },
           {
             "$ref": "#/components/schemas/ContactLostPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/ColonizedPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/ColonizationFailedPayload4"
           }
         ]
       },
@@ -11936,6 +11997,155 @@
         "additionalProperties": {
           "type": "string"
         }
+      },
+      "ColonizedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "Colonized"
+          },
+          "fleet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destination_coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fields": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_temperature": {
+            "type": "integer"
+          },
+          "min_temperature": {
+            "type": "integer"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/Resources"
+          },
+          "return_at": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "fleet",
+          "origin",
+          "destination_coordinates",
+          "at",
+          "body",
+          "fields",
+          "diameter_km",
+          "max_temperature",
+          "min_temperature",
+          "resources",
+          "return_at"
+        ],
+        "additionalProperties": false
+      },
+      "ColonizationFailedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "ColonizationFailed"
+          },
+          "fleet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destination_coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "enum": [
+              "Occupied",
+              "PositionLocked",
+              "ColonyCapacity"
+            ]
+          },
+          "return_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "fleet",
+          "origin",
+          "destination_coordinates",
+          "at",
+          "reason",
+          "return_at"
+        ],
+        "additionalProperties": false
+      },
+      "Colony4": {
+        "type": "object",
+        "properties": {
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_temperature": {
+            "type": "integer"
+          },
+          "min_temperature": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "profile": {
+            "const": "oi-redesign-reconstructed-v1"
+          }
+        },
+        "required": [
+          "diameter_km",
+          "max_temperature",
+          "min_temperature",
+          "created_at",
+          "profile"
+        ],
+        "additionalProperties": false
       }
     }
   }

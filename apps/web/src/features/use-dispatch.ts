@@ -5,6 +5,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import type { Command } from '../client-model/commands'
 import { currentServerTime } from '../client-model/game-projection'
 import type { DispatchDraft } from './missions'
+import { colonizationStatus } from './colonization'
 import {
   coordinateErrors,
   destinationError,
@@ -179,7 +180,9 @@ export function useDispatch({
       const selection: S['DestinationSelection4'] =
         mission === 'Harvest'
           ? { type: 'DebrisAt', coordinates }
-          : { type: 'BodyAt', coordinates, kind: 'Planet' }
+          : mission === 'Colonize'
+            ? { type: 'EmptyPositionAt', coordinates }
+            : { type: 'BodyAt', coordinates, kind: 'Planet' }
       const destination = await model
         .world({
           type: 'ResolveDestination',
@@ -255,6 +258,7 @@ export function useDispatch({
     }
   }
   return {
+    colony: colonizationStatus(view, Number(position)),
     coordinateProblems,
     coordinatesValid,
     targetProblem,

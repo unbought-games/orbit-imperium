@@ -12,6 +12,21 @@ pub(super) fn world_projection(
         .as_ref()
         .ok_or(ServiceError::InvariantFailure)?;
     let world = world_facts(state).map_err(|_| ServiceError::InvariantFailure)?;
+    for body in &mut progression.bodies {
+        if let Some(genesis) = world.records.colonies.get(&body.id) {
+            let source = state
+                .bodies
+                .get(&body.id)
+                .ok_or(ServiceError::InvariantFailure)?;
+            body.colony = Some(crate::progression::ColonyDto {
+                diameter_km: genesis.diameter_km,
+                min_temperature: source.max_temperature - 40,
+                max_temperature: source.max_temperature,
+                created_at: genesis.created_at,
+                profile: genesis.profile.clone(),
+            });
+        }
+    }
     let research = state
         .research
         .get(&viewer)
@@ -145,6 +160,18 @@ fn world_capabilities(
         }
     }
     // Retained Slice 4 clients validate the original capability enum strictly.
+    if rules.colonization() {
+        capabilities.push(CapabilityState {
+            capability: "Colonize".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+        capabilities.push(CapabilityState {
+            capability: "Deploy".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+    }
     if rules.attacks() {
         capabilities.push(CapabilityState {
             capability: "Attack".into(),

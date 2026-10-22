@@ -12,6 +12,7 @@ import { GalaxyPosition } from './galaxy-position'
 import { GalaxyAtlas } from './galaxy-atlas'
 import { Heading, Text } from '../ui/typography'
 import { exactTime } from './mission-presentation'
+import { colonizationStatus } from './colonization'
 type System = components['schemas']['GalaxySystem4']
 export function Galaxy({
   model,
@@ -170,6 +171,11 @@ export function Galaxy({
                   playerNames={data.player_names}
                   player={model.binding?.player}
                   canAttack={!!canAttack}
+                  origin={origin}
+                  colony={colonizationStatus(
+                    model.view,
+                    position.coordinates.position,
+                  )}
                   onDraft={onDraft}
                 />
               </li>

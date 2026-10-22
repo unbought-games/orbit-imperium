@@ -2,6 +2,66 @@ use super::*;
 
 const ELIGIBLE_MASK: u16 = (1 << 9) - 1;
 
+/// Colony-aware legacy frontier. With no removal capability, the first free
+/// eligible system is the frontier; no additional cursor/counter is persisted.
+/// Existing no-colony admissions retain their original stream and byte results.
+pub fn frontier_homeworld(
+    secret: &[u8; 32],
+    universe: UniverseId,
+    epoch: Epoch,
+    profile: &UniverseProfile,
+    ordinal: usize,
+    unavailable: &[Coordinates],
+) -> Result<Homeworld, RulesError> {
+    profile.validate()?;
+    if profile.homeworld_policy != "oi-homeworld-frontier-v1" {
+        return Err(RulesError::InvalidReference);
+    }
+    let occupied: std::collections::BTreeSet<_> = unavailable.iter().copied().collect();
+    if occupied.iter().any(|c| !profile.contains(*c)) {
+        return Err(RulesError::Range);
+    }
+    for galaxy in 1..=profile.galaxies {
+        for system in 1..=profile.systems_per_galaxy {
+            let free: Vec<_> = (4..=12)
+                .filter(|&position| {
+                    !occupied.contains(&Coordinates {
+                        galaxy,
+                        system,
+                        position,
+                    })
+                })
+                .collect();
+            if free.is_empty() {
+                continue;
+            }
+            let input = InputId(derived_id(
+                InputId(universe.0),
+                &format!("mvp-homeworld-{ordinal}"),
+            ));
+            let mut rng = Stream {
+                key: stream_key(secret, universe, epoch, input, "homeworld"),
+                bytes: 0,
+            };
+            let position = free[usize::from(rng.uniform(free.len() as u16)?)];
+            let max_temperature =
+                HOMEWORLD_TEMPERATURE_LOWS[position as usize - 1] + i32::from(rng.uniform(41)?);
+            return Ok(Homeworld {
+                coordinates: Coordinates {
+                    galaxy,
+                    system,
+                    position,
+                },
+                diameter_km: 12800,
+                fields: 163,
+                max_temperature,
+                rng_bytes: rng.bytes,
+            });
+        }
+    }
+    Err(RulesError::Range)
+}
+
 /// Allocate one homeworld from authoritative prior homeworlds and unavailable slots.
 /// `unavailable` includes planets and any unreleased tombstones; moons do not block slots.
 /// Counts and masks are derived for this call, never persisted.

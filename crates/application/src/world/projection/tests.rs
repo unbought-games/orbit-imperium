@@ -301,6 +301,7 @@ fn snapshot() -> ViewerSnapshot {
     coverage.fleet_owners.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            planet_slots: vec![],
             records: WorldRecords::default(),
             secret: [0; 32],
             covered_players: Default::default(),

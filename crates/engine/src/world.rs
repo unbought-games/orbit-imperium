@@ -14,6 +14,11 @@ pub enum Mission {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum MissionDestination {
+    EmptyPosition {
+        coordinates: Coordinates,
+        #[serde(with = "decimal_wire")]
+        slot_revision: i64,
+    },
     Body {
         id: BodyId,
         expected_kind: BodyKind,
@@ -27,6 +32,9 @@ pub enum MissionDestination {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum DestinationSelection {
+    EmptyPositionAt {
+        coordinates: Coordinates,
+    },
     BodyAt {
         coordinates: Coordinates,
         kind: BodyKind,
@@ -78,6 +86,8 @@ pub enum MissionLeg {
     Returning,
     Returned,
     Destroyed,
+    Colonized,
+    Deployed,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissionAuthorization {
@@ -151,6 +161,8 @@ pub struct RecipientReportState {
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub colonies: BTreeMap<BodyId, ColonyGenesis>,
     pub policies: BTreeMap<PlayerId, PlayerPolicy>,
     pub activity: BTreeMap<BodyId, BodyActivity>,
     pub lots: Vec<AssetLot>,
@@ -162,6 +174,8 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub planet_slots: Vec<PlanetSlot>,
     pub records: WorldRecords,
     pub secret: [u8; 32],
     pub covered_players: BTreeSet<PlayerId>,
@@ -180,6 +194,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colonization: Option<ColonizationRules>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raiding: Option<String>,
     pub combat: CombatRules,
     pub detector: String,
@@ -190,6 +206,9 @@ pub struct WorldRules {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if let Some(c) = &self.colonization {
+            c.validate()?;
+        }
         if self
             .raiding
             .as_ref()

@@ -1,3 +1,4 @@
+mod colonization;
 use orbit_application::StoreError;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 mod enrollment;

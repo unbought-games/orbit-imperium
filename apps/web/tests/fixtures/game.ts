@@ -62,7 +62,7 @@ export async function shellFixture(
     production?: components['schemas']['ProductionDto'][]
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
-    extraCapabilities?: Array<'Attack' | 'Espionage' | 'Harvest' | 'Transport' | 'Reports'>
+    extraCapabilities?: Array<'Attack' | 'Espionage' | 'Harvest' | 'Transport' | 'Reports' | 'Colonize' | 'Deploy'>
   } = {},
 ) {
   const protocol = options.protocol ?? 3

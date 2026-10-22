@@ -50,6 +50,7 @@ export function destinationError(
 }
 
 const messages: Partial<Record<S['GameError4'], string>> = {
+  PositionOccupied: 'This position is occupied. Choose an empty position.',
   BeginnerProtected:
     'Beginner protection prevents this mission between these players. Choose another target. Protection depends on both players’ strength and activity; review checks it again.',
   TargetVacation:

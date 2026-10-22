@@ -159,6 +159,48 @@ export function ReportObservation({
   playerNames?: PlayerNames
 }) {
   const kind = payload.kind
+  if (kind === 'Colonized' || kind === 'ColonizationFailed') {
+    const reasons: Record<string, string> = {
+      Occupied: 'The position was occupied at arrival.',
+      PositionLocked: 'The position was not unlocked at arrival.',
+      ColonyCapacity: 'Your planet limit was full at arrival.',
+    }
+    return (
+      <Panel
+        as="section"
+        aria-label="Report observation"
+        className={styles.observation}
+      >
+        <Heading level={3}>
+          {kind === 'Colonized' ? 'Colony established' : 'Colonization failed'}
+        </Heading>
+        <Text>Destination {coordinate(payload.destination_coordinates)}</Text>
+        {kind === 'Colonized' ? (
+          <>
+            <Text>
+              Consumed one Colony Ship. {text(payload.fields)} fields ·{' '}
+              {text(payload.diameter_km)} km diameter ·{' '}
+              {text(payload.min_temperature)} to {text(payload.max_temperature)}{' '}
+              °C.
+            </Text>
+            <Heading level={3}>Resources at founding</Heading>
+            <Resources value={payload.resources} />
+          </>
+        ) : (
+          <Text>
+            {reasons[text(payload.reason)] ??
+              'Arrival could not establish a colony.'}{' '}
+            All ships and cargo return; fuel is not refunded.
+          </Text>
+        )}
+        <Text>
+          {typeof payload.return_at === 'number'
+            ? `Return arrival: ${new Date(payload.return_at).toLocaleString()}.`
+            : 'No ships remain to return; the fleet slot is released.'}
+        </Text>
+      </Panel>
+    )
+  }
   if (kind === 'Espionage') {
     const target = record(payload.target),
       activity = record(payload.activity)
@@ -322,6 +364,7 @@ export function ReportObservation({
       'Recalled',
       'Harvested',
       'MissionFailed',
+      'Deployed',
     ].includes(text(kind))
   )
     return (
@@ -341,7 +384,7 @@ export function ReportObservation({
         {'cargo' in payload && (
           <>
             <Heading level={3}>
-              {kind === 'Delivered'
+              {kind === 'Delivered' || kind === 'Deployed'
                 ? 'Delivered resources'
                 : 'Carried resources'}
             </Heading>

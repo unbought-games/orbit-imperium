@@ -25,8 +25,15 @@ import { routeTarget } from '../shell/route-target'
 import { label } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
+  origin?: string
   coordinates: S['Coordinates']
-  mission: 'Transport' | 'Espionage' | 'Harvest' | 'Attack'
+  mission:
+    | 'Transport'
+    | 'Espionage'
+    | 'Harvest'
+    | 'Attack'
+    | 'Colonize'
+    | 'Deploy'
   observedAt?: number
   target?: S['MissionDestination4']
 }
@@ -51,6 +58,7 @@ export function Dispatch({
     targetProblem,
     attackWarning,
     mission,
+    colony,
     setMission,
     galaxy,
     setGalaxy,
@@ -94,8 +102,22 @@ export function Dispatch({
         {view.capabilities.some((c) => c.capability === 'Attack' && c.enabled)
           ? 'Attack victories can plunder resources into surviving cargo space.'
           : 'Attack is unavailable in this universe.'}{' '}
-        Colonization and deployment are unavailable.
+        {colony.enabled
+          ? 'Colonize an empty position or deploy ships to another owned planet.'
+          : 'Colonization and deployment are unavailable.'}
       </Text>
+      {mission === 'Colonize' && (
+        <Text role="status">
+          Planets: {colony.count} / {colony.capacity}.{' '}
+          {colony.reason ?? colony.warning} Requires at least one Colony Ship.
+        </Text>
+      )}
+      {mission === 'Deploy' && (
+        <Text>
+          Deployment transfers ships and cargo permanently to another owned
+          planet and credits half the paid fuel, rounded down.
+        </Text>
+      )}
       {draft?.observedAt !== undefined && (
         <Text>
           Prepared from an observation at{' '}
@@ -121,7 +143,16 @@ export function Dispatch({
                   clear()
                 }}
               >
-                {(['Transport', 'Espionage', 'Harvest', 'Attack'] as const)
+                {(
+                  [
+                    'Transport',
+                    'Espionage',
+                    'Harvest',
+                    'Attack',
+                    'Colonize',
+                    'Deploy',
+                  ] as const
+                )
                   .filter((m) =>
                     view.capabilities.some(
                       (c) => c.capability === m && c.enabled,
@@ -334,10 +365,12 @@ export function Dispatch({
                     id: quote.intent.destination.id,
                     kind: quote.intent.destination.expected_kind,
                   }
-                : {
-                    id: quote.intent.destination.field_identity,
-                    kind: 'Debris',
-                  }
+                : quote.intent.destination.type === 'Debris'
+                  ? {
+                      id: quote.intent.destination.field_identity,
+                      kind: 'Debris',
+                    }
+                  : undefined
             }
             destination={{
               galaxy: Number(galaxy),

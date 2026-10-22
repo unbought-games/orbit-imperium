@@ -212,10 +212,21 @@ pub(crate) async fn save(
 ) -> Result<(), StoreError> {
     let mut heads = BTreeSet::new();
     for x in &c.production_settings {
-        let old = facts
-            .production_settings
-            .get(&x.body)
-            .ok_or(StoreError::CorruptData)?;
+        let Some(old) = facts.production_settings.get(&x.body) else {
+            if facts.bodies.contains_key(&x.body)
+                || !c.bodies.iter().any(|b| b.id == x.body)
+                || x.revision != 0
+            {
+                return Err(StoreError::CorruptData);
+            }
+            sqlx::query("INSERT INTO production_settings(body,data,revision) VALUES($1,$2,0)")
+                .bind(x.body.0)
+                .bind(sqlx::types::Json(x))
+                .execute(&mut **tx)
+                .await
+                .map_err(db_error)?;
+            continue;
+        };
         let n = sqlx::query(
             "UPDATE production_settings SET data=$2,revision=$3 WHERE body=$1 AND revision=$4",
         )

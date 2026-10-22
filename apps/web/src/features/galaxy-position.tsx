@@ -6,18 +6,23 @@ import type { DispatchDraft } from './missions'
 import { Button } from '../ui/button'
 import styles from './galaxy.module.css'
 import { BodyIllustration } from './body-illustration'
+import type { colonizationStatus } from './colonization'
 
 export function GalaxyPosition({
   position,
   player,
   playerNames,
   canAttack,
+  colony,
+  origin,
   onDraft,
 }: {
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
   player: string | undefined
   canAttack: boolean
+  colony: ReturnType<typeof colonizationStatus>
+  origin: string
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
@@ -26,8 +31,8 @@ export function GalaxyPosition({
   const { body, debris, coordinates } = position
   const owned = body?.owner === player
   const target = `[${coordinates.galaxy}:${coordinates.system}:${coordinates.position}]`
-  const canTarget = !!body && !owned
-  const actionable = canTarget || !!debris
+  const canTarget = !!body && body.id !== origin
+  const actionable = canTarget || !!debris || (!body && colony.enabled)
   const content = (
     <>
       <span className={styles.planetCell}>
@@ -128,26 +133,53 @@ export function GalaxyPosition({
               <Truck size={16} aria-hidden="true" />
               Transport
             </Button>
+            {owned && colony.enabled && (
+              <Button onClick={() => onDraft(coordinates, 'Deploy')}>
+                Deploy
+              </Button>
+            )}
+            {!owned && (
+              <>
+                <Button
+                  disabled={!canAttack}
+                  title={
+                    canAttack
+                      ? undefined
+                      : 'Attack unavailable in this universe'
+                  }
+                  onClick={() => onDraft(coordinates, 'Attack')}
+                >
+                  <Crosshair size={16} aria-hidden="true" />
+                  Attack
+                </Button>
+                <Button
+                  disabled={!body.espionage_eligible}
+                  title={
+                    body.espionage_eligible
+                      ? undefined
+                      : 'Espionage unavailable'
+                  }
+                  onClick={() => onDraft(coordinates, 'Espionage')}
+                >
+                  <Eye size={16} aria-hidden="true" />
+                  Espionage
+                </Button>
+              </>
+            )}
+          </>
+        )}
+        {!body && colony.enabled && (
+          <>
             <Button
-              disabled={!canAttack}
-              title={
-                canAttack ? undefined : 'Attack unavailable in this universe'
-              }
-              onClick={() => onDraft(coordinates, 'Attack')}
+              disabled={!!colony.reason}
+              onClick={() => onDraft(coordinates, 'Colonize')}
             >
-              <Crosshair size={16} aria-hidden="true" />
-              Attack
+              Colonize
             </Button>
-            <Button
-              disabled={!body.espionage_eligible}
-              title={
-                body.espionage_eligible ? undefined : 'Espionage unavailable'
-              }
-              onClick={() => onDraft(coordinates, 'Espionage')}
-            >
-              <Eye size={16} aria-hidden="true" />
-              Espionage
-            </Button>
+            <p>
+              {colony.reason ?? colony.warning} Requires at least one Colony
+              Ship.
+            </p>
           </>
         )}
         {debris && (
