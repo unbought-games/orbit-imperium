@@ -2279,3 +2279,47 @@ for (const width of [768, 1024, 1440, 1800]) {
     await page.screenshot({ path: `test-results/desktop-pinned-header-${width}.png` })
   })
 }
+
+for (const width of [768, 1024, 1440, 1800]) {
+  test(`desktop brand stays aligned above world search at ${width}px`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width, height: 900 })
+    const bodies = Array.from({ length: 9 }, (_, index) => ({
+      ...body,
+      id: index === 0 ? body.id : id(index + 20),
+      coordinates: { galaxy: 1, system: 371, position: index + 1 },
+    }))
+    await shellFixture(page, { protocol: 4, bodies })
+    const brand = page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
+    const primary = page.getByRole('navigation', { name: 'Main navigation', exact: true })
+    const planet = page.getByLabel('Selected body')
+    const resources = page.getByLabel('Current resources')
+    const search = page.getByRole('searchbox', { name: 'Search owned worlds' })
+    await expect(search).toBeVisible()
+    const assertAlignment = async () => {
+      const brandBox = (await brand.boundingBox())!
+      for (const locator of [planet, primary, resources]) {
+        const box = (await locator.boundingBox())!
+        expect(Math.abs(box.y + box.height / 2 - brandBox.y - brandBox.height / 2)).toBeLessThan(2)
+      }
+      const row = (await primary.boundingBox())!
+      expect((await search.boundingBox())!.y).toBeGreaterThanOrEqual(row.y + row.height)
+      expect((await brand.locator('../..').boundingBox())!.y).toBe(0)
+    }
+    await assertAlignment()
+    await primary.getByRole('link', { name: 'Build', exact: true }).click()
+    const secondary = page.getByRole('navigation', { name: 'Build navigation', exact: true })
+    await expect(secondary).toBeVisible()
+    for (const scroll of [0, 300, 100000]) {
+      await page.evaluate(y => window.scrollTo(0, y), scroll)
+      await assertAlignment()
+      const searchBox = (await search.boundingBox())!
+      expect((await secondary.boundingBox())!.y).toBeGreaterThanOrEqual(searchBox.y + searchBox.height)
+    }
+    await search.fill('1:371:9')
+    await planet.selectOption(bodies[8].id)
+    await expect(planet).toHaveValue(bodies[8].id)
+    await expect(search).toHaveValue('')
+    await assertAlignment()
+  })
+}
