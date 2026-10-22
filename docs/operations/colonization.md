@@ -48,7 +48,7 @@ or progress reset is required. Subsequent signups use the same active catalog.
 The immutable `mvp-v1-slice-6.json` fixture documents the full chain; existing
 artifacts and new-world defaults are unchanged. Operators activate each world.
 
-Migration `0013_colonies.sql` prepares an empty colony-genesis table, coordinate
+Migration `0014_colonies.sql` prepares an empty colony-genesis table, coordinate
 lifecycle revision heads, an insert trigger compatible with previous writers,
 and the additional terminal fleet states. It does not scan/backfill player or
 fleet history. Existing occupied slots without a head have birth revision 1;
