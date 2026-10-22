@@ -60,10 +60,11 @@ export class RuntimeController {
     const { platform } = this.deps
     let cancel: (() => void) | undefined,
       delay = 1000,
+      running = false,
       stopped = false
     const needed = () => runtimeNeedsRecovery(this.store.getState().runtime)
     const queue = (wait = delay) => {
-      if (stopped || cancel || this.store.getState().busy) return
+      if (stopped || running || cancel || this.store.getState().busy) return
       cancel = platform.scheduleOnce?.(
         () => {
           cancel = undefined
@@ -73,7 +74,11 @@ export class RuntimeController {
             return
           }
           delay = Math.min(30000, delay * 2)
-          void this.retry()
+          running = true
+          void this.retry(false, 'automatic').finally(() => {
+            running = false
+            inspect()
+          })
         },
         Math.max(wait, this.retryAt - platform.monotonicNowMs()),
       )
@@ -163,9 +168,11 @@ export class RuntimeController {
       if (g === this.generation) this.store.setState({ busy: false })
     }
   }
-  async retry(suspend = false) {
+  async retry(suspend = false, source: 'manual' | 'automatic' = 'manual') {
     const g = ++this.generation
-    this.store.setState({ busy: true, message: '' })
+    // Background recovery must keep controls mounted and leave focus alone.
+    // Its scheduler owns concurrency; interactive operations retain busy feedback.
+    if (source === 'manual') this.store.setState({ busy: true, message: '' })
     if (suspend)
       this.replace({
         status: 'unavailable',
@@ -173,15 +180,18 @@ export class RuntimeController {
       })
     try {
       await this.accept(await this.api.bootstrap(), 'retry', g)
+      if (g === this.generation) this.clearMessage()
     } catch (error) {
       if (g === this.generation) {
         this.retryAt =
           this.deps.platform.monotonicNowMs() +
           (error instanceof HttpError ? error.retryAfterMs : 0)
-        this.store.setState({ message: 'Unable to connect. Please retry.' })
+        if (source === 'manual')
+          this.store.setState({ message: 'Unable to connect. Please retry.' })
       }
     } finally {
-      if (g === this.generation) this.store.setState({ busy: false })
+      if (source === 'manual' && g === this.generation)
+        this.store.setState({ busy: false })
     }
   }
   loseAccess() {

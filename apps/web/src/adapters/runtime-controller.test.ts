@@ -335,3 +335,68 @@ it('caps prolonged outage backoff at thirty seconds and stops on a confirmed ano
     vi.useRealTimers()
   }
 })
+
+it.each([
+  new HttpError(503, 'Unavailable'),
+  new TypeError('Failed to fetch'),
+  new DOMException('Request timed out', 'TimeoutError'),
+])('keeps automatic recovery quiet after %s', async (error) => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  api.bootstrap.mockRejectedValue(error)
+  const changes: { busy: boolean; message: string }[] = []
+  const unsubscribe = owner.store.subscribe(({ busy, message }) => {
+    changes.push({ busy, message })
+  })
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(3)
+    expect(changes.every(({ busy, message }) => !busy && message === '')).toBe(
+      true,
+    )
+    expect(owner.store.getState()).toMatchObject({ busy: false, message: '' })
+    // An explicit retry retains its error feedback.
+    await owner.retry()
+    expect(owner.store.getState().message).toBe(
+      'Unable to connect. Please retry.',
+    )
+  } finally {
+    recovery.stop()
+    unsubscribe()
+    vi.useRealTimers()
+  }
+})
+
+it('lets manual retry supersede background work without losing its busy state', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  const background = deferred<Bootstrap>(),
+    manual = deferred<Bootstrap>()
+  api.bootstrap
+    .mockReturnValueOnce(background.promise)
+    .mockReturnValueOnce(manual.promise)
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(owner.store.getState().busy).toBe(false)
+    const retry = owner.retry()
+    expect(owner.store.getState().busy).toBe(true)
+    background.resolve(bootstrapFixture(4))
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(owner.store.getState()).toMatchObject({
+      busy: true,
+      runtime: { status: 'unavailable' },
+    })
+    expect(api.bootstrap).toHaveBeenCalledTimes(2)
+    manual.resolve(bootstrapFixture(4))
+    await retry
+    expect(owner.store.getState()).toMatchObject({
+      busy: false,
+      runtime: { status: 'authenticated' },
+    })
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})

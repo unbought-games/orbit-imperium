@@ -928,3 +928,44 @@ test('mobile startup automatically recovers from a transient restart without sig
   await ready(page.getByLabel('Password')).toHaveCount(0)
   await page.screenshot({ path: 'test-results/transient-recovered-mobile.png', fullPage: true })
 })
+
+
+test('automatic outage retries preserve Retry and Sign out focus without manual-error alerts', async ({ page }) => {
+  const ready = expect.configure({ timeout: 30000 })
+  await page.clock.install()
+  await page.clock.pauseAt(new Date())
+  const payload = bootstrapFixture(4)
+  if (payload.result.status !== 'authenticated') throw Error('fixture')
+  payload.result.game = { status: 'unavailable', code: 'Unavailable' }
+  let reads = 0
+  const release = new Map<number, () => void>()
+  const completed = new Set<number>()
+  await page.route('**/api/v1/bootstrap', async route => {
+    const read = ++reads
+    if (read === 1) return route.fulfill({ json: payload })
+    await new Promise<void>(resolve => release.set(read, resolve))
+    if (read === 2) await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+    else await route.abort('failed')
+    completed.add(read)
+  })
+  await page.goto('/login')
+  const retry = page.getByRole('button', { name: 'Retry connection' })
+  const signout = page.getByRole('button', { name: 'Sign out', exact: true })
+  await ready(retry).toBeVisible()
+  for (const [read, control, delay] of [[2, retry, 1000], [3, signout, 2000]] as const) {
+    await control.focus()
+    await page.clock.runFor(delay)
+    await ready.poll(() => release.has(read)).toBe(true)
+    await ready(control).toBeFocused()
+    await ready(retry).toBeEnabled()
+    await ready(signout).toBeEnabled()
+    release.get(read)!()
+    await ready.poll(() => completed.has(read)).toBe(true)
+    // Flush response handling without crossing the next backoff boundary.
+    await page.clock.runFor(100)
+    await ready(control).toBeFocused()
+    await ready(page.getByRole('alert')).toHaveCount(1)
+    await ready(page.getByRole('alert')).toHaveText('Connection temporarily unavailable. Reconnecting automatically…')
+    await ready(page.getByText('Unable to connect. Please retry.')).toHaveCount(0)
+  }
+})
