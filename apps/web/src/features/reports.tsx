@@ -12,6 +12,7 @@ import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
 import { ReportObservation } from './report-observation'
+import { reportFailure } from './report-failure'
 import type { DispatchDraft } from './missions'
 import { label } from '../ui/format'
 import { useStore } from 'zustand'
@@ -34,18 +35,19 @@ export function Reports({
   const now = useStore(model.store, currentServerTime)
   const [page, setPage] = useState<S['ReportsPage4'] | null>(null),
     [detail, setDetail] = useState<S['ReportDetail4'] | null>(null),
-    [error, setError] = useState(''),
+    [error, setError] = useState<unknown>(null),
     [includeHidden, setIncludeHidden] = useState(false),
     [refresh, setRefresh] = useState(0),
     [olderPages, setOlderPages] = useState(false),
     [loading, setLoading] = useState(false),
     [loadingMore, setLoadingMore] = useState(false)
+  const failure = reportFailure(error)
   useEffect(() => {
     if (!item) setDetail(null)
     if (!item && page && olderPages) return
     let live = true
     setLoading(true)
-    setError('')
+    setError(null)
     if (detail?.header.id !== item) setDetail(null)
     const load = item
       ? model.reportDetail(item)
@@ -74,12 +76,10 @@ export function Reports({
           setPage(v)
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (live) {
           setLoading(false)
-          setError(
-            'Report unavailable. You may not have access, or the connection was interrupted.',
-          )
+          setError(error)
         }
       })
     return () => {
@@ -89,7 +89,7 @@ export function Reports({
     }
   }, [model, item, model.view?.viewer_revision, includeHidden, refresh])
   async function more() {
-    setError('')
+    setError(null)
     setOlderPages(true)
     setLoadingMore(true)
     try {
@@ -102,8 +102,8 @@ export function Reports({
           ...next,
           items: [...(old?.items ?? []), ...next.items],
         }))
-    } catch {
-      setError('Unable to load more reports.')
+    } catch (error) {
+      setError(error)
     } finally {
       setLoadingMore(false)
     }
@@ -119,18 +119,22 @@ export function Reports({
           Back to reports
         </Link>
       )}
-      {error && (
+      {error !== null && (
         <>
           <Text tone="danger" role="alert">
-            {error}
+            {failure.message}
           </Text>
           <Button
             onClick={() => {
+              if (failure.reload) {
+                window.location.reload()
+                return
+              }
               setOlderPages(false)
               setRefresh((n) => n + 1)
             }}
           >
-            Retry reports
+            {failure.reload ? 'Reload app' : 'Retry reports'}
           </Button>
         </>
       )}

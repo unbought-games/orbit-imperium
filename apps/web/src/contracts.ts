@@ -4582,18 +4582,7 @@ export interface components {
             kind: "Planet" | "Moon";
             amounts: components["schemas"]["Resources"];
             capacity: components["schemas"]["Resources"];
-            levels: {
-                MetalMine: number;
-                CrystalMine: number;
-                DeuteriumSynthesizer: number;
-                SolarPlant: number;
-                MetalStorage: number;
-                CrystalStorage: number;
-                DeuteriumTank: number;
-                RoboticsFactory: number;
-                ResearchLab: number;
-                Shipyard: number;
-            };
+            levels: components["schemas"]["BuildingLevels3"];
             fields: number;
             fields_used: number;
             fields_reserved: number;
@@ -4769,7 +4758,7 @@ export interface components {
             /** @constant */
             type: "EmptyPosition";
             coordinates: components["schemas"]["Coordinates"];
-            slot_revision: string;
+            slot_revision: components["schemas"]["Decimal"];
         };
         DestinationSelection4: {
             /** @constant */
@@ -5252,18 +5241,7 @@ export interface components {
             } | {
                 /** @constant */
                 visibility: "Known";
-                value: {
-                    MetalMine: number;
-                    CrystalMine: number;
-                    DeuteriumSynthesizer: number;
-                    SolarPlant: number;
-                    MetalStorage: number;
-                    CrystalStorage: number;
-                    DeuteriumTank: number;
-                    RoboticsFactory: number;
-                    ResearchLab: number;
-                    Shipyard: number;
-                };
+                value: components["schemas"]["BuildingLevels3"];
             };
             research: {
                 /** @constant */
@@ -5271,15 +5249,7 @@ export interface components {
             } | {
                 /** @constant */
                 visibility: "Known";
-                value: {
-                    EnergyTechnology: number;
-                    ComputerTechnology: number;
-                    CombustionDrive: number;
-                    EspionageTechnology: number;
-                    WeaponsTechnology: number;
-                    ShieldingTechnology: number;
-                    ArmourTechnology: number;
-                };
+                value: components["schemas"]["ResearchLevels3"];
             };
             activity: components["schemas"]["PublicActivity4"];
             counterespionage: {
@@ -5498,7 +5468,7 @@ export interface components {
         } | {
             /** @constant */
             type: "Invalidate";
-            minimum_viewer_revision: string;
+            minimum_viewer_revision: components["schemas"]["Decimal"];
         } | {
             /** @constant */
             type: "Reset";
@@ -5511,7 +5481,7 @@ export interface components {
         SubmittedIntent: {
             quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"];
             submittedAt: number;
-            baseRevision: string;
+            baseRevision: components["schemas"]["Decimal"];
             /** Format: uuid */
             dependsOn?: string;
         };
@@ -5581,6 +5551,14 @@ export interface components {
             created_at: number;
             /** @constant */
             profile: "oi-redesign-reconstructed-v1";
+        };
+        /** @description Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable. */
+        BuildingLevels3: {
+            [key: string]: number;
+        };
+        /** @description Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable. */
+        ResearchLevels3: {
+            [key: string]: number;
         };
     };
     responses: never;

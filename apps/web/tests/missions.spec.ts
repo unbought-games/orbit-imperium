@@ -295,7 +295,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
   lookup.searchParams.set('body', foreignView.bodies[0].id)
   await page.goto(lookup.toString())
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Report unavailable' }),
+    page.getByRole('alert').filter({ hasText: 'This report was not found or is not available to your account.' }),
   ).toBeVisible()
   for (let i = 2; i < 5; i++) {
     await signOut(page)

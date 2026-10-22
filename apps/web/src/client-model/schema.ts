@@ -4,16 +4,15 @@ import schema from '../../../../contracts/openapi.json'
 const ajv = new Ajv({ strict: false })
 addFormats(ajv)
 const validators = new Map<string, ReturnType<typeof ajv.compile>>()
-function exactQuantities(value: unknown): boolean {
-  if (typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value))
-    return BigInt(value) <= 9223372036854775807n
-  if (Array.isArray(value)) return value.every(exactQuantities)
-  return (
-    !value ||
-    typeof value !== 'object' ||
-    Object.values(value).every(exactQuantities)
-  )
+/** Data that does not match its declared contract. No payload is retained. */
+export class ContractDataError extends Error {
+  constructor(public readonly schemaName: string) {
+    super('Invalid contract data')
+    this.name = 'ContractDataError'
+  }
 }
+export const incompatibleResponseMessage =
+  'The game returned data this version cannot read. Reload the app. If this continues, please report it.'
 export function validate<T>(name: string, value: unknown): T {
   let validator = validators.get(name)
   if (!validator) {
@@ -23,7 +22,6 @@ export function validate<T>(name: string, value: unknown): T {
     })
     validators.set(name, validator)
   }
-  if (!validator(value) || !exactQuantities(value))
-    throw Error('Invalid contract data')
+  if (!validator(value)) throw new ContractDataError(name)
   return value as T
 }
