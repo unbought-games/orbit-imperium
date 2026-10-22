@@ -1,12 +1,14 @@
 import { useStore } from 'zustand'
 import type { Coordinator } from '../../client-model/coordinator'
-import { confirmedProduction, productionAutosave } from './production-autosave'
+import {
+  productionControlSettings,
+  productionAutosave,
+} from './production-autosave'
 
 export function useProductionAutosave(model: Coordinator, body: string) {
   const autosave = productionAutosave(model, body)
   const { edits, flight, error } = useStore(autosave.store)
   const game = useStore(model.store)
-  const production = confirmedProduction(model, body)
   const pending = [...game.attempts.values()].filter(
     (attempt) =>
       attempt.envelope.command.type === 'SetProduction' &&
@@ -14,7 +16,7 @@ export function useProductionAutosave(model: Coordinator, body: string) {
       !attempt.reconciled,
   )
   return {
-    settings: production && { ...production.settings, ...edits },
+    settings: productionControlSettings(game, body, edits),
     change: autosave.change,
     retry: autosave.retry,
     error,

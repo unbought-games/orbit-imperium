@@ -669,6 +669,143 @@ test('production rejection retains edits and retry preserves unrelated server ch
   )
 })
 
+for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
+  test(`production edits survive a restored ${restoredCommand} command`, async ({
+    page,
+  }) => {
+    const { economy } = await setup(page)
+    const sent: components['schemas']['CommandEnvelopeV3'][] = []
+    const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
+    await page.route('**/commands', async (route) => {
+      const envelope = route.request().postDataJSON()
+      sent.push(envelope)
+      const pending: components['schemas']['BoundReceipt3'] = {
+        protocol: 3,
+        binding,
+        command_id: envelope.command_id,
+        admitted_at: Date.now(),
+        executed_at: null,
+        status: 'Pending',
+      }
+      if (sent.length === 1) {
+        receipts.set(envelope.command_id, pending)
+        await route.fulfill({ json: pending })
+      } else {
+        economy.settings = envelope.command.settings
+        economy.settings_revision = '3'
+        await route.fulfill({
+          json: {
+            ...pending,
+            status: 'Committed',
+            executed_at: Date.now(),
+            minimum_viewer_revision: '1',
+            result_ids: [],
+          },
+        })
+      }
+    })
+    await page.route('**/commands/*', (route) => {
+      const id = new URL(route.request().url()).pathname.split('/').pop()!
+      return route.fulfill({ json: receipts.get(id) })
+    })
+    if (restoredCommand === 'production') {
+      await page
+        .getByRole('button', { name: 'Resource settings', exact: true })
+        .click()
+      await page.getByLabel('metal mine production').selectOption('50')
+    } else {
+      await page
+        .getByRole('button', { name: 'Start upgrade Metal Mine', exact: true })
+        .click()
+    }
+    await expect.poll(() => sent.length).toBe(1)
+    // Wait for durable receipt storage, then emulate an older saved command
+    // that predates submitted_intent. Reload must preserve command recovery.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Object.entries(sessionStorage)
+            .filter(([key]) => key.startsWith('orbit:attempts:v3:'))
+            .some(([, value]) => JSON.parse(value).status === 'pending'),
+        ),
+      )
+      .toBe(true)
+    if (restoredCommand === 'legacy upgrade')
+      await page.evaluate(() => {
+        for (const [key, value] of Object.entries(sessionStorage)) {
+          if (!key.startsWith('orbit:attempts:v3:')) continue
+          const attempt = JSON.parse(value)
+          delete attempt.submitted_intent
+          sessionStorage.setItem(key, JSON.stringify(attempt))
+        }
+      })
+    await page.reload()
+    await page
+      .getByRole('button', { name: 'Resource settings', exact: true })
+      .click()
+    const panel = page.getByRole('region', { name: 'Production controls' })
+    const metal = page.getByLabel('metal mine production')
+    await expect(metal).toHaveValue(
+      restoredCommand === 'production' ? '50' : '100',
+    )
+    const totals = panel
+      .locator('div')
+      .filter({ has: page.getByText('Energy balance', { exact: true }) })
+      .first()
+    const confirmedTotals = await totals.innerText()
+    const desired = restoredCommand === 'production' ? '100' : '50'
+    await metal.selectOption(desired)
+    await expect(metal).toHaveValue(desired)
+    await expect(panel.getByRole('status')).toContainText(
+      'Saving production changes',
+    )
+    expect(sent).toHaveLength(1)
+    expect(await totals.innerText()).toBe(confirmedTotals)
+    economy.settings = {
+      ...economy.settings,
+      metal_mine: restoredCommand === 'production' ? 50 : 100,
+      crystal_mine: 80,
+    }
+    economy.settings_revision = '2'
+    if (restoredCommand === 'legacy upgrade') {
+      await refreshGame(page)
+      await expect(page.getByLabel('crystal mine production')).toHaveValue('80')
+    }
+    // The production command commits; the legacy upgrade rejects. Either
+    // terminal result should release the queued edit without a Retry click.
+    const original = receipts.get(sent[0].command_id)!
+    receipts.set(
+      sent[0].command_id,
+      restoredCommand === 'production'
+        ? {
+            ...original,
+            status: 'Committed',
+            executed_at: Date.now(),
+            minimum_viewer_revision: '1',
+            result_ids: [],
+          }
+        : {
+            ...original,
+            status: 'Rejected',
+            executed_at: Date.now(),
+            code: 'InsufficientResources',
+          },
+    )
+    await refreshGame(page)
+    await expect.poll(() => sent.length).toBe(2)
+    expect(sent[1].command).toMatchObject({
+      type: 'SetProduction',
+      expected_settings_revision: '2',
+      settings: { metal_mine: Number(desired), crystal_mine: 80 },
+    })
+    await expect(panel.getByRole('status')).toHaveText(
+      'All changes saved automatically.',
+    )
+    await expect(metal).toHaveValue(desired)
+    await expect(panel.getByRole('alert')).toHaveCount(0)
+  })
+}
+
 test('resources fit compact and touch layouts in all three states', async ({
   page,
 }) => {

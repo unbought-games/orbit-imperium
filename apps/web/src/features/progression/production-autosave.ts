@@ -1,7 +1,16 @@
 import { createStore } from 'zustand/vanilla'
 import type { components } from '../../contracts'
 import type { Coordinator } from '../../client-model/coordinator'
-import { canonical } from '../../client-model/commands'
+import {
+  canonical,
+  sameBinding,
+  type Command,
+} from '../../client-model/commands'
+import {
+  activeAttempt,
+  pendingCommand,
+} from '../../client-model/game-projection'
+import type { GameState } from '../../client-model/game-store'
 
 type Settings = components['schemas']['ProductionDto']['settings']
 type Edits = Partial<Settings>
@@ -13,6 +22,33 @@ export function confirmedProduction(model: Coordinator, body: string) {
   return view && view.protocol !== 2
     ? view.progression.production.find((entry) => entry.body === body)
     : undefined
+}
+
+// Pending command inputs remain visible after reload even without a local edit
+// or a legacy submitted_intent. They never replace confirmed economy totals.
+export function productionControlSettings(
+  game: GameState,
+  body: string,
+  edits: Edits,
+) {
+  const view = game.view
+  if (!view || view.protocol === 2) return
+  const production = view.progression.production.find(
+    (entry) => entry.body === body,
+  )
+  if (!production) return
+  let settings = production.settings
+  for (const attempt of game.attempts.values()) {
+    const command = attempt.envelope.command
+    if (
+      command.type === 'SetProduction' &&
+      command.body === body &&
+      sameBinding(attempt.envelope.binding, view.binding) &&
+      activeAttempt(attempt, view)
+    )
+      settings = command.settings
+  }
+  return { ...settings, ...edits }
 }
 
 // Retain user edits across panel/body navigation, scoped to this session. The game
@@ -120,15 +156,19 @@ export class ProductionAutosave {
       if (Object.keys(edits).length) this.store.setState({ edits: {} })
       return
     }
+    const command: Command = {
+      type: 'SetProduction',
+      body: this.body,
+      settings: { ...production.settings, ...changes },
+      expected_settings_revision: production.settings_revision,
+    }
+    // Restored commands without intents can fence all actions on this body.
+    // Keep edits queued until the same admission guard used by send permits it.
+    if (pendingCommand(game, command)) return
     const next: Flight = { edits: changes }
     this.store.setState({ edits: changes, flight: next })
     void this.model
-      .send({
-        type: 'SetProduction',
-        body: this.body,
-        settings: { ...production.settings, ...changes },
-        expected_settings_revision: production.settings_revision,
-      })
+      .send(command)
       .then((id) => {
         if (this.store.getState().flight !== next) return
         if (id) this.store.setState({ flight: { ...next, id } })

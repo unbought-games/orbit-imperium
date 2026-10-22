@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { Coordinator } from '../../client-model/coordinator'
 import type { Attempt, Command } from '../../client-model/commands'
 import type { components } from '../../contracts'
-import { productionAutosave } from './production-autosave'
+import {
+  productionAutosave,
+  productionControlSettings,
+} from './production-autosave'
 
 type Production = components['schemas']['ProductionDto']
 const settings: Production['settings'] = {
@@ -176,6 +179,159 @@ describe('production autosave', () => {
       expected_settings_revision: '5',
       settings: { metal_mine: 20, crystal_mine: 60 },
     })
+  })
+
+  it('queues behind a restored body command without an intent and resumes automatically', async () => {
+    const { model, autosave, sent, receipt, snapshot } = setup()
+    model.store.setState({
+      attempts: new Map([
+        [
+          'restored',
+          {
+            envelope: {
+              command_id: 'restored',
+              command: {
+                type: 'StartUpgrade',
+                body: 'body',
+                building: 'MetalMine',
+                expected_terms_hash: 'hash',
+              },
+            },
+            status: 'pending',
+            reconciled: false,
+          } as Attempt,
+        ],
+      ]),
+    })
+    autosave.change('metal_mine', 50)
+    await settle()
+    expect(sent).toHaveLength(0)
+    expect(autosave.store.getState().error).toBeNull()
+    expect(autosave.store.getState().edits).toEqual({ metal_mine: 50 })
+    snapshot({ crystal_mine: 80 }, '2')
+    receipt('restored', 'committed', true)
+    await settle()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({
+      expected_settings_revision: '2',
+      settings: { metal_mine: 50, crystal_mine: 80 },
+    })
+  })
+
+  it('does not wait for a restored command on a different body', async () => {
+    const { model, autosave, sent } = setup()
+    model.store.setState({
+      attempts: new Map([
+        [
+          'restored',
+          {
+            envelope: {
+              command_id: 'restored',
+              command: {
+                type: 'StartUpgrade',
+                body: 'other-body',
+                building: 'MetalMine',
+                expected_terms_hash: 'hash',
+              },
+            },
+            status: 'pending',
+            reconciled: false,
+          } as Attempt,
+        ],
+      ]),
+    })
+    autosave.change('metal_mine', 50)
+    await settle()
+    expect(sent).toHaveLength(1)
+  })
+
+  it.each(['pending', 'uncertain'] as const)(
+    'shows restored %s settings, with newer local edits taking precedence',
+    (status) => {
+      const { model, autosave } = setup()
+      const game = model.store.getState()
+      model.store.setState({
+        attempts: new Map([
+          [
+            'restored',
+            {
+              envelope: {
+                binding: game.binding,
+                command_id: 'restored',
+                command: {
+                  type: 'SetProduction',
+                  body: 'body',
+                  settings: { ...settings, metal_mine: 50 },
+                  expected_settings_revision: '1',
+                },
+              },
+              status,
+              reconciled: false,
+            } as Attempt,
+          ],
+        ]),
+      })
+      expect(
+        productionControlSettings(model.store.getState(), 'body', {}),
+      ).toEqual({ ...settings, metal_mine: 50 })
+      expect(
+        productionControlSettings(model.store.getState(), 'body', {
+          metal_mine: 100,
+        }),
+      ).toEqual(settings)
+      expect(autosave.store.getState().edits).toEqual({})
+      expect(
+        game.view?.protocol !== 2 &&
+          game.view?.progression.production[0].settings,
+      ).toEqual(settings)
+    },
+  )
+
+  it.each([
+    'rejected',
+    'reconciled',
+    'snapshot arrived',
+    'other binding',
+    'other body',
+  ] as const)('does not overlay restored production when %s', (condition) => {
+    const { model } = setup()
+    const game = model.store.getState()
+    model.store.setState({
+      attempts: new Map([
+        [
+          'restored',
+          {
+            envelope: {
+              binding:
+                condition === 'other binding'
+                  ? { ...game.binding, epoch: 'other' }
+                  : game.binding,
+              command_id: 'restored',
+              command: {
+                type: 'SetProduction',
+                body: condition === 'other body' ? 'other' : 'body',
+                settings: { ...settings, metal_mine: 50 },
+                expected_settings_revision: '1',
+              },
+            },
+            status:
+              condition === 'rejected'
+                ? 'rejected'
+                : condition === 'snapshot arrived'
+                  ? 'committed'
+                  : 'pending',
+            reconciled: condition === 'reconciled',
+            receipt:
+              condition === 'snapshot arrived'
+                ? { status: 'Committed', minimum_viewer_revision: '1' }
+                : null,
+          } as Attempt,
+        ],
+      ]),
+    })
+    expect(
+      productionControlSettings(model.store.getState(), 'body', {}),
+    ).toEqual(settings)
   })
 
   it('does not send unavailable controls or no-op edits', async () => {
