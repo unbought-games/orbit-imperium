@@ -156,3 +156,20 @@ database was dropped, and a final query found no remaining test/debug databases.
 The project's container, network and volume were removed successfully. Logs are
 `/tmp/orbit-ci-stack-{before,small,final,default,clippy-final,cleanup}.log`.
 No shared or production database was changed.
+
+The initial fix push was blocked from starting PR CI by a concurrent `main`
+update. Merge commit `33ee6ae5283d76e4a2c1bd974d5eede79fa1fd28` incorporates
+`cd92b508c03507ef0ac2910dae892c648b7434da`, including the Empire overview and
+unbought-auth 0.1.3. Conflict resolution keeps both browser suites and displays
+colony diameter/temperature in the new Empire dossier; the removed overview was
+not restored. An Empire browser assertion verifies those colony attributes.
+
+Validation on that clean merge revision: `make check` passed in 96.91 s (253
+client tests, 246 workspace tests, 32 bridge tests, 6 storage unit tests, tooling,
+clippy/static checks and production build). The 1 MiB `make _db-world` run passed
+all 3 tests in 33.09 s total / 14.849 s test execution. The colony and Empire
+browser suites passed all 7 tests in 10.11 s total / 7.1 s browser execution.
+The recreated disposable project used port 55312; no test databases remained,
+and its container, network and volume were removed successfully afterward.
+Logs: `/tmp/orbit-ci-merge-{check,db,ui,cleanup}.log`. These documentation additions
+do not change the tested implementation.
