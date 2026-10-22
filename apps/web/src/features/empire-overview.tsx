@@ -405,6 +405,7 @@ function PlanetDossier({
       <WorkSummaries
         view={view}
         body={body}
+        currentPage="overview"
         includeResearch={false}
         layout="compact"
       />
@@ -542,6 +543,7 @@ export function EmpireOverview({
         <WorkSummaries
           view={view}
           body={researchHost ?? body}
+          currentPage="overview"
           only="research"
           layout="compact"
         />

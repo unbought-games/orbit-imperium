@@ -201,6 +201,7 @@ export function TechnologyPage(props: ProgressionProps) {
       <WorkSummaries
         view={view}
         body={body}
+        currentPage={page}
         only={
           page === 'facilities'
             ? 'buildings'
