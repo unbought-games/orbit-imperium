@@ -146,6 +146,8 @@ pub struct BoundProgressionOptions {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BodyV3 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colony: Option<ColonyDto>,
     pub id: BodyId,
     pub coordinates: Coordinates,
     pub kind: BodyKind,
@@ -157,6 +159,14 @@ pub struct BodyV3 {
     pub fields_reserved: u32,
     pub energy: EnergyDto,
     pub inventories: Vec<InventoryDto>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ColonyDto {
+    pub diameter_km: u32,
+    pub min_temperature: i32,
+    pub max_temperature: i32,
+    pub created_at: i64,
+    pub profile: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SignedRate {
@@ -370,6 +380,7 @@ pub(crate) fn progression_projection(
         let rate = production_rates_with_settings(b, &settings.settings, &facts.rules)
             .map_err(|_| ServiceError::InvariantFailure)?;
         bodies.push(BodyV3 {
+            colony: None,
             id: b.id,
             coordinates: b.coordinates,
             kind: b.kind,

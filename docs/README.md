@@ -23,6 +23,7 @@ Orbit Imperium is a browser-based space strategy game with an authoritative Rust
 - [Development server runbook](runbooks/development-server.md): startup, database maintenance, readiness, and recovery.
 - [Concurrent runtime](operations/concurrent-runtime.md): process topology, connection budgets, rollout, and observability.
 - [Rules updates](operations/rules-updates.md): content activation, compatibility, and integrity inspection.
+- [Colonization rollout](operations/colonization.md): Colony Ship rules, compatible storage, beta activation and recovery.
 - [CI runner isolation](runbooks/ci-runners.md): disposable runners, test resources, and publication prerequisites.
 - [Trusted image releases](operations/image-releases.md): CI gating, private ECR publication, source and notice inspection, and digest records.
 - [Historical debris upgrade](runbooks/debris-reference-upgrade.md): legacy replay compatibility; the current release uses the fresh-database cutover.

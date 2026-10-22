@@ -203,7 +203,7 @@ fn fighter_and_launcher_fire_is_attributed_to_the_shooter() {
             );
         }
     }
-    let serialized = serde_json::to_value(&first).unwrap();
+    let serialized = serde_json::to_value(first).unwrap();
     assert!(
         serialized.get("shots").is_none(),
         "do not duplicate derived totals"

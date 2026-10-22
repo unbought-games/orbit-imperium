@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 pub enum GameError {
+    #[error("PositionOccupied")]
+    PositionOccupied,
     #[error("NoHarvestTarget")]
     NoHarvestTarget,
     #[error("PolicyUnavailable")]

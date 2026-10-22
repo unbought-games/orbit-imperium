@@ -1,3 +1,4 @@
+mod colonization;
 use orbit_application::StoreError;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 mod enrollment;
@@ -7,6 +8,7 @@ mod pools;
 pub use pools::{PoolLimits, PoolSnapshot};
 mod migrations;
 pub use migrations::MigrationError;
+mod analytics;
 mod identity;
 mod oidc;
 mod seed;

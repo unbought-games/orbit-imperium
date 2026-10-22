@@ -56,6 +56,11 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
     }).await.map_err(|_|"Startup refused: preparation exceeded 5 seconds; no readiness granted")??;
     let store = prepared.store;
     let (drain_tx, drain_rx) = watch::channel(false);
+    let analytics =
+        crate::analytics::Integration::from_env(store.clone(), oidc.clone(), serve.origin.clone())?;
+    let _analytics_worker = analytics
+        .as_ref()
+        .map(|integration| BackgroundTask(tokio::spawn(integration.clone().run(drain_rx.clone()))));
     let wake = Arc::new(Notify::new());
     let scheduler = if serve.role.runs_worker() {
         Some(Scheduler(tokio::spawn(runtime::run(
@@ -97,7 +102,14 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
                 if let Some(listener) = listener {
                     orbit_transport_http::serve(
                         listener,
-                        router_with_auth(store, config, drain_rx.clone(), oidc),
+                        {
+                            let router = router_with_auth(store, config, drain_rx.clone(), oidc);
+                            if let Some(integration) = analytics {
+                                router.merge(integration.router())
+                            } else {
+                                router.merge(crate::analytics::disabled_router())
+                            }
+                        },
                         wait_for_drain(drain_rx),
                     )
                     .await

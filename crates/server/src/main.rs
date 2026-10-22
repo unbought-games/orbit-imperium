@@ -1,3 +1,4 @@
+mod analytics;
 mod audit_cli;
 mod config;
 mod engine_executor;

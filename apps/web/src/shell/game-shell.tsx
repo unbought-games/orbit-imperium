@@ -89,9 +89,13 @@ export function GameShell() {
   }, [location.pathname, location.searchStr, available, page, universeName])
   function prepareDispatch(draft: DispatchDraft) {
     if (!body) return
-    setDispatchDraft({ ...draft, origin: body.id })
-    void model.recordPresence('BodyVisit', body.id)
-    void navigate(routeTarget(universeName, 'dispatch', body.id))
+    const origin =
+      draft.origin && view.bodies.some((b) => b.id === draft.origin)
+        ? draft.origin
+        : body.id
+    setDispatchDraft({ ...draft, origin })
+    void model.recordPresence('BodyVisit', origin)
+    void navigate(routeTarget(universeName, 'dispatch', origin))
   }
   function selectBody(id: string) {
     void model.recordPresence('BodyVisit', id)

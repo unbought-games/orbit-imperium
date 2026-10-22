@@ -1112,7 +1112,7 @@ test('activated Astrophysics shows three gates, exact rounded costs, and deferre
   await expect(dialog).toContainText('3 / 3 · Met')
   await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
   await expect(dialog).toContainText('Positions 4–12 unlock at level 1')
-  await expect(dialog).toContainText('Colony Ships, colonization and expeditions are not available yet')
+  await expect(dialog).toContainText('Colonization requires this universe’s enabled Colony Ship and mission. Expeditions are unavailable.')
   await dialog.getByRole('button', { name: 'Close technology' }).click()
   await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
   await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'Astrophysics', expected_terms_hash: 'b'.repeat(64) })

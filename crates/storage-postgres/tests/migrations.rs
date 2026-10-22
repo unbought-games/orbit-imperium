@@ -900,3 +900,74 @@ async fn membership_join_upgrade_preserves_unknowns_and_old_writers() {
         Some(0)
     );
 }
+
+#[tokio::test]
+async fn colony_schema_preserves_old_rows_and_old_writer_slot_creation() {
+    let (store, pool) = fresh().await;
+    let older = sqlx::migrate::Migrator {
+        migrations: sqlx::migrate!("./migrations")
+            .iter()
+            .filter(|m| m.version < 13)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into(),
+        ..sqlx::migrate::Migrator::DEFAULT
+    };
+    store.migrate_with_for_test(&older).await.unwrap();
+    sqlx::raw_sql(r#"
+        INSERT INTO rulesets VALUES ('profile','test','{}');
+        INSERT INTO universes(id,epoch,development,speed,started_at,profile_hash) VALUES ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002',false,1,1000,'profile');
+        INSERT INTO players VALUES ('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001');
+        INSERT INTO bodies VALUES ('00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000003','Planet',1,1,8,163,40,'{}','{}',1000,0);
+        INSERT INTO mission_fleets VALUES ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000003','{"leg":"Returning"}');
+    "#).execute(&pool).await.unwrap();
+    let before: serde_json::Value = sqlx::query_scalar("SELECT to_jsonb(b) FROM bodies b")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    store.migrate_with_for_test(&older).await.unwrap();
+    let after: serde_json::Value = sqlx::query_scalar("SELECT to_jsonb(b) FROM bodies b")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(before, after);
+    let heads: i64 = sqlx::query_scalar("SELECT count(*) FROM planet_slot_revisions")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(heads, 0, "startup performs no population backfill");
+    sqlx::raw_sql("INSERT INTO bodies SELECT '00000000-0000-0000-0000-000000000006',universe,owner,kind,galaxy,system,9,fields,max_temperature,amounts,carry,checkpoint_at,revision FROM bodies").execute(&pool).await.unwrap();
+    let revision: i64 =
+        sqlx::query_scalar("SELECT revision FROM planet_slot_revisions WHERE position=9")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(revision, 1);
+    sqlx::query("UPDATE bodies SET amounts='{}',revision=revision+1 WHERE position=9")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let revision: i64 =
+        sqlx::query_scalar("SELECT revision FROM planet_slot_revisions WHERE position=9")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        revision, 1,
+        "private changes never change public slot token"
+    );
+    for leg in ["Colonized", "Deployed"] {
+        sqlx::query("UPDATE mission_fleets SET data=jsonb_build_object('leg',$1::text)")
+            .bind(leg)
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+    assert!(
+        sqlx::query("UPDATE mission_fleets SET data='{}'")
+            .execute(&pool)
+            .await
+            .is_err()
+    );
+}

@@ -135,6 +135,7 @@ fn fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
         }
     }
     s.world = Some(WorldFacts {
+        planet_slots: vec![],
         records: w,
         secret: [7; 32],
         covered_players: s.players.keys().copied().collect(),
@@ -189,6 +190,9 @@ fn run(
     );
     i.protocol = 4;
     i.schema_version = 4;
+    s.coverage
+        .bodies
+        .insert(BodyId(derived_id(i.id, "colony:0")));
     if matches!(i.payload, Input::Command(_)) {
         s.world.as_mut().unwrap().records.presence.insert(
             i.id,
@@ -2197,3 +2201,6 @@ fn fixture_research(s: &mut GameState, r: &Ruleset, p: PlayerId, research: Resea
         });
     }
 }
+
+#[path = "missions/colonization.rs"]
+mod colonization;

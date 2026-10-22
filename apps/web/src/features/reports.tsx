@@ -229,6 +229,51 @@ export function Reports({
                 </Button>
               </>
             )}
+          {detail.payload.kind === 'Colonized' && (
+            <div className={styles.controls}>
+              <Link
+                {...routeTarget(universe, 'resources', detail.payload.body)}
+              >
+                Open colony resources
+              </Link>
+              <Button
+                onClick={() => {
+                  if (detail.payload.kind === 'Colonized')
+                    onDraft({
+                      origin: detail.payload.origin,
+                      coordinates: detail.payload.destination_coordinates,
+                      mission: 'Transport',
+                      target: {
+                        type: 'Body',
+                        id: detail.payload.body,
+                        expected_kind: 'Planet',
+                        expected_owner: model.binding!.player,
+                      },
+                    })
+                }}
+              >
+                Prepare transport to colony
+              </Button>
+              <Button
+                onClick={() => {
+                  if (detail.payload.kind === 'Colonized')
+                    onDraft({
+                      origin: detail.payload.origin,
+                      coordinates: detail.payload.destination_coordinates,
+                      mission: 'Deploy',
+                      target: {
+                        type: 'Body',
+                        id: detail.payload.body,
+                        expected_kind: 'Planet',
+                        expected_owner: model.binding!.player,
+                      },
+                    })
+                }}
+              >
+                Prepare deployment to colony
+              </Button>
+            </div>
+          )}
         </>
       ) : item ? (
         <Text role="status">

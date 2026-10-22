@@ -21,6 +21,18 @@ fn target(
     r: &Ruleset,
 ) -> Result<(Coordinates, Option<PlayerId>), Fault> {
     match d {
+        MissionDestination::EmptyPosition { coordinates, .. } => {
+            if !r
+                .artifact
+                .universe
+                .as_ref()
+                .is_some_and(|u| u.contains(*coordinates))
+            {
+                return Err(GameError::NotFound.into());
+            }
+            planet_slot(s, *coordinates)?;
+            Ok((*coordinates, None))
+        }
         MissionDestination::Body {
             id,
             expected_kind,
@@ -72,7 +84,7 @@ pub fn ship_propulsion(
             rule.base_speed,
             rule.drive_coefficient,
             rule.fuel,
-            level(ResearchId::CombustionDrive)?,
+            level(rule.drive.unwrap_or(ResearchId::CombustionDrive))?,
         ),
     };
     let multiplier =
@@ -220,12 +232,45 @@ fn quote_inner(
         return Err(GameError::InvalidInput.into());
     }
     match (intent.mission, &intent.destination) {
+        (
+            Mission::Colonize,
+            MissionDestination::EmptyPosition {
+                coordinates,
+                slot_revision,
+            },
+        ) => {
+            let slot = planet_slot(s, *coordinates)?;
+            if slot.occupant.is_some() {
+                return Err(GameError::PositionOccupied.into());
+            }
+            if slot.revision != *slot_revision {
+                return Err(GameError::QuoteChanged.into());
+            }
+            if !colony_position_unlocked(completed_astrophysics(s, owner)?, coordinates.position) {
+                return Err(GameError::PrerequisiteMissing.into());
+            }
+            if !intent
+                .ships
+                .iter()
+                .any(|x| x.ship_type == ShipType::ColonyShip && x.count > 0)
+            {
+                return Err(GameError::InsufficientShips.into());
+            }
+            resources(
+                intent.cargo,
+                Resources::from_values([500 * SCALE, 500 * SCALE, 0]),
+                true,
+            )?;
+        }
         (Mission::Harvest, MissionDestination::Debris { .. })
             if intent
                 .ships
                 .iter()
                 .any(|x| x.ship_type == ShipType::Recycler && x.count > 0) => {}
-        (Mission::Transport | Mission::Attack, MissionDestination::Body { .. }) => {}
+        (
+            Mission::Transport | Mission::Attack | Mission::Deploy,
+            MissionDestination::Body { .. },
+        ) => {}
         (Mission::Espionage, MissionDestination::Body { .. })
             if intent
                 .ships
@@ -751,6 +796,50 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     Err(e) => return Err(e),
                     Ok((_, target_owner)) => {
                         match f.intent.mission {
+                            Mission::Deploy => {
+                                let MissionDestination::Body { id, .. } = f.intent.destination
+                                else {
+                                    return Err(invariant("deploy target"));
+                                };
+                                if target_owner != Some(f.owner) {
+                                    return Err(invariant("deploy owner"));
+                                }
+                                let cargo = resources(
+                                    f.cargo,
+                                    Resources::from_values([
+                                        0,
+                                        0,
+                                        (f.terms.fuel / SCALE / 2) * SCALE,
+                                    ]),
+                                    true,
+                                )?;
+                                credit(&mut c, s, id, cargo, i.at, r)?;
+                                for ship in &f.ships {
+                                    inventory(&mut c, s, id, f.owner, ship.ship_type, ship.count)?;
+                                    let lots = take_asset_lots(
+                                        &mut w.lots,
+                                        f.owner,
+                                        item(ship.ship_type),
+                                        &AssetLocation::Fleet(f.id),
+                                        ship.count,
+                                        Some(AssetLocation::Body(id)),
+                                    )?;
+                                    w.lots.extend(lots);
+                                }
+                                f.cargo = cargo;
+                                own_report(&mut w, i, &f, "Deployed");
+                                f.cargo = Resources::default();
+                                f.leg = MissionLeg::Deployed;
+                            }
+                            Mission::Colonize => crate::colonization::colony_arrival(
+                                s,
+                                i,
+                                &mut f,
+                                r,
+                                &mut c,
+                                &mut w,
+                                &mut audits,
+                            )?,
                             Mission::Transport => {
                                 let MissionDestination::Body { id, .. } = f.intent.destination
                                 else {
@@ -821,7 +910,6 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                 &mut w,
                                 &mut audits,
                             )?,
-                            _ => return Err(invariant("unavailable committed mission")),
                         }
                         if let MissionDestination::Body { id, .. } = f.intent.destination {
                             signal(&mut w, id, i, ActivityCause::Contact);
@@ -831,7 +919,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                         }
                     }
                 }
-                if f.ships.is_empty() {
+                if matches!(f.leg, MissionLeg::Colonized | MissionLeg::Deployed) {
+                    // The single consumed ship leaves no empty return obligation.
+                } else if f.ships.is_empty() {
                     f.leg = MissionLeg::Destroyed;
                 } else {
                     f.leg = MissionLeg::Returning;

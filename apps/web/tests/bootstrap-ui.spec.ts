@@ -3,6 +3,9 @@ import { binding, body, shellFixture } from './fixtures/game'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/analytics', (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  )
   await page.route('**/api/auth/config', (route) =>
     route.fulfill({ json: { mode: 'local', universes: [] } }),
   )

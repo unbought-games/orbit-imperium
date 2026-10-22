@@ -205,3 +205,7 @@ run-rules-updates:
 .PHONY: test-combat
 test-combat:
 	cargo nextest run -p orbit-engine --all-targets
+
+.PHONY: test-colonization
+test-colonization:
+	cargo nextest run -p orbit-engine --test colonization --test missions

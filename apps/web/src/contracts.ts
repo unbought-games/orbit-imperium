@@ -4599,6 +4599,7 @@ export interface components {
             fields_reserved: number;
             energy: components["schemas"]["Energy"];
             inventories: components["schemas"]["Inventory3"][];
+            colony?: components["schemas"]["Colony4"];
         };
         BoundView3: {
             viewer_revision: components["schemas"]["Decimal"];
@@ -4748,7 +4749,7 @@ export interface components {
         /** @enum {string} */
         Mission4: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize";
         /** @enum {string} */
-        MissionLeg4: "Outbound" | "Returning" | "Returned" | "Destroyed";
+        MissionLeg4: "Outbound" | "Returning" | "Returned" | "Destroyed" | "Colonized" | "Deployed";
         MissionDestination4: {
             /** @constant */
             type: "Body";
@@ -4764,6 +4765,11 @@ export interface components {
             coordinates: components["schemas"]["Coordinates"];
             /** Format: uuid */
             field_identity: string;
+        } | {
+            /** @constant */
+            type: "EmptyPosition";
+            coordinates: components["schemas"]["Coordinates"];
+            slot_revision: string;
         };
         DestinationSelection4: {
             /** @constant */
@@ -4774,6 +4780,10 @@ export interface components {
         } | {
             /** @constant */
             type: "DebrisAt";
+            coordinates: components["schemas"]["Coordinates"];
+        } | {
+            /** @constant */
+            type: "EmptyPositionAt";
             coordinates: components["schemas"]["Coordinates"];
         };
         ManifestStack4: {
@@ -4867,7 +4877,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -5043,14 +5053,14 @@ export interface components {
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -5302,7 +5312,7 @@ export interface components {
         };
         MissionOutcomePayload4: {
             /** @enum {unknown} */
-            kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed";
+            kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed" | "Deployed";
             /** Format: uuid */
             fleet: string;
             /** Format: uuid */
@@ -5388,7 +5398,7 @@ export interface components {
             own_lost_ships: components["schemas"]["PublicShip4"][];
             own_cargo_loss: components["schemas"]["Resources"];
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -5532,6 +5542,45 @@ export interface components {
         /** @description Current public usernames keyed by player ID, limited to identities visible in this response. Missing identities use the client fallback. */
         PublicPlayerNames4: {
             [key: string]: string;
+        };
+        ColonizedPayload4: {
+            /** @constant */
+            kind: "Colonized";
+            /** Format: uuid */
+            fleet: string;
+            /** Format: uuid */
+            origin: string;
+            destination_coordinates: components["schemas"]["Coordinates"];
+            at: number;
+            /** Format: uuid */
+            body: string;
+            fields: number;
+            diameter_km: number;
+            max_temperature: number;
+            min_temperature: number;
+            resources: components["schemas"]["Resources"];
+            return_at: number | null;
+        };
+        ColonizationFailedPayload4: {
+            /** @constant */
+            kind: "ColonizationFailed";
+            /** Format: uuid */
+            fleet: string;
+            /** Format: uuid */
+            origin: string;
+            destination_coordinates: components["schemas"]["Coordinates"];
+            at: number;
+            /** @enum {unknown} */
+            reason: "Occupied" | "PositionLocked" | "ColonyCapacity";
+            return_at: number;
+        };
+        Colony4: {
+            diameter_km: number;
+            max_temperature: number;
+            min_temperature: number;
+            created_at: number;
+            /** @constant */
+            profile: "oi-redesign-reconstructed-v1";
         };
     };
     responses: never;

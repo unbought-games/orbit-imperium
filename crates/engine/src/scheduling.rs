@@ -58,7 +58,8 @@ pub fn command_scopes(
                     scopes.insert(ScopeKey::Player(*expected_owner));
                     location(*id, refs, &mut scopes);
                 }
-                MissionDestination::Debris { coordinates, .. } => {
+                MissionDestination::Debris { coordinates, .. }
+                | MissionDestination::EmptyPosition { coordinates, .. } => {
                     scopes.insert(ScopeKey::Location(*coordinates));
                 }
             }

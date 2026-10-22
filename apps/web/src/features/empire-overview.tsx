@@ -336,6 +336,12 @@ function PlanetDossier({
             {body.fields_used}/{body.fields} fields · {body.fields_reserved}{' '}
             reserved
           </span>
+          {'colony' in body && body.colony && (
+            <span className={styles.bodyFacts}>
+              {body.colony.diameter_km} km · {body.colony.min_temperature} to{' '}
+              {body.colony.max_temperature} °C
+            </span>
+          )}
         </div>
         <Destination
           view={view}

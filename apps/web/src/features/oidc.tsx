@@ -9,9 +9,13 @@ export function UnboughtLogin({ redirect }: { redirect?: string }) {
         One username across unbought games. Sign in or create an account to
         continue.
       </Text>
-      <a href={oidcLoginPath(redirect)}>Continue with Unbought</a>
+      <a data-analytics="continue_with_account" href={oidcLoginPath(redirect)}>
+        Continue with Unbought
+      </a>
       <p>
-        <a href={oidcLoginPath(redirect)}>Create an account</a>
+        <a data-analytics="create_account" href={oidcLoginPath(redirect)}>
+          Create an account
+        </a>
       </p>
     </PublicFrame>
   )
@@ -29,7 +33,11 @@ export function UniverseEnrollment() {
       {state.status === 'ready' &&
         state.config.universes.map(({ universe, name }) => (
           <p key={universe}>
-            <button disabled={busy} onClick={() => void enroll(universe)}>
+            <button
+              data-analytics="enroll_universe"
+              disabled={busy}
+              onClick={() => void enroll(universe)}
+            >
               Join {name}
             </button>
           </p>
