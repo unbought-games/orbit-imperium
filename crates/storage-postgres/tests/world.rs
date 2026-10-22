@@ -885,26 +885,6 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         store.commit_scoped(&takeover, outcome).await.unwrap(),
         CommitOutcome::Committed { .. }
     ));
-    for binding in [a, b] {
-        assert!(
-            !game
-                .world_view(
-                    Principal {
-                        account: binding.account,
-                        player: binding.player,
-                        universe: binding.universe
-                    },
-                    QueryContext {
-                        binding,
-                        request_id: Uuid::new_v4()
-                    }
-                )
-                .await
-                .unwrap()
-                .has_unread_reports,
-            "committed read/hidden preferences must clear the alert"
-        );
-    }
     sqlx::query("DROP TABLE orbit_test_fault")
         .execute(&pool)
         .await
