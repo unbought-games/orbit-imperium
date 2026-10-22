@@ -173,3 +173,37 @@ The recreated disposable project used port 55312; no test databases remained,
 and its container, network and volume were removed successfully afterward.
 Logs: `/tmp/orbit-ci-merge-{check,db,ui,cleanup}.log`. These documentation additions
 do not change the tested implementation.
+
+## Requested rebase and force-push — October 22, 2026
+
+Rebased the feature commits onto main revision
+`a899fb5dd55aca47146118dcbcef28eef2beb901`. The prior published head was
+`adbe4d3e340d3fb73179f3cd661ff479f5c3fbd7`; its CI was green. The rebase retains
+the async-stack fix and the Empire colony attributes, incorporates public player
+names and current dispatch validation, and combines all browser suite selections.
+The occupied-position explanation now goes through the shared dispatch error
+mapper, covered by unit and fixture-browser regressions. The immutable colony
+rules, generation implementation, persistence helper and migration are unchanged
+from the previously tested branch.
+
+Exact clean source tested after rebase:
+`9577e5397cb156deafabed96c0893353c7378612`.
+
+| Command | Result | Measured wall time |
+| --- | --- | --- |
+| `make check` | Passed: tooling, 311 client tests, 250 workspace tests, 32 bridge tests, 6 storage unit tests, clippy/static checks and production build | 135.29 s |
+| `npm run test:ui -- colonization.spec.ts dispatch-validation.spec.ts galaxy-cards.spec.ts empire.spec.ts` | All 20 passed | 24.97 s total; 22.0 s browser execution |
+| `make -j2 _db-colonization _db-world _db-public_player_names` | All 8 passed, including the previously overflowing world journey | 32.47 s total |
+
+Docker was initially stopped, so the installed Docker Desktop was started for
+these checks. PostgreSQL ran only in disposable Compose project
+`orbit-colony-rebase`, allocated port 55000. Native runners removed their test
+databases; a final query found none remaining. The project's container, network
+and volume were then removed successfully. No production/shared database or
+runner limit was changed. Logs remain in `/tmp/orbit-rebase-{check,ui,db,cleanup}.log`.
+
+This entry is documentation-only after the tested source. The force-push uses
+an explicit lease against the prior published head; a local recovery branch,
+`emick/colony-ships-before-rebase`, retains that history. Published CI results are
+tracked by PR #23's checks for the new commit rather than inherited from the old
+head.
