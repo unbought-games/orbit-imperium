@@ -157,7 +157,7 @@ export function GameShell() {
             view={view}
             body={body?.id}
             page={page}
-            detail={!!route.item}
+            detail={view.protocol === 4 && !!route.item}
             onLogout={() => void logout()}
             onVisit={(p) =>
               void model.recordPresence(

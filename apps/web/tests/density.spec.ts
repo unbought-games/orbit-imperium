@@ -223,6 +223,80 @@ for (const viewport of [
 }
 
 for (const width of [1280, 390]) {
+  test(`legacy fleet details retain navigation from Empire at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 })
+    const legacyFleet: S['Fleet'] = {
+      id: id(61),
+      origin: body.id,
+      target: id(60),
+      status: 'Outbound',
+      due_at: Date.now() + 120000,
+      payload: resources,
+      paid_fuel: '3000000',
+      ships: [{ ship_type: 'SmallCargo', count: '2' }],
+    }
+    await shellFixture(page, {
+      protocol: 2,
+      extraCapabilities: ['Transport'],
+      fleets: [legacyFleet, { ...legacyFleet, id: id(62) }],
+      destinations: [
+        { id: body.id, coordinates: body.coordinates, kind: 'Planet' },
+        { id: id(60), coordinates: destination, kind: 'Planet' },
+      ],
+    })
+    const movements = page.getByRole('region', {
+      name: 'Fleet movements',
+      exact: true,
+    })
+    if (width < 768)
+      await movements
+        .getByRole('button', { name: 'Show 2 fleet movements' })
+        .click()
+    await movements
+      .getByRole('link', { name: 'View Transport outbound fleet' })
+      .first()
+      .click()
+    const detailUrl = `/u/andromeda/fleets/${legacyFleet.id}?body=${body.id}`
+    await expect(page).toHaveURL(detailUrl)
+    await expect(
+      page.getByRole('button', { name: 'Review recall', exact: true }),
+    ).toHaveCount(1)
+    const navigation = page.getByRole('navigation', {
+      name: 'Fleet navigation',
+    })
+    await expect(navigation).toBeInViewport({ ratio: 1 })
+    const allFleets = navigation.getByRole('link', {
+      name: 'Fleets',
+      exact: true,
+    })
+    await expect(allFleets).toHaveAttribute(
+      'href',
+      `/u/andromeda/fleets?body=${body.id}`,
+    )
+    await expect(
+      navigation.getByRole('button', { name: 'Galaxy', exact: true }),
+    ).toBeDisabled()
+    await allFleets.click()
+    await expect(page).toHaveURL(`/u/andromeda/fleets?body=${body.id}`)
+    await expect(
+      page.getByRole('button', { name: 'Review recall', exact: true }),
+    ).toHaveCount(2)
+    // A direct load also preserves navigation and the selected funding planet.
+    await page.goto(detailUrl)
+    await navigation
+      .getByRole('link', { name: 'Dispatch', exact: true })
+      .click()
+    await expect(page).toHaveURL(`/u/andromeda/dispatch?body=${body.id}`)
+    await expect(
+      page.getByRole('heading', { name: 'Dispatch fleet', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('combobox', { name: 'Selected body' }),
+    ).toHaveValue(body.id)
+  })
+
   test(`legacy fleet and dispatch headers stay compact at ${width}px`, async ({
     page,
   }) => {
