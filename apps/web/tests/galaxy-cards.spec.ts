@@ -23,6 +23,9 @@ async function setup(page: Page) {
           galaxy,
           system,
           observed_at: Date.now(),
+          player_names: {
+            [id(31)]: 'CommanderAndromedaTheUnreasonablyLongName',
+          },
           positions: Array.from({ length: 15 }, (_, i) => ({
             coordinates: { galaxy, system, position: i + 1 },
             body:
@@ -30,7 +33,7 @@ async function setup(page: Page) {
                 ? {
                     id: id(i + 20),
                     kind: 'Planet',
-                    owner: i === 0 ? binding.player : id(31),
+                    owner: i === 0 ? binding.player : id(i === 1 ? 31 : 32),
                     activity: { type: 'Recent' },
                     inactivity: 'Active',
                     vacation: false,
@@ -68,6 +71,11 @@ test('galaxy cards preserve system navigation, eligibility, debris and mission d
   await expect(positions.getByRole('table')).toHaveCount(0)
   await expect(page.getByLabel('Solar system')).toHaveValue('371')
   await expect(cards.nth(0)).toContainText('Your planet')
+  await expect(cards.nth(0)).toContainText('You')
+  await expect(cards.nth(1)).toContainText(
+    'CommanderAndromedaTheUnreasonablyLongName',
+  )
+  await expect(cards.nth(2)).toContainText('Player 00000000')
   await expect(cards.nth(0).locator('summary')).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: 'Transport', exact: true }),
@@ -159,7 +167,7 @@ test('galaxy cards use page scrolling and keep debris beside planets at every wi
       .boundingBox()
     const player = await cards
       .nth(1)
-      .getByText('Player 00000000', { exact: true })
+      .getByText('CommanderAndromedaTheUnreasonablyLongName', { exact: true })
       .boundingBox()
     const debris = await cards
       .nth(1)
@@ -196,4 +204,61 @@ test('planet actions support keyboard opening and Escape focus restoration', asy
   await expect(
     card.getByRole('button', { name: 'Transport', exact: true }),
   ).toHaveCount(0)
+})
+
+test('incoming fleets and report details use the supplied public name without an identity request', async ({
+  page,
+}) => {
+  const playerNames = { [id(9)]: 'Commander Vega' }
+  const identityRequests: string[] = []
+  page.on('request', (request) => {
+    if (/players|identities/.test(new URL(request.url()).pathname))
+      identityRequests.push(request.url())
+  })
+  await shellFixture(page, { protocol: 4, playerNames })
+  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await expect(
+    page.getByRole('region', { name: 'Incoming fleets' }),
+  ).toContainText('Attack · Commander Vega')
+  const reportId = id(62)
+  let names: Record<string, string> | undefined = playerNames
+  await page.route('**/api/**/reports/**', async (route) => {
+    const context = route.request().postDataJSON()
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        request_id: context.request_id,
+        viewer_revision: '1',
+        sampled_at: Date.now(),
+        as_of_ms: Date.now(),
+        data: {
+          header: {
+            id: reportId,
+            kind: 'SpyContact',
+            observed_at: Date.now() - 1000,
+            read: false,
+            hidden: false,
+          },
+          payload: {
+            kind: 'SpyContact',
+            at: Date.now() - 1000,
+            sender: id(9),
+            origin: body.coordinates,
+            target: body.coordinates,
+            probability_ppm: 0,
+            detected: false,
+          },
+          player_names: names,
+        },
+      },
+    })
+  })
+  await page.goto(`/u/andromeda/reports/${reportId}?body=${body.id}`)
+  const report = page.getByRole('region', { name: 'Report observation' })
+  await expect(report).toContainText('Commander Vega made espionage contact')
+  names = undefined
+  await page.reload()
+  await expect(report).toContainText('Player 00000000 made espionage contact')
+  expect(identityRequests).toEqual([])
 })

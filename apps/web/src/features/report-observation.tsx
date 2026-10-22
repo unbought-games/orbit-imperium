@@ -1,3 +1,4 @@
+import { playerLabel, type PlayerNames } from './player-label'
 import { Panel } from '../ui/panel'
 import { Section } from '../ui/section'
 import { Text } from '../ui/typography'
@@ -117,7 +118,15 @@ function Risk({ value }: { value: unknown }) {
     </Text>
   )
 }
-function Origins({ title, value }: { title: string; value: unknown }) {
+function Origins({
+  title,
+  value,
+  playerNames,
+}: {
+  title: string
+  value: unknown
+  playerNames?: PlayerNames
+}) {
   return (
     <Section>
       <Heading level={3}>{title}</Heading>
@@ -126,7 +135,7 @@ function Origins({ title, value }: { title: string; value: unknown }) {
         return (
           <div key={i}>
             <h4>
-              {text(origin.side)} · Player {text(origin.owner).slice(0, 8)}
+              {text(origin.side)} · {playerLabel(origin.owner, playerNames)}
             </h4>
             {Array.isArray(origin.technology) && (
               <Text>
@@ -142,7 +151,13 @@ function Origins({ title, value }: { title: string; value: unknown }) {
     </Section>
   )
 }
-export function ReportObservation({ payload }: { payload: RecordValue }) {
+export function ReportObservation({
+  payload,
+  playerNames,
+}: {
+  payload: RecordValue
+  playerNames?: PlayerNames
+}) {
   const kind = payload.kind
   if (kind === 'Espionage') {
     const target = record(payload.target),
@@ -154,8 +169,8 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
         className={styles.observation}
       >
         <Text>
-          Target {coordinate(target.coordinates)} · Player{' '}
-          {text(target.owner).slice(0, 8)}
+          Target {coordinate(target.coordinates)} ·{' '}
+          {playerLabel(target.owner, playerNames)}
         </Text>
         <Text>
           Activity before contact:{' '}
@@ -191,7 +206,7 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
         className={styles.observation}
       >
         <Text>
-          Player {text(payload.sender).slice(0, 8)} made espionage contact from{' '}
+          {playerLabel(payload.sender, playerNames)} made espionage contact from{' '}
           {coordinate(payload.origin)} at {coordinate(payload.target)}.
         </Text>
         <Risk value={payload} />
@@ -244,12 +259,32 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
               <Resources value={payload[k]} />
             </Section>
           ))}
-        <Origins title="Starting forces" value={payload.participants} />
-        <Origins title="Survivors" value={payload.survivors} />
-        <Origins title="Gross losses" value={payload.gross_losses} />
-        <Origins title="Defenses recovered" value={payload.recovered} />
+        <Origins
+          playerNames={playerNames}
+          title="Starting forces"
+          value={payload.participants}
+        />
+        <Origins
+          playerNames={playerNames}
+          title="Survivors"
+          value={payload.survivors}
+        />
+        <Origins
+          playerNames={playerNames}
+          title="Gross losses"
+          value={payload.gross_losses}
+        />
+        <Origins
+          playerNames={playerNames}
+          title="Defenses recovered"
+          value={payload.recovered}
+        />
         {Array.isArray(payload.permanent_losses) && (
-          <Origins title="Permanent losses" value={payload.permanent_losses} />
+          <Origins
+            playerNames={playerNames}
+            title="Permanent losses"
+            value={payload.permanent_losses}
+          />
         )}
         {list(payload.rounds).map((v, i) => {
           const round = record(v)
@@ -265,8 +300,16 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
                 damage <CombatPoints value={round.hull_removed_ticks} /> ·{' '}
                 {text(round.explosions)} explosions.
               </Text>
-              <Origins title="Round starting forces" value={round.start} />
-              <Origins title="Round survivors" value={round.end} />
+              <Origins
+                playerNames={playerNames}
+                title="Round starting forces"
+                value={round.start}
+              />
+              <Origins
+                playerNames={playerNames}
+                title="Round survivors"
+                value={round.end}
+              />
             </details>
           )
         })}

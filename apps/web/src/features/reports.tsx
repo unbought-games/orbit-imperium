@@ -221,7 +221,10 @@ export function Reports({
                 </Button>
               </>
             )}
-          <ReportObservation payload={detail.payload} />
+          <ReportObservation
+            payload={detail.payload}
+            playerNames={detail.player_names}
+          />
         </>
       ) : item ? (
         <Text role="status">
