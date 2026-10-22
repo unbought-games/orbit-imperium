@@ -16,7 +16,10 @@ export function Button({
     />
   )
 }
-function ButtonLinkAnchor({ className, ...props }: ComponentPropsWithRef<'a'>) {
+export function ButtonLinkAnchor({
+  className,
+  ...props
+}: ComponentPropsWithRef<'a'>) {
   return (
     <a
       className={classes(styles.button, styles.primary, className)}
