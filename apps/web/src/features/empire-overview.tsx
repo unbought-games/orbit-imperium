@@ -405,6 +405,7 @@ function PlanetDossier({
       <WorkSummaries
         view={view}
         body={body}
+        currentPage="overview"
         includeResearch={false}
         layout="compact"
       />
@@ -433,11 +434,11 @@ function PlanetDossier({
       <details className={styles.inventory}>
         <summary>
           <span>
-            <Orbit size={15} /> Stationed inventory
+            <Orbit size={15} /> Orbital fleet
           </span>
           <span>{body.inventories.length} unit types</span>
         </summary>
-        <section aria-label="Stationed inventory">
+        <section aria-label="Orbital fleet">
           {body.inventories.length ? (
             <dl>
               {body.inventories.map((item) => (
@@ -542,6 +543,7 @@ export function EmpireOverview({
         <WorkSummaries
           view={view}
           body={researchHost ?? body}
+          currentPage="overview"
           only="research"
           layout="compact"
         />

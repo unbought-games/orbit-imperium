@@ -216,3 +216,41 @@
     text-align: center;
   }
 }
+
+.groups a.unread {
+  color: var(--champagne-light);
+}
+.unreadBadge,
+.menuAlert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--surface-page);
+  background: var(--accent);
+  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+.primary .menuAlert svg {
+  display: block;
+}
+.menuAlert {
+  position: absolute;
+  top: calc(50% - 12px);
+  right: -26px;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .menuAlert {
+    top: 0;
+    right: calc(50% - 34px);
+  }
+}

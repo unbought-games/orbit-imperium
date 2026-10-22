@@ -25,6 +25,7 @@ pub(super) fn world_projection(
     progression.sampled_at = snapshot.at;
     progression.capabilities = world_capabilities(progression.capabilities, &snapshot.rules);
     Ok(BoundView4 {
+        has_unread_reports: snapshot.unread_report.is_some(),
         progression,
         missions,
     })
