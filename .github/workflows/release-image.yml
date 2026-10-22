@@ -6,32 +6,43 @@ on:
     types: [completed]
     branches: [main]
 
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full commit SHA in main history with successful main push CI
+        required: true
+        type: string
+
 permissions:
   contents: read
 
 concurrency:
-  group: release-image-main
+  group: release-image-${{ inputs.commit || github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 jobs:
   trusted:
     if: >-
       github.repository_id == '1427640162' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_repository.id == 1427640162
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.id == 1427640162))
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read
     outputs:
       sha: ${{ steps.verify.outputs.sha }}
+      ci_run: ${{ steps.verify.outputs.ci_run }}
+      ci_attempt: ${{ steps.verify.outputs.ci_attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Verify successful CI for current main
+      - name: Verify selected main-history commit and exact successful CI
         id: verify
         env:
           GH_TOKEN: ${{ github.token }}
@@ -39,6 +50,9 @@ jobs:
 
   publish:
     needs: trusted
+    defaults:
+      run:
+        working-directory: source
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -48,6 +62,8 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_PUBLISH_ROLE_ARN: ${{ vars.AWS_PUBLISH_ROLE_ARN }}
       ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+      ORBIT_CI_RUN_ID: ${{ needs.trusted.outputs.ci_run }}
+      ORBIT_CI_RUN_ATTEMPT: ${{ needs.trusted.outputs.ci_attempt }}
       ORBIT_RELEASE_SHA: ${{ needs.trusted.outputs.sha }}
       ORBIT_RELEASE_IMAGE: orbit-release:${{ needs.trusted.outputs.sha }}
     steps:
@@ -56,6 +72,12 @@ jobs:
           ref: ${{ needs.trusted.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
+          path: source
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          path: release-tools
       - name: Check release configuration and checkout
         run: |
           test "$(git rev-parse HEAD)" = "$ORBIT_RELEASE_SHA"
@@ -66,7 +88,8 @@ jobs:
         run: make release-image
       - name: Inspect source and notices in the built image
         run: make inspect-release-image
-      - name: Recheck main and CI before obtaining AWS credentials
+      - name: Recheck main ancestry and pinned CI before obtaining AWS credentials
+        working-directory: release-tools
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release-gate.mjs
@@ -81,8 +104,8 @@ jobs:
           unset-current-credentials: true
       - name: Publish immutable image and record digest
         env:
-          CI_RUN_ID: ${{ github.event.workflow_run.id }}
-          CI_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          CI_RUN_ID: ${{ needs.trusted.outputs.ci_run }}
+          CI_RUN_ATTEMPT: ${{ needs.trusted.outputs.ci_attempt }}
         run: |
           registry="${ECR_REPOSITORY_URL%%/*}"
           repository="${ECR_REPOSITORY_URL#*/}"
@@ -97,13 +120,13 @@ jobs:
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
           jq -n --arg commit "$ORBIT_RELEASE_SHA" --arg image "$ECR_REPOSITORY_URL@$digest" \
             --arg tag "$tag" --arg ci_run "$CI_RUN_ID" --arg ci_attempt "$CI_RUN_ATTEMPT" \
-            --arg release_run "$GITHUB_RUN_ID" --arg release_attempt "$GITHUB_RUN_ATTEMPT" \
-            '{commit: $commit, image: $image, tag: $tag, platform: "linux/amd64", ci_run: $ci_run, ci_attempt: $ci_attempt, release_run: $release_run, release_attempt: $release_attempt}' > release-image.json
+            --arg release_run "$GITHUB_RUN_ID" --arg release_attempt "$GITHUB_RUN_ATTEMPT" --arg publisher_commit "$GITHUB_SHA" \
+            '{commit: $commit, image: $image, tag: $tag, platform: "linux/amd64", ci_run: $ci_run, ci_attempt: $ci_attempt, release_run: $release_run, release_attempt: $release_attempt, publisher_commit: $publisher_commit}' > release-image.json
           cat release-image.json >> "$GITHUB_STEP_SUMMARY"
       - name: Save commit and digest record
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-image-${{ needs.trusted.outputs.sha }}-${{ github.run_attempt }}
-          path: release-image.json
+          path: source/release-image.json
           if-no-files-found: error
           retention-days: 90
