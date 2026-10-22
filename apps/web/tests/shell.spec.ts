@@ -1,6 +1,289 @@
 import { test, expect } from '@playwright/test'
 import { shellFixture, id, body, resources, binding } from './fixtures/game'
 
+test('mobile resource stock uses icons and compact balances with capacity details on tap', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await shellFixture(page, {
+    bodies: [
+      {
+        ...body,
+        amounts: {
+          metal: '1000000000000000',
+          crystal: '1000000000000',
+          deuterium: '1000000000000000000',
+        },
+      },
+    ],
+  })
+  const ledger = page.getByLabel('Current resources')
+  const metal = ledger.getByRole('button', { name: 'Metal details' })
+  for (const width of [320, 390, 440]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const [name, amount] of [
+      ['Metal', '1B'],
+      ['Crystal', '1M'],
+      ['Deuterium', '1T'],
+      ['Energy', '26'],
+    ]) {
+      const resource = ledger.getByRole('button', { name: `${name} details` })
+      await expect(resource.locator('svg')).toBeVisible()
+      expect((await resource.innerText()).trim()).toBe(amount)
+      expect(
+        await resource.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth,
+        ),
+      ).toBe(true)
+      const icon = await resource.locator('svg').boundingBox()
+      const number = await resource.locator('strong').boundingBox()
+      expect(icon!.x + icon!.width).toBeLessThanOrEqual(number!.x)
+      expect(
+        Math.abs(icon!.y + icon!.height / 2 - number!.y - number!.height / 2),
+      ).toBeLessThan(2)
+    }
+    expect((await ledger.boundingBox())!.height).toBe(44)
+    expect((await ledger.locator('..').boundingBox())!.height).toBe(46)
+    const planet = await page.getByLabel('Selected body').boundingBox()
+    const stock = await ledger.boundingBox()
+    await page.screenshot({
+      path: `test-results/mobile-planet-resources-${width}.png`,
+      clip: {
+        x: planet!.x - 1,
+        y: Math.min(planet!.y, stock!.y) - 1,
+        width: stock!.x + stock!.width - planet!.x + 2,
+        height: Math.max(planet!.height, stock!.height) + 2,
+      },
+    })
+  }
+  expect(
+    await metal
+      .locator('strong')
+      .evaluate((element) => getComputedStyle(element).color),
+  ).not.toBe(
+    await ledger
+      .getByRole('button', { name: 'Energy details' })
+      .locator('strong')
+      .evaluate((element) => getComputedStyle(element).color),
+  )
+  await metal.click()
+  const details = page.getByRole('dialog', { name: 'Metal', exact: true })
+  await expect(details).toContainText('Available 1,000,000,000')
+  await expect(details).toContainText('Capacity 10,000')
+  await expect(details).toContainText('Above capacity')
+  await page.keyboard.press('Escape')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  expect((await metal.innerText()).trim()).toBe('1B')
+  await metal.evaluate((element) => element.blur())
+  await page
+    .getByRole('group', { name: 'Planet and resources' })
+    .screenshot({ path: 'test-results/desktop-planet-resources.png' })
+  await metal.click()
+  await expect(details).toContainText('Available 1,000,000,000')
+  await expect(details).toContainText('Capacity 10,000')
+  await expect(details).toContainText('Above capacity')
+})
+
+test('mobile top bar stays pinned while content scrolls beneath it and details remain usable', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await shellFixture(page)
+  const bar = page.getByRole('group', { name: 'Planet and resources' })
+  const main = page.locator('main')
+  await expect(bar.locator('..')).toHaveCSS('position', 'sticky')
+  await expect(bar).toHaveCSS('border-bottom-width', '1px')
+  await expect(bar).toHaveCSS('border-bottom-style', 'solid')
+  await expect(bar).toHaveCSS('backdrop-filter', 'blur(4px)')
+  const initial = await bar.boundingBox()
+  expect(initial!.y).toBe(0)
+  expect(initial!.x).toBe(0)
+  expect(initial!.width).toBe(390)
+  expect((await main.boundingBox())!.y).toBeGreaterThanOrEqual(initial!.height)
+  for (const scroll of [250, 100000]) {
+    await page.evaluate((y) => window.scrollTo(0, y), scroll)
+    await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
+    expect((await main.boundingBox())!.y).toBeLessThan(0)
+    expect(
+      await bar.evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        return element.contains(document.elementFromPoint(10, rect.height / 2))
+      }),
+    ).toBe(true)
+  }
+  await page.getByRole('button', { name: 'Metal details' }).click()
+  const details = page.getByRole('dialog', { name: 'Metal', exact: true })
+  await expect(details).toContainText('Available 6,661')
+  expect((await details.boundingBox())!.y).toBeGreaterThanOrEqual(
+    initial!.height,
+  )
+  await page.keyboard.press('Escape')
+  await page.getByLabel('Selected body').selectOption(id(6))
+  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
+  await page.evaluate(() => window.scrollTo(0, 250))
+  await page.screenshot({ path: 'test-results/mobile-pinned-top-bar.png' })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(bar).toHaveCSS('position', 'static')
+})
+
+for (const width of [320, 390]) {
+  test(`mobile Build submenu spans the ${width}px viewport and stays below resources while scrolling`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width, height: 844 })
+    await shellFixture(page, {
+      bodies: Array.from({ length: 9 }, (_, index) => ({
+        ...body,
+        id: index === 0 ? body.id : id(index + 20),
+      })),
+    })
+    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    const bar = page.getByRole('group', { name: 'Planet and resources' })
+    const nav = page.getByRole('navigation', { name: 'Build navigation' })
+    await expect(nav).toHaveCSS('scrollbar-width', 'none')
+    const assertPinned = async () => {
+      const resources = (await bar.boundingBox())!
+      const submenu = (await nav.boundingBox())!
+      expect(resources.y).toBe(0)
+      expect(submenu.y).toBe(resources.y + resources.height)
+      expect(submenu.x).toBe(0)
+      expect(submenu.width).toBe(width)
+      const dock = (await page
+        .getByRole('navigation', { name: 'Main navigation', exact: true })
+        .boundingBox())!
+      expect(dock.y + dock.height).toBe(844)
+    }
+    for (const scroll of [0, 250, 100000]) {
+      await page.evaluate((y) => window.scrollTo(0, y), scroll)
+      await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
+      await assertPinned()
+    }
+    await nav.getByRole('link', { name: 'Defense', exact: true }).focus()
+    expect(await nav.evaluate((element) => element.scrollLeft)).toBeGreaterThan(
+      0,
+    )
+    await page.keyboard.press('Enter')
+    await expect(page.locator('main h1')).toHaveText('Defense')
+    await assertPinned()
+    await page.screenshot({
+      path: `test-results/mobile-pinned-build-${width}.png`,
+    })
+    await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+    await page.evaluate(() => window.scrollTo(0, 250))
+    await assertPinned()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width)
+    await page.screenshot({
+      path: `test-results/mobile-pinned-build-large-text-${width}.png`,
+    })
+  })
+}
+
+test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await shellFixture(page, { protocol: 4 })
+  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  const nav = page.getByRole('navigation', { name: 'Fleet navigation' })
+  await expect(nav.getByRole('link')).toHaveText([
+    'Fleets',
+    'Galaxy',
+    'Dispatch',
+  ])
+  await expect(
+    nav.getByRole('link', { name: 'Galaxy', exact: true }),
+  ).toHaveAttribute('href', `/u/andromeda/galaxy?body=${body.id}`)
+  await page.evaluate(() => window.scrollTo(0, 250))
+  const bar = page.getByRole('group', { name: 'Planet and resources' })
+  await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
+  const resources = (await bar.boundingBox())!
+  const submenu = (await nav.boundingBox())!
+  expect(submenu.y).toBe(resources.y + resources.height)
+  expect(submenu.x).toBe(0)
+  expect(submenu.width).toBe(390)
+})
+
+test('mobile planet box is one tap target with full native planet and moon labels', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 844 })
+  const purchases = await shellFixture(page, {
+    bodies: [body, { ...body, id: id(6), kind: 'Moon' }],
+  })
+  const selector = page.getByLabel('Selected body')
+  const box = await selector.boundingBox()
+  expect(
+    await page.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('aria-label'),
+      {
+        x: box!.x + 12,
+        y: box!.y + box!.height / 2,
+      },
+    ),
+  ).toBe('Selected body')
+  await expect(selector.locator('option:checked')).toHaveText(
+    'Planet [1:371:12]',
+  )
+  await selector.selectOption(id(6))
+  await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
+  await expect(selector.locator('option:checked')).toHaveText('Moon [1:371:12]')
+  await page.goBack()
+  await expect(selector).toHaveValue(body.id)
+  expect(purchases()).toBe(0)
+})
+
+test('small phone resource row fits large stocks and negative energy without stacking', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 844 })
+  await shellFixture(page, {
+    bodies: [
+      {
+        ...body,
+        amounts: {
+          metal: '9223372036854775807',
+          crystal: '999999999999999999',
+          deuterium: '99999999999999',
+        },
+        energy: { supply: '0', demand: '999000000000000000', utilization: '0' },
+      },
+    ],
+  })
+  // Exercise wider glyphs than macOS system-ui so Linux-sized balances also fit.
+  await page.addStyleTag({
+    content:
+      '[aria-label="Current resources"] strong { font-family: monospace; letter-spacing: 0.5px; }',
+  })
+  const ledger = page.getByLabel('Current resources')
+  for (const [name, amount] of [
+    ['Metal', '9.2T'],
+    ['Crystal', '999B'],
+    ['Deuterium', '99M'],
+    ['Energy', '-999B'],
+  ]) {
+    const resource = ledger.getByRole('button', { name: `${name} details` })
+    expect((await resource.innerText()).trim()).toBe(amount)
+    expect(
+      await resource.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true)
+    const icon = await resource.locator('svg').boundingBox()
+    const number = await resource.locator('strong').boundingBox()
+    expect(icon!.x + icon!.width).toBeLessThanOrEqual(number!.x)
+    expect(
+      Math.abs(icon!.y + icon!.height / 2 - number!.y - number!.height / 2),
+    ).toBeLessThan(2)
+  }
+  expect((await ledger.boundingBox())!.height).toBe(44)
+})
+
 test('shipyard and defense show every batch in the same ordered queue', async ({
   page,
 }) => {
@@ -216,6 +499,26 @@ test('desktop uses a persistent horizontal ledger and no permanent rails', async
   await expect(
     page.getByRole('complementary', { name: 'Planets and moons' }),
   ).toHaveCount(0)
+  const bar = page.getByRole('group', { name: 'Planet and resources' })
+  for (const width of [768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(bar).toHaveCSS('border-top-width', '1px')
+    await expect(bar).toHaveCSS('border-bottom-width', '1px')
+    for (const section of await bar.locator(':scope > div').all()) {
+      await expect(section).toHaveCSS('border-top-width', '0px')
+      await expect(section).toHaveCSS('border-bottom-width', '0px')
+    }
+    const bounds = await bar.boundingBox()
+    const content = await page.locator('main').boundingBox()
+    expect(bounds!.x).toBe(content!.x)
+    expect(bounds!.width).toBe(content!.width)
+    expect(bounds!.height).toBe(64)
+    expect(
+      (
+        await bar.getByRole('button', { name: 'Metal details' }).innerText()
+      ).trim(),
+    ).toBe('6.6K')
+  }
   const selector = await page.getByLabel('Selected body').boundingBox()
   const ledger = await page.getByLabel('Current resources').boundingBox()
   expect(
@@ -247,6 +550,29 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
   ]) {
     await page.setViewportSize({ width, height })
     await expect(page.locator('main')).toBeVisible()
+    await expect(page.getByRole('contentinfo')).toHaveCount(0)
+    await expect(
+      page.getByRole('link', { name: /^(Terms|Privacy|Universe settings)$/ }),
+    ).toHaveCount(0)
+    const brand = page.getByRole('link', {
+      name: 'ORBIT IMPERIUM',
+      exact: true,
+      includeHidden: true,
+    })
+    const universe = page.getByLabel('Current universe')
+    if (width < 768) {
+      await expect(brand).toBeHidden()
+      await expect(universe).toBeHidden()
+      const ledger = await page.getByLabel('Current resources').boundingBox()
+      const content = await page.locator('main').boundingBox()
+      expect(content!.y - ledger!.y - ledger!.height).toBeLessThanOrEqual(2)
+      expect(
+        (await page.getByLabel('Selected body').boundingBox())!.y,
+      ).toBeLessThan(24)
+    } else {
+      await expect(brand).toBeVisible()
+      await expect(universe).toBeVisible()
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -324,7 +650,7 @@ test('touch details show whole resources and remain usable with enlarged text', 
   await context.close()
 })
 
-test('world shell shows incoming fleets and opens defense production from its summary', async ({
+test('world shell omits the utility row and opens defense production from its summary', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -351,7 +677,13 @@ test('world shell shows incoming fleets and opens defense production from its su
   })
   await expect(
     page.getByRole('link', { name: '0 active fleets · 1 incoming' }),
-  ).toBeVisible()
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Planet information details' }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('link', { name: 'Reports', exact: true }),
+  ).toHaveCount(0)
   await expect(page.getByText('Rocket Launcher · 2 remaining')).toBeVisible()
   await expect(
     page.getByRole('link', { name: 'Open defenses' }),
@@ -377,7 +709,10 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
     .getByRole('button', { name: 'Metal details' })
     .boundingBox()
   const planet = await page.getByLabel('Selected body').boundingBox()
-  expect(planet!.y + planet!.height).toBeLessThan(metal!.y)
+  expect(planet!.x + planet!.width).toBeLessThanOrEqual(metal!.x)
+  expect(
+    Math.abs(planet!.y + planet!.height / 2 - metal!.y - metal!.height / 2),
+  ).toBeLessThan(2)
   const menu = nav.getByRole('button', { name: 'Menu', exact: true })
   await menu.click()
   const drawer = page.getByRole('dialog', { name: 'Navigation' })
@@ -436,7 +771,9 @@ for (const width of [390, 1440]) {
     // Visibility does not mean the drawer's entrance animation has settled.
     // Finish it before separate geometry reads can sample different frames.
     await drawer.evaluate((element) =>
-      Promise.all(element.getAnimations().map((animation) => animation.finished)),
+      Promise.all(
+        element.getAnimations().map((animation) => animation.finished),
+      ),
     )
     const nameBounds = await username.boundingBox()
     const buttonBounds = await signOut.boundingBox()
@@ -648,6 +985,13 @@ test('large world rosters search and retain funding context on player-wide route
   await expect(page.getByLabel('Search owned worlds')).toHaveValue('')
   await page.goBack()
   await expect(page.getByLabel('Selected body')).toHaveValue(body.id)
+  await page.setViewportSize({ width: 320, height: 844 })
+  const search = page.getByLabel('Search owned worlds')
+  await search.fill('1:9:4')
+  expect((await search.boundingBox())!.width).toBeGreaterThan(280)
+  await page.getByLabel('Selected body').selectOption(id(28))
+  await expect(page.getByLabel('Selected body')).toHaveValue(id(28))
+  await expect(search).toHaveValue('')
   expect(purchases()).toBe(0)
 })
 
@@ -725,7 +1069,7 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await expect(page.getByLabel('Selected body')).toHaveValue(body.id)
-  await page.getByRole('link', { name: '0 active fleets · 1 incoming' }).click()
+  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Fleets')
   await expect(
     page.getByRole('heading', { name: 'Incoming fleets' }),
@@ -1278,7 +1622,7 @@ test('legacy fleets retain trajectory, exact arrival and reviewed recall', async
   })
 })
 
-test('selected body context reflows without clipping and editorial routes retain accessible focus', async ({
+test('selected body context truncates on phones and retains full labels and accessible route focus', async ({
   page,
 }) => {
   const selected = {
@@ -1290,27 +1634,44 @@ test('selected body context reflows without clipping and editorial routes retain
   })
   for (const width of [1280, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
-    const text = page.getByLabel('Selected body').locator('..').locator('span')
+    const text = page
+      .getByLabel('Selected body')
+      .locator('..')
+      .locator(':scope > span')
     await expect(text).toHaveText('Planet [1:499:15]')
-    expect(
-      await text.evaluate((element) => {
-        const range = document.createRange()
-        range.selectNodeContents(element)
-        const bounds = element.getBoundingClientRect()
-        return [...range.getClientRects()].every(
-          (rect) =>
-            rect.left >= bounds.left &&
-            rect.right <= bounds.right &&
-            rect.right <= innerWidth,
-        )
-      }),
-    ).toBe(true)
+    await expect(
+      page.getByLabel('Selected body').locator('option:checked'),
+    ).toHaveText('Planet [1:499:15]')
+    if (width < 768) {
+      for (const part of await text.locator('span').all()) {
+        await expect(part).toHaveCSS('text-overflow', 'ellipsis')
+        await expect(part).toHaveCSS('overflow', 'hidden')
+        expect((await part.boundingBox())!.width).toBeLessThan(70)
+      }
+    } else {
+      expect(
+        await text.evaluate((element) => {
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          const bounds = element.getBoundingClientRect()
+          return [...range.getClientRects()].every(
+            (rect) =>
+              rect.left >= bounds.left &&
+              rect.right <= bounds.right &&
+              rect.right <= innerWidth,
+          )
+        }),
+      ).toBe(true)
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width)
   }
   await page.addStyleTag({ content: 'html { font-size: 200% }' })
-  const text = page.getByLabel('Selected body').locator('..').locator('span')
+  const text = page
+    .getByLabel('Selected body')
+    .locator('..')
+    .locator(':scope > span')
   expect(
     await text.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,
@@ -1329,16 +1690,9 @@ test('selected body context reflows without clipping and editorial routes retain
   await expect(
     page.getByRole('heading', { name: 'The pulse of your world.' }),
   ).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Planet information details', exact: true })
-    .click()
   await expect(
-    page.getByRole('dialog', { name: 'Planet information', exact: true }),
-  ).toContainText('[1:499:15]')
-  await expect(
-    page.getByRole('dialog', { name: 'Planet information', exact: true }),
-  ).toContainText('3 fields used + 1 reserved / 163')
-  await page.keyboard.press('Escape')
+    page.getByRole('button', { name: 'Planet information details' }),
+  ).toHaveCount(0)
   await page.goto(`/u/andromeda/b/${id(99)}/resources`)
   const unavailable = page.getByRole('heading', {
     name: 'Destination unavailable',

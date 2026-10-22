@@ -13,7 +13,13 @@ import styles from './navigation.module.css'
 import { Button } from '../ui/button'
 import { BrandLogo, BrandWordmark } from '../ui/brand'
 import { Link } from '../ui/link'
-import { useEffect, useId, useRef } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  type ReactNode,
+  type FocusEvent,
+} from 'react'
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from './route-target'
 import { resolveDestination, type Page } from './routes'
@@ -25,18 +31,24 @@ import {
   pageTitles,
 } from './navigation-model'
 
+function revealFocusedDestination(event: FocusEvent<HTMLElement>) {
+  event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
 export function Navigation({
   view,
   body,
   page,
   onVisit,
   onLogout,
+  children,
 }: {
   view: BoundView
   body: string | undefined
   page: Page
   onVisit?: (page: Page) => void
   onLogout: () => void
+  children: ReactNode
 }) {
   const universeName = useUniverseName()
   const { identity } = useAccountIdentity()
@@ -122,16 +134,27 @@ export function Navigation({
           <span>Menu</span>
         </button>
       </nav>
-      {selected === 'Build' && (
-        <nav className={styles.secondary} aria-label="Build navigation">
-          {buildPages.map((p) => destination(p))}
-        </nav>
-      )}
-      {selected === 'Fleet' && (
-        <nav className={styles.secondary} aria-label="Fleet navigation">
-          {fleetPages.map((p) => destination(p))}
-        </nav>
-      )}
+      <div className={styles.topBar}>
+        {children}
+        {selected === 'Build' && (
+          <nav
+            className={styles.secondary}
+            aria-label="Build navigation"
+            onFocus={revealFocusedDestination}
+          >
+            {buildPages.map((p) => destination(p))}
+          </nav>
+        )}
+        {selected === 'Fleet' && (
+          <nav
+            className={styles.secondary}
+            aria-label="Fleet navigation"
+            onFocus={revealFocusedDestination}
+          >
+            {fleetPages.map((p) => destination(p))}
+          </nav>
+        )}
+      </div>
       <dialog
         id={menuId}
         className={styles.dialog}

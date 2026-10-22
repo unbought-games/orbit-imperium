@@ -42,6 +42,20 @@ npm run dev
 
 Open [localhost:5173](http://localhost:5173). Vite proxies API requests to the Rust server.
 
+For a phone on the same Wi-Fi, use your computer's private LAN IP as the frontend
+origin and expose Vite on the network:
+
+```sh
+ORBIT_ORIGIN=http://192.168.50.48:5173 make dev
+# In another terminal:
+npm run dev -- --host 0.0.0.0
+```
+
+Replace the example IP with your computer's address, then open that URL on both
+devices. Local development enables `ORBIT_LOCAL_INSECURE=1`, which permits HTTP
+cookies on loopback and private network IPs with an explicit port. Production
+still requires HTTPS. The backend can remain bound to loopback behind Vite.
+
 The project is organized into these components:
 
 | Directory | Responsibility |

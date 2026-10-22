@@ -22,9 +22,7 @@ export function ResourceStrip({
             key={name}
             resource={name}
             amount={value}
-            capacity={body.capacity[name]}
             variant="stock"
-            rate={rates ? rates[name] : null}
             warning={full}
           >
             <p>

@@ -1,3 +1,6 @@
+.topBar {
+  display: contents;
+}
 .primary {
   grid-area: navigation;
   display: flex;
@@ -139,6 +142,17 @@
   }
 }
 @media (max-width: 767px) {
+  .topBar {
+    grid-area: world;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'world' 'secondary';
+    position: sticky;
+    top: 0;
+    z-index: 9;
+    align-self: start;
+    margin-inline: calc(-1 * var(--shell-inline-gutter));
+  }
   .primary {
     position: fixed;
     z-index: 20;
@@ -177,10 +191,17 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    scroll-padding-inline: 8px;
+    scrollbar-width: none;
+    padding-inline: var(--shell-inline-gutter);
+    scroll-padding-inline: var(--shell-inline-gutter);
+    background: color-mix(in srgb, var(--surface-page) 90%, transparent);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
     gap: 2px 20px;
     font-size: 0.875rem;
+  }
+  .secondary::-webkit-scrollbar {
+    display: none;
   }
 }
 

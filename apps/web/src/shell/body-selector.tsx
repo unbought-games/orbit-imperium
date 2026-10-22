@@ -48,7 +48,21 @@ export function BodySelector({
         )}
         <div className={styles.selection}>
           <span className={styles.value} aria-hidden="true">
-            {body ? `${body.kind} ${coordinates(body)}` : 'Choose a planet'}
+            {body ? (
+              <>
+                <span className={styles.bodyName}>{body.kind}</span>{' '}
+                <span className={styles.bodyCoordinates}>
+                  {coordinates(body)}
+                </span>
+              </>
+            ) : (
+              'Choose a planet'
+            )}
+            <ChevronDown
+              className={styles.chevron}
+              size={16}
+              aria-hidden="true"
+            />
           </span>
           <Select
             aria-label="Selected body"
@@ -71,11 +85,6 @@ export function BodySelector({
               </optgroup>
             ))}
           </Select>
-          <ChevronDown
-            className={styles.chevron}
-            size={16}
-            aria-hidden="true"
-          />
         </div>
         {bodies.length > 1 && (
           <Button

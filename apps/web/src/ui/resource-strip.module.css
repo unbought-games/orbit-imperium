@@ -6,3 +6,13 @@
 .warning {
   color: var(--accent);
 }
+@media (max-width: 767px) {
+  .resources {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .resources > button {
+    flex: 1 0 auto;
+    min-width: min(100%, 3rem);
+  }
+}
