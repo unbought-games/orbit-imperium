@@ -343,3 +343,18 @@
   color: var(--accent);
   stroke-width: 1;
 }
+
+.fieldError {
+  color: var(--danger);
+}
+.fieldError:empty {
+  display: none;
+}
+.fieldset input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.destinationNotice {
+  grid-column: 1 / -1;
+  margin: 0;
+}

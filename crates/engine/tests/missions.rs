@@ -738,6 +738,47 @@ fn raid_fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     }
     (s, r, p, b, t)
 }
+#[test]
+fn galaxy_attack_blocker_uses_current_policy_and_matches_quote() {
+    let (mut s, r, p, b, t) = raid_fixture();
+    let other = s.bodies[&t].owner;
+    let mut request = intent(&s, p, b, t);
+    request.mission = Mission::Attack;
+    let blocker = |s: &GameState| {
+        galaxy_system(s, p, 1, 1, 0, &r)
+            .unwrap()
+            .positions
+            .into_iter()
+            .filter_map(|position| position.body)
+            .find(|body| body.id == t)
+            .unwrap()
+            .attack_blocker
+    };
+    assert_eq!(blocker(&s), None);
+    assert!(quote_fleet(&s, p, &request, 0, &r).is_ok());
+    for lot in &mut s.world.as_mut().unwrap().records.lots {
+        if lot.owner == other {
+            lot.unit_value_micro *= 10;
+        }
+    }
+    assert_eq!(blocker(&s), Some(GameError::BeginnerProtected));
+    assert_eq!(
+        quote_fleet(&s, p, &request, 0, &r),
+        Err(GameError::BeginnerProtected)
+    );
+    request.mission = Mission::Transport;
+    assert!(quote_fleet(&s, p, &request, 0, &r).is_ok());
+    s.world
+        .as_mut()
+        .unwrap()
+        .records
+        .policies
+        .get_mut(&other)
+        .unwrap()
+        .vacation = true;
+    assert_eq!(blocker(&s), Some(GameError::TargetVacation));
+}
+
 fn launch_raid(
     s: &mut GameState,
     r: &Ruleset,
