@@ -820,14 +820,13 @@ test('signed-in settings retain the beta notice and best-effort support target',
   await page.screenshot({ path: 'test-results/open-beta-settings-mobile.png', fullPage: true })
 })
 
-test('universe names appear on desktop while mobile stays compact and every game link uses the current name', async ({ page }) => {
+test('universe names stay out of the header while every game link uses the current name', async ({ page }) => {
   const options = { universeName: 'Andromeda' }
   await shellFixture(page, options)
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await expect(page.getByLabel('Current universe', { exact: true })).toHaveText('Andromeda')
-    if (width >= 768) await expect(page.getByLabel('Current universe', { exact: true })).toBeVisible()
-    else await expect(page.getByLabel('Current universe', { exact: true })).toBeHidden()
+    await expect(page.getByLabel('Current universe', { exact: true })).toBeHidden()
     await expect(page).toHaveTitle(/ · Andromeda · Orbit Imperium$/)
     expect(await page.evaluate(() => [...document.querySelectorAll<HTMLAnchorElement>('a[href]')]
       .map(a => new URL(a.href).pathname).filter(path => path.startsWith('/u/'))

@@ -49,7 +49,7 @@ export function Navigation({
   page: Page
   onVisit?: (page: Page) => void
   onLogout: () => void
-  children: ReactNode
+  children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
   const { identity } = useAccountIdentity()
@@ -129,40 +129,42 @@ export function Navigation({
       </button>
     )
   }
+  const primaryNavigation = (
+    <nav className={styles.primary} aria-label="Main navigation">
+      {destination('overview', 'Empire', Orbit, true)}
+      {destination('resources', 'Build', Blocks, true)}
+      {destination('fleets', 'Fleet', Radar, true)}
+      <button
+        type="button"
+        aria-label="Menu"
+        aria-description={hasUnreadReports ? 'Unread reports' : undefined}
+        aria-haspopup="dialog"
+        aria-controls={menuId}
+        aria-current={selected === 'Menu' ? 'page' : undefined}
+        onClick={(event) => {
+          opener.current = event.currentTarget
+          dialog.current?.showModal()
+        }}
+      >
+        <Menu size={21} aria-hidden="true" />
+        <span>Menu</span>
+        {hasUnreadReports && (
+          <span
+            className={styles.menuAlert}
+            role="status"
+            aria-label="Unread reports"
+          >
+            <Mail size={16} aria-hidden="true" />
+            <span className={styles.srOnly}>Unread reports</span>
+          </span>
+        )}
+      </button>
+    </nav>
+  )
   return (
     <>
-      <nav className={styles.primary} aria-label="Main navigation">
-        {destination('overview', 'Empire', Orbit, true)}
-        {destination('resources', 'Build', Blocks, true)}
-        {destination('fleets', 'Fleet', Radar, true)}
-        <button
-          type="button"
-          aria-label="Menu"
-          aria-description={hasUnreadReports ? 'Unread reports' : undefined}
-          aria-haspopup="dialog"
-          aria-controls={menuId}
-          aria-current={selected === 'Menu' ? 'page' : undefined}
-          onClick={(event) => {
-            opener.current = event.currentTarget
-            dialog.current?.showModal()
-          }}
-        >
-          <Menu size={21} aria-hidden="true" />
-          <span>Menu</span>
-          {hasUnreadReports && (
-            <span
-              className={styles.menuAlert}
-              role="status"
-              aria-label="Unread reports"
-            >
-              <Mail size={16} aria-hidden="true" />
-              <span className={styles.srOnly}>Unread reports</span>
-            </span>
-          )}
-        </button>
-      </nav>
       <div className={styles.topBar}>
-        {children}
+        {children(primaryNavigation)}
         {selected === 'Build' && (
           <nav
             className={styles.secondary}
