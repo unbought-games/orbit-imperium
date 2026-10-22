@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { globSync, readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
@@ -23,10 +23,14 @@ test('modern consumers reference canonical content IDs instead of copying a subs
 test('every bundled catalog and rules expansion is represented by the shared vocabulary', () => {
   const mapping = { Building: 'BuildingId3', Research: 'ResearchId3', Ship: 'ShipId3', Defense: 'DefenseId3', Missile: 'MissileId' }
   // The catalog includes disabled content; enabled subsets must not narrow the wire contract.
-  const rules = JSON.parse(readFileSync('rules/mvp-v1-slice-6.json'))
+  const catalogs = globSync('rules/*.json')
+    .map(path => JSON.parse(readFileSync(path)))
+    .filter(rules => rules.progression)
+    .flatMap(rules => rules.catalog)
+  assert.ok(catalogs.length > 0)
   for (const [kind, schema] of Object.entries(mapping)) {
     assert.deepEqual(
-      rules.catalog.filter(entry => entry.key.kind === kind).map(entry => entry.key.id).sort(),
+      [...new Set(catalogs.filter(entry => entry.key.kind === kind).map(entry => entry.key.id))].sort(),
       [...schemas[schema].enum].sort(),
       `${kind}: catalog and client vocabulary drift`,
     )
