@@ -19,6 +19,7 @@ import { routeTarget } from './route-target'
 import { resolveDestination, type Page } from './routes'
 import {
   buildPages,
+  fleetPages,
   navigationAnchor,
   navigationGroups,
   pageTitles,
@@ -128,7 +129,7 @@ export function Navigation({
       )}
       {selected === 'Fleet' && (
         <nav className={styles.secondary} aria-label="Fleet navigation">
-          {(['fleets', 'dispatch'] as Page[]).map((p) => destination(p))}
+          {fleetPages.map((p) => destination(p))}
         </nav>
       )}
       <dialog
