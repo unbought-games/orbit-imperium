@@ -70,46 +70,43 @@ export function Production({
             <tr>
               <th scope="col">Building</th>
               <th scope="col">Level</th>
-              <th scope="col">Notes</th>
               <th scope="col">Output</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(([key, building]) => (
-              <tr key={key}>
-                <th scope="row">{label(building)}</th>
-                <td>
-                  {body.levels[building as keyof typeof body.levels] ?? '—'}
-                </td>
-                <td className={styles.effect}>
-                  {!production.editable.includes(key) && (
-                    <small>Unavailable</small>
-                  )}
-                </td>
-                <td>
-                  <Select
-                    data-analytics="set_production"
-                    aria-label={`${label(key)} production`}
-                    value={autosave.settings?.[key] ?? production.settings[key]}
-                    disabled={!production.editable.includes(key)}
-                    onChange={(event) =>
-                      autosave.change(
-                        key,
-                        Number(
-                          event.target.value,
-                        ) as (typeof production.settings)[typeof key],
-                      )
-                    }
-                  >
-                    {Array.from({ length: 11 }, (_, i) => i * 10).map((n) => (
-                      <option key={n} value={n}>
-                        {n}%
-                      </option>
-                    ))}
-                  </Select>
-                </td>
-              </tr>
-            ))}
+            {rows
+              .filter(([key]) => production.editable.includes(key))
+              .map(([key, building]) => (
+                <tr key={key}>
+                  <th scope="row">{label(building)}</th>
+                  <td>
+                    {body.levels[building as keyof typeof body.levels] ?? '—'}
+                  </td>
+                  <td>
+                    <Select
+                      data-analytics="set_production"
+                      aria-label={`${label(key)} production`}
+                      value={
+                        autosave.settings?.[key] ?? production.settings[key]
+                      }
+                      onChange={(event) =>
+                        autosave.change(
+                          key,
+                          Number(
+                            event.target.value,
+                          ) as (typeof production.settings)[typeof key],
+                        )
+                      }
+                    >
+                      {Array.from({ length: 11 }, (_, i) => i * 10).map((n) => (
+                        <option key={n} value={n}>
+                          {n}%
+                        </option>
+                      ))}
+                    </Select>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
         <div className={styles.save}>
@@ -125,7 +122,18 @@ export function Production({
           )}
         </div>
       </div>
-      <div className={styles.notes}>
+      <details className={styles.notes}>
+        <summary>Production rules and unavailable sources</summary>
+        {rows.some(([key]) => !production.editable.includes(key)) && (
+          <p>
+            Unavailable:{' '}
+            {rows
+              .filter(([key]) => !production.editable.includes(key))
+              .map(([, building]) => label(building))
+              .join(', ')}
+            .
+          </p>
+        )}
         <p>
           Deuterium fuel:{' '}
           <ResourceNumber value={production.fuel_deuterium_per_hour} /> / hour ·
@@ -145,7 +153,7 @@ export function Production({
           production; excess resources remain usable. Energy shortages reduce
           output without changing your settings.
         </p>
-      </div>
+      </details>
     </Section>
   )
 }

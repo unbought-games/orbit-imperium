@@ -481,6 +481,7 @@ test('object stages preserve source proportions at desktop and phone widths', as
   for (const width of [1440, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+    await page.getByText('Facilities colony', { exact: true }).click()
     const scene = page.getByRole('region', { name: 'Facilities objects' })
     await expect(scene).toBeVisible()
     await expectUndistortedArt(scene.locator('..'))
@@ -910,6 +911,7 @@ test('facility and research object stages remain usable when artwork fails', asy
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+    await page.getByText('Facilities colony', { exact: true }).click()
     const marker = page.getByRole('button', { name: 'Inspect Robotics Factory', exact: true })
     await marker.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })

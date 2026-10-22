@@ -9,6 +9,9 @@ export async function captureCatalog(page: Page, path: string) {
       behavior: 'instant',
     }),
   )
+  await page.locator('main img').evaluateAll((images) => {
+    for (const image of images) (image as HTMLImageElement).loading = 'eager'
+  })
   await expect
     .poll(() =>
       page.locator('main img').evaluateAll((images) =>

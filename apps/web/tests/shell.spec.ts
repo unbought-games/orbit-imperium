@@ -1079,12 +1079,14 @@ test('overview preserves rich work, exact inventory, incoming visibility and res
   for (const width of [1672, 390, 430]) {
     await page.setViewportSize({ width, height: width === 1672 ? 1100 : 844 })
     await page.locator('main img').evaluateAll(async (images) => {
-      await Promise.all(
-        images.map((image) =>
-          (image as HTMLImageElement).decode().catch(() => {}),
-        ),
-      )
+      // Screenshot preparation also loads art inside the collapsed map.
+      await Promise.all(images.map((image) => {
+        const img = image as HTMLImageElement
+        img.loading = 'eager'
+        return img.decode().catch(() => {})
+      }))
     })
+
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -1121,7 +1123,7 @@ test('navigation retains the ledger through cold art, rapid routes and reduced m
     'same-ledger',
   )
   await expect(
-    page.getByRole('heading', { name: 'Your empire. In motion.' }),
+    page.getByRole('heading', { name: 'Empire', exact: true }),
   ).toBeVisible()
   await page.goBack()
   await expect(page).toHaveURL(/resources$/)
@@ -1718,7 +1720,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     ).toBe('static')
     const noticeBox = await recovery.boundingBox()
     const intro = await page
-      .getByRole('heading', { name: 'Set your course.', exact: true })
+      .getByRole('heading', { name: 'Dispatch fleet', exact: true })
       .boundingBox()
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [
@@ -1881,7 +1883,7 @@ test('selected body context truncates on phones and retains full labels and acce
     (await heading.locator('..').boundingBox())!.height,
   ).toBeLessThanOrEqual(1)
   await expect(
-    page.getByRole('heading', { name: 'The pulse of your world.' }),
+    page.getByRole('heading', { name: 'Resources', level: 2 }),
   ).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Planet information details' }),

@@ -1,3 +1,4 @@
+import { pageTitles } from '../../shell/navigation-model'
 import { ResourceNumber } from '../../ui/number-value'
 import type { BoundView } from '../../client-model/commands'
 import type { ReactNode } from 'react'
@@ -21,46 +22,9 @@ export function ProgressionHeading({
   body: Pick<ProgressionProps['body'], 'coordinates' | 'kind'>
   compact?: boolean
 }) {
-  const copy =
-    page === 'resources'
-      ? [
-          'Resources',
-          'The pulse of your world.',
-          'Resources flow. Industry grows. A stronger tomorrow.',
-        ]
-      : page === 'facilities'
-        ? [
-            'Facilities',
-            'Build what comes next.',
-            'Expand your infrastructure. Make room for a larger horizon.',
-          ]
-        : page === 'research'
-          ? [
-              'Research',
-              'Knowledge carries you further.',
-              'Advance your technologies across this universe.',
-            ]
-          : page === 'shipyard'
-            ? [
-                'Ships',
-                'Give your ambition a hull.',
-                'Build, expand, and keep your empire in motion.',
-              ]
-            : [
-                'Defense',
-                'Hold your ground.',
-                'Build the defenses that protect this world.',
-              ]
   return (
-    <header className={`${styles.heading} ${compact ? styles.compact : ''}`}>
-      <p className={styles.eyebrow}>
-        {copy[0]}{' '}
-        <span>
-          {body.kind} {coordinates(body)}
-        </span>
-      </p>
-      <h2>{copy[1]}</h2>
-      <p>{copy[2]}</p>
+    <header className={styles.heading}>
+      {!compact && <h2>{pageTitles[page]}</h2>}
       {page === 'research' && (
         <p className={styles.context}>
           Universe-wide research · host and funding body {coordinates(body)}
