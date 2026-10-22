@@ -104,6 +104,7 @@ export function ImageTile({
   locked,
   unaffordable,
   countLabel = 'Level',
+  inspectable = false,
   disabledReason = 'unavailable',
   className,
   progress,
@@ -118,6 +119,7 @@ export function ImageTile({
   unaffordable?: boolean
   onQuickUpgrade?: () => void
   countLabel?: string
+  inspectable?: boolean
   disabledReason?: string
   progress?: {
     kind?: 'construction' | 'research'
@@ -136,6 +138,7 @@ export function ImageTile({
           styles.tile,
           selected && styles.selected,
           locked && styles.locked,
+          props.disabled && styles.unavailable,
           unaffordable && styles.unaffordable,
           !!progress && styles.working,
           className,
@@ -148,6 +151,7 @@ export function ImageTile({
             : `${title} · ${countLabel} ${level}${locked ? ' · prerequisites required' : ''}${unaffordable ? ' · Not enough resources' : ''}`
         }
         {...props}
+        disabled={props.disabled && !inspectable}
       >
         <span className={styles.artwork}>
           <CatalogImage art={art} sizes="100px" loading="lazy" />
@@ -200,6 +204,13 @@ export function ImageTile({
           <strong>
             {countLabel} {level}
           </strong>
+          {inspectable && (props.disabled || locked) && (
+            <small>
+              {props.disabled
+                ? 'Unavailable · Inspect details'
+                : 'Prerequisites required'}
+            </small>
+          )}
         </span>
       </button>
       {onQuickUpgrade && (

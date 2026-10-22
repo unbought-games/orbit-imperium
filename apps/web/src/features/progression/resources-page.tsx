@@ -6,6 +6,8 @@ import { label } from '../../ui/format'
 import type { components } from '../../contracts'
 import type { ProgressionProps } from './shared'
 import { resourceBuildings } from './resource-buildings'
+import { buildingUnavailableReason } from './building-availability'
+import { requirementKey, technologyLevel } from './technology-dialog'
 import { BuildingDetails } from './building-details'
 import { Production } from './production'
 import { WorkSummaries } from '../work-summaries'
@@ -21,13 +23,19 @@ export function ResourcesPage(props: ProgressionProps) {
   const selected = resourceBuildings.find(
     (building) => building.id === selectedId,
   )
+  const selectedEntry = view.catalog.find(
+    (entry) => entry.key.kind === 'Building' && entry.key.id === selectedId,
+  )
   const [open, setOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
   const { proposal, loading, error, retry } = useProgressionOptions(
     model,
     view,
-    open && selected && progress?.building !== selected.id
+    open &&
+      selected &&
+      !buildingUnavailableReason(selectedEntry, body, selected.id) &&
+      progress?.building !== selected.id
       ? {
           type: action,
           body: body.id,
@@ -153,8 +161,17 @@ export function ResourcesPage(props: ProgressionProps) {
                   }
                   art={building.art}
                   selected={open && selected?.id === building.id}
-                  disabled={level === undefined || catalog?.enabled === false}
-                  disabledReason="unavailable in this universe"
+                  locked={catalog?.requirements.some(
+                    (r) => technologyLevel(requirementKey(r), props) < r.level,
+                  )}
+                  disabled={
+                    !!buildingUnavailableReason(catalog, body, building.id)
+                  }
+                  disabledReason={buildingUnavailableReason(
+                    catalog,
+                    body,
+                    building.id,
+                  )}
                   onClick={(event) => {
                     if (open && selected?.id === building.id) {
                       closeDetails()
