@@ -5012,6 +5012,8 @@ export interface components {
             fleet_slots: components["schemas"]["Decimal"];
         };
         BoundView4: {
+            /** @description Whether this recipient has visible unread mission reports anywhere in the archive. */
+            has_unread_reports?: boolean;
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;

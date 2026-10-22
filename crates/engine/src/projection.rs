@@ -1,6 +1,8 @@
 use crate::*;
 #[derive(Clone, Debug)]
 pub struct ViewerSnapshot {
+    /// A visible unread report, selected from the full recipient archive.
+    pub unread_report: Option<ReportId>,
     pub world: Option<GameState>,
     pub progression: Option<GameState>,
     pub coverage: FactCoverage,

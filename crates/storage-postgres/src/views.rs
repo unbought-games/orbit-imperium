@@ -399,6 +399,7 @@ impl PgStore {
             .as_ref()
             .map_or(coverage, |s| s.coverage.clone());
         let snapshot = ViewerSnapshot {
+            unread_report: None,
             world,
             progression,
             coverage,

@@ -49,6 +49,7 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         request_id: Uuid::new_v4(),
     };
     let v = game.world_view(p, context()).await.unwrap();
+    assert!(!v.has_unread_reports);
     let body = v.progression.bodies[0].id;
     assert_eq!(v.progression.protocol, 4);
     assert!(
@@ -296,6 +297,44 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
     assert_eq!(second.items.len(), 1);
     assert_eq!(second.items[0].id, ReportId(Uuid::from_u128(10001)));
     assert!(!second.has_more);
+    // Only the oldest report is unread: the alert must cover beyond page one.
+    sqlx::query("UPDATE mission_report_recipients SET read=(report<>$1) WHERE recipient=$2")
+        .bind(Uuid::from_u128(10001))
+        .bind(b.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        restored
+            .world_view(p, context())
+            .await
+            .unwrap()
+            .has_unread_reports
+    );
+    sqlx::query("UPDATE mission_report_recipients SET hidden=true WHERE recipient=$1")
+        .bind(b.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        !restored
+            .world_view(p, context())
+            .await
+            .unwrap()
+            .has_unread_reports
+    );
+    sqlx::query("UPDATE mission_report_recipients SET hidden=false,read=true WHERE recipient=$1")
+        .bind(b.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        !restored
+            .world_view(p, context())
+            .await
+            .unwrap()
+            .has_unread_reports
+    );
     // A post-cut insertion at the same observation time must not enter subsequent pages.
     sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) SELECT universe,$1,$2,kind,at_ms,jsonb_set(jsonb_set(data,'{id}',to_jsonb($1::uuid)),'{event}',to_jsonb($2::uuid)) FROM mission_reports WHERE id=$3").bind(Uuid::from_u128(10200)).bind(Uuid::from_u128(20200)).bind(Uuid::from_u128(10001)).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO mission_report_recipients VALUES($1,$2,102,false,false)")
@@ -333,6 +372,27 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         player: fb.player,
         universe: u,
     };
+    assert!(
+        restored
+            .world_view(p, context())
+            .await
+            .unwrap()
+            .has_unread_reports
+    );
+    assert!(
+        !restored
+            .world_view(
+                fp,
+                QueryContext {
+                    binding: fb,
+                    request_id: Uuid::new_v4()
+                }
+            )
+            .await
+            .unwrap()
+            .has_unread_reports,
+        "another recipient must not inherit the alert"
+    );
     next.context.binding = fb;
     assert!(matches!(
         restored.reports4(fp, next).await,
@@ -825,6 +885,26 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         store.commit_scoped(&takeover, outcome).await.unwrap(),
         CommitOutcome::Committed { .. }
     ));
+    for binding in [a, b] {
+        assert!(
+            !game
+                .world_view(
+                    Principal {
+                        account: binding.account,
+                        player: binding.player,
+                        universe: binding.universe
+                    },
+                    QueryContext {
+                        binding,
+                        request_id: Uuid::new_v4()
+                    }
+                )
+                .await
+                .unwrap()
+                .has_unread_reports,
+            "committed read/hidden preferences must clear the alert"
+        );
+    }
     sqlx::query("DROP TABLE orbit_test_fault")
         .execute(&pool)
         .await
@@ -1422,6 +1502,34 @@ async fn concurrent_report_preferences(
     .fetch_one(pool)
     .await
     .unwrap();
+    // Isolate this real delivered report so preference commands must clear the alert.
+    sqlx::query(
+        "UPDATE mission_report_recipients SET read=true WHERE recipient=ANY($1) AND report<>$2",
+    )
+    .bind(vec![a.player.0, b.player.0])
+    .bind(report)
+    .execute(pool)
+    .await
+    .unwrap();
+    let game = GameService::new(store.clone());
+    for binding in [a, b] {
+        assert!(
+            game.world_view(
+                Principal {
+                    account: binding.account,
+                    player: binding.player,
+                    universe: binding.universe
+                },
+                QueryContext {
+                    binding,
+                    request_id: Uuid::new_v4()
+                }
+            )
+            .await
+            .unwrap()
+            .has_unread_reports
+        );
+    }
     let peer = PgStore::connect(url).await.unwrap();
     let mut claims = Vec::new();
     for (binding, action) in [
@@ -1543,6 +1651,26 @@ async fn concurrent_report_preferences(
         flags.contains(&(b.player.0, false, true)),
         "B's hidden flag was lost: {flags:?}"
     );
+    for binding in [a, b] {
+        assert!(
+            !game
+                .world_view(
+                    Principal {
+                        account: binding.account,
+                        player: binding.player,
+                        universe: binding.universe
+                    },
+                    QueryContext {
+                        binding,
+                        request_id: Uuid::new_v4()
+                    }
+                )
+                .await
+                .unwrap()
+                .has_unread_reports,
+            "committed read/hidden preferences must clear the alert"
+        );
+    }
     sqlx::query("DROP TABLE orbit_test_fault")
         .execute(pool)
         .await

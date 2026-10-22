@@ -9715,6 +9715,10 @@
       "BoundView4": {
         "type": "object",
         "properties": {
+          "has_unread_reports": {
+            "type": "boolean",
+            "description": "Whether this recipient has visible unread mission reports anywhere in the archive."
+          },
           "viewer_revision": {
             "$ref": "#/components/schemas/Decimal"
           },
