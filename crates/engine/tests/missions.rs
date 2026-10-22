@@ -2256,3 +2256,6 @@ fn espionage_contract_keeps_research_added_by_rules_updates() {
         "The browser validates this same engine-produced observation"
     );
 }
+
+#[path = "missions/heavy_fighter.rs"]
+mod heavy_fighter;

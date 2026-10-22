@@ -81,6 +81,14 @@ jobs:
           key: explicit
           cache-bin: false
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      # Bypass intermittent Azure archive stalls: actions/runner-images#14823.
+      - name: Use Ubuntu archive mirrors
+        run: |
+          # apt requires a literal tab between the URI and priority metadata.
+          printf '%s\tpriority:%s\n' \
+            'https://archive.ubuntu.com/ubuntu' 0 \
+            'https://security.ubuntu.com/ubuntu' 1 \
+            | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Start disposable PostgreSQL
