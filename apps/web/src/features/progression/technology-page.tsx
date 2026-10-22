@@ -153,7 +153,7 @@ export function TechnologyPage(props: ProgressionProps) {
           page !== 'facilities' && (
             <span>
               {kind === 'Research'
-                ? 'Research belongs to your player across this universe.'
+                ? 'Research applies to all your planets.'
                 : `Planet [${body.coordinates.galaxy}:${body.coordinates.system}:${body.coordinates.position}]`}
             </span>
           )

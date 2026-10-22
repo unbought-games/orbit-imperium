@@ -281,10 +281,10 @@ test('desktop and phone command views keep all information readable without hori
   await expect(planet).toContainText('Ship composition unknown')
   await planet
     .locator('summary')
-    .filter({ hasText: 'Stationed inventory' })
+    .filter({ hasText: 'Orbital fleet' })
     .click()
   await expect(
-    planet.getByRole('region', { name: 'Stationed inventory' }),
+    planet.getByRole('region', { name: 'Orbital fleet' }),
   ).toContainText('Small Cargo2')
   options.bodies.push({
     ...body,

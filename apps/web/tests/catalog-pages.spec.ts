@@ -57,6 +57,7 @@ test('active research remains cancellable from its details after removing Curren
     .click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('60 metal')
+  await expect(pane.getByText(/Full refund before completion:/)).toHaveCount(1)
   await pane
     .getByRole('button', { name: 'Cancel research', exact: true })
     .click()
