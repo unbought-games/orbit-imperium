@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   )
 })
 
-test('OIDC configuration selects hosted sign-in and retains the source offer', async ({
+test('OIDC sign-in offers one prominent account action and retains the destination', async ({
   page,
 }) => {
   await page.route('**/api/v1/bootstrap', (route) =>
@@ -34,19 +34,41 @@ test('OIDC configuration selects hosted sign-in and retains the source offer', a
     }),
   )
   const destination = `/u/andromeda/b/${body.id}/resources`
-  await page.goto(`/login?${new URLSearchParams({ redirect: destination })}`)
-  await expect(
-    page.getByRole('link', { name: 'Continue with Unbought' }),
-  ).toHaveAttribute(
-    'href',
-    `/api/auth/login?${new URLSearchParams({ return_to: destination })}`,
-  )
+  const loginPath = `/api/auth/login?${new URLSearchParams({ return_to: destination })}`
+  const action = page.getByRole('link', {
+    name: 'Continue with your Unbought Account',
+    exact: true,
+  })
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const path of ['/login', '/signup']) {
+      await page.goto(`${path}?${new URLSearchParams({ redirect: destination })}`)
+      await expect(action).toBeVisible()
+      await expect(action).toHaveAttribute('href', loginPath)
+      await expect(action).toHaveAttribute('data-analytics', 'continue_with_account')
+      await expect(page.locator('a[href^="/api/auth/login"]')).toHaveCount(1)
+      await expect(page.getByRole('link', { name: 'Create an account', exact: true })).toHaveCount(0)
+      const bounds = await action.boundingBox()
+      expect(bounds!.height).toBeGreaterThanOrEqual(52)
+      expect(bounds!.x).toBeGreaterThanOrEqual(0)
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    }
+    await page.screenshot({ path: `test-results/oidc-sign-in-${width}.png`, fullPage: true })
+  }
   await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
   await expect(page.getByRole('navigation', { name: 'Policies and support' })).toBeVisible()
   await expect(page.getByLabel('Password')).toHaveCount(0)
   await expect(
     page.getByRole('link', { name: 'Source', exact: true }),
   ).toBeVisible()
+  await page.route('**/api/auth/login?*', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<h1>Hosted accounts</h1>' }),
+  )
+  await action.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL((url) => url.pathname + url.search === loginPath)
+  await expect(page.getByRole('heading', { name: 'Hosted accounts' })).toBeVisible()
 })
 
 test('login and signup preserve the requested game destination', async ({
@@ -780,7 +802,7 @@ for (const mode of ['local', 'oidc']) {
       await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
     else
       await expect(
-        page.getByRole('link', { name: 'Continue with Unbought' }),
+        page.getByRole('link', { name: 'Continue with your Unbought Account', exact: true }),
       ).toBeVisible()
     await expect(page.getByRole('alert')).toHaveCount(0)
   })

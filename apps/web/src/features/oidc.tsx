@@ -1,6 +1,8 @@
 import { PublicFrame } from './public-frame'
 import { Heading, Text } from '../ui/typography'
+import { ButtonLinkAnchor } from '../ui/button'
 import { useUniverseEnrollment, oidcLoginPath } from '../client-model/use-oidc'
+import styles from './login.module.css'
 export function UnboughtLogin({ redirect }: { redirect?: string }) {
   return (
     <PublicFrame>
@@ -9,14 +11,15 @@ export function UnboughtLogin({ redirect }: { redirect?: string }) {
         One username across unbought games. Sign in or create an account to
         continue.
       </Text>
-      <a data-analytics="continue_with_account" href={oidcLoginPath(redirect)}>
-        Continue with Unbought
-      </a>
-      <p>
-        <a data-analytics="create_account" href={oidcLoginPath(redirect)}>
-          Create an account
-        </a>
-      </p>
+      <div className={styles.actions}>
+        <ButtonLinkAnchor
+          className={`${styles.primary} ${styles.accountAction}`}
+          data-analytics="continue_with_account"
+          href={oidcLoginPath(redirect)}
+        >
+          Continue with your Unbought Account
+        </ButtonLinkAnchor>
+      </div>
     </PublicFrame>
   )
 }
