@@ -227,6 +227,7 @@ export function TechnologyDetails({
                   )}
                 </div>
                 <Button
+                  data-analytics="confirm_technology_action"
                   className={styles.improve}
                   aria-label={manufacture ? 'Build' : 'Confirm research'}
                   disabled={

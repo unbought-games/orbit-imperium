@@ -1507,12 +1507,15 @@ name = "orbit-server"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "hex",
  "orbit-application",
  "orbit-engine",
  "orbit-storage-postgres",
  "orbit-transport-http",
+ "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "unbought-auth",
  "uuid",

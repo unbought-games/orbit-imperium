@@ -7,6 +7,7 @@ mod pools;
 pub use pools::{PoolLimits, PoolSnapshot};
 mod migrations;
 pub use migrations::MigrationError;
+mod analytics;
 mod identity;
 mod oidc;
 mod seed;

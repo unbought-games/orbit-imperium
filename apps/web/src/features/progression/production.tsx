@@ -88,6 +88,7 @@ export function Production({
                 </td>
                 <td>
                   <Select
+                    data-analytics="set_production"
                     aria-label={`${label(key)} production`}
                     value={autosave.settings?.[key] ?? production.settings[key]}
                     disabled={!production.editable.includes(key)}

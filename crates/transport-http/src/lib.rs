@@ -105,6 +105,7 @@ where
     Router::new()
         .route("/api/auth/config", get(oidc::configuration::<S>))
         .route("/api/auth/login", get(oidc::login::<S>))
+        .route("/api/auth/login-journey", post(oidc::login_journey::<S>))
         .route("/api/auth/callback", get(oidc::callback::<S>))
         .route("/api/auth/identity", get(oidc::identity::<S>))
         .route("/api/auth/enroll", post(oidc::enroll::<S>))
