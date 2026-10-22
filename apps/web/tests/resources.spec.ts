@@ -792,12 +792,16 @@ test('stockpiles, energy, and signed hourly rates round down to whole units', as
   await refreshGame(page)
   await shellFixture(page, { production: [economy] })
   const strip = page.getByLabel('Current resources')
+  await strip.getByRole('button', { name: 'Metal details' }).click()
   await expect(
-    strip.getByRole('button', { name: 'Metal details' }),
-  ).toContainText('(+63/h)')
+    page.getByRole('dialog', { name: 'Metal', exact: true }),
+  ).toContainText('Production +63 / hour')
+  await page.keyboard.press('Escape')
+  await strip.getByRole('button', { name: 'Deuterium details' }).click()
   await expect(
-    strip.getByRole('button', { name: 'Deuterium details' }),
-  ).toContainText('(-4/h)')
+    page.getByRole('dialog', { name: 'Deuterium', exact: true }),
+  ).toContainText('Net production -4 / hour')
+  await page.keyboard.press('Escape')
   await expect(
     strip.getByRole('button', { name: 'Energy details' }).locator('strong'),
   ).toHaveText('26')

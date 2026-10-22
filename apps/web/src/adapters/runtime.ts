@@ -10,6 +10,7 @@ import { attemptStorage, prepareSession } from './attempt-storage'
 import { gamePort, http } from './http'
 import { readEmbeddedBootstrap } from './bootstrap'
 import { createGameUpdatesPort } from './updates'
+import { commandId } from './command-id'
 export type BootstrapSource = 'document' | 'retry' | 'login' | 'signup'
 type GameIssue =
   | { status: 'no_membership' }
@@ -54,7 +55,7 @@ export function browserDependencies(): RuntimeDependencies {
         const timer = setTimeout(callback, delay)
         return () => clearTimeout(timer)
       },
-      newId: () => crypto.randomUUID(),
+      newId: () => commandId(crypto),
       monotonicNowMs: () => performance.now(),
       isOnline: () => navigator.onLine,
     },

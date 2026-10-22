@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { ResourceMark } from './resource-mark'
 import { Popover } from './popover'
 import { classes } from './classes'
+import { formatCompactResource } from './compact-resource'
 import styles from './resource-amount.module.css'
 
 /** Shared resource image, amount, and accessible contextual details. */
@@ -10,16 +11,12 @@ export function ResourceAmount({
   resource,
   amount,
   variant = 'cost',
-  rate,
-  capacity,
   warning = false,
   children,
 }: {
   resource: 'metal' | 'crystal' | 'deuterium' | 'energy'
   amount: string
   variant?: 'cost' | 'stock'
-  capacity?: string
-  rate?: string | null
   warning?: boolean
   children: ReactNode
 }) {
@@ -48,40 +45,15 @@ export function ResourceAmount({
             <span className={styles.art} aria-hidden="true" />
           )}
           <span className={styles.amount}>
-            {variant === 'stock' && (
-              <span className={styles.stockName}>{title}</span>
-            )}
             <strong>
-              <ResourceNumber value={amount} />
-            </strong>
-            {capacity !== undefined && (
-              <span className={styles.capacity}>
-                / <ResourceNumber value={capacity} />
-              </span>
-            )}
-            {variant === 'stock' && warning && (
-              <span className={styles.status}>
-                {resource === 'energy'
-                  ? 'Shortfall'
-                  : BigInt(amount) > BigInt(capacity ?? amount)
-                    ? 'Above capacity'
-                    : 'Storage full'}
-              </span>
-            )}
-            {rate !== undefined &&
-              (rate === null ? variant !== 'stock' : BigInt(rate) !== 0n) && (
-                <span className={styles.rate}>
-                  {rate === null ? (
-                    '(—/h)'
-                  ) : (
-                    <>
-                      ({BigInt(rate) > 0n ? '+' : ''}
-                      <ResourceNumber value={rate} />
-                      /h)
-                    </>
-                  )}
+              {variant === 'stock' ? (
+                <span className={styles.compactAmount}>
+                  {formatCompactResource(amount)}
                 </span>
+              ) : (
+                <ResourceNumber value={amount} />
               )}
+            </strong>
           </span>
         </>
       }

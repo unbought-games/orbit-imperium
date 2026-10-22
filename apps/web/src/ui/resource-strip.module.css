@@ -6,3 +6,8 @@
 .warning {
   color: var(--accent);
 }
+@media (max-width: 767px) {
+  .resources {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 3rem), 1fr));
+  }
+}

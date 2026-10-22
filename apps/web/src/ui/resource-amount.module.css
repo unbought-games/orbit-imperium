@@ -34,26 +34,6 @@
 .energy .art {
   background-position: 100% 100%;
 }
-.name {
-  position: absolute;
-  inset: auto 0 0;
-  display: block;
-  padding: 3px 1px;
-  font-size: 0.625rem;
-  line-height: 1.2;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: #dce9f2;
-  background: rgb(8 18 28 / 80%);
-  overflow-wrap: anywhere;
-}
-.rate {
-  display: block;
-  margin-top: 2px;
-  color: #9db8c9;
-  font-size: 0.6875rem;
-  overflow-wrap: anywhere;
-}
 .amount {
   display: flex;
   align-items: baseline;
@@ -62,9 +42,6 @@
 }
 .amount > * {
   min-width: 0;
-}
-.amount .rate {
-  margin-top: 0;
 }
 .resource strong {
   display: block;
@@ -85,10 +62,6 @@
 .warning strong {
   color: var(--danger);
 }
-.stock {
-  flex: 1;
-  max-width: 25%;
-}
 .cost {
   width: 72px;
   min-height: var(--control-size);
@@ -103,60 +76,30 @@
   font-size: 0.875rem;
   font-weight: 400;
 }
-@media (max-width: 599px) {
-  .stock .art {
-    width: 64px;
-  }
-  .name {
-    font-size: 0.5625rem;
-  }
-  .stock strong {
-    font-size: 0.75rem;
-  }
-}
 .stock {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(8px, 1.5vw, 24px);
+  gap: 8px;
   max-width: none;
-  min-height: 76px;
+  min-height: 52px;
   text-align: left;
-  padding: 8px 12px;
-}
-.stock + .stock {
-  border-left: 1px solid var(--border-accent);
+  padding: 4px 12px;
 }
 .stock .amount {
   display: block;
 }
 .stock strong {
   display: inline;
-  font: 1.375rem/1.2 var(--font-editorial);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
   color: var(--text);
-}
-.stockName {
-  display: block;
-  overflow-wrap: anywhere;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  font-size: 0.625rem;
-  margin-bottom: 4px;
-}
-.capacity {
-  font: 1rem var(--font-editorial);
-  color: var(--text-muted);
-  margin-left: 6px;
-  overflow-wrap: anywhere;
-}
-.stock .rate,
-.status {
-  display: block;
-  font-size: 0.75rem;
-  margin-top: 3px;
 }
 .symbol {
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   color: var(--accent);
 }
@@ -178,35 +121,36 @@
 .stock:hover {
   background: #ffffff04;
 }
-@media (max-width: 1100px) {
-  .stock {
-    gap: 8px;
-    padding-inline: 8px;
-  }
-  .capacity {
-    display: block;
-    margin-left: 0;
-    font-size: 0.875rem;
-  }
+.compactAmount {
+  white-space: nowrap;
 }
 @media (max-width: 767px) {
   .stock {
-    display: block;
-    padding: 8px 6px;
-    min-height: 92px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 5px;
+    padding: 4px 2px;
+    min-height: var(--control-size);
+    text-align: center;
   }
   .stock .symbol {
-    display: none;
+    width: 16px;
+    height: 16px;
   }
   .stock strong {
-    font-size: 1.125rem;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow-wrap: normal;
   }
-  .stockName {
-    font-size: 0.5625rem;
-    letter-spacing: 0.8px;
+}
+@media (max-width: 359px) {
+  .stock {
+    gap: 4px;
+    padding-inline: 0;
   }
-  .stock .rate,
-  .status {
-    font-size: 0.625rem;
+  .stock .symbol {
+    width: 14px;
+    height: 14px;
   }
 }

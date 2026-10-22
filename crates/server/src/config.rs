@@ -2,6 +2,24 @@ use orbit_engine::{UniverseId, UniverseOptions, parse_speed};
 use std::net::IpAddr;
 use uuid::Uuid;
 
+fn local_http_origin(origin: &str) -> bool {
+    let Some(authority) = origin.strip_prefix("http://") else {
+        return false;
+    };
+    if let Some(port) = authority.strip_prefix("localhost:") {
+        return port.parse::<u16>().is_ok_and(|port| port > 0);
+    }
+    authority
+        .parse::<std::net::SocketAddr>()
+        .is_ok_and(|address| {
+            address.port() > 0
+                && match address.ip() {
+                    IpAddr::V4(ip) => ip.is_loopback() || ip.is_private(),
+                    IpAddr::V6(ip) => ip.is_loopback() || ip.is_unique_local(),
+                }
+        })
+}
+
 #[cfg(all(test, not(feature = "universe-config-bridge")))]
 mod universe_config_tests {
     use super::*;
@@ -193,10 +211,11 @@ impl ServeConfig {
         let bind = get("ORBIT_BIND").unwrap_or_else(|| "127.0.0.1:8080".into());
         let origin = get("ORBIT_ORIGIN").unwrap_or_else(|| "http://localhost:8080".into());
         let secure_cookies = !get("ORBIT_LOCAL_INSECURE").is_some_and(|v| v == "1");
-        if !secure_cookies
-            && !(origin.starts_with("http://localhost:") || origin.starts_with("http://127.0.0.1:"))
-        {
-            return Err("insecure cookies require a localhost origin".into());
+        if !secure_cookies && !local_http_origin(&origin) {
+            return Err(
+                "insecure cookies require a loopback or private-network HTTP origin with a port"
+                    .into(),
+            );
         }
         let oidc = if role.serves_api() {
             match get("ORBIT_AUTH_MODE").as_deref().unwrap_or("local") {
@@ -467,12 +486,26 @@ mod serve_tests {
     }
 
     #[test]
-    fn insecure_cookies_require_existing_localhost_origin_policy() {
+    fn insecure_cookies_require_a_loopback_or_private_network_origin() {
         for (origin, allowed) in [
             ("http://localhost:8080", true),
             ("http://127.0.0.1:9090", true),
             ("http://localhost", false),
-            ("http://[::1]:8080", false),
+            ("http://[::1]:8080", true),
+            ("http://192.168.50.48:5173", true),
+            ("http://10.0.0.2:5173", true),
+            ("http://172.16.0.2:5173", true),
+            ("http://172.31.255.254:5173", true),
+            ("http://[fd00::1]:5173", true),
+            ("http://172.32.0.1:5173", false),
+            ("http://8.8.8.8:5173", false),
+            ("http://0.0.0.0:5173", false),
+            ("http://[::]:5173", false),
+            ("http://192.168.50.48", false),
+            ("http://192.168.50.48:0", false),
+            ("http://localhost:5173@evil.example", false),
+            ("http://192.168.50.48:5173/path", false),
+            ("http://192.168.50.48:5173?query", false),
             ("https://localhost:8080", false),
             ("http://localhost.example:8080", false),
             ("https://game.example", false),

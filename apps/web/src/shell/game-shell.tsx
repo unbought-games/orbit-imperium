@@ -7,14 +7,12 @@ import {
 import { useGameSession } from './session-context'
 import { ConstructionNotice } from '../ui/construction-notice'
 import { ScreenContext } from './screen-context'
-import { resolveDestination, resolveNamedDestination } from './routes'
+import { resolveNamedDestination } from './routes'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
 import { Brand } from '../ui/brand'
-import { SourceLink } from '../ui/source-link'
-import { PolicyLinks } from '../ui/policy-links'
 import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -24,7 +22,7 @@ import { coordinates, label } from '../ui/format'
 import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
 import { Popover } from '../ui/popover'
-import { Mail, Radar, CircleHelp, WifiOff } from 'lucide-react'
+import { WifiOff } from 'lucide-react'
 export function GameShell() {
   const { commands, view, model, logout, universeName } = useGameSession()
   // Transition snapshots are visible only while this exact identity owns the shell.
@@ -117,24 +115,6 @@ export function GameShell() {
     : page === 'overview'
       ? `Overview — ${body?.kind ?? 'Planet'} ${body ? coordinates(body) : ''}`
       : page[0].toUpperCase() + page.slice(1)
-  const fleetAvailable = resolveDestination(
-    { universe: view.binding.universe, page: 'fleets', body: body?.id },
-    view,
-  ).available
-  const reportsAvailable = resolveDestination(
-    { universe: view.binding.universe, page: 'reports', body: body?.id },
-    view,
-  ).available
-  const fleetCount =
-    view.protocol === 4
-      ? view.missions.fleets.length
-      : view.fleets.filter((f) => f.status !== 'Completed').length
-  const incoming = view.protocol === 4 ? view.missions.incoming.length : 0
-  const fleetLabel = !fleetAvailable
-    ? 'Fleet missions unavailable'
-    : fleetCount || incoming
-      ? `${fleetCount} active ${fleetCount === 1 ? 'fleet' : 'fleets'}${incoming ? ` · ${incoming} incoming` : ''}`
-      : 'No fleet movement'
   const freshness = model.stale && (
     <Popover
       label="Connection"
@@ -197,15 +177,21 @@ export function GameShell() {
             )
           }
         />
-        <div className={styles['mobile-context']}>
-          <BodySelector
-            bodies={view.bodies}
-            selected={body?.id}
-            onSelect={selectBody}
-          />
-        </div>
-        <div className={styles.masthead}>
-          {body ? <ResourceStrip view={view} body={body} /> : <span />}
+        <div
+          className={styles.worldBar}
+          role="group"
+          aria-label="Planet and resources"
+        >
+          <div className={styles['mobile-context']}>
+            <BodySelector
+              bodies={view.bodies}
+              selected={body?.id}
+              onSelect={selectBody}
+            />
+          </div>
+          <div className={styles.masthead}>
+            {body ? <ResourceStrip view={view} body={body} /> : <span />}
+          </div>
         </div>
         <div className={styles.connectionSlot}>{freshness}</div>
         <div className={styles.center}>
@@ -214,55 +200,6 @@ export function GameShell() {
               Connection interrupted — awaiting server confirmation.
             </p>
           )}
-          <div className={styles['fleet-bar']}>
-            <div className={styles.communications}>
-              {body && (
-                <Popover
-                  label="Planet information"
-                  className={styles.help}
-                  trigger={<CircleHelp size={17} />}
-                >
-                  <p>
-                    {body.kind} {coordinates(body)}
-                  </p>
-                  <p>
-                    {body.fields_used} fields used + {body.fields_reserved}{' '}
-                    reserved / {body.fields}
-                  </p>
-                </Popover>
-              )}
-              {reportsAvailable ? (
-                <Link
-                  aria-label="Reports"
-                  {...routeTarget(universeName, 'reports', body?.id)}
-                >
-                  <Mail size={24} aria-hidden="true" />
-                </Link>
-              ) : (
-                <button
-                  disabled
-                  aria-label="Reports"
-                  title="Not available in this universe"
-                >
-                  <Mail size={24} />
-                </button>
-              )}
-            </div>
-            {fleetAvailable ? (
-              <Link
-                className={styles['fleet-status']}
-                {...routeTarget(universeName, 'fleets', body?.id)}
-              >
-                <Radar size={18} aria-hidden="true" />
-                {fleetLabel}
-              </Link>
-            ) : (
-              <span className={styles['fleet-status']}>
-                <Radar size={18} aria-hidden="true" />
-                {fleetLabel}
-              </span>
-            )}
-          </div>
           <main
             id="main"
             tabIndex={-1}
@@ -311,15 +248,6 @@ export function GameShell() {
       {page !== 'overview' && (
         <ConstructionNotice model={model} body={body?.id} />
       )}
-      <footer className={styles.footer}>
-        <span>ORBIT IMPERIUM</span>
-        <PolicyLinks />
-        <a href="/updates/index.html">What’s new</a>
-        <SourceLink />
-        <Link {...routeTarget(universeName, 'settings', body?.id)}>
-          Universe settings
-        </Link>
-      </footer>
     </div>
   )
 }
