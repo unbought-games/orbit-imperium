@@ -773,3 +773,178 @@ async fn impulse_activation_initializes_existing_and_new_players_and_survives_re
     destructive.artifact = before.artifact;
     assert!(service.diff(&destructive).await.is_err());
 }
+
+#[tokio::test]
+async fn astrophysics_activation_is_additive_idempotent_and_preserves_research_on_disable() {
+    let (store, pool, universe, binding) = setup().await;
+    let service = RulesService::new(store.clone());
+    let mut impulse = service.export(universe).await.unwrap();
+    let apply_content = |artifact: &mut RulesArtifact, id: ResearchId, bytes: &[u8]| {
+        let content: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+        artifact.progression.as_mut().unwrap().research.insert(
+            id,
+            serde_json::from_value(content["research"].clone()).unwrap(),
+        );
+        let entry = artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == CatalogKey::Research(id))
+            .unwrap();
+        entry.enabled = true;
+        entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    };
+    apply_content(
+        &mut impulse.artifact,
+        ResearchId::ImpulseDrive,
+        include_bytes!("../../../rules/content/impulse-drive.json"),
+    );
+    let impulse_content: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../rules/content/impulse-drive.json"))
+            .unwrap();
+    impulse
+        .artifact
+        .ships
+        .get_mut(&ShipType::SmallCargo)
+        .unwrap()
+        .impulse_drive =
+        Some(serde_json::from_value(impulse_content["small_cargo"].clone()).unwrap());
+    assert!(matches!(
+        service.apply(&impulse).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    let before = service.export(universe).await.unwrap();
+    let (old_snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    let mut astro = before.clone();
+    apply_content(
+        &mut astro.artifact,
+        ResearchId::Astrophysics,
+        include_bytes!("../../../rules/content/astrophysics.json"),
+    );
+    let diff = service.diff(&astro).await.unwrap();
+    assert_eq!(diff.initialize.add_research, vec![ResearchId::Astrophysics]);
+    assert!(
+        !store
+            .load_rules(universe)
+            .await
+            .unwrap()
+            .research_keys()
+            .contains(&ResearchId::Astrophysics)
+    );
+    assert!(matches!(
+        service.apply(&astro).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    assert!(matches!(
+        service.apply(&astro).await.unwrap(),
+        RulesApplyOutcome::AlreadyActive { .. }
+    ));
+    let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(snapshot.state.epoch, binding.epoch);
+    let mut expected_bodies = old_snapshot.state.bodies.clone();
+    // Activation settles each body and advances its revision even at the same clock.
+    for body in expected_bodies.values_mut() {
+        body.revision += 1;
+    }
+    assert_eq!(snapshot.state.bodies, expected_bodies);
+    let mut expected = old_snapshot.state.research[&binding.player].levels.clone();
+    expected.insert(ResearchId::Astrophysics, 0);
+    assert_eq!(snapshot.state.research[&binding.player].levels, expected);
+    assert!(
+        snapshot.state.research[&binding.player].revision
+            > old_snapshot.state.research[&binding.player].revision
+    );
+    let joined = SessionService::new(store.clone())
+        .signup(
+            &format!("astro{}", Uuid::new_v4().simple()),
+            "password",
+            SignupPolicy {
+                universe,
+                max_players: 45,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let level: i64 = sqlx::query_scalar(
+        "SELECT level FROM research_levels WHERE owner=$1 AND research='Astrophysics'",
+    )
+    .bind(joined.session.memberships[0].player.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(level, 0);
+    let saved = store.load_rules(universe).await.unwrap();
+    drop(store.server_guard_config(None).await.unwrap());
+    assert_eq!(store.load_rules(universe).await.unwrap(), saved);
+    // Disposable completed-research fixture includes the mandatory paid-value
+    // lineage for each level; a bare level edit is correctly rejected as corrupt.
+    let mut transaction = pool.begin().await.unwrap();
+    sqlx::query("UPDATE research_levels SET level=5 WHERE owner=$1 AND research='Astrophysics'")
+        .bind(binding.player.0)
+        .execute(&mut *transaction)
+        .await
+        .unwrap();
+    let mut lots = Vec::new();
+    for (index, paid) in [16_000, 28_000, 49_100, 85_700, 150_000]
+        .into_iter()
+        .enumerate()
+    {
+        let id = OperationId(Uuid::new_v4());
+        let lot = AssetLot {
+            id,
+            owner: binding.player,
+            item: CatalogKey::Research(ResearchId::Astrophysics),
+            level: Some(index as u32 + 1),
+            location: AssetLocation::Player,
+            quantity: 1,
+            unit_value_micro: paid * SCALE,
+            rules_hash: saved.hash.clone(),
+            source_operation: id,
+            acquired_at: 1000,
+            acquired_sequence: index as i64,
+        };
+        sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
+            .bind(universe.0)
+            .bind(id.to_string())
+            .bind(sqlx::types::Json(&lot))
+            .execute(&mut *transaction)
+            .await
+            .unwrap();
+        lots.push(lot);
+    }
+    transaction.commit().await.unwrap();
+    let (completed, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(
+        completed.state.research[&binding.player].levels[&ResearchId::Astrophysics],
+        5
+    );
+    let mut disabled = service.export(universe).await.unwrap();
+    disabled
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::Astrophysics))
+        .unwrap()
+        .enabled = false;
+    assert!(matches!(
+        service.apply(&disabled).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    let levels: Vec<i64> = sqlx::query_scalar(
+        "SELECT level FROM research_levels WHERE owner=$1 AND research='Astrophysics'",
+    )
+    .bind(binding.player.0)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(levels, vec![5]);
+    let (disabled_snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    let actual_lots = &disabled_snapshot.state.world.as_ref().unwrap().records.lots;
+    assert_eq!(actual_lots.len(), lots.len());
+    for lot in lots {
+        assert!(actual_lots.contains(&lot));
+    }
+    let mut destructive = service.export(universe).await.unwrap();
+    destructive.artifact = before.artifact;
+    assert!(service.diff(&destructive).await.is_err());
+}

@@ -7098,7 +7098,8 @@
                 "maximum": 9007199254740991
               },
               "formula": {
-                "const": "ResearchClassic"
+                "type": "string",
+                "enum": ["ResearchClassic", "ResearchAstrophysics"]
               },
               "labs": {
                 "type": "array",
