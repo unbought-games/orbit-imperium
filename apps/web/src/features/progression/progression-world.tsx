@@ -184,9 +184,10 @@ export function ResourceWorld({
                   'Production unavailable'
                 )}
               </span>
-              {BigInt(body.amounts[name]) >= BigInt(body.capacity[name]) && (
-                <small>Storage full · production suppressed</small>
-              )}
+              {BigInt(body.capacity[name]) > 0n &&
+                BigInt(body.amounts[name]) >= BigInt(body.capacity[name]) && (
+                  <small>Storage full · production suppressed</small>
+                )}
             </dd>
           </div>
         ))}

@@ -53,7 +53,7 @@ test('login and signup preserve the requested game destination', async ({
   for (const path of ['/login', '/signup']) {
     await page.goto(path)
     await expect(
-      page.getByRole('heading', { name: /^Overview —/ }),
+      page.getByRole('heading', { name: /^Empire —/ }),
     ).toBeVisible()
     await expect(page.getByLabel('Password')).toHaveCount(0)
     await expect(
@@ -432,12 +432,12 @@ for (const signup of [false, true]) {
     expect(logins).toBe(0)
     await page.getByRole('button', { name: 'Retry connection' }).click()
     await expect(
-      page.getByRole('heading', { name: /^Overview —/ }),
+      page.getByRole('heading', { name: /^Empire —/ }),
     ).toBeVisible()
     await expect.poll(() => logins).toBe(1)
     await page.reload()
     await expect(
-      page.getByRole('heading', { name: /^Overview —/ }),
+      page.getByRole('heading', { name: /^Empire —/ }),
     ).toBeVisible()
     expect(logins).toBe(1)
     const before = bootstrapReads
@@ -480,7 +480,7 @@ test('a populated HTML payload renders without a bootstrap request', async ({
     return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /^Overview —/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   expect(
     calls.filter(
       (p) =>
@@ -563,7 +563,7 @@ for (const restoreDuringSubmit of [false, true]) {
     await page.getByLabel('Password').fill('password')
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await expect(
-      page.getByRole('heading', { name: /^Overview —/ }),
+      page.getByRole('heading', { name: /^Empire —/ }),
     ).toBeVisible()
     await expect.poll(() => presenceRequests).toBe(1)
     // Exercise more than the initial 500 ms polling delay while submit is held.
@@ -599,7 +599,7 @@ for (const restoreDuringSubmit of [false, true]) {
     await expect.poll(() => views).toBe(1)
     expect(presenceRequests).toBe(1)
     await expect(
-      page.getByRole('heading', { name: /^Overview —/ }),
+      page.getByRole('heading', { name: /^Empire —/ }),
     ).toBeVisible()
   })
 }

@@ -102,6 +102,8 @@ pub struct MissionView {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoundView4 {
+    #[serde(default)]
+    pub has_unread_reports: bool,
     #[serde(flatten)]
     pub progression: BoundView3,
     pub missions: MissionView,

@@ -175,6 +175,7 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
         collection_revisions: Default::default(),
     };
     let facts = ViewerSnapshot {
+        unread_report: None,
         world: Some(world.clone()),
         progression: Some(world),
         coverage,

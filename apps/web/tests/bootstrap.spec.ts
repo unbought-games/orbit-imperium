@@ -37,7 +37,7 @@ test('production HTML bootstraps an authenticated refresh without startup reads 
   const response = await page.goto('/')
   expect(response?.headers()['cache-control']).toBe('private, no-store')
   expect(response?.headers()['vary']).toBe('Cookie')
-  await expect(page.getByRole('heading', { name: /^Overview —/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   expect(
     calls.filter(
       (p) =>
@@ -54,7 +54,7 @@ test('production HTML bootstraps an authenticated refresh without startup reads 
   expect(await page.locator('#orbit-bootstrap').count()).toBe(0)
   const deep = page.url()
   await page.reload()
-  await expect(page.getByRole('heading', { name: /^Overview —/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   expect(page.url()).toBe(deep)
   expect(
     await page.evaluate(() => Reflect.get(window, 'startupFlashes')),
@@ -89,5 +89,5 @@ test('successful login keeps its cookie when initial game loading is unavailable
   await expect(page.getByLabel('Password')).toHaveCount(0)
   expect((await page.request.get('/api/v1/session')).status()).toBe(200)
   await page.getByRole('button', { name: 'Retry connection' }).click()
-  await expect(page.getByRole('heading', { name: /^Overview —/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
 })

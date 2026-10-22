@@ -77,7 +77,7 @@ export function GameShell() {
     navigate,
   ])
   useLayoutEffect(() => {
-    document.title = `${available ? label(page) : 'Unavailable'} · ${universeName} · Orbit Imperium`
+    document.title = `${available ? (page === 'overview' ? 'Empire' : label(page)) : 'Unavailable'} · ${universeName} · Orbit Imperium`
     heading.current?.focus()
     const frame = requestAnimationFrame(() => {
       // Scroll restoration can run after the commit. Never steal focus back
@@ -113,7 +113,7 @@ export function GameShell() {
   const title = !available
     ? 'Destination unavailable'
     : page === 'overview'
-      ? `Overview — ${body?.kind ?? 'Planet'} ${body ? coordinates(body) : ''}`
+      ? `Empire — ${body?.kind ?? 'Planet'} ${body ? coordinates(body) : ''}`
       : page[0].toUpperCase() + page.slice(1)
   const freshness = model.stale && (
     <Popover

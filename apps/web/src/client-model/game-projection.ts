@@ -28,6 +28,21 @@ export function currentServerTime(state: GameState) {
     : 0
 }
 
+/** Time until confirmed work needs a new authoritative snapshot. */
+export function nextWorkDelay(state: GameState) {
+  const view = state.view
+  if (!view) return Infinity
+  const deadlines = view.constructions.map((work) => work.due_at)
+  if (view.protocol !== 2) {
+    if (view.progression.research_operation)
+      deadlines.push(view.progression.research_operation.due_at)
+    deadlines.push(
+      ...view.progression.manufacturing.map((work) => work.next_due_at),
+    )
+  }
+  return Math.min(...deadlines) - currentServerTime(state)
+}
+
 export function activeAttempt(attempt: Attempt, view: BoundView | null) {
   return (
     attempt.status !== 'rejected' &&

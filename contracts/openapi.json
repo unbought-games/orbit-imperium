@@ -7502,6 +7502,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "building_energy": {
+            "$ref": "#/components/schemas/BuildingEnergy"
           }
         },
         "required": [
@@ -9431,6 +9434,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "building_energy": {
+            "$ref": "#/components/schemas/BuildingEnergy"
           }
         },
         "required": [
@@ -9715,6 +9721,10 @@
       "BoundView4": {
         "type": "object",
         "properties": {
+          "has_unread_reports": {
+            "type": "boolean",
+            "description": "Whether this recipient has visible unread mission reports anywhere in the archive."
+          },
           "viewer_revision": {
             "$ref": "#/components/schemas/Decimal"
           },
@@ -11886,6 +11896,23 @@
             "format": "uuid"
           }
         }
+      },
+      "BuildingEnergy": {
+        "type": "object",
+        "description": "Building operating consumption at 100% production, derived from the active rules. Informational; not a construction prerequisite.",
+        "properties": {
+          "current_consumption": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "target_consumption": {
+            "$ref": "#/components/schemas/Decimal"
+          }
+        },
+        "required": [
+          "current_consumption",
+          "target_consumption"
+        ],
+        "additionalProperties": false
       }
     }
   }

@@ -13,6 +13,7 @@ type Options = {
   reconcile(): Promise<void>
   hasPending(): boolean
   needsSnapshot?(): boolean
+  nextWorkDelay?(): number
   isCurrent(): boolean
 }
 /** Connection/timer lifecycle only; gameplay remains in the coordinator's store. */
@@ -35,12 +36,19 @@ export function startGameDelivery(options: Options): DeliveryController {
   const random = () =>
     Math.max(0, Math.min(1, platform.random?.() ?? Math.random()))
   const idleDelay = () => 30000 + Math.floor(random() * 30000)
-  const nextPollDelay = () =>
-    !platform.isOnline()
-      ? 5000
-      : (!connected && options.hasPending()) || options.needsSnapshot?.()
+  const nextPollDelay = () => {
+    if (!platform.isOnline()) return 5000
+    const delay =
+      (!connected && options.hasPending()) || options.needsSnapshot?.()
         ? 1000 + Math.floor(random() * 1000)
         : idleDelay()
+    // Reconcile at due work even on a healthy stream. If the server still
+    // reports it active, retry with a one-second floor rather than a busy loop.
+    return Math.min(
+      delay,
+      Math.max(1000, options.nextWorkDelay?.() ?? Infinity),
+    )
+  }
   function queuePoll(delay: number, earlierOnly = false) {
     if (!current()) return
     const at = platform.monotonicNowMs() + delay
