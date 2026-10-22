@@ -4,6 +4,60 @@ use orbit_storage_postgres::{MvpAccount, PgStore, PoolLimits};
 use uuid::Uuid;
 #[tokio::test]
 async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
+    // Keep each scenario's future on the heap and drop its snapshots before the
+    // next scenario. One debug-build poll frame for this entire journey can
+    // exhaust the native test thread stack on Linux.
+    let mut fixture = Box::pin(paired_presence_and_restart()).await;
+    let due = Box::pin(completed_assets_preserve_other_owners(&fixture)).await;
+    let (fb, pool) = Box::pin(report_pagination_and_privacy(&fixture)).await;
+    fixture.pool = pool;
+    let accepted = Box::pin(scoped_claim_ordering(&fixture, fb, due)).await;
+    Box::pin(staged_commit_recovery(&fixture, accepted, due)).await;
+    Box::pin(scoped_transport_catches_up_before_later_recipient_work(
+        &fixture.store,
+        &fixture.pool,
+        fixture.b,
+        fb,
+        fixture.body,
+    ))
+    .await;
+    Box::pin(concurrent_report_preferences(
+        &fixture.url,
+        &fixture.store,
+        &fixture.pool,
+        fixture.b,
+        fb,
+    ))
+    .await;
+}
+
+struct RuntimeFixture {
+    url: String,
+    store: PgStore,
+    reopened: PgStore,
+    pool: sqlx::PgPool,
+    accounts: [MvpAccount; 5],
+    b: Binding,
+    body: BodyId,
+    outsider: Uuid,
+}
+impl RuntimeFixture {
+    fn principal(&self) -> Principal {
+        Principal {
+            account: self.b.account,
+            player: self.b.player,
+            universe: self.b.universe,
+        }
+    }
+    fn context(&self) -> QueryContext {
+        QueryContext {
+            binding: self.b,
+            request_id: Uuid::new_v4(),
+        }
+    }
+}
+
+async fn paired_presence_and_restart() -> RuntimeFixture {
     let url = std::env::var("TEST_DATABASE_URL").unwrap();
     let store = PgStore::connect_with_limits(
         &url,
@@ -177,6 +231,26 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
     let mut changed = pair;
     changed.gameplay.command_id = CommandId(Uuid::new_v4());
     assert!(restored.world_submit(p, changed).await.is_err());
+    RuntimeFixture {
+        url,
+        store,
+        reopened,
+        pool,
+        accounts,
+        b,
+        body,
+        outsider,
+    }
+}
+
+async fn completed_assets_preserve_other_owners(fixture: &RuntimeFixture) -> i64 {
+    let store = fixture.store.clone();
+    let pool = fixture.pool.clone();
+    let restored = GameService::new(fixture.reopened.clone());
+    let (b, body, outsider) = (fixture.b, fixture.body, fixture.outsider);
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
     // A local completion must never replace another owner's asset collection.
     sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,'unrelated',$2)")
         .bind(u.0)
@@ -251,8 +325,20 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         .execute(&pool)
         .await
         .unwrap();
+    due
+}
+
+async fn report_pagination_and_privacy(fixture: &RuntimeFixture) -> (Binding, sqlx::PgPool) {
+    let url = &fixture.url;
+    let reopened = fixture.reopened.clone();
+    let restored = GameService::new(reopened.clone());
+    let b = fixture.b;
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
+    let accounts = &fixture.accounts;
     // Synthetic report history exercises pagination independently of real mission producers.
-    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let pool = sqlx::PgPool::connect(url).await.unwrap();
     for n in 1..=101u128 {
         let id = ReportId(Uuid::from_u128(10000 + n));
         let report = MissionReport {
@@ -377,6 +463,23 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
             .await,
         Err(ServiceError::NotFound)
     ));
+    (fb, pool)
+}
+
+async fn scoped_claim_ordering(
+    fixture: &RuntimeFixture,
+    fb: Binding,
+    due: i64,
+) -> CommandEnvelopeV4 {
+    let store = fixture.store.clone();
+    let reopened = fixture.reopened.clone();
+    let pool = fixture.pool.clone();
+    let restored = GameService::new(reopened.clone());
+    let (b, body) = (fixture.b, fixture.body);
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
+    let accounts = &fixture.accounts;
     // Scoped admission does not acquire the old universe writer lock. Foreign-key
     // checks may still take KEY SHARE, which is compatible with this writer lock.
     sqlx::raw_sql(&format!("CREATE SEQUENCE orbit_order_{} START 100000; UPDATE universe_runtime SET executor_mode='scoped',mode_generation=1 WHERE universe='{}'",u.0.simple(),u))
@@ -726,6 +829,18 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
             .await
             .unwrap();
     assert_eq!(remaining, 0);
+    accepted
+}
+
+async fn staged_commit_recovery(fixture: &RuntimeFixture, accepted: CommandEnvelopeV4, due: i64) {
+    let store = fixture.store.clone();
+    let pool = fixture.pool.clone();
+    let game = GameService::new(store.clone());
+    let restored = GameService::new(fixture.reopened.clone());
+    let b = fixture.b;
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
     // Pause after staging writes, before final ownership validation.
     sqlx::raw_sql("CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text NOT NULL,enabled boolean NOT NULL,seen bigint NOT NULL DEFAULT 0); INSERT INTO orbit_test_fault(stage,mode,enabled) VALUES('after_writes','pause',true)")
         .execute(&pool).await.unwrap();
@@ -896,8 +1011,6 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
             code: GameError::NotOwned
         }
     ));
-    scoped_transport_catches_up_before_later_recipient_work(&store, &pool, b, fb, body).await;
-    concurrent_report_preferences(&url, &store, &pool, b, fb).await;
 }
 
 async fn scoped_transport_catches_up_before_later_recipient_work(
