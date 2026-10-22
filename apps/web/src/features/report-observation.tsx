@@ -1,3 +1,4 @@
+import { playerLabel, type PlayerNames } from './player-label'
 import { CombatReport } from './combat-report'
 import { Panel } from '../ui/panel'
 import { Section } from '../ui/section'
@@ -129,9 +130,11 @@ function Risk({ value }: { value: unknown }) {
 export function ReportObservation({
   payload,
   viewer,
+  playerNames,
 }: {
   payload: RecordValue
   viewer?: string
+  playerNames?: PlayerNames
 }) {
   const kind = payload.kind
   if (kind === 'Espionage') {
@@ -144,8 +147,8 @@ export function ReportObservation({
         className={styles.observation}
       >
         <Text>
-          Target {coordinate(target.coordinates)} · Player{' '}
-          {text(target.owner).slice(0, 8)}
+          Target {coordinate(target.coordinates)} ·{' '}
+          {playerLabel(target.owner, playerNames)}
         </Text>
         <Text>
           Activity before contact:{' '}
@@ -181,7 +184,7 @@ export function ReportObservation({
         className={styles.observation}
       >
         <Text>
-          Player {text(payload.sender).slice(0, 8)} made espionage contact from{' '}
+          {playerLabel(payload.sender, playerNames)} made espionage contact from{' '}
           {coordinate(payload.origin)} at {coordinate(payload.target)}.
         </Text>
         <Risk value={payload} />
@@ -213,7 +216,13 @@ export function ReportObservation({
       </section>
     )
   if (kind === 'Combat')
-    return <CombatReport payload={payload} viewer={viewer} />
+    return (
+      <CombatReport
+        payload={payload}
+        viewer={viewer}
+        playerNames={playerNames}
+      />
+    )
 
   if (
     [

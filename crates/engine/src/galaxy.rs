@@ -15,6 +15,8 @@ pub struct PublicBody {
     pub inactivity: Inactivity,
     pub vacation: bool,
     pub espionage_eligible: bool,
+    #[serde(default)]
+    pub attack_blocker: Option<GameError>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicDebris {
@@ -125,6 +127,15 @@ pub fn galaxy_system(
                 inactivity: inactivity(p.last_presence_at, at)
                     .map_err(|_| GameError::InvalidInput)?,
                 vacation: p.vacation,
+                attack_blocker: check_mission_eligibility(
+                    s,
+                    viewer,
+                    Some(b.owner),
+                    Mission::Attack,
+                    at,
+                    r,
+                )
+                .err(),
                 espionage_eligible: b.owner != viewer
                     && check_mission_eligibility(
                         s,

@@ -26,7 +26,7 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await go('resources');
  await page.getByRole('button',{name:'Resource settings',exact:true}).click();
  await expect(page.getByLabel('fusion reactor production')).toBeDisabled();
- await page.getByLabel('metal mine production').selectOption('50');await page.getByRole('button',{name:'Save production',exact:true}).click();
+ await page.getByLabel('metal mine production').selectOption('50');
  await expect.poll(async()=>(await view()).progression.production[0].settings.metal_mine).toBe(50);
  await page.reload();await page.getByRole('button',{name:'Resource settings',exact:true}).click();await expect(page.getByLabel('metal mine production')).toHaveValue('50');
  await go('research');

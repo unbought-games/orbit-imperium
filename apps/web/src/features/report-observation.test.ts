@@ -55,3 +55,38 @@ it('leads a contact-lost report with the known fleet loss without inventing the 
   expect(text).not.toContain('Defender victory')
   expect(text).not.toContain('How the battle unfolded')
 })
+
+it('uses public names consistently across combat rounds and espionage with safe fallback', () => {
+  const owner = '9516d363-0000-4000-8000-000000000001'
+  const unknown = 'afcb76c1-0000-4000-8000-000000000002'
+  const playerNames = { [owner]: 'Vega <Commander>' }
+  const origin = { owner, side: 'Attacker', units: [] }
+  const markup = renderToStaticMarkup(
+    createElement(ReportObservation, {
+      playerNames,
+      payload: {
+        kind: 'Combat',
+        participants: [origin, { owner: unknown, side: 'Defender' }],
+        survivors: [origin],
+        gross_losses: [origin],
+        recovered: [origin],
+        permanent_losses: [origin],
+        rounds: [{ start: [origin], end: [origin] }],
+      },
+    }),
+  )
+  expect(markup).toContain('<h3>Vega &lt;Commander&gt;</h3>')
+  expect(markup).toContain('<h4>Attacker · Vega &lt;Commander&gt;</h4>')
+  expect(markup).toContain('Player afcb76c1')
+  expect(markup).not.toContain('Player 9516d363')
+  for (const payload of [
+    { kind: 'Espionage', target: { owner } },
+    { kind: 'SpyContact', sender: owner },
+  ]) {
+    expect(
+      renderToStaticMarkup(
+        createElement(ReportObservation, { payload, playerNames }),
+      ),
+    ).toContain('Vega &lt;Commander&gt;')
+  }
+})

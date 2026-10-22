@@ -1,3 +1,4 @@
+import type { PlayerNames } from './player-label'
 import { Heading } from '../ui/typography'
 import { NumberValue } from '../ui/number-value'
 import {
@@ -166,11 +167,13 @@ function ForceCard({ force }: { force: CombatForce }) {
 export function CombatReport({
   payload,
   viewer,
+  playerNames,
 }: {
   payload: Observation
   viewer?: string
+  playerNames?: PlayerNames
 }) {
-  const report = combatReportModel(payload, viewer)
+  const report = combatReportModel(payload, viewer, playerNames)
   return (
     <section aria-label="Report observation" className={styles.report}>
       <header className={`${styles.outcome} ${styles[report.tone]}`}>

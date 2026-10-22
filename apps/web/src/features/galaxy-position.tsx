@@ -1,3 +1,4 @@
+import { playerLabel, type PlayerNames } from './player-label'
 import { ResourceNumber } from '../ui/number-value'
 import { Truck, Crosshair, Eye, Recycle, ChevronDown } from 'lucide-react'
 import type { components } from '../contracts'
@@ -9,10 +10,12 @@ import { BodyIllustration } from './body-illustration'
 export function GalaxyPosition({
   position,
   player,
+  playerNames,
   canAttack,
   onDraft,
 }: {
   position: components['schemas']['GalaxyPosition4']
+  playerNames?: PlayerNames
   player: string | undefined
   canAttack: boolean
   onDraft: (
@@ -43,7 +46,7 @@ export function GalaxyPosition({
           {body && (
             <>
               <span className={owned ? styles.yourPlayer : styles.player}>
-                {owned ? 'You' : `Player ${body.owner.slice(0, 8)}`}
+                {owned ? 'You' : playerLabel(body.owner, playerNames)}
               </span>
               <small>
                 {body.inactivity === 'Active'

@@ -1,3 +1,4 @@
+import { playerLabel, type PlayerNames } from './player-label'
 import { label } from '../ui/format'
 
 export type Observation = Record<string, unknown>
@@ -103,15 +104,17 @@ function force(participant: Observation, end: unknown, recovery?: unknown) {
   }
 }
 
-export function combatReportModel(payload: Observation, viewer?: string) {
+export function combatReportModel(
+  payload: Observation,
+  viewer?: string,
+  playerNames?: PlayerNames,
+) {
   const participants = records(payload.participants)
   const own = participants.find((p) => p.owner === viewer)
   const side =
     own?.side === 'Attacker' || own?.side === 'Defender' ? own.side : undefined
   const name = (p: Observation) =>
-    p.owner === viewer
-      ? 'You'
-      : `Player ${String(p.owner ?? 'Unknown').slice(0, 8)}`
+    p.owner === viewer ? 'You' : playerLabel(p.owner, playerNames)
   const forces = participants.map((p) => ({
     key: identity(p),
     name: name(p),

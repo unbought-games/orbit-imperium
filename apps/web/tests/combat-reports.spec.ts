@@ -233,7 +233,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
           viewer_revision: '1',
           sampled_at: Date.now(),
           as_of_ms: Date.now(),
-          data: { header, payload },
+          data: { header, payload, player_names: { [id(9)]: 'Vega' } },
         },
       })
     })
@@ -251,6 +251,9 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
         .locator('details')
         .filter({ has: page.locator('summary', { hasText: /^Round/ }) }),
     ).toHaveCount(n)
+    await expect(
+      report.getByRole('heading', { name: 'Vega', exact: true }),
+    ).toBeVisible()
     await page.evaluate(() => document.fonts.ready)
     expect(
       await report
@@ -283,7 +286,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
       ).toHaveCount(n)
     } else {
       const attack = report.getByRole('article', {
-        name: `Round 1 Attacker ${size === 'defender' ? 'Player 00000000' : 'You'}`,
+        name: `Round 1 Attacker ${size === 'defender' ? 'Vega' : 'You'}`,
         exact: true,
       })
       await expect(

@@ -183,6 +183,7 @@ export function Reports({
           <ReportObservation
             payload={detail.payload}
             viewer={model.binding?.player}
+            playerNames={detail.player_names}
           />
           {detail.payload.kind === 'Espionage' &&
             model.view?.capabilities.some(

@@ -22,6 +22,21 @@ export function useAppSession() {
     () => onPageRestore(() => void controller.retry(true)),
     [controller],
   )
+  useEffect(() => {
+    const recovery = controller.startRecovery()
+    const wake = () => {
+      if (document.visibilityState !== 'hidden') recovery.wake()
+    }
+    window.addEventListener('online', wake)
+    window.addEventListener('focus', wake)
+    document.addEventListener('visibilitychange', wake)
+    return () => {
+      recovery.stop()
+      window.removeEventListener('online', wake)
+      window.removeEventListener('focus', wake)
+      document.removeEventListener('visibilitychange', wake)
+    }
+  }, [controller])
   const login = (event: FormEvent<HTMLFormElement>, signup: boolean) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)

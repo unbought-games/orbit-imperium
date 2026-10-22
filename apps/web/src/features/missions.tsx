@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useStore } from 'zustand'
@@ -42,8 +43,13 @@ export function Dispatch({
   draft: DispatchDraft | null
 }) {
   const universeName = useUniverseName()
+  const validationId = useId()
   const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const {
+    coordinateProblems,
+    coordinatesValid,
+    targetProblem,
+    attackWarning,
     mission,
     setMission,
     galaxy,
@@ -126,38 +132,84 @@ export function Dispatch({
                   ))}
               </Select>
             </Field>
+            {mission === 'Attack' && !targetProblem && !attackWarning && (
+              <Text className={styles.destinationNotice}>
+                Beginner protection can prevent attacks between players of
+                different strengths. Eligibility is checked again at review and
+                departure.
+              </Text>
+            )}
+            {(targetProblem || attackWarning) && (
+              <Text
+                className={styles.destinationNotice}
+                tone="danger"
+                role="status"
+              >
+                {targetProblem || attackWarning}
+              </Text>
+            )}
             <Field>
-              Galaxy
+              <span id={`${validationId}-galaxy-label`}>Galaxy</span>
               <Input
                 inputMode="numeric"
+                aria-labelledby={`${validationId}-galaxy-label`}
+                aria-invalid={!!coordinateProblems.galaxy}
+                aria-describedby={`${validationId}-galaxy`}
                 value={galaxy}
                 onChange={(e) => {
                   setGalaxy(e.target.value)
                   clear()
                 }}
               />
+              <span
+                className={styles.fieldError}
+                id={`${validationId}-galaxy`}
+                role={coordinateProblems.galaxy ? 'alert' : undefined}
+              >
+                {coordinateProblems.galaxy}
+              </span>
             </Field>
             <Field>
-              System
+              <span id={`${validationId}-system-label`}>System</span>
               <Input
                 inputMode="numeric"
+                aria-labelledby={`${validationId}-system-label`}
+                aria-invalid={!!coordinateProblems.system}
+                aria-describedby={`${validationId}-system`}
                 value={system}
                 onChange={(e) => {
                   setSystem(e.target.value)
                   clear()
                 }}
               />
+              <span
+                className={styles.fieldError}
+                id={`${validationId}-system`}
+                role={coordinateProblems.system ? 'alert' : undefined}
+              >
+                {coordinateProblems.system}
+              </span>
             </Field>
             <Field>
-              Position
+              <span id={`${validationId}-position-label`}>Position</span>
               <Input
                 inputMode="numeric"
+                aria-labelledby={`${validationId}-position-label`}
+                aria-invalid={!!coordinateProblems.position}
+                aria-describedby={`${validationId}-position`}
                 value={position}
                 onChange={(e) => {
                   setPosition(e.target.value)
                   clear()
                 }}
               />
+              <span
+                className={styles.fieldError}
+                id={`${validationId}-position`}
+                role={coordinateProblems.position ? 'alert' : undefined}
+              >
+                {coordinateProblems.position}
+              </span>
             </Field>
             <Field>
               Speed
@@ -223,7 +275,15 @@ export function Dispatch({
               </Field>
             ))}
           </fieldset>
-          <Button ref={reviewButtonRef} disabled={busy}>
+          {error && (
+            <Text tone="danger" role="alert">
+              {error}
+            </Text>
+          )}
+          <Button
+            ref={reviewButtonRef}
+            disabled={busy || !coordinatesValid || !!targetProblem}
+          >
             {busy ? 'Reviewing…' : 'Review fleet'}
           </Button>
         </Form>
@@ -247,11 +307,6 @@ export function Dispatch({
         </aside>
       </div>
       <DispatchReceipt model={model} origin={body.id} />
-      {error && (
-        <Text tone="danger" role="alert">
-          {error}
-        </Text>
-      )}
       {quote && (
         <QuotePanel
           as="section"

@@ -1,6 +1,8 @@
 mod projection;
+mod public_players;
 use crate::*;
 use orbit_engine::*;
+pub use public_players::PublicPlayerNames;
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -104,6 +106,8 @@ pub struct MissionView {
 pub struct BoundView4 {
     #[serde(default)]
     pub has_unread_reports: bool,
+    #[serde(default)]
+    pub player_names: PublicPlayerNames,
     #[serde(flatten)]
     pub progression: BoundView3,
     pub missions: MissionView,
@@ -131,6 +135,8 @@ pub struct ReportHeader4 {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportDetail4 {
+    #[serde(default)]
+    pub player_names: PublicPlayerNames,
     pub header: ReportHeader4,
     pub payload: serde_json::Value,
 }
@@ -194,8 +200,8 @@ impl<S: GameStore> GameService<S> {
             .bound_world_query(q.context.binding, q.query.clone())
             .await?;
         let data = match q.query {
-            WorldQueryKind::Galaxy { galaxy, system } => serde_json::to_value(
-                galaxy_system(
+            WorldQueryKind::Galaxy { galaxy, system } => {
+                let system = galaxy_system(
                     &facts.state,
                     p.player,
                     galaxy,
@@ -203,8 +209,18 @@ impl<S: GameStore> GameService<S> {
                     facts.at,
                     &facts.rules,
                 )
-                .map_err(ServiceError::GameRejected)?,
-            ),
+                .map_err(ServiceError::GameRejected)?;
+                let ids = system
+                    .positions
+                    .iter()
+                    .filter_map(|p| p.body.as_ref().map(|b| b.owner))
+                    .collect();
+                let names = self.public_names(q.context.binding, ids).await?;
+                serde_json::to_value(public_players::NamedGalaxy {
+                    system,
+                    player_names: names,
+                })
+            }
             WorldQueryKind::ResolveDestination { selection } => serde_json::to_value(
                 resolve_destination(&facts.state, selection, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
@@ -234,8 +250,23 @@ impl<S: GameStore> GameService<S> {
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView4>, ServiceError> {
         Self::principal(p, c.binding)?;
-        let snapshot = self.store.bound_view(c.binding).await?;
-        snapshot.try_map(|snapshot| projection::world_projection(&snapshot, p.player, c))
+        let binding = c.binding;
+        let snapshot = self.store.bound_view(binding).await?;
+        let mut projected =
+            snapshot.try_map(|snapshot| projection::world_projection(&snapshot, p.player, c))?;
+        projected.facts.player_names = self
+            .public_names(
+                binding,
+                projected
+                    .facts
+                    .missions
+                    .incoming
+                    .iter()
+                    .map(|f| f.sender)
+                    .collect(),
+            )
+            .await?;
+        Ok(projected)
     }
     pub async fn reports4(
         &self,
@@ -271,9 +302,12 @@ impl<S: GameStore> GameService<S> {
     ) -> Result<ReadSnapshot<BoundWorld<ReportDetail4>>, ServiceError> {
         Self::principal(p, c.binding)?;
         let ReadSnapshot {
-            facts: (detail, at, rev),
+            facts: (mut detail, at, rev),
             progress,
         } = self.store.world_report(c.binding, id).await?;
+        detail.player_names = self
+            .public_names(c.binding, public_players::report_players(&detail.payload))
+            .await?;
         Ok(ReadSnapshot {
             progress,
             facts: BoundWorld {

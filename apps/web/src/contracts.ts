@@ -5039,6 +5039,7 @@ export interface components {
             progression: components["schemas"]["ProgressionView"];
             missions: components["schemas"]["MissionView4"];
             progress?: components["schemas"]["SnapshotProgress"];
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         CapabilityState4: {
             /** @enum {unknown} */
@@ -5077,6 +5078,8 @@ export interface components {
             /** @enum {string} */
             inactivity: "Active" | "Inactive7" | "Inactive28";
             vacation: boolean;
+            /** @description Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers. */
+            attack_blocker?: components["schemas"]["GameError4"] | null;
             espionage_eligible: boolean;
         };
         PublicDebris4: {
@@ -5095,6 +5098,7 @@ export interface components {
             system: number;
             positions: components["schemas"]["GalaxyPosition4"][];
             observed_at: number;
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         WorldQueryKind4: {
             /** @constant */
@@ -5175,6 +5179,7 @@ export interface components {
         ReportDetail4: {
             header: components["schemas"]["ReportHeader4"];
             payload: components["schemas"]["ReportPayload4"];
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         BoundReport4: {
             /** @constant */
@@ -5523,6 +5528,10 @@ export interface components {
             shield_removed_ticks: string;
             hull_removed_ticks: string;
             explosions: string;
+        };
+        /** @description Current public usernames keyed by player ID, limited to identities visible in this response. Missing identities use the client fallback. */
+        PublicPlayerNames4: {
+            [key: string]: string;
         };
     };
     responses: never;
