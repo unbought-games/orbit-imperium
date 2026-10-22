@@ -1,7 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
+import type { components } from '../src/contracts'
 
-async function setup(page: Page) {
+async function setup(
+  page: Page,
+  blocker: components['schemas']['GameError4'] | null = 'BeginnerProtected',
+) {
   await shellFixture(page, {
     protocol: 4,
     extraCapabilities: ['Attack', 'Espionage', 'Harvest'],
@@ -37,7 +41,9 @@ async function setup(page: Page) {
                     activity: { type: 'Recent' },
                     inactivity: 'Active',
                     vacation: false,
-                    espionage_eligible: i === 1,
+                    attack_blocker: i === 2 ? blocker : null,
+                    espionage_eligible:
+                      i === 1 || (i === 2 && blocker === null),
                   }
                 : null,
             debris:
@@ -58,8 +64,93 @@ async function setup(page: Page) {
     setFailure: (value: boolean) => {
       fail = value
     },
+    clearProtection: () => {
+      blocker = null
+    },
   }
 }
+
+test('beginner protection is visible on collapsed cards and blocks both hostile missions until refreshed eligibility changes', async ({
+  page,
+}) => {
+  const fixture = await setup(page)
+  const cards = page
+    .getByRole('region', { name: 'Galaxy positions' })
+    .getByRole('listitem')
+  const protectedCard = cards.nth(2)
+  const badge = protectedCard.getByText('Beginner protection', { exact: true })
+  const explanation = protectedCard.getByText(
+    'Beginner protection blocks attacks and espionage between you and this player because of the difference in empire strength.',
+    { exact: true },
+  )
+  await expect(badge).toBeVisible()
+  await expect(explanation).toBeVisible()
+  await expect(protectedCard.locator('details')).not.toHaveAttribute('open', '')
+  await expect(
+    cards.nth(0).getByText('Beginner protection', { exact: true }),
+  ).toHaveCount(0)
+  await expect(
+    cards.nth(1).getByText('Beginner protection', { exact: true }),
+  ).toHaveCount(0)
+  expect(
+    await protectedCard
+      .locator('details')
+      .evaluate((el) => getComputedStyle(el).borderLeftWidth),
+  ).toBe('3px')
+  const protectedColor = await protectedCard
+    .getByText('Player 00000000', { exact: true })
+    .evaluate((el) => getComputedStyle(el).color)
+  const normalColor = await cards
+    .nth(1)
+    .getByText('CommanderAndromedaTheUnreasonablyLongName', { exact: true })
+    .evaluate((el) => getComputedStyle(el).color)
+  expect(protectedColor).not.toBe(normalColor)
+
+  await protectedCard.locator('summary').click()
+  for (const mission of ['Attack', 'Espionage']) {
+    const action = protectedCard.getByRole('button', {
+      name: mission,
+      exact: true,
+    })
+    await expect(action).toBeDisabled()
+    await expect(action).toHaveAttribute('title', await explanation.innerText())
+  }
+  await expect(
+    protectedCard.getByRole('button', { name: 'Transport', exact: true }),
+  ).toBeEnabled()
+
+  fixture.clearProtection()
+  await page.getByRole('button', { name: 'Refresh galaxy' }).click()
+  await expect(badge).toHaveCount(0)
+  await expect(explanation).toHaveCount(0)
+  await protectedCard.locator('summary').click()
+  await expect(
+    protectedCard.getByRole('button', { name: 'Attack', exact: true }),
+  ).toBeEnabled()
+  await expect(
+    protectedCard.getByRole('button', { name: 'Espionage', exact: true }),
+  ).toBeEnabled()
+})
+
+test('other target blockers disable attack with their own reason without a beginner protection badge', async ({
+  page,
+}) => {
+  await setup(page, 'TargetVacation')
+  const card = page
+    .getByRole('region', { name: 'Galaxy positions' })
+    .getByRole('listitem')
+    .nth(2)
+  await expect(
+    card.getByText('Beginner protection', { exact: true }),
+  ).toHaveCount(0)
+  await card.locator('summary').click()
+  const attack = card.getByRole('button', { name: 'Attack', exact: true })
+  await expect(attack).toBeDisabled()
+  await expect(attack).toHaveAttribute(
+    'title',
+    'This player is in vacation mode. Choose another target or try again after they return.',
+  )
+})
 
 test('galaxy cards preserve system navigation, eligibility, debris and mission drafts', async ({
   page,
