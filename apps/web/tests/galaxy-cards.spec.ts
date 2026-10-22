@@ -242,6 +242,7 @@ test('incoming fleets and report details use the supplied public name without an
           },
           payload: {
             kind: 'SpyContact',
+            at: Date.now() - 1000,
             sender: id(9),
             origin: body.coordinates,
             target: body.coordinates,
