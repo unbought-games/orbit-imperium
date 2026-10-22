@@ -659,3 +659,117 @@ async fn signup_at_temperature_boundary_remains_playable_after_activation() {
             .is_some()
     );
 }
+
+#[tokio::test]
+async fn impulse_activation_initializes_existing_and_new_players_and_survives_restart() {
+    let (store, pool, universe, binding) = setup().await;
+    let service = RulesService::new(store.clone());
+    let before = service.export(universe).await.unwrap();
+    let mut document = before.clone();
+    let content: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../rules/content/impulse-drive.json"))
+            .unwrap();
+    document
+        .artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .insert(
+            ResearchId::ImpulseDrive,
+            serde_json::from_value(content["research"].clone()).unwrap(),
+        );
+    let entry = document
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::ImpulseDrive))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    document
+        .artifact
+        .ships
+        .get_mut(&ShipType::SmallCargo)
+        .unwrap()
+        .impulse_drive = Some(serde_json::from_value(content["small_cargo"].clone()).unwrap());
+    assert_eq!(
+        service
+            .diff(&document)
+            .await
+            .unwrap()
+            .initialize
+            .add_research,
+        vec![ResearchId::ImpulseDrive]
+    );
+    assert!(
+        !store
+            .load_rules(universe)
+            .await
+            .unwrap()
+            .research_keys()
+            .contains(&ResearchId::ImpulseDrive)
+    );
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::AlreadyActive { .. }
+    ));
+    let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(snapshot.state.epoch, binding.epoch);
+    assert_eq!(
+        snapshot.state.research[&binding.player].levels[&ResearchId::ImpulseDrive],
+        0
+    );
+    let joined = SessionService::new(store.clone())
+        .signup(
+            &format!("impulse{}", Uuid::new_v4().simple()),
+            "password",
+            SignupPolicy {
+                universe,
+                max_players: 45,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let player = joined.session.memberships[0].player;
+    let level: i64 = sqlx::query_scalar(
+        "SELECT level FROM research_levels WHERE owner=$1 AND research='ImpulseDrive'",
+    )
+    .bind(player.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(level, 0);
+    let saved = store.load_rules(universe).await.unwrap();
+    drop(store.server_guard_config(None).await.unwrap());
+    assert_eq!(store.load_rules(universe).await.unwrap(), saved);
+    // Disable further research without deleting definitions, levels or earned bonuses.
+    let mut disabled = service.export(universe).await.unwrap();
+    disabled
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::ImpulseDrive))
+        .unwrap()
+        .enabled = false;
+    assert!(matches!(
+        service.apply(&disabled).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM research_levels WHERE owner=$1 AND research='ImpulseDrive'",
+    )
+    .bind(binding.player.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 1);
+    let mut destructive = service.export(universe).await.unwrap();
+    destructive.artifact = before.artifact;
+    assert!(service.diff(&destructive).await.is_err());
+}

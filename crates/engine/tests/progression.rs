@@ -1309,3 +1309,129 @@ fn pending_work_keeps_committed_terms_across_rules_activation() {
         }
     }
 }
+
+#[test]
+fn impulse_prerequisites_costs_duration_and_unbounded_progression() {
+    let (mut s, old, p, b) = prepared();
+    let r = common::impulse_rules(&old);
+    s.profile_hash = r.hash.clone();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::ImpulseDrive, 0);
+    let request = QuoteRequest::Research {
+        host: b,
+        research: ResearchId::ImpulseDrive,
+    };
+    // Each completed gate is necessary, independent of the other gate.
+    for (lab, energy) in [(1, 1), (2, 0)] {
+        s.bodies
+            .get_mut(&b)
+            .unwrap()
+            .levels
+            .insert(Building::ResearchLab, lab);
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(ResearchId::EnergyTechnology, energy);
+        let options = inspect_progression(&s, Actor::Player(p), &request, 0, &r).unwrap();
+        assert!(!options.blockers.is_empty());
+        let before = s.clone();
+        let input = common::input(
+            &s,
+            &r,
+            Actor::Player(p),
+            0,
+            900,
+            Input::Command(Command::StartResearch {
+                host: b,
+                research: ResearchId::ImpulseDrive,
+                expected_terms_hash: options.terms_hash.unwrap(),
+            }),
+        );
+        let mut input = input;
+        input.protocol = 3;
+        input.schema_version = 3;
+        assert!(matches!(
+            transition(&s, &input, &r),
+            TransitionResult::Rejected(GameError::PrerequisiteMissing)
+        ));
+        assert_eq!(s.bodies, before.bodies);
+        assert_eq!(s.research, before.research);
+    }
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 2);
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::EnergyTechnology, 1);
+    let mut now = 0;
+    // Reach the future colony prerequisite and keep going through the cargo switch.
+    for target in 1..=6u32 {
+        let options = inspect_progression(&s, Actor::Player(p), &request, now, &r).unwrap();
+        assert!(options.blockers.is_empty());
+        let material = options.terms.unwrap();
+        let multiplier = 1i64 << (target - 1);
+        assert_eq!(
+            material.paid(),
+            Resources::from_values([2000, 4000, 600].map(|v| v * multiplier * SCALE))
+        );
+        assert_eq!(material.duration(), 720_000 * multiplier); // Lab2, 10x
+        let cmd = command(&s, &r, p, now, request.clone());
+        let started = run(
+            &mut s,
+            &r,
+            Actor::Player(p),
+            now,
+            1000 + u128::from(target) * 2,
+            Input::Command(cmd),
+        );
+        assert_eq!(s.research[&p].levels[&ResearchId::ImpulseDrive], target - 1);
+        now = started.events[0].at;
+        run(
+            &mut s,
+            &r,
+            Actor::Scheduler,
+            now,
+            1001 + u128::from(target) * 2,
+            Input::Event(started.events[0].event.clone()),
+        );
+        assert_eq!(s.research[&p].levels[&ResearchId::ImpulseDrive], target);
+    }
+    // Exact floor before conversion to milliseconds, D and Robotics do not enter.
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::ImpulseDrive, 0);
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 6);
+    let r = Ruleset::from_artifact(r.artifact, 10).unwrap();
+    assert_eq!(
+        research_terms(&s.bodies[&b], &s.research[&p], ResearchId::ImpulseDrive, &r)
+            .unwrap()
+            .duration(),
+        308_000
+    );
+    // Pure terms accept all supported speed factors with the same arithmetic.
+    for (speed, expected) in [(1, 3_085_000), (5, 617_000), (100, 30_000)] {
+        let r = common::impulse_rules(
+            &Ruleset::signup_with_speed(UniverseProfile::signup(1, 100).unwrap(), speed).unwrap(),
+        );
+        assert_eq!(
+            research_terms(&s.bodies[&b], &s.research[&p], ResearchId::ImpulseDrive, &r)
+                .unwrap()
+                .duration(),
+            expected
+        );
+    }
+}
