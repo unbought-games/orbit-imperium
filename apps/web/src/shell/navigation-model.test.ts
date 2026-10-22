@@ -6,7 +6,7 @@ import {
   navigationGroups,
 } from './navigation-model'
 it('keeps the same four anchor meanings across every implemented route', () => {
-  expect(navigationAnchor('overview')).toBe('World')
+  expect(navigationAnchor('overview')).toBe('Empire')
   for (const page of buildPages) expect(navigationAnchor(page)).toBe('Build')
   for (const page of ['fleets', 'galaxy', 'dispatch'] as const)
     expect(navigationAnchor(page)).toBe('Fleet')
@@ -21,7 +21,7 @@ it('places Galaxy between Fleets and Dispatch in the Fleet submenu and grouped m
       ?.pages,
   ).toEqual(['fleets', 'galaxy', 'dispatch', 'reports'])
   expect(
-    navigationGroups.find((group) => group.title === 'World')?.pages,
+    navigationGroups.find((group) => group.title === 'Empire')?.pages,
   ).toEqual(['overview'])
 })
 it('places every real destination exactly once in the grouped menu', () => {

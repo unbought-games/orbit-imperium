@@ -81,6 +81,27 @@ pub(crate) async fn public_destinations(
     Ok(destinations)
 }
 impl GameStore for PgStore {
+    async fn public_player_names(
+        &self,
+        binding: Binding,
+        players: Vec<PlayerId>,
+    ) -> Result<PublicPlayerNames, StoreError> {
+        let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
+        crate::binding::check_read(&mut tx, binding).await?;
+        let ids: Vec<_> = players.into_iter().map(|p| p.0).collect();
+        // Never read OIDC payloads or credentials. Membership scopes the lookup
+        // to this universe; all visible IDs are resolved in one batch.
+        let rows: Vec<(uuid::Uuid, String)> = sqlx::query_as(
+            "SELECT m.player,a.name FROM universe_memberships m JOIN accounts a ON a.id=m.account WHERE m.universe=$1 AND m.player=ANY($2)",
+        ).bind(binding.universe.0).bind(ids).fetch_all(&mut *tx).await.map_err(db_error)?;
+        tx.commit().await.map_err(db_error)?;
+        Ok(rows
+            .into_iter()
+            .filter(|(_, name)| !name.trim().is_empty())
+            .map(|(id, name)| (PlayerId(id), name))
+            .collect())
+    }
+
     async fn bound_world_query(
         &self,
         b: Binding,
@@ -399,6 +420,7 @@ impl PgStore {
             .as_ref()
             .map_or(coverage, |s| s.coverage.clone());
         let snapshot = ViewerSnapshot {
+            unread_report: None,
             world,
             progression,
             coverage,

@@ -430,7 +430,19 @@ pub(crate) async fn viewer_snapshot(
     )
     .await?;
     let destinations = crate::views::public_destinations(tx, universe).await?;
+    // Read in the same snapshot as the viewer revision. This is an existence
+    // witness, not a persisted counter or a scan of the paginated inbox.
+    let unread_report = sqlx::query_scalar::<_, uuid::Uuid>(
+        "SELECT r.id FROM mission_report_recipients p JOIN mission_reports r ON r.id=p.report WHERE r.universe=$1 AND p.recipient=$2 AND NOT p.read AND NOT p.hidden LIMIT 1",
+    )
+    .bind(universe.0)
+    .bind(player.0)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(db_error)?
+    .map(ReportId);
     Ok(ViewerSnapshot {
+        unread_report,
         coverage: state.coverage.clone(),
         bodies: state.bodies.values().cloned().collect(),
         inventories: state.inventories.clone(),
@@ -856,6 +868,7 @@ impl PgStore {
         let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;
         let detail = ReportDetail4 {
+            player_names: Default::default(),
             header: header(&row)?,
             payload: r
                 .payloads

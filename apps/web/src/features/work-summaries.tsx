@@ -22,20 +22,22 @@ import {
 export function WorkSummaries({
   view,
   body,
+  currentPage,
   includeResearch = true,
   only,
   layout = 'editorial',
 }: {
   view: BoundView
   body: BoundView['bodies'][number]
+  currentPage: Page
   includeResearch?: boolean
   only?: 'buildings' | 'research' | 'manufacturing'
-  layout?: 'cards' | 'editorial'
+  layout?: 'cards' | 'editorial' | 'compact'
 }) {
   const universeName = useUniverseName()
   const countdown = useCountdown(
     view.sampled_at,
-    layout === 'editorial' ? 'compact' : 'exact',
+    layout !== 'cards' ? 'compact' : 'exact',
   )
   const session = useContext(SessionContext)
   const state = session?.model.store.getState()
@@ -129,7 +131,7 @@ export function WorkSummaries({
   ]
   return (
     <div
-      className={`${styles.summaries} ${layout === 'editorial' ? styles.editorial : ''}`}
+      className={`${styles.summaries} ${layout !== 'cards' ? styles.editorial : ''} ${layout === 'compact' ? styles.compact : ''}`}
     >
       {summaries
         .filter(
@@ -148,6 +150,13 @@ export function WorkSummaries({
             work,
             cancelType,
           }) => {
+            const showLink =
+              page !== currentPage &&
+              !(
+                category === 'buildings' &&
+                !construction &&
+                currentPage === 'facilities'
+              )
             const enabled = resolveDestination(
               {
                 universe: view.binding.universe,
@@ -171,7 +180,7 @@ export function WorkSummaries({
                           {label(batch.item.id)} · {batch.remaining} remaining
                         </span>
                         <strong>{batch.status}</strong>
-                        {layout === 'editorial' &&
+                        {layout !== 'cards' &&
                           manufacturePercent(batch.id) !== null && (
                             <progress
                               aria-label={`${label(batch.item.id)} next unit estimated progress`}
@@ -195,7 +204,7 @@ export function WorkSummaries({
                     <Icon aria-hidden="true" size={26} />
                     <p>
                       {name}
-                      {layout === 'editorial' && work && (
+                      {layout !== 'cards' && work && (
                         <small className={styles.workStatus}>
                           {work.status}
                           {category === 'research' && researchHost
@@ -203,7 +212,7 @@ export function WorkSummaries({
                             : ''}
                         </small>
                       )}
-                      {layout === 'editorial' &&
+                      {layout !== 'cards' &&
                         category === 'research' &&
                         researchPercent !== null && (
                           <progress
@@ -215,7 +224,7 @@ export function WorkSummaries({
                       {due !== undefined && (
                         <>
                           <strong>{countdown(due)}</strong>
-                          {layout === 'editorial' && (
+                          {layout !== 'cards' && (
                             <time dateTime={new Date(due).toISOString()}>
                               {new Date(due).toLocaleString(undefined, {
                                 dateStyle: 'medium',
@@ -249,20 +258,27 @@ export function WorkSummaries({
                       {work.status === 'Cancelling' ? 'Cancelling…' : 'Cancel'}
                     </Button>
                   )}
-                  {enabled ? (
-                    <Link {...routeTarget(universeName, page as Page, body.id)}>
-                      Open{' '}
-                      {category === 'manufacturing'
-                        ? 'shipyard'
-                        : title.toLowerCase()}{' '}
-                      <ArrowRight size={12} aria-hidden="true" />
-                    </Link>
-                  ) : (
-                    <span className={styles.unavailable}>
-                      Unavailable in this universe
-                    </span>
-                  )}
+                  {showLink &&
+                    (enabled ? (
+                      <Link
+                        {...routeTarget(universeName, page as Page, body.id)}
+                      >
+                        Open{' '}
+                        {category === 'manufacturing'
+                          ? 'shipyard'
+                          : category === 'buildings' &&
+                              ['resources', 'facilities'].includes(currentPage)
+                            ? page
+                            : title.toLowerCase()}{' '}
+                        <ArrowRight size={12} aria-hidden="true" />
+                      </Link>
+                    ) : (
+                      <span className={styles.unavailable}>
+                        Unavailable in this universe
+                      </span>
+                    ))}
                   {category === 'manufacturing' &&
+                    currentPage !== 'defense' &&
                     resolveDestination(
                       {
                         universe: view.binding.universe,

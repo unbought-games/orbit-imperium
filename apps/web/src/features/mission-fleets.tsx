@@ -1,3 +1,4 @@
+import { playerLabel } from './player-label'
 import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useState } from 'react'
@@ -252,7 +253,7 @@ export function MissionFleets({
           <article className={styles.incomingRow} key={index}>
             <div>
               <Heading level={3}>
-                {fleet.mission} · Player {fleet.sender.slice(0, 8)}
+                {fleet.mission} · {playerLabel(fleet.sender, view.player_names)}
               </Heading>
               <Text>{incomingManifest(fleet.ships)}</Text>
             </div>

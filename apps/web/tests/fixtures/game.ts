@@ -51,6 +51,9 @@ export async function shellFixture(
     research?: components['schemas']['Research3'][]
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
     protocol?: 2 | 3 | 4
+    hasUnreadReports?: () => boolean
+    viewerRevision?: () => string
+    playerNames?: components['schemas']['PublicPlayerNames4']
     missions?: components['schemas']['MissionView4']
     fleets?: components['schemas']['Fleet'][]
     destinations?: components['schemas']['Destination'][]
@@ -59,7 +62,7 @@ export async function shellFixture(
     production?: components['schemas']['ProductionDto'][]
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
-    extraCapabilities?: Array<'Attack' | 'Espionage' | 'Harvest' | 'Transport'>
+    extraCapabilities?: Array<'Attack' | 'Espionage' | 'Harvest' | 'Transport' | 'Reports'>
   } = {},
 ) {
   const protocol = options.protocol ?? 3
@@ -129,7 +132,7 @@ export async function shellFixture(
 
     const view = {
       ...common,
-      viewer_revision: '1',
+      viewer_revision: options.viewerRevision?.() ?? '1',
       progress: {
         sampled_at: Date.now(),
         scopes: [],
@@ -171,6 +174,8 @@ export async function shellFixture(
       ),
       ...(protocol === 4
         ? {
+            has_unread_reports: options.hasUnreadReports?.() ?? false,
+            player_names: options.playerNames,
             missions: options.missions ?? {
               fleets: [],
               incoming: [
@@ -265,7 +270,7 @@ export async function shellFixture(
           executed_at: Date.now(),
           status: 'Committed',
           result_ids: [],
-          minimum_viewer_revision: '1',
+          minimum_viewer_revision: options.viewerRevision?.() ?? '1',
         },
       })
     if (url.pathname.endsWith('/commands')) purchases++
@@ -273,7 +278,7 @@ export async function shellFixture(
   })
   await page.goto(`/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`)
   // A startup connection surface also has an H1; mutations need the ready game.
-  await expect(page.locator('main h1')).toContainText('Overview —')
+  await expect(page.locator('main h1')).toContainText('Empire —')
   return () => purchases
 }
 

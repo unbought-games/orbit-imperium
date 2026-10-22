@@ -4,6 +4,7 @@ import { expect, it } from 'vitest'
 import type { Attempt } from '../client-model/commands'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
+import { changedAnnouncements } from './action-announcements'
 import { ActionStatus } from './action-status'
 import {
   createMemoryHistory,
@@ -143,3 +144,37 @@ it.each(['rejected', 'uncertain'] as const)(
     expect(html).toContain('Dismiss message')
   },
 )
+
+it('resolves uncertain presence quietly without hiding player actions or actual rejections', async () => {
+  const prior = attempt('uncertain', 'presence')
+  const presence: Attempt = {
+    status: 'uncertain',
+    receipt: null,
+    reconciled: false,
+    envelope: {
+      ...prior.envelope,
+      protocol: 4,
+      presence: null,
+      command: {
+        type: 'World',
+        action: {
+          type: 'RecordForegroundPresence',
+          body: null,
+          cause: 'BodyVisit',
+          paired_command_id: null,
+        },
+      },
+    },
+  }
+  expect(changedAnnouncements(new Map(), [presence]).message).toBe('')
+  const quiet = await render([presence])
+  expect(quiet).not.toContain('Resolve saved command')
+  expect(quiet).not.toContain('Action needs attention')
+  const mixed = await render([attempt('uncertain', 'upgrade'), presence])
+  expect(mixed).toContain('Start Upgrade')
+  expect(mixed).toContain('Resolve saved command')
+  expect(mixed).not.toContain('Record Foreground Presence')
+  const rejected = await render([{ ...presence, status: 'rejected' }])
+  expect(rejected).toContain('Record Foreground Presence')
+  expect(rejected).toContain('Action rejected')
+})

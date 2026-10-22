@@ -16,7 +16,8 @@ export function ResourceStrip({
     <div className={styles.resources} aria-label="Current resources">
       {(['metal', 'crystal', 'deuterium'] as const).map((name) => {
         const value = body.amounts[name]
-        const full = BigInt(value) >= BigInt(body.capacity[name])
+        const capacity = BigInt(body.capacity[name])
+        const full = capacity > 0n && BigInt(value) >= capacity
         return (
           <ResourceAmount
             key={name}

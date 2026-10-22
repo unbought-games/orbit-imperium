@@ -4,6 +4,7 @@ import {
   prepareRuntime,
   disposeRuntime,
   runtimeModel,
+  runtimeNeedsRecovery,
   type AppRuntime,
   type RuntimeDependencies,
   type BootstrapSource,
@@ -36,6 +37,7 @@ function authMessage(error: unknown, signup: boolean): string {
 export class RuntimeController {
   readonly store
   private generation = 0
+  private retryAt = 0
   // An explicit sign-in gesture can outlive a failed game preparation. Keep its
   // session binding until it is handed to a ready coordinator or invalidated.
   private pendingLogin: {
@@ -53,6 +55,56 @@ export class RuntimeController {
       busy: false,
       message: '',
     }))
+  }
+  startRecovery() {
+    const { platform } = this.deps
+    let cancel: (() => void) | undefined,
+      delay = 1000,
+      running = false,
+      stopped = false
+    const needed = () => runtimeNeedsRecovery(this.store.getState().runtime)
+    const queue = (wait = delay) => {
+      if (stopped || running || cancel || this.store.getState().busy) return
+      cancel = platform.scheduleOnce?.(
+        () => {
+          cancel = undefined
+          if (!needed() || stopped) return
+          if (!platform.isOnline()) {
+            queue(5000)
+            return
+          }
+          delay = Math.min(30000, delay * 2)
+          running = true
+          void this.retry(false, 'automatic').finally(() => {
+            running = false
+            inspect()
+          })
+        },
+        Math.max(wait, this.retryAt - platform.monotonicNowMs()),
+      )
+    }
+    const inspect = () => {
+      if (!needed() || this.store.getState().busy) {
+        cancel?.()
+        cancel = undefined
+        if (!needed()) delay = 1000
+      } else queue()
+    }
+    const unsubscribe = this.store.subscribe(inspect)
+    inspect()
+    return {
+      wake: () => {
+        if (!needed() || stopped) return
+        cancel?.()
+        cancel = undefined
+        queue(0)
+      },
+      stop: () => {
+        stopped = true
+        cancel?.()
+        unsubscribe()
+      },
+    }
   }
   private replace(runtime: AppRuntime) {
     const old = this.store.getState().runtime
@@ -90,6 +142,9 @@ export class RuntimeController {
       disposeRuntime(runtime)
       return
     }
+    // A current bootstrap response supersedes the previous transport deadline,
+    // even if game preparation still needs its normal recovery backoff.
+    this.retryAt = 0
     if (runtimeModel(runtime)) this.pendingLogin = null
     this.replace(runtime)
   }
@@ -116,9 +171,11 @@ export class RuntimeController {
       if (g === this.generation) this.store.setState({ busy: false })
     }
   }
-  async retry(suspend = false) {
+  async retry(suspend = false, source: 'manual' | 'automatic' = 'manual') {
     const g = ++this.generation
-    this.store.setState({ busy: true, message: '' })
+    // Background recovery must keep controls mounted and leave focus alone.
+    // Its scheduler owns concurrency; interactive operations retain busy feedback.
+    if (source === 'manual') this.store.setState({ busy: true, message: '' })
     if (suspend)
       this.replace({
         status: 'unavailable',
@@ -126,11 +183,18 @@ export class RuntimeController {
       })
     try {
       await this.accept(await this.api.bootstrap(), 'retry', g)
-    } catch {
-      if (g === this.generation)
-        this.store.setState({ message: 'Unable to connect. Please retry.' })
+      if (g === this.generation) this.clearMessage()
+    } catch (error) {
+      if (g === this.generation) {
+        this.retryAt =
+          this.deps.platform.monotonicNowMs() +
+          (error instanceof HttpError ? error.retryAfterMs : 0)
+        if (source === 'manual')
+          this.store.setState({ message: 'Unable to connect. Please retry.' })
+      }
     } finally {
-      if (g === this.generation) this.store.setState({ busy: false })
+      if (source === 'manual' && g === this.generation)
+        this.store.setState({ busy: false })
     }
   }
   loseAccess() {

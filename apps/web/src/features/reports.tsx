@@ -116,10 +116,6 @@ export function Reports({
           Dispatches from the frontier.
         </Heading>
       </header>
-      <Text>
-        Historical observations stay as recorded. Unknown information is never
-        zero. Reports are retained for this universe.
-      </Text>
       {error && (
         <>
           <Text tone="danger" role="alert">
@@ -225,7 +221,10 @@ export function Reports({
                 </Button>
               </>
             )}
-          <ReportObservation payload={detail.payload} />
+          <ReportObservation
+            payload={detail.payload}
+            playerNames={detail.player_names}
+          />
         </>
       ) : item ? (
         <Text role="status">

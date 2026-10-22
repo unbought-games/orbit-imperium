@@ -7502,6 +7502,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "building_energy": {
+            "$ref": "#/components/schemas/BuildingEnergy"
           }
         },
         "required": [
@@ -9431,6 +9434,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "building_energy": {
+            "$ref": "#/components/schemas/BuildingEnergy"
           }
         },
         "required": [
@@ -9715,6 +9721,10 @@
       "BoundView4": {
         "type": "object",
         "properties": {
+          "has_unread_reports": {
+            "type": "boolean",
+            "description": "Whether this recipient has visible unread mission reports anywhere in the archive."
+          },
           "viewer_revision": {
             "$ref": "#/components/schemas/Decimal"
           },
@@ -9809,6 +9819,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "player_names": {
+            "$ref": "#/components/schemas/PublicPlayerNames4"
           }
         },
         "required": [
@@ -9982,6 +9995,13 @@
           "vacation": {
             "type": "boolean"
           },
+          "attack_blocker": {
+            "description": "Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers.",
+            "anyOf": [
+              { "$ref": "#/components/schemas/GameError4" },
+              { "type": "null" }
+            ]
+          },
           "espionage_eligible": {
             "type": "boolean"
           }
@@ -10073,6 +10093,9 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "player_names": {
+            "$ref": "#/components/schemas/PublicPlayerNames4"
           }
         },
         "required": [
@@ -10430,6 +10453,9 @@
           },
           "payload": {
             "$ref": "#/components/schemas/ReportPayload4"
+          },
+          "player_names": {
+            "$ref": "#/components/schemas/PublicPlayerNames4"
           }
         },
         "required": [
@@ -11885,6 +11911,30 @@
             "type": "string",
             "format": "uuid"
           }
+        }
+      },
+      "BuildingEnergy": {
+        "type": "object",
+        "description": "Building operating consumption at 100% production, derived from the active rules. Informational; not a construction prerequisite.",
+        "properties": {
+          "current_consumption": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "target_consumption": {
+            "$ref": "#/components/schemas/Decimal"
+          }
+        },
+        "required": [
+          "current_consumption",
+          "target_consumption"
+        ],
+        "additionalProperties": false
+      },
+      "PublicPlayerNames4": {
+        "type": "object",
+        "description": "Current public usernames keyed by player ID, limited to identities visible in this response. Missing identities use the client fallback.",
+        "additionalProperties": {
+          "type": "string"
         }
       }
     }

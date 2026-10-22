@@ -167,6 +167,7 @@ export function Galaxy({
               >
                 <GalaxyPosition
                   position={position}
+                  playerNames={data.player_names}
                   player={model.binding?.player}
                   canAttack={!!canAttack}
                   onDraft={onDraft}

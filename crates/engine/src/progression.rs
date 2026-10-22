@@ -100,6 +100,8 @@ pub struct ProgressionInspection {
     pub terms_hash: Option<Hash>,
     pub blockers: Vec<ProgressionBlocker>,
     pub estimates: Option<ProgressionEstimate>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub building_energy: Option<BuildingEnergy>,
 }
 fn block(code: GameError) -> ProgressionBlocker {
     ProgressionBlocker {
@@ -316,6 +318,7 @@ pub fn inspect_progression(
         terms_hash: None,
         blockers: vec![],
         estimates: None,
+        building_energy: None,
     };
     let Some((id, key)) = request_identity(q) else {
         out.blockers.push(block(GameError::UnavailableContent));
@@ -368,6 +371,21 @@ pub fn inspect_progression(
             return Ok(out);
         }
     };
+    if let ProgressionMaterial::Building {
+        building,
+        source_level,
+        target_level,
+        ..
+    } = &terms
+    {
+        out.building_energy = Some(building_energy(
+            b,
+            *building,
+            *source_level,
+            *target_level,
+            r,
+        )?);
+    }
     out.terms_hash = Some(hash(
         &serde_json::json!({"protocol":r.protocol(),"request":canonical_request(q),"terms":terms}),
     ));

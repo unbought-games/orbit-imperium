@@ -74,7 +74,7 @@ test('mobile game navigation stays in the same document and app scope', async ({
     ['Facilities', `/u/andromeda/b/${body.id}/facilities`],
     ['Fleet', '/u/andromeda/fleets'],
     ['Settings', '/u/andromeda/settings'],
-    ['World', `/u/andromeda/b/${body.id}/overview`],
+    ['Empire', `/u/andromeda/b/${body.id}/overview`],
   ]) {
     if (destination === 'Settings') {
       await page.getByRole('button', { name: 'Menu', exact: true }).tap()
@@ -83,7 +83,8 @@ test('mobile game navigation stays in the same document and app scope', async ({
         .getByRole('link', { name: destination, exact: true })
         .tap()
     } else {
-      await page.getByRole('link', { name: destination, exact: true }).tap()
+      const nav = page.getByRole('navigation', { name: destination === 'Facilities' ? 'Build navigation' : 'Main navigation', exact: true })
+      await nav.getByRole('link', { name: destination, exact: true }).tap()
     }
     await expect(page).toHaveURL(
       (url) => url.origin === origin && url.pathname === path,

@@ -321,10 +321,47 @@ test('an open quote refreshes when a confirmed building level changes', async ({
     .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   const quote = page.getByRole('region', { name: 'Progression quote' })
+  await quote.getByText('Construction terms', { exact: true }).click()
+  await expect(
+    quote.getByText('Full refund if cancelled before completion.', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(quote).not.toContainText('A quote reserves nothing')
   await expect(quote).toContainText('Required to improve to level 2')
   planet.levels.MetalMine = 2
   await refreshGame(page)
   await expect(quote).toContainText('Required to improve to level 3')
+})
+
+test('resource settings keep production rules and fuel figures without repeated helpers', async ({
+  page,
+}) => {
+  await setup(page)
+  await page
+    .getByRole('button', { name: 'Resource settings', exact: true })
+    .click()
+  const settings = page.getByRole('region', { name: 'Production controls' })
+  await expect(settings.getByRole('combobox')).toHaveCount(6)
+  await expect(settings).toContainText('Deuterium fuel: 0 / hour')
+  await expect(settings).toContainText('Net deuterium: 10 / hour')
+  await expect(settings).toContainText(
+    'Full storage stops production; excess resources remain usable.',
+  )
+  await expect(settings).toContainText(
+    'Energy shortages reduce output without changing your settings.',
+  )
+  await expect(settings).not.toContainText('Confirmed economy')
+  await expect(settings).not.toContainText('output · energy demand')
+  await expect(settings).not.toContainText('Save applies all settings')
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await page.screenshot({
+      path: `test-results/copy-production-${width}.png`,
+      fullPage: true,
+    })
+  }
 })
 
 test('unedited production controls follow current saved settings', async ({
@@ -476,44 +513,298 @@ test('building tiles open top details, preserve quoted commands, and restore key
   await expect(tile).toBeFocused()
 })
 
-test('resource settings preserve drafts and revision fencing and save all percentages explicitly', async ({
+test('production autosaves rapid edits after reconciliation and keeps confirmed totals', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  const { economy } = await setup(page)
+  const sent: components['schemas']['CommandEnvelopeV3'][] = []
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/commands', async (route) => {
+    const envelope = route.request().postDataJSON()
+    sent.push(envelope)
+    if (sent.length === 1) await gate
+    // Another client's unrelated edit must survive the queued local changes.
+    economy.settings = { ...envelope.command.settings, crystal_mine: 80 }
+    economy.settings_revision = String(Number(economy.settings_revision) + 1)
+    economy.gross_per_hour.metal = '7000000'
+    await route.fulfill({
+      json: {
+        protocol: 3,
+        binding,
+        command_id: envelope.command_id,
+        admitted_at: Date.now(),
+        executed_at: Date.now(),
+        status: 'Committed',
+        result_ids: [],
+        minimum_viewer_revision: '1',
+      },
+    })
+  })
+  await page
+    .getByRole('button', { name: 'Resource settings', exact: true })
+    .click()
+  const panel = page.getByRole('region', { name: 'Production controls' })
+  await expect(page.getByLabel('fusion reactor production')).toBeDisabled()
+  await expect(page.getByLabel('solar satellite production')).toBeDisabled()
+  await expect(
+    page.getByRole('button', { name: 'Save production', exact: true }),
+  ).toHaveCount(0)
+  const totals = panel
+    .locator('div')
+    .filter({ has: page.getByText('Energy balance', { exact: true }) })
+    .first()
+  const confirmedTotals = await totals.innerText()
+  await page.getByLabel('metal mine production').selectOption('50')
+  await expect.poll(() => sent.length).toBe(1)
+  await page.getByLabel('metal mine production').selectOption('100')
+  await page.getByLabel('solar plant production').selectOption('60')
+  await expect(panel.getByRole('status')).toContainText(
+    'Saving production changes',
+  )
+  expect(await totals.innerText()).toBe(confirmedTotals)
+  expect(sent).toHaveLength(1)
+  await panel.getByRole('status').scrollIntoViewIfNeeded()
+  await page.screenshot({
+    path: 'test-results/production-autosave-pending-390.png',
+  })
+  await page.getByRole('button', { name: 'Close resource settings' }).click()
+  // A route change unmounts the controls while the user edits remain queued.
+  await page.getByRole('link', { name: 'Facilities', exact: true }).click()
+  await page.getByRole('link', { name: 'Resources', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Resource settings', exact: true })
+    .click()
+  await expect(page.getByLabel('metal mine production')).toHaveValue('100')
+  await expect(page.getByLabel('solar plant production')).toHaveValue('60')
+  release()
+  await expect.poll(() => sent.length).toBe(2)
+  expect(sent[1].command).toMatchObject({
+    type: 'SetProduction',
+    expected_settings_revision: '2',
+    settings: {
+      metal_mine: 100,
+      crystal_mine: 80,
+      solar_plant: 60,
+      fusion_reactor: 100,
+      solar_satellite: 100,
+    },
+  })
+  await expect(panel.getByRole('status')).toHaveText(
+    'All changes saved automatically.',
+  )
+  await expect(page.getByLabel('crystal mine production')).toHaveValue('80')
+  expect(await totals.innerText()).not.toBe(confirmedTotals)
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await panel.getByRole('status').scrollIntoViewIfNeeded()
+  await page.screenshot({
+    path: 'test-results/production-autosave-saved-390.png',
+  })
+})
+
+test('production rejection retains edits and retry preserves unrelated server changes', async ({
   page,
 }) => {
   const { economy, sent } = await setup(page)
+  await page.route('**/commands', async (route) => {
+    const envelope = route.request().postDataJSON()
+    economy.settings.crystal_mine = 80
+    economy.settings_revision = '2'
+    await route.fulfill({
+      json: {
+        protocol: 3,
+        binding,
+        command_id: envelope.command_id,
+        admitted_at: Date.now(),
+        executed_at: Date.now(),
+        status: 'Rejected',
+        code: 'SettingsChanged',
+      },
+    })
+  })
   await page
     .getByRole('button', { name: 'Resource settings', exact: true })
     .click()
-  const settings = page.getByRole('region', { name: 'Production controls' })
-  await expect(settings).toBeVisible()
-  await expect(page.getByLabel('fusion reactor production')).toBeDisabled()
   await page.getByLabel('metal mine production').selectOption('50')
-  expect(sent).toHaveLength(0)
-  await page.getByRole('button', { name: 'Close resource settings' }).click()
-  await page
-    .getByRole('button', { name: 'Resource settings', exact: true })
-    .click()
+  const panel = page.getByRole('region', { name: 'Production controls' })
+  await expect(panel.getByRole('alert')).toContainText('rejected')
   await expect(page.getByLabel('metal mine production')).toHaveValue('50')
-  economy.settings_revision = '2'
-  await refreshGame(page)
-  economy.settings.crystal_mine = 80
-  await refreshGame(page)
-  await expect(
-    page.getByRole('button', { name: 'Save production', exact: true }),
-  ).toBeDisabled({ timeout: 15000 })
-  await page
-    .getByRole('button', { name: 'Use current revision for this draft' })
-    .click()
-  await page
-    .getByRole('button', { name: 'Save production', exact: true })
-    .click()
+  expect(sent).toHaveLength(0)
+  await panel.screenshot({
+    path: 'test-results/production-autosave-rejected-1440.png',
+  })
+  await page.route('**/commands', async (route) => {
+    const envelope = route.request().postDataJSON()
+    sent.push(envelope)
+    economy.settings = envelope.command.settings
+    economy.settings_revision = '3'
+    await route.fulfill({
+      json: {
+        protocol: 3,
+        binding,
+        command_id: envelope.command_id,
+        admitted_at: Date.now(),
+        executed_at: Date.now(),
+        status: 'Committed',
+        result_ids: [],
+        minimum_viewer_revision: '1',
+      },
+    })
+  })
+  await panel.getByRole('button', { name: 'Retry production changes' }).click()
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toMatchObject({
-    type: 'SetProduction',
-    body: body.id,
     expected_settings_revision: '2',
-    settings: { metal_mine: 50, crystal_mine: 100, solar_plant: 100 },
+    settings: { metal_mine: 50, crystal_mine: 80 },
   })
+  await expect(panel.getByRole('status')).toHaveText(
+    'All changes saved automatically.',
+  )
 })
+
+for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
+  test(`production edits survive a restored ${restoredCommand} command`, async ({
+    page,
+  }) => {
+    const { economy } = await setup(page)
+    const sent: components['schemas']['CommandEnvelopeV3'][] = []
+    const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
+    await page.route('**/commands', async (route) => {
+      const envelope = route.request().postDataJSON()
+      sent.push(envelope)
+      const pending: components['schemas']['BoundReceipt3'] = {
+        protocol: 3,
+        binding,
+        command_id: envelope.command_id,
+        admitted_at: Date.now(),
+        executed_at: null,
+        status: 'Pending',
+      }
+      if (sent.length === 1) {
+        receipts.set(envelope.command_id, pending)
+        await route.fulfill({ json: pending })
+      } else {
+        economy.settings = envelope.command.settings
+        economy.settings_revision = '3'
+        await route.fulfill({
+          json: {
+            ...pending,
+            status: 'Committed',
+            executed_at: Date.now(),
+            minimum_viewer_revision: '1',
+            result_ids: [],
+          },
+        })
+      }
+    })
+    await page.route('**/commands/*', (route) => {
+      const id = new URL(route.request().url()).pathname.split('/').pop()!
+      return route.fulfill({ json: receipts.get(id) })
+    })
+    if (restoredCommand === 'production') {
+      await page
+        .getByRole('button', { name: 'Resource settings', exact: true })
+        .click()
+      await page.getByLabel('metal mine production').selectOption('50')
+    } else {
+      await page
+        .getByRole('button', { name: 'Start upgrade Metal Mine', exact: true })
+        .click()
+    }
+    await expect.poll(() => sent.length).toBe(1)
+    // Wait for durable receipt storage, then emulate an older saved command
+    // that predates submitted_intent. Reload must preserve command recovery.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Object.entries(sessionStorage)
+            .filter(([key]) => key.startsWith('orbit:attempts:v3:'))
+            .some(([, value]) => JSON.parse(value).status === 'pending'),
+        ),
+      )
+      .toBe(true)
+    if (restoredCommand === 'legacy upgrade')
+      await page.evaluate(() => {
+        for (const [key, value] of Object.entries(sessionStorage)) {
+          if (!key.startsWith('orbit:attempts:v3:')) continue
+          const attempt = JSON.parse(value)
+          delete attempt.submitted_intent
+          sessionStorage.setItem(key, JSON.stringify(attempt))
+        }
+      })
+    await page.reload()
+    await page
+      .getByRole('button', { name: 'Resource settings', exact: true })
+      .click()
+    const panel = page.getByRole('region', { name: 'Production controls' })
+    const metal = page.getByLabel('metal mine production')
+    await expect(metal).toHaveValue(
+      restoredCommand === 'production' ? '50' : '100',
+    )
+    const totals = panel
+      .locator('div')
+      .filter({ has: page.getByText('Energy balance', { exact: true }) })
+      .first()
+    const confirmedTotals = await totals.innerText()
+    const desired = restoredCommand === 'production' ? '100' : '50'
+    await metal.selectOption(desired)
+    await expect(metal).toHaveValue(desired)
+    await expect(panel.getByRole('status')).toContainText(
+      'Saving production changes',
+    )
+    expect(sent).toHaveLength(1)
+    expect(await totals.innerText()).toBe(confirmedTotals)
+    economy.settings = {
+      ...economy.settings,
+      metal_mine: restoredCommand === 'production' ? 50 : 100,
+      crystal_mine: 80,
+    }
+    economy.settings_revision = '2'
+    if (restoredCommand === 'legacy upgrade') {
+      await refreshGame(page)
+      await expect(page.getByLabel('crystal mine production')).toHaveValue('80')
+    }
+    // The production command commits; the legacy upgrade rejects. Either
+    // terminal result should release the queued edit without a Retry click.
+    const original = receipts.get(sent[0].command_id)!
+    receipts.set(
+      sent[0].command_id,
+      restoredCommand === 'production'
+        ? {
+            ...original,
+            status: 'Committed',
+            executed_at: Date.now(),
+            minimum_viewer_revision: '1',
+            result_ids: [],
+          }
+        : {
+            ...original,
+            status: 'Rejected',
+            executed_at: Date.now(),
+            code: 'InsufficientResources',
+          },
+    )
+    await refreshGame(page)
+    await expect.poll(() => sent.length).toBe(2)
+    expect(sent[1].command).toMatchObject({
+      type: 'SetProduction',
+      expected_settings_revision: '2',
+      settings: { metal_mine: Number(desired), crystal_mine: 80 },
+    })
+    await expect(panel.getByRole('status')).toHaveText(
+      'All changes saved automatically.',
+    )
+    await expect(metal).toHaveValue(desired)
+    await expect(panel.getByRole('alert')).toHaveCount(0)
+  })
+}
 
 test('resources fit compact and touch layouts in all three states', async ({
   page,
@@ -1177,6 +1468,10 @@ test('active construction stays visible without covering current work at enlarge
       .getByRole('region', { name: 'Progression quote' })
       .getByRole('button', { name: 'Cancel construction', exact: true }),
   ).toBeEnabled()
+  const quote = page.getByRole('region', { name: 'Progression quote' })
+  await expect(quote.getByText(/Full refund before completion:/)).toHaveCount(1)
+  await expect(quote).not.toContainText('Full payment is refunded')
+  await expect(quote).not.toContainText('A quote reserves nothing')
 })
 
 for (const dismissFirst of ['message', 'saved action'] as const) {
@@ -1320,13 +1615,13 @@ test('fractional balances stay whole in the ledger and tooltip without enabling 
   const metal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Metal details' }) })
   const crystal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Crystal details' }) })
   await expect(metal.locator('td').nth(0)).toHaveText('Available59')
-  await expect(metal.locator('td').nth(1)).toHaveText('After spendingNeed <1 more')
+  await expect(metal.locator('td').nth(1)).toHaveText('After spendingNeed 1 more')
   await expect(crystal.locator('td').nth(0)).toHaveText('Available864')
   await expect(crystal.locator('td').nth(1)).toHaveText('After spending849')
   await expect(pane.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeDisabled()
   await metal.getByRole('button', { name: 'Metal details' }).click()
   const tooltip = page.getByRole('dialog', { name: 'Metal', exact: true })
   await expect(tooltip).toContainText('Available 59')
-  await expect(tooltip).toContainText('Shortfall <1')
+  await expect(tooltip).toContainText('Shortfall 1')
   expect(sent).toHaveLength(0)
 })

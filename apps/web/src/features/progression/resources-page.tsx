@@ -134,7 +134,12 @@ export function ResourcesPage(props: ProgressionProps) {
             />
           )}
         </CatalogStage>
-        <WorkSummaries view={view} body={body} includeResearch={false} />
+        <WorkSummaries
+          view={view}
+          body={body}
+          currentPage="resources"
+          includeResearch={false}
+        />
         <CatalogSection title="Resource buildings">
           <ImageCatalog>
             {resourceBuildings.map((building) => {
