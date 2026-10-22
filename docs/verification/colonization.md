@@ -117,3 +117,42 @@ mobile devices and screen-reader testing were not performed.
 
 See [the rollout plan](../operations/colonization.md) for the sole beta universe,
 release and activation commands, compatibility, validation and recovery steps.
+
+## PR #23 CI stack-overflow correction — October 22, 2026
+
+[CI run 39800731273](https://github.com/unbought-games/orbit-imperium/actions/runs/39800731273)
+failed on published revision `6089ebb19968aa6abdec729393e649f906ceca01`.
+Build/lint/unit and fixture browser checks passed. The PostgreSQL `world` binary
+aborted in `paired_admission_rejected_gameplay_restart_and_passive_reads` with
+SIGABRT after 8.547 s: its test thread overflowed the stack. This was a failed
+run, not a gameplay assertion failure or execution deadline.
+
+Fix source: `eadb94f564a2a62843c67ff50398262a4cd525ad`. The long async test now
+executes seven sequential, heap-backed scenarios. Each scenario drops its local
+snapshots before the next while retaining the same database history, bindings,
+connection pools, assertions, ordering and functional timeout checks. Production
+code, CI configuration, test deadlines and default thread-stack settings are
+unchanged. Clippy's additional `large_futures` check passes as well.
+
+The original test also reproduced the overflow locally with a 1 MiB thread
+stack. An initial coarser split still overflowed at that size; the final smaller
+scenario boundaries pass. This stress setting was used only for diagnosis and
+verification, and was not added to CI or repository configuration.
+
+Validation on the clean fix revision:
+
+| Command | Result | Measured wall time |
+| --- | --- | --- |
+| `RUST_MIN_STACK=1048576 make _db-world` | All 3 tests passed; formerly failing journey 7.067 s | 16.32 s total; 11.963 s native test execution |
+| `cargo clippy -p orbit-storage-postgres --test world --features test-support -- -D warnings -D clippy::large_futures` | Passed | 1.50 s |
+| `cargo fmt --all --check` and `git diff --check` | Passed | Not separately timed |
+
+A normal-stack run also passed before the final redundant-borrow lint cleanup.
+The published Linux rerun is tracked by [PR #23's checks](https://github.com/unbought-games/orbit-imperium/pull/23/checks).
+
+Tests used disposable Compose project `orbit-colony-ci-fix`, localhost port
+55309, with per-binary serial disposable databases. The temporary debugger
+database was dropped, and a final query found no remaining test/debug databases.
+The project's container, network and volume were removed successfully. Logs are
+`/tmp/orbit-ci-stack-{before,small,final,default,clippy-final,cleanup}.log`.
+No shared or production database was changed.
