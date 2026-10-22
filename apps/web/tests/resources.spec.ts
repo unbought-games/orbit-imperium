@@ -551,7 +551,7 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
     .click()
   const panel = page.getByRole('region', { name: 'Production controls' })
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
-  await expect(page.getByLabel('solar satellite production')).toBeDisabled()
+  await expect(page.getByLabel('solar satellite production')).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: 'Save production', exact: true }),
   ).toHaveCount(0)
