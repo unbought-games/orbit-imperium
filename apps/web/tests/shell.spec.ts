@@ -433,6 +433,11 @@ for (const width of [390, 1440]) {
       exact: true,
     })
     await expect(signOut).toBeVisible()
+    // Visibility does not mean the drawer's entrance animation has settled.
+    // Finish it before separate geometry reads can sample different frames.
+    await drawer.evaluate((element) =>
+      Promise.all(element.getAnimations().map((animation) => animation.finished)),
+    )
     const nameBounds = await username.boundingBox()
     const buttonBounds = await signOut.boundingBox()
     expect(nameBounds!.x + nameBounds!.width).toBeLessThan(buttonBounds!.x)
