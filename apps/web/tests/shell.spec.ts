@@ -92,7 +92,7 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
   await shellFixture(page)
   const bar = page.getByRole('group', { name: 'Planet and resources' })
   const main = page.locator('main')
-  await expect(bar).toHaveCSS('position', 'sticky')
+  await expect(bar.locator('..')).toHaveCSS('position', 'sticky')
   await expect(bar).toHaveCSS('border-bottom-width', '1px')
   await expect(bar).toHaveCSS('border-bottom-style', 'solid')
   await expect(bar).toHaveCSS('backdrop-filter', 'blur(4px)')
@@ -127,6 +127,61 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(bar).toHaveCSS('position', 'static')
 })
+
+for (const width of [320, 390]) {
+  test(`mobile Build submenu spans the ${width}px viewport and stays below resources while scrolling`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width, height: 844 })
+    await shellFixture(page, {
+      bodies: Array.from({ length: 9 }, (_, index) => ({
+        ...body,
+        id: index === 0 ? body.id : id(index + 20),
+      })),
+    })
+    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    const bar = page.getByRole('group', { name: 'Planet and resources' })
+    const nav = page.getByRole('navigation', { name: 'Build navigation' })
+    await expect(nav).toHaveCSS('scrollbar-width', 'none')
+    const assertPinned = async () => {
+      const resources = (await bar.boundingBox())!
+      const submenu = (await nav.boundingBox())!
+      expect(resources.y).toBe(0)
+      expect(submenu.y).toBe(resources.y + resources.height)
+      expect(submenu.x).toBe(0)
+      expect(submenu.width).toBe(width)
+      const dock = (await page
+        .getByRole('navigation', { name: 'Main navigation', exact: true })
+        .boundingBox())!
+      expect(dock.y + dock.height).toBe(844)
+    }
+    for (const scroll of [0, 250, 100000]) {
+      await page.evaluate((y) => window.scrollTo(0, y), scroll)
+      await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
+      await assertPinned()
+    }
+    await nav.getByRole('link', { name: 'Defense', exact: true }).focus()
+    expect(await nav.evaluate((element) => element.scrollLeft)).toBeGreaterThan(
+      0,
+    )
+    await page.keyboard.press('Enter')
+    await expect(page.locator('main h1')).toHaveText('Defense')
+    await assertPinned()
+    await page.screenshot({
+      path: `test-results/mobile-pinned-build-${width}.png`,
+    })
+    await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+    await page.evaluate(() => window.scrollTo(0, 250))
+    await assertPinned()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width)
+    await page.screenshot({
+      path: `test-results/mobile-pinned-build-large-text-${width}.png`,
+    })
+  })
+}
 
 test('mobile planet box is one tap target with full native planet and moon labels', async ({
   page,

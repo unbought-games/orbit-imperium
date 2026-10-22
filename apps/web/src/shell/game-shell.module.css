@@ -119,22 +119,17 @@
   }
   .shell-columns {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'world' 'connection' 'secondary' 'content';
+    grid-template-areas: 'world' 'connection' 'content';
     gap: 0;
   }
   .identity {
     display: none;
   }
   .worldBar {
-    position: sticky;
-    top: 0;
-    z-index: 9;
-    align-self: start;
     grid-template-columns: minmax(0, 104px) minmax(0, 1fr);
     grid-template-areas: 'context resources' 'body-search body-search';
     gap: 0 4px;
     min-height: 0;
-    margin-inline: calc(-1 * var(--shell-inline-gutter));
     padding: max(8px, env(safe-area-inset-top)) var(--shell-inline-gutter) 0;
     border: 0;
     border-bottom: 1px solid var(--border-accent);

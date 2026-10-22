@@ -176,23 +176,24 @@ export function GameShell() {
                 : null,
             )
           }
-        />
-        <div
-          className={styles.worldBar}
-          role="group"
-          aria-label="Planet and resources"
         >
-          <div className={styles['mobile-context']}>
-            <BodySelector
-              bodies={view.bodies}
-              selected={body?.id}
-              onSelect={selectBody}
-            />
+          <div
+            className={styles.worldBar}
+            role="group"
+            aria-label="Planet and resources"
+          >
+            <div className={styles['mobile-context']}>
+              <BodySelector
+                bodies={view.bodies}
+                selected={body?.id}
+                onSelect={selectBody}
+              />
+            </div>
+            <div className={styles.masthead}>
+              {body ? <ResourceStrip view={view} body={body} /> : <span />}
+            </div>
           </div>
-          <div className={styles.masthead}>
-            {body ? <ResourceStrip view={view} body={body} /> : <span />}
-          </div>
-        </div>
+        </Navigation>
         <div className={styles.connectionSlot}>{freshness}</div>
         <div className={styles.center}>
           {model.stale && (
