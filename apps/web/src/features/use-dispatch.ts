@@ -5,7 +5,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import type { Command } from '../client-model/commands'
 import { currentServerTime } from '../client-model/game-projection'
 import type { DispatchDraft } from './missions'
-import { colonizationStatus } from './colonization'
+import { colonizationStatus } from '../client-model/colonization'
 import {
   coordinateErrors,
   destinationError,
@@ -91,20 +91,23 @@ export function useDispatch({
   const target = ownedTarget
     ? { id: ownedTarget.id, owner: view.binding.player, kind: ownedTarget.kind }
     : observedTarget
+  const colony = colonizationStatus(view, Number(position))
   const targetProblem =
-    target && mission !== 'Harvest'
-      ? destinationError(
-          mission,
-          {
-            type: 'Body',
-            id: target.id,
-            expected_owner: target.owner,
-            expected_kind: target.kind,
-          },
-          view.binding.player,
-          body.id,
-        )
-      : ''
+    mission === 'Colonize' && colony.reason
+      ? colony.reason
+      : target && mission !== 'Harvest'
+        ? destinationError(
+            mission,
+            {
+              type: 'Body',
+              id: target.id,
+              expected_owner: target.owner,
+              expected_kind: target.kind,
+            },
+            view.binding.player,
+            body.id,
+          )
+        : ''
   const attackWarning =
     mission === 'Attack' && observedTarget?.attack_blocker
       ? dispatchFailure(observedTarget.attack_blocker)
@@ -258,7 +261,7 @@ export function useDispatch({
     }
   }
   return {
-    colony: colonizationStatus(view, Number(position)),
+    colony,
     coordinateProblems,
     coordinatesValid,
     targetProblem,

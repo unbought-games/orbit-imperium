@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest'
+import type { components } from '../contracts'
 import {
   coordinateErrors,
   destinationError,
@@ -80,6 +81,7 @@ it.each([
   'InvalidInput',
   'NotFound',
   'PositionOccupied',
+  'PrerequisiteMissing',
   'NoFleetSlot',
   'InsufficientShips',
 ])('translates %s for quote and launch failures', (code) => {
@@ -109,4 +111,53 @@ it('accepts empty-position colony targets without treating them as body identiti
   expect(dispatchFailure(new Error('PositionOccupied'))).toBe(
     'This position is occupied. Choose an empty position.',
   )
+})
+
+const colonizeIntent = (
+  position: number,
+): components['schemas']['FleetIntent4'] => ({
+  origin: 'home',
+  mission: 'Colonize',
+  destination: {
+    type: 'EmptyPosition',
+    coordinates: { galaxy: 1, system: 1, position },
+    slot_revision: '0',
+  },
+  ships: [{ owner: 'me', ship_type: 'ColonyShip', count: '1' }],
+  cargo: { metal: '0', crystal: '0', deuterium: '0' },
+  speed_percent: 100,
+})
+it.each(
+  [8, 6, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 6, 8].map((level, index) => [
+    index + 1,
+    level,
+  ]),
+)(
+  'explains the Astrophysics gate for position %i at level %i',
+  (position, level) => {
+    const message = `Astrophysics level ${level} is required for this position.`
+    expect(
+      dispatchFailure('PrerequisiteMissing', colonizeIntent(position)),
+    ).toBe(message)
+    expect(
+      dispatchFailure(
+        new Error('PrerequisiteMissing'),
+        colonizeIntent(position),
+      ),
+    ).toBe(message)
+  },
+)
+it('uses a general requirement message when colony position context is unavailable', () => {
+  const message =
+    'Your empire does not meet the requirements for this mission. Check your research and review again.'
+  expect(dispatchFailure('PrerequisiteMissing')).toBe(message)
+  expect(dispatchFailure('PrerequisiteMissing', colonizeIntent(0))).toBe(
+    message,
+  )
+  expect(
+    dispatchFailure('PrerequisiteMissing', {
+      ...colonizeIntent(3),
+      mission: 'Transport',
+    }),
+  ).toBe(message)
 })

@@ -6,7 +6,7 @@ import type { DispatchDraft } from './missions'
 import { Button } from '../ui/button'
 import styles from './galaxy.module.css'
 import { BodyIllustration } from './body-illustration'
-import type { colonizationStatus } from './colonization'
+import type { colonizationStatus } from '../client-model/colonization'
 
 export function GalaxyPosition({
   position,

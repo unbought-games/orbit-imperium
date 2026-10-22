@@ -1,4 +1,4 @@
-import type { BoundView } from '../client-model/commands'
+import type { BoundView } from './commands'
 
 export function positionAstrophysics(position: number): number | null {
   if (!Number.isInteger(position) || position < 1 || position > 15) return null

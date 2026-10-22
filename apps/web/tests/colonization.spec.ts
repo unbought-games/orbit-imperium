@@ -8,8 +8,8 @@ const catalog: S['CatalogEntry3'][] = [
  {key:{kind:'Ship',id:'ColonyShip'},body_kinds:['Planet'],enabled:true,mobile:true,requirements:[{type:'BodyBuilding',building:'Shipyard',level:4},{type:'PlayerResearch',research:'ImpulseDrive',level:3}]},
  {key:{kind:'Ship',id:'SmallCargo'},body_kinds:['Planet'],enabled:true,mobile:true,requirements:[]},
 ]
-async function setup(page: Parameters<typeof shellFixture>[0], bodies = [body]) {
- await shellFixture(page,{protocol:4,bodies,catalog,research:[{research:'Astrophysics',level:1}],extraCapabilities:['Colonize','Deploy','Transport'],missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'2'}})
+async function setup(page: Parameters<typeof shellFixture>[0], bodies = [body], astrophysics = 1) {
+ await shellFixture(page,{protocol:4,bodies,catalog,research:[{research:'Astrophysics',level:astrophysics}],extraCapabilities:['Colonize','Deploy','Transport'],missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'2'}})
 }
 const bound = (request_id:string,data:unknown)=>({protocol:4,binding,request_id,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),data})
 
@@ -104,4 +104,48 @@ test('occupied colony positions retain the actionable error through shared dispa
   await expect(page.getByRole('alert')).toContainText('This position is occupied. Choose an empty position.')
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   expect(resolved).toBe(1)
+})
+
+
+test('dispatch blocks a known locked colony position and enables an eligible position', async ({ page }) => {
+  await setup(page)
+  const requests: string[] = []
+  page.on('request', request => {
+    if (request.url().endsWith('/world')) requests.push(request.postDataJSON().type)
+  })
+  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
+  await page.getByLabel('Position', { exact: true }).fill('3')
+  await expect(page.getByRole('status').filter({ hasText: 'Planets:' })).toContainText('Astrophysics level 4 is required for this position.')
+  await expect(page.getByRole('button', { name: 'Review fleet', exact: true })).toBeDisabled()
+  await page.getByLabel('Position', { exact: true }).fill('4')
+  await expect(page.getByRole('button', { name: 'Review fleet', exact: true })).toBeEnabled()
+  expect(requests).not.toContain('ResolveDestination')
+  expect(requests).not.toContain('FleetQuote')
+})
+
+test('authoritative colony quote rejection explains the position research requirement', async ({ page }) => {
+  const source = { ...body, inventories: [{ item: { kind: 'Ship' as const, id: 'ColonyShip' as const }, count: '1' }] }
+  // The client snapshot allows the position, but the server still owns eligibility.
+  await setup(page, [source], 4)
+  const requests: string[] = []
+  await page.route('**/world', async route => {
+    const request = route.request().postDataJSON()
+    requests.push(request.type)
+    if (request.type === 'ResolveDestination') {
+      await route.fulfill({ json: bound(request.context.request_id, { type: 'EmptyPosition', coordinates: request.selection.coordinates, slot_revision: '0' }) })
+    } else {
+      expect(request.type).toBe('FleetQuote')
+      await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PrerequisiteMissing' } })
+    }
+  })
+  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
+  await page.getByLabel('Position', { exact: true }).fill('3')
+  await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
+  await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Astrophysics level 4 is required for this position.')
+  await expect(page.getByRole('alert')).not.toContainText('connection')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(requests).toEqual(['ResolveDestination', 'FleetQuote'])
 })

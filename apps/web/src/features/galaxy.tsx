@@ -12,7 +12,7 @@ import { GalaxyPosition } from './galaxy-position'
 import { GalaxyAtlas } from './galaxy-atlas'
 import { Heading, Text } from '../ui/typography'
 import { exactTime } from './mission-presentation'
-import { colonizationStatus } from './colonization'
+import { colonizationStatus } from '../client-model/colonization'
 type System = components['schemas']['GalaxySystem4']
 export function Galaxy({
   model,

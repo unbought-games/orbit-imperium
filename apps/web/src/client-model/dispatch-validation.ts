@@ -1,4 +1,5 @@
 import type { components } from '../contracts'
+import { positionAstrophysics } from './colonization'
 type S = components['schemas']
 export type CoordinateField = 'galaxy' | 'system' | 'position'
 
@@ -50,6 +51,8 @@ export function destinationError(
 }
 
 const messages: Partial<Record<S['GameError4'], string>> = {
+  PrerequisiteMissing:
+    'Your empire does not meet the requirements for this mission. Check your research and review again.',
   PositionOccupied: 'This position is occupied. Choose an empty position.',
   BeginnerProtected:
     'Beginner protection prevents this mission between these players. Choose another target. Protection depends on both players’ strength and activity; review checks it again.',
@@ -96,6 +99,17 @@ export function dispatchFailure(
       : error instanceof Error
         ? error.message
         : ''
+  if (
+    code === 'PrerequisiteMissing' &&
+    intent?.mission === 'Colonize' &&
+    intent.destination.type === 'EmptyPosition'
+  ) {
+    const required = positionAstrophysics(
+      intent.destination.coordinates.position,
+    )
+    if (required !== null)
+      return `Astrophysics level ${required} is required for this position.`
+  }
   if (code === 'InvalidInput' && intent) {
     const ownError = destinationError(
       intent.mission,
