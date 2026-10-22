@@ -7817,72 +7817,7 @@
             "$ref": "#/components/schemas/Resources"
           },
           "levels": {
-            "type": "object",
-            "properties": {
-              "MetalMine": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "CrystalMine": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "DeuteriumSynthesizer": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "SolarPlant": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "MetalStorage": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "CrystalStorage": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "DeuteriumTank": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "RoboticsFactory": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "ResearchLab": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "Shipyard": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              }
-            },
-            "required": [
-              "MetalMine",
-              "CrystalMine",
-              "DeuteriumSynthesizer",
-              "SolarPlant",
-              "MetalStorage",
-              "CrystalStorage",
-              "DeuteriumTank",
-              "RoboticsFactory",
-              "ResearchLab",
-              "Shipyard"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/BuildingLevels3"
           },
           "fields": {
             "type": "integer",
@@ -8664,8 +8599,7 @@
                 "$ref": "#/components/schemas/Coordinates"
               },
               "slot_revision": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]*)$"
+                "$ref": "#/components/schemas/Decimal"
               }
             },
             "required": [
@@ -10748,72 +10682,7 @@
                     "const": "Known"
                   },
                   "value": {
-                    "type": "object",
-                    "properties": {
-                      "MetalMine": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "CrystalMine": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "DeuteriumSynthesizer": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "SolarPlant": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "MetalStorage": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "CrystalStorage": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "DeuteriumTank": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "RoboticsFactory": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ResearchLab": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "Shipyard": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      }
-                    },
-                    "required": [
-                      "MetalMine",
-                      "CrystalMine",
-                      "DeuteriumSynthesizer",
-                      "SolarPlant",
-                      "MetalStorage",
-                      "CrystalStorage",
-                      "DeuteriumTank",
-                      "RoboticsFactory",
-                      "ResearchLab",
-                      "Shipyard"
-                    ],
-                    "additionalProperties": false
+                    "$ref": "#/components/schemas/BuildingLevels3"
                   }
                 },
                 "required": [
@@ -10845,54 +10714,7 @@
                     "const": "Known"
                   },
                   "value": {
-                    "type": "object",
-                    "properties": {
-                      "EnergyTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ComputerTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "CombustionDrive": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "EspionageTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "WeaponsTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ShieldingTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ArmourTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      }
-                    },
-                    "required": [
-                      "EnergyTechnology",
-                      "ComputerTechnology",
-                      "CombustionDrive",
-                      "EspionageTechnology",
-                      "WeaponsTechnology",
-                      "ShieldingTechnology",
-                      "ArmourTechnology"
-                    ],
-                    "additionalProperties": false
+                    "$ref": "#/components/schemas/ResearchLevels3"
                   }
                 },
                 "required": [
@@ -11934,8 +11756,7 @@
                 "const": "Invalidate"
               },
               "minimum_viewer_revision": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]*)$"
+                "$ref": "#/components/schemas/Decimal"
               }
             },
             "required": [
@@ -12016,8 +11837,7 @@
             "maximum": 9007199254740991
           },
           "baseRevision": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)$"
+            "$ref": "#/components/schemas/Decimal"
           },
           "dependsOn": {
             "type": "string",
@@ -12279,6 +12099,51 @@
           "profile"
         ],
         "additionalProperties": false
+      },
+      "BuildingLevels3": {
+        "type": "object",
+        "description": "Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable.",
+        "propertyNames": {
+          "$ref": "#/components/schemas/BuildingId3"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "required": [
+          "MetalMine",
+          "CrystalMine",
+          "DeuteriumSynthesizer",
+          "SolarPlant",
+          "MetalStorage",
+          "CrystalStorage",
+          "DeuteriumTank",
+          "RoboticsFactory",
+          "ResearchLab",
+          "Shipyard"
+        ]
+      },
+      "ResearchLevels3": {
+        "type": "object",
+        "description": "Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable.",
+        "propertyNames": {
+          "$ref": "#/components/schemas/ResearchId3"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "required": [
+          "EnergyTechnology",
+          "ComputerTechnology",
+          "CombustionDrive",
+          "EspionageTechnology",
+          "WeaponsTechnology",
+          "ShieldingTechnology",
+          "ArmourTechnology"
+        ]
       }
     }
   }

@@ -15,7 +15,7 @@ const entry: S['CatalogEntry3'] = {
 const body = {
   kind: 'Planet',
   levels: { Shipyard: 0, RoboticsFactory: 0 },
-} as S['BodyV3']
+} satisfies Pick<S['BodyV3'], 'kind' | 'levels'>
 
 describe('building inspection availability', () => {
   it('leaves prerequisite and construction eligibility to the server quote', () => {
@@ -28,9 +28,9 @@ describe('building inspection availability', () => {
     expect(buildingUnavailableReason(entry, { ...body, kind: 'Moon' })).toBe(
       'Unavailable on this moon.',
     )
-    expect(
-      buildingUnavailableReason(entry, { ...body, levels: {} } as S['BodyV3']),
-    ).toBe('Building level unavailable on this body.')
+    expect(buildingUnavailableReason(entry, { ...body, levels: {} })).toBe(
+      'Building level unavailable on this body.',
+    )
   })
   it('preserves inspection of known resource levels when catalog data is absent', () => {
     expect(

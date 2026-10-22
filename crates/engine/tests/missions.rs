@@ -2268,5 +2268,57 @@ fn fixture_research(s: &mut GameState, r: &Ruleset, p: PlayerId, research: Resea
 #[path = "missions/colonization.rs"]
 mod colonization;
 
+#[test]
+fn espionage_contract_keeps_research_added_by_rules_updates() {
+    let (mut s, baseline, p, b, t) = raid_fixture();
+    let r = common::astrophysics_rules(&baseline);
+    s.profile_hash = r.hash.clone();
+    for research in s.research.values_mut() {
+        for key in r.research_keys() {
+            research.levels.entry(key).or_insert(0);
+        }
+    }
+    for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
+        policy.policy_hash = r.hash.clone();
+    }
+    set_units(
+        &mut s,
+        &r,
+        b,
+        ManufacturedItem::Ship(ShipType::EspionageProbe),
+        7,
+    );
+    let mut mission = intent(&s, p, b, t);
+    mission.mission = Mission::Espionage;
+    mission.cargo = Resources::default();
+    mission.ships = vec![ManifestStack {
+        owner: p,
+        ship_type: ShipType::EspionageProbe,
+        count: 7,
+    }];
+    let due = launch_raid(&mut s, &r, p, b, mission, 1000, 4000);
+    clear_units(&mut s, t);
+    let result = run(&mut s, &r, p, b, due.at, 4001, Input::Event(due.event));
+    apply(&mut s, result);
+    let payload = &s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .reports
+        .values()
+        .find(|report| report.kind == "Espionage")
+        .unwrap()
+        .payloads[&p];
+    let expected: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../contracts/fixtures/espionage-expanded.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        payload, &expected,
+        "The browser validates this same engine-produced observation"
+    );
+}
+
 #[path = "missions/heavy_fighter.rs"]
 mod heavy_fighter;
