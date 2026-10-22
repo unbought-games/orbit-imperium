@@ -108,7 +108,7 @@ test('login and signup preserve the requested game destination', async ({
   await page.getByLabel('Password').fill('password')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(
-    page.getByRole('heading', { name: 'Resources', exact: true }),
+    page.getByRole('heading', { name: 'Resources', level: 1, exact: true }),
   ).toBeVisible()
   expect(new URL(page.url()).pathname).toBe(destination)
 })

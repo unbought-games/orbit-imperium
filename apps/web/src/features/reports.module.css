@@ -6,7 +6,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-block: var(--space-4);
+  margin-block: 8px;
 }
 .filter {
   display: flex;
@@ -19,7 +19,7 @@
   padding: 0;
 }
 .reportRow {
-  padding: 1.5rem 0;
+  padding: 12px 0;
   margin: 0;
   border: 0;
   border-bottom: 1px solid #cbb68d40;
@@ -40,8 +40,17 @@
 }
 .timestamp {
   color: var(--text-muted);
-  border-bottom: 1px solid #cbb68d40;
-  padding-bottom: 1rem;
+  margin: 0 0 8px;
+}
+
+.screen {
+  padding-top: 12px;
+}
+.context summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 12px;
+  color: var(--text-muted);
 }
 .detailToolbar {
   display: flex;

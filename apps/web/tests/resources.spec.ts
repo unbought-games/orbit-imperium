@@ -342,7 +342,9 @@ test('resource settings keep production rules and fuel figures without repeated 
     .getByRole('button', { name: 'Resource settings', exact: true })
     .click()
   const settings = page.getByRole('region', { name: 'Production controls' })
-  await expect(settings.getByRole('combobox')).toHaveCount(6)
+  await expect(settings.getByRole('combobox')).toHaveCount(4)
+  await settings.getByText('Production rules and unavailable sources', { exact: true }).click()
+  await expect(settings.getByText('Unavailable: Fusion Reactor, Solar Satellite.')).toBeVisible()
   await expect(settings).toContainText('Deuterium fuel: 0 / hour')
   await expect(settings).toContainText('Net deuterium: 10 / hour')
   await expect(settings).toContainText(
@@ -548,8 +550,8 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
     .getByRole('button', { name: 'Resource settings', exact: true })
     .click()
   const panel = page.getByRole('region', { name: 'Production controls' })
-  await expect(page.getByLabel('fusion reactor production')).toBeDisabled()
-  await expect(page.getByLabel('solar satellite production')).toBeDisabled()
+  await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
+  await expect(page.getByLabel('solar satellite production')).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: 'Save production', exact: true }),
   ).toHaveCount(0)
@@ -632,6 +634,9 @@ test('production rejection retains edits and retry preserves unrelated server ch
   await page
     .getByRole('button', { name: 'Resource settings', exact: true })
     .click()
+  const settings = page.getByRole('region', { name: 'Production controls' })
+  await expect(settings).toBeVisible()
+  await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
   await page.getByLabel('metal mine production').selectOption('50')
   const panel = page.getByRole('region', { name: 'Production controls' })
   await expect(panel.getByRole('alert')).toContainText('rejected')
@@ -997,7 +1002,7 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   await page.goto(`/u/andromeda/b/${body.id}/resources`)
   await expect(
     page.getByRole('button', { name: 'Resource settings', exact: true }),
-  ).toBeDisabled()
+  ).toHaveCount(0)
   await page
     .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
     .click()
@@ -1589,6 +1594,7 @@ test('resource orbit and exact decision ledger fit desktop and narrow phones', a
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await page.getByText('Industrial resource colony', { exact: true }).click()
     await expect(page.getByLabel('Planet energy')).toContainText('Supply')
     await page.getByLabel('Planet energy').locator('..').locator('img').evaluate(image => (image as HTMLImageElement).decode())
     await expect(page.getByLabel('Resource economy')).toContainText('Capacity')

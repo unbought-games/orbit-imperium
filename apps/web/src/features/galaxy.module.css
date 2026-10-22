@@ -2,24 +2,6 @@
   color: var(--text);
   overflow-wrap: anywhere;
 }
-.intro {
-  margin-bottom: 1.5rem;
-}
-.eyebrow {
-  color: var(--accent);
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  margin: 0 0 0.7rem;
-}
-.title {
-  font:
-    400 clamp(2rem, 4vw, 3.5rem) / 1.08 Georgia,
-    serif;
-  letter-spacing: -0.035em;
-  color: #f0dfc2;
-  margin-bottom: 0.75rem;
-}
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -303,4 +285,11 @@ summary.positionSummary:focus-visible {
   .planetInfo > strong {
     font-size: 1.05rem;
   }
+}
+
+.map > summary {
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
 }

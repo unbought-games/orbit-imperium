@@ -2,31 +2,11 @@
   overflow-wrap: anywhere;
   color: var(--text);
 }
-.intro {
-  max-width: 65rem;
-  margin-block: 0 1.5rem;
-}
-.eyebrow {
-  color: var(--accent);
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  margin: 0 0 0.7rem;
-}
-.title {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 400;
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  letter-spacing: -0.035em;
-  line-height: 1.08;
-  color: #f0dfc2;
-  margin: 0 0 0.75rem;
-}
 .actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 8px 16px;
 }
 .actions > span {
   color: var(--text-muted);
@@ -34,8 +14,8 @@
 }
 .fleet {
   border-bottom: 1px solid #cbb68d55;
-  padding-bottom: 1.6rem;
-  margin-bottom: 2rem;
+  padding-block: 12px;
+  margin-bottom: 12px;
 }
 .trajectory {
   --world-size: clamp(50px, 7vw, 86px);
@@ -133,8 +113,7 @@
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 1.5rem;
-  padding-top: 1.2rem;
-  border-top: 1px solid #cbb68d70;
+  padding-block: 8px;
 }
 .missionFacts p {
   margin-bottom: 0.5rem;

@@ -40,6 +40,7 @@ export function Navigation({
   view,
   body,
   page,
+  detail = false,
   onVisit,
   onLogout,
   children,
@@ -47,6 +48,7 @@ export function Navigation({
   view: BoundView
   body: string | undefined
   page: Page
+  detail?: boolean
   onVisit?: (page: Page) => void
   onLogout: () => void
   children: (navigation: ReactNode) => ReactNode
@@ -175,7 +177,7 @@ export function Navigation({
             {buildPages.map((p) => destination(p))}
           </nav>
         )}
-        {selected === 'Fleet' && (
+        {selected === 'Fleet' && !detail && (
           <nav
             className={styles.secondary}
             aria-label="Fleet navigation"

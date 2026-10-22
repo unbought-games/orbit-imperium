@@ -245,6 +245,7 @@ test('body restrictions remain inspectable from cards and resource scene markers
     await page.keyboard.press('Escape')
     await expect(tile).toBeFocused()
     if (destination === 'resources') {
+      await page.getByText('Industrial resource colony', { exact: true }).click()
       await page
         .getByRole('button', { name: 'Inspect Metal Mine', exact: true })
         .click()

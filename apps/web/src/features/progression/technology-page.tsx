@@ -1,3 +1,4 @@
+import { pageTitles } from '../../shell/navigation-model'
 import { useEffect, useRef, useState } from 'react'
 import { Network } from 'lucide-react'
 import { CatalogStage } from '../../ui/catalog-stage'
@@ -144,7 +145,7 @@ export function TechnologyPage(props: ProgressionProps) {
             }}
           />
         }
-        sceneLabel={`${label(page)} colony`}
+        sceneLabel={`${pageTitles[page]} colony`}
         open={open}
         detailKey={`${selected?.key.id}:${action}`}
         detailLabel="Progression quote"
@@ -202,6 +203,7 @@ export function TechnologyPage(props: ProgressionProps) {
         view={view}
         body={body}
         currentPage={page}
+        layout="compact"
         only={
           page === 'facilities'
             ? 'buildings'

@@ -1197,3 +1197,37 @@
     font-size: 1.125rem;
   }
 }
+
+/* Keep operational summaries ahead of the optional orbital map. */
+.empire {
+  padding-top: 12px;
+}
+.heading {
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.heading h2 {
+  font-size: 1.5rem;
+}
+.strength {
+  flex-wrap: wrap;
+  flex-shrink: 1;
+  max-width: 100%;
+  gap: 8px 20px;
+}
+.strength div {
+  flex-direction: row;
+  align-items: baseline;
+}
+.strength dd {
+  font-size: 1rem;
+}
+.commandDeck {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mapDisclosure > summary {
+  cursor: pointer;
+  padding-block: 12px;
+  min-height: 44px;
+  color: var(--text-muted);
+}

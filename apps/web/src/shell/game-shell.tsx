@@ -107,6 +107,7 @@ export function GameShell() {
   const hasFeatureHeading =
     available &&
     (page === 'overview' ||
+      (view.protocol === 2 && ['fleets', 'dispatch'].includes(page)) ||
       page === 'settings' ||
       (view.protocol !== 2 &&
         ['resources', 'facilities', 'research', 'shipyard', 'defense'].includes(
@@ -156,6 +157,7 @@ export function GameShell() {
             view={view}
             body={body?.id}
             page={page}
+            detail={view.protocol === 4 && !!route.item}
             onLogout={() => void logout()}
             onVisit={(p) =>
               void model.recordPresence(

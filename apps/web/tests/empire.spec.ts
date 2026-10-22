@@ -236,6 +236,7 @@ test('empire shows every body, its own work and resources, and directional fleet
     page.getByRole('region', { name: 'Empire research' }),
   ).toContainText('Host Planet [1:371:4]')
   await expect(colony).not.toContainText('Energy Technology')
+  await page.getByText('Empire orbital network', { exact: true }).click()
   await page
     .getByRole('link', { name: 'Focus Planet [1:380:8]', exact: true })
     .click()
@@ -256,12 +257,14 @@ test('desktop and phone command views keep all information readable without hori
     await page.setViewportSize({ width, height: width > 767 ? 1100 : 844 })
     await page.evaluate(() => window.scrollTo(0, 0))
     await page.locator('main img').evaluateAll(async (images) => {
-      await Promise.all(
-        images.map((image) =>
-          (image as HTMLImageElement).decode().catch(() => {}),
-        ),
-      )
+      // Screenshot preparation also loads art inside the collapsed map.
+      await Promise.all(images.map((image) => {
+        const img = image as HTMLImageElement
+        img.loading = 'eager'
+        return img.decode().catch(() => {})
+      }))
     })
+
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -332,6 +335,7 @@ test('a large empire keeps every network target reachable and phone movements ex
   }))
   await page.setViewportSize({ width: 1440, height: 1000 })
   await shellFixture(page, options)
+  await page.getByText('Empire orbital network', { exact: true }).click()
   const map = page.getByRole('region', { name: 'Empire orbital network' })
   await expect(map.getByRole('link', { name: /^Focus/ })).toHaveCount(16)
   const last = map.getByRole('link', {

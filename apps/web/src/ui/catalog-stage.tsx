@@ -66,7 +66,8 @@ export function CatalogStage({
   }, [open, detailKey])
   return (
     <div ref={stage} className={styles.stage}>
-      <div className={styles.scene} hidden={open}>
+      <details className={styles.scene} hidden={open}>
+        <summary>{sceneLabel}</summary>
         {scene ??
           (image && (
             <div role="img" aria-label={sceneLabel}>
@@ -76,7 +77,7 @@ export function CatalogStage({
               />
             </div>
           ))}
-      </div>
+      </details>
       <section
         ref={panel}
         className={classes(styles.panel, open && styles.open)}

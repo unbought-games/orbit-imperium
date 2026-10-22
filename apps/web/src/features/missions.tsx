@@ -17,7 +17,7 @@ import { Text } from '../ui/typography'
 import { Heading } from '../ui/typography'
 import styles from './missions.module.css'
 import { exactTime, shipManifest } from './mission-presentation'
-import { MissionTrajectory } from './mission-trajectory'
+import { TaskHeader } from '../ui/task-header'
 import { DispatchReceipt } from './dispatch-receipt'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -86,28 +86,13 @@ export function Dispatch({
   } = useDispatch({ model, view, body, draft })
   return (
     <Section className={styles.screen}>
-      <header className={styles.intro}>
-        <p className={styles.eyebrow}>Prepare a departure</p>
-        <Heading level={2} className={styles.title}>
-          Set your course.
-        </Heading>
-        <Text>Choose the mission, review its terms, then send your fleet.</Text>
-      </header>
-      <Text className={styles.origin}>
-        Origin: [{body.coordinates.galaxy}:{body.coordinates.system}:
-        {body.coordinates.position}].{' '}
-        {mission === 'Deploy'
-          ? 'Successful deployment ends at the destination; the ships stay there.'
-          : 'Returning ships use their committed one-way travel duration after contact.'}
-      </Text>
-      <Text>
-        {view.capabilities.some((c) => c.capability === 'Attack' && c.enabled)
-          ? 'Attack victories can plunder resources into surviving cargo space.'
-          : 'Attack is unavailable in this universe.'}{' '}
-        {colony.enabled
-          ? 'Colonize an empty position or deploy ships to another owned planet.'
-          : 'Colonization and deployment are unavailable.'}
-      </Text>
+      <TaskHeader title={quote ? 'Dispatch review' : 'Dispatch fleet'}>
+        <span>
+          Origin [{body.coordinates.galaxy}:{body.coordinates.system}:
+          {body.coordinates.position}] · Fleet slots: {occupiedSlots} /{' '}
+          {view.missions.fleet_slots}
+        </span>
+      </TaskHeader>
       {mission === 'Colonize' && (
         <Text role="status">
           Planets: {colony.count} / {colony.capacity}.{' '}
@@ -321,7 +306,6 @@ export function Dispatch({
           </Button>
         </Form>
         <aside className={styles.dispatchAside} aria-label="Departure context">
-          <MissionTrajectory origin={body.coordinates} originIdentity={body} />
           <Heading level={3}>
             Departing from [{body.coordinates.galaxy}:{body.coordinates.system}:
             {body.coordinates.position}]
@@ -358,28 +342,6 @@ export function Dispatch({
               Edit mission
             </Button>
           </div>
-          <MissionTrajectory
-            origin={body.coordinates}
-            originIdentity={body}
-            destinationIdentity={
-              quote.intent.destination.type === 'Body'
-                ? {
-                    id: quote.intent.destination.id,
-                    kind: quote.intent.destination.expected_kind,
-                  }
-                : quote.intent.destination.type === 'Debris'
-                  ? {
-                      id: quote.intent.destination.field_identity,
-                      kind: 'Debris',
-                    }
-                  : undefined
-            }
-            destination={{
-              galaxy: Number(galaxy),
-              system: Number(system),
-              position: Number(position),
-            }}
-          />
           <Text>
             Origin [{body.coordinates.galaxy}:{body.coordinates.system}:
             {body.coordinates.position}] → Destination [{galaxy}:{system}:
@@ -434,6 +396,23 @@ export function Dispatch({
           </QuoteAction>
         </QuotePanel>
       )}
+      <details className={styles.rules}>
+        <summary>Mission rules</summary>
+        <Text>
+          {mission === 'Deploy'
+            ? 'Successful deployment ends at the destination; the ships stay there.'
+            : 'Returning ships use their committed one-way travel duration after contact.'}{' '}
+          Returning fleets occupy a slot.
+        </Text>
+        <Text>
+          {view.capabilities.some((c) => c.capability === 'Attack' && c.enabled)
+            ? 'Attack victories can plunder resources into surviving cargo space.'
+            : 'Attack is unavailable in this universe.'}{' '}
+          {colony.enabled
+            ? 'Colonize an empty position or deploy ships to another owned planet.'
+            : 'Colonization and deployment are unavailable.'}
+        </Text>
+      </details>
     </Section>
   )
 }

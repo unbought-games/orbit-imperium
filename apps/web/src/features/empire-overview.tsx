@@ -6,7 +6,6 @@ import {
   Globe2,
   Orbit,
   Radar,
-  Radio,
   ShieldAlert,
   Zap,
 } from 'lucide-react'
@@ -492,16 +491,7 @@ export function EmpireOverview({
     <section className={styles.empire} aria-label="Empire overview">
       <header className={styles.heading}>
         <div>
-          <p className={styles.eyebrow}>
-            <Radio size={13} /> Imperial command / Empire overview
-          </p>
-          <h2>
-            Your empire.
-            <br className={styles.mobileBreak} /> <em>In motion.</em>
-          </h2>
-          <p className={styles.subtitle}>
-            Every world. Every order. One command.
-          </p>
+          <h2>Empire</h2>
         </div>
         <dl className={styles.strength}>
           <div>
@@ -538,7 +528,6 @@ export function EmpireOverview({
         ))}
       </div>
       <div className={styles.commandDeck}>
-        <CommandMap view={view} body={body} flights={flights} />
         <FleetBoard view={view} body={body} flights={flights} />
       </div>
       <section className={styles.research} aria-label="Empire research">
@@ -575,11 +564,10 @@ export function EmpireOverview({
           />
         ))}
       </div>
-      <footer className={styles.footer}>
-        <span>ORBIT IMPERIUM</span>
-        <span>From a foothold to an empire.</span>
-        <span>End of command overview</span>
-      </footer>
+      <details className={styles.mapDisclosure}>
+        <summary>Empire orbital network</summary>
+        <CommandMap view={view} body={body} flights={flights} />
+      </details>
     </section>
   )
 }

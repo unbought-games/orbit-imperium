@@ -3,19 +3,14 @@ import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
 import { Button } from '../ui/button'
 import styles from './settings.module.css'
+import { TaskHeader } from '../ui/task-header'
 import { BetaNotice } from '../ui/beta-notice'
 export function SettingsScreen() {
   const { view, model, logout, universeName } = useGameScreen()
   const settings = model.settings
   return (
     <Section className={styles.screen}>
-      <header className={styles.intro}>
-        <p className={styles.eyebrow}>Account & universe</p>
-        <Heading level={2} className={styles.title}>
-          Your place in the universe.
-        </Heading>
-        <Text>Membership, universe rules and display preferences.</Text>
-      </header>
+      <TaskHeader title="Settings" />
       <BetaNotice />
       <Section aria-label="Help and conduct reports">
         <Heading level={2}>Help & conduct reports</Heading>
