@@ -183,6 +183,32 @@ for (const width of [320, 390]) {
   })
 }
 
+test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await shellFixture(page, { protocol: 4 })
+  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  const nav = page.getByRole('navigation', { name: 'Fleet navigation' })
+  await expect(nav.getByRole('link')).toHaveText([
+    'Fleets',
+    'Galaxy',
+    'Dispatch',
+  ])
+  await expect(
+    nav.getByRole('link', { name: 'Galaxy', exact: true }),
+  ).toHaveAttribute('href', `/u/andromeda/galaxy?body=${body.id}`)
+  await page.evaluate(() => window.scrollTo(0, 250))
+  const bar = page.getByRole('group', { name: 'Planet and resources' })
+  await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
+  const resources = (await bar.boundingBox())!
+  const submenu = (await nav.boundingBox())!
+  expect(submenu.y).toBe(resources.y + resources.height)
+  expect(submenu.x).toBe(0)
+  expect(submenu.width).toBe(390)
+})
+
 test('mobile planet box is one tap target with full native planet and moon labels', async ({
   page,
 }) => {
@@ -703,6 +729,61 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
   await expect(drawer).not.toBeVisible()
   await expect(menu).toBeFocused()
 })
+
+for (const width of [390, 1440]) {
+  test(`account username appears beside sign out only in the menu at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await shellFixture(page)
+    await page.route('**/api/auth/config', (route) =>
+      route.fulfill({
+        json: {
+          mode: 'oidc',
+          universes: [{ universe: binding.universe, name: 'Andromeda' }],
+        },
+      }),
+    )
+    await page.route('**/api/auth/identity', (route) =>
+      route.fulfill({ json: { username: 'eth', email_verified: false } }),
+    )
+    await page.reload()
+    const username = page.getByLabel('Username', { exact: true })
+    await expect(username).toHaveText('eth')
+    await expect(username).toBeHidden()
+    await expect(
+      page.getByRole('complementary', { name: 'Unbought account' }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('link', {
+        name: /Verify email|I’ve verified|Sign out everywhere/,
+        includeHidden: true,
+      }),
+    ).toHaveCount(0)
+    await page.getByRole('button', { name: 'Menu', exact: true }).click()
+    const drawer = page.getByRole('dialog', { name: 'Navigation' })
+    await expect(drawer.getByLabel('Username', { exact: true })).toBeVisible()
+    const signOut = drawer.getByRole('button', {
+      name: 'Sign out',
+      exact: true,
+    })
+    await expect(signOut).toBeVisible()
+    // Visibility does not mean the drawer's entrance animation has settled.
+    // Finish it before separate geometry reads can sample different frames.
+    await drawer.evaluate((element) =>
+      Promise.all(
+        element.getAnimations().map((animation) => animation.finished),
+      ),
+    )
+    const nameBounds = await username.boundingBox()
+    const buttonBounds = await signOut.boundingBox()
+    expect(nameBounds!.x + nameBounds!.width).toBeLessThan(buttonBounds!.x)
+    expect(nameBounds!.y).toBeGreaterThanOrEqual(buttonBounds!.y)
+    expect(nameBounds!.y + nameBounds!.height).toBeLessThanOrEqual(
+      buttonBounds!.y + buttonBounds!.height,
+    )
+  })
+}
 
 test('resizing an open mobile sidebar releases modal focus and scroll locking', async ({
   page,

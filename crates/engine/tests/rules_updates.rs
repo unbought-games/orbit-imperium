@@ -129,3 +129,41 @@ fn rejects_combat_hull_overflow_without_panicking() {
     combat.base_hull_fraction = [u64::MAX, u64::MAX];
     assert!(combat.validate().is_err());
 }
+
+#[allow(dead_code)]
+mod common;
+#[test]
+fn impulse_content_requires_complete_propulsion_and_keeps_retained_hashes() {
+    let old = Ruleset::mvp_raids().unwrap();
+    let next = common::impulse_rules(&old);
+    assert_eq!(
+        validate_rules_update(&old, &next).unwrap().add_research,
+        vec![ResearchId::ImpulseDrive]
+    );
+    assert_eq!(serde_json::to_value(&old.artifact).unwrap(), baseline());
+    let mut invalid = next.artifact.clone();
+    invalid
+        .ships
+        .get_mut(&ShipType::SmallCargo)
+        .unwrap()
+        .impulse_drive = None;
+    assert!(Ruleset::from_artifact(invalid, 10).is_err());
+    let mut invalid = next.artifact.clone();
+    invalid
+        .ships
+        .get_mut(&ShipType::SmallCargo)
+        .unwrap()
+        .impulse_drive
+        .as_mut()
+        .unwrap()
+        .minimum_level = 0;
+    assert!(Ruleset::from_artifact(invalid, 10).is_err());
+    let mut disabled = next.artifact.clone();
+    disabled
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::ImpulseDrive))
+        .unwrap()
+        .enabled = false;
+    assert!(Ruleset::from_artifact(disabled, 10).is_ok());
+}

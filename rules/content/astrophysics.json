@@ -1,0 +1,8 @@
+{
+  "research": { "base": [4000, 8000, 4000], "growth": [7, 4] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "ResearchLab", "level": 3 },
+    { "type": "PlayerResearch", "research": "EspionageTechnology", "level": 4 },
+    { "type": "PlayerResearch", "research": "ImpulseDrive", "level": 3 }
+  ]
+}

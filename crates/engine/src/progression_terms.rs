@@ -47,15 +47,22 @@ impl ProgressionRules {
             if !ResearchId::MVP.contains(&k)
                 && !matches!(
                     k,
-                    ResearchId::LaserTechnology
+                    ResearchId::ImpulseDrive
+                        | ResearchId::LaserTechnology
                         | ResearchId::IonTechnology
                         | ResearchId::PlasmaTechnology
                         | ResearchId::HyperspaceTechnology
+                        | ResearchId::Astrophysics
                 )
             {
                 return Err(RulesError::InvalidReference);
             }
-            if r.base.iter().any(|v| *v < 0) || r.growth != [2, 1] {
+            let growth = if k == ResearchId::Astrophysics {
+                [7, 4]
+            } else {
+                [2, 1]
+            };
+            if r.base.iter().any(|v| *v < 0) || r.growth != growth {
                 return Err(RulesError::Range);
             }
         }
@@ -382,6 +389,18 @@ pub fn building_terms(
         reserve_fields: u32::from(action == BuildingAction::Upgrade),
     })
 }
+// Round each raw base-derived cost independently to the nearest 100, ties up.
+// Never feed an earlier level's rounded payment into the next level.
+fn astrophysics_payment(raw: &[Rational; 3]) -> Result<Resources, GameError> {
+    let mut values = [0; 3];
+    for (i, value) in raw.iter().enumerate() {
+        values[i] = floor(value.clone() / integer(100) + ratio(1, 2)?)?
+            .checked_mul(100 * SCALE)
+            .ok_or(GameError::NumericRange)?;
+    }
+    Ok(Resources::from_values(values))
+}
+
 pub fn research_terms(
     body: &Body,
     levels: &ResearchLevels,
@@ -400,9 +419,13 @@ pub fn research_terms(
         .as_ref()
         .ok_or(GameError::UnavailableContent)?
         .research[&research];
-    let growth = power(integer(2), source)?;
+    let growth = power(ratio(r.growth[0], r.growth[1])?, source)?;
     let raw = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
-    let cost = paid(&raw)?;
+    let cost = if research == ResearchId::Astrophysics {
+        astrophysics_payment(&raw)?
+    } else {
+        paid(&raw)?
+    };
     let lab = level(body, Building::ResearchLab)?;
     let seconds = floor(
         integer(3600) * integer(add(cost.metal / SCALE, cost.crystal / SCALE)?)
@@ -418,7 +441,12 @@ pub fn research_terms(
         target_level: target,
         paid: cost,
         duration_ms: millis(seconds)?,
-        formula: "ResearchClassic".into(),
+        formula: if research == ResearchId::Astrophysics {
+            "ResearchAstrophysics"
+        } else {
+            "ResearchClassic"
+        }
+        .into(),
         labs: vec![LabTerm {
             body: body.id,
             level: lab,

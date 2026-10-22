@@ -176,12 +176,17 @@
 }
 .tile:disabled {
   cursor: not-allowed;
+}
+.tile:disabled,
+.unavailable {
   color: #87939c;
 }
-.tile:disabled .image {
+.tile:disabled .image,
+.unavailable .image {
   filter: grayscale(1) brightness(0.45);
 }
-.tile:disabled strong {
+.tile:disabled strong,
+.unavailable strong {
   color: #87939c;
 }
 .working:disabled .progressHeader strong {

@@ -22,7 +22,10 @@ const content: Record<string, string> = {
     'Improves intelligence gathering and the information available in espionage reports.',
   CombustionDrive:
     'Provides propulsion for early spacecraft. Higher levels improve the speed of ships using this drive.',
-  ImpulseDrive: 'An advanced propulsion technology for compatible spacecraft.',
+  ImpulseDrive:
+    'Increases the base speed of ships using impulse propulsion by 20% per level. Small Cargos switch to impulse propulsion at level 5, with higher base speed and fuel consumption.',
+  Astrophysics:
+    'Increases colony capacity: level 1 allows one colony, then each odd level adds another. Positions 4–12 unlock at level 1, 3 and 13 at level 4, 2 and 14 at level 6, and 1 and 15 at level 8. Colony Ships, colonization and expeditions are not available yet.',
   SmallCargo:
     'Transports resources between planets. Cargo capacity is shared by resources and mission fuel.',
   LightFighter: 'A small combat ship for attacking and defending planets.',

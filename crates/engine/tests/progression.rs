@@ -1309,3 +1309,347 @@ fn pending_work_keeps_committed_terms_across_rules_activation() {
         }
     }
 }
+
+#[test]
+fn impulse_prerequisites_costs_duration_and_unbounded_progression() {
+    let (mut s, old, p, b) = prepared();
+    let r = common::impulse_rules(&old);
+    s.profile_hash = r.hash.clone();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::ImpulseDrive, 0);
+    let request = QuoteRequest::Research {
+        host: b,
+        research: ResearchId::ImpulseDrive,
+    };
+    // Each completed gate is necessary, independent of the other gate.
+    for (lab, energy) in [(1, 1), (2, 0)] {
+        s.bodies
+            .get_mut(&b)
+            .unwrap()
+            .levels
+            .insert(Building::ResearchLab, lab);
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(ResearchId::EnergyTechnology, energy);
+        let options = inspect_progression(&s, Actor::Player(p), &request, 0, &r).unwrap();
+        assert!(!options.blockers.is_empty());
+        let before = s.clone();
+        let input = common::input(
+            &s,
+            &r,
+            Actor::Player(p),
+            0,
+            900,
+            Input::Command(Command::StartResearch {
+                host: b,
+                research: ResearchId::ImpulseDrive,
+                expected_terms_hash: options.terms_hash.unwrap(),
+            }),
+        );
+        let mut input = input;
+        input.protocol = 3;
+        input.schema_version = 3;
+        assert!(matches!(
+            transition(&s, &input, &r),
+            TransitionResult::Rejected(GameError::PrerequisiteMissing)
+        ));
+        assert_eq!(s.bodies, before.bodies);
+        assert_eq!(s.research, before.research);
+    }
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 2);
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::EnergyTechnology, 1);
+    let mut now = 0;
+    // Reach the future colony prerequisite and keep going through the cargo switch.
+    for target in 1..=6u32 {
+        let options = inspect_progression(&s, Actor::Player(p), &request, now, &r).unwrap();
+        assert!(options.blockers.is_empty());
+        let material = options.terms.unwrap();
+        let multiplier = 1i64 << (target - 1);
+        assert_eq!(
+            material.paid(),
+            Resources::from_values([2000, 4000, 600].map(|v| v * multiplier * SCALE))
+        );
+        assert_eq!(material.duration(), 720_000 * multiplier); // Lab2, 10x
+        let cmd = command(&s, &r, p, now, request.clone());
+        let started = run(
+            &mut s,
+            &r,
+            Actor::Player(p),
+            now,
+            1000 + u128::from(target) * 2,
+            Input::Command(cmd),
+        );
+        assert_eq!(s.research[&p].levels[&ResearchId::ImpulseDrive], target - 1);
+        now = started.events[0].at;
+        run(
+            &mut s,
+            &r,
+            Actor::Scheduler,
+            now,
+            1001 + u128::from(target) * 2,
+            Input::Event(started.events[0].event.clone()),
+        );
+        assert_eq!(s.research[&p].levels[&ResearchId::ImpulseDrive], target);
+    }
+    // Exact floor before conversion to milliseconds, D and Robotics do not enter.
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::ImpulseDrive, 0);
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 6);
+    let r = Ruleset::from_artifact(r.artifact, 10).unwrap();
+    assert_eq!(
+        research_terms(&s.bodies[&b], &s.research[&p], ResearchId::ImpulseDrive, &r)
+            .unwrap()
+            .duration(),
+        308_000
+    );
+    // Pure terms accept all supported speed factors with the same arithmetic.
+    for (speed, expected) in [(1, 3_085_000), (5, 617_000), (100, 30_000)] {
+        let r = common::impulse_rules(
+            &Ruleset::signup_with_speed(UniverseProfile::signup(1, 100).unwrap(), speed).unwrap(),
+        );
+        assert_eq!(
+            research_terms(&s.bodies[&b], &s.research[&p], ResearchId::ImpulseDrive, &r)
+                .unwrap()
+                .duration(),
+            expected
+        );
+    }
+}
+
+fn astrophysics_prepared() -> (GameState, Ruleset, PlayerId, BodyId) {
+    let (mut s, r, p, b) = prepared();
+    let r = common::astrophysics_rules(&r);
+    s.profile_hash = r.hash.clone();
+    let levels = &mut s.research.get_mut(&p).unwrap().levels;
+    levels.insert(ResearchId::ImpulseDrive, 3);
+    levels.insert(ResearchId::EspionageTechnology, 4);
+    levels.insert(ResearchId::Astrophysics, 0);
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 3);
+    (s, r, p, b)
+}
+
+#[test]
+fn astrophysics_requires_all_completed_gates_and_complete_facts() {
+    let (s, r, p, b) = astrophysics_prepared();
+    let request = QuoteRequest::Research {
+        host: b,
+        research: ResearchId::Astrophysics,
+    };
+    for (lab, espionage, impulse) in [(2, 4, 3), (3, 3, 3), (3, 4, 2)] {
+        let mut s = s.clone();
+        s.bodies
+            .get_mut(&b)
+            .unwrap()
+            .levels
+            .insert(Building::ResearchLab, lab);
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(ResearchId::EspionageTechnology, espionage);
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(ResearchId::ImpulseDrive, impulse);
+        let options = inspect_progression(&s, Actor::Player(p), &request, 0, &r).unwrap();
+        assert_eq!(options.blockers.len(), 1);
+        assert_eq!(options.blockers[0].code, GameError::PrerequisiteMissing);
+        let mut input = common::input(
+            &s,
+            &r,
+            Actor::Player(p),
+            0,
+            9000,
+            Input::Command(Command::StartResearch {
+                host: b,
+                research: ResearchId::Astrophysics,
+                expected_terms_hash: options.terms_hash.unwrap(),
+            }),
+        );
+        input.protocol = 3;
+        input.schema_version = 3;
+        assert_eq!(
+            transition(&s, &input, &r),
+            TransitionResult::Rejected(GameError::PrerequisiteMissing)
+        );
+    }
+    assert!(
+        inspect_progression(&s, Actor::Player(p), &request, 0, &r)
+            .unwrap()
+            .blockers
+            .is_empty()
+    );
+    for missing in [ResearchId::Astrophysics, ResearchId::ImpulseDrive] {
+        let mut s = s.clone();
+        s.research.get_mut(&p).unwrap().levels.remove(&missing);
+        assert!(inspect_progression(&s, Actor::Player(p), &request, 0, &r).is_err());
+    }
+}
+
+#[test]
+fn astrophysics_completion_and_refund_keep_committed_terms_across_rules_changes() {
+    for cancel in [true, false] {
+        let (mut s, r, p, b) = astrophysics_prepared();
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(ResearchId::Astrophysics, 4);
+        let before = s.bodies[&b].checkpoint.amounts;
+        let request = QuoteRequest::Research {
+            host: b,
+            research: ResearchId::Astrophysics,
+        };
+        let cmd = command(&s, &r, p, 0, request.clone());
+        let started = run(&mut s, &r, Actor::Player(p), 0, 9100, Input::Command(cmd));
+        let op = started.research_operations[0].clone();
+        assert_eq!(
+            op.commitment.paid,
+            Resources::from_values([37500, 75000, 37500].map(|n| n * SCALE))
+        );
+        assert_eq!(op.commitment.due_at, 10_125_000); // Lab3 at 10x
+        assert_eq!(
+            astrophysics_colony_capacity(research_level(&s, p, ResearchId::Astrophysics).unwrap()),
+            2
+        );
+        blocked(&s, &r, p, 0, request.clone(), GameError::ResearchActive);
+        blocked(
+            &s,
+            &r,
+            p,
+            0,
+            QuoteRequest::Upgrade {
+                body: b,
+                building: Building::ResearchLab,
+            },
+            GameError::LabLocked,
+        );
+        let mut artifact = r.artifact.clone();
+        artifact
+            .progression
+            .as_mut()
+            .unwrap()
+            .research
+            .get_mut(&ResearchId::Astrophysics)
+            .unwrap()
+            .base = [5000, 10000, 5000];
+        artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == CatalogKey::Research(ResearchId::Astrophysics))
+            .unwrap()
+            .enabled = false;
+        let next = Ruleset::from_artifact(artifact, r.speed).unwrap();
+        validate_rules_update(&r, &next).unwrap();
+        s.profile_hash = next.hash.clone();
+        s = serde_json::from_slice(&serde_json::to_vec(&s).unwrap()).unwrap();
+        if cancel {
+            run(
+                &mut s,
+                &next,
+                Actor::Player(p),
+                op.commitment.due_at - 1,
+                9101,
+                Input::Command(Command::CancelResearch { operation: op.id }),
+            );
+            assert_eq!(s.bodies[&b].checkpoint.amounts, before);
+        }
+        run(
+            &mut s,
+            &next,
+            Actor::Scheduler,
+            op.commitment.due_at,
+            9102,
+            Input::Event(started.events[0].event.clone()),
+        );
+        assert_eq!(
+            research_level(&s, p, ResearchId::Astrophysics).unwrap(),
+            if cancel { 4 } else { 5 }
+        );
+        assert_eq!(
+            astrophysics_colony_capacity(research_level(&s, p, ResearchId::Astrophysics).unwrap()),
+            if cancel { 2 } else { 3 }
+        );
+        let replay = run(
+            &mut s,
+            &next,
+            Actor::Scheduler,
+            op.commitment.due_at,
+            9103,
+            Input::Event(started.events[0].event.clone()),
+        );
+        assert!(replay.research.is_empty());
+        let mut input = common::input(
+            &s,
+            &next,
+            Actor::Player(p),
+            op.commitment.due_at,
+            9104,
+            Input::Command(Command::CancelResearch { operation: op.id }),
+        );
+        input.protocol = 3;
+        input.schema_version = 3;
+        assert_eq!(
+            transition(&s, &input, &next),
+            TransitionResult::Rejected(GameError::OperationNotActive)
+        );
+        assert_eq!(s.bodies.len(), 1); // research never creates a colony
+        assert_eq!(s.research_operations[&op.id].commitment, op.commitment);
+    }
+}
+
+#[test]
+fn astrophysics_stale_prices_and_insufficient_resources_never_spend() {
+    let (mut s, r, p, b) = astrophysics_prepared();
+    let request = QuoteRequest::Research {
+        host: b,
+        research: ResearchId::Astrophysics,
+    };
+    let cmd = command(&s, &r, p, 0, request.clone());
+    let mut artifact = r.artifact.clone();
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .get_mut(&ResearchId::Astrophysics)
+        .unwrap()
+        .base[0] = 4100;
+    let next = Ruleset::from_artifact(artifact, r.speed).unwrap();
+    s.profile_hash = next.hash.clone();
+    let mut input = common::input(&s, &next, Actor::Player(p), 0, 9200, Input::Command(cmd));
+    input.protocol = 3;
+    input.schema_version = 3;
+    assert_eq!(
+        transition(&s, &input, &next),
+        TransitionResult::Rejected(GameError::QuoteChanged)
+    );
+    s.bodies.get_mut(&b).unwrap().checkpoint.amounts.metal = 4100 * SCALE - 1;
+    blocked(&s, &next, p, 0, request, GameError::InsufficientResources);
+    assert!(s.research_operations.is_empty());
+}

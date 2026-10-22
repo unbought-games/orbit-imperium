@@ -1,0 +1,8 @@
+{
+  "research": { "base": [2000, 4000, 600], "growth": [2, 1] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "ResearchLab", "level": 2 },
+    { "type": "PlayerResearch", "research": "EnergyTechnology", "level": 1 }
+  ],
+  "small_cargo": { "minimum_level": 5, "base_speed": 10000, "fuel": 20 }
+}

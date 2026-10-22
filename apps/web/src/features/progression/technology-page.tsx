@@ -6,6 +6,7 @@ import { label } from '../../ui/format'
 import { Button } from '../../ui/button'
 import type { components } from '../../contracts'
 import type { ProgressionProps } from './shared'
+import { buildingUnavailableReason } from './building-availability'
 import { BuildingDetails } from './building-details'
 import { TechnologyDetails } from './technology-details'
 import { catalogContent, catalogGroup, facilityIds } from './catalog-content'
@@ -39,6 +40,10 @@ export function TechnologyPage(props: ProgressionProps) {
   const request =
     selected &&
     open &&
+    !(
+      selected.key.kind === 'Building' &&
+      buildingUnavailableReason(selected, body)
+    ) &&
     !(
       selected.key.kind === 'Building' && progress?.building === selected.key.id
     ) &&
@@ -266,12 +271,17 @@ export function TechnologyPage(props: ProgressionProps) {
                       }
                       locked={locked}
                       disabled={
-                        !entry.enabled || !entry.body_kinds.includes(body.kind)
+                        entry.key.kind === 'Building'
+                          ? !!buildingUnavailableReason(entry, body)
+                          : !entry.enabled ||
+                            !entry.body_kinds.includes(body.kind)
                       }
                       disabledReason={
-                        !entry.enabled
-                          ? 'unavailable in this universe'
-                          : `unavailable on this ${body.kind.toLowerCase()}`
+                        entry.key.kind === 'Building'
+                          ? buildingUnavailableReason(entry, body)
+                          : !entry.enabled
+                            ? 'unavailable in this universe'
+                            : `unavailable on this ${body.kind.toLowerCase()}`
                       }
                       selected={open && entry.key.id === selected?.key.id}
                       onClick={(event) => {

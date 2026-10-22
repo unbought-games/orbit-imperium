@@ -120,3 +120,52 @@ pub fn applied(s: &mut GameState, result: TransitionResult) -> ChangeSet {
         panic!("expected applied, got {result:?}")
     }
 }
+
+#[allow(dead_code)]
+pub fn impulse_rules(rules: &Ruleset) -> Ruleset {
+    let content: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../../rules/content/impulse-drive.json"
+    ))
+    .unwrap();
+    let mut artifact = rules.artifact.clone();
+    artifact.progression.as_mut().unwrap().research.insert(
+        ResearchId::ImpulseDrive,
+        serde_json::from_value(content["research"].clone()).unwrap(),
+    );
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::ImpulseDrive))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    if artifact.world.is_some() {
+        artifact
+            .ships
+            .get_mut(&ShipType::SmallCargo)
+            .unwrap()
+            .impulse_drive = Some(serde_json::from_value(content["small_cargo"].clone()).unwrap());
+    }
+    Ruleset::from_artifact(artifact, rules.speed).unwrap()
+}
+
+#[allow(dead_code)]
+pub fn astrophysics_rules(rules: &Ruleset) -> Ruleset {
+    let mut artifact = impulse_rules(rules).artifact;
+    let content: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../../rules/content/astrophysics.json"
+    ))
+    .unwrap();
+    artifact.progression.as_mut().unwrap().research.insert(
+        ResearchId::Astrophysics,
+        serde_json::from_value(content["research"].clone()).unwrap(),
+    );
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::Astrophysics))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    Ruleset::from_artifact(artifact, rules.speed).unwrap()
+}
