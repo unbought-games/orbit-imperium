@@ -134,11 +134,11 @@ impl PgStore {
         rp: &RelyingParty,
     ) -> Result<Identity, StoreError> {
         let config = rp.configuration();
-        self.oidc_revalidate_using(
+        self.oidc_renew_using(
             digest,
             &config.issuer,
             &config.client_id,
-            true,
+            |tokens| async move { rp.revalidate(&tokens).await },
             |tokens| async move {
                 let client = reqwest::Client::builder()
                     .timeout(std::time::Duration::from_secs(5))
@@ -179,11 +179,10 @@ impl PgStore {
                 if renewal.session_expires_at <= now {
                     return Err(unbought_auth::Error::Invalid);
                 }
-                // Rotate under the same lock as passive refresh. Never mark renewal as
-                // fresh password authentication; Accounts retains the original auth_time.
-                let fresh = rp.refresh(&tokens).await?;
+                // Renewal never rotates tokens: cancellation here leaves the
+                // previously committed refresh token usable on the next request.
                 Ok((
-                    fresh,
+                    tokens,
                     Some(
                         renewal
                             .session_expires_at
@@ -193,6 +192,52 @@ impl PgStore {
             },
         )
         .await
+    }
+
+    // Keep token rotation and its durable commit within their original budget.
+    // Only after that commit may the separately bounded, non-rotating activity
+    // request begin. Never nest these phases inside one cancellation deadline.
+    async fn oidc_renew_using<R, RFut, N, NFut>(
+        &self,
+        digest: &str,
+        issuer: &str,
+        client: &str,
+        revalidate: R,
+        renew: N,
+    ) -> Result<Identity, StoreError>
+    where
+        R: FnOnce(Tokens) -> RFut + Send,
+        RFut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send,
+        N: FnOnce(Tokens) -> NFut + Send,
+        NFut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+    {
+        self.oidc_revalidate_using(digest, issuer, client, false, |tokens| async move {
+            revalidate(tokens).await.map(|tokens| (tokens, None))
+        })
+        .await?;
+        // Reacquire and reread under the same advisory lock: a peer can rotate
+        // between phases, and logout can delete the local session at any point.
+        self.oidc_revalidate_using(digest, issuer, client, true, renew)
+            .await
+    }
+
+    #[cfg(feature = "test-support")]
+    pub async fn renew_oidc_after_revalidation_for_test<R, RFut, N, NFut>(
+        &self,
+        digest: &str,
+        issuer: &str,
+        client: &str,
+        revalidate: R,
+        renew: N,
+    ) -> Result<Identity, StoreError>
+    where
+        R: FnOnce(Tokens) -> RFut + Send,
+        RFut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send,
+        N: FnOnce(Tokens) -> NFut + Send,
+        NFut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+    {
+        self.oidc_renew_using(digest, issuer, client, revalidate, renew)
+            .await
     }
 
     #[cfg(feature = "test-support")]

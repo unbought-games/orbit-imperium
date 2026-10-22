@@ -114,7 +114,7 @@ export const http = {
     )
   },
   async renewSession(csrf: string) {
-    await request('/api/v1/session/renew', 'POST', undefined, csrf, 15000)
+    await request('/api/v1/session/renew', 'POST', undefined, csrf, 30000)
   },
   async logout(csrf: string) {
     resetAnalytics()

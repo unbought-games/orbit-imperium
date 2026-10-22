@@ -9,9 +9,12 @@ do not extend the idle deadline. Renewal does not change password authentication
 freshness or administrator assurance.
 
 The server renews both its stored deadline and HttpOnly browser cookie. In OIDC
-mode it authenticates to Accounts' `/api/auth/game-session/renew` endpoint using
-the current refresh token and configured confidential client credentials, then
-rotates tokens under the existing per-session advisory lock. Only live local rows
+mode it first revalidates and commits any rotated tokens under the existing
+per-session advisory lock. It then authenticates to Accounts'
+`/api/auth/game-session/renew` endpoint using the latest stored refresh token and
+configured confidential client credentials, reacquiring the same lock. Each phase
+has its own ten-second budget. The second phase never rotates tokens, so a slow or
+cancelled renewal cannot roll back an already completed token rotation. Only live local rows
 can be extended. Logout and expiry win over a late response. Provider/network
 outages return 503 without clearing the cookie; later activity retries. Revoked
 or expired sessions return 401 and the UI returns to sign-in.
