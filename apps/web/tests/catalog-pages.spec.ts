@@ -1122,7 +1122,7 @@ test('activated Astrophysics shows three gates, exact rounded costs, and deferre
   await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'Astrophysics', expected_terms_hash: 'b'.repeat(64) })
 })
 
-const laserCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-7.json', 'utf8')).catalog
+const laserCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-8.json', 'utf8')).catalog
 
 test('Laser Technology shows its requirements, artwork and research action', async ({ page }) => {
   const { sent, planet } = await setup(page, false, { metal: '200000000', crystal: '100000000', deuterium: '0' }, {

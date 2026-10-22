@@ -21,7 +21,10 @@ build by Vite. URLs start at `/`, so icons work from nested browser-history rout
   The wordmark exports use system fonts with fixed text widths, like the app;
   the lettering is live SVG text, not outlined paths.
 - `icon.svg`: the same mark and navy tile, with a 64-unit viewBox and 1024px
-  dimensions; generated from `brand-mark.svg`.
+  dimensions; generated from `brand-mark.svg`. The foreground is scaled to 85%
+  around the tile center, leaving at least 12% clear space at each edge. This
+  padding applies only to home-screen icons; the favicon retains its larger mark
+  for readability at small sizes.
 - `icon-1024.png`: 1024 × 1024 RGBA export of the app icon, preserving its
   rounded silhouette and transparent outer corners.
 - `apple-touch-icon.png`: 180 × 180 app icon, flattened against navy for iOS.
@@ -59,8 +62,9 @@ are preserved. Component styles reference tokens, including overview gradients.
 
 Edit `brand-mark.svg` and `brand-wordmark.svg` directly, keeping their core hex
 colors in sync with the named tokens. Run `node scripts/export-brand.mjs` to
-refresh the combined lockup, favicon SVG, and app icon SVG from those masters.
-Render each PNG directly from its respective SVG at the required size with an
-SVG renderer (the checked-in files were rendered with Sharp).
+refresh the combined lockup, favicon SVG, app icon SVG, and both home-screen PNGs
+from those masters. The script uses Sharp to render the PNGs and flattens the
+touch icon against navy. Render favicon PNGs directly from `favicon.svg` at their
+required sizes with Sharp.
 Assemble the ICO using the three corresponding PNG frames. Do not upscale the
 16px raster to produce larger files. Flatten the touch icon against `#0d1827`.

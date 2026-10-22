@@ -7,6 +7,9 @@ Use the deployed `orbit` binary with the same `DATABASE_URL` as the service. The
 For the reviewed Laser Technology and Light Laser content patch, see
 [Light Laser activation](light-laser.md).
 
+For Heavy Fighter prerequisites, exact stats, and preparation commands, see the
+[Heavy Fighter rollout](heavy-fighter.md).
+
 ## Export and edit
 
 Find the universe ID in the game's Settings or the operator's existing database tooling. Save its current configuration:

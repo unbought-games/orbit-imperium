@@ -192,6 +192,16 @@
       ],
       "fuel": 1000,
       "capacity": 7500
+    },
+    "HeavyFighter": {
+      "drive": "ImpulseDrive",
+      "base_speed": 10000,
+      "drive_coefficient": [
+        1,
+        5
+      ],
+      "fuel": 75,
+      "capacity": 100
     }
   },
   "catalog": [
@@ -561,19 +571,8 @@
       "body_kinds": [
         "Planet"
       ],
-      "requirements": [
-        {
-          "type": "BodyBuilding",
-          "building": "ResearchLab",
-          "level": 1
-        },
-        {
-          "type": "PlayerResearch",
-          "research": "EnergyTechnology",
-          "level": 2
-        }
-      ],
-      "enabled": true,
+      "requirements": [],
+      "enabled": false,
       "mobile": false
     },
     {
@@ -821,8 +820,24 @@
       "body_kinds": [
         "Planet"
       ],
-      "requirements": [],
-      "enabled": false,
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 3
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "ArmourTechnology",
+          "level": 2
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "ImpulseDrive",
+          "level": 2
+        }
+      ],
+      "enabled": true,
       "mobile": true
     },
     {
@@ -981,24 +996,8 @@
       "body_kinds": [
         "Planet"
       ],
-      "requirements": [
-        {
-          "type": "BodyBuilding",
-          "building": "Shipyard",
-          "level": 2
-        },
-        {
-          "type": "PlayerResearch",
-          "research": "EnergyTechnology",
-          "level": 1
-        },
-        {
-          "type": "PlayerResearch",
-          "research": "LaserTechnology",
-          "level": 3
-        }
-      ],
-      "enabled": true,
+      "requirements": [],
+      "enabled": false,
       "mobile": false
     },
     {
@@ -1232,17 +1231,6 @@
           7,
           4
         ]
-      },
-      "LaserTechnology": {
-        "base": [
-          200,
-          100,
-          0
-        ],
-        "growth": [
-          2,
-          1
-        ]
       }
     },
     "unit_costs": [
@@ -1325,12 +1313,12 @@
       },
       {
         "item": {
-          "kind": "Defense",
-          "id": "LightLaser"
+          "kind": "Ship",
+          "id": "HeavyFighter"
         },
         "cost": {
-          "metal": 1500,
-          "crystal": 500,
+          "metal": 6000,
+          "crystal": 4000,
           "deuterium": 0
         }
       }
@@ -1461,15 +1449,15 @@
         },
         {
           "item": {
-            "kind": "Defense",
-            "id": "LightLaser"
+            "kind": "Ship",
+            "id": "HeavyFighter"
           },
           "cost": [
-            1500,
-            500,
+            6000,
+            4000,
             0
           ],
-          "attack_hundredths": 10000,
+          "attack_hundredths": 15000,
           "shield_hundredths": 2500
         }
       ],
@@ -1511,6 +1499,28 @@
           "shooter": {
             "kind": "Ship",
             "id": "ColonyShip"
+          },
+          "target": {
+            "kind": "Ship",
+            "id": "EspionageProbe"
+          },
+          "factor": 5
+        },
+        {
+          "shooter": {
+            "kind": "Ship",
+            "id": "HeavyFighter"
+          },
+          "target": {
+            "kind": "Ship",
+            "id": "SmallCargo"
+          },
+          "factor": 3
+        },
+        {
+          "shooter": {
+            "kind": "Ship",
+            "id": "HeavyFighter"
           },
           "target": {
             "kind": "Ship",

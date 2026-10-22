@@ -2267,3 +2267,6 @@ fn fixture_research(s: &mut GameState, r: &Ruleset, p: PlayerId, research: Resea
 
 #[path = "missions/colonization.rs"]
 mod colonization;
+
+#[path = "missions/heavy_fighter.rs"]
+mod heavy_fighter;

@@ -175,7 +175,7 @@ pub fn light_laser_rules(rules: &Ruleset) -> Ruleset {
     // Copy only the new feature from the immutable fixture; keep the caller's
     // world, protocol, speed and unrelated progression definitions intact.
     let fixture =
-        Ruleset::from_json(include_bytes!("../../../../rules/mvp-v1-slice-7.json")).unwrap();
+        Ruleset::from_json(include_bytes!("../../../../rules/mvp-v1-slice-8.json")).unwrap();
     let mut artifact = rules.artifact.clone();
     let laser = CatalogKey::Research(ResearchId::LaserTechnology);
     let defense = CatalogKey::Defense(DefenseId::LightLaser);

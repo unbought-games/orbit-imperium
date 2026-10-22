@@ -4,6 +4,22 @@ use uuid::Uuid;
 mod common;
 
 #[test]
+fn combined_slice_preserves_heavy_fighters_when_adding_lasers() {
+    let previous =
+        Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-7.json")).unwrap();
+    let next = Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-8.json")).unwrap();
+    assert_eq!(
+        validate_rules_update(&previous, &next)
+            .unwrap()
+            .add_research,
+        vec![ResearchId::LaserTechnology]
+    );
+    let mut expected = common::light_laser_rules(&previous).artifact;
+    expected.id = next.artifact.id.clone();
+    assert_eq!(next.artifact, expected);
+}
+
+#[test]
 fn activation_requires_research_costs_and_combat_and_cannot_remove_retained_definitions() {
     let old = Ruleset::mvp_raids().unwrap();
     let next = common::light_laser_rules(&old);

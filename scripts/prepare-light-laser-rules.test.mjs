@@ -47,9 +47,9 @@ test('adds exact laser research, manufacturing and combat definitions while pres
 })
 
 test('complete slice fixture matches the operator patch and replaces existing definitions without duplicates', () => {
-  const next = prepareLightLaserRules(exported(6)).artifact
-  next.id = 'mvp-v1-slice-7'
-  assert.deepEqual(next, read('mvp-v1-slice-7.json'))
+  const next = prepareLightLaserRules(exported(7)).artifact
+  next.id = 'mvp-v1-slice-8'
+  assert.deepEqual(next, read('mvp-v1-slice-8.json'))
   const doc = prepareLightLaserRules(exported())
   doc.artifact.progression.research.LaserTechnology.base = [1, 2, 3]
   doc.artifact.progression.unit_costs.at(-1).cost.metal = 999

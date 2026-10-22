@@ -1,0 +1,33 @@
+{
+  "requirements": [
+    { "type": "BodyBuilding", "building": "Shipyard", "level": 3 },
+    { "type": "PlayerResearch", "research": "ArmourTechnology", "level": 2 },
+    { "type": "PlayerResearch", "research": "ImpulseDrive", "level": 2 }
+  ],
+  "ship": {
+    "drive": "ImpulseDrive",
+    "base_speed": 10000,
+    "drive_coefficient": [1, 5],
+    "fuel": 75,
+    "capacity": 100
+  },
+  "cost": { "metal": 6000, "crystal": 4000, "deuterium": 0 },
+  "combat": {
+    "item": { "kind": "Ship", "id": "HeavyFighter" },
+    "cost": [6000, 4000, 0],
+    "attack_hundredths": 15000,
+    "shield_hundredths": 2500
+  },
+  "rapid_fire": [
+    {
+      "shooter": { "kind": "Ship", "id": "HeavyFighter" },
+      "target": { "kind": "Ship", "id": "SmallCargo" },
+      "factor": 3
+    },
+    {
+      "shooter": { "kind": "Ship", "id": "HeavyFighter" },
+      "target": { "kind": "Ship", "id": "EspionageProbe" },
+      "factor": 5
+    }
+  ]
+}

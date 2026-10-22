@@ -45,7 +45,7 @@ unit), no defense debris, report and valuation behavior apply unchanged.
 research/manufacturing/combat definitions, and preserves export identity, speed,
 topology and unrelated custom values. It deliberately replaces existing values
 for these two entries; inspect that diff if the universe already customized them.
-`rules/mvp-v1-slice-7.json` is the immutable complete fixture following slice 6;
+`rules/mvp-v1-slice-8.json` is the immutable complete fixture following Heavy Fighter slice 7;
 it is not a replacement for a live universe export or a new-world default.
 
 Deploy the reviewed release across API and worker instances, then follow the

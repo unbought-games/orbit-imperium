@@ -243,7 +243,7 @@ impl Ruleset {
         for (ship, r) in &artifact.ships {
             if let Some(drive) = r.drive
                 && (drive != ResearchId::ImpulseDrive
-                    || *ship != ShipType::ColonyShip
+                    || !matches!(ship, ShipType::ColonyShip | ShipType::HeavyFighter)
                     || artifact
                         .progression
                         .as_ref()
