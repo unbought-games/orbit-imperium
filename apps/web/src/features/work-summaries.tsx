@@ -30,12 +30,12 @@ export function WorkSummaries({
   body: BoundView['bodies'][number]
   includeResearch?: boolean
   only?: 'buildings' | 'research' | 'manufacturing'
-  layout?: 'cards' | 'editorial'
+  layout?: 'cards' | 'editorial' | 'compact'
 }) {
   const universeName = useUniverseName()
   const countdown = useCountdown(
     view.sampled_at,
-    layout === 'editorial' ? 'compact' : 'exact',
+    layout !== 'cards' ? 'compact' : 'exact',
   )
   const session = useContext(SessionContext)
   const state = session?.model.store.getState()
@@ -129,7 +129,7 @@ export function WorkSummaries({
   ]
   return (
     <div
-      className={`${styles.summaries} ${layout === 'editorial' ? styles.editorial : ''}`}
+      className={`${styles.summaries} ${layout !== 'cards' ? styles.editorial : ''} ${layout === 'compact' ? styles.compact : ''}`}
     >
       {summaries
         .filter(
@@ -171,7 +171,7 @@ export function WorkSummaries({
                           {label(batch.item.id)} · {batch.remaining} remaining
                         </span>
                         <strong>{batch.status}</strong>
-                        {layout === 'editorial' &&
+                        {layout !== 'cards' &&
                           manufacturePercent(batch.id) !== null && (
                             <progress
                               aria-label={`${label(batch.item.id)} next unit estimated progress`}
@@ -195,7 +195,7 @@ export function WorkSummaries({
                     <Icon aria-hidden="true" size={26} />
                     <p>
                       {name}
-                      {layout === 'editorial' && work && (
+                      {layout !== 'cards' && work && (
                         <small className={styles.workStatus}>
                           {work.status}
                           {category === 'research' && researchHost
@@ -203,7 +203,7 @@ export function WorkSummaries({
                             : ''}
                         </small>
                       )}
-                      {layout === 'editorial' &&
+                      {layout !== 'cards' &&
                         category === 'research' &&
                         researchPercent !== null && (
                           <progress
@@ -215,7 +215,7 @@ export function WorkSummaries({
                       {due !== undefined && (
                         <>
                           <strong>{countdown(due)}</strong>
-                          {layout === 'editorial' && (
+                          {layout !== 'cards' && (
                             <time dateTime={new Date(due).toISOString()}>
                               {new Date(due).toLocaleString(undefined, {
                                 dateStyle: 'medium',

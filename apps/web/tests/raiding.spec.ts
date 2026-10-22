@@ -14,7 +14,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
     await p.getByLabel('Account', {exact:true}).fill(accounts[n].name)
     await p.getByLabel('Password').fill(accounts[n].password)
     await p.getByRole('button', {name:'Sign in',exact:true}).click()
-    await expect(p.locator('main h1')).toHaveText(/^Overview —/)
+    await expect(p.locator('main h1')).toHaveText(/^Empire —/)
   }
   const auth = async (p=page) => {
     const session=await (await p.request.get('/api/v1/session')).json()
@@ -136,7 +136,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
 
 test('zero-debris combat reports do not offer a harvest shortcut', async ({page})=>{
   const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8'))
-  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[0].name);await page.getByLabel('Password').fill(accounts[0].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.locator('main h1')).toHaveText(/^Overview —/)
+  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[0].name);await page.getByLabel('Password').fill(accounts[0].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.locator('main h1')).toHaveText(/^Empire —/)
   const session=await (await page.request.get('/api/v1/session')).json(),u=session.memberships[0].universe
   const binding=(await (await page.request.get(`/api/v4/universes/${u}/binding?request_id=${randomUUID()}`)).json()).binding
   const headers={Origin:process.env.ORBIT_TEST_BASE_URL!,'X-CSRF-Token':session.csrf}

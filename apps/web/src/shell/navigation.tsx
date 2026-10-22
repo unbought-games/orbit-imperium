@@ -116,7 +116,7 @@ export function Navigation({
   return (
     <>
       <nav className={styles.primary} aria-label="Main navigation">
-        {destination('overview', 'World', Orbit, true)}
+        {destination('overview', 'Empire', Orbit, true)}
         {destination('resources', 'Build', Blocks, true)}
         {destination('fleets', 'Fleet', Radar, true)}
         <button
