@@ -304,37 +304,19 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         .execute(&pool)
         .await
         .unwrap();
-    assert!(
-        restored
-            .world_view(p, context())
-            .await
-            .unwrap()
-            .has_unread_reports
-    );
+    assert!(unread_reports(&restored, b).await);
     sqlx::query("UPDATE mission_report_recipients SET hidden=true WHERE recipient=$1")
         .bind(b.player.0)
         .execute(&pool)
         .await
         .unwrap();
-    assert!(
-        !restored
-            .world_view(p, context())
-            .await
-            .unwrap()
-            .has_unread_reports
-    );
+    assert!(!unread_reports(&restored, b).await);
     sqlx::query("UPDATE mission_report_recipients SET hidden=false,read=true WHERE recipient=$1")
         .bind(b.player.0)
         .execute(&pool)
         .await
         .unwrap();
-    assert!(
-        !restored
-            .world_view(p, context())
-            .await
-            .unwrap()
-            .has_unread_reports
-    );
+    assert!(!unread_reports(&restored, b).await);
     // A post-cut insertion at the same observation time must not enter subsequent pages.
     sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) SELECT universe,$1,$2,kind,at_ms,jsonb_set(jsonb_set(data,'{id}',to_jsonb($1::uuid)),'{event}',to_jsonb($2::uuid)) FROM mission_reports WHERE id=$3").bind(Uuid::from_u128(10200)).bind(Uuid::from_u128(20200)).bind(Uuid::from_u128(10001)).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO mission_report_recipients VALUES($1,$2,102,false,false)")
@@ -372,25 +354,9 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         player: fb.player,
         universe: u,
     };
+    assert!(unread_reports(&restored, b).await);
     assert!(
-        restored
-            .world_view(p, context())
-            .await
-            .unwrap()
-            .has_unread_reports
-    );
-    assert!(
-        !restored
-            .world_view(
-                fp,
-                QueryContext {
-                    binding: fb,
-                    request_id: Uuid::new_v4()
-                }
-            )
-            .await
-            .unwrap()
-            .has_unread_reports,
+        !unread_reports(&restored, fb).await,
         "another recipient must not inherit the alert"
     );
     next.context.binding = fb;
@@ -1493,22 +1459,7 @@ async fn concurrent_report_preferences(
     .unwrap();
     let game = GameService::new(store.clone());
     for binding in [a, b] {
-        assert!(
-            game.world_view(
-                Principal {
-                    account: binding.account,
-                    player: binding.player,
-                    universe: binding.universe
-                },
-                QueryContext {
-                    binding,
-                    request_id: Uuid::new_v4()
-                }
-            )
-            .await
-            .unwrap()
-            .has_unread_reports
-        );
+        assert!(unread_reports(&game, binding).await);
     }
     let peer = PgStore::connect(url).await.unwrap();
     let mut claims = Vec::new();
@@ -1633,21 +1584,7 @@ async fn concurrent_report_preferences(
     );
     for binding in [a, b] {
         assert!(
-            !game
-                .world_view(
-                    Principal {
-                        account: binding.account,
-                        player: binding.player,
-                        universe: binding.universe
-                    },
-                    QueryContext {
-                        binding,
-                        request_id: Uuid::new_v4()
-                    }
-                )
-                .await
-                .unwrap()
-                .has_unread_reports,
+            !unread_reports(&game, binding).await,
             "committed read/hidden preferences must clear the alert"
         );
     }
@@ -1655,4 +1592,27 @@ async fn concurrent_report_preferences(
         .execute(pool)
         .await
         .unwrap();
+}
+
+// Keep repeated snapshot futures off the large scenario test's stack.
+fn unread_reports(
+    game: &GameService<PgStore>,
+    binding: Binding,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + '_>> {
+    Box::pin(async move {
+        game.world_view(
+            Principal {
+                account: binding.account,
+                player: binding.player,
+                universe: binding.universe,
+            },
+            QueryContext {
+                binding,
+                request_id: Uuid::new_v4(),
+            },
+        )
+        .await
+        .unwrap()
+        .has_unread_reports
+    })
 }
