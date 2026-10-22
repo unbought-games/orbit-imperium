@@ -107,7 +107,7 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
                             if let Some(integration) = analytics {
                                 router.merge(integration.router())
                             } else {
-                                router
+                                router.merge(crate::analytics::disabled_router())
                             }
                         },
                         wait_for_drain(drain_rx),

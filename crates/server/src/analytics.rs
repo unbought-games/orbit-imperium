@@ -25,6 +25,17 @@ struct Config {
     #[serde(default)]
     enabled: bool,
 }
+pub fn disabled_router() -> Router {
+    Router::new().route(
+        "/api/analytics",
+        get(|| async {
+            (
+                [(axum::http::header::CACHE_CONTROL, "no-store")],
+                Json(json!({"enabled":false})),
+            )
+        }),
+    )
+}
 pub struct Integration {
     config: Config,
     token: String,
