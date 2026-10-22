@@ -80,6 +80,7 @@ export function Production({
         </div>
       </div>
       <Form
+        data-analytics="set_production"
         onSubmit={(event) => {
           event.preventDefault()
           if (!revisionChanged && !isPending) void model.send(settingsCommand)

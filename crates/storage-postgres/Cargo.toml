@@ -102,3 +102,7 @@ required-features = ["test-support"]
 [[test]]
 name = "universe_names"
 required-features = ["test-support"]
+
+[[test]]
+name = "analytics"
+required-features = ["test-support"]

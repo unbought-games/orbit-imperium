@@ -291,7 +291,10 @@ function Transport({
       {view.destinations_truncated && (
         <Text>Destination preview: first 100 bodies.</Text>
       )}
-      <Form onSubmit={(e) => void preview(e)}>
+      <Form
+        data-analytics="preview_transport"
+        onSubmit={(e) => void preview(e)}
+      >
         <FormGrid>
           <Field>
             Destination
