@@ -221,3 +221,50 @@ for (const viewport of [
     await expect(page.getByLabel('Planet energy')).toBeVisible()
   })
 }
+
+for (const width of [1280, 390]) {
+  test(`legacy fleet and dispatch headers stay compact at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await shellFixture(page, {
+      protocol: 2,
+      extraCapabilities: ['Transport'],
+      bodies: [body],
+      destinations: [{ id: id(6), coordinates: destination, kind: 'Planet' }],
+    })
+    for (const [route, title] of [
+      ['fleets', 'Fleets'],
+      ['dispatch', 'Dispatch fleet'],
+    ]) {
+      await page.goto(`/u/andromeda/${route}?body=${body.id}`)
+      const heading = page.getByRole('heading', {
+        name: title,
+        level: 2,
+        exact: true,
+      })
+      await expect(heading).toBeInViewport({ ratio: 1 })
+      // Keep the task's styled title, without a second large shell heading.
+      await expect(heading).toHaveCSS('margin', '0px')
+      await expect(heading).toHaveCSS('font-size', '24px')
+      expect(
+        (await heading.locator('..').boundingBox())!.height,
+      ).toBeLessThanOrEqual(64)
+      expect(
+        (await page.locator('main h1').locator('..').boundingBox())!.height,
+      ).toBeLessThanOrEqual(1)
+      await expect(
+        page.getByRole('combobox', { name: 'Destination', exact: true }),
+      ).toHaveValue(id(6))
+      await expect(
+        page.getByRole('button', { name: 'Calculate transport', exact: true }),
+      ).toBeEnabled()
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width)
+      await page.screenshot({
+        path: `test-results/legacy-${route}-header-${width}.png`,
+      })
+    }
+  })
+}

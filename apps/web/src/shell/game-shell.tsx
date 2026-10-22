@@ -107,6 +107,7 @@ export function GameShell() {
   const hasFeatureHeading =
     available &&
     (page === 'overview' ||
+      (view.protocol === 2 && ['fleets', 'dispatch'].includes(page)) ||
       page === 'settings' ||
       (view.protocol !== 2 &&
         ['resources', 'facilities', 'research', 'shipyard', 'defense'].includes(
