@@ -30,16 +30,9 @@ export function ResourceSummary({
   )
 }
 
-/** A positive deficit must never read as no resources needed. */
+/** Whole units still needed: round up to agree with floored available balances. */
 export function ResourceShortfall({ value }: { value: string }) {
-  return BigInt(value) > 0n && BigInt(value) < 1000000n ? (
-    <>
-      &lt;
-      <ResourceNumber value="1000000" />
-    </>
-  ) : (
-    <ResourceNumber value={value} />
-  )
+  return <NumberValue value={(BigInt(value) + 999999n) / 1000000n} />
 }
 
 export function DurationValue({ milliseconds }: { milliseconds: number }) {

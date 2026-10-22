@@ -4510,6 +4510,7 @@ export interface components {
             blockers: components["schemas"]["ProgressionBlocker"][];
             estimates: components["schemas"]["ProgressionEstimate"] | null;
             progress?: components["schemas"]["SnapshotProgress"];
+            building_energy?: components["schemas"]["BuildingEnergy"];
         };
         ProductionDto: {
             /** Format: uuid */
@@ -4951,6 +4952,7 @@ export interface components {
             blockers: components["schemas"]["ProgressionBlocker"][];
             estimates: components["schemas"]["ProgressionEstimate"] | null;
             progress?: components["schemas"]["SnapshotProgress"];
+            building_energy?: components["schemas"]["BuildingEnergy"];
         };
         GameProgressionOptions: components["schemas"]["BoundProgressionOptions"] | components["schemas"]["BoundProgressionOptions4"];
         Attempt4: {
@@ -5494,6 +5496,11 @@ export interface components {
             baseRevision: string;
             /** Format: uuid */
             dependsOn?: string;
+        };
+        /** @description Building operating consumption at 100% production, derived from the active rules. Informational; not a construction prerequisite. */
+        BuildingEnergy: {
+            current_consumption: components["schemas"]["Decimal"];
+            target_consumption: components["schemas"]["Decimal"];
         };
     };
     responses: never;

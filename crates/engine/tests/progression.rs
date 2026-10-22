@@ -1653,3 +1653,99 @@ fn astrophysics_stale_prices_and_insufficient_resources_never_spend() {
     blocked(&s, &next, p, 0, request, GameError::InsufficientResources);
     assert!(s.research_operations.is_empty());
 }
+
+#[test]
+fn building_inspections_separate_operating_consumption_from_construction_energy() {
+    let (mut s, r, p, b) = fixture();
+    // Other producers, energy shortages and throttling must not change the
+    // building's advertised full-output consumption or gate its construction.
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::MetalMine, 5);
+    s.production_settings
+        .get_mut(&b)
+        .unwrap()
+        .settings
+        .crystal_mine = 0;
+    for (building, source, current, target) in [
+        (Building::CrystalMine, 3, 39_930_000, 58_564_000),
+        (Building::DeuteriumSynthesizer, 1, 22_000_000, 48_400_000),
+        (Building::MetalMine, 0, 0, 11_000_000),
+        (Building::SolarPlant, 1, 0, 0),
+        (Building::RoboticsFactory, 0, 0, 0),
+    ] {
+        s.bodies
+            .get_mut(&b)
+            .unwrap()
+            .levels
+            .insert(building, source);
+        let request = QuoteRequest::Upgrade { body: b, building };
+        let before = s.clone();
+        let options = inspect_progression(&s, Actor::Player(p), &request, 0, &r).unwrap();
+        assert_eq!(s, before);
+        assert_eq!(
+            options.building_energy,
+            Some(BuildingEnergy {
+                current_consumption: current.to_string(),
+                target_consumption: target.to_string(),
+            })
+        );
+        assert!(matches!(
+            options.terms,
+            Some(ProgressionMaterial::Building {
+                required_energy: 0,
+                ..
+            })
+        ));
+        assert!(
+            !options
+                .blockers
+                .iter()
+                .any(|blocker| blocker.code == GameError::EnergyRequired)
+        );
+        if source > 0 {
+            let demolition = inspect_progression(
+                &s,
+                Actor::Player(p),
+                &QuoteRequest::Demolition { body: b, building },
+                0,
+                &r,
+            )
+            .unwrap();
+            assert_eq!(
+                demolition.building_energy.unwrap().current_consumption,
+                current.to_string()
+            );
+        }
+    }
+    let demolition = inspect_progression(
+        &s,
+        Actor::Player(p),
+        &QuoteRequest::Demolition {
+            body: b,
+            building: Building::RoboticsFactory,
+        },
+        0,
+        &r,
+    )
+    .unwrap();
+    assert!(demolition.terms.is_none());
+    assert!(demolition.building_energy.is_none());
+}
+
+#[test]
+fn building_energy_uses_the_active_rules_and_exact_micro_units() {
+    let (s, r, _, b) = fixture();
+    let mut artifact = r.artifact.clone();
+    artifact.energy_demand[0] = 17;
+    artifact.growth = [6, 5];
+    let rules = Ruleset::from_artifact(artifact, r.speed).unwrap();
+    let energy = building_energy(&s.bodies[&b], Building::MetalMine, 1, 2, &rules).unwrap();
+    assert_eq!(energy.current_consumption, "20400000");
+    assert_eq!(energy.target_consumption, "48960000");
+    let demolition = building_energy(&s.bodies[&b], Building::MetalMine, 2, 1, &rules).unwrap();
+    assert_eq!(demolition.current_consumption, energy.target_consumption);
+    assert_eq!(demolition.target_consumption, energy.current_consumption);
+}

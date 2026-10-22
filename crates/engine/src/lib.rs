@@ -78,3 +78,6 @@ pub use scheduling::*;
 
 mod astrophysics;
 pub use astrophysics::*;
+
+mod building_energy;
+pub use building_energy::*;
