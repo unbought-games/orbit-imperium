@@ -8,6 +8,11 @@
 }
 @media (max-width: 767px) {
   .resources {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 3rem), 1fr));
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .resources > button {
+    flex: 1 0 auto;
+    min-width: min(100%, 3rem);
   }
 }

@@ -229,6 +229,11 @@ test('small phone resource row fits large stocks and negative energy without sta
       },
     ],
   })
+  // Exercise wider glyphs than macOS system-ui so Linux-sized balances also fit.
+  await page.addStyleTag({
+    content:
+      '[aria-label="Current resources"] strong { font-family: monospace; letter-spacing: 0.5px; }',
+  })
   const ledger = page.getByLabel('Current resources')
   for (const [name, amount] of [
     ['Metal', '9.2T'],

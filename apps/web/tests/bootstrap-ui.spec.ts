@@ -58,7 +58,8 @@ test('login and signup preserve the requested game destination', async ({
     await expect(page.getByLabel('Password')).toHaveCount(0)
     await expect(
       page.getByRole('link', { name: 'Source', exact: true }),
-    ).toBeVisible()
+    ).toHaveCount(0)
+    await expect(page.getByRole('contentinfo')).toHaveCount(0)
   }
   await page.route('**/api/v1/bootstrap', (route) =>
     route.fulfill({
@@ -813,18 +814,20 @@ test('signed-in settings retain the beta notice and best-effort support target',
   const help = page.getByRole('region', { name: 'Help and conduct reports' })
   await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
   await expect(help.getByRole('link', { name: 'ethan@unbought.games' })).toHaveAttribute('href', 'mailto:ethan@unbought.games')
-  await expect(page.getByRole('navigation', { name: 'Policies and support' }).getByRole('link', { name: 'Conduct', exact: true })).toHaveAttribute('href', 'https://unbought.games/conduct/')
+  await expect(page.getByRole('navigation', { name: 'Policies and support' })).toHaveCount(0)
+  await expect(page.getByRole('contentinfo')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'test-results/open-beta-settings-mobile.png', fullPage: true })
 })
 
-test('universe names appear on desktop and mobile and every game link uses the current name', async ({ page }) => {
+test('universe names appear on desktop while mobile stays compact and every game link uses the current name', async ({ page }) => {
   const options = { universeName: 'Andromeda' }
   await shellFixture(page, options)
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await expect(page.getByLabel('Current universe', { exact: true })).toHaveText('Andromeda')
-    await expect(page.getByLabel('Current universe', { exact: true })).toBeVisible()
+    if (width >= 768) await expect(page.getByLabel('Current universe', { exact: true })).toBeVisible()
+    else await expect(page.getByLabel('Current universe', { exact: true })).toBeHidden()
     await expect(page).toHaveTitle(/ · Andromeda · Orbit Imperium$/)
     expect(await page.evaluate(() => [...document.querySelectorAll<HTMLAnchorElement>('a[href]')]
       .map(a => new URL(a.href).pathname).filter(path => path.startsWith('/u/'))

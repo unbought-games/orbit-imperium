@@ -90,7 +90,7 @@
   display: block;
 }
 .stock strong {
-  display: inline;
+  display: block;
   font-family: inherit;
   font-size: 1rem;
   font-weight: 600;
