@@ -5073,6 +5073,8 @@ export interface components {
             /** @enum {string} */
             inactivity: "Active" | "Inactive7" | "Inactive28";
             vacation: boolean;
+            /** @description Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers. */
+            attack_blocker?: components["schemas"]["GameError4"] | null;
             espionage_eligible: boolean;
         };
         PublicDebris4: {

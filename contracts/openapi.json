@@ -9982,6 +9982,13 @@
           "vacation": {
             "type": "boolean"
           },
+          "attack_blocker": {
+            "description": "Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers.",
+            "anyOf": [
+              { "$ref": "#/components/schemas/GameError4" },
+              { "type": "null" }
+            ]
+          },
           "espionage_eligible": {
             "type": "boolean"
           }

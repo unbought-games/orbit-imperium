@@ -1,9 +1,18 @@
 import type { Attempt, Command } from '../client-model/commands'
+import { dispatchFailure } from '../client-model/dispatch-validation'
 import { label } from './format'
 export function actionLabel(command: Command): string {
   return label(command.type === 'World' ? command.action.type : command.type)
 }
 export function actionMessage(a: Attempt): string {
+  const command = a.envelope.command
+  if (
+    a.status === 'rejected' &&
+    a.receipt?.status === 'Rejected' &&
+    command.type === 'World' &&
+    command.action.type === 'LaunchFleet'
+  )
+    return `Fleet not sent: ${dispatchFailure(a.receipt.code, command.action.intent)}`
   return a.status === 'committed'
     ? a.reconciled
       ? 'Action confirmed.'
