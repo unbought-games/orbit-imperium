@@ -2853,9 +2853,9 @@ checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
 
 [[package]]
 name = "unbought-auth"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b66d7092eea707a59fdcac434080daeb4f893c38c2dcbcd27aa8f61dbdf07f52"
+checksum = "1aaea75b84b9c94dedf2fb9571392886ba13c58674a9be4b4b4c0a8bf19f401e"
 dependencies = [
  "base64 0.22.1",
  "hex",
