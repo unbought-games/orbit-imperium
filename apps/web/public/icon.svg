@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 64 64">
   <title>Orbit Imperium</title>
   <rect width="64" height="64" rx="12" fill="#0d1827"/>
+  <g transform="translate(4.8 4.8) scale(.85)">
 <defs>
     <linearGradient id="moon" x1="10" y1="8" x2="39" y2="57" gradientUnits="userSpaceOnUse">
       <stop stop-color="#f4ead2"/>
@@ -12,5 +13,6 @@
     <path d="M44 9 33 39 44 34 55 39Z" fill="#a4dbef"/>
     <path d="M44 9 44 34 33 39Z" fill="#e4faff"/>
     <path d="M44 9V34" stroke="#e4faff" stroke-width=".6"/>
+  </g>
   </g>
 </svg>
