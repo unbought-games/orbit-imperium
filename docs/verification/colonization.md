@@ -1,0 +1,119 @@
+# Colonization validation — October 22, 2026
+
+Implementation source: `63c9b9b4452b7e1a50b1007753b2cd545e82cebb`, based on
+`cf0a8fe11b08a388cadaddcdf195dd1c7ae2e922`, on `emick/colony-ships`.
+Final source: `cabe57c3d6559692c45f45662939946019c24730`, tree
+`3281a55ddf8b37ff99573706544ceb08771b1cdf`.
+
+The final source adds only a dispatch-text correction: successful deployment
+ends at its destination, and return estimates are conditional. It was committed
+during the final aggregate run. Server/database code, contracts, rules, scripts
+and Makefile are byte-identical to the implementation revision (verified with
+`git diff --exit-code`). Static checks, production build and the colony browser
+workflow were then rerun on the clean final source revision. This record is a
+subsequent documentation-only change; no uncommitted implementation changes
+remain. No production service or beta state was changed.
+
+## Final results
+
+| Command / phase | Result | Measured wall time |
+| --- | --- | --- |
+| `make check` | Passed: 54 tooling tests, 248 client tests, 246 workspace tests, 32 bridge tests, 6 storage unit tests; clippy, formatting, lint, contracts, boundaries and production build | 150.83 s |
+| Tooling execution in aggregate | 54 passed; 1 Docker packaging case explicitly excluded by the existing runner | 8.554 s |
+| Client execution in aggregate | 248 passed | 4.04 s |
+| Workspace / bridge / storage unit execution | 246 / 32 / 6 passed | 5.070 / 0.509 / 0.019 s |
+| `make -j2 _db-colonization _db-migrations _db-bootstrap _db-world _db-rules_updates _db-signup _db-recovery` | All 46 PostgreSQL tests passed | 130.24 s |
+| Colony database binary | All 4 passed | 21.290 s |
+| Migration / bootstrap / world database binaries | 16 / 5 / 3 passed | 18.194 / 9.908 / 12.701 s |
+| Rules / signup / recovery database binaries | 10 / 7 / 1 passed | 10.635 / 12.939 / 1.977 s |
+| `npm run test:ui -- colonization.spec.ts galaxy-cards.spec.ts catalog-pages.spec.ts` | All 39 fixture browser tests passed | 44.80 s total; 42.5 s browser execution |
+| Final `make _static` | Passed on `cabe57c` | 14.89 s |
+| Final `npm run build` | Passed on `cabe57c` | 19.32 s; 2.35 s Vite build |
+| Final `npm run test:ui -- colonization.spec.ts` | All 3 passed on `cabe57c` | 12.43 s total; 6.4 s browser execution |
+
+Independent checks ran concurrently, so measured totals include shared-machine
+and Cargo-lock contention. They are observations, not performance targets.
+The production build retained existing router circular-dependency and chunk-size
+warnings. No timeout or partial suite was counted as successful validation.
+
+## Coverage
+
+- The complete ordinary starter journey builds mines, power, storage, Robotics,
+  Lab and Shipyard; researches Energy, Impulse, Espionage and Astrophysics;
+  manufactures a Colony Ship; launches and establishes a colony without grants.
+- Explicit shipyard/research locks, exact manufacturing charge/time, base impulse
+  propulsion and mixed manifests, fuel/cargo accounting, recall, one-ship terminal
+  success, escort/extra-ship return, transport and owned deployment.
+- All positional field-weight boundaries, certified artifact SHA-256 and row
+  totals, exact RNG/generation/cursor vector, all temperature envelopes and integer
+  diameter relationships. The offline generator uses rational interval bounds.
+- Occupied and invalid targets, position gates, launch at full count capacity,
+  current arrival capacity, capacity gained in flight, competing owners/locations
+  and same-owner arrivals. No reservation or extra random draw on failed arrival.
+- Database player/location claim exclusion; signup competing for the last eligible
+  position; retry-safe enrollment; legacy frontier allocation and manifest audit
+  after colonies exist.
+- Atomic rollback after staged writes, stale-worker fencing and takeover,
+  serialized state/input replay, duplicate commit, reconnect/reopen, preserved
+  origin/colony identities and exact ship/cargo/asset lineage.
+- Additive activation for an existing account and initialization of a later signup;
+  immutable retained rules; disabled new launches with accepted flights still
+  resolving; schema upgrade from the actual previous migration bundle, old-writer
+  compatibility, no startup population backfill and no private-state slot-token
+  changes.
+- Owner-only colony metadata and private inventories, public galaxy occupancy,
+  generated protocol-4 contracts, empty-position resolver/quote/launch, report
+  links and usable body routing. Browser tests cover 320, 390, 768 and 1440 px,
+  reload without duplicate launch, full-cap warning and locked-position reasons.
+
+## Failures found and corrected
+
+- An early engine continuation test returned `PolicyUnavailable` when targeting
+  the newly created colony. In-memory ChangeSet application was missing the new
+  body's collection-head metadata. Added that metadata and reran the affected
+  journeys, then the complete workspace suite. The failed native test run executed
+  16/32 cases before fail-fast, in 0.838 s; that partial run was not a pass.
+- The initial database test helper used `unwrap_err()` on a success type without
+  `Debug`; corrected the helper and its unused import before execution.
+- PostgreSQL rejected a successful one-ship arrival with `mission_leg_valid`.
+  Migration 13 now admits Colonized/Deployed while preserving validation of new
+  writes and avoiding a historical table scan. That failed test run took 5.647 s
+  of native execution; the entire affected binary and migration suite were rerun.
+- Clippy rejected three nested conditionals; corrected them without allowances.
+  The final aggregate and final static checks pass.
+- Review found legacy admission/audit assumptions that every planet was a
+  homeworld. Added occupancy-aware legacy frontier allocation and separate colony
+  audit accounting, with parity and real PostgreSQL regressions.
+- One early nextest run emitted a `LEAK` diagnostic for the pure weight-boundary
+  test. Subsequent focused runs and the final full run emitted none. No runner
+  deadline or assertion was relaxed.
+
+## Isolation, cleanup and limits
+
+Database tests used disposable Compose project `orbit-colonization-validation`,
+with an automatically allocated localhost PostgreSQL port, `55308`. Each native
+binary used a fresh `orbit_test_*` database and serial tests through
+`scripts/test-db.sh`; the script dropped its database after success or failure.
+A final catalog query returned no remaining test databases. The project container,
+network and volume were removed with:
+
+```sh
+COMPOSE_PROJECT_NAME=orbit-colonization-validation docker compose down --volumes --remove-orphans
+```
+
+Cleanup completed successfully in 0.72 s. A subsequent project-label container
+query returned no containers. The browser runner shut down its Vite/browser
+processes. No shared or production database was reset.
+
+Logs remain in `/tmp/orbit-colony-final-{check,db,ui,static,build,colony-ui}.log`
+and `/tmp/orbit-colony-cleanup.log`. Browser screenshots/results are ignored local
+artifacts under `test-results/`.
+
+Not run: full-system acceptance, actual process-recovery harness, rolling release
+validation, production-container validation, live signup or live colonization,
+and the unselected PostgreSQL binaries. Native database fault/reopen tests and
+fixture browser tests do not claim those explicit-only checks passed. Physical
+mobile devices and screen-reader testing were not performed.
+
+See [the rollout plan](../operations/colonization.md) for the sole beta universe,
+release and activation commands, compatibility, validation and recovery steps.

@@ -191,3 +191,5 @@ matching pre-activation database backup and compatible images, follow epoch,
 session and receipt restore procedures, and disclose lost post-backup progress.
 There is no automatic rollback or reverse migration. Clean up only temporary
 operator files after durable evidence is saved; never reset the beta.
+
+Local results and exact source revisions: [colonization validation](../verification/colonization.md).
