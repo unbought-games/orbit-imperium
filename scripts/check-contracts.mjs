@@ -42,3 +42,15 @@ for(const game of [{status:'no_membership'},{status:'unavailable',code:'Unavaila
  assert.ok(bootstrap({...guest,result:{status:'authenticated',session:bootstrapSession,game}}));
 for(const invalid of [{...guest,version:2},{...guest,result:{status:'unknown'}},{...guest,token:'private'},{...guest,result:{status:'authenticated',session:bootstrapSession,game:{status:'ready'}}}])assert.equal(bootstrap(invalid),false);
 console.log('Bootstrap variants reject unknown versions, private fields, and incomplete snapshots.');
+
+const battleRound = ajv.compile({ components: schema.components, $ref: '#/components/schemas/BattleRound4' });
+const roundCounts = { number: 1, start: [], end: [] };
+const legacyFire = { shots: '2', raw_attack_ticks: '13000000', shield_removed_ticks: '3000000', hull_removed_ticks: '10000000', explosions: '0' };
+const attributedFire = { owner: id, origin: { Fleet: id }, side: 'Attacker', ...legacyFire };
+assert.ok(battleRound({ ...roundCounts, ...legacyFire }), 'historical combined reports remain readable');
+assert.ok(battleRound({ ...roundCounts, fire: [attributedFire] }), 'new reports record fire by shooter');
+assert.equal(battleRound({ ...roundCounts, ...legacyFire, fire: [attributedFire] }), false, 'do not store duplicate aggregate fire');
+assert.equal(battleRound(roundCounts), false, 'rounds require recorded fire');
+assert.equal(battleRound({ ...roundCounts, fire: [{ ...attributedFire, shots: '-1' }] }), false);
+assert.equal(battleRound({ ...roundCounts, fire: [{ ...attributedFire, side: 'Unknown' }] }), false);
+console.log('Combat rounds accept historical totals or attributed fire, never both.');

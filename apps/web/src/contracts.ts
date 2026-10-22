@@ -5363,12 +5363,13 @@ export interface components {
             number: number;
             start: components["schemas"]["BattleCounts4"][];
             end: components["schemas"]["BattleCounts4"][];
-            shots: string;
-            raw_attack_ticks: string;
-            shield_removed_ticks: string;
-            hull_removed_ticks: string;
-            explosions: string;
-        };
+            shots?: string;
+            raw_attack_ticks?: string;
+            shield_removed_ticks?: string;
+            hull_removed_ticks?: string;
+            explosions?: string;
+            fire?: components["schemas"]["BattleFire4"][];
+        } & (unknown | unknown);
         CombatPayload4: {
             /** @constant */
             kind: "Combat";
@@ -5518,6 +5519,25 @@ export interface components {
         BuildingEnergy: {
             current_consumption: components["schemas"]["Decimal"];
             target_consumption: components["schemas"]["Decimal"];
+        };
+        /** @description Fire attributed to the shooting participant. Shield and hull damage are inflicted on the opposing side. Explosions are triggered on opposing units; their remaining hull is not included in hull damage. */
+        BattleFire4: {
+            /** Format: uuid */
+            owner: string;
+            origin: {
+                /** Format: uuid */
+                Stationed: string;
+            } | {
+                /** Format: uuid */
+                Fleet: string;
+            };
+            /** @enum {unknown} */
+            side: "Attacker" | "Defender";
+            shots: string;
+            raw_attack_ticks: string;
+            shield_removed_ticks: string;
+            hull_removed_ticks: string;
+            explosions: string;
         };
         /** @description Current public usernames keyed by player ID, limited to identities visible in this response. Missing identities use the client fallback. */
         PublicPlayerNames4: {

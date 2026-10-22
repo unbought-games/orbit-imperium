@@ -11272,19 +11272,70 @@
             "type": "string",
             "pattern": "^(0|[1-9][0-9]*)$",
             "maxLength": 78
+          },
+          "fire": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BattleFire4"
+            }
           }
         },
         "required": [
           "number",
           "start",
-          "end",
-          "shots",
-          "raw_attack_ticks",
-          "shield_removed_ticks",
-          "hull_removed_ticks",
-          "explosions"
+          "end"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "fire"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "shots"
+                  ]
+                },
+                {
+                  "required": [
+                    "raw_attack_ticks"
+                  ]
+                },
+                {
+                  "required": [
+                    "shield_removed_ticks"
+                  ]
+                },
+                {
+                  "required": [
+                    "hull_removed_ticks"
+                  ]
+                },
+                {
+                  "required": [
+                    "explosions"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "required": [
+              "shots",
+              "raw_attack_ticks",
+              "shield_removed_ticks",
+              "hull_removed_ticks",
+              "explosions"
+            ],
+            "not": {
+              "required": [
+                "fire"
+              ]
+            }
+          }
+        ]
       },
       "CombatPayload4": {
         "type": "object",
@@ -11988,6 +12039,88 @@
         "required": [
           "current_consumption",
           "target_consumption"
+        ],
+        "additionalProperties": false
+      },
+      "BattleFire4": {
+        "type": "object",
+        "description": "Fire attributed to the shooting participant. Shield and hull damage are inflicted on the opposing side. Explosions are triggered on opposing units; their remaining hull is not included in hull damage.",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "Stationed": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "Stationed"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "Fleet": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "Fleet"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "side": {
+            "enum": [
+              "Attacker",
+              "Defender"
+            ]
+          },
+          "shots": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "raw_attack_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "shield_removed_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "hull_removed_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "explosions": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          }
+        },
+        "required": [
+          "owner",
+          "origin",
+          "side",
+          "shots",
+          "raw_attack_ticks",
+          "shield_removed_ticks",
+          "hull_removed_ticks",
+          "explosions"
         ],
         "additionalProperties": false
       },

@@ -1,7 +1,6 @@
 //! Shared G08 multi-origin deterministic combat; no mission, storage or plunder policy.
 use crate::*;
 use num_bigint::BigUint;
-use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,12 +147,29 @@ pub struct BattleRound {
     pub number: u32,
     pub start: Vec<BattleCounts>,
     pub end: Vec<BattleCounts>,
+    pub fire: Vec<BattleFire>,
+}
+/// Historical firing observations; totals are derived from these per-origin facts.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BattleFire {
+    pub owner: PlayerId,
+    pub origin: BattleOrigin,
+    pub side: BattleSide,
     pub shots: String,
     pub raw_attack_ticks: String,
     pub shield_removed_ticks: String,
     pub hull_removed_ticks: String,
     pub explosions: String,
 }
+#[derive(Default)]
+struct FireCounters {
+    shots: BigUint,
+    raw: BigUint,
+    shields: BigUint,
+    hulls: BigUint,
+    explosions: BigUint,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BattleDamage {
     pub owner: PlayerId,
@@ -383,13 +399,7 @@ pub fn resolve_battle(
             u.shield = u.shield_max;
         }
         let start = counts(&units, &p);
-        let (mut shots, mut raw, mut shields, mut hulls, mut explosions) = (
-            BigUint::zero(),
-            BigUint::zero(),
-            BigUint::zero(),
-            BigUint::zero(),
-            BigUint::zero(),
-        );
+        let mut fire: Vec<FireCounters> = p.iter().map(|_| FireCounters::default()).collect();
         for shooter in 0..units.len() {
             let targets = if p[units[shooter].participant].side == BattleSide::Attacker {
                 &defenders
@@ -401,14 +411,15 @@ pub fn resolve_battle(
                 let target = targets[idx];
                 let attack = units[shooter].attack;
                 let shooter_item = units[shooter].item;
+                let counters = &mut fire[units[shooter].participant];
                 let u = &mut units[target];
-                add_total(&mut shots, 1u32)?;
-                add_total(&mut raw, attack)?;
+                add_total(&mut counters.shots, 1u32)?;
+                add_total(&mut counters.raw, attack)?;
                 let hit = apply_combat_hit(attack, u.shield_max, u.shield, u.hull, u.hull_max, r)?;
                 u.shield -= hit.shield_removed;
                 u.hull -= hit.hull_removed;
-                add_total(&mut shields, hit.shield_removed)?;
-                add_total(&mut hulls, hit.hull_removed)?;
+                add_total(&mut counters.shields, hit.shield_removed)?;
+                add_total(&mut counters.hulls, hit.hull_removed)?;
                 if hit.explosion
                     && tentative.bernoulli(
                         &BigUint::from(u.hull_max - u.hull),
@@ -416,7 +427,7 @@ pub fn resolve_battle(
                     )?
                 {
                     u.hull = 0;
-                    add_total(&mut explosions, 1u32)?;
+                    add_total(&mut counters.explosions, 1u32)?;
                 }
                 let rf = r
                     .rapid_fire
@@ -434,11 +445,20 @@ pub fn resolve_battle(
             number,
             start,
             end,
-            shots: shots.to_string(),
-            raw_attack_ticks: raw.to_string(),
-            shield_removed_ticks: shields.to_string(),
-            hull_removed_ticks: hulls.to_string(),
-            explosions: explosions.to_string(),
+            fire: p
+                .iter()
+                .zip(fire)
+                .map(|(participant, counters)| BattleFire {
+                    owner: participant.owner,
+                    origin: participant.origin,
+                    side: participant.side,
+                    shots: counters.shots.to_string(),
+                    raw_attack_ticks: counters.raw.to_string(),
+                    shield_removed_ticks: counters.shields.to_string(),
+                    hull_removed_ticks: counters.hulls.to_string(),
+                    explosions: counters.explosions.to_string(),
+                })
+                .collect(),
         });
     }
     let survivors = counts(&units, &p);
