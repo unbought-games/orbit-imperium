@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { packageSource, sourceEntries, sourceFiles } from './package-source.mjs'
+import { verifyReleaseFiles } from './inspect-release-image.mjs'
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'orbit-source-'))
@@ -28,6 +29,7 @@ function fixture(t) {
     'fixtures',
     'rules',
     'scripts',
+    'vendor',
   ])
   for (const entry of sourceEntries) {
     if (directories.has(entry))
@@ -107,4 +109,37 @@ test('refuses incomplete source trees and symlinks to files outside the release'
   rmSync(join(root, 'apps/external'))
   rmSync(join(root, 'Cargo.lock'))
   assert.throws(() => packageSource(root), /Cargo.lock/)
+})
+
+test('packaged documentation satisfies release inspection while retaining public build and operations files', (t) => {
+  const { root, write } = fixture(t)
+  for (const path of [
+    'crates/server/src/main.rs',
+    'apps/web/src/main.tsx',
+    'scripts/package-source.mjs',
+    'docs/operations/image-releases.md',
+    'docs/runbooks/ci-runners.md',
+    'docs/verification-guide.md',
+    'vendor/analytics/source.js',
+    'crates/engine/tests/game/fixture.json',
+  ]) write(path, `${path}\n`)
+  for (const directory of ['specs', 'game', 'plans', 'verification', 'superpowers'])
+    write(`docs/${directory}/nested/internal.md`, 'excluded research\n')
+
+  const archive = packageSource(root)
+  const names = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' })
+    .trim()
+    .split('\n')
+  for (const path of [
+    'docs/operations/image-releases.md',
+    'docs/runbooks/ci-runners.md',
+    'docs/verification-guide.md',
+    'vendor/analytics/source.js',
+    'crates/engine/tests/game/fixture.json',
+  ]) assert.ok(names.includes(`./${path}`), `Missing public source: ${path}`)
+  assert.ok(!names.some((name) => name.endsWith('/internal.md')))
+
+  write('apps/web/public/third-party.txt', 'React license\n')
+  write('apps/web/public/rust-notices.txt', 'MIT License\n')
+  assert.equal(verifyReleaseFiles(dirname(archive), root), names.length)
 })

@@ -63,6 +63,7 @@ const excluded = new Set([
 function exclude(path, name) {
   return (
     excluded.has(name) ||
+    /^docs\/(specs|game|plans|verification|superpowers)(\/|$)/.test(path) ||
     (name.startsWith('.env') && name !== '.env.example') ||
     /\.(pem|key|p12|pfx)$/i.test(name) ||
     path.startsWith('apps/web/public/source.tar.gz') ||
