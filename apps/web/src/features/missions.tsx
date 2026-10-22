@@ -95,8 +95,10 @@ export function Dispatch({
       </header>
       <Text className={styles.origin}>
         Origin: [{body.coordinates.galaxy}:{body.coordinates.system}:
-        {body.coordinates.position}]. Surviving ships return on their committed
-        one-way travel duration after contact.
+        {body.coordinates.position}].{' '}
+        {mission === 'Deploy'
+          ? 'Successful deployment ends at the destination; the ships stay there.'
+          : 'Returning ships use their committed one-way travel duration after contact.'}
       </Text>
       <Text>
         {view.capabilities.some((c) => c.capability === 'Attack' && c.enabled)
@@ -399,9 +401,10 @@ export function Dispatch({
             way · <ResourceNumber value={quote.fuel} /> deuterium fuel
           </Text>
           <Text>
-            Estimated contact {exactTime(now + quote.duration_ms)} · Estimated
-            return {exactTime(now + 2 * quote.duration_ms)}. Estimates assume
-            departure now; losses may leave no return fleet.
+            Estimated contact {exactTime(now + quote.duration_ms)} · Return if
+            needed {exactTime(now + 2 * quote.duration_ms)}. Estimates assume
+            departure now. Successful deployment and a colony with no remaining
+            ships have no return leg.
           </Text>
           <Text>
             Payload capacity <ResourceNumber value={quote.capacity} /> · Maximum
