@@ -48,7 +48,7 @@ or progress reset is required. Subsequent signups use the same active catalog.
 The immutable `mvp-v1-slice-6.json` fixture documents the full chain; existing
 artifacts and new-world defaults are unchanged. Operators activate each world.
 
-Migration `0013_colonies.sql` prepares an empty colony-genesis table, coordinate
+Migration `0014_colonies.sql` prepares an empty colony-genesis table, coordinate
 lifecycle revision heads, an insert trigger compatible with previous writers,
 and the additional terminal fleet states. It does not scan/backfill player or
 fleet history. Existing occupied slots without a head have birth revision 1;
@@ -98,7 +98,7 @@ before acting. Do not use retired Fly universe IDs or an old status-file digest.
    Follow that exact run and SSM verification through all role/HTTPS readiness
    checks. Confirm every API, worker and operator binary is compatible before
    activation. The current single-host service can have a restart window.
-4. Normal startup prepares migration 13 while preserving saved rules. Deployment
+4. Normal startup prepares migration 14 while preserving saved rules. Deployment
    alone does not activate colonization. Do not drain future fleets/jobs or reset
    accounts. If migration preparation fails, diagnose it and retry the same
    release; do not edit migration history or bypass its bounded preparation.

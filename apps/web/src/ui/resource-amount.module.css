@@ -124,7 +124,7 @@
 .compactAmount {
   white-space: nowrap;
 }
-@media (max-width: 767px) {
+@media (max-width: 1100px) {
   .stock {
     flex-direction: row;
     flex-wrap: nowrap;

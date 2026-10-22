@@ -344,3 +344,13 @@ async fn ensure_empty(conn: &mut PgConnection, ledger: Option<i64>) -> Result<()
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_migration_bundle_is_valid() {
+        validate_bundle(active_migrations()).expect("embedded migrations must form a valid bundle");
+    }
+}
