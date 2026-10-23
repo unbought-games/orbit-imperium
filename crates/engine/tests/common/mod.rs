@@ -219,3 +219,24 @@ pub fn light_laser_rules(rules: &Ruleset) -> Ruleset {
     }
     Ruleset::from_artifact(artifact, rules.speed).unwrap()
 }
+
+#[allow(dead_code)]
+pub fn ion_rules(rules: &Ruleset) -> Ruleset {
+    let mut artifact = rules.artifact.clone();
+    let content: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../../rules/content/ion-technology.json"
+    ))
+    .unwrap();
+    artifact.progression.as_mut().unwrap().research.insert(
+        ResearchId::IonTechnology,
+        serde_json::from_value(content["research"].clone()).unwrap(),
+    );
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::IonTechnology))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    Ruleset::from_artifact(artifact, rules.speed).unwrap()
+}

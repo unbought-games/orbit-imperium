@@ -1,0 +1,8 @@
+{
+  "research": { "base": [1000, 300, 100], "growth": [2, 1] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "ResearchLab", "level": 4 },
+    { "type": "PlayerResearch", "research": "EnergyTechnology", "level": 4 },
+    { "type": "PlayerResearch", "research": "LaserTechnology", "level": 5 }
+  ]
+}

@@ -1073,3 +1073,124 @@ async fn light_laser_activation_initializes_research_and_preserves_players_acros
     destructive.artifact = before.artifact;
     assert!(service.diff(&destructive).await.is_err());
 }
+
+#[tokio::test]
+async fn ion_activation_preserves_players_and_initializes_new_signups() {
+    let (store, pool, universe, binding) = setup().await;
+    let service = RulesService::new(store.clone());
+    // Establish Laser independently, as the Ion preparation tool requires.
+    let mut laser = service.export(universe).await.unwrap();
+    let content: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../rules/content/light-laser.json")).unwrap();
+    laser
+        .artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .insert(
+            ResearchId::LaserTechnology,
+            serde_json::from_value(content["research"]["definition"].clone()).unwrap(),
+        );
+    let entry = laser
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::LaserTechnology))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements =
+        serde_json::from_value(content["research"]["requirements"].clone()).unwrap();
+    service.apply(&laser).await.unwrap();
+    let before = service.export(universe).await.unwrap();
+    let (old, _) = store.bound_world(binding).await.unwrap().facts;
+    let mut document = before.clone();
+    let content: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../rules/content/ion-technology.json"))
+            .unwrap();
+    document
+        .artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .insert(
+            ResearchId::IonTechnology,
+            serde_json::from_value(content["research"].clone()).unwrap(),
+        );
+    let entry = document
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::IonTechnology))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    let diff = service.diff(&document).await.unwrap();
+    assert_eq!(
+        diff.initialize.add_research,
+        vec![ResearchId::IonTechnology]
+    );
+    assert!(diff.initialize.add_buildings.is_empty());
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::AlreadyActive { .. }
+    ));
+    let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    let mut expected = old.state.research[&binding.player].levels.clone();
+    expected.insert(ResearchId::IonTechnology, 0);
+    assert_eq!(snapshot.state.research[&binding.player].levels, expected);
+    assert_eq!(snapshot.state.epoch, binding.epoch);
+    let mut bodies = old.state.bodies.clone();
+    for body in bodies.values_mut() {
+        body.revision += 1;
+    }
+    assert_eq!(snapshot.state.bodies, bodies);
+    assert_eq!(snapshot.state.inventories, old.state.inventories);
+    assert_eq!(
+        snapshot.state.manufacturing_batches,
+        old.state.manufacturing_batches
+    );
+    let joined = SessionService::new(store.clone())
+        .signup(
+            &format!("ion{}", Uuid::new_v4().simple()),
+            "password",
+            SignupPolicy {
+                universe,
+                max_players: 45,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let player = joined.session.memberships[0].player;
+    let level: i64 = sqlx::query_scalar(
+        "SELECT level FROM research_levels WHERE owner=$1 AND research='IonTechnology'",
+    )
+    .bind(player.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(level, 0);
+    let saved = store.load_rules(universe).await.unwrap();
+    drop(store.server_guard_config(None).await.unwrap());
+    assert_eq!(store.load_rules(universe).await.unwrap(), saved);
+    let mut disabled = service.export(universe).await.unwrap();
+    disabled
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::IonTechnology))
+        .unwrap()
+        .enabled = false;
+    service.apply(&disabled).await.unwrap();
+    let (after, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(after.state.research[&binding.player].levels, expected);
+    let mut destructive = service.export(universe).await.unwrap();
+    destructive.artifact = before.artifact;
+    assert!(service.diff(&destructive).await.is_err());
+}
