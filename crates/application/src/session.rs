@@ -1,3 +1,5 @@
+pub const SESSION_IDLE_SECONDS: u32 = 30 * 24 * 60 * 60;
+
 use crate::*;
 use argon2::{
     Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,

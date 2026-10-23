@@ -82,6 +82,23 @@ impl IdentityStore for PgStore {
     ) -> Result<unbought_auth::Identity, StoreError> {
         self.oidc_revalidate(digest, rp).await
     }
+    async fn renew_session(
+        &self,
+        digest: &str,
+        rp: Option<&unbought_auth::RelyingParty>,
+    ) -> Result<i64, StoreError> {
+        if let Some(rp) = rp {
+            self.oidc_renew(digest, rp).await?;
+            return self
+                .lookup_session(digest)
+                .await?
+                .map(|s| s.expires_at)
+                .ok_or(StoreError::Conflict);
+        }
+        sqlx::query_scalar("UPDATE sessions SET expires_at=floor(extract(epoch FROM clock_timestamp())*1000)::bigint+$2 WHERE digest=$1 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint RETURNING expires_at")
+            .bind(digest).bind(i64::from(SESSION_IDLE_SECONDS) * 1000)
+            .fetch_optional(self.admission_pool()?).await.map_err(db_error)?.ok_or(StoreError::Conflict)
+    }
     async fn revoke_oidc(
         &self,
         issuer: &str,
@@ -167,7 +184,7 @@ impl IdentityStore for PgStore {
                 .await
                 .map_err(db_error)?;
         }
-        let expires:i64=sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+28800000) RETURNING expires_at").bind(digest).bind(account.0).bind(csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
+        let expires:i64=sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000) RETURNING expires_at").bind(digest).bind(account.0).bind(csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
         tx.commit().await.map_err(db_error)?;
         let mut connection = self.acquire_pool(self.read_pool()?).await?;
         Ok(AuthenticatedSession {

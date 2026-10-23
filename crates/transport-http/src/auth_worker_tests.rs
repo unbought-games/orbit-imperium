@@ -135,6 +135,18 @@ impl IdentityStore for GatedStore {
         }))
     }
 
+    async fn renew_session(
+        &self,
+        _: &str,
+        _: Option<&unbought_auth::RelyingParty>,
+    ) -> Result<i64, StoreError> {
+        self.entered.send("renew").unwrap();
+        match *self.oidc_status.lock().unwrap() {
+            503 => Err(StoreError::Unavailable),
+            401 => Err(StoreError::Conflict),
+            _ => Ok((unbought_auth::now() + i64::from(SESSION_IDLE_SECONDS)) * 1000),
+        }
+    }
     async fn revoke_session(&self, _: &str) -> Result<(), StoreError> {
         unreachable!("these tests do not log out")
     }
@@ -678,4 +690,82 @@ async fn oidc_enrollment_obeys_live_policy_and_retries_after_admissions_close() 
         StatusCode::NO_CONTENT
     );
     assert_eq!(calls.try_recv().unwrap(), "enroll");
+}
+
+#[tokio::test]
+async fn activity_renewal_requires_origin_csrf_and_cookie_and_only_sets_cookie_on_success() {
+    let (entered, mut calls) = mpsc::unbounded_channel();
+    let status = Arc::new(StdMutex::new(0));
+    let app = router(
+        GatedStore {
+            hold_policy: false,
+            oidc_status: status.clone(),
+            memberships: Arc::default(),
+            entered,
+            login: Arc::default(),
+            signup: Arc::default(),
+            policy: Arc::new(StdMutex::new(Ok(None))),
+        },
+        HttpConfig {
+            origin: "https://game.test".into(),
+            secure_cookies: true,
+            assets: "absent".into(),
+            login_per_minute: 100,
+            signup: None,
+            signup_per_minute: 100,
+            legacy_signup_enabled: false,
+            trusted_fly_proxies: Vec::new(),
+            wake: None,
+            observer: None,
+        },
+    );
+    for (origin, csrf, cookie, expected) in [
+        ("https://evil.test", "csrf", true, StatusCode::FORBIDDEN),
+        ("https://game.test", "wrong", true, StatusCode::FORBIDDEN),
+        ("https://game.test", "csrf", false, StatusCode::UNAUTHORIZED),
+    ] {
+        let mut request = Request::post("/api/v1/session/renew")
+            .header(header::ORIGIN, origin)
+            .header("x-csrf-token", csrf);
+        if cookie {
+            request = request.header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)));
+        }
+        let response = app
+            .clone()
+            .oneshot(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected);
+        assert!(!response.headers().contains_key(header::SET_COOKIE));
+        assert!(calls.try_recv().is_err());
+    }
+    for (provider, expected) in [
+        (503, StatusCode::SERVICE_UNAVAILABLE),
+        (401, StatusCode::UNAUTHORIZED),
+        (0, StatusCode::NO_CONTENT),
+    ] {
+        *status.lock().unwrap() = provider;
+        let response = app
+            .clone()
+            .oneshot(
+                Request::post("/api/v1/session/renew")
+                    .header(header::ORIGIN, "https://game.test")
+                    .header("x-csrf-token", "csrf")
+                    .header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected);
+        assert_eq!(calls.try_recv().unwrap(), "renew");
+        if provider == 0 {
+            let cookie = response.headers()[header::SET_COOKIE].to_str().unwrap();
+            assert!(cookie.contains("Max-Age=2592000"));
+            assert!(cookie.contains("HttpOnly; SameSite=Lax"));
+            assert!(cookie.ends_with("; Secure"));
+        } else {
+            assert!(!response.headers().contains_key(header::SET_COOKIE));
+        }
+    }
 }
