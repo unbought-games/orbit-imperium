@@ -314,3 +314,20 @@ for (const width of [320, 390, 1440]) {
     )
   })
 }
+
+
+test('a pending building quote labels its disabled action as loading', async ({ page }) => {
+  await buildingFixture(page)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/progression-options', async route => { await gate; await route.fallback() })
+  try {
+    await page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`)
+    const action = page.getByRole('button', { name: 'Confirm upgrade', exact: true })
+    await expect(action).toBeDisabled()
+    await expect(action).toHaveText('Loading…')
+    release()
+    await expect(action).toBeEnabled()
+    await expect(action).toHaveText('Build level 2')
+  } finally { release() }
+})

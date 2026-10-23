@@ -81,7 +81,9 @@ export function BuildingDetails({
         ? `Build ${title}`
         : `Build level ${terms.target_level}`
       : `Demolish to level ${terms.target_level}`
-    : 'Unavailable'
+    : loading
+      ? 'Loading…'
+      : 'Unavailable'
   return (
     <DetailLayout
       content={building}

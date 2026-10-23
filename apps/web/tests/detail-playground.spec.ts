@@ -319,3 +319,29 @@ for (const width of [320, 390, 1440]) {
     })
   }
 }
+
+
+test.describe('scheduled completion dates', () => {
+  test.use({ timezoneId: 'UTC', locale: 'en-US' })
+  for (const kind of ['construction', 'research'] as const) {
+    test(`${kind} finish details include the day and year across midnight`, async ({ page }) => {
+      await page.clock.install({ time: new Date('2026-12-31T12:00:00Z') })
+      const dueAt = Date.parse('2027-01-02T18:00:00Z')
+      const paid = { metal: '60000000', crystal: '15000000', deuterium: '0' }
+      await shellFixture(page, {
+        constructions: kind === 'construction' ? [{ id: id(20), body: body.id, building: 'MetalMine', target_level: 2, due_at: dueAt, paid }] : [],
+        researchOperation: kind === 'research' ? { id: id(21), host: body.id, research: 'EnergyTechnology', source_level: 1, target_level: 2, paid, started_at: Date.now(), due_at: dueAt, labs: [], effective_lab: '1', can_cancel: true } : null,
+        catalog: [
+          { key: { kind: 'Building', id: 'MetalMine' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] },
+          { key: { kind: 'Research', id: 'EnergyTechnology' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] },
+        ],
+      })
+      await page.goto(`/u/andromeda/b/${body.id}/${kind === 'construction' ? 'resources/metal-mine' : 'research/energy-technology'}`)
+      await page.getByRole('button', { name: 'Completion time details', exact: true }).click()
+      const details = page.getByRole('dialog', { name: 'Completion time', exact: true })
+      await expect(details).toContainText('Jan 2, 2027')
+      await expect(details).toContainText('6:00 PM')
+      await expect(details.locator('time')).toHaveAttribute('datetime', '2027-01-02T18:00:00.000Z')
+    })
+  }
+})

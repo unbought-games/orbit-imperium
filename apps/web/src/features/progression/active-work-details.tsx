@@ -93,10 +93,12 @@ export function ActiveWorkDetails({
           >
             <p>
               Scheduled finish:{' '}
-              {new Date(dueAt).toLocaleTimeString([], {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
+              <time dateTime={new Date(dueAt).toISOString()}>
+                {new Date(dueAt).toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
+              </time>
               .
             </p>
             <p>
