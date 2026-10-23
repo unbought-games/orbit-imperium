@@ -13,6 +13,8 @@ import {
 import { Button, ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
+import { PlayerName } from './player-name'
+import { useProfileSource } from '../shell/player-profiles-context'
 import { routeTarget } from '../shell/route-target'
 import { coordinates } from '../ui/format'
 import { MissionTrajectory } from './mission-trajectory'
@@ -104,6 +106,7 @@ export function MissionFleets({
 }) {
   const universeName = useUniverseName()
   const state = useStore(model.store)
+  useProfileSource({ type: 'Incoming' }, view.viewer_revision)
   const now = currentServerTime(state)
   const fleets = view.missions.fleets.filter(
     (fleet) => !item || fleet.id === item,
@@ -252,7 +255,7 @@ export function MissionFleets({
           <article className={styles.incomingRow} key={index}>
             <div>
               <Heading level={3}>
-                {fleet.mission} · Player {fleet.sender.slice(0, 8)}
+                {fleet.mission} · <PlayerName player={fleet.sender} />
               </Heading>
               <Text>{incomingManifest(fleet.ships)}</Text>
             </div>

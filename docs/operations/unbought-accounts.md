@@ -38,11 +38,78 @@ account credentials or progress are imported for the official launch.
 
 The shared crate is published as `unbought-auth` on crates.io, with its source in
 the public `https://github.com/unbought-games/unbought-rs` workspace. Orbit pins
-version `=0.1.1` and commits the registry checksum in `Cargo.lock`. Native builds
+version `=0.2.1` and commits the registry checksum in `Cargo.lock`. Native builds
 use `cargo build --locked -p orbit-server`; no private repository, sibling checkout
 or GitHub credentials are required. Temporary local Cargo overrides may be used
 for coordinated library development, but must not enter release manifests.
 Ordinary accounts-service releases need not change this library version.
+
+The optional `https://unbought.games/supporter_tier` claim is carried by the
+verified identity in the existing session token payload; no migration or separate
+supporter column is needed. Fresh sign-in and normal token refresh replace the
+snapshot, including clearing a removed tier. Older stored sessions without the
+field continue to work.
+
+`/api/auth/identity` continues to expose a limited current identity projection,
+without OAuth tokens or provider session IDs. In-game player names now use the
+public-profile API below, including the signed-in player's own name.
+
+## Public recognition for every player
+
+Set `ORBIT_ACCOUNTS_PROFILE_CREDENTIAL` on API/combined processes to a dedicated
+Accounts profile-service credential bound to the same OIDC client as Orbit.
+Provision it with Accounts' `provision-profile-credential` operator command and
+place it directly in the runtime secret store. It is distinct from the OAuth
+client secret and never reaches browsers. Restart API processes after rotation;
+each process owns one issuer/client-scoped cache. Worker-only processes ignore
+these settings.
+
+`ORBIT_ACCOUNTS_API_URL` optionally overrides the Accounts API base URL. The
+default is the configured issuer without its `/api/auth` suffix. The expected
+response issuer remains the configured OIDC issuer. Production uses HTTPS;
+loopback HTTP supports local integration tests. Supplying a URL without a
+credential, or a credential without OIDC, fails startup. With no credential,
+local/self-hosted games still show their stored usernames with no supporter badge.
+
+Accounts must have its public-profile migration and endpoint deployed and the
+credential provisioned. Existing users need one successful Accounts sign-in
+after that deployment to establish durable client linkage. Their public badges
+then remain available while they are offline or signed out; Orbit never needs
+another player's session or refresh token.
+A fresh verified sign-in invalidates that player's cached public snapshot and
+fences any older response already in flight, while still honoring upstream rate
+limits.
+
+Orbit's `POST /api/v1/universes/{universe}/player-profiles` takes a normal bound
+query context and a source: `SelfAccount`, `Galaxy` (galaxy/system), `Incoming`,
+or `Report` (report ID). It authenticates the requester, checks CSRF, current
+membership and epoch, and resolves identities through the same authorized game
+read as the source view. Private reports and unrevealed combat participants cannot
+be queried. The browser cannot submit arbitrary player IDs or Accounts subjects.
+
+The endpoint batches Accounts lookups in groups of at most 100 after releasing
+database resources. A process shares up to 4,096 source snapshots, removes expired
+entries, and caches successful omissions for one minute. Refresh work is shared
+with a bounded five-second wait; Accounts HTTP uses the library's five-second
+request timeout. Failures back off for 30 seconds; rate limits honor `Retry-After`.
+Unexpired snapshots remain usable. No failure extends a badge's expiry. A
+successful omission clears support and falls back to the stored game username.
+Database records contain no additional supporter flag or billing copy.
+
+These cosmetic requests are separate from gameplay reads and commands. On an
+Accounts outage, Orbit returns local usernames without expired badges, while the
+game continues. Browsers share a session-scoped Zustand snapshot cache, schedule the next
+active-view refresh within one minute of a response (sooner at expiry), and remove expired
+display data at its deadline, including when returning from a background tab.
+If Orbit itself is unreachable, the UI falls back to player identifiers. Session
+and account switches discard the previous cache.
+
+The shared player-name component covers the menu, account settings, Galaxy,
+incoming fleets and overview arrivals, espionage targets/contacts, and all visible
+combat participant sections. Starlight colors are ice, rose, and apricot for
+tiers 1–3, with the same star badge. Ordinary players keep their normal names
+without a badge. Report combat facts remain historical; displayed names and
+supporter recognition reflect current profiles.
 
 Docker builds use the same public dependencies:
 

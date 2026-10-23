@@ -12,6 +12,8 @@ import { overviewArrivals } from './overview-arrivals'
 import { useCountdown } from '../client-model/use-clock'
 import styles from './planet-overview.module.css'
 import { resolveBodyArt, atmosphereArt } from '../ui/artwork'
+import { useProfileSource } from '../shell/player-profiles-context'
+import { PlayerName } from './player-name'
 
 export function PlanetOverview({
   view,
@@ -24,6 +26,12 @@ export function PlanetOverview({
   const art = resolveBodyArt(body)
   const countdown = useCountdown(view.sampled_at, 'compact')
   const arrivals = overviewArrivals(view, body.id)
+  useProfileSource(
+    view.protocol === 4 && arrivals.some((a) => a.sender)
+      ? { type: 'Incoming' }
+      : null,
+    view.viewer_revision,
+  )
   const fleetAvailable = resolveDestination(
     { universe: view.binding.universe, page: 'fleets', body: body.id },
     view,
@@ -146,6 +154,11 @@ export function PlanetOverview({
                   <Radar size={24} aria-hidden="true" />
                   <div>
                     <strong>{arrival.mission}</strong>
+                    {arrival.sender && (
+                      <small>
+                        From <PlayerName player={arrival.sender} />
+                      </small>
+                    )}
                     <small>{arrival.ships}</small>
                     <small>{arrival.route}</small>
                   </div>

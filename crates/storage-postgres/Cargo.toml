@@ -21,6 +21,7 @@ sqlx.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+axum.workspace = true
 tokio.workspace = true
 orbit-transport-http.workspace = true
 tower.workspace = true
@@ -97,6 +98,10 @@ required-features = ["test-support"]
 
 [[test]]
 name = "oidc"
+required-features = ["test-support"]
+
+[[test]]
+name = "player_profiles"
 required-features = ["test-support"]
 
 [[test]]

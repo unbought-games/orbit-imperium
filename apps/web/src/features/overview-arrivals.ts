@@ -21,6 +21,7 @@ export function overviewArrivals(view: BoundView, bodyId: string) {
         key: fleet.id,
         item: fleet.id,
         mission: `Transport · ${fleet.status}`,
+        sender: undefined as string | undefined,
         route:
           fleet.status === 'Returning'
             ? `${location(fleet.target)} → ${location(fleet.origin)}`
@@ -38,6 +39,7 @@ export function overviewArrivals(view: BoundView, bodyId: string) {
       key: `incoming:${index}`,
       item: undefined as string | undefined,
       mission: `${fleet.mission} · Incoming`,
+      sender: fleet.sender,
       route: `${coordinates({ coordinates: fleet.origin })} → ${coordinates(body)}`,
       due: fleet.arrival_at,
       ships:
@@ -62,6 +64,7 @@ export function overviewArrivals(view: BoundView, bodyId: string) {
       key: fleet.id,
       item: fleet.id,
       mission: `${fleet.intent.mission} · ${fleet.leg}`,
+      sender: undefined as string | undefined,
       route:
         fleet.leg === 'Returning'
           ? `${coordinates({ coordinates: fleet.destination })} → ${coordinates({ coordinates: fleet.origin })}`

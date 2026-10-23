@@ -72,6 +72,7 @@ impl IdentityStore for GatedStore {
             subject: "subject".into(),
             username: "player".into(),
             email_verified: false,
+            supporter_tier: None,
             session_id: "session".into(),
             issued_at: 0,
             expires_at: i64::MAX,

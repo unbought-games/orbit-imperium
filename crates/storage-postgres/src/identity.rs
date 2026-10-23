@@ -29,6 +29,21 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn player_identities(
+        &self,
+        universe: UniverseId,
+        players: Vec<PlayerId>,
+    ) -> Result<Vec<PlayerIdentity>, StoreError> {
+        sqlx::query("SELECT m.player,a.name,i.issuer,i.subject FROM universe_memberships m JOIN accounts a ON a.id=m.account LEFT JOIN oidc_identity i ON i.account=a.id WHERE m.universe=$1 AND m.player=ANY($2)")
+            .bind(universe.0).bind(players.iter().map(|p|p.0).collect::<Vec<_>>())
+            .fetch_all(self.read_pool()?).await.map_err(db_error)?
+            .into_iter().map(|row| Ok(PlayerIdentity {
+                player: PlayerId(row.try_get("player").map_err(db_error)?),
+                username: row.try_get("name").map_err(db_error)?,
+                issuer: row.try_get("issuer").map_err(db_error)?,
+                subject: row.try_get("subject").map_err(db_error)?,
+            })).collect()
+    }
     async fn universe_summaries(&self) -> Result<Vec<UniverseSummary>, StoreError> {
         sqlx::query("SELECT universe, u.name FROM universe_policies p JOIN universes u ON u.id=p.universe ORDER BY u.name")
             .fetch_all(self.read_pool()?).await.map_err(db_error)?

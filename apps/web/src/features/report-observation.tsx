@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { label } from '../ui/format'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
+import { PlayerName } from './player-name'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
   v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -126,7 +127,7 @@ function Origins({ title, value }: { title: string; value: unknown }) {
         return (
           <div key={i}>
             <h4>
-              {text(origin.side)} · Player {text(origin.owner).slice(0, 8)}
+              {text(origin.side)} · <PlayerName player={text(origin.owner)} />
             </h4>
             {Array.isArray(origin.technology) && (
               <Text>
@@ -154,8 +155,8 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
         className={styles.observation}
       >
         <Text>
-          Target {coordinate(target.coordinates)} · Player{' '}
-          {text(target.owner).slice(0, 8)}
+          Target {coordinate(target.coordinates)} ·{' '}
+          <PlayerName player={text(target.owner)} />
         </Text>
         <Text>
           Activity before contact:{' '}
@@ -191,8 +192,8 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
         className={styles.observation}
       >
         <Text>
-          Player {text(payload.sender).slice(0, 8)} made espionage contact from{' '}
-          {coordinate(payload.origin)} at {coordinate(payload.target)}.
+          <PlayerName player={text(payload.sender)} /> made espionage contact
+          from {coordinate(payload.origin)} at {coordinate(payload.target)}.
         </Text>
         <Risk value={payload} />
         <Text>The observer’s acquired intelligence is private.</Text>

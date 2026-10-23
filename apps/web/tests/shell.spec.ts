@@ -1,5 +1,82 @@
 import { test, expect } from '@playwright/test'
-import { shellFixture, id, body, resources, binding } from './fixtures/game'
+import {
+  shellFixture,
+  playerProfilesFixture,
+  id,
+  body,
+  resources,
+  binding,
+} from './fixtures/game'
+
+test('supporter claims color the shared account identity after sign-in and clear on refresh', async ({
+  page,
+}) => {
+  await shellFixture(page)
+  await page.clock.install()
+  let tier: number | undefined = 1
+  let username = 'StellarNomad'
+  let unavailable = false
+  await page.route('**/api/auth/config', (route) =>
+    route.fulfill({ json: { mode: 'oidc', universes: [] } }),
+  )
+  await playerProfilesFixture(page, () =>
+    unavailable
+      ? null
+      : [{ player: binding.player, username, supporter_tier: tier }],
+  )
+  const colors = [
+    'rgb(133, 214, 239)',
+    'rgb(240, 172, 212)',
+    'rgb(242, 187, 131)',
+  ]
+  const amounts = [10, 25, 100]
+  for (const next of [1, 2, 3]) {
+    tier = next
+    await page.reload()
+    await page.getByRole('button', { name: 'Menu', exact: true }).click()
+    const identity = page.getByLabel('Username', { exact: true })
+    await expect(
+      identity.getByRole('img', {
+        name: `Supporter · $${amounts[next - 1]} / month USD`,
+      }),
+    ).toBeVisible()
+    await expect(identity.getByText(username).locator('..')).toHaveCSS(
+      'color',
+      colors[next - 1],
+    )
+    await expect(identity.locator('svg')).toHaveClass(/lucide-star/)
+  }
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: 'Settings', exact: true })
+    .click()
+  await expect(
+    page.getByText('Supporter · Thank you for supporting unbought games.'),
+  ).toBeVisible()
+  tier = undefined
+  await page.clock.fastForward(60_000)
+  await expect(
+    page.getByText('Supporter · Thank you for supporting unbought games.'),
+  ).toHaveCount(0)
+  await expect(
+    page.locator('main').getByText(username, { exact: true }),
+  ).toBeVisible()
+  // A later sign-in can identify a different account with no inherited tier.
+  username = 'OtherCommander'
+  await page.reload()
+  await expect(
+    page.locator('main').getByText(username, { exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('img', { name: /Supporter/ })).toHaveCount(0)
+  tier = 2
+  await page.reload()
+  await expect(
+    page.locator('main').getByRole('img', { name: /Supporter/ }),
+  ).toBeVisible()
+  unavailable = true
+  await page.clock.fastForward(301_000)
+  await expect(page.getByRole('img', { name: /Supporter/ })).toHaveCount(0)
+})
 
 test('mobile resource stock uses icons and compact balances with capacity details on tap', async ({
   page,
@@ -744,9 +821,9 @@ for (const width of [390, 1440]) {
         },
       }),
     )
-    await page.route('**/api/auth/identity', (route) =>
-      route.fulfill({ json: { username: 'eth', email_verified: false } }),
-    )
+    await playerProfilesFixture(page, () => [
+      { player: binding.player, username: 'eth' },
+    ])
     await page.reload()
     const username = page.getByLabel('Username', { exact: true })
     await expect(username).toHaveText('eth')

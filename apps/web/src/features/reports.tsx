@@ -17,6 +17,7 @@ import { label } from '../ui/format'
 import { useStore } from 'zustand'
 import { currentServerTime } from '../client-model/game-projection'
 import { exactTime, observationAge } from './mission-presentation'
+import { useProfileSource } from '../shell/player-profiles-context'
 type S = components['schemas']
 export function Reports({
   model,
@@ -40,6 +41,12 @@ export function Reports({
     [olderPages, setOlderPages] = useState(false),
     [loading, setLoading] = useState(false),
     [loadingMore, setLoadingMore] = useState(false)
+  useProfileSource(
+    detail && detail.header.id === item
+      ? { type: 'Report', report: detail.header.id }
+      : null,
+    model.view?.viewer_revision,
+  )
   useEffect(() => {
     if (!item) setDetail(null)
     if (!item && page && olderPages) return
@@ -118,7 +125,8 @@ export function Reports({
       </header>
       <Text>
         Historical observations stay as recorded. Unknown information is never
-        zero. Reports are retained for this universe.
+        zero. Player names and supporter badges reflect current profiles.
+        Reports are retained for this universe.
       </Text>
       {error && (
         <>

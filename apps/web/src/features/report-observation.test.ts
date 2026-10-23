@@ -2,12 +2,21 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { ReportObservation } from './report-observation'
+import { PlayerProfilesContext } from '../shell/player-profiles-context'
+import { PlayerProfilesController } from '../client-model/player-profiles'
+
+const profiles = new PlayerProfilesController(async () => {
+  throw Error('No network in static rendering')
+})
 
 const render = (payload: Record<string, unknown>) =>
-  renderToStaticMarkup(createElement(ReportObservation, { payload })).replace(
-    /<[^>]+>/g,
-    '',
-  )
+  renderToStaticMarkup(
+    createElement(
+      PlayerProfilesContext.Provider,
+      { value: profiles },
+      createElement(ReportObservation, { payload }),
+    ),
+  ).replace(/<[^>]+>/g, '')
 
 it('floors combat points and resource observations while preserving unknown data', () => {
   const text = render({

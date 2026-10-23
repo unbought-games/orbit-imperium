@@ -3690,6 +3690,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/universes/{universe}/player-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Current public identities from an authorized game view */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PlayerProfilesQuery"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PlayerProfiles"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5494,6 +5626,42 @@ export interface components {
             baseRevision: string;
             /** Format: uuid */
             dependsOn?: string;
+        };
+        ProfileSource: {
+            /** @constant */
+            type: "SelfAccount";
+        } | {
+            /** @constant */
+            type: "Incoming";
+        } | {
+            /** @constant */
+            type: "Galaxy";
+            galaxy: number;
+            system: number;
+        } | {
+            /** @constant */
+            type: "Report";
+            /** Format: uuid */
+            report: string;
+        };
+        PlayerProfilesQuery: {
+            context: components["schemas"]["QueryContext"];
+            source: components["schemas"]["ProfileSource"];
+        };
+        PlayerDisplay: {
+            /** Format: uuid */
+            player: string;
+            username: string;
+            /** @enum {integer} */
+            supporter_tier?: 1 | 2 | 3;
+            observed_at: number;
+            expires_at: number;
+        };
+        PlayerProfiles: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            players: components["schemas"]["PlayerDisplay"][];
         };
     };
     responses: never;

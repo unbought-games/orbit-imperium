@@ -5,16 +5,19 @@ import type { DispatchDraft } from './missions'
 import { Button } from '../ui/button'
 import styles from './galaxy.module.css'
 import { BodyIllustration } from './body-illustration'
+import type { ReactNode } from 'react'
 
 export function GalaxyPosition({
   position,
   player,
   canAttack,
   onDraft,
+  playerIdentity,
 }: {
   position: components['schemas']['GalaxyPosition4']
   player: string | undefined
   canAttack: boolean
+  playerIdentity?: ReactNode
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
@@ -43,7 +46,8 @@ export function GalaxyPosition({
           {body && (
             <>
               <span className={owned ? styles.yourPlayer : styles.player}>
-                {owned ? 'You' : `Player ${body.owner.slice(0, 8)}`}
+                {playerIdentity ??
+                  (owned ? 'You' : `Player ${body.owner.slice(0, 8)}`)}
               </span>
               <small>
                 {body.inactivity === 'Active'

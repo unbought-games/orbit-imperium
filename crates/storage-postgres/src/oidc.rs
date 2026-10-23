@@ -200,6 +200,7 @@ mod tests {
                 subject: "subject".into(),
                 username: "player".into(),
                 email_verified: true,
+                supporter_tier: None,
                 session_id: "sid".into(),
                 issued_at: 900,
                 expires_at: 1100,

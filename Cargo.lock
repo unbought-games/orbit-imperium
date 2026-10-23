@@ -1522,6 +1522,7 @@ dependencies = [
 name = "orbit-storage-postgres"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "hex",
  "http-body-util",
  "orbit-application",
@@ -2853,9 +2854,9 @@ checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
 
 [[package]]
 name = "unbought-auth"
-version = "0.1.1"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b66d7092eea707a59fdcac434080daeb4f893c38c2dcbcd27aa8f61dbdf07f52"
+checksum = "8d603bc356ca8f53af30ee3288ef6d6c1cbbe36cfa60a53adcdcc75c4247b016"
 dependencies = [
  "base64 0.22.1",
  "hex",

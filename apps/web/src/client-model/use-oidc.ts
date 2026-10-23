@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { oidcHttp, type OidcConfig, type OidcIdentity } from '../adapters/oidc'
+import { oidcHttp, type OidcConfig } from '../adapters/oidc'
 export type { OidcConfig } from '../adapters/oidc'
 export function useOidcConfig() {
   const [state, setState] = useState<
@@ -57,18 +57,4 @@ export function useUniverseEnrollment() {
     }
   }
   return { state, retry, message, busy, enroll }
-}
-
-export function useAccountIdentity() {
-  const { state } = useOidcConfig()
-  const config = state.status === 'ready' ? state.config : null
-  const [identity, setIdentity] = useState<OidcIdentity | null>(null)
-  useEffect(() => {
-    if (config?.mode === 'oidc')
-      void oidcHttp
-        .identity()
-        .then(setIdentity)
-        .catch(() => {})
-  }, [config?.mode])
-  return { config, identity }
 }

@@ -148,6 +148,9 @@ pub(super) async fn callback<S: IdentityStore>(
     // Orbit's cookie parser intentionally retains its existing 64-hex-character format.
     let secret = unbought_auth::digest(&unbought_auth::random_secret());
     let csrf = unbought_auth::random_secret();
+    if let Some(profiles) = &s.profiles {
+        profiles.signed_in(&tokens.identity);
+    }
     s.updates
         .complete_oidc_login(
             tokens,
@@ -180,7 +183,86 @@ pub(super) async fn identity<S: IdentityStore>(
         )
         .await
         .map_err(session_error)?;
-    Ok(([(header::CACHE_CONTROL, "no-store")], Json(identity)).into_response())
+    let display = display_identity(&identity, &rp.configuration().issuer, unbought_auth::now());
+    Ok(([(header::CACHE_CONTROL, "no-store")], Json(display)).into_response())
+}
+
+#[derive(serde::Serialize)]
+struct DisplayIdentity<'a> {
+    username: &'a str,
+    email_verified: bool,
+    expires_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    supporter_tier: Option<u8>,
+}
+
+fn display_identity<'a>(
+    identity: &'a unbought_auth::Identity,
+    issuer: &str,
+    now: i64,
+) -> DisplayIdentity<'a> {
+    // Other OIDC providers may authenticate players, but cannot assert an
+    // Unbought membership. Never copy this display snapshot into game state.
+    let trusted = issuer == "https://accounts.unbought.games/api/auth"
+        && identity.issuer == issuer
+        && identity.expires_at > now;
+    DisplayIdentity {
+        username: &identity.username,
+        email_verified: identity.email_verified,
+        expires_at: identity.expires_at,
+        supporter_tier: identity
+            .supporter_tier
+            .filter(|tier| trusted && (1..=3).contains(tier)),
+    }
+}
+
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+
+    #[test]
+    fn supporter_display_requires_a_current_trusted_recognized_claim() {
+        let issuer = "https://accounts.unbought.games/api/auth";
+        let mut identity = unbought_auth::Identity {
+            issuer: issuer.into(),
+            subject: "subject".into(),
+            username: "player".into(),
+            email_verified: false,
+            supporter_tier: None,
+            session_id: "sid".into(),
+            issued_at: 100,
+            expires_at: 400,
+        };
+        for tier in [None, Some(0), Some(1), Some(2), Some(3), Some(4)] {
+            identity.supporter_tier = tier;
+            let display = serde_json::to_value(display_identity(&identity, issuer, 200)).unwrap();
+            assert_eq!(
+                display["supporter_tier"].as_u64(),
+                tier.filter(|t| (1..=3).contains(t)).map(u64::from)
+            );
+            assert_eq!(display["username"], "player");
+            assert!(display.get("subject").is_none());
+            assert!(display.get("session_id").is_none());
+        }
+        identity.supporter_tier = Some(3);
+        assert_eq!(
+            display_identity(&identity, issuer, 400).supporter_tier,
+            None
+        );
+        assert_eq!(
+            display_identity(&identity, "https://other.test", 200).supporter_tier,
+            None
+        );
+        identity.issuer = "https://other.test".into();
+        assert_eq!(
+            display_identity(&identity, &identity.issuer, 200).supporter_tier,
+            None
+        );
+        assert_eq!(
+            display_identity(&identity, issuer, 200).supporter_tier,
+            None
+        );
+    }
 }
 #[derive(Deserialize)]
 pub(super) struct Enrollment {

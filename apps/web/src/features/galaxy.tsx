@@ -12,6 +12,8 @@ import { GalaxyPosition } from './galaxy-position'
 import { GalaxyAtlas } from './galaxy-atlas'
 import { Heading, Text } from '../ui/typography'
 import { exactTime } from './mission-presentation'
+import { useProfileSource } from '../shell/player-profiles-context'
+import { PlayerName } from './player-name'
 type System = components['schemas']['GalaxySystem4']
 export function Galaxy({
   model,
@@ -72,6 +74,10 @@ export function Galaxy({
       : null
   const canAttack = model.view?.capabilities.some(
     (c) => c.capability === 'Attack' && c.enabled,
+  )
+  useProfileSource(
+    data ? { type: 'Galaxy', galaxy: data.galaxy, system: data.system } : null,
+    model.view?.viewer_revision,
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
@@ -167,6 +173,18 @@ export function Galaxy({
               >
                 <GalaxyPosition
                   position={position}
+                  playerIdentity={
+                    position.body ? (
+                      <PlayerName
+                        player={position.body.owner}
+                        fallback={
+                          position.body.owner === model.binding?.player
+                            ? 'You'
+                            : undefined
+                        }
+                      />
+                    ) : undefined
+                  }
                   player={model.binding?.player}
                   canAttack={!!canAttack}
                   onDraft={onDraft}

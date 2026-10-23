@@ -3,6 +3,8 @@ mod bootstrap_html;
 mod oidc;
 mod oidc_enrollment;
 mod password_work;
+mod player_profiles;
+pub use player_profiles::AccountProfiles;
 mod rate_limit;
 mod signup_config;
 mod static_assets;
@@ -41,6 +43,7 @@ pub struct HttpConfig {
     pub observer: Option<Arc<dyn RuntimeObserver>>,
 }
 struct HttpState<S> {
+    profiles: Option<AccountProfiles>,
     oidc: Option<unbought_auth::RelyingParty>,
     game: GameService<S>,
     sessions: SessionService<S>,
@@ -87,11 +90,36 @@ fn build_router<S>(
 where
     S: GameStore + IdentityStore + UpdateStore + Clone + Send + Sync + 'static,
 {
+    build_router_with_profiles(store, config, drain, oidc, None)
+}
+pub fn router_with_profiles<S>(
+    store: S,
+    config: HttpConfig,
+    drain: tokio::sync::watch::Receiver<bool>,
+    oidc: Option<unbought_auth::RelyingParty>,
+    profiles: Option<AccountProfiles>,
+) -> Router
+where
+    S: GameStore + IdentityStore + UpdateStore + Clone + Send + Sync + 'static,
+{
+    build_router_with_profiles(store, config, Some(drain), oidc, profiles)
+}
+fn build_router_with_profiles<S>(
+    store: S,
+    config: HttpConfig,
+    drain: Option<tokio::sync::watch::Receiver<bool>>,
+    oidc: Option<unbought_auth::RelyingParty>,
+    profiles: Option<AccountProfiles>,
+) -> Router
+where
+    S: GameStore + IdentityStore + UpdateStore + Clone + Send + Sync + 'static,
+{
     let observer = config
         .observer
         .clone()
         .unwrap_or_else(|| Arc::new(NoopRuntimeObserver));
     let state = Arc::new(HttpState {
+        profiles,
         oidc,
         game: GameService::new(store.clone()),
         sessions: SessionService::new(store.clone()),
@@ -103,6 +131,10 @@ where
         password_work: Arc::new(Semaphore::new(2)),
     });
     Router::new()
+        .route(
+            "/api/v1/universes/{id}/player-profiles",
+            post(player_profiles::query::<S>),
+        )
         .route("/api/auth/config", get(oidc::configuration::<S>))
         .route("/api/auth/login", get(oidc::login::<S>))
         .route("/api/auth/callback", get(oidc::callback::<S>))
