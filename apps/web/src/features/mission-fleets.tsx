@@ -64,7 +64,7 @@ function Recall({
             Arrival may resolve before a recall reaches the server.
           </Text>
           <div className={styles.actions}>
-            <Button variant="quiet" onClick={() => setReviewing(false)}>
+            <Button variant="secondary" onClick={() => setReviewing(false)}>
               Keep mission
             </Button>
             <Button
@@ -80,7 +80,7 @@ function Recall({
         </section>
       ) : (
         <Button
-          variant="quiet"
+          variant="secondary"
           disabled={pending}
           onClick={() => setReviewing(true)}
         >

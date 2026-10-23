@@ -71,7 +71,7 @@ export function SupporterPreview() {
             <fieldset>
               <legend>01 / Name colors</legend>
               <Button
-                variant="quiet"
+                variant="secondary"
                 className={styles.choice}
                 aria-pressed={palette === 'aurora'}
                 onClick={() => setPalette('aurora')}
@@ -87,7 +87,7 @@ export function SupporterPreview() {
                 </span>
               </Button>
               <Button
-                variant="quiet"
+                variant="secondary"
                 className={styles.choice}
                 aria-pressed={palette === 'starlight'}
                 onClick={() => setPalette('starlight')}
@@ -106,7 +106,7 @@ export function SupporterPreview() {
             <fieldset>
               <legend>02 / Badge style</legend>
               <Button
-                variant="quiet"
+                variant="secondary"
                 className={styles.choice}
                 aria-pressed={badge === 'orbital'}
                 onClick={() => setBadge('orbital')}
@@ -118,7 +118,7 @@ export function SupporterPreview() {
                 {badge === 'orbital' && <Check size={16} aria-hidden="true" />}
               </Button>
               <Button
-                variant="quiet"
+                variant="secondary"
                 className={styles.choice}
                 aria-pressed={badge === 'star'}
                 onClick={() => setBadge('star')}
@@ -147,7 +147,7 @@ export function SupporterPreview() {
               {supporterTiers.map((value) => (
                 <Button
                   key={value}
-                  variant="quiet"
+                  variant="secondary"
                   className={styles.tier}
                   aria-pressed={tier === value}
                   aria-label={`Preview ${tierLabels[value]}`}

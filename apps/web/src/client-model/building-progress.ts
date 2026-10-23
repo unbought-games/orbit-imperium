@@ -43,6 +43,8 @@ export function buildingProgress(state: GameState, body: string) {
         ? ('down' as const)
         : ('up' as const),
     countdown,
+    secondsRemaining: seconds,
+    dueAt: work.due_at,
     status: cancelling
       ? 'Cancelling'
       : confirmed

@@ -14,8 +14,10 @@ export function ResourceCosts({
   cost,
   available,
   compact = false,
+  showShortfalls = true,
 }: {
   compact?: boolean
+  showShortfalls?: boolean
   cost: components['schemas']['Resources']
   available: components['schemas']['Resources']
 }) {
@@ -34,19 +36,16 @@ export function ResourceCosts({
               available[name],
             )
             return (
-              <div key={name}>
+              <div key={name} data-resource={name}>
                 <Popover
                   label={title}
                   className={styles.compactMaterial}
                   trigger={
                     <>
-                      <ResourceMark resource={name} width={24} height={24} />
-                      <span>
-                        <span>{title}</span>
-                        <strong>
-                          <ResourceNumber value={cost[name]} />
-                        </strong>
-                      </span>
+                      <ResourceMark resource={name} width={22} height={22} />
+                      <strong>
+                        <ResourceNumber value={cost[name]} />
+                      </strong>
                     </>
                   }
                 >
@@ -68,7 +67,7 @@ export function ResourceCosts({
                     )}
                   </p>
                 </Popover>
-                {shortfall && (
+                {showShortfalls && shortfall && (
                   <small className={styles.shortfall}>
                     Need <ResourceShortfall value={shortfall} /> more
                   </small>

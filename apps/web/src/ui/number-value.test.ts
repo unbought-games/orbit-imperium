@@ -28,7 +28,7 @@ it('renders floored numbers, scaled resources, and durations through shared comp
     renderToStaticMarkup(
       createElement(DurationValue, { milliseconds: 3661999 }),
     ),
-  ).toBe('1h 1m 1s')
+  ).toBe('1h 1m')
   expect(
     renderToStaticMarkup(createElement(DurationValue, { milliseconds: 999 })),
   ).toBe('0s')

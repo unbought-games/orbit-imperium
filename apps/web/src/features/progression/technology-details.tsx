@@ -1,24 +1,38 @@
-import { DurationValue, ResourceSummary } from '../../ui/number-value'
+import {
+  DurationValue,
+  ResourceSummary,
+  ResourceNumber,
+  NumberValue,
+} from '../../ui/number-value'
 import { progressionCommand } from './options'
 import { useEffect, useRef } from 'react'
-import { ArrowLeft, Info, Network } from 'lucide-react'
+import { Network } from 'lucide-react'
 import { Button } from '../../ui/button'
 import { Field, Input } from '../../ui/form'
-import { CatalogImage } from '../../ui/image-catalog'
 import { ResourceCosts } from '../../ui/resource-costs'
+import { CatalogItemLink } from '../../ui/catalog-item-link'
+import { Requirements } from '../../ui/requirements'
 import { label } from '../../ui/format'
 import { ProgressionBlockers } from './quote-review'
 import { pending, type ProgressionProps } from './shared'
 import { catalogContent } from './catalog-content'
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { components } from '../../contracts'
-import styles from './building-details.module.css'
-import local from './technology-page.module.css'
 import { ResearchWorkDetails } from './research-work-details'
 import { researchProgress } from '../../client-model/research-progress'
+import { currentServerTime } from '../../client-model/game-projection'
 import { useManufacturingOrder } from './use-manufacturing-order'
-import { ObjectOrbit } from './progression-world'
 import { unitCounts } from './unit-counts'
+import {
+  DetailLayout,
+  DetailSection,
+  DetailStat,
+  DetailRow,
+} from './detail-layout'
+import { DecisionCosts, EnergyAdvice } from './detail-metrics'
+import { affordabilityTime, nextLevelDependents } from './detail-insights'
+import styles from './detail-layout.module.css'
+
 export function TechnologyDetails({
   entry,
   count,
@@ -41,9 +55,10 @@ export function TechnologyDetails({
   onInspect: () => void
   onTechnology: () => void
 }) {
-  const { coordinator: model, body, page } = props
+  const { coordinator: model, body, page, view } = props
   const unavailable = !entry.enabled || !entry.body_kinds.includes(body.kind)
-  const research = researchProgress(model.store.getState())
+  const state = model.store.getState()
+  const research = researchProgress(state)
   const activeResearch =
     entry.key.kind === 'Research' && research?.research === entry.key.id
       ? research
@@ -52,11 +67,10 @@ export function TechnologyDetails({
   useEffect(() => {
     if (error.startsWith('Enter a positive')) quantityInput.current?.focus()
   }, [error])
-  const content = catalogContent(entry.key)
   const manufacture = entry.key.kind === 'Ship' || entry.key.kind === 'Defense'
   const order = useManufacturingOrder(
     model,
-    props.view,
+    view,
     manufacture ? proposal : null,
     quantity,
     onInspect,
@@ -67,214 +81,273 @@ export function TechnologyDetails({
     terms?.type === 'Research' || terms?.type === 'Manufacture' ? terms : null
   const command = progressionCommand(proposal)
   const title = label(entry.key.id)
-  const confirmed = model.store.getState().view
   const inventoryView =
-    confirmed && confirmed.protocol !== 2 ? confirmed : props.view
+    state.view && state.view.protocol !== 2 ? state.view : view
   const inventory = unitCounts(
     inventoryView,
     inventoryView.bodies.find((x) => x.id === body.id) ?? body,
     entry,
   )
   const orderTitle = page === 'shipyard' ? 'Shipyard' : 'Defenses'
+  const now = currentServerTime(state)
+  const canBuild =
+    !unavailable &&
+    (manufacture
+      ? order.canBuild
+      : !loading &&
+        !!command &&
+        !proposal?.blockers.length &&
+        !pending(model, command))
+  const wait = material ? affordabilityTime(view, body, material.paid) : null
+  const dependents =
+    material?.type === 'Research'
+      ? nextLevelDependents(
+          view,
+          entry.key,
+          Number(count),
+          material.target_level,
+        )
+      : []
   return (
-    <>
-      <div className={styles.header}>
-        <a {...props.selection.back}>
-          <ArrowLeft size={18} /> Back
-        </a>
-        <h2>{title}</h2>
-        {!manufacture && <span>Level: {count}</span>}
-      </div>
-      {unavailable && (
-        <p>
-          {!entry.enabled
-            ? 'Unavailable in this universe.'
-            : `Unavailable on this ${body.kind.toLowerCase()}.`}
-        </p>
-      )}
-      <div className={styles.body}>
-        <div
-          className={`${local.portrait} ${entry.key.kind === 'Ship' ? local.shipPortrait : ''}`}
-        >
-          <ObjectOrbit>
-            <CatalogImage art={content.art} />
-          </ObjectOrbit>
-          {manufacture && (
-            <dl className={local.inventory} aria-label="Unit inventory">
-              <div>
-                <dt>Stationed</dt>
-                <dd>{inventory.stationed}</dd>
-              </div>
+    <DetailLayout
+      content={catalogContent(entry.key)}
+      back={props.selection.back}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onTechnology}>
+            <Network size={16} />
+            Technology tree
+          </Button>
+          <details>
+            <summary>Requirements & order terms</summary>
+            <Requirements
+              requirements={entry.requirements}
+              view={view}
+              body={body}
+            />
+            <p>
+              {manufacture
+                ? 'Prepaid · shared ship/defense queue. No cancellation, pause, or reordering.'
+                : 'One research project at a time. Full refund if cancelled before completion.'}
+            </p>
+            {material?.type === 'Manufacture' && material.quantity !== '1' && (
+              <p>
+                Cost per unit: <ResourceSummary value={material.unit_cost} />
+              </p>
+            )}
+            {material && (
+              <ResourceCosts cost={material.paid} available={body.amounts} />
+            )}
+          </details>
+        </>
+      }
+    >
+      <DetailSection
+        label={manufacture ? 'Unit inventory' : 'Current research level'}
+      >
+        <div className={styles.stats}>
+          {manufacture ? (
+            <>
+              <DetailStat label="Stationed">
+                <NumberValue value={inventory.stationed} />
+              </DetailStat>
               {inventory.flying !== null && (
-                <div>
-                  <dt>In flight from here</dt>
-                  <dd>{inventory.flying}</dd>
-                </div>
+                <DetailStat label="In flight from here">
+                  <NumberValue value={inventory.flying} />
+                </DetailStat>
               )}
-              <div>
-                <dt>On order</dt>
-                <dd>{inventory.ordered}</dd>
-              </div>
-            </dl>
+              <DetailStat label="On order">
+                <NumberValue value={inventory.ordered} />
+              </DetailStat>
+            </>
+          ) : (
+            <DetailStat label="Current level">Level {count}</DetailStat>
           )}
         </div>
-        <div className={styles.details}>
-          {activeResearch ? (
-            <ResearchWorkDetails research={activeResearch} model={model} />
-          ) : (
+      </DetailSection>
+      {activeResearch ? (
+        <ResearchWorkDetails research={activeResearch} model={model} />
+      ) : (
+        <DetailSection
+          title={
+            manufacture
+              ? 'New order'
+              : `Next · level ${material?.type === 'Research' ? material.target_level : Number(count) + 1}`
+          }
+        >
+          {unavailable && (
+            <p>
+              {!entry.enabled
+                ? 'Unavailable in this universe.'
+                : `Unavailable on this ${body.kind.toLowerCase()}.`}
+            </p>
+          )}
+          {loading && <p role="status">Loading technology details…</p>}
+          {error && (
+            <div role="alert">
+              {error}{' '}
+              <Button variant="secondary" onClick={onInspect}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {!loading && !error && material && (
             <>
-              {manufacture && (
-                <div className={local.order}>
-                  <Field>
-                    {orderTitle} quantity
-                    <Input
-                      ref={quantityInput}
-                      aria-label={`${orderTitle} quantity`}
-                      inputMode="numeric"
-                      value={quantity}
-                      onChange={(e) => onQuantity(e.target.value)}
-                      required
-                    />
-                  </Field>
-                </div>
-              )}
-              {loading && <p role="status">Loading technology details…</p>}
-              {error && (
-                <div role="alert">
-                  {error}{' '}
-                  <Button variant="quiet" onClick={onInspect}>
-                    Retry
-                  </Button>
-                </div>
-              )}
-              {!loading && !error && material && (
-                <div className={`${styles.facts} ${local.facts}`}>
-                  <dl>
-                    <div>
-                      <dt>
-                        {manufacture
-                          ? 'Production duration per unit:'
-                          : 'Research time:'}
-                      </dt>
-                      <dd>
-                        <DurationValue
-                          milliseconds={
-                            material.type === 'Manufacture'
-                              ? material.unit_duration_ms
-                              : material.duration_ms
-                          }
+              <dl className={styles.compare}>
+                <DetailRow
+                  label={
+                    manufacture
+                      ? 'Production duration per unit'
+                      : 'Research time'
+                  }
+                >
+                  <DurationValue
+                    milliseconds={
+                      material.type === 'Manufacture'
+                        ? material.unit_duration_ms
+                        : material.duration_ms
+                    }
+                  />
+                </DetailRow>
+                {material.type === 'Research' && (
+                  <DetailRow label="Effective laboratory level">
+                    {material.effective_lab}
+                  </DetailRow>
+                )}
+                {material.type === 'Research' &&
+                  BigInt(material.required_energy) > 0n && (
+                    <>
+                      <DetailRow label="Required energy">
+                        <ResourceNumber value={material.required_energy} />
+                      </DetailRow>
+                      <DetailRow label="Available energy">
+                        <ResourceNumber value={body.energy.supply} />
+                      </DetailRow>
+                    </>
+                  )}
+
+                {material.type === 'Manufacture' && (
+                  <DetailRow label="Order">
+                    {material.quantity} × {title}
+                  </DetailRow>
+                )}
+                {display?.estimates && (
+                  <>
+                    <DetailRow label="Estimated start">
+                      {display.estimates.first_start_at <= now ? (
+                        'Now'
+                      ) : (
+                        <>
+                          In{' '}
+                          <DurationValue
+                            milliseconds={
+                              display.estimates.first_start_at - now
+                            }
+                          />
+                        </>
+                      )}
+                    </DetailRow>
+                    <DetailRow label="Order complete">
+                      In{' '}
+                      <DurationValue
+                        milliseconds={Math.max(
+                          0,
+                          display.estimates.final_due_at - now,
+                        )}
+                      />
+                    </DetailRow>
+                  </>
+                )}
+                {dependents.length > 0 && (
+                  <DetailRow label="Required for">
+                    {dependents.map((item, index) => (
+                      <span key={`${item.kind}:${item.id}`}>
+                        {index > 0 && ', '}
+                        <CatalogItemLink
+                          item={item}
+                          body={body.id}
+                          className={styles.inlineLink}
                         />
-                      </dd>
-                    </div>
-                    {material.type === 'Research' && (
-                      <div>
-                        <dt>Effective laboratory level:</dt>
-                        <dd>{material.effective_lab}</dd>
-                      </div>
-                    )}
-                    {material.type === 'Manufacture' && (
-                      <div>
-                        <dt>Order:</dt>
-                        <dd>
-                          {material.quantity} × {title}
-                        </dd>
-                      </div>
-                    )}
-                  </dl>
-                </div>
-              )}
-              {display && <ProgressionBlockers proposal={display} />}
-              {!loading && !error && !material && (
-                <p>
-                  {manufacture
-                    ? 'Enter a quantity to see the total cost.'
-                    : 'Research is unavailable.'}
+                      </span>
+                    ))}
+                  </DetailRow>
+                )}
+                <DecisionCosts
+                  title={manufacture ? 'Order cost' : 'Research cost'}
+                  cost={material.paid}
+                  available={body.amounts}
+                  wait={wait}
+                />
+              </dl>
+              {display?.blockers.some(
+                (blocker) => blocker.code === 'EnergyRequired',
+              ) && (
+                <p className={styles.note}>
+                  <EnergyAdvice view={view} body={body} construction />
                 </p>
               )}
-              {material?.type === 'Manufacture' &&
-                material.quantity !== '1' && (
-                  <p className={local.note}>
-                    Cost per unit:{' '}
-                    <ResourceSummary value={material.unit_cost} />
-                  </p>
-                )}
-              {order.error && <p role="alert">{order.error}</p>}
-              <p className={local.note}>
-                {manufacture
-                  ? 'Prepaid · shared ship/defense queue. No cancellation, pause, or reordering.'
-                  : 'One research project at a time. Full refund if cancelled before completion.'}
-              </p>
-              <div className={styles.purchase}>
-                {material && (
-                  <div>
-                    {material.type === 'Research' && (
-                      <p>
-                        Required to improve to level {material.target_level}:
-                      </p>
-                    )}
-                    <ResourceCosts
-                      cost={material.paid}
-                      available={body.amounts}
-                    />
-                  </div>
-                )}
-                <div className={local.terms}>
-                  {display?.estimates && (
-                    <p>
-                      Estimated start:{' '}
-                      {new Date(
-                        display.estimates.first_start_at,
-                      ).toLocaleString()}{' '}
-                      · Completion:{' '}
-                      {new Date(
-                        display.estimates.final_due_at,
-                      ).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  data-analytics="confirm_technology_action"
-                  className={styles.improve}
-                  aria-label={manufacture ? 'Build' : 'Confirm research'}
-                  disabled={
-                    unavailable ||
-                    (manufacture
-                      ? !order.canBuild
-                      : loading ||
-                        !command ||
-                        !!proposal?.blockers.length ||
-                        (!!command && pending(model, command)))
-                  }
-                  onClick={() => {
-                    if (unavailable) return
-                    if (manufacture) {
-                      void order.build()
-                      return
-                    }
-                    if (command) {
-                      void model.send(command, proposal ?? undefined)
-                    }
-                  }}
-                >
-                  {manufacture
-                    ? order.busy
-                      ? 'Confirming order…'
-                      : `Order ${quantity} ${title}`
-                    : 'Research'}
-                </Button>
-              </div>
             </>
           )}
-        </div>
-      </div>
-      <div className={styles.description}>
-        <Info size={17} aria-hidden="true" />
-        <p>{content.description}</p>
-      </div>
-      <Button variant="quiet" onClick={onTechnology}>
-        <Network size={16} />
-        Technology tree
-      </Button>
-    </>
+          {display && (
+            <ProgressionBlockers
+              proposal={display}
+              view={view}
+              body={body}
+              now={now}
+              resourceWait={wait}
+              resourcesInCosts={!loading && !error && !!material}
+            />
+          )}
+          {!loading && !error && !material && (
+            <p>
+              {manufacture
+                ? 'Enter a quantity to see the total cost.'
+                : 'Research is unavailable.'}
+            </p>
+          )}
+          {order.error && <p role="alert">{order.error}</p>}
+          <div className={manufacture ? styles.orderAction : undefined}>
+            {manufacture && (
+              <Field className={styles.quantity}>
+                <span className={styles.quantityLabel}>Qty</span>
+                <Input
+                  ref={quantityInput}
+                  aria-label={`${orderTitle} quantity`}
+                  inputMode="numeric"
+                  value={quantity}
+                  onChange={(e) => onQuantity(e.target.value)}
+                  required
+                />
+              </Field>
+            )}
+            <Button
+              data-analytics="confirm_technology_action"
+              className={styles.action}
+              aria-label={manufacture ? 'Build' : 'Confirm research'}
+              disabled={!canBuild}
+              onClick={() => {
+                if (!canBuild) return
+                if (manufacture) void order.build()
+                else if (command)
+                  void model.send(command, proposal ?? undefined)
+              }}
+            >
+              {manufacture ? (
+                order.busy ? (
+                  'Confirming order…'
+                ) : (
+                  <>
+                    Order {quantity}
+                    <span className={styles.orderItem}> {title}</span>
+                  </>
+                )
+              ) : (
+                'Research'
+              )}
+            </Button>
+          </div>
+        </DetailSection>
+      )}
+    </DetailLayout>
   )
 }

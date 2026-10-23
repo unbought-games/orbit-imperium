@@ -1,3 +1,4 @@
+import { formatDuration } from '../client-model/duration'
 import type { components } from '../contracts'
 import { formatWholeNumber, type NumericValue } from './whole-number'
 
@@ -36,20 +37,5 @@ export function ResourceShortfall({ value }: { value: string }) {
 }
 
 export function DurationValue({ milliseconds }: { milliseconds: number }) {
-  const seconds = Math.floor(milliseconds / 1000)
-  return (
-    <>
-      {seconds >= 3600 && (
-        <>
-          <NumberValue value={seconds / 3600} />h{' '}
-        </>
-      )}
-      {seconds >= 60 && (
-        <>
-          <NumberValue value={(seconds / 60) % 60} />m{' '}
-        </>
-      )}
-      <NumberValue value={seconds % 60} />s
-    </>
-  )
+  return <>{formatDuration(milliseconds)}</>
 }

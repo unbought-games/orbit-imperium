@@ -1,10 +1,10 @@
-import { ResourceSummary } from '../../ui/number-value'
-import { useLayoutEffect, useRef } from 'react'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { buildingProgress } from '../../client-model/building-progress'
-import { Button } from '../../ui/button'
+import { ConfirmationButton } from '../../ui/confirmation-button'
 import { label } from '../../ui/format'
-import styles from './building-details.module.css'
+import { ActiveWorkDetails, RefundAmounts } from './active-work-details'
+import { DetailRow } from './detail-layout'
+import styles from './detail-layout.module.css'
 
 export function ConstructionDetails({
   work,
@@ -13,24 +13,40 @@ export function ConstructionDetails({
   work: NonNullable<ReturnType<typeof buildingProgress>>
   model: Coordinator
 }) {
-  const heading = useRef<HTMLHeadingElement>(null)
-  useLayoutEffect(() => {
-    heading.current?.focus({ preventScroll: true })
-  }, [])
+  const verb = work.direction === 'down' ? 'Tearing down' : 'Upgrading'
+  const target = `${verb} ${label(work.building)} to level ${work.targetLevel}`
   return (
-    <section className={styles.activeWork} aria-label="Active construction">
-      <h3 ref={heading} tabIndex={-1}>
-        {work.direction === 'down' ? 'Tearing down' : 'Upgrading'}{' '}
-        {label(work.building)} to level {work.targetLevel}
-      </h3>
-      <p>{work.countdown}</p>
-      {work.status !== 'In progress' && <p role="status">{work.status}</p>}
-      <p>
-        Full refund before completion: <ResourceSummary value={work.paid} />
-      </p>
-      <Button
+    <ActiveWorkDetails
+      label="Active construction"
+      title={`${verb} to level ${work.targetLevel}`}
+      accessibleTitle={target}
+      secondsRemaining={work.secondsRemaining}
+      dueAt={work.dueAt}
+      status={work.status}
+      paid={work.paid}
+    >
+      <ConfirmationButton
+        key={work.operationId ?? 'pending'}
+        variant="secondary"
+        className={styles.cancelWork}
+        dialogTitle="Cancel construction?"
+        confirmLabel="Confirm cancellation"
+        cancelLabel="Keep construction"
+        review={
+          <>
+            <p>
+              Cancel {verb.toLowerCase()} {label(work.building)} to level{' '}
+              {work.targetLevel}? Progress on this level will be lost.
+            </p>
+            <dl className={styles.compare}>
+              <DetailRow label="Full refund">
+                <RefundAmounts paid={work.paid} />
+              </DetailRow>
+            </dl>
+          </>
+        }
         disabled={!work.canCancel}
-        onClick={() => {
+        onConfirm={() => {
           if (work.operationId && work.canCancel)
             void model.send({
               type: 'CancelConstruction',
@@ -39,10 +55,7 @@ export function ConstructionDetails({
         }}
       >
         Cancel construction
-      </Button>
-      {!work.operationId && (
-        <small>Cancellation is available after confirmation.</small>
-      )}
-    </section>
+      </ConfirmationButton>
+    </ActiveWorkDetails>
   )
 }

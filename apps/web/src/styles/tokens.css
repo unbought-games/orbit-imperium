@@ -30,6 +30,7 @@
   --link: var(--ice);
   --link-hover: var(--ice-light);
   --danger: #ffb4a4;
+  --warning: #e6b96c;
   --resource-metal: #91a7bf;
   --resource-crystal: var(--ice);
   --resource-deuterium: #83c4b0;
@@ -45,6 +46,7 @@
   --radius-control: 5px;
   --radius-panel: 6px;
   --control-size: 44px;
+  --control-cut: 8px;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;

@@ -88,7 +88,8 @@ export function BodySelector({
         </div>
         {bodies.length > 1 && (
           <Button
-            variant="quiet"
+            variant="secondary"
+            size="icon"
             className={styles.next}
             aria-label="Next body"
             onClick={() =>

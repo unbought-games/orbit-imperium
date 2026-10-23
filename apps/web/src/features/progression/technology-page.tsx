@@ -33,7 +33,6 @@ export function TechnologyPage(props: ProgressionProps) {
   const selected = view.catalog.find(
     (entry) => entry.key.id === selection.selectedId,
   )
-  const open = selected !== undefined
   const kind =
     page === 'facilities'
       ? 'Building'
@@ -80,22 +79,24 @@ export function TechnologyPage(props: ProgressionProps) {
         )?.count ?? '0')
       : technologyLevel(entry.key, props)
   }
-  return (
-    <>
+  if (selected) {
+    return (
       <CatalogStage
-        open={open}
-        detailKey={selected?.key.id ?? ''}
+        open
+        detailKey={selected.key.id}
         detailLabel="Progression quote"
       >
-        {selected && (
-          <TechnologyInspector
-            key={selected.key.id}
-            {...props}
-            selected={selected}
-            count={count(selected)}
-          />
-        )}
+        <TechnologyInspector
+          key={selected.key.id}
+          {...props}
+          selected={selected}
+          count={count(selected)}
+        />
       </CatalogStage>
+    )
+  }
+  return (
+    <>
       <WorkSummaries
         view={view}
         body={body}
@@ -183,7 +184,6 @@ export function TechnologyPage(props: ProgressionProps) {
                             ? 'unavailable in this universe'
                             : `unavailable on this ${body.kind.toLowerCase()}`
                       }
-                      selected={open && entry.key.id === selected?.key.id}
                       {...selection.link(entry.key.id)}
                     />
                   )
@@ -254,7 +254,7 @@ function TechnologyInspector({
           />
           <Button
             className={styles.treeButton}
-            variant="quiet"
+            variant="secondary"
             onClick={() => setTechnology(true)}
           >
             <Network size={16} />

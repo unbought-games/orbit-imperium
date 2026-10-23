@@ -1,3 +1,4 @@
+import { Button } from './button'
 import { useState, type ReactNode } from 'react'
 import {
   autoUpdate,
@@ -56,7 +57,8 @@ export function Popover({
   ])
   return (
     <>
-      <button
+      <Button
+        variant="ghost"
         type="button"
         ref={refs.setReference}
         className={className}
@@ -71,7 +73,7 @@ export function Popover({
         })}
       >
         {trigger}
-      </button>
+      </Button>
       {open && (
         <FloatingPortal>
           <FloatingFocusManager

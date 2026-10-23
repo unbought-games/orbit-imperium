@@ -16,7 +16,8 @@ import { buildingProgress } from '../client-model/building-progress'
 import { catalogPage } from '../shell/catalog-routes'
 import { researchProgress } from '../client-model/research-progress'
 import { elapsedProgress } from './overview-progress'
-import { Button } from '../ui/button'
+import { ConfirmationButton } from '../ui/confirmation-button'
+import { ResourceSummary } from '../ui/number-value'
 import {
   manufacturingQueue,
   formatQueueCountdown,
@@ -39,7 +40,7 @@ export function WorkSummaries({
   const universeName = useUniverseName()
   const countdown = useCountdown(
     view.sampled_at,
-    layout !== 'cards' ? 'compact' : 'exact',
+    layout !== 'cards' ? 'compact' : 'remaining',
   )
   const session = useContext(SessionContext)
   const state = session?.model.store.getState()
@@ -154,6 +155,7 @@ export function WorkSummaries({
           }) => {
             const showLink =
               page !== currentPage &&
+              !(category === 'buildings' && currentPage === 'resources') &&
               !(
                 category === 'buildings' &&
                 !construction &&
@@ -288,15 +290,29 @@ export function WorkSummaries({
                 )}
                 <div className={styles.actions}>
                   {work && session && cancelType && (
-                    <Button
-                      variant="quiet"
+                    <ConfirmationButton
+                      key={work.operationId ?? 'pending'}
+                      dialogTitle={
+                        cancelType === 'CancelConstruction'
+                          ? 'Cancel construction?'
+                          : 'Cancel research?'
+                      }
+                      confirmLabel="Confirm cancellation"
+                      cancelLabel="Keep working"
+                      review={
+                        <p>
+                          Stop {name} and refund{' '}
+                          <ResourceSummary value={work.paid} />?
+                        </p>
+                      }
+                      variant="secondary"
                       aria-label={
                         cancelType === 'CancelConstruction'
                           ? 'Cancel construction'
                           : 'Cancel research'
                       }
                       disabled={!work.canCancel}
-                      onClick={() => {
+                      onConfirm={() => {
                         if (work.canCancel && work.operationId)
                           void session.model.send({
                             type: cancelType,
@@ -305,7 +321,7 @@ export function WorkSummaries({
                       }}
                     >
                       {work.status === 'Cancelling' ? 'Cancelling…' : 'Cancel'}
-                    </Button>
+                    </ConfirmationButton>
                   )}
                   {showLink &&
                     (enabled ? (

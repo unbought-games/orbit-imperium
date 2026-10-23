@@ -1,6 +1,6 @@
 import { PublicFrame } from './public-frame'
 import { Heading, Text } from '../ui/typography'
-import { ButtonLinkAnchor } from '../ui/button'
+import { Button, ButtonLinkAnchor } from '../ui/button'
 import { useUniverseEnrollment, oidcLoginPath } from '../client-model/use-oidc'
 import styles from './login.module.css'
 export function UnboughtLogin({ redirect }: { redirect?: string }) {
@@ -36,13 +36,14 @@ export function UniverseEnrollment() {
       {state.status === 'ready' &&
         state.config.universes.map(({ universe, name }) => (
           <p key={universe}>
-            <button
+            <Button
+              variant="primary"
               data-analytics="enroll_universe"
               disabled={busy}
               onClick={() => void enroll(universe)}
             >
               Join {name}
-            </button>
+            </Button>
           </p>
         ))}
       {message && <p role="alert">{message}</p>}
@@ -53,7 +54,9 @@ export function AuthConfigError({ retry }: { retry: () => void }) {
   return (
     <PublicFrame>
       <p role="alert">Unable to load sign-in options. Please try again.</p>
-      <button onClick={retry}>Try again</button>
+      <Button variant="primary" onClick={retry}>
+        Try again
+      </Button>
     </PublicFrame>
   )
 }

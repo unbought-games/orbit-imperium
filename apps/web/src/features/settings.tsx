@@ -88,7 +88,7 @@ export function SettingsScreen() {
       <section className={styles.session} aria-label="Session actions">
         <Heading level={2}>Current session</Heading>
         <Text>Sign out of this account on this device.</Text>
-        <Button variant="quiet" onClick={() => void logout()}>
+        <Button variant="secondary" onClick={() => void logout()}>
           Sign out
         </Button>
       </section>

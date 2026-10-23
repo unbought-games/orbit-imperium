@@ -1,0 +1,33 @@
+.dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  padding: 24px;
+  background: var(--surface-page);
+  border: 1px solid var(--border-accent);
+  color: var(--text);
+  box-shadow: 0 24px 100px #000b;
+}
+.dialog::backdrop {
+  background: var(--surface-backdrop);
+  backdrop-filter: blur(4px);
+}
+.dialog h2 {
+  margin: 0 0 16px;
+  font: 400 1.6rem/1.2 var(--font-editorial);
+  color: var(--champagne-light);
+}
+.review {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.review p {
+  margin: 8px 0;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}

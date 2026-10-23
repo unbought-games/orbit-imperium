@@ -204,6 +204,8 @@ describe('building tile progress', () => {
       targetLevel: 2,
       direction: 'up',
       countdown: '1m 49s',
+      secondsRemaining: 109,
+      dueAt: 110000,
       status: 'In progress',
       operationId: 'work',
       canCancel: true,
@@ -212,6 +214,7 @@ describe('building tile progress', () => {
     expect(buildingProgress(s, 'body')?.countdown).toBe('1m 47s')
     s.now += 200000
     expect(buildingProgress(s, 'body')?.countdown).toBe('Awaiting confirmation')
+    expect(buildingProgress(s, 'body')?.secondsRemaining).toBeNull()
     expect(s.view!.bodies[0].levels.MetalMine).toBe(1)
     s.view!.constructions = []
     expect(buildingProgress(s, 'body')).toBeNull()
@@ -246,7 +249,7 @@ describe('building tile progress', () => {
     expect(buildingProgress(s, 'body')).toMatchObject({
       direction: 'down',
       targetLevel: 0,
-      countdown: '1h 1m 1s',
+      countdown: '1h 1m',
     })
     const attempt = intent(s, { type: 'CancelConstruction', operation: 'work' })
     expect(buildingProgress(s, 'body')?.status).toBe('Cancelling')

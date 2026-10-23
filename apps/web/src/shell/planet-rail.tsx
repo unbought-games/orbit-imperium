@@ -1,3 +1,4 @@
+import { Button } from '../ui/button'
 import type { BoundView } from '../client-model/commands'
 import { bodyName, coordinates } from '../ui/format'
 import { classes } from '../ui/classes'
@@ -19,7 +20,8 @@ export function PlanetRail({
       </h2>
       <div className={styles.bodies}>
         {view.bodies.map((b) => (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             key={b.id}
             aria-pressed={b.id === selected}
@@ -32,7 +34,7 @@ export function PlanetRail({
             <strong>{bodyName(b)}</strong>
             <span>{coordinates(b)}</span>
             {b.id === selected && <small>Selected</small>}
-          </button>
+          </Button>
         ))}
       </div>
     </aside>

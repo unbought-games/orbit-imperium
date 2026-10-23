@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-/** Original material silhouettes; labels remain visible beside each mark. */
+/** Original material silhouettes; callers provide visible or accessible names. */
 export function ResourceMark({
   resource,
   ...props

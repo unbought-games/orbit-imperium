@@ -1,3 +1,5 @@
+import { formatDuration } from './duration'
+
 /** Presentation only: logical completion always comes from a validated server snapshot. */
 export function remaining(
   deadline: number,
@@ -12,11 +14,5 @@ export function remaining(
 export function formatRemaining(seconds: number | null): string {
   return seconds === null
     ? 'Awaiting confirmation'
-    : [
-        seconds >= 3600 ? `${Math.floor(seconds / 3600)}h` : '',
-        seconds >= 60 ? `${Math.floor(seconds / 60) % 60}m` : '',
-        `${seconds % 60}s`,
-      ]
-        .filter(Boolean)
-        .join(' ')
+    : formatDuration(seconds * 1000)
 }
