@@ -4,6 +4,7 @@ import type { BoundView } from '../client-model/commands'
 export type Page =
   | 'overview'
   | 'resources'
+  | 'resource-settings'
   | 'facilities'
   | 'research'
   | 'shipyard'
@@ -29,6 +30,7 @@ export type Route = {
 export const bodyPages: Page[] = [
   'overview',
   'resources',
+  'resource-settings',
   'facilities',
   'shipyard',
   'defense',
@@ -73,6 +75,12 @@ export function resolveDestination(
     )
   if (page === 'facilities' && view.protocol === 2)
     return unavailable('This destination requires supported facilities.')
+  if (
+    page === 'resource-settings' &&
+    (view.protocol === 2 ||
+      !view.progression.production.some((entry) => entry.body === body))
+  )
+    return unavailable('Resource settings are unavailable for this planet.')
   const capability =
     page === 'galaxy'
       ? 'Galaxy'

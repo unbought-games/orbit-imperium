@@ -10,7 +10,7 @@ it('keeps the same four anchor meanings across every implemented route', () => {
   for (const page of buildPages) expect(navigationAnchor(page)).toBe('Build')
   for (const page of ['fleets', 'galaxy', 'dispatch'] as const)
     expect(navigationAnchor(page)).toBe('Fleet')
-  for (const page of ['reports', 'settings'] as const)
+  for (const page of ['reports', 'settings', 'resource-settings'] as const)
     expect(navigationAnchor(page)).toBe('Menu')
   expect(buildPages[0]).toBe('resources')
 })
@@ -22,7 +22,7 @@ it('places Galaxy between Fleets and Dispatch in the Fleet submenu and grouped m
   ).toEqual(['fleets', 'galaxy', 'dispatch', 'reports'])
   expect(
     navigationGroups.find((group) => group.title === 'Empire')?.pages,
-  ).toEqual(['overview'])
+  ).toEqual(['overview', 'resource-settings'])
 })
 it('places every real destination exactly once in the grouped menu', () => {
   const pages = navigationGroups.flatMap((group) => group.pages)
@@ -31,6 +31,7 @@ it('places every real destination exactly once in the grouped menu', () => {
     [
       'overview',
       'resources',
+      'resource-settings',
       'facilities',
       'research',
       'shipyard',

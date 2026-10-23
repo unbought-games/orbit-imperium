@@ -1,4 +1,4 @@
-import { openRetainedProductionSettings } from './fixtures/production-settings'
+import { openProductionSettings } from './fixtures/production-settings'
 import {navigate,signOut,foreground} from './fixtures/navigation'
 import {test,expect,type APIResponse} from '@playwright/test';
 import {readFileSync} from 'node:fs';
@@ -25,11 +25,11 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await page.setViewportSize({width:320,height:900});await signIn(0);
  await expect(page.getByText('Fleet missions unavailable',{exact:false})).toBeVisible();
  await go('resources');
- await openRetainedProductionSettings(page);
+ await openProductionSettings(page);
  await expect(page.getByLabel('fusion reactor production')).toBeDisabled();
  await page.getByLabel('metal mine production').selectOption('50');
  await expect.poll(async()=>(await view()).progression.production[0].settings.metal_mine).toBe(50);
- await page.reload();await openRetainedProductionSettings(page);await expect(page.getByLabel('metal mine production')).toHaveValue('50');
+ await page.reload();await openProductionSettings(page);await expect(page.getByLabel('metal mine production')).toHaveValue('50');
  await go('research');
  await page.getByRole('link',{name:'Research Computer Technology',exact:true}).click();await expect(page.getByRole('region',{name:'Progression quote'})).toContainText('Required to improve');
  await page.getByRole('button',{name:'Confirm research',exact:true}).click();await expect(page.getByRole('region',{name:'Active research'})).toBeVisible();
@@ -69,5 +69,5 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await page.getByRole('link',{name:'Build Small Shield Dome',exact:true}).click();await expect(page.getByLabel('Action blockers')).toContainText('Capacity Reserved');
  await page.screenshot({path:'test-results/progression-desktop.png',fullPage:true});
  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),signOut(page)]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(1);await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);const other=await view();expect(other.bodies[0].inventories).toEqual([]);expect(other.research.every((x:{level:number})=>x.level===0)).toBe(true);expect(other.bodies[0].id).not.toBe(v.bodies[0].id);expect((await page.evaluate(()=>Object.keys(sessionStorage))).filter(k=>k.startsWith('orbit:attempts:v3:'))).toHaveLength(0);
- await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),signOut(page)]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(0);await go('resources');await openRetainedProductionSettings(page);await expect(page.getByLabel('metal mine production')).toHaveValue('50');await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);
+ await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),signOut(page)]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(0);await go('resources');await openProductionSettings(page);await expect(page.getByLabel('metal mine production')).toHaveValue('50');await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);
 });

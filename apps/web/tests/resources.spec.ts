@@ -1,5 +1,5 @@
 import { confirmCancellation } from './fixtures/confirmation'
-import { openRetainedProductionSettings } from './fixtures/production-settings'
+import { openProductionSettings } from './fixtures/production-settings'
 import { captureCatalog } from './fixtures/catalog-capture'
 import { test, expect, type Page } from '@playwright/test'
 import { shellFixture, body, binding, refreshGame } from './fixtures/game'
@@ -341,7 +341,7 @@ test('resource settings keep production rules and fuel figures without repeated 
   page,
 }) => {
   await setup(page)
-  await openRetainedProductionSettings(page)
+  await openProductionSettings(page)
   const settings = page.getByRole('region', { name: 'Production controls' })
   await expect(settings.getByRole('combobox')).toHaveCount(4)
   await settings.getByText('Production rules and unavailable sources', { exact: true }).click()
@@ -371,7 +371,7 @@ test('unedited production controls follow current saved settings', async ({
   page,
 }) => {
   const { economy } = await setup(page)
-  await openRetainedProductionSettings(page)
+  await openProductionSettings(page)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
   economy.settings = { ...economy.settings, metal_mine: 70 }
   await refreshGame(page)
@@ -546,7 +546,7 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
       },
     })
   })
-  await openRetainedProductionSettings(page)
+  await openProductionSettings(page)
   const panel = page.getByRole('region', { name: 'Production controls' })
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
   await expect(page.getByLabel('solar satellite production')).toHaveCount(0)
@@ -571,11 +571,11 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
   await page.screenshot({
     path: 'test-results/production-autosave-pending-390.png',
   })
-  await page.getByRole('button', { name: 'Close resource settings' }).click()
+  await page.getByRole('link', { name: 'Build', exact: true }).click()
   // A route change unmounts the controls while the user edits remain queued.
   await page.getByRole('link', { name: 'Facilities', exact: true }).click()
   await page.getByRole('link', { name: 'Resources', exact: true }).click()
-  await openRetainedProductionSettings(page)
+  await openProductionSettings(page)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
   await expect(page.getByLabel('solar plant production')).toHaveValue('60')
   release()
@@ -627,7 +627,7 @@ test('production rejection retains edits and retry preserves unrelated server ch
       },
     })
   })
-  await openRetainedProductionSettings(page)
+  await openProductionSettings(page)
   const settings = page.getByRole('region', { name: 'Production controls' })
   await expect(settings).toBeVisible()
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
@@ -708,7 +708,7 @@ for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
       return route.fulfill({ json: receipts.get(id) })
     })
     if (restoredCommand === 'production') {
-      await openRetainedProductionSettings(page)
+      await openProductionSettings(page)
       await page.getByLabel('metal mine production').selectOption('50')
     } else {
       await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
@@ -737,7 +737,7 @@ for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
         }
       })
     await page.reload()
-    await openRetainedProductionSettings(page)
+    await openProductionSettings(page)
     const panel = page.getByRole('region', { name: 'Production controls' })
     const metal = page.getByLabel('metal mine production')
     await expect(metal).toHaveValue(
@@ -813,7 +813,7 @@ test('resources fit compact and touch layouts in all three states', async ({
           .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
           .click()
       if (state === 'settings')
-        await openRetainedProductionSettings(page)
+        await openProductionSettings(page)
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -832,7 +832,7 @@ test('resources fit compact and touch layouts in all three states', async ({
           .click()
       if (state === 'settings')
         await page
-          .getByRole('button', { name: 'Close resource settings' })
+          .getByRole('link', { name: 'Build', exact: true })
           .click()
     }
   }
@@ -907,7 +907,7 @@ test('blocked quotes cannot purchase and details remain usable with reduced moti
     ),
   ).toBe(true)
   await page.getByRole('link', { name: /^Back to / }).click()
-  await openRetainedProductionSettings(page)
+  await openProductionSettings(page)
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -1689,3 +1689,54 @@ test('legacy item links inspect other buildings during construction without stal
   expect(requests).toContain('SolarPlant')
   expect(purchases()).toBe(0)
 })
+
+for (const width of [1440, 390]) {
+  test(`Menu opens resource settings with history and reload support at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await setup(page)
+    await page.getByRole('link', { name: 'Empire', exact: true }).click()
+    await page.getByRole('button', { name: 'Menu', exact: true }).click()
+    const menu = page.getByRole('dialog', { name: 'Navigation' })
+    const settings = menu.getByRole('link', { name: 'Resource settings', exact: true })
+    await expect(settings).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
+    await settings.focus()
+    await page.keyboard.press('Enter')
+    await expect(menu).not.toBeVisible()
+    await expect(page.locator('main h1')).toHaveText('Resource settings')
+    await expect(page.locator('main h1')).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Menu', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true })).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByLabel('metal mine production')).toHaveValue('100')
+    await page.goBack()
+    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
+    await page.goForward()
+    await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
+  })
+}
+
+test('resource settings follows the selected planet on protocol 4', async ({ page }) => {
+  const colony = { ...structuredClone(body), id: '00000000-0000-4000-8000-000000000006' }
+  const homeProduction = production()
+  const colonyProduction = { ...production(), body: colony.id, settings: { ...production().settings, metal_mine: 30 } }
+  await shellFixture(page, { protocol: 4, bodies: [body, colony], production: [homeProduction, colonyProduction] })
+  await openProductionSettings(page)
+  await expect(page.getByLabel('metal mine production')).toHaveValue('100')
+  await page.getByLabel('Selected body', { exact: true }).selectOption(colony.id)
+  await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resource-settings$`))
+  await expect(page.getByLabel('metal mine production')).toHaveValue('30')
+  await page.getByLabel('Selected body', { exact: true }).selectOption(body.id)
+  await expect(page.getByLabel('metal mine production')).toHaveValue('100')
+})
+
+for (const protocol of [2, 3, 4] as const) {
+  test(`resource settings is unavailable without production data on protocol ${protocol}`, async ({ page }) => {
+    await shellFixture(page, { protocol })
+    await page.getByRole('button', { name: 'Menu', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Navigation' }).getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()
+    await page.goto(`/u/andromeda/b/${body.id}/resource-settings`)
+    await expect(page.locator('main h1')).toHaveText('Destination unavailable')
+    await expect(page.getByRole('region', { name: 'Production controls' })).toHaveCount(0)
+  })
+}
