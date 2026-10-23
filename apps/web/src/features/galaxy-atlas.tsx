@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import { bodyName } from '../ui/format'
 import type { components } from '../contracts'
 import styles from './galaxy.module.css'
@@ -24,11 +25,11 @@ export function GalaxyAtlas({
         </g>
       </svg>
       {system.positions.map((position) => (
-        <a
+        <CoordinateLink
           key={position.coordinates.position}
-          href={`#position-${position.coordinates.position}`}
+          at={position.coordinates}
           className={styles.atlasPosition}
-          aria-label={`Position ${position.coordinates.position}${position.body ? ` · ${bodyName(position.body)}` : ' · Empty'}`}
+          label={`position ${position.coordinates.position}${position.body ? ` · ${bodyName(position.body)}` : ' · Empty'}`}
         >
           {position.body ? (
             <BodyIllustration
@@ -40,7 +41,7 @@ export function GalaxyAtlas({
             <span className={styles.atlasEmpty} aria-hidden="true" />
           )}
           <span>{position.coordinates.position}</span>
-        </a>
+        </CoordinateLink>
       ))}
       <span className={styles.atlasCaption}>
         System atlas · schematic, not to scale

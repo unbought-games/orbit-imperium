@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import type { PlayerNames } from './player-label'
 import { PlayerName } from './player-name'
 import { CombatReport } from './combat-report'
@@ -21,12 +22,6 @@ const record = (v: unknown): RecordValue =>
 const text = (v: unknown) =>
   typeof v === 'string' || typeof v === 'number' ? String(v) : 'Unknown'
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
-const coordinate = (v: unknown) => {
-  const c = record(v)
-  return [c.galaxy, c.system, c.position].every((x) => typeof x === 'number')
-    ? `[${c.galaxy}:${c.system}:${c.position}]`
-    : 'Unavailable'
-}
 function Resources({ value }: { value: unknown }) {
   const r = record(value)
   return (
@@ -167,7 +162,13 @@ export function ReportObservation({
         <Heading level={3}>
           {kind === 'Colonized' ? 'Colony established' : 'Colonization failed'}
         </Heading>
-        <Text>Destination {coordinate(payload.destination_coordinates)}</Text>
+        <Text>
+          Destination{' '}
+          <CoordinateLink
+            at={payload.destination_coordinates}
+            label="destination"
+          />
+        </Text>
         {kind === 'Colonized' ? (
           <>
             <Text>
@@ -204,7 +205,7 @@ export function ReportObservation({
         className={styles.observation}
       >
         <Text>
-          Target {coordinate(target.coordinates)} ·{' '}
+          Target <CoordinateLink at={target.coordinates} label="target" /> ·{' '}
           <PlayerName player={text(target.owner)} names={playerNames} />
         </Text>
         <Text>
@@ -242,8 +243,9 @@ export function ReportObservation({
       >
         <Text>
           <PlayerName player={text(payload.sender)} names={playerNames} /> made
-          espionage contact from {coordinate(payload.origin)} at{' '}
-          {coordinate(payload.target)}.
+          espionage contact from{' '}
+          <CoordinateLink at={payload.origin} label="origin" /> at{' '}
+          <CoordinateLink at={payload.target} label="target" />.
         </Text>
         <Risk value={payload} />
         <Text>The observer’s acquired intelligence is private.</Text>
@@ -254,7 +256,8 @@ export function ReportObservation({
       <section aria-label="Report observation" className={combatStyles.report}>
         <header className={`${combatStyles.outcome} ${combatStyles.loss}`}>
           <p className={combatStyles.kicker}>
-            Combat report · {coordinate(payload.target)}
+            Combat report ·{' '}
+            <CoordinateLink at={payload.target} label="target" />
           </p>
           <Heading level={2} className={combatStyles.result}>
             Your fleet was destroyed
@@ -300,11 +303,33 @@ export function ReportObservation({
       >
         <Text>
           {label(text(kind))}
-          {payload.origin_coordinates
-            ? ` · ${coordinate(payload.origin_coordinates)} → ${coordinate(payload.destination_coordinates)}`
-            : payload.target
-              ? ` · Destination ${coordinate(payload.target)}`
-              : ''}
+          {kind === 'Delivered' || payload.origin_coordinates ? (
+            <>
+              {' · '}
+              <CoordinateLink
+                at={
+                  kind === 'Delivered'
+                    ? payload.origin
+                    : payload.origin_coordinates
+                }
+                label="origin"
+              />
+              {' → '}
+              <CoordinateLink
+                at={
+                  kind === 'Delivered'
+                    ? payload.target
+                    : payload.destination_coordinates
+                }
+                label="destination"
+              />
+            </>
+          ) : payload.target ? (
+            <>
+              {' · Destination '}
+              <CoordinateLink at={payload.target} label="destination" />
+            </>
+          ) : null}
         </Text>
         {'cargo' in payload && (
           <>

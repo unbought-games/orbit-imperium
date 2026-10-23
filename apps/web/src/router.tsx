@@ -1,3 +1,4 @@
+import { galaxyOwnsScroll } from './shell/galaxy-location'
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import type { Page } from './shell/routes'
@@ -7,7 +8,8 @@ export function createAppRouter(
   return createRouter({
     routeTree,
     defaultPreload: false,
-    scrollRestoration: true,
+    scrollRestoration: ({ location }) =>
+      !galaxyOwnsScroll(location.pathname, location.search),
     ...options,
   })
 }

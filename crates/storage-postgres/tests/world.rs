@@ -1701,6 +1701,51 @@ async fn concurrent_report_preferences(
             "committed read/hidden preferences must clear the alert"
         );
     }
+    // A fresh connection sees the persisted, recipient-specific deletion. The
+    // report remains available for restoration and for the other participant.
+    let reopened = GameService::new(PgStore::connect(url).await.unwrap());
+    for (binding, hidden) in [(a, false), (b, true)] {
+        let principal = Principal {
+            account: binding.account,
+            player: binding.player,
+            universe: binding.universe,
+        };
+        let context = QueryContext {
+            binding,
+            request_id: Uuid::new_v4(),
+        };
+        let detail = reopened
+            .report4(principal, context, ReportId(report))
+            .await
+            .unwrap();
+        assert_eq!(detail.facts.data.header.hidden, hidden);
+        for include_hidden in [false, true] {
+            let page = reopened
+                .reports4(
+                    principal,
+                    ReportsQuery4 {
+                        context: QueryContext {
+                            binding,
+                            request_id: Uuid::new_v4(),
+                        },
+                        cursor: None,
+                        kind: Some("Delivered".into()),
+                        limit: 100,
+                        include_hidden,
+                    },
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                page.facts
+                    .data
+                    .items
+                    .iter()
+                    .any(|row| row.id == ReportId(report)),
+                !hidden || include_hidden
+            );
+        }
+    }
     sqlx::query("DROP TABLE orbit_test_fault")
         .execute(pool)
         .await

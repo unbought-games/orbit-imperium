@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import { useId } from 'react'
 import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
@@ -89,14 +90,22 @@ export function Dispatch({
     <Section className={styles.screen}>
       <TaskHeader title={quote ? 'Dispatch review' : 'Dispatch fleet'}>
         <span>
-          Origin {bodyName(body)} [{body.coordinates.galaxy}:
-          {body.coordinates.system}:{body.coordinates.position}] · Fleet slots:{' '}
+          Origin {bodyName(body)}{' '}
+          <CoordinateLink at={body.coordinates} label="origin" /> · Fleet slots:{' '}
           {occupiedSlots} / {view.missions.fleet_slots}
         </span>
       </TaskHeader>
       {targetName && (
         <Text>
-          Destination: {targetName} [{galaxy}:{system}:{position}]
+          Destination: {targetName}{' '}
+          <CoordinateLink
+            at={{
+              galaxy: Number(galaxy),
+              system: Number(system),
+              position: Number(position),
+            }}
+            label="destination"
+          />
         </Text>
       )}
       {mission === 'Colonize' && (
@@ -313,8 +322,8 @@ export function Dispatch({
         </Form>
         <aside className={styles.dispatchAside} aria-label="Departure context">
           <Heading level={3}>
-            Departing from [{body.coordinates.galaxy}:{body.coordinates.system}:
-            {body.coordinates.position}]
+            Departing from{' '}
+            <CoordinateLink at={body.coordinates} label="origin" />
           </Heading>
           <Text>
             Fleet slots: {occupiedSlots} / {view.missions.fleet_slots}.
@@ -349,9 +358,17 @@ export function Dispatch({
             </Button>
           </div>
           <Text>
-            Origin {bodyName(body)} [{body.coordinates.galaxy}:
-            {body.coordinates.system}:{body.coordinates.position}] → Destination
-            [{galaxy}:{system}:{position}]
+            Origin {bodyName(body)}{' '}
+            <CoordinateLink at={body.coordinates} label="origin" /> →
+            Destination{' '}
+            <CoordinateLink
+              at={{
+                galaxy: Number(galaxy),
+                system: Number(system),
+                position: Number(position),
+              }}
+              label="destination"
+            />
           </Text>
           <Text>
             {quote.intent.ships

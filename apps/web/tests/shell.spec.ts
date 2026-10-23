@@ -1564,7 +1564,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     }),
   ).toHaveCount(0)
   await expect(
-    page.getByRole('checkbox', { name: 'Show hidden reports' }),
+    page.getByRole('checkbox', { name: 'Show deleted reports' }),
   ).toBeVisible()
   await page.screenshot({
     path: 'test-results/reports-list-desktop.png',
@@ -1766,6 +1766,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('Destination [1:1:3]')
+  await expect(quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
   await expect(quote).toContainText('6 deuterium fuel')
   expect(quoteRequests).toBe(1)
   expect(sent).toBe(0)
@@ -1813,6 +1814,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [
       page.getByLabel('Selected body'),
+      page.getByRole('group', { name: 'Planet and resources' }).getByRole('link', { name: 'View [1:371:12] in galaxy', exact: true }),
       page.getByRole('button', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleet', exact: true }),
     ]) {
@@ -1822,7 +1824,8 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
           const box = element.getBoundingClientRect()
           const hit = document.elementFromPoint(
             box.x + box.width / 2,
-            box.y + box.height / 2,
+            // The planet name opens the selector; its coordinates now have their own link.
+            box.y + box.height * (element.tagName === 'SELECT' ? 0.25 : 0.5),
           )
           return element === hit || element.contains(hit)
         }),
@@ -2207,46 +2210,73 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 }
 
 
-for (const width of [390, 1440]) {
-  test(`unread reports light the menu and report link at ${width}px and reconcile`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    let unread = false
-    let revision = 1
-    await shellFixture(page, {
-      protocol: 4,
-      extraCapabilities: ['Reports'],
-      hasUnreadReports: () => unread,
-      viewerRevision: () => String(revision),
+for (const width of [320, 390, 768, 1024, 1440]) {
+  for (const textScale of [1, 2]) {
+    test(`unread reports light the menu and report link at ${width}px with ${textScale * 100}% text and reconcile`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      let unread = false
+      let revision = 1
+      await shellFixture(page, {
+        protocol: 4,
+        extraCapabilities: ['Reports'],
+        hasUnreadReports: () => unread,
+        viewerRevision: () => String(revision),
+      })
+      await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
+      const menu = page.getByRole('button', { name: 'Menu', exact: true })
+      const alert = menu.getByRole('status', { name: 'Unread reports' })
+      const assertLayout = async () => {
+        const target = (await menu.boundingBox())!
+        expect(target.width).toBeGreaterThanOrEqual(44)
+        expect(target.height).toBeGreaterThanOrEqual(44)
+        await expect(menu).toBeInViewport({ ratio: 1 })
+        const label = (await menu.getByText('Menu', { exact: true }).boundingBox())!
+        expect(label.x).toBeGreaterThanOrEqual(target.x)
+        expect(label.x + label.width).toBeLessThanOrEqual(target.x + target.width)
+        if (await alert.count()) {
+          const badge = (await alert.boundingBox())!
+          // Either beside the desktop label or above the mobile label, with a gap.
+          expect(badge.x >= label.x + label.width + 4 || badge.y + badge.height + 4 <= label.y).toBe(true)
+          expect(badge.x).toBeGreaterThanOrEqual(target.x)
+          expect(badge.x + badge.width).toBeLessThanOrEqual(target.x + target.width)
+          expect(badge.y).toBeGreaterThanOrEqual(target.y)
+          expect(badge.y + badge.height).toBeLessThanOrEqual(target.y + target.height)
+        }
+      }
+      await expect(alert).toHaveCount(0)
+      await assertLayout()
+      unread = true
+      revision++
+      await page.evaluate(() => window.dispatchEvent(new Event('online')))
+      await expect(alert).toBeVisible()
+      await expect(menu).toHaveAccessibleDescription('Unread reports')
+      await page.screenshot({ path: `test-results/unread-reports-${width}-${textScale}.png` })
+      await assertLayout()
+      await menu.focus()
+      await page.keyboard.press('Enter')
+      const reports = page.getByRole('link', { name: 'Reports — unread reports' })
+      await expect(reports).toBeVisible()
+      await expect(reports.locator('svg')).toHaveCount(2)
+      await page.screenshot({ path: `test-results/unread-report-menu-${width}-${textScale}.png` })
+      await reports.focus()
+      await expect(reports).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(menu).toBeFocused()
+      await page.reload()
+      await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
+      await expect(alert).toBeVisible()
+      await assertLayout()
+      unread = false
+      revision++
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await expect(alert).toHaveCount(0)
+      await menu.click()
+      await expect(page.getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Reports — unread reports' })).toHaveCount(0)
+      await page.keyboard.press('Escape')
+      await assertLayout()
     })
-    const menu = page.getByRole('button', { name: 'Menu', exact: true })
-    const alert = menu.getByRole('status', { name: 'Unread reports' })
-    await expect(alert).toHaveCount(0)
-    unread = true
-    revision++
-    await page.evaluate(() => window.dispatchEvent(new Event('online')))
-    await expect(alert).toBeVisible()
-    await expect(menu).toHaveAccessibleDescription('Unread reports')
-    await page.screenshot({ path: `test-results/unread-reports-${width}.png` })
-    await menu.focus()
-    await page.keyboard.press('Enter')
-    const reports = page.getByRole('link', { name: 'Reports — unread reports' })
-    await expect(reports).toBeVisible()
-    await expect(reports.locator('svg')).toHaveCount(2)
-    await page.screenshot({ path: `test-results/unread-report-menu-${width}.png` })
-    await reports.focus()
-    await expect(reports).toBeFocused()
-    await page.keyboard.press('Escape')
-    await expect(menu).toBeFocused()
-    await page.reload()
-    await expect(alert).toBeVisible()
-    unread = false
-    revision++
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-    await expect(alert).toHaveCount(0)
-    await menu.click()
-    await expect(page.getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Reports — unread reports' })).toHaveCount(0)
-  })
+  }
 }
 
 for (const width of [768, 1024, 1440, 1800]) {

@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import { Button } from '../ui/button'
 import { PlanetRename } from './planet-rename'
 import type { Coordinator } from '../client-model/coordinator'
@@ -191,7 +192,7 @@ function CommandMap({
           <div className={styles.focusLabel}>
             <span>Command focus</span>
             <strong>
-              {bodyName(body)} {coordinates(body)}
+              {bodyName(body)} <CoordinateLink at={body.coordinates} />
             </strong>
             <small>
               {traffic.incoming.length} inbound / {traffic.outgoing.length}{' '}
@@ -352,7 +353,9 @@ function PlanetDossier({
             {selected && <b>Command focus</b>}
           </span>
           <h3 className={styles.planetName}>{bodyName(body)}</h3>
-          <span className={styles.planetCoordinates}>{coordinates(body)}</span>
+          <span className={styles.planetCoordinates}>
+            <CoordinateLink at={body.coordinates} />
+          </span>
           <span className={styles.bodyFacts}>
             {body.fields_used}/{body.fields} fields · {body.fields_reserved}{' '}
             reserved
