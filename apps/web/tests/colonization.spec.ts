@@ -12,6 +12,12 @@ async function setup(page: Parameters<typeof shellFixture>[0], bodies = [body], 
  await shellFixture(page,{protocol:4,bodies,catalog,research:[{research:'Astrophysics',level:astrophysics}],extraCapabilities:['Colonize','Deploy','Transport'],missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'2'}})
 }
 const bound = (request_id:string,data:unknown)=>({protocol:4,binding,request_id,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),data})
+const emptyGalaxy = (galaxy: number, system: number): S['GalaxySystem4'] => ({
+  galaxy, system, observed_at: Date.now(),
+  positions: Array.from({ length: 15 }, (_, index) => ({
+    coordinates: { galaxy, system, position: index + 1 }, body: null, debris: null,
+  })),
+})
 
 test('colony position gates and full-capacity warning lead to an empty-position quote and one launch',async({page})=>{
  const source={...body,inventories:[...body.inventories,{item:{kind:'Ship' as const,id:'ColonyShip' as const},count:'2'}]}
@@ -20,7 +26,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  await page.route('**/world',async route=>{
   const request=route.request().postDataJSON()
   let data:unknown
-  if(request.type==='Galaxy')data={galaxy:request.galaxy,system:request.system,observed_at:Date.now(),positions:Array.from({length:15},(_,i)=>({coordinates:{galaxy:request.galaxy,system:request.system,position:i+1},body:null,debris:null}))}
+  if(request.type==='Galaxy')data=emptyGalaxy(request.galaxy,request.system)
   else if(request.type==='ResolveDestination'){
    expect(request.selection.type).toBe('EmptyPositionAt')
    data={type:'EmptyPosition',coordinates:request.selection.coordinates,slot_revision:'0'}
@@ -94,13 +100,7 @@ test('occupied colony positions retain the actionable error through shared dispa
     const request = route.request().postDataJSON()
     if (request.type === 'Galaxy') {
       observed++
-      return route.fulfill({ json: bound(request.context.request_id, {
-        galaxy: request.galaxy, system: request.system, observed_at: Date.now(),
-        positions: Array.from({ length: 15 }, (_, index) => ({
-          coordinates: { galaxy: request.galaxy, system: request.system, position: index + 1 },
-          body: null, debris: null,
-        })),
-      }) })
+      return route.fulfill({ json: bound(request.context.request_id, emptyGalaxy(request.galaxy, request.system)) })
     }
     expect(request.type).toBe('ResolveDestination')
     expect(request.selection.type).toBe('EmptyPositionAt')
@@ -144,6 +144,9 @@ test('authoritative colony quote rejection explains the position research requir
   await page.route('**/world', async route => {
     const request = route.request().postDataJSON()
     requests.push(request.type)
+    if (request.type === 'Galaxy') {
+      return route.fulfill({ json: bound(request.context.request_id, emptyGalaxy(request.galaxy, request.system)) })
+    }
     if (request.type === 'ResolveDestination') {
       await route.fulfill({ json: bound(request.context.request_id, { type: 'EmptyPosition', coordinates: request.selection.coordinates, slot_revision: '0' }) })
     } else {
@@ -152,6 +155,7 @@ test('authoritative colony quote rejection explains the position research requir
     }
   })
   await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await expect.poll(() => requests).toEqual(['Galaxy'])
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
   await page.getByLabel('Position', { exact: true }).fill('3')
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
@@ -159,5 +163,5 @@ test('authoritative colony quote rejection explains the position research requir
   await expect(page.getByRole('alert')).toContainText('Astrophysics level 4 is required for this position.')
   await expect(page.getByRole('alert')).not.toContainText('connection')
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(requests).toEqual(['ResolveDestination', 'FleetQuote'])
+  expect(requests).toEqual(['Galaxy', 'ResolveDestination', 'FleetQuote'])
 })
