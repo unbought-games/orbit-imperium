@@ -14,6 +14,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
 import { ReportObservation } from './report-observation'
 import { reportFailure } from './report-failure'
+import { ReportVisibilityButton } from './report-visibility-button'
 import type { DispatchDraft } from './missions'
 import { label } from '../ui/format'
 import { useStore } from 'zustand'
@@ -162,7 +163,7 @@ export function Reports({
               </time>{' '}
               · {observationAge(detail.header.observed_at, now)} ·{' '}
               {detail.header.read ? 'Read' : 'Unread'}
-              {detail.header.hidden ? ' · Hidden' : ''}
+              {detail.header.hidden ? ' · Deleted' : ''}
             </Text>
             <div className={styles.controls}>
               <Button
@@ -179,21 +180,13 @@ export function Reports({
               >
                 Mark read
               </Button>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  void model.send({
-                    type: 'World',
-                    action: {
-                      type: 'SetReportHidden',
-                      report: detail.header.id,
-                      hidden: !detail.header.hidden,
-                    },
-                  })
-                }
-              >
-                {detail.header.hidden ? 'Unhide' : 'Hide'} report
-              </Button>
+              <ReportVisibilityButton
+                model={model}
+                report={detail.header.id}
+                hidden={detail.header.hidden}
+                disabled={loading}
+                onRequest={() => setOlderPages(false)}
+              />
               {detail.payload.kind === 'Espionage' &&
                 model.view?.capabilities.some(
                   (c) => c.capability === 'Attack' && c.enabled,
@@ -241,6 +234,10 @@ export function Reports({
             detail.payload.kind !== 'ContactLost' && (
               <TaskHeader title={label(detail.header.kind)} />
             )}
+          <Text className={styles.removalHelp}>
+            Deleting removes a report only from your list. You can restore it
+            from Show deleted reports.
+          </Text>
           <ReportObservation
             payload={detail.payload}
             viewer={model.binding?.player}
@@ -319,7 +316,7 @@ export function Reports({
                   setPage(null)
                 }}
               />{' '}
-              Show hidden reports
+              Show deleted reports
             </Field>
             <Button
               disabled={loading || loadingMore}
@@ -332,22 +329,42 @@ export function Reports({
               Refresh reports
             </Button>
           </div>
+          <Text className={styles.removalHelp}>
+            Deleted reports leave your list and unread indicator. Show deleted
+            reports to restore them.
+          </Text>
           {!page.items.length && <Text>No reports yet.</Text>}
           {page.items.map((r) => (
-            <Panel as="article" className={styles.reportRow} key={r.id}>
-              <Link
-                onClick={() => void model.recordPresence('AccountVisit', null)}
-                {...routeTarget(universe, 'reports', origin, r.id)}
-              >
-                {label(r.kind)}
-              </Link>
+            <Panel
+              as="article"
+              className={styles.reportRow}
+              key={r.id}
+              aria-label={`${label(r.kind)} report ${exactTime(r.observed_at)}`}
+            >
+              <div className={styles.rowHeading}>
+                <Link
+                  onClick={() =>
+                    void model.recordPresence('AccountVisit', null)
+                  }
+                  {...routeTarget(universe, 'reports', origin, r.id)}
+                >
+                  {label(r.kind)}
+                </Link>
+                <ReportVisibilityButton
+                  model={model}
+                  report={r.id}
+                  hidden={r.hidden}
+                  disabled={loading || loadingMore}
+                  onRequest={() => setOlderPages(false)}
+                />
+              </div>
               <Text>
                 <time dateTime={new Date(r.observed_at).toISOString()}>
                   {exactTime(r.observed_at)}
                 </time>{' '}
                 · {observationAge(r.observed_at, now)} ·{' '}
                 {r.read ? 'Read' : 'Unread'}
-                {r.hidden ? ' · Hidden' : ''}
+                {r.hidden ? ' · Deleted' : ''}
               </Text>
             </Panel>
           ))}

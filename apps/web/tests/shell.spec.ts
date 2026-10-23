@@ -1564,7 +1564,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     }),
   ).toHaveCount(0)
   await expect(
-    page.getByRole('checkbox', { name: 'Show hidden reports' }),
+    page.getByRole('checkbox', { name: 'Show deleted reports' }),
   ).toBeVisible()
   await page.screenshot({
     path: 'test-results/reports-list-desktop.png',
