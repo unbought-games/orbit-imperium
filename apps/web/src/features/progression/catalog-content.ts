@@ -40,12 +40,14 @@ const content: Record<string, string> = {
     'A stationary missile battery that defends this planet against attacking fleets.',
   LightLaser:
     'A stationary laser battery that defends this planet against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
+  IonCannon:
+    'A stationary cannon with strong shields that defends this planet against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
   SmallShieldDome:
     'A planetary shield that supports the defense of this planet. Only one small shield dome can be stationed or queued here.',
   LaserTechnology:
     'Unlocks concentrated energy weapons, including Light Lasers at level 3. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
   IonTechnology:
-    'An unlock technology requiring Research Lab 4, Energy Technology 4 and Laser Technology 5. Future content uses Ion level 2 for Cruisers, level 4 for Ion Cannons and level 5 for Plasma Technology; each also has other prerequisites and must be enabled in this universe. Ion provides no direct combat bonus or demolition discount. Levels above 5 have no further specified unlocks.',
+    'An unlock technology requiring Research Lab 4, Energy Technology 4 and Laser Technology 5. Unlocks Ion Cannons at level 4 with Shipyard 4 when enabled in this universe. Future content uses Ion level 2 for Cruisers and level 5 for Plasma Technology; each also has other prerequisites and must be enabled in this universe. Ion provides no direct combat bonus or demolition discount. Levels above 5 have no further specified unlocks.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',
