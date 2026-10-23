@@ -301,6 +301,7 @@ fn snapshot() -> ViewerSnapshot {
     coverage.fleet_owners.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            planet_slots: vec![],
             records: WorldRecords::default(),
             secret: [0; 32],
             covered_players: Default::default(),
@@ -327,6 +328,7 @@ fn snapshot() -> ViewerSnapshot {
         collection_revisions: Default::default(),
     };
     ViewerSnapshot {
+        unread_report: None,
         world: Some(state.clone()),
         progression: Some(state),
         coverage,
@@ -360,6 +362,7 @@ fn world_projection_preserves_bound_envelope_and_does_not_mutate_snapshot() {
         .records
         .fleets
         .insert(f.id, f);
+    facts.unread_report = Some(ReportId(Uuid::from_u128(999)));
     let before = facts.world.clone();
     let context = QueryContext {
         binding: Binding {
@@ -371,6 +374,7 @@ fn world_projection_preserves_bound_envelope_and_does_not_mutate_snapshot() {
         request_id: Uuid::from_u128(99),
     };
     let view = world_projection(&facts, player(1), context.clone()).unwrap();
+    assert!(view.has_unread_reports);
     assert_eq!(view.progression.protocol, 4);
     assert_eq!(view.progression.binding, context.binding);
     assert_eq!(view.progression.request_id, context.request_id);

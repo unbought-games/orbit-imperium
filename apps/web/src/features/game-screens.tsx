@@ -3,7 +3,7 @@ import { Dispatch, MissionFleets } from './missions'
 import { Reports } from './reports'
 import { bindingKey } from '../client-model/commands'
 import { useGameScreen } from '../shell/screen-context'
-import { PlanetOverview } from './planet-overview'
+import { EmpireOverview } from './empire-overview'
 import { Progression } from './progression'
 import { Operations } from './operations'
 import { Section } from '../ui/section'
@@ -14,7 +14,7 @@ export function OverviewScreen() {
   const { view, body } = useGameScreen()
   return body ? (
     <>
-      <PlanetOverview view={view} body={body} />
+      <EmpireOverview view={view} body={body} />
       {view.protocol === 2 && <OperationsScreen />}
     </>
   ) : null

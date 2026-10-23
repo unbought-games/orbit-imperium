@@ -128,6 +128,7 @@ pub(crate) async fn select_query(
         }
         WorldQueryKind::ResolveDestination { selection } => {
             let (DestinationSelection::BodyAt { coordinates, .. }
+            | DestinationSelection::EmptyPositionAt { coordinates }
             | DestinationSelection::DebrisAt { coordinates }) = selection;
             selected.coordinates.insert(*coordinates);
         }

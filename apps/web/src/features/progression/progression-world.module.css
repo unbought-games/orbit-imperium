@@ -1,38 +1,18 @@
 .heading {
-  padding-block: 20px 24px;
+  padding-block: 12px;
+}
+.heading:empty {
+  display: none;
 }
 .heading h2 {
-  font:
-    400 clamp(2.15rem, 4.4vw, 4.5rem) / 1.06 Georgia,
-    serif;
-  letter-spacing: -0.025em;
-  color: var(--champagne-light);
-  margin: 12px 0;
-  text-wrap: balance;
-}
-.heading p {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 1.0625rem;
-}
-.heading .eyebrow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 0.75rem;
-}
-.eyebrow span {
-  margin-left: auto;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--champagne-light);
+  font: 400 1.5rem / 1.2 var(--font-editorial);
 }
 .heading .context {
-  margin-top: 12px;
+  margin: 8px 0 0;
   font-size: 0.875rem;
-  color: var(--link);
+  color: var(--text-muted);
 }
 .resourceWorld {
   display: grid;
@@ -210,18 +190,6 @@
   position: relative;
 }
 @media (max-width: 650px) {
-  .heading {
-    padding-block: 16px 20px;
-  }
-  .heading h2 {
-    font-size: 2.5rem;
-  }
-  .heading p {
-    font-size: 1rem;
-  }
-  .eyebrow span {
-    margin-left: 0;
-  }
   .resourceWorld {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
@@ -268,13 +236,7 @@
     transform: none;
   }
 }
-.compact {
-  padding-block: 12px;
-}
-.compact h2,
-.compact > p:not(.eyebrow):not(.context) {
-  display: none;
-}
+
 .materialNode {
   z-index: 2;
   position: absolute;

@@ -1,13 +1,16 @@
+import type { PlayerNames } from './player-label'
+import { PlayerName } from './player-name'
+import { CombatReport } from './combat-report'
 import { Panel } from '../ui/panel'
 import { Section } from '../ui/section'
 import { Text } from '../ui/typography'
 import { Heading } from '../ui/typography'
 import styles from './report-observation.module.css'
+import combatStyles from './combat-report.module.css'
 import type { ReactNode } from 'react'
 import { label } from '../ui/format'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
-import { PlayerName } from './player-name'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
   v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -51,7 +54,14 @@ function Units({ value }: { value: unknown }) {
         return (
           <div key={i}>
             <dt>{label(text(item.id ?? row.ship_type))}</dt>
-            <dd>{text(row.count)}</dd>
+            <dd>
+              {typeof row.count === 'string' &&
+              /^(0|[1-9][0-9]*)$/.test(row.count) ? (
+                <NumberValue value={row.count} />
+              ) : (
+                'Unknown'
+              )}
+            </dd>
           </div>
         )
       })}
@@ -118,33 +128,58 @@ function Risk({ value }: { value: unknown }) {
     </Text>
   )
 }
-function Origins({ title, value }: { title: string; value: unknown }) {
-  return (
-    <Section>
-      <Heading level={3}>{title}</Heading>
-      {list(value).map((v, i) => {
-        const origin = record(v)
-        return (
-          <div key={i}>
-            <h4>
-              {text(origin.side)} · <PlayerName player={text(origin.owner)} />
-            </h4>
-            {Array.isArray(origin.technology) && (
-              <Text>
-                Weapons {text(origin.technology[0])} · Shielding{' '}
-                {text(origin.technology[1])} · Armour{' '}
-                {text(origin.technology[2])}
-              </Text>
-            )}
-            <Units value={origin.units} />
-          </div>
-        )
-      })}
-    </Section>
-  )
-}
-export function ReportObservation({ payload }: { payload: RecordValue }) {
+export function ReportObservation({
+  payload,
+  viewer,
+  playerNames,
+}: {
+  payload: RecordValue
+  viewer?: string
+  playerNames?: PlayerNames
+}) {
   const kind = payload.kind
+  if (kind === 'Colonized' || kind === 'ColonizationFailed') {
+    const reasons: Record<string, string> = {
+      Occupied: 'The position was occupied at arrival.',
+      PositionLocked: 'The position was not unlocked at arrival.',
+      ColonyCapacity: 'Your planet limit was full at arrival.',
+    }
+    return (
+      <Panel
+        as="section"
+        aria-label="Report observation"
+        className={styles.observation}
+      >
+        <Heading level={3}>
+          {kind === 'Colonized' ? 'Colony established' : 'Colonization failed'}
+        </Heading>
+        <Text>Destination {coordinate(payload.destination_coordinates)}</Text>
+        {kind === 'Colonized' ? (
+          <>
+            <Text>
+              Consumed one Colony Ship. {text(payload.fields)} fields ·{' '}
+              {text(payload.diameter_km)} km diameter ·{' '}
+              {text(payload.min_temperature)} to {text(payload.max_temperature)}{' '}
+              °C.
+            </Text>
+            <Heading level={3}>Resources at founding</Heading>
+            <Resources value={payload.resources} />
+          </>
+        ) : (
+          <Text>
+            {reasons[text(payload.reason)] ??
+              'Arrival could not establish a colony.'}{' '}
+            All ships and cargo return; fuel is not refunded.
+          </Text>
+        )}
+        <Text>
+          {typeof payload.return_at === 'number'
+            ? `Return arrival: ${new Date(payload.return_at).toLocaleString()}.`
+            : 'No ships remain to return; the fleet slot is released.'}
+        </Text>
+      </Panel>
+    )
+  }
   if (kind === 'Espionage') {
     const target = record(payload.target),
       activity = record(payload.activity)
@@ -156,7 +191,7 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
       >
         <Text>
           Target {coordinate(target.coordinates)} ·{' '}
-          <PlayerName player={text(target.owner)} />
+          <PlayerName player={text(target.owner)} names={playerNames} />
         </Text>
         <Text>
           Activity before contact:{' '}
@@ -192,8 +227,9 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
         className={styles.observation}
       >
         <Text>
-          <PlayerName player={text(payload.sender)} /> made espionage contact
-          from {coordinate(payload.origin)} at {coordinate(payload.target)}.
+          <PlayerName player={text(payload.sender)} names={playerNames} /> made
+          espionage contact from {coordinate(payload.origin)} at{' '}
+          {coordinate(payload.target)}.
         </Text>
         <Risk value={payload} />
         <Text>The observer’s acquired intelligence is private.</Text>
@@ -201,78 +237,37 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
     )
   if (kind === 'ContactLost')
     return (
-      <Panel
-        as="section"
-        aria-label="Report observation"
-        className={styles.observation}
-      >
-        <Heading level={3}>Contact lost in the first round</Heading>
-        <Text>
-          Target {coordinate(payload.target)}. Defender battle details were not
-          observed.
-        </Text>
+      <section aria-label="Report observation" className={combatStyles.report}>
+        <header className={`${combatStyles.outcome} ${combatStyles.loss}`}>
+          <p className={combatStyles.kicker}>
+            Combat report · {coordinate(payload.target)}
+          </p>
+          <Heading level={2} className={combatStyles.result}>
+            Your fleet was destroyed
+          </Heading>
+          <p className={combatStyles.explanation}>
+            Contact lost in the first round. The defender’s outcome is unknown.
+          </p>
+        </header>
+        <Heading level={3}>Your ships lost</Heading>
         <Units value={payload.own_lost_ships} />
-        <Heading level={3}>Your cargo lost</Heading>
-        <Resources value={payload.own_cargo_loss} />
-      </Panel>
+        <div className={combatStyles.resources}>
+          <div className={combatStyles.resourceGroup}>
+            <h3>Your cargo lost</h3>
+            <Resources value={payload.own_cargo_loss} />
+          </div>
+        </div>
+      </section>
     )
   if (kind === 'Combat')
     return (
-      <Panel
-        as="section"
-        aria-label="Report observation"
-        className={styles.observation}
-      >
-        <Heading level={3}>{label(text(payload.outcome))}</Heading>
-        <Text>
-          Target {coordinate(payload.target)} ·{' '}
-          {payload.mission === 'Attack'
-            ? 'Loot travels home with survivors.'
-            : 'Counterespionage grants no plunder.'}
-        </Text>
-        {'return_at' in payload && (
-          <Text>
-            {typeof payload.return_at === 'number'
-              ? `Survivors return ${new Date(payload.return_at).toLocaleString()}`
-              : 'No surviving return fleet.'}
-          </Text>
-        )}
-        {['debris', 'loot', 'own_cargo_loss']
-          .filter((k) => k in payload)
-          .map((k) => (
-            <Section key={k}>
-              <Heading level={3}>{label(k)}</Heading>
-              <Resources value={payload[k]} />
-            </Section>
-          ))}
-        <Origins title="Starting forces" value={payload.participants} />
-        <Origins title="Survivors" value={payload.survivors} />
-        <Origins title="Gross losses" value={payload.gross_losses} />
-        <Origins title="Defenses recovered" value={payload.recovered} />
-        {Array.isArray(payload.permanent_losses) && (
-          <Origins title="Permanent losses" value={payload.permanent_losses} />
-        )}
-        {list(payload.rounds).map((v, i) => {
-          const round = record(v)
-          return (
-            <details key={i}>
-              <summary>
-                Round {text(round.number)} · {text(round.shots)} shots
-              </summary>
-              <Text>
-                Raw attack <CombatPoints value={round.raw_attack_ticks} />{' '}
-                points · Shield damage{' '}
-                <CombatPoints value={round.shield_removed_ticks} /> · Hull
-                damage <CombatPoints value={round.hull_removed_ticks} /> ·{' '}
-                {text(round.explosions)} explosions.
-              </Text>
-              <Origins title="Round starting forces" value={round.start} />
-              <Origins title="Round survivors" value={round.end} />
-            </details>
-          )
-        })}
-      </Panel>
+      <CombatReport
+        payload={payload}
+        viewer={viewer}
+        playerNames={playerNames}
+      />
     )
+
   if (
     [
       'Delivered',
@@ -280,6 +275,7 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
       'Recalled',
       'Harvested',
       'MissionFailed',
+      'Deployed',
     ].includes(text(kind))
   )
     return (
@@ -299,7 +295,7 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
         {'cargo' in payload && (
           <>
             <Heading level={3}>
-              {kind === 'Delivered'
+              {kind === 'Delivered' || kind === 'Deployed'
                 ? 'Delivered resources'
                 : 'Carried resources'}
             </Heading>
@@ -315,13 +311,4 @@ export function ReportObservation({ payload }: { payload: RecordValue }) {
       </Panel>
     )
   return <Text>This report version is unavailable in this client.</Text>
-}
-
-function CombatPoints({ value }: { value: unknown }) {
-  const ticks = text(value)
-  return /^(0|[1-9][0-9]*)$/.test(ticks) ? (
-    <NumberValue value={ticks} divisor={100000} />
-  ) : (
-    <>Unknown</>
-  )
 }

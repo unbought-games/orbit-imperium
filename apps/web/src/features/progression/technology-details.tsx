@@ -196,7 +196,7 @@ export function TechnologyDetails({
               <p className={local.note}>
                 {manufacture
                   ? 'Prepaid · shared ship/defense queue. No cancellation, pause, or reordering.'
-                  : 'One active research project per player. Full payment is refunded if cancelled before completion.'}
+                  : 'One research project at a time. Full refund if cancelled before completion.'}
               </p>
               <div className={styles.purchase}>
                 {material && (
@@ -227,6 +227,7 @@ export function TechnologyDetails({
                   )}
                 </div>
                 <Button
+                  data-analytics="confirm_technology_action"
                   className={styles.improve}
                   aria-label={manufacture ? 'Build' : 'Confirm research'}
                   disabled={

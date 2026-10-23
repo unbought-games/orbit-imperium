@@ -45,6 +45,10 @@ export function BuildingDetails({
   )
   const unavailable = buildingUnavailableReason(entry, body, building.id)
   const command = progressionCommand(proposal)
+  const energy = proposal?.building_energy
+  const energyChange = energy
+    ? BigInt(energy.target_consumption) - BigInt(energy.current_consumption)
+    : null
   return (
     <>
       <div className={styles.header}>
@@ -108,11 +112,30 @@ export function BuildingDetails({
                         </dd>
                       </div>
                       <div>
-                        <dt>Energy needed:</dt>
+                        <dt>Construction energy required:</dt>
                         <dd>
                           <ResourceNumber value={terms.required_energy} />
                         </dd>
                       </div>
+                      {energyChange !== null && (
+                        <div>
+                          <dt>
+                            {action === 'Upgrade'
+                              ? 'Additional operating energy'
+                              : 'Operating energy saved'}{' '}
+                            (100%):
+                          </dt>
+                          <dd>
+                            <ResourceNumber
+                              value={
+                                action === 'Upgrade'
+                                  ? energyChange
+                                  : -energyChange
+                              }
+                            />
+                          </dd>
+                        </div>
+                      )}
                     </dl>
                   )
                 )}
@@ -155,6 +178,11 @@ export function BuildingDetails({
                     className={
                       action === 'Upgrade' ? styles.improve : styles.destroy
                     }
+                    data-analytics={
+                      action === 'Upgrade'
+                        ? 'confirm_upgrade'
+                        : 'confirm_demolition'
+                    }
                     aria-label={`Confirm ${action.toLowerCase()}`}
                     disabled={
                       loading ||
@@ -185,16 +213,15 @@ export function BuildingDetails({
         <Info size={17} aria-hidden="true" />
         <p>{building.description}</p>
       </div>
-      <details className={styles.requirements}>
-        <summary>Construction terms</summary>
-        <p>
-          Full payment is refunded if cancelled before completion. A quote
-          reserves nothing.
-        </p>
-        {proposal && (
-          <p>Confirmed {new Date(proposal.as_of_ms).toLocaleString()}</p>
-        )}
-      </details>
+      {!work && (
+        <details className={styles.requirements}>
+          <summary>Construction terms</summary>
+          <p>Full refund if cancelled before completion.</p>
+          {proposal && (
+            <p>Confirmed {new Date(proposal.as_of_ms).toLocaleString()}</p>
+          )}
+        </details>
+      )}
     </>
   )
 }

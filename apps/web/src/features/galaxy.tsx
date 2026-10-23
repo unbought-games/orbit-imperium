@@ -1,3 +1,5 @@
+import { useProfileSource } from '../shell/player-profiles-context'
+import { PlayerName } from './player-name'
 import { ChevronLeft, ChevronRight, RefreshCw, Orbit } from 'lucide-react'
 import { Link } from '../ui/link'
 import { Button } from '../ui/button'
@@ -10,10 +12,9 @@ import type { DispatchDraft } from './missions'
 import { routeTarget } from '../shell/route-target'
 import { GalaxyPosition } from './galaxy-position'
 import { GalaxyAtlas } from './galaxy-atlas'
-import { Heading, Text } from '../ui/typography'
+import { TaskHeader } from '../ui/task-header'
 import { exactTime } from './mission-presentation'
-import { useProfileSource } from '../shell/player-profiles-context'
-import { PlayerName } from './player-name'
+import { colonizationStatus } from '../client-model/colonization'
 type System = components['schemas']['GalaxySystem4']
 export function Galaxy({
   model,
@@ -81,15 +82,7 @@ export function Galaxy({
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
-      <header className={styles.intro}>
-        <p className={styles.eyebrow}>Astronomical atlas</p>
-        <Heading level={2} className={styles.title}>
-          A wider horizon.
-        </Heading>
-        <Text>
-          Explore the observed worlds of Galaxy {galaxy}, System {system}.
-        </Text>
-      </header>
+      <TaskHeader title="Galaxy" />
       <div className={styles.toolbar}>
         <Orbit size={20} aria-hidden="true" />
         <Field>
@@ -162,7 +155,12 @@ export function Galaxy({
           Loading system…
         </p>
       )}
-      {data && <GalaxyAtlas system={data} />}
+      {data && (
+        <details className={styles.map}>
+          <summary>System map</summary>
+          <GalaxyAtlas system={data} />
+        </details>
+      )}
       {data && (
         <section className={styles.positions} aria-label="Galaxy positions">
           <ul className={styles.positionList}>
@@ -173,10 +171,12 @@ export function Galaxy({
               >
                 <GalaxyPosition
                   position={position}
+                  playerNames={data.player_names}
                   playerIdentity={
                     position.body ? (
                       <PlayerName
                         player={position.body.owner}
+                        names={data.player_names}
                         fallback={
                           position.body.owner === model.binding?.player
                             ? 'You'
@@ -187,6 +187,11 @@ export function Galaxy({
                   }
                   player={model.binding?.player}
                   canAttack={!!canAttack}
+                  origin={origin}
+                  colony={colonizationStatus(
+                    model.view,
+                    position.coordinates.position,
+                  )}
                   onDraft={onDraft}
                 />
               </li>

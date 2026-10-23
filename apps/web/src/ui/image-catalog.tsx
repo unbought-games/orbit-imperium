@@ -219,6 +219,7 @@ export function ImageTile({
           className={styles.quickUpgrade}
           aria-label={`Start upgrade ${title}`}
           title={`Start upgrade ${title}`}
+          data-analytics="quick_upgrade"
           onClick={onQuickUpgrade}
         >
           <ArrowUp size={16} aria-hidden="true" />

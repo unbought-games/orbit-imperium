@@ -1,3 +1,4 @@
+import { runtimeNeedsRecovery } from './adapters/runtime'
 import { UniverseEnrollment } from './features/oidc'
 import { SkipLink } from './ui/skip-link'
 import { ConnectionScreen } from './features/connection-screen'
@@ -50,7 +51,9 @@ export function App() {
             runtime.game.status === 'no_membership'
               ? 'No universe membership is available.'
               : commands.model?.message ||
-                'Unable to prepare your game. Please retry.'
+                (runtimeNeedsRecovery(runtime)
+                  ? 'Connection temporarily unavailable. Reconnecting automatically…'
+                  : 'Unable to prepare your game. Please retry.')
           }
           busy={busy}
           retry={retry}

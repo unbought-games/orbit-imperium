@@ -1,9 +1,29 @@
 import type { Attempt, Command } from '../client-model/commands'
+import { dispatchFailure } from '../client-model/dispatch-validation'
 import { label } from './format'
+// Presence uses the durable command ledger, but uncertainty is resolved by
+// delivery reconciliation without asking the player to confirm an internal action.
+// Keep actual rejections visible, including presence failures.
+export function visibleAction(a: Attempt): boolean {
+  const command = a.envelope.command
+  return (
+    command.type !== 'World' ||
+    command.action.type !== 'RecordForegroundPresence' ||
+    a.status === 'rejected'
+  )
+}
 export function actionLabel(command: Command): string {
   return label(command.type === 'World' ? command.action.type : command.type)
 }
 export function actionMessage(a: Attempt): string {
+  const command = a.envelope.command
+  if (
+    a.status === 'rejected' &&
+    a.receipt?.status === 'Rejected' &&
+    command.type === 'World' &&
+    command.action.type === 'LaunchFleet'
+  )
+    return `Fleet not sent: ${dispatchFailure(a.receipt.code, command.action.intent)}`
   return a.status === 'committed'
     ? a.reconciled
       ? 'Action confirmed.'
@@ -21,10 +41,12 @@ export function changedAnnouncements(
   attempts: Attempt[],
 ): { current: Map<string, string>; message: string } {
   const current = new Map(
-    attempts.map((a) => [
-      a.envelope.command_id,
-      `${actionLabel(a.envelope.command)}: ${actionMessage(a)}`,
-    ]),
+    attempts
+      .filter(visibleAction)
+      .map((a) => [
+        a.envelope.command_id,
+        `${actionLabel(a.envelope.command)}: ${actionMessage(a)}`,
+      ]),
   )
   return {
     current,

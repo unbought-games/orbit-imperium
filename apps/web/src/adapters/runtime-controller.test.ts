@@ -164,3 +164,308 @@ it.each([
     else throw Error('lost auth')
   },
 )
+
+function recoveryFixture() {
+  const deps = browserDependencies()
+  Object.defineProperty(deps, 'storage', { value: memoryStorage() })
+  let online = true
+  deps.platform.monotonicNowMs = () => Date.now()
+  deps.platform.isOnline = () => online
+  const api = {
+    bootstrap: vi.fn(async () => bootstrapFixture(4)),
+    loginBootstrap: vi.fn(),
+    signupBootstrap: vi.fn(),
+    logout: vi.fn(),
+  }
+  const owner = new RuntimeController(
+    { status: 'unavailable', signupEnabled: true },
+    deps,
+    api,
+  )
+  return {
+    owner,
+    api,
+    setOnline: (value: boolean) => {
+      online = value
+    },
+  }
+}
+
+it('recovers a temporary bootstrap outage with bounded backoff and stops after success', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  api.bootstrap
+    .mockRejectedValueOnce(new HttpError(503, 'Unavailable'))
+    .mockResolvedValueOnce({
+      version: 1,
+      signup_enabled: true,
+      result: { status: 'unavailable', code: 'Unavailable' },
+    })
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(999)
+    expect(api.bootstrap).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+    expect(owner.store.getState().runtime.status).toBe('unavailable')
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(4000)
+    expect(owner.store.getState().runtime.status).toBe('authenticated')
+    await vi.advanceTimersByTimeAsync(120000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(3)
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})
+
+it('waits while offline, wakes on foreground, respects Retry-After and cancels on disposal', async () => {
+  vi.useFakeTimers()
+  const { owner, api, setOnline } = recoveryFixture()
+  setOnline(false)
+  api.bootstrap.mockRejectedValueOnce(new HttpError(503, 'Unavailable', 30000))
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(31000)
+    expect(api.bootstrap).not.toHaveBeenCalled()
+    setOnline(true)
+    recovery.wake()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+    recovery.wake()
+    await vi.advanceTimersByTimeAsync(29999)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+    recovery.stop()
+    await vi.advanceTimersByTimeAsync(100000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})
+
+it('does not overlap recovery requests or restore access after a concurrent sign-out', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  const pending = deferred<Bootstrap>()
+  api.bootstrap.mockReturnValueOnce(pending.promise)
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(1000)
+    recovery.wake()
+    await vi.advanceTimersByTimeAsync(120000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+    owner.loseAccess()
+    pending.resolve(bootstrapFixture(4))
+    await vi.advanceTimersByTimeAsync(120000)
+    expect(owner.store.getState().runtime.status).toBe('anonymous')
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})
+
+it.each([
+  'Unavailable',
+  'StorageUnavailable',
+  'InvalidBootstrap',
+  'MembershipUnavailable',
+  'UnsupportedProtocol',
+] as const)(
+  'automatically retries only transient game preparation failures (%s)',
+  async (code) => {
+    vi.useFakeTimers()
+    const { owner, api } = recoveryFixture()
+    const payload = bootstrapFixture(4)
+    if (payload.result.status !== 'authenticated') throw Error('fixture')
+    owner.store.setState({
+      runtime: {
+        status: 'authenticated',
+        signupEnabled: true,
+        source: 'document',
+        session: payload.result.session,
+        game: { status: 'unavailable', code },
+      },
+    })
+    const recovery = owner.startRecovery()
+    try {
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(api.bootstrap).toHaveBeenCalledTimes(
+        code === 'Unavailable' ? 1 : 0,
+      )
+    } finally {
+      recovery.stop()
+      vi.useRealTimers()
+    }
+  },
+)
+
+it('caps prolonged outage backoff at thirty seconds and stops on a confirmed anonymous session', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  const start = Date.now(),
+    calls: number[] = []
+  api.bootstrap.mockImplementation(async () => {
+    calls.push(Date.now() - start)
+    return {
+      version: 1,
+      signup_enabled: true,
+      result: { status: 'unavailable', code: 'Unavailable' },
+    }
+  })
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(91000)
+    expect(calls).toEqual([1000, 3000, 7000, 15000, 31000, 61000, 91000])
+    api.bootstrap.mockResolvedValueOnce({
+      version: 1,
+      signup_enabled: true,
+      result: { status: 'anonymous' },
+    })
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(owner.store.getState().runtime.status).toBe('anonymous')
+    const count = api.bootstrap.mock.calls.length
+    recovery.wake()
+    await vi.advanceTimersByTimeAsync(120000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(count)
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})
+
+it.each([
+  new HttpError(503, 'Unavailable'),
+  new TypeError('Failed to fetch'),
+  new DOMException('Request timed out', 'TimeoutError'),
+])('keeps automatic recovery quiet after %s', async (error) => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  api.bootstrap.mockRejectedValue(error)
+  const changes: { busy: boolean; message: string }[] = []
+  const unsubscribe = owner.store.subscribe(({ busy, message }) => {
+    changes.push({ busy, message })
+  })
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(3)
+    expect(changes.every(({ busy, message }) => !busy && message === '')).toBe(
+      true,
+    )
+    expect(owner.store.getState()).toMatchObject({ busy: false, message: '' })
+    // An explicit retry retains its error feedback.
+    await owner.retry()
+    expect(owner.store.getState().message).toBe(
+      'Unable to connect. Please retry.',
+    )
+  } finally {
+    recovery.stop()
+    unsubscribe()
+    vi.useRealTimers()
+  }
+})
+
+it('lets manual retry supersede background work without losing its busy state', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  const background = deferred<Bootstrap>(),
+    manual = deferred<Bootstrap>()
+  api.bootstrap
+    .mockReturnValueOnce(background.promise)
+    .mockReturnValueOnce(manual.promise)
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(owner.store.getState().busy).toBe(false)
+    const retry = owner.retry()
+    expect(owner.store.getState().busy).toBe(true)
+    background.resolve(bootstrapFixture(4))
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(owner.store.getState()).toMatchObject({
+      busy: true,
+      runtime: { status: 'unavailable' },
+    })
+    expect(api.bootstrap).toHaveBeenCalledTimes(2)
+    manual.resolve(bootstrapFixture(4))
+    await retry
+    expect(owner.store.getState()).toMatchObject({
+      busy: false,
+      runtime: { status: 'authenticated' },
+    })
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})
+
+it.each(['retry', 'login'] as const)(
+  'clears a stale Retry-After after a successful %s that still needs game preparation',
+  async (source) => {
+    vi.useFakeTimers()
+    const { owner, api } = recoveryFixture()
+    const preparing = bootstrapFixture(4)
+    if (preparing.result.status !== 'authenticated') throw Error('fixture')
+    preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
+    api.bootstrap.mockRejectedValueOnce(
+      new HttpError(503, 'Unavailable', 60000),
+    )
+    const recovery = owner.startRecovery()
+    try {
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(api.bootstrap).toHaveBeenCalledTimes(1)
+      if (source === 'retry') {
+        api.bootstrap.mockResolvedValueOnce(preparing)
+        await owner.retry()
+      } else {
+        api.loginBootstrap.mockResolvedValueOnce(preparing)
+        await owner.authenticate(false, 'player', 'password')
+      }
+      expect(owner.store.getState().runtime).toMatchObject({
+        status: 'authenticated',
+        game: { status: 'unavailable' },
+      })
+      const calls = api.bootstrap.mock.calls.length
+      await vi.advanceTimersByTimeAsync(1999)
+      expect(api.bootstrap).toHaveBeenCalledTimes(calls)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(api.bootstrap).toHaveBeenCalledTimes(calls + 1)
+      expect(owner.store.getState().runtime).toMatchObject({
+        status: 'authenticated',
+        game: { status: 'ready' },
+      })
+    } finally {
+      recovery.stop()
+      vi.useRealTimers()
+    }
+  },
+)
+
+it('does not let a stale bootstrap response clear a newer Retry-After', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  const background = deferred<Bootstrap>()
+  api.bootstrap
+    .mockReturnValueOnce(background.promise)
+    .mockRejectedValueOnce(new HttpError(503, 'Unavailable', 60000))
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(1000)
+    await owner.retry()
+    background.resolve(bootstrapFixture(4))
+    await vi.advanceTimersByTimeAsync(59999)
+    expect(api.bootstrap).toHaveBeenCalledTimes(2)
+    expect(owner.store.getState().runtime.status).toBe('unavailable')
+    await vi.advanceTimersByTimeAsync(1)
+    expect(api.bootstrap).toHaveBeenCalledTimes(3)
+    expect(owner.store.getState().runtime).toMatchObject({
+      status: 'authenticated',
+      game: { status: 'ready' },
+    })
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})

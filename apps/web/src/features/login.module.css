@@ -47,6 +47,11 @@
   padding-inline: var(--space-6);
   border-radius: 2px;
 }
+.accountAction {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
 .statement {
   border-top: 1px solid var(--border-accent);
   margin-top: 48px;

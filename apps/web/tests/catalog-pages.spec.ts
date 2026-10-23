@@ -1,4 +1,5 @@
 import { captureCatalog } from './fixtures/catalog-capture'
+import { readFileSync } from 'node:fs'
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { shellFixture, body, binding, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
@@ -57,6 +58,7 @@ test('active research remains cancellable from its details after removing Curren
     .click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('60 metal')
+  await expect(pane.getByText(/Full refund before completion:/)).toHaveCount(1)
   await pane
     .getByRole('button', { name: 'Cancel research', exact: true })
     .click()
@@ -128,7 +130,7 @@ const catalog: S['CatalogEntry3'][] = [
     body_kinds: ['Planet'],
   },
 ]
-async function setup(page: Page, blocked = false, unitCost?: S['Resources']) {
+async function setup(page: Page, blocked = false, unitCost?: S['Resources'], options: Parameters<typeof shellFixture>[1] = {}) {
   const blockers = blocked
     ? [
         {
@@ -151,6 +153,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources']) {
       { research: 'EnergyTechnology', level: 1 },
       { research: 'CombustionDrive', level: 0 },
     ],
+    ...options,
   })
   await page.route('**/progression-options', async (route) => {
     const { context, request } = route.request().postDataJSON()
@@ -480,6 +483,7 @@ test('object stages preserve source proportions at desktop and phone widths', as
   for (const width of [1440, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+    await page.getByText('Facilities colony', { exact: true }).click()
     const scene = page.getByRole('region', { name: 'Facilities objects' })
     await expect(scene).toBeVisible()
     await expectUndistortedArt(scene.locator('..'))
@@ -909,6 +913,7 @@ test('facility and research object stages remain usable when artwork fails', asy
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+    await page.getByText('Facilities colony', { exact: true }).click()
     const marker = page.getByRole('button', { name: 'Inspect Robotics Factory', exact: true })
     await marker.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
@@ -1111,8 +1116,65 @@ test('activated Astrophysics shows three gates, exact rounded costs, and deferre
   await expect(dialog).toContainText('3 / 3 · Met')
   await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
   await expect(dialog).toContainText('Positions 4–12 unlock at level 1')
-  await expect(dialog).toContainText('Colony Ships, colonization and expeditions are not available yet')
+  await expect(dialog).toContainText('Colonization requires this universe’s enabled Colony Ship and mission. Expeditions are unavailable.')
   await dialog.getByRole('button', { name: 'Close technology' }).click()
   await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
   await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'Astrophysics', expected_terms_hash: 'b'.repeat(64) })
+})
+
+const laserCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-8.json', 'utf8')).catalog
+
+test('Laser Technology shows its requirements, artwork and research action', async ({ page }) => {
+  const { sent, planet } = await setup(page, false, { metal: '200000000', crystal: '100000000', deuterium: '0' }, {
+    catalog: laserCatalog,
+    research: [{ research: 'EnergyTechnology', level: 2 }, { research: 'LaserTechnology', level: 0 }],
+  })
+  planet.levels.ResearchLab = 1
+  await refreshGame(page)
+  await navigate(page, 'Research')
+  await page.getByRole('button', { name: 'Research Laser Technology', exact: true }).click()
+  const pane = page.getByRole('region', { name: 'Progression quote' })
+  await expect(pane).toContainText('Weapon damage is improved by Weapons Technology.')
+  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Research Lab')
+  await expect(dialog).toContainText('1 / 1 · Met')
+  await expect(dialog).toContainText('Energy Technology')
+  await expect(dialog).toContainText('2 / 2 · Met')
+  await dialog.getByRole('button', { name: 'Close technology' }).click()
+  await expect(pane.getByRole('button', { name: 'Metal details' })).toContainText('200')
+  await expect(pane.getByRole('button', { name: 'Crystal details' })).toContainText('100')
+  await expect(pane.locator('img').first()).toBeVisible()
+  await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
+  await expect.poll(() => sent.length).toBe(1)
+  expect(sent[0].command).toMatchObject({ type: 'StartResearch', research: 'LaserTechnology', host: body.id })
+})
+
+test('Light Laser shows completed inventory and builds a batch at its catalog cost', async ({ page }) => {
+  const { sent, planet } = await setup(page, false, { metal: '1500000000', crystal: '500000000', deuterium: '0' }, {
+    catalog: laserCatalog,
+    research: [{ research: 'EnergyTechnology', level: 2 }, { research: 'LaserTechnology', level: 3 }],
+  })
+  planet.levels.Shipyard = 2
+  planet.inventories.push({ item: { kind: 'Defense', id: 'LightLaser' }, count: '7' })
+  await refreshGame(page)
+  await navigate(page, 'Defense')
+  const tile = page.getByRole('button', { name: 'Build Light Laser', exact: true })
+  await expect(tile).toContainText('7')
+  await tile.click()
+  const pane = page.getByRole('region', { name: 'Progression quote' })
+  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Shipyard')
+  await expect(dialog).toContainText('Laser Technology')
+  await expect(dialog).toContainText('3 / 3 · Met')
+  await dialog.getByRole('button', { name: 'Close technology' }).click()
+  await expect(pane.locator('img').first()).toBeVisible()
+  await page.getByLabel('Defenses quantity').fill('3')
+  await expect(pane).toContainText('3 × Light Laser')
+  await expect(pane.getByRole('button', { name: 'Metal details' })).toContainText('4,500')
+  await expect(pane.getByRole('button', { name: 'Crystal details' })).toContainText('1,500')
+  await pane.getByRole('button', { name: 'Build', exact: true }).click()
+  await expect.poll(() => sent.length).toBe(1)
+  expect(sent[0].command).toMatchObject({ type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'LightLaser' }, quantity: '3' })
 })

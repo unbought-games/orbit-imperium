@@ -2,7 +2,17 @@
 
 Deploy the server/frontend across all instances sharing PostgreSQL before changing a universe's rules. A deployment applies compatible schema migrations, but preserves existing universe configurations. Newly supported content can stay disabled indefinitely.
 
+Content additions must also preserve client and historical-report compatibility.
+See the [content compatibility audit and regression checks](content-compatibility.md)
+before changing shared vocabulary or response shapes.
+
 Use the deployed `orbit` binary with the same `DATABASE_URL` as the service. These commands are operator CLI commands, not public HTTP endpoints. The database must already have been prepared by server startup.
+
+For the reviewed Laser Technology and Light Laser content patch, see
+[Light Laser activation](light-laser.md).
+
+For Heavy Fighter prerequisites, exact stats, and preparation commands, see the
+[Heavy Fighter rollout](heavy-fighter.md).
 
 ## Export and edit
 

@@ -147,7 +147,20 @@ fn settings_settle_old_rates_noop_and_missing_coverage_fail_closed() {
 }
 #[test]
 fn starter_can_reach_every_selected_unit_without_grants() {
-    let (mut s, r, p, b) = fixture();
+    starter_journey(false);
+    starter_journey(true);
+}
+fn starter_journey(lasers: bool) {
+    let (mut s, mut r, p, b) = fixture();
+    if lasers {
+        r = common::light_laser_rules(&r);
+        s.profile_hash = r.hash.clone();
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(ResearchId::LaserTechnology, 0);
+    }
     let mut at = 0;
     let mut n = 100u128;
     fn purchase(
@@ -286,8 +299,9 @@ fn starter_can_reach_every_selected_unit_without_grants() {
         (ResearchId::ComputerTechnology, 1),
         (ResearchId::WeaponsTechnology, 1),
         (ResearchId::ArmourTechnology, 1),
+        (ResearchId::LaserTechnology, if lasers { 3 } else { 0 }),
     ] {
-        while s.research[&p].levels[&k] < target {
+        while target > 0 && s.research[&p].levels[&k] < target {
             purchase(
                 &mut s,
                 &r,
@@ -309,7 +323,11 @@ fn starter_can_reach_every_selected_unit_without_grants() {
         ManufacturedItem::Ship(ShipType::EspionageProbe),
         ManufacturedItem::Defense(DefenseId::RocketLauncher),
         ManufacturedItem::Defense(DefenseId::SmallShieldDome),
+        ManufacturedItem::Defense(DefenseId::LightLaser),
     ] {
+        if item == ManufacturedItem::Defense(DefenseId::LightLaser) && !lasers {
+            continue;
+        }
         purchase(
             &mut s,
             &r,
@@ -328,7 +346,7 @@ fn starter_can_reach_every_selected_unit_without_grants() {
             1
         )
     }
-    assert_eq!(s.inventories.len(), 6);
+    assert_eq!(s.inventories.len(), if lasers { 7 } else { 6 });
     assert_eq!(s.research[&p].levels[&ResearchId::CombustionDrive], 6);
     assert!(
         inspect_progression(
@@ -1652,4 +1670,343 @@ fn astrophysics_stale_prices_and_insufficient_resources_never_spend() {
     s.bodies.get_mut(&b).unwrap().checkpoint.amounts.metal = 4100 * SCALE - 1;
     blocked(&s, &next, p, 0, request, GameError::InsufficientResources);
     assert!(s.research_operations.is_empty());
+}
+
+#[test]
+fn building_inspections_separate_operating_consumption_from_construction_energy() {
+    let (mut s, r, p, b) = fixture();
+    // Other producers, energy shortages and throttling must not change the
+    // building's advertised full-output consumption or gate its construction.
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::MetalMine, 5);
+    s.production_settings
+        .get_mut(&b)
+        .unwrap()
+        .settings
+        .crystal_mine = 0;
+    for (building, source, current, target) in [
+        (Building::CrystalMine, 3, 39_930_000, 58_564_000),
+        (Building::DeuteriumSynthesizer, 1, 22_000_000, 48_400_000),
+        (Building::MetalMine, 0, 0, 11_000_000),
+        (Building::SolarPlant, 1, 0, 0),
+        (Building::RoboticsFactory, 0, 0, 0),
+    ] {
+        s.bodies
+            .get_mut(&b)
+            .unwrap()
+            .levels
+            .insert(building, source);
+        let request = QuoteRequest::Upgrade { body: b, building };
+        let before = s.clone();
+        let options = inspect_progression(&s, Actor::Player(p), &request, 0, &r).unwrap();
+        assert_eq!(s, before);
+        assert_eq!(
+            options.building_energy,
+            Some(BuildingEnergy {
+                current_consumption: current.to_string(),
+                target_consumption: target.to_string(),
+            })
+        );
+        assert!(matches!(
+            options.terms,
+            Some(ProgressionMaterial::Building {
+                required_energy: 0,
+                ..
+            })
+        ));
+        assert!(
+            !options
+                .blockers
+                .iter()
+                .any(|blocker| blocker.code == GameError::EnergyRequired)
+        );
+        if source > 0 {
+            let demolition = inspect_progression(
+                &s,
+                Actor::Player(p),
+                &QuoteRequest::Demolition { body: b, building },
+                0,
+                &r,
+            )
+            .unwrap();
+            assert_eq!(
+                demolition.building_energy.unwrap().current_consumption,
+                current.to_string()
+            );
+        }
+    }
+    let demolition = inspect_progression(
+        &s,
+        Actor::Player(p),
+        &QuoteRequest::Demolition {
+            body: b,
+            building: Building::RoboticsFactory,
+        },
+        0,
+        &r,
+    )
+    .unwrap();
+    assert!(demolition.terms.is_none());
+    assert!(demolition.building_energy.is_none());
+}
+
+#[test]
+fn building_energy_uses_the_active_rules_and_exact_micro_units() {
+    let (s, r, _, b) = fixture();
+    let mut artifact = r.artifact.clone();
+    artifact.energy_demand[0] = 17;
+    artifact.growth = [6, 5];
+    let rules = Ruleset::from_artifact(artifact, r.speed).unwrap();
+    let energy = building_energy(&s.bodies[&b], Building::MetalMine, 1, 2, &rules).unwrap();
+    assert_eq!(energy.current_consumption, "20400000");
+    assert_eq!(energy.target_consumption, "48960000");
+    let demolition = building_energy(&s.bodies[&b], Building::MetalMine, 2, 1, &rules).unwrap();
+    assert_eq!(demolition.current_consumption, energy.target_consumption);
+    assert_eq!(demolition.target_consumption, energy.current_consumption);
+}
+
+#[test]
+fn laser_research_and_defense_require_completed_local_and_player_prerequisites() {
+    let (mut s, old, p, b) = prepared();
+    let r = common::light_laser_rules(&old);
+
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 1);
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::Shipyard, 2);
+    let research = QuoteRequest::Research {
+        host: b,
+        research: ResearchId::LaserTechnology,
+    };
+    let item = ManufacturedItem::Defense(DefenseId::LightLaser);
+    let manufacture = QuoteRequest::Manufacture {
+        body: b,
+        item,
+        quantity: 3,
+    };
+    blocked(
+        &s,
+        &old,
+        p,
+        0,
+        research.clone(),
+        GameError::UnavailableContent,
+    );
+    blocked(
+        &s,
+        &old,
+        p,
+        0,
+        manufacture.clone(),
+        GameError::UnavailableContent,
+    );
+    s.profile_hash = r.hash.clone();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::LaserTechnology, 0);
+
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::EnergyTechnology, 1);
+    blocked(
+        &s,
+        &r,
+        p,
+        0,
+        research.clone(),
+        GameError::PrerequisiteMissing,
+    );
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::EnergyTechnology, 2);
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 0);
+    blocked(
+        &s,
+        &r,
+        p,
+        0,
+        research.clone(),
+        GameError::PrerequisiteMissing,
+    );
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::ResearchLab, 1);
+    let mut at = 0;
+    for (level, cost, duration) in [
+        (1, [200, 100, 0], 54_000),
+        (2, [400, 200, 0], 108_000),
+        (3, [800, 400, 0], 216_000),
+    ] {
+        let terms = research_terms(
+            &s.bodies[&b],
+            &s.research[&p],
+            ResearchId::LaserTechnology,
+            &r,
+        )
+        .unwrap();
+        assert_eq!(
+            terms.paid(),
+            Resources::from_values(cost.map(|v| v * SCALE))
+        );
+        assert_eq!(terms.duration(), duration);
+        let cmd = command(&s, &r, p, at, research.clone());
+        let c = run(
+            &mut s,
+            &r,
+            Actor::Player(p),
+            at,
+            2000 + u128::from(level) * 2,
+            Input::Command(cmd),
+        );
+        let event = &c.events[0];
+        // Even a paid level 3 does not unlock the defense until its completion.
+        blocked(
+            &s,
+            &r,
+            p,
+            event.at - 1,
+            manufacture.clone(),
+            GameError::PrerequisiteMissing,
+        );
+        assert_eq!(
+            s.research[&p].levels[&ResearchId::LaserTechnology],
+            level - 1
+        );
+        at = event.at;
+        run(
+            &mut s,
+            &r,
+            Actor::Scheduler,
+            at,
+            2001 + u128::from(level) * 2,
+            Input::Event(event.event.clone()),
+        );
+        assert_eq!(s.research[&p].levels[&ResearchId::LaserTechnology], level);
+    }
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::Shipyard, 1);
+    blocked(
+        &s,
+        &r,
+        p,
+        at,
+        manufacture.clone(),
+        GameError::PrerequisiteMissing,
+    );
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::Shipyard, 2);
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::EnergyTechnology, 0);
+    blocked(
+        &s,
+        &r,
+        p,
+        at,
+        manufacture.clone(),
+        GameError::PrerequisiteMissing,
+    );
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::EnergyTechnology, 2);
+    let terms = manufacture_terms(&s.bodies[&b], item, 3, &r).unwrap();
+    assert_eq!(
+        terms.paid(),
+        Resources::from_values([4500 * SCALE, 1500 * SCALE, 0])
+    );
+    assert!(matches!(
+        terms,
+        ProgressionMaterial::Manufacture {
+            unit_duration_ms: 96_000,
+            ..
+        }
+    ));
+    let before = s.bodies[&b].checkpoint.amounts;
+    let cmd = command(&s, &r, p, at, manufacture);
+    let mut c = run(&mut s, &r, Actor::Player(p), at, 2100, Input::Command(cmd));
+    let batch = c.manufacturing_batches[0].clone();
+    assert_eq!(batch.final_due_at - at, 288_000);
+    assert_eq!(
+        s.bodies[&b].checkpoint.amounts.metal,
+        before.metal - 4500 * SCALE
+    );
+    assert_eq!(
+        s.bodies[&b].checkpoint.amounts.crystal,
+        before.crystal - 1500 * SCALE
+    );
+    assert!(!s.inventories.iter().any(|v| v.item == item));
+    // Disabling new orders keeps accepted payment, timing and output intact.
+    let mut disabled = r.artifact.clone();
+    disabled
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == item.catalog_key())
+        .unwrap()
+        .enabled = false;
+    let disabled = Ruleset::from_artifact(disabled, r.speed).unwrap();
+    assert!(validate_rules_update(&r, &disabled).is_ok());
+    s.profile_hash = disabled.hash.clone();
+    for count in 1..=3 {
+        let event = c.events.remove(0);
+        c = run(
+            &mut s,
+            &disabled,
+            Actor::Scheduler,
+            event.at,
+            2100 + count as u128,
+            Input::Event(event.event.clone()),
+        );
+        assert_eq!(
+            s.inventories.iter().find(|v| v.item == item).unwrap().count,
+            count
+        );
+        let duplicate = run(
+            &mut s,
+            &disabled,
+            Actor::Scheduler,
+            event.at,
+            2200 + count as u128,
+            Input::Event(event.event),
+        );
+        assert!(duplicate.inventories.is_empty());
+    }
+    assert_eq!(
+        s.manufacturing_batches[&batch.id].status,
+        ManufacturingStatus::Completed
+    );
+    assert_eq!(
+        s.bodies[&b].checkpoint.amounts.metal,
+        before.metal - 4500 * SCALE
+    );
 }

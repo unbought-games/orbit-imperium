@@ -27,6 +27,18 @@ pub fn validate_rules_update(
             .keys()
             .any(|k| !next.artifact.ships.contains_key(k))
         || (current.attacks() && !next.attacks())
+        || current
+            .artifact
+            .world
+            .as_ref()
+            .and_then(|w| w.colonization.as_ref())
+            .is_some_and(|before| {
+                next.artifact
+                    .world
+                    .as_ref()
+                    .and_then(|w| w.colonization.as_ref())
+                    .is_none_or(|after| before.profile != after.profile)
+            })
     {
         return Err(RulesError::InvalidReference);
     }

@@ -1,3 +1,4 @@
+import { TaskHeader } from '../ui/task-header'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { canFundFleet } from '../client-model/resources'
 import { pendingBody } from '../client-model/game-projection'
@@ -41,23 +42,8 @@ export function Operations({
   const countdown = useCountdown(view.sampled_at)
   return (
     <>
-      {page === 'fleets' && (
-        <header className={missionStyles.intro}>
-          <p className={missionStyles.eyebrow}>Fleet command</p>
-          <Heading level={2} className={missionStyles.title}>
-            Your reach, in motion.
-          </Heading>
-          <Text>Follow your missions. Prepare the next departure.</Text>
-        </header>
-      )}
-      {page === 'dispatch' && (
-        <header className={missionStyles.intro}>
-          <p className={missionStyles.eyebrow}>Prepare a departure</p>
-          <Heading level={2} className={missionStyles.title}>
-            Set your course.
-          </Heading>
-        </header>
-      )}
+      {page === 'fleets' && <TaskHeader title="Fleets" />}
+      {page === 'dispatch' && <TaskHeader title="Dispatch fleet" />}
       {['overview', 'resources'].includes(page) && (
         <Economy
           view={view}
@@ -291,7 +277,10 @@ function Transport({
       {view.destinations_truncated && (
         <Text>Destination preview: first 100 bodies.</Text>
       )}
-      <Form onSubmit={(e) => void preview(e)}>
+      <Form
+        data-analytics="preview_transport"
+        onSubmit={(e) => void preview(e)}
+      >
         <FormGrid>
           <Field>
             Destination

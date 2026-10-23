@@ -9,7 +9,7 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await page.route('**/updates?epoch=*', route=>route.fulfill({status:503,body:''}));
 
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8')) as {name:string,password:string}[];
- const signIn=async(i:number)=>{await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[i].name);await page.getByLabel('Password').fill(accounts[i].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Overview —/,exact:true})).toBeVisible()};
+ const signIn=async(i:number)=>{await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[i].name);await page.getByLabel('Password').fill(accounts[i].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible()};
  const read=async(request:()=>Promise<APIResponse>)=>{
   let response!:APIResponse;
   // The scheduler can temporarily withhold a view while earlier work commits.
@@ -26,7 +26,7 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await go('resources');
  await page.getByRole('button',{name:'Resource settings',exact:true}).click();
  await expect(page.getByLabel('fusion reactor production')).toBeDisabled();
- await page.getByLabel('metal mine production').selectOption('50');await page.getByRole('button',{name:'Save production',exact:true}).click();
+ await page.getByLabel('metal mine production').selectOption('50');
  await expect.poll(async()=>(await view()).progression.production[0].settings.metal_mine).toBe(50);
  await page.reload();await page.getByRole('button',{name:'Resource settings',exact:true}).click();await expect(page.getByLabel('metal mine production')).toHaveValue('50');
  await go('research');

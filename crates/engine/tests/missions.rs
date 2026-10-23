@@ -135,6 +135,7 @@ fn fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
         }
     }
     s.world = Some(WorldFacts {
+        planet_slots: vec![],
         records: w,
         secret: [7; 32],
         covered_players: s.players.keys().copied().collect(),
@@ -189,6 +190,9 @@ fn run(
     );
     i.protocol = 4;
     i.schema_version = 4;
+    s.coverage
+        .bodies
+        .insert(BodyId(derived_id(i.id, "colony:0")));
     if matches!(i.payload, Input::Command(_)) {
         s.world.as_mut().unwrap().records.presence.insert(
             i.id,
@@ -738,6 +742,47 @@ fn raid_fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     }
     (s, r, p, b, t)
 }
+#[test]
+fn galaxy_attack_blocker_uses_current_policy_and_matches_quote() {
+    let (mut s, r, p, b, t) = raid_fixture();
+    let other = s.bodies[&t].owner;
+    let mut request = intent(&s, p, b, t);
+    request.mission = Mission::Attack;
+    let blocker = |s: &GameState| {
+        galaxy_system(s, p, 1, 1, 0, &r)
+            .unwrap()
+            .positions
+            .into_iter()
+            .filter_map(|position| position.body)
+            .find(|body| body.id == t)
+            .unwrap()
+            .attack_blocker
+    };
+    assert_eq!(blocker(&s), None);
+    assert!(quote_fleet(&s, p, &request, 0, &r).is_ok());
+    for lot in &mut s.world.as_mut().unwrap().records.lots {
+        if lot.owner == other {
+            lot.unit_value_micro *= 10;
+        }
+    }
+    assert_eq!(blocker(&s), Some(GameError::BeginnerProtected));
+    assert_eq!(
+        quote_fleet(&s, p, &request, 0, &r),
+        Err(GameError::BeginnerProtected)
+    );
+    request.mission = Mission::Transport;
+    assert!(quote_fleet(&s, p, &request, 0, &r).is_ok());
+    s.world
+        .as_mut()
+        .unwrap()
+        .records
+        .policies
+        .get_mut(&other)
+        .unwrap()
+        .vacation = true;
+    assert_eq!(blocker(&s), Some(GameError::TargetVacation));
+}
+
 fn launch_raid(
     s: &mut GameState,
     r: &Ruleset,
@@ -1213,6 +1258,18 @@ fn all_attack_outcomes_share_settlement_and_only_victory_plunders() {
             .find(|x| x.kind == "Combat")
             .unwrap()
             .payloads[&defender];
+        for round in report["rounds"].as_array().unwrap() {
+            assert!(
+                round.get("shots").is_none(),
+                "aggregate fire is derived, not stored"
+            );
+            let fire = round["fire"].as_array().unwrap();
+            assert_eq!(fire.len(), 2);
+            assert_eq!(fire[0]["owner"], serde_json::to_value(p).unwrap());
+            assert_eq!(fire[0]["side"], "Attacker");
+            assert_eq!(fire[1]["owner"], serde_json::to_value(defender).unwrap());
+            assert_eq!(fire[1]["side"], "Defender");
+        }
         let outcome = report["outcome"].as_str().unwrap();
         outcomes.insert(outcome.to_string());
         let f = w.fleets.values().next().unwrap();
@@ -1334,7 +1391,21 @@ fn loaded_fleet_losses_trim_only_overflow_before_plunder_and_preserve_paid_lots(
 }
 #[test]
 fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
-    let (mut s, r, p, b, t) = raid_fixture();
+    sequential_defense_raids(DefenseId::RocketLauncher);
+    sequential_defense_raids(DefenseId::LightLaser);
+}
+fn sequential_defense_raids(defense: DefenseId) {
+    let (mut s, mut r, p, b, t) = raid_fixture();
+    if defense == DefenseId::LightLaser {
+        r = common::light_laser_rules(&r);
+        s.profile_hash = r.hash.clone();
+        for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
+            policy.policy_hash = r.hash.clone();
+        }
+        for research in s.research.values_mut() {
+            research.levels.insert(ResearchId::LaserTechnology, 0);
+        }
+    }
     for body in [b, t] {
         set_units(
             &mut s,
@@ -1354,21 +1425,70 @@ fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
     });
     let event = launch_raid(&mut s, &r, p, b, intent.clone(), 1000, 1800);
     clear_units(&mut s, t);
-    set_units(
-        &mut s,
-        &r,
-        t,
-        ManufacturedItem::Defense(DefenseId::RocketLauncher),
-        10,
-    );
+    set_units(&mut s, &r, t, ManufacturedItem::Defense(defense), 10);
     let result = run(&mut s, &r, p, b, event.at, 1801, Input::Event(event.event));
     let c = apply(&mut s, result);
     let previous = s
         .inventories
         .iter()
-        .find(|v| v.body == t && v.item == ManufacturedItem::Defense(DefenseId::RocketLauncher))
+        .find(|v| v.body == t && v.item == ManufacturedItem::Defense(defense))
         .unwrap()
         .count;
+    assert!(
+        previous > 0 && previous < 10,
+        "destroyed defenses recover independently"
+    );
+    let first_report = &s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .reports
+        .values()
+        .find(|v| v.event == InputId(Uuid::from_u128(1801)))
+        .unwrap()
+        .payloads[&s.bodies[&t].owner];
+    let losses = first_report["gross_losses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["side"] == "Defender")
+        .unwrap();
+    assert_eq!(losses["units"][0]["count"], "10");
+    // Defense losses never produce debris; any debris is from lost attacking ships.
+    let attacker_losses = first_report["gross_losses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["side"] == "Attacker")
+        .unwrap();
+    let mut lost = [0i64; 2];
+    for unit in attacker_losses["units"].as_array().unwrap() {
+        let item: ManufacturedItem = serde_json::from_value(unit["item"].clone()).unwrap();
+        let count: i64 = unit["count"].as_str().unwrap().parse().unwrap();
+        let cost = &r
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .units
+            .iter()
+            .find(|v| v.item == item)
+            .unwrap()
+            .cost;
+        for k in 0..2 {
+            lost[k] += count * cost[k];
+        }
+    }
+    assert_eq!(
+        first_report["debris"]["metal"],
+        (lost[0] * 3000 / 10000 * SCALE).to_string()
+    );
+    assert_eq!(
+        first_report["debris"]["crystal"],
+        (lost[1] * 3000 / 10000 * SCALE).to_string()
+    );
     let ret = c
         .events
         .iter()
@@ -1421,7 +1541,7 @@ fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|x| x["item"]["id"] == "RocketLauncher")
+        .find(|x| x["item"]["id"] == serde_json::to_value(defense).unwrap())
         .map_or(0, |x| x["count"].as_str().unwrap().parse::<i64>().unwrap());
     assert_eq!(count, previous);
     for k in 0..3 {
@@ -2144,3 +2264,61 @@ fn fixture_research(s: &mut GameState, r: &Ruleset, p: PlayerId, research: Resea
         });
     }
 }
+
+#[path = "missions/colonization.rs"]
+mod colonization;
+
+#[test]
+fn espionage_contract_keeps_research_added_by_rules_updates() {
+    let (mut s, baseline, p, b, t) = raid_fixture();
+    let r = common::astrophysics_rules(&baseline);
+    s.profile_hash = r.hash.clone();
+    for research in s.research.values_mut() {
+        for key in r.research_keys() {
+            research.levels.entry(key).or_insert(0);
+        }
+    }
+    for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
+        policy.policy_hash = r.hash.clone();
+    }
+    set_units(
+        &mut s,
+        &r,
+        b,
+        ManufacturedItem::Ship(ShipType::EspionageProbe),
+        7,
+    );
+    let mut mission = intent(&s, p, b, t);
+    mission.mission = Mission::Espionage;
+    mission.cargo = Resources::default();
+    mission.ships = vec![ManifestStack {
+        owner: p,
+        ship_type: ShipType::EspionageProbe,
+        count: 7,
+    }];
+    let due = launch_raid(&mut s, &r, p, b, mission, 1000, 4000);
+    clear_units(&mut s, t);
+    let result = run(&mut s, &r, p, b, due.at, 4001, Input::Event(due.event));
+    apply(&mut s, result);
+    let payload = &s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .reports
+        .values()
+        .find(|report| report.kind == "Espionage")
+        .unwrap()
+        .payloads[&p];
+    let expected: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../contracts/fixtures/espionage-expanded.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        payload, &expected,
+        "The browser validates this same engine-produced observation"
+    );
+}
+
+#[path = "missions/heavy_fighter.rs"]
+mod heavy_fighter;

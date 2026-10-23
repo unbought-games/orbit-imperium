@@ -1,3 +1,5 @@
+import { PlayerName } from './player-name'
+import { useProfileSource } from '../shell/player-profiles-context'
 import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useState } from 'react'
@@ -13,10 +15,9 @@ import {
 import { Button, ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
-import { PlayerName } from './player-name'
-import { useProfileSource } from '../shell/player-profiles-context'
 import { routeTarget } from '../shell/route-target'
 import { coordinates } from '../ui/format'
+import { TaskHeader } from '../ui/task-header'
 import { MissionTrajectory } from './mission-trajectory'
 import {
   arrivalCountdown,
@@ -106,21 +107,17 @@ export function MissionFleets({
 }) {
   const universeName = useUniverseName()
   const state = useStore(model.store)
-  useProfileSource({ type: 'Incoming' }, view.viewer_revision)
+  useProfileSource(item ? null : { type: 'Incoming' }, view.viewer_revision)
   const now = currentServerTime(state)
   const fleets = view.missions.fleets.filter(
     (fleet) => !item || fleet.id === item,
   )
-  const launches = pendingFleetLaunches(state)
-  const body = view.bodies.find((entry) => entry.id === origin)
+  const launches = pendingFleetLaunches(state).filter(
+    (launch) => !item || launch.fleetId === item,
+  )
   return (
     <section className={styles.screen}>
-      <header className={styles.intro}>
-        <p className={styles.eyebrow}>Fleet command</p>
-        <Heading level={2} className={styles.title}>
-          Your reach, in motion.
-        </Heading>
-        <Text>Follow your missions. Prepare the next departure.</Text>
+      <TaskHeader title={item ? 'Mission details' : 'Fleets'}>
         <div className={styles.actions}>
           {item && (
             <Link {...routeTarget(universeName, 'fleets', origin)}>
@@ -135,18 +132,16 @@ export function MissionFleets({
             {view.missions.fleet_slots}
           </span>
         </div>
-      </header>
+      </TaskHeader>
       {!fleets.length && !launches.length && (
         <div className={styles.empty}>
-          {body && (
-            <MissionTrajectory
-              origin={body.coordinates}
-              originIdentity={body}
-            />
-          )}
-          <Heading level={3}>No active fleets.</Heading>
+          <Heading level={3}>
+            {item ? 'Fleet unavailable.' : 'No active fleets.'}
+          </Heading>
           <Text>
-            Prepare a mission from the ships stationed at your worlds.
+            {item
+              ? 'This mission may have completed. Check reports for its outcome.'
+              : 'Prepare a mission from the ships stationed at your worlds.'}
           </Text>
         </div>
       )}
@@ -170,25 +165,6 @@ export function MissionFleets({
           key={fleet.id}
           aria-label={`${fleet.intent.mission} fleet`}
         >
-          <MissionTrajectory
-            origin={fleet.origin}
-            originIdentity={view.bodies.find(
-              (body) => body.id === fleet.intent.origin,
-            )}
-            destinationIdentity={
-              fleet.intent.destination.type === 'Body'
-                ? {
-                    id: fleet.intent.destination.id,
-                    kind: fleet.intent.destination.expected_kind,
-                  }
-                : {
-                    id: fleet.intent.destination.field_identity,
-                    kind: 'Debris',
-                  }
-            }
-            destination={fleet.destination}
-            returning={fleet.leg === 'Returning'}
-          />
           <div className={styles.missionFacts}>
             <div>
               <Heading level={3} className={styles.missionTitle}>
@@ -211,27 +187,6 @@ export function MissionFleets({
               </time>
             </div>
           </div>
-          <dl className={styles.cargo}>
-            {(['metal', 'crystal', 'deuterium'] as const).map((key) => (
-              <div key={key}>
-                <dt>{key}</dt>
-                <dd>
-                  <ResourceNumber value={fleet.cargo[key]} />
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <div className={styles.fuel}>
-            <span>
-              Fuel spent{' '}
-              <strong>
-                <ResourceNumber value={fleet.paid_fuel} /> deuterium
-              </strong>
-            </span>
-            <span>
-              Speed <strong>{fleet.intent.speed_percent}%</strong>
-            </span>
-          </div>
           <div className={styles.actions}>
             {(fleet.can_recall ||
               pendingCommand(state, {
@@ -244,30 +199,82 @@ export function MissionFleets({
               </Link>
             )}
           </div>
+          {item && (
+            <>
+              <dl className={styles.cargo}>
+                {(['metal', 'crystal', 'deuterium'] as const).map((key) => (
+                  <div key={key}>
+                    <dt>{key}</dt>
+                    <dd>
+                      <ResourceNumber value={fleet.cargo[key]} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <div className={styles.fuel}>
+                <span>
+                  Fuel spent{' '}
+                  <strong>
+                    <ResourceNumber value={fleet.paid_fuel} /> deuterium
+                  </strong>
+                </span>
+                <span>
+                  Speed <strong>{fleet.intent.speed_percent}%</strong>
+                </span>
+              </div>
+              <details className={styles.rules}>
+                <summary>Flight path</summary>
+                <MissionTrajectory
+                  origin={fleet.origin}
+                  originIdentity={view.bodies.find(
+                    (body) => body.id === fleet.intent.origin,
+                  )}
+                  destinationIdentity={
+                    fleet.intent.destination.type === 'Body'
+                      ? {
+                          id: fleet.intent.destination.id,
+                          kind: fleet.intent.destination.expected_kind,
+                        }
+                      : fleet.intent.destination.type === 'Debris'
+                        ? {
+                            id: fleet.intent.destination.field_identity,
+                            kind: 'Debris',
+                          }
+                        : undefined
+                  }
+                  destination={fleet.destination}
+                  returning={fleet.leg === 'Returning'}
+                />
+              </details>
+            </>
+          )}
         </article>
       ))}
-      <section className={styles.incoming} aria-label="Incoming fleets">
-        <Heading level={2}>Incoming fleets</Heading>
-        {!view.missions.incoming.length && (
-          <Text>No visible incoming fleets.</Text>
-        )}
-        {view.missions.incoming.map((fleet, index) => (
-          <article className={styles.incomingRow} key={index}>
-            <div>
-              <Heading level={3}>
-                {fleet.mission} · <PlayerName player={fleet.sender} />
-              </Heading>
-              <Text>{incomingManifest(fleet.ships)}</Text>
-            </div>
-            <div>
-              <strong>{arrivalCountdown(fleet.arrival_at, now)}</strong>
-              <time dateTime={new Date(fleet.arrival_at).toISOString()}>
-                {exactTime(fleet.arrival_at)}
-              </time>
-            </div>
-          </article>
-        ))}
-      </section>
+      {!item && (
+        <section className={styles.incoming} aria-label="Incoming fleets">
+          <Heading level={2}>Incoming fleets</Heading>
+          {!view.missions.incoming.length && (
+            <Text>No visible incoming fleets.</Text>
+          )}
+          {view.missions.incoming.map((fleet, index) => (
+            <article className={styles.incomingRow} key={index}>
+              <div>
+                <Heading level={3}>
+                  {fleet.mission} ·{' '}
+                  <PlayerName player={fleet.sender} names={view.player_names} />
+                </Heading>
+                <Text>{incomingManifest(fleet.ships)}</Text>
+              </div>
+              <div>
+                <strong>{arrivalCountdown(fleet.arrival_at, now)}</strong>
+                <time dateTime={new Date(fleet.arrival_at).toISOString()}>
+                  {exactTime(fleet.arrival_at)}
+                </time>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
       <details className={styles.rules}>
         <summary>Fleet slots and protection</summary>
         <Text>Returning fleets occupy a slot.</Text>

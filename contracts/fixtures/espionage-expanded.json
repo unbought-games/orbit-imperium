@@ -1,0 +1,66 @@
+{
+  "activity": {
+    "type": "None"
+  },
+  "buildings": {
+    "value": {
+      "CrystalMine": 0,
+      "CrystalStorage": 0,
+      "DeuteriumSynthesizer": 0,
+      "DeuteriumTank": 0,
+      "MetalMine": 0,
+      "MetalStorage": 0,
+      "ResearchLab": 0,
+      "RoboticsFactory": 0,
+      "Shipyard": 0,
+      "SolarPlant": 0
+    },
+    "visibility": "Known"
+  },
+  "counterespionage": {
+    "detected": false,
+    "probability_ppm": 0
+  },
+  "defenses": {
+    "value": [],
+    "visibility": "Known"
+  },
+  "fleet": {
+    "value": [],
+    "visibility": "Known"
+  },
+  "kind": "Espionage",
+  "observed_at": 6000,
+  "research": {
+    "value": {
+      "ArmourTechnology": 0,
+      "Astrophysics": 0,
+      "CombustionDrive": 0,
+      "ComputerTechnology": 0,
+      "EnergyTechnology": 0,
+      "EspionageTechnology": 0,
+      "ImpulseDrive": 0,
+      "ShieldingTechnology": 0,
+      "WeaponsTechnology": 0
+    },
+    "visibility": "Known"
+  },
+  "resources": {
+    "value": {
+      "crystal": "10000000000",
+      "deuterium": "10000000000",
+      "metal": "10000000000"
+    },
+    "visibility": "Known"
+  },
+  "target": {
+    "body": "00000000-0000-0000-0000-000000000014",
+    "coordinates": {
+      "galaxy": 1,
+      "position": 9,
+      "system": 1
+    },
+    "kind": "Planet",
+    "owner": "00000000-0000-0000-0000-000000000015"
+  }
+}

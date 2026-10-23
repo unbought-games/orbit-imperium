@@ -1,3 +1,4 @@
+import { resetAnalytics } from './analytics'
 import type { Bootstrap } from '../client-model/bootstrap'
 import { validate } from '../client-model/schema'
 import type {
@@ -113,6 +114,7 @@ export const http = {
     )
   },
   async logout(csrf: string) {
+    resetAnalytics()
     await request('/api/v1/session', 'DELETE', undefined, csrf)
   },
 }

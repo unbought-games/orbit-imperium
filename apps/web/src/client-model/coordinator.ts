@@ -33,6 +33,7 @@ import {
   commandParent,
   acceptedEntityReference,
   currentServerTime,
+  nextWorkDelay,
   matchesQuote,
   pendingCommand,
   snapshotNeedsReceipt,
@@ -150,6 +151,7 @@ export class Coordinator {
           (attempt) => !terminal(attempt) && attempt.status !== 'submitting',
         ),
       needsSnapshot: () => this.pendingMinimum !== undefined,
+      nextWorkDelay: () => nextWorkDelay(this.store.getState()),
       isCurrent: () => this.ready && this.current(generation, binding),
     })
     this.delivery = delivery
@@ -461,6 +463,7 @@ export class Coordinator {
           return
       }
       this.view = next
+      this.delivery?.pending()
       if (
         this.pendingMinimum !== undefined &&
         BigInt(next.viewer_revision) >= BigInt(this.pendingMinimum)
@@ -755,6 +758,7 @@ export class Coordinator {
     }
     if (!this.current(g, b)) return
     await this.deliver(a, g)
+    return commandId
   }
   private async deliver(a: Attempt, g: number) {
     try {

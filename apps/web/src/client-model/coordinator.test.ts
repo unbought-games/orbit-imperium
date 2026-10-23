@@ -1137,3 +1137,39 @@ it('preserves the required revision when manual refresh supersedes an in-flight 
   expect(requested.at(-1)).toBe('5')
   expect(c.view?.viewer_revision).toBe('5')
 })
+
+it('reconciles unread report alerts from live invalidations and reconnect snapshots', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { session, snapshot } = readyFixture(4)
+  const { port, storage } = setup()
+  let unread = false
+  let revision = BigInt(snapshot.view.viewer_revision)
+  port.view = async (context) => ({
+    ...snapshot.view,
+    request_id: context.request_id,
+    viewer_revision: String(revision),
+    has_unread_reports: unread,
+  })
+  const model = new Coordinator(port, storage, {
+    newId: () => id(90),
+    monotonicNowMs: () => 0,
+    isOnline: () => true,
+  })
+  await model.initialize(session, snapshot)
+  for (const next of [true, false]) {
+    unread = next
+    revision++
+    await model.onUpdate({
+      binding: snapshot.candidate.binding,
+      cursor: String(revision),
+      event: { type: 'Invalidate', minimum_viewer_revision: String(revision) },
+    })
+    expect(model.view).toMatchObject({ has_unread_reports: next })
+  }
+  unread = true
+  revision++
+  await model.poll()
+  expect(model.view).toMatchObject({ has_unread_reports: true })
+  model.invalidate()
+  expect(model.store.getState().view).toBeNull()
+})

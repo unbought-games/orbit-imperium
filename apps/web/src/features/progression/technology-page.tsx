@@ -1,3 +1,4 @@
+import { pageTitles } from '../../shell/navigation-model'
 import { useEffect, useRef, useState } from 'react'
 import { Network } from 'lucide-react'
 import { CatalogStage } from '../../ui/catalog-stage'
@@ -144,7 +145,7 @@ export function TechnologyPage(props: ProgressionProps) {
             }}
           />
         }
-        sceneLabel={`${label(page)} colony`}
+        sceneLabel={`${pageTitles[page]} colony`}
         open={open}
         detailKey={`${selected?.key.id}:${action}`}
         detailLabel="Progression quote"
@@ -153,7 +154,7 @@ export function TechnologyPage(props: ProgressionProps) {
           page !== 'facilities' && (
             <span>
               {kind === 'Research'
-                ? 'Research belongs to your player across this universe.'
+                ? 'Research applies to all your planets.'
                 : `Planet [${body.coordinates.galaxy}:${body.coordinates.system}:${body.coordinates.position}]`}
             </span>
           )
@@ -201,6 +202,8 @@ export function TechnologyPage(props: ProgressionProps) {
       <WorkSummaries
         view={view}
         body={body}
+        currentPage={page}
+        layout="compact"
         only={
           page === 'facilities'
             ? 'buildings'

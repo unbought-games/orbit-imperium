@@ -17,7 +17,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
     await page.getByLabel('Password').fill(accounts[i].password)
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await expect(
-      page.getByRole('heading', { name: /^Overview —/, exact: true }),
+      page.getByRole('heading', { name: /^Empire —/, exact: true }),
     ).toBeVisible()
   }
   const go = (name: string) => navigate(page, name)
@@ -295,7 +295,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
   lookup.searchParams.set('body', foreignView.bodies[0].id)
   await page.goto(lookup.toString())
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Report unavailable' }),
+    page.getByRole('alert').filter({ hasText: 'This report was not found or is not available to your account.' }),
   ).toBeVisible()
   for (let i = 2; i < 5; i++) {
     await signOut(page)
@@ -319,7 +319,7 @@ test('paginated inbox remains usable after leaving a pending report detail', asy
   await page.getByLabel('Account', { exact: true }).fill(accounts[0].name)
   await page.getByLabel('Password').fill(accounts[0].password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(page.locator('main h1')).toHaveText(/^Overview —/)
+  await expect(page.locator('main h1')).toHaveText(/^Empire —/)
   const cursor = randomUUID()
   let pageLoads = 0
   await page.route(/\/api\/v4\/universes\/[^/]+\/reports$/, async (route) => {

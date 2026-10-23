@@ -1,3 +1,4 @@
+import { colonizationStatus } from '../client-model/colonization'
 import { useState } from 'react'
 import { Check, ArrowUpRight } from 'lucide-react'
 import { BrandLogo, BrandWordmark } from '../ui/brand'
@@ -197,6 +198,11 @@ export function SupporterPreview() {
                 <GalaxyPosition
                   key={i}
                   position={position}
+                  origin="preview-origin"
+                  colony={colonizationStatus(
+                    null,
+                    position.coordinates.position,
+                  )}
                   player={undefined}
                   canAttack
                   playerIdentity={

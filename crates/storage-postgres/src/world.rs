@@ -242,6 +242,29 @@ pub(crate) async fn load_selected(
     .into_iter()
     .map(decode)
     .collect::<Result<_, _>>()?;
+    if let (
+        Some(input_id),
+        Input::Event(ScheduledEvent::FleetLegDue {
+            fleet,
+            expected_leg: MissionLeg::Outbound,
+            ..
+        }),
+    ) = (input_id, input)
+        && fleets
+            .iter()
+            .any(|f: &MissionFleet| f.id == *fleet && f.intent.mission == Mission::Colonize)
+    {
+        let id = BodyId(derived_id(input_id, "colony:0"));
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE id=$1)")
+            .bind(id.0)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(db_error)?;
+        if exists {
+            return Err(StoreError::CorruptData);
+        }
+        s.coverage.bodies.insert(id);
+    }
     for f in &fleets {
         if selected.owners.contains(&f.owner) {
             s.coverage.bodies.insert(f.intent.origin);
@@ -300,6 +323,9 @@ pub(crate) async fn load_selected(
             "Recalled",
             "Harvested",
             "MissionFailed",
+            "Colonized",
+            "Deployed",
+            "ColonizationFailed",
             "Espionage",
             "SpyContact",
             "Combat",
@@ -372,8 +398,64 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
             }
         }
     }
+    let colonies: Vec<ColonyGenesis> = sqlx::query_scalar(
+        "SELECT data FROM colony_genesis WHERE universe=$1 AND id=ANY($2) ORDER BY id",
+    )
+    .bind(u.0)
+    .bind(&body_ids)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?
+    .into_iter()
+    .map(decode)
+    .collect::<Result<_, _>>()?;
+    let mut planet_slots = Vec::new();
+    if rules
+        .artifact
+        .world
+        .as_ref()
+        .and_then(|w| w.colonization.as_ref())
+        .is_some()
+    {
+        // Load only public occupancy at declared coordinates, without pulling a
+        // new occupant's private economy into the original fleet's player scope.
+        let coordinates: Vec<_> = coords
+            .iter()
+            .map(|&(galaxy, system, position)| Coordinates {
+                galaxy,
+                system,
+                position,
+            })
+            .filter(|c| {
+                rules
+                    .artifact
+                    .universe
+                    .as_ref()
+                    .is_some_and(|u| u.contains(*c))
+            })
+            .collect();
+        let values: Vec<_> = coordinates
+            .iter()
+            .map(|c| serde_json::to_value(c).expect("coordinates"))
+            .collect();
+        let rows = sqlx::query("SELECT c.galaxy,c.system,c.position,b.id,coalesce(h.revision,CASE WHEN b.id IS NULL THEN 0 ELSE 1 END) AS revision FROM jsonb_to_recordset($2) AS c(galaxy integer,system integer,position integer) LEFT JOIN bodies b ON b.universe=$1 AND b.galaxy=c.galaxy AND b.system=c.system AND b.position=c.position AND b.kind='Planet' LEFT JOIN planet_slot_revisions h ON h.universe=$1 AND h.galaxy=c.galaxy AND h.system=c.system AND h.position=c.position ORDER BY c.galaxy,c.system,c.position")
+            .bind(u.0).bind(serde_json::Value::Array(values)).fetch_all(&mut **tx).await.map_err(db_error)?;
+        for row in rows {
+            planet_slots.push(PlanetSlot {
+                coordinates: Coordinates {
+                    galaxy: row.get::<i32, _>("galaxy") as u32,
+                    system: row.get::<i32, _>("system") as u32,
+                    position: row.get::<i32, _>("position") as u32,
+                },
+                occupant: row.get::<Option<uuid::Uuid>, _>("id").map(BodyId),
+                revision: row.get("revision"),
+            });
+        }
+    }
     s.world = Some(WorldFacts {
+        planet_slots,
         records: WorldRecords {
+            colonies: colonies.into_iter().map(|c| (c.body, c)).collect(),
             policies: policies.into_iter().map(|x| (x.player, x)).collect(),
             activity: activity.into_iter().map(|x| (x.body, x)).collect(),
             lots,
@@ -430,7 +512,19 @@ pub(crate) async fn viewer_snapshot(
     )
     .await?;
     let destinations = crate::views::public_destinations(tx, universe).await?;
+    // Read in the same snapshot as the viewer revision. This is an existence
+    // witness, not a persisted counter or a scan of the paginated inbox.
+    let unread_report = sqlx::query_scalar::<_, uuid::Uuid>(
+        "SELECT r.id FROM mission_report_recipients p JOIN mission_reports r ON r.id=p.report WHERE r.universe=$1 AND p.recipient=$2 AND NOT p.read AND NOT p.hidden LIMIT 1",
+    )
+    .bind(universe.0)
+    .bind(player.0)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(db_error)?
+    .map(ReportId);
     Ok(ViewerSnapshot {
+        unread_report,
         coverage: state.coverage.clone(),
         bodies: state.bodies.values().cloned().collect(),
         inventories: state.inventories.clone(),
@@ -461,6 +555,19 @@ pub(crate) async fn save(
 ) -> Result<(), StoreError> {
     let old = &s.world.as_ref().ok_or(StoreError::CorruptData)?.records;
     let u = i.universe;
+    for (id, genesis) in &c.records.colonies {
+        if !old.colonies.contains_key(id) {
+            sqlx::query("INSERT INTO colony_genesis(universe,id,data) VALUES($1,$2,$3)")
+                .bind(u.0)
+                .bind(id.0)
+                .bind(sqlx::types::Json(genesis))
+                .execute(&mut **tx)
+                .await
+                .map_err(db_error)?;
+        } else if old.colonies.get(id) != Some(genesis) {
+            return Err(StoreError::CorruptData);
+        }
+    }
     for (x, p) in &c.records.policies {
         if old.policies.get(x) != Some(p) {
             put(tx, u, "player_policies", x.0, p).await?;
@@ -856,6 +963,7 @@ impl PgStore {
         let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;
         let detail = ReportDetail4 {
+            player_names: Default::default(),
             header: header(&row)?,
             payload: r
                 .payloads

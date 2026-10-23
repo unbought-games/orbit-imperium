@@ -54,3 +54,9 @@
     transition: none;
   }
 }
+.scene > summary {
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+}

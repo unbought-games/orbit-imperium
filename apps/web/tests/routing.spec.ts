@@ -14,7 +14,7 @@ test('browser-history deep links survive login, refresh, history and native new-
   }
   await page.goto('/login')
   await signIn()
-  await expect(page.getByRole('heading', { name: /^Overview —/, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/, exact: true })).toBeVisible()
   const initial = new URL(page.url())
   const segments = initial.pathname.split('/')
   const universe = segments[2], body = segments[4]
@@ -76,7 +76,7 @@ test('unavailable paths and invalid URL context cannot select or purchase on ano
   await page.getByLabel('Account', { exact: true }).fill(accounts[1].name)
   await page.getByLabel('Password').fill(accounts[1].password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(page.getByRole('heading', { name: /^Overview —/, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/, exact: true })).toBeVisible()
   const universe = new URL(page.url()).pathname.split('/')[2]
   for (const path of [
     '/unknown-screen',
@@ -94,7 +94,7 @@ test('unavailable paths and invalid URL context cannot select or purchase on ano
     await expect(page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Confirm research', exact: true })).toHaveCount(0)
     await page.getByRole('link', { name: 'Open your universe overview' }).click()
-    await expect(page.getByRole('heading', { name: /^Overview —/, exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /^Empire —/, exact: true })).toBeVisible()
   }
   for (const path of ['/api/missing', '/health/missing', '/assets/missing.js']) {
     const response = await request.get(path)

@@ -154,3 +154,42 @@ it('retries an unmet snapshot revision promptly even with a healthy stream', asy
   expect(reconcile).toHaveBeenCalledTimes(1)
   delivery.stop()
 })
+
+it('reconciles due work on a healthy stream and retries until completion is confirmed', async () => {
+  vi.useFakeTimers()
+  let options!: Parameters<GameUpdatesPort['subscribe']>[2]
+  const due = Date.now() + 5000
+  let completed = false
+  const reconcile = vi.fn(async () => {
+    if (reconcile.mock.calls.length === 2) completed = true
+  })
+  const delivery = startGameDelivery({
+    binding,
+    platform,
+    reconcile,
+    onUpdate: async () => {},
+    hasPending: () => false,
+    nextWorkDelay: () => (completed ? Infinity : due - Date.now()),
+    isCurrent: () => true,
+    updates: {
+      async subscribe(_, __, o) {
+        options = o
+        await new Promise<void>((resolve) =>
+          o.signal.addEventListener('abort', () => resolve(), { once: true }),
+        )
+      },
+    },
+  })
+  await options.onUpdate({ binding, cursor: null, event: { type: 'Reset' } })
+  await vi.advanceTimersByTimeAsync(4999)
+  expect(reconcile).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(1)
+  expect(reconcile).toHaveBeenCalledTimes(1)
+  await vi.advanceTimersByTimeAsync(999)
+  expect(reconcile).toHaveBeenCalledTimes(1)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(reconcile).toHaveBeenCalledTimes(2)
+  await vi.advanceTimersByTimeAsync(29999)
+  expect(reconcile).toHaveBeenCalledTimes(2)
+  delivery.stop()
+})

@@ -4,6 +4,60 @@ use orbit_storage_postgres::{MvpAccount, PgStore, PoolLimits};
 use uuid::Uuid;
 #[tokio::test]
 async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
+    // Keep each scenario's future on the heap and drop its snapshots before the
+    // next scenario. One debug-build poll frame for this entire journey can
+    // exhaust the native test thread stack on Linux.
+    let mut fixture = Box::pin(paired_presence_and_restart()).await;
+    let due = Box::pin(completed_assets_preserve_other_owners(&fixture)).await;
+    let (fb, pool) = Box::pin(report_pagination_and_privacy(&fixture)).await;
+    fixture.pool = pool;
+    let accepted = Box::pin(scoped_claim_ordering(&fixture, fb, due)).await;
+    Box::pin(staged_commit_recovery(&fixture, accepted, due)).await;
+    Box::pin(scoped_transport_catches_up_before_later_recipient_work(
+        &fixture.store,
+        &fixture.pool,
+        fixture.b,
+        fb,
+        fixture.body,
+    ))
+    .await;
+    Box::pin(concurrent_report_preferences(
+        &fixture.url,
+        &fixture.store,
+        &fixture.pool,
+        fixture.b,
+        fb,
+    ))
+    .await;
+}
+
+struct RuntimeFixture {
+    url: String,
+    store: PgStore,
+    reopened: PgStore,
+    pool: sqlx::PgPool,
+    accounts: [MvpAccount; 5],
+    b: Binding,
+    body: BodyId,
+    outsider: Uuid,
+}
+impl RuntimeFixture {
+    fn principal(&self) -> Principal {
+        Principal {
+            account: self.b.account,
+            player: self.b.player,
+            universe: self.b.universe,
+        }
+    }
+    fn context(&self) -> QueryContext {
+        QueryContext {
+            binding: self.b,
+            request_id: Uuid::new_v4(),
+        }
+    }
+}
+
+async fn paired_presence_and_restart() -> RuntimeFixture {
     let url = std::env::var("TEST_DATABASE_URL").unwrap();
     let store = PgStore::connect_with_limits(
         &url,
@@ -49,6 +103,7 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         request_id: Uuid::new_v4(),
     };
     let v = game.world_view(p, context()).await.unwrap();
+    assert!(!v.has_unread_reports);
     let body = v.progression.bodies[0].id;
     assert_eq!(v.progression.protocol, 4);
     assert!(
@@ -176,6 +231,26 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
     let mut changed = pair;
     changed.gameplay.command_id = CommandId(Uuid::new_v4());
     assert!(restored.world_submit(p, changed).await.is_err());
+    RuntimeFixture {
+        url,
+        store,
+        reopened,
+        pool,
+        accounts,
+        b,
+        body,
+        outsider,
+    }
+}
+
+async fn completed_assets_preserve_other_owners(fixture: &RuntimeFixture) -> i64 {
+    let store = fixture.store.clone();
+    let pool = fixture.pool.clone();
+    let restored = GameService::new(fixture.reopened.clone());
+    let (b, body, outsider) = (fixture.b, fixture.body, fixture.outsider);
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
     // A local completion must never replace another owner's asset collection.
     sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,'unrelated',$2)")
         .bind(u.0)
@@ -250,8 +325,20 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         .execute(&pool)
         .await
         .unwrap();
+    due
+}
+
+async fn report_pagination_and_privacy(fixture: &RuntimeFixture) -> (Binding, sqlx::PgPool) {
+    let url = &fixture.url;
+    let reopened = fixture.reopened.clone();
+    let restored = GameService::new(reopened.clone());
+    let b = fixture.b;
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
+    let accounts = &fixture.accounts;
     // Synthetic report history exercises pagination independently of real mission producers.
-    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let pool = sqlx::PgPool::connect(url).await.unwrap();
     for n in 1..=101u128 {
         let id = ReportId(Uuid::from_u128(10000 + n));
         let report = MissionReport {
@@ -296,6 +383,26 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
     assert_eq!(second.items.len(), 1);
     assert_eq!(second.items[0].id, ReportId(Uuid::from_u128(10001)));
     assert!(!second.has_more);
+    // Only the oldest report is unread: the alert must cover beyond page one.
+    sqlx::query("UPDATE mission_report_recipients SET read=(report<>$1) WHERE recipient=$2")
+        .bind(Uuid::from_u128(10001))
+        .bind(b.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(unread_reports(&restored, b).await);
+    sqlx::query("UPDATE mission_report_recipients SET hidden=true WHERE recipient=$1")
+        .bind(b.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(!unread_reports(&restored, b).await);
+    sqlx::query("UPDATE mission_report_recipients SET hidden=false,read=true WHERE recipient=$1")
+        .bind(b.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(!unread_reports(&restored, b).await);
     // A post-cut insertion at the same observation time must not enter subsequent pages.
     sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) SELECT universe,$1,$2,kind,at_ms,jsonb_set(jsonb_set(data,'{id}',to_jsonb($1::uuid)),'{event}',to_jsonb($2::uuid)) FROM mission_reports WHERE id=$3").bind(Uuid::from_u128(10200)).bind(Uuid::from_u128(20200)).bind(Uuid::from_u128(10001)).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO mission_report_recipients VALUES($1,$2,102,false,false)")
@@ -333,6 +440,11 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
         player: fb.player,
         universe: u,
     };
+    assert!(unread_reports(&restored, b).await);
+    assert!(
+        !unread_reports(&restored, fb).await,
+        "another recipient must not inherit the alert"
+    );
     next.context.binding = fb;
     assert!(matches!(
         restored.reports4(fp, next).await,
@@ -351,6 +463,23 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
             .await,
         Err(ServiceError::NotFound)
     ));
+    (fb, pool)
+}
+
+async fn scoped_claim_ordering(
+    fixture: &RuntimeFixture,
+    fb: Binding,
+    due: i64,
+) -> CommandEnvelopeV4 {
+    let store = fixture.store.clone();
+    let reopened = fixture.reopened.clone();
+    let pool = fixture.pool.clone();
+    let restored = GameService::new(reopened.clone());
+    let (b, body) = (fixture.b, fixture.body);
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
+    let accounts = &fixture.accounts;
     // Scoped admission does not acquire the old universe writer lock. Foreign-key
     // checks may still take KEY SHARE, which is compatible with this writer lock.
     sqlx::raw_sql(&format!("CREATE SEQUENCE orbit_order_{} START 100000; UPDATE universe_runtime SET executor_mode='scoped',mode_generation=1 WHERE universe='{}'",u.0.simple(),u))
@@ -700,6 +829,18 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
             .await
             .unwrap();
     assert_eq!(remaining, 0);
+    accepted
+}
+
+async fn staged_commit_recovery(fixture: &RuntimeFixture, accepted: CommandEnvelopeV4, due: i64) {
+    let store = fixture.store.clone();
+    let pool = fixture.pool.clone();
+    let game = GameService::new(store.clone());
+    let restored = GameService::new(fixture.reopened.clone());
+    let b = fixture.b;
+    let u = b.universe;
+    let p = fixture.principal();
+    let context = || fixture.context();
     // Pause after staging writes, before final ownership validation.
     sqlx::raw_sql("CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text NOT NULL,enabled boolean NOT NULL,seen bigint NOT NULL DEFAULT 0); INSERT INTO orbit_test_fault(stage,mode,enabled) VALUES('after_writes','pause',true)")
         .execute(&pool).await.unwrap();
@@ -870,8 +1011,6 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
             code: GameError::NotOwned
         }
     ));
-    scoped_transport_catches_up_before_later_recipient_work(&store, &pool, b, fb, body).await;
-    concurrent_report_preferences(&url, &store, &pool, b, fb).await;
 }
 
 async fn scoped_transport_catches_up_before_later_recipient_work(
@@ -1422,6 +1561,19 @@ async fn concurrent_report_preferences(
     .fetch_one(pool)
     .await
     .unwrap();
+    // Isolate this real delivered report so preference commands must clear the alert.
+    sqlx::query(
+        "UPDATE mission_report_recipients SET read=true WHERE recipient=ANY($1) AND report<>$2",
+    )
+    .bind(vec![a.player.0, b.player.0])
+    .bind(report)
+    .execute(pool)
+    .await
+    .unwrap();
+    let game = GameService::new(store.clone());
+    for binding in [a, b] {
+        assert!(unread_reports(&game, binding).await);
+    }
     let peer = PgStore::connect(url).await.unwrap();
     let mut claims = Vec::new();
     for (binding, action) in [
@@ -1543,8 +1695,37 @@ async fn concurrent_report_preferences(
         flags.contains(&(b.player.0, false, true)),
         "B's hidden flag was lost: {flags:?}"
     );
+    for binding in [a, b] {
+        assert!(
+            !unread_reports(&game, binding).await,
+            "committed read/hidden preferences must clear the alert"
+        );
+    }
     sqlx::query("DROP TABLE orbit_test_fault")
         .execute(pool)
         .await
         .unwrap();
+}
+
+// Keep repeated snapshot futures off the large scenario test's stack.
+fn unread_reports(
+    game: &GameService<PgStore>,
+    binding: Binding,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + '_>> {
+    Box::pin(async move {
+        game.world_view(
+            Principal {
+                account: binding.account,
+                player: binding.player,
+                universe: binding.universe,
+            },
+            QueryContext {
+                binding,
+                request_id: Uuid::new_v4(),
+            },
+        )
+        .await
+        .unwrap()
+        .has_unread_reports
+    })
 }

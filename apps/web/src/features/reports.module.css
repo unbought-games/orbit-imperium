@@ -1,30 +1,12 @@
 .screen {
   overflow-wrap: anywhere;
 }
-.intro {
-  padding-block: 0.5rem;
-}
-.eyebrow {
-  color: var(--accent);
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  margin: 0 0 0.7rem;
-}
-.title {
-  font:
-    400 clamp(2rem, 4vw, 3.5rem) / 1.08 Georgia,
-    serif;
-  letter-spacing: -0.035em;
-  color: #f0dfc2;
-  max-width: 18ch;
-}
 .controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-block: var(--space-4);
+  margin-block: 8px;
 }
 .filter {
   display: flex;
@@ -37,7 +19,7 @@
   padding: 0;
 }
 .reportRow {
-  padding: 1.5rem 0;
+  padding: 12px 0;
   margin: 0;
   border: 0;
   border-bottom: 1px solid #cbb68d40;
@@ -58,6 +40,37 @@
 }
 .timestamp {
   color: var(--text-muted);
-  border-bottom: 1px solid #cbb68d40;
-  padding-bottom: 1rem;
+  margin: 0 0 8px;
+}
+
+.screen {
+  padding-top: 12px;
+}
+.context summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 12px;
+  color: var(--text-muted);
+}
+.detailToolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+  font-size: 0.8rem;
+}
+.detailToolbar .timestamp {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font-size: 0.75rem;
+}
+.detailToolbar .controls {
+  margin: 0 0 0 auto;
+  gap: 0.4rem;
+}
+.detailToolbar .controls button {
+  font-size: 0.75rem;
+  padding-inline: 0.6rem;
 }

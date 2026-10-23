@@ -198,3 +198,24 @@
     font-size: 0.875rem;
   }
 }
+
+.body {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 20%);
+}
+.body > :first-child {
+  grid-column: 2;
+  grid-row: 1;
+}
+.body > .details {
+  grid-column: 1;
+  grid-row: 1;
+}
+@media (max-width: 760px) {
+  .body {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .body > :first-child {
+    max-width: 180px;
+  }
+}

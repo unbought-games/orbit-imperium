@@ -36,14 +36,14 @@ it('renders floored numbers, scaled resources, and durations through shared comp
 it('keeps positive sub-unit deficits visible instead of claiming zero is needed', () => {
   expect(
     renderToStaticMarkup(createElement(ResourceShortfall, { value: '1' })),
-  ).toBe('&lt;1')
+  ).toBe('1')
   expect(
     renderToStaticMarkup(
       createElement(ResourceShortfall, { value: '61999999' }),
     ),
-  ).toBe('61')
+  ).toBe('62')
 })
-it('floors each ledger amount after exact arithmetic, including a sub-unit shortage', () => {
+it('rounds shortages up to agree with whole costs and floored available balances', () => {
   const markup = renderToStaticMarkup(
     createElement(ResourceCosts, {
       cost: { metal: '379000000', crystal: '151000000', deuterium: '1000000' },
@@ -55,8 +55,29 @@ it('floors each ledger amount after exact arithmetic, including a sub-unit short
     }),
   )
   const text = markup.replace(/<[^>]+>/g, '')
-  expect(text).toContain('Available317After spendingNeed 61 more')
+  expect(text).toContain('Available317After spendingNeed 62 more')
   expect(text).toContain('Available864After spending713')
-  expect(text).toContain('Available0After spendingNeed &lt;1 more')
+  expect(text).toContain('Available0After spendingNeed 1 more')
   expect(text).not.toMatch(/\d\.\d/)
 })
+
+it.each([
+  ['182000000', '18'],
+  ['182000001', '18'],
+  ['182999999', '18'],
+  ['199999999', '1'],
+  ['199000000', '1'],
+])(
+  'keeps cost 200 minus displayed balance consistent at %s micro units',
+  (available, shortage) => {
+    const markup = renderToStaticMarkup(
+      createElement(ResourceCosts, {
+        cost: { metal: '0', crystal: '0', deuterium: '200000000' },
+        available: { metal: '0', crystal: '0', deuterium: available },
+      }),
+    ).replace(/<[^>]+>/g, '')
+    expect(markup).toContain(
+      `Available${BigInt(available) / 1000000n}After spendingNeed ${shortage} more`,
+    )
+  },
+)

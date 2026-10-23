@@ -120,10 +120,96 @@ fn simultaneous_rounds_and_artifact_driven_explosion_policy() {
     let result = resolve_battle(&lethal, &rules, &mut rng).unwrap();
     assert_eq!(result.outcome, BattleOutcome::MutualDestruction);
     assert_eq!(result.rounds.len(), 1);
-    assert_eq!(result.rounds[0].shots, "2");
+    assert_eq!(result.rounds[0].fire.len(), 2);
+    for fire in &result.rounds[0].fire {
+        assert_eq!(fire.shots, "1");
+        assert_eq!(fire.raw_attack_ticks, "55000000");
+        assert_eq!(fire.shield_removed_ticks, "1000000");
+        assert_eq!(fire.hull_removed_ticks, "40000000");
+        assert_eq!(fire.explosions, "0");
+    }
+    assert_eq!(result.rounds[0].fire[0].owner, owner);
+    assert_eq!(result.rounds[0].fire[0].side, BattleSide::Attacker);
+    assert_eq!(result.rounds[0].fire[1].owner, other);
+    assert_eq!(result.rounds[0].fire[1].side, BattleSide::Defender);
     assert_eq!(rng, before);
     let mut duplicate = lethal.clone();
     duplicate.participants.push(lethal.participants[0].clone());
     assert!(resolve_battle(&duplicate, &rules, &mut rng).is_err());
     assert_eq!(rng, before);
+}
+
+#[test]
+fn fighter_and_launcher_fire_is_attributed_to_the_shooter() {
+    use uuid::Uuid;
+    let encounter = InputId(Uuid::from_u128(30));
+    let target = BodyId(Uuid::from_u128(40));
+    let attacker = PlayerId(Uuid::from_u128(10));
+    let defender = PlayerId(Uuid::from_u128(20));
+    let input = BattleInput {
+        encounter_id: encounter,
+        at: 0,
+        target,
+        rules_hash: Hash("0".repeat(64)),
+        participants: vec![
+            BattleParticipant {
+                owner: defender,
+                side: BattleSide::Defender,
+                origin: BattleOrigin::Stationed(target),
+                technology: [0; 3],
+                units: vec![(ManufacturedItem::Defense(DefenseId::RocketLauncher), 1)],
+            },
+            BattleParticipant {
+                owner: attacker,
+                side: BattleSide::Attacker,
+                origin: BattleOrigin::Fleet(FleetId(Uuid::from_u128(50))),
+                technology: [0; 3],
+                units: vec![(ManufacturedItem::Ship(ShipType::LightFighter), 1)],
+            },
+        ],
+    };
+    let mut rng = RandomStream::new(
+        &[7; 32],
+        UniverseId(Uuid::from_u128(1)),
+        Epoch(Uuid::from_u128(2)),
+        encounter,
+        "battle",
+    )
+    .unwrap();
+    let result = resolve_battle(&input, &CombatRules::selected(), &mut rng).unwrap();
+    let first = &result.rounds[0];
+    assert_eq!(first.fire[0].owner, attacker);
+    assert_eq!(first.fire[0].side, BattleSide::Attacker);
+    assert_eq!(first.fire[0].shots, "1");
+    assert_eq!(first.fire[0].raw_attack_ticks, "5000000");
+    assert_eq!(first.fire[0].shield_removed_ticks, "2000000");
+    assert_eq!(first.fire[0].hull_removed_ticks, "3000000");
+    assert_eq!(first.fire[1].owner, defender);
+    assert_eq!(first.fire[1].side, BattleSide::Defender);
+    assert_eq!(first.fire[1].shots, "1");
+    assert_eq!(first.fire[1].raw_attack_ticks, "8000000");
+    assert_eq!(first.fire[1].shield_removed_ticks, "1000000");
+    assert_eq!(first.fire[1].hull_removed_ticks, "7000000");
+    for round in &result.rounds {
+        for fire in &round.fire {
+            let start = round
+                .start
+                .iter()
+                .find(|p| p.owner == fire.owner && p.origin == fire.origin)
+                .unwrap();
+            assert_eq!(
+                fire.shots.parse::<i64>().unwrap(),
+                start.units.iter().map(|(_, n)| n).sum::<i64>()
+            );
+        }
+    }
+    let serialized = serde_json::to_value(first).unwrap();
+    assert!(
+        serialized.get("shots").is_none(),
+        "do not duplicate derived totals"
+    );
+    assert_eq!(
+        serialized["fire"][0]["owner"],
+        serde_json::to_value(attacker).unwrap()
+    );
 }

@@ -124,6 +124,14 @@ export async function loadInitialRuntime(
     return { status: 'unavailable', signupEnabled: false }
   }
 }
+export function runtimeNeedsRecovery(runtime: AppRuntime): boolean {
+  return (
+    runtime.status === 'unavailable' ||
+    (runtime.status === 'authenticated' &&
+      runtime.game.status === 'unavailable' &&
+      runtime.game.code === 'Unavailable')
+  )
+}
 export function runtimeModel(runtime: AppRuntime): Coordinator | null {
   return runtime.status === 'authenticated' && runtime.game.status === 'ready'
     ? runtime.game.model

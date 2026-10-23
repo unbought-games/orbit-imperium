@@ -59,6 +59,14 @@ export function useProfileSource(
   }, [controller, key, revision])
 }
 export function usePlayerDisplay(player: string) {
-  const controller = useController()
-  return useStore(controller.store, (state) => currentPlayer(state, player))
+  const controller = useContext(PlayerProfilesContext)
+  return useStore(controller?.store ?? emptyProfiles, (state) =>
+    currentPlayer(state, player),
+  )
 }
+
+// Standalone report renderers can show known names without an authenticated
+// profile provider; this immutable empty store never carries account data.
+const emptyProfiles = new PlayerProfilesController(async () => {
+  throw new Error('No profile session')
+}).store

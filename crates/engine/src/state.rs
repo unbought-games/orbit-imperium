@@ -181,6 +181,36 @@ impl ChangeSet {
             state.manufacturing_batches.insert(x.id, x.clone());
         }
         for body in &self.bodies {
+            if !state.bodies.contains_key(&body.id) {
+                state.coverage.bodies.insert(body.id);
+                state.coverage.production_bodies.insert(body.id);
+                state.coverage.construction_bodies.insert(body.id);
+                state.coverage.manufacturing_bodies.insert(body.id);
+                state
+                    .coverage
+                    .inventory_owners
+                    .insert((body.id, body.owner));
+                for kind in ["production", "constructions", "manufacturing"] {
+                    state
+                        .collection_revisions
+                        .insert(format!("{kind}:{}", body.id), 0);
+                }
+                state
+                    .collection_revisions
+                    .insert(format!("inventory:{}:{}", body.id, body.owner), 0);
+                if let Some(w) = &mut state.world
+                    && let Some(slot) = w
+                        .planet_slots
+                        .iter_mut()
+                        .find(|slot| slot.coordinates == body.coordinates)
+                {
+                    slot.occupant = Some(body.id);
+                    slot.revision = slot
+                        .revision
+                        .checked_add(1)
+                        .ok_or_else(|| InvariantError("slot revision exhausted".into()))?;
+                }
+            }
             state.bodies.insert(body.id, body.clone());
         }
         for operation in &self.constructions {

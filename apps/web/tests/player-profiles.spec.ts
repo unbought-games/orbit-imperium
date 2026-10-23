@@ -154,7 +154,7 @@ test('incoming fleets and overview arrivals identify the same supporter', async 
     { player: id(31), username: 'Visitor', supporter_tier: 3 },
   ])
   await page.reload()
-  const arrivals = page.getByRole('region', { name: 'Next to arrive' })
+  const arrivals = page.getByRole('region', { name: 'Fleet movements' })
   await expect(arrivals.getByText('Visitor', { exact: true })).toBeVisible()
   await expect(arrivals.getByRole('img', { name: /Supporter/ })).toBeVisible()
   await page.goto(`/u/andromeda/fleets?body=${body.id}`)
@@ -260,12 +260,16 @@ test('espionage and combat observations use current public identities without ch
     rounds: [],
   }
   await page.reload()
-  await expect(observation.getByText('Observer', { exact: true })).toHaveCount(
-    2,
-  )
-  await expect(observation.getByText('Defender', { exact: true })).toBeVisible()
+  await expect(
+    observation
+      .getByRole('region', { name: 'Forces and losses' })
+      .getByText('Observer', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    observation.getByRole('heading', { name: 'Defender', exact: true }),
+  ).toBeVisible()
   await expect(observation.getByRole('img', { name: /Supporter/ })).toHaveCount(
-    2,
+    1,
   )
-  await expect(observation.getByText('Draw', { exact: true })).toBeVisible()
+  await expect(observation.getByRole('heading', { name: /Draw/ })).toBeVisible()
 })

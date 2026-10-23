@@ -77,7 +77,7 @@ export function GameShell() {
     navigate,
   ])
   useLayoutEffect(() => {
-    document.title = `${available ? label(page) : 'Unavailable'} · ${universeName} · Orbit Imperium`
+    document.title = `${available ? (page === 'overview' ? 'Empire' : label(page)) : 'Unavailable'} · ${universeName} · Orbit Imperium`
     heading.current?.focus()
     const frame = requestAnimationFrame(() => {
       // Scroll restoration can run after the commit. Never steal focus back
@@ -89,9 +89,13 @@ export function GameShell() {
   }, [location.pathname, location.searchStr, available, page, universeName])
   function prepareDispatch(draft: DispatchDraft) {
     if (!body) return
-    setDispatchDraft({ ...draft, origin: body.id })
-    void model.recordPresence('BodyVisit', body.id)
-    void navigate(routeTarget(universeName, 'dispatch', body.id))
+    const origin =
+      draft.origin && view.bodies.some((b) => b.id === draft.origin)
+        ? draft.origin
+        : body.id
+    setDispatchDraft({ ...draft, origin })
+    void model.recordPresence('BodyVisit', origin)
+    void navigate(routeTarget(universeName, 'dispatch', origin))
   }
   function selectBody(id: string) {
     void model.recordPresence('BodyVisit', id)
@@ -103,6 +107,7 @@ export function GameShell() {
   const hasFeatureHeading =
     available &&
     (page === 'overview' ||
+      (view.protocol === 2 && ['fleets', 'dispatch'].includes(page)) ||
       page === 'settings' ||
       (view.protocol !== 2 &&
         ['resources', 'facilities', 'research', 'shipyard', 'defense'].includes(
@@ -113,7 +118,7 @@ export function GameShell() {
   const title = !available
     ? 'Destination unavailable'
     : page === 'overview'
-      ? `Overview — ${body?.kind ?? 'Planet'} ${body ? coordinates(body) : ''}`
+      ? `Empire — ${body?.kind ?? 'Planet'} ${body ? coordinates(body) : ''}`
       : page[0].toUpperCase() + page.slice(1)
   const freshness = model.stale && (
     <Popover
@@ -138,63 +143,69 @@ export function GameShell() {
         ::view-transition-new(${surfaceName}) { animation: surface-in var(--motion-enter) var(--ease-settle) both; }
       `}</style>
       <div className={styles['shell-columns']}>
-        <header className={styles.identity}>
-          <Brand
-            className={styles.brand}
-            {...routeTarget(universeName, 'overview', body?.id)}
-          />
-          <span className={styles.universeName} aria-label="Current universe">
-            {universeName}
-          </span>
-        </header>
-        <Navigation
-          view={view}
-          body={body?.id}
-          page={page}
-          onLogout={() => void logout()}
-          onVisit={(p) =>
-            void model.recordPresence(
-              [
-                'overview',
-                'resources',
-                'facilities',
-                'shipyard',
-                'defense',
-                'dispatch',
-              ].includes(p)
-                ? 'BodyVisit'
-                : 'AccountVisit',
-              [
-                'overview',
-                'resources',
-                'facilities',
-                'shipyard',
-                'defense',
-                'dispatch',
-              ].includes(p)
-                ? (body?.id ?? null)
-                : null,
-            )
-          }
-        >
-          <div
-            className={styles.worldBar}
-            role="group"
-            aria-label="Planet and resources"
+        <div className={styles.header}>
+          <header className={styles.identity}>
+            <Brand
+              className={styles.brand}
+              {...routeTarget(universeName, 'overview', body?.id)}
+            />
+            <span className={styles.universeName} aria-label="Current universe">
+              {universeName}
+            </span>
+          </header>
+          <Navigation
+            view={view}
+            body={body?.id}
+            page={page}
+            detail={view.protocol === 4 && !!route.item}
+            onLogout={() => void logout()}
+            onVisit={(p) =>
+              void model.recordPresence(
+                [
+                  'overview',
+                  'resources',
+                  'facilities',
+                  'shipyard',
+                  'defense',
+                  'dispatch',
+                ].includes(p)
+                  ? 'BodyVisit'
+                  : 'AccountVisit',
+                [
+                  'overview',
+                  'resources',
+                  'facilities',
+                  'shipyard',
+                  'defense',
+                  'dispatch',
+                ].includes(p)
+                  ? (body?.id ?? null)
+                  : null,
+              )
+            }
           >
-            <div className={styles['mobile-context']}>
-              <BodySelector
-                bodies={view.bodies}
-                selected={body?.id}
-                onSelect={selectBody}
-              />
-            </div>
-            <div className={styles.masthead}>
-              {body ? <ResourceStrip view={view} body={body} /> : <span />}
-            </div>
-          </div>
-        </Navigation>
-        <div className={styles.connectionSlot}>{freshness}</div>
+            {(navigation) => (
+              <div
+                className={styles.worldBar}
+                role="group"
+                aria-label="Planet and resources"
+              >
+                <div className={styles['mobile-context']}>
+                  <BodySelector
+                    bodies={view.bodies}
+                    selected={body?.id}
+                    onSelect={selectBody}
+                  />
+                </div>
+                {navigation}
+                <div className={styles.masthead}>
+                  {body ? <ResourceStrip view={view} body={body} /> : <span />}
+                </div>
+              </div>
+            )}
+          </Navigation>
+          <div className={styles.connectionSlot}>{freshness}</div>
+        </div>
         <div className={styles.center}>
           {model.stale && (
             <p className={styles.stale} role="alert">

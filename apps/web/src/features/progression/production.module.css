@@ -100,15 +100,6 @@
   padding: 8px;
   font-size: 0.9375rem;
 }
-.effect {
-  color: var(--text-muted);
-  font-size: 0.875rem;
-}
-.effect small {
-  display: block;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-}
 .save {
   display: flex;
   gap: 16px;
@@ -128,12 +119,6 @@
 }
 .notes p {
   margin: 8px 0 0;
-}
-.conflict {
-  padding: 16px;
-  border: 1px solid var(--accent);
-  background: var(--surface);
-  margin-block: 16px;
 }
 @media (max-width: 650px) {
   .totals {
@@ -178,4 +163,10 @@
     align-items: stretch;
     flex-direction: column;
   }
+}
+
+.notes summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 10px;
 }

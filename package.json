@@ -26,6 +26,7 @@
   "dependencies": {
     "@floating-ui/react": "0.27.20",
     "@tanstack/react-router": "1.170.44",
+    "@unbought/analytics": "file:vendor/unbought-analytics-0.1.1.tgz",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "jotai": "3.0.1",
@@ -57,5 +58,5 @@
     "vite": "7.3.7",
     "vitest": "5.0.4"
   },
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

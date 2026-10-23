@@ -7643,6 +7643,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "building_energy": {
+            "$ref": "#/components/schemas/BuildingEnergy"
           }
         },
         "required": [
@@ -7952,72 +7955,7 @@
             "$ref": "#/components/schemas/Resources"
           },
           "levels": {
-            "type": "object",
-            "properties": {
-              "MetalMine": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "CrystalMine": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "DeuteriumSynthesizer": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "SolarPlant": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "MetalStorage": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "CrystalStorage": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "DeuteriumTank": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "RoboticsFactory": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "ResearchLab": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              },
-              "Shipyard": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 4294967295
-              }
-            },
-            "required": [
-              "MetalMine",
-              "CrystalMine",
-              "DeuteriumSynthesizer",
-              "SolarPlant",
-              "MetalStorage",
-              "CrystalStorage",
-              "DeuteriumTank",
-              "RoboticsFactory",
-              "ResearchLab",
-              "Shipyard"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/BuildingLevels3"
           },
           "fields": {
             "type": "integer",
@@ -8042,6 +7980,9 @@
             "items": {
               "$ref": "#/components/schemas/Inventory3"
             }
+          },
+          "colony": {
+            "$ref": "#/components/schemas/Colony4"
           }
         },
         "required": [
@@ -8729,7 +8670,9 @@
           "Outbound",
           "Returning",
           "Returned",
-          "Destroyed"
+          "Destroyed",
+          "Colonized",
+          "Deployed"
         ]
       },
       "MissionDestination4": {
@@ -8783,6 +8726,26 @@
               "field_identity"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "EmptyPosition"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "slot_revision": {
+                "$ref": "#/components/schemas/Decimal"
+              }
+            },
+            "required": [
+              "type",
+              "coordinates",
+              "slot_revision"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -8816,6 +8779,22 @@
             "properties": {
               "type": {
                 "const": "DebrisAt"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              }
+            },
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "EmptyPositionAt"
               },
               "coordinates": {
                 "$ref": "#/components/schemas/Coordinates"
@@ -9244,7 +9223,8 @@
           "ActorDraining",
           "TargetVacation",
           "BeginnerProtected",
-          "PresenceUnavailable"
+          "PresenceUnavailable",
+          "PositionOccupied"
         ]
       },
       "BoundReceipt4": {
@@ -9572,6 +9552,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "building_energy": {
+            "$ref": "#/components/schemas/BuildingEnergy"
           }
         },
         "required": [
@@ -9856,6 +9839,10 @@
       "BoundView4": {
         "type": "object",
         "properties": {
+          "has_unread_reports": {
+            "type": "boolean",
+            "description": "Whether this recipient has visible unread mission reports anywhere in the archive."
+          },
           "viewer_revision": {
             "$ref": "#/components/schemas/Decimal"
           },
@@ -9950,6 +9937,9 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          },
+          "player_names": {
+            "$ref": "#/components/schemas/PublicPlayerNames4"
           }
         },
         "required": [
@@ -9994,7 +9984,9 @@
                   "Espionage",
                   "Harvest",
                   "Reports",
-                  "Attack"
+                  "Attack",
+                  "Colonize",
+                  "Deploy"
                 ]
               },
               "enabled": {
@@ -10027,7 +10019,9 @@
                   "Espionage",
                   "Harvest",
                   "Reports",
-                  "Attack"
+                  "Attack",
+                  "Colonize",
+                  "Deploy"
                 ]
               },
               "enabled": {
@@ -10123,6 +10117,17 @@
           "vacation": {
             "type": "boolean"
           },
+          "attack_blocker": {
+            "description": "Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameError4"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "espionage_eligible": {
             "type": "boolean"
           }
@@ -10214,6 +10219,9 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "player_names": {
+            "$ref": "#/components/schemas/PublicPlayerNames4"
           }
         },
         "required": [
@@ -10571,6 +10579,9 @@
           },
           "payload": {
             "$ref": "#/components/schemas/ReportPayload4"
+          },
+          "player_names": {
+            "$ref": "#/components/schemas/PublicPlayerNames4"
           }
         },
         "required": [
@@ -10809,72 +10820,7 @@
                     "const": "Known"
                   },
                   "value": {
-                    "type": "object",
-                    "properties": {
-                      "MetalMine": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "CrystalMine": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "DeuteriumSynthesizer": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "SolarPlant": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "MetalStorage": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "CrystalStorage": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "DeuteriumTank": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "RoboticsFactory": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ResearchLab": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "Shipyard": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      }
-                    },
-                    "required": [
-                      "MetalMine",
-                      "CrystalMine",
-                      "DeuteriumSynthesizer",
-                      "SolarPlant",
-                      "MetalStorage",
-                      "CrystalStorage",
-                      "DeuteriumTank",
-                      "RoboticsFactory",
-                      "ResearchLab",
-                      "Shipyard"
-                    ],
-                    "additionalProperties": false
+                    "$ref": "#/components/schemas/BuildingLevels3"
                   }
                 },
                 "required": [
@@ -10906,54 +10852,7 @@
                     "const": "Known"
                   },
                   "value": {
-                    "type": "object",
-                    "properties": {
-                      "EnergyTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ComputerTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "CombustionDrive": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "EspionageTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "WeaponsTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ShieldingTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      },
-                      "ArmourTechnology": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 4294967295
-                      }
-                    },
-                    "required": [
-                      "EnergyTechnology",
-                      "ComputerTechnology",
-                      "CombustionDrive",
-                      "EspionageTechnology",
-                      "WeaponsTechnology",
-                      "ShieldingTechnology",
-                      "ArmourTechnology"
-                    ],
-                    "additionalProperties": false
+                    "$ref": "#/components/schemas/ResearchLevels3"
                   }
                 },
                 "required": [
@@ -11089,7 +10988,8 @@
               "Returned",
               "Recalled",
               "Harvested",
-              "MissionFailed"
+              "MissionFailed",
+              "Deployed"
             ]
           },
           "fleet": {
@@ -11332,19 +11232,70 @@
             "type": "string",
             "pattern": "^(0|[1-9][0-9]*)$",
             "maxLength": 78
+          },
+          "fire": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BattleFire4"
+            }
           }
         },
         "required": [
           "number",
           "start",
-          "end",
-          "shots",
-          "raw_attack_ticks",
-          "shield_removed_ticks",
-          "hull_removed_ticks",
-          "explosions"
+          "end"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "fire"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "shots"
+                  ]
+                },
+                {
+                  "required": [
+                    "raw_attack_ticks"
+                  ]
+                },
+                {
+                  "required": [
+                    "shield_removed_ticks"
+                  ]
+                },
+                {
+                  "required": [
+                    "hull_removed_ticks"
+                  ]
+                },
+                {
+                  "required": [
+                    "explosions"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "required": [
+              "shots",
+              "raw_attack_ticks",
+              "shield_removed_ticks",
+              "hull_removed_ticks",
+              "explosions"
+            ],
+            "not": {
+              "required": [
+                "fire"
+              ]
+            }
+          }
+        ]
       },
       "CombatPayload4": {
         "type": "object",
@@ -11495,6 +11446,12 @@
           },
           {
             "$ref": "#/components/schemas/ContactLostPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/ColonizedPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/ColonizationFailedPayload4"
           }
         ]
       },
@@ -11937,8 +11894,7 @@
                 "const": "Invalidate"
               },
               "minimum_viewer_revision": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]*)$"
+                "$ref": "#/components/schemas/Decimal"
               }
             },
             "required": [
@@ -12019,14 +11975,313 @@
             "maximum": 9007199254740991
           },
           "baseRevision": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)$"
+            "$ref": "#/components/schemas/Decimal"
           },
           "dependsOn": {
             "type": "string",
             "format": "uuid"
           }
         }
+      },
+      "BuildingEnergy": {
+        "type": "object",
+        "description": "Building operating consumption at 100% production, derived from the active rules. Informational; not a construction prerequisite.",
+        "properties": {
+          "current_consumption": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "target_consumption": {
+            "$ref": "#/components/schemas/Decimal"
+          }
+        },
+        "required": [
+          "current_consumption",
+          "target_consumption"
+        ],
+        "additionalProperties": false
+      },
+      "BattleFire4": {
+        "type": "object",
+        "description": "Fire attributed to the shooting participant. Shield and hull damage are inflicted on the opposing side. Explosions are triggered on opposing units; their remaining hull is not included in hull damage.",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "Stationed": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "Stationed"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "Fleet": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "Fleet"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "side": {
+            "enum": [
+              "Attacker",
+              "Defender"
+            ]
+          },
+          "shots": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "raw_attack_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "shield_removed_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "hull_removed_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          },
+          "explosions": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "maxLength": 78
+          }
+        },
+        "required": [
+          "owner",
+          "origin",
+          "side",
+          "shots",
+          "raw_attack_ticks",
+          "shield_removed_ticks",
+          "hull_removed_ticks",
+          "explosions"
+        ],
+        "additionalProperties": false
+      },
+      "PublicPlayerNames4": {
+        "type": "object",
+        "description": "Current public usernames keyed by player ID, limited to identities visible in this response. Missing identities use the client fallback.",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "ColonizedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "Colonized"
+          },
+          "fleet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destination_coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fields": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_temperature": {
+            "type": "integer"
+          },
+          "min_temperature": {
+            "type": "integer"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/Resources"
+          },
+          "return_at": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "fleet",
+          "origin",
+          "destination_coordinates",
+          "at",
+          "body",
+          "fields",
+          "diameter_km",
+          "max_temperature",
+          "min_temperature",
+          "resources",
+          "return_at"
+        ],
+        "additionalProperties": false
+      },
+      "ColonizationFailedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "ColonizationFailed"
+          },
+          "fleet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destination_coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "enum": [
+              "Occupied",
+              "PositionLocked",
+              "ColonyCapacity"
+            ]
+          },
+          "return_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "fleet",
+          "origin",
+          "destination_coordinates",
+          "at",
+          "reason",
+          "return_at"
+        ],
+        "additionalProperties": false
+      },
+      "Colony4": {
+        "type": "object",
+        "properties": {
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_temperature": {
+            "type": "integer"
+          },
+          "min_temperature": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "profile": {
+            "const": "oi-redesign-reconstructed-v1"
+          }
+        },
+        "required": [
+          "diameter_km",
+          "max_temperature",
+          "min_temperature",
+          "created_at",
+          "profile"
+        ],
+        "additionalProperties": false
+      },
+      "BuildingLevels3": {
+        "type": "object",
+        "description": "Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable.",
+        "propertyNames": {
+          "$ref": "#/components/schemas/BuildingId3"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "required": [
+          "MetalMine",
+          "CrystalMine",
+          "DeuteriumSynthesizer",
+          "SolarPlant",
+          "MetalStorage",
+          "CrystalStorage",
+          "DeuteriumTank",
+          "RoboticsFactory",
+          "ResearchLab",
+          "Shipyard"
+        ]
+      },
+      "ResearchLevels3": {
+        "type": "object",
+        "description": "Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable.",
+        "propertyNames": {
+          "$ref": "#/components/schemas/ResearchId3"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "required": [
+          "EnergyTechnology",
+          "ComputerTechnology",
+          "CombustionDrive",
+          "EspionageTechnology",
+          "WeaponsTechnology",
+          "ShieldingTechnology",
+          "ArmourTechnology"
+        ]
       },
       "ProfileSource": {
         "oneOf": [

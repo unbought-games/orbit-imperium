@@ -113,7 +113,8 @@ pub fn check_mission_eligibility(
         || !(matches!(
             mission,
             Mission::Transport | Mission::Harvest | Mission::Espionage
-        ) || (mission == Mission::Attack && r.attacks()))
+        ) || (mission == Mission::Attack && r.attacks())
+            || (matches!(mission, Mission::Colonize | Mission::Deploy) && r.colonization()))
     {
         return Err(GameError::UnavailableContent);
     }
@@ -134,6 +135,9 @@ pub fn check_mission_eligibility(
         return Err(GameError::ActorDraining);
     }
     if let Some(target) = target {
+        if mission == Mission::Deploy && actor != target {
+            return Err(GameError::NotOwned);
+        }
         let t = w
             .records
             .policies
@@ -164,7 +168,7 @@ pub fn check_mission_eligibility(
                 return Err(GameError::BeginnerProtected);
             }
         }
-    } else if mission != Mission::Harvest {
+    } else if !matches!(mission, Mission::Harvest | Mission::Colonize) {
         return Err(GameError::InvalidInput);
     }
     Ok(())

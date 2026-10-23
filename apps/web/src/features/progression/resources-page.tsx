@@ -101,19 +101,20 @@ export function ResourcesPage(props: ProgressionProps) {
                 Production, storage and energy · {body.fields_used} /{' '}
                 {body.fields} fields
               </span>
-              <button
-                ref={settingsButton}
-                type="button"
-                className={styles.settingsButton}
-                disabled={!productionAvailable}
-                onClick={() => {
-                  setOpen(false)
-                  setSettingsOpen(true)
-                }}
-              >
-                <SlidersHorizontal size={14} aria-hidden="true" />
-                Resource settings
-              </button>
+              {productionAvailable && (
+                <button
+                  ref={settingsButton}
+                  type="button"
+                  className={styles.settingsButton}
+                  onClick={() => {
+                    setOpen(false)
+                    setSettingsOpen(true)
+                  }}
+                >
+                  <SlidersHorizontal size={14} aria-hidden="true" />
+                  Resource settings
+                </button>
+              )}
             </>
           }
         >
@@ -134,7 +135,13 @@ export function ResourcesPage(props: ProgressionProps) {
             />
           )}
         </CatalogStage>
-        <WorkSummaries view={view} body={body} includeResearch={false} />
+        <WorkSummaries
+          view={view}
+          body={body}
+          currentPage="resources"
+          layout="compact"
+          includeResearch={false}
+        />
         <CatalogSection title="Resource buildings">
           <ImageCatalog>
             {resourceBuildings.map((building) => {

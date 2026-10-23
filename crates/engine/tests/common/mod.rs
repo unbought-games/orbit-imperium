@@ -169,3 +169,53 @@ pub fn astrophysics_rules(rules: &Ruleset) -> Ruleset {
     entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
     Ruleset::from_artifact(artifact, rules.speed).unwrap()
 }
+
+#[allow(dead_code)]
+pub fn light_laser_rules(rules: &Ruleset) -> Ruleset {
+    // Copy only the new feature from the immutable fixture; keep the caller's
+    // world, protocol, speed and unrelated progression definitions intact.
+    let fixture =
+        Ruleset::from_json(include_bytes!("../../../../rules/mvp-v1-slice-8.json")).unwrap();
+    let mut artifact = rules.artifact.clone();
+    let laser = CatalogKey::Research(ResearchId::LaserTechnology);
+    let defense = CatalogKey::Defense(DefenseId::LightLaser);
+    for key in [laser, defense] {
+        *artifact.catalog.iter_mut().find(|e| e.key == key).unwrap() = fixture
+            .artifact
+            .catalog
+            .iter()
+            .find(|e| e.key == key)
+            .unwrap()
+            .clone();
+    }
+    let source = fixture.artifact.progression.as_ref().unwrap();
+    let progression = artifact.progression.as_mut().unwrap();
+    progression.research.insert(
+        ResearchId::LaserTechnology,
+        source.research[&ResearchId::LaserTechnology].clone(),
+    );
+    progression.unit_costs.push(
+        source
+            .unit_costs
+            .iter()
+            .find(|u| u.item.catalog_key() == defense)
+            .unwrap()
+            .clone(),
+    );
+    if let Some(world) = artifact.world.as_mut() {
+        world.combat.units.push(
+            fixture
+                .artifact
+                .world
+                .as_ref()
+                .unwrap()
+                .combat
+                .units
+                .iter()
+                .find(|u| u.item.catalog_key() == defense)
+                .unwrap()
+                .clone(),
+        );
+    }
+    Ruleset::from_artifact(artifact, rules.speed).unwrap()
+}

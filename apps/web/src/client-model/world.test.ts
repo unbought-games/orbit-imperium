@@ -1,4 +1,6 @@
-import { expect, it } from 'vitest'
+import { readyFixture, memoryStorage } from '../test-support/bootstrap'
+import { attemptStorage } from '../adapters/attempt-storage'
+import { expect, it, vi } from 'vitest'
 import { Coordinator } from './coordinator'
 import type {
   Attempt,
@@ -270,5 +272,89 @@ it.each(['Production', 'Attack'] as const)(
       },
     })
     expect(mismatched).toBeNull()
+  },
+)
+
+it.each([false, true])(
+  'automatically recovers saved presence with the original envelope after an outage (reload=%s)',
+  async (reload) => {
+    vi.useFakeTimers()
+    const { session, snapshot } = readyFixture(4)
+    const storage = attemptStorage(memoryStorage())
+    const sent: Envelope[] = []
+    let available = false
+    const port: GamePort = {
+      currentBinding: async (_, request_id) => ({
+        ...snapshot.candidate,
+        request_id,
+      }),
+      settings: async (context) => ({
+        ...snapshot.settings,
+        request_id: context.request_id,
+      }),
+      view: async (context) => {
+        if (!available) throw { status: 503 }
+        return { ...snapshot.view, request_id: context.request_id }
+      },
+      quote: async () => {
+        throw Error('unused')
+      },
+      submit: async (envelope) => {
+        sent.push(structuredClone(envelope))
+        if (!available) throw { status: 503 }
+        return {
+          protocol: 4,
+          binding: envelope.binding,
+          command_id: envelope.command_id,
+          status: 'Committed',
+          admitted_at: 1000,
+          executed_at: 1000,
+          result_ids: [],
+          minimum_viewer_revision: '0',
+        }
+      },
+      receipt: async () => {
+        throw { status: available ? 404 : 503 }
+      },
+    }
+    const platform: ClientPlatform = {
+      newId: () => crypto.randomUUID(),
+      monotonicNowMs: () => Date.now(),
+      isOnline: () => true,
+      random: () => 0,
+      scheduleOnce: (callback, delay) => {
+        const timer = setTimeout(callback, delay)
+        return () => clearTimeout(timer)
+      },
+    }
+    let model = new Coordinator(port, storage, platform)
+    let stop = () => {}
+    try {
+      await model.initialize(session, snapshot)
+      await model.recordPresence('BodyVisit', null)
+      const envelope = sent[0]
+      expect([...model.ledger.values()][0].status).toBe('uncertain')
+      if (reload) {
+        model.invalidate()
+        model = new Coordinator(port, storage, platform)
+        await model.initialize(session, snapshot)
+      }
+      stop = model.startDelivery()
+      await vi.advanceTimersByTimeAsync(30000)
+      expect(sent).toHaveLength(1)
+      expect(await storage.load(snapshot.candidate.binding)).toHaveLength(1)
+      available = true
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(sent).toEqual([envelope, envelope])
+      expect(model.stale).toBe(false)
+      expect(model.ledger.size).toBe(0)
+      expect(await storage.load(snapshot.candidate.binding)).toEqual([])
+      await vi.advanceTimersByTimeAsync(60000)
+      expect(sent).toHaveLength(2)
+    } finally {
+      stop()
+      model.invalidate()
+      vi.useRealTimers()
+    }
   },
 )

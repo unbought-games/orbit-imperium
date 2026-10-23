@@ -17,6 +17,9 @@ pub struct ImpulseDriveRule {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ShipRule {
+    /// Base propulsion; absent historical profiles use Combustion Drive.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drive: Option<ResearchId>,
     /// Optional complete replacement profile; absent in retained rules artifacts.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub impulse_drive: Option<ImpulseDriveRule>,
@@ -69,6 +72,13 @@ pub enum RulesError {
     HashMismatch,
 }
 impl Ruleset {
+    pub fn colonization(&self) -> bool {
+        self.artifact
+            .world
+            .as_ref()
+            .and_then(|w| w.colonization.as_ref())
+            .is_some_and(|c| c.enabled)
+    }
     pub fn world(&self) -> bool {
         self.artifact.world.is_some()
     }
@@ -180,7 +190,15 @@ impl Ruleset {
         if artifact.universe.is_some() {
             // The linear temperature factor must also be valid for homeworlds
             // admitted after activation, including when this universe is empty.
-            let (low, high) = crate::universe::homeworld_temperature_bounds();
+            let (low, high) = if artifact
+                .world
+                .as_ref()
+                .is_some_and(|w| w.colonization.is_some())
+            {
+                (-130, 260)
+            } else {
+                crate::universe::homeworld_temperature_bounds()
+            };
             let t = artifact.temperature;
             for temperature in [low, high] {
                 let factor = crate::numeric::ratio(t[0], t[2]).map_err(|_| RulesError::Range)?
@@ -223,6 +241,16 @@ impl Ruleset {
             }
         }
         for (ship, r) in &artifact.ships {
+            if let Some(drive) = r.drive
+                && (drive != ResearchId::ImpulseDrive
+                    || !matches!(ship, ShipType::ColonyShip | ShipType::HeavyFighter)
+                    || artifact
+                        .progression
+                        .as_ref()
+                        .is_none_or(|p| !p.research.contains_key(&drive)))
+            {
+                return Err(RulesError::InvalidReference);
+            }
             if let Some(upgrade) = &r.impulse_drive {
                 if *ship != ShipType::SmallCargo
                     || artifact.world.is_none()
@@ -246,6 +274,22 @@ impl Ruleset {
             {
                 return Err(RulesError::Range);
             }
+        }
+        if artifact
+            .world
+            .as_ref()
+            .and_then(|w| w.colonization.as_ref())
+            .is_some()
+            && (!artifact
+                .ships
+                .get(&ShipType::ColonyShip)
+                .is_some_and(|s| s.drive == Some(ResearchId::ImpulseDrive))
+                || !artifact
+                    .progression
+                    .as_ref()
+                    .is_some_and(|p| p.research.contains_key(&ResearchId::Astrophysics)))
+        {
+            return Err(RulesError::InvalidReference);
         }
         if artifact.id != "first-slice-v1" {
             crate::catalog::validate_catalog(&artifact)?;

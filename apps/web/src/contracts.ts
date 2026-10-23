@@ -4642,6 +4642,7 @@ export interface components {
             blockers: components["schemas"]["ProgressionBlocker"][];
             estimates: components["schemas"]["ProgressionEstimate"] | null;
             progress?: components["schemas"]["SnapshotProgress"];
+            building_energy?: components["schemas"]["BuildingEnergy"];
         };
         ProductionDto: {
             /** Format: uuid */
@@ -4713,23 +4714,13 @@ export interface components {
             kind: "Planet" | "Moon";
             amounts: components["schemas"]["Resources"];
             capacity: components["schemas"]["Resources"];
-            levels: {
-                MetalMine: number;
-                CrystalMine: number;
-                DeuteriumSynthesizer: number;
-                SolarPlant: number;
-                MetalStorage: number;
-                CrystalStorage: number;
-                DeuteriumTank: number;
-                RoboticsFactory: number;
-                ResearchLab: number;
-                Shipyard: number;
-            };
+            levels: components["schemas"]["BuildingLevels3"];
             fields: number;
             fields_used: number;
             fields_reserved: number;
             energy: components["schemas"]["Energy"];
             inventories: components["schemas"]["Inventory3"][];
+            colony?: components["schemas"]["Colony4"];
         };
         BoundView3: {
             viewer_revision: components["schemas"]["Decimal"];
@@ -4879,7 +4870,7 @@ export interface components {
         /** @enum {string} */
         Mission4: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize";
         /** @enum {string} */
-        MissionLeg4: "Outbound" | "Returning" | "Returned" | "Destroyed";
+        MissionLeg4: "Outbound" | "Returning" | "Returned" | "Destroyed" | "Colonized" | "Deployed";
         MissionDestination4: {
             /** @constant */
             type: "Body";
@@ -4895,6 +4886,11 @@ export interface components {
             coordinates: components["schemas"]["Coordinates"];
             /** Format: uuid */
             field_identity: string;
+        } | {
+            /** @constant */
+            type: "EmptyPosition";
+            coordinates: components["schemas"]["Coordinates"];
+            slot_revision: components["schemas"]["Decimal"];
         };
         DestinationSelection4: {
             /** @constant */
@@ -4905,6 +4901,10 @@ export interface components {
         } | {
             /** @constant */
             type: "DebrisAt";
+            coordinates: components["schemas"]["Coordinates"];
+        } | {
+            /** @constant */
+            type: "EmptyPositionAt";
             coordinates: components["schemas"]["Coordinates"];
         };
         ManifestStack4: {
@@ -4998,7 +4998,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -5083,6 +5083,7 @@ export interface components {
             blockers: components["schemas"]["ProgressionBlocker"][];
             estimates: components["schemas"]["ProgressionEstimate"] | null;
             progress?: components["schemas"]["SnapshotProgress"];
+            building_energy?: components["schemas"]["BuildingEnergy"];
         };
         GameProgressionOptions: components["schemas"]["BoundProgressionOptions"] | components["schemas"]["BoundProgressionOptions4"];
         Attempt4: {
@@ -5144,6 +5145,8 @@ export interface components {
             fleet_slots: components["schemas"]["Decimal"];
         };
         BoundView4: {
+            /** @description Whether this recipient has visible unread mission reports anywhere in the archive. */
+            has_unread_reports?: boolean;
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;
@@ -5167,17 +5170,18 @@ export interface components {
             progression: components["schemas"]["ProgressionView"];
             missions: components["schemas"]["MissionView4"];
             progress?: components["schemas"]["SnapshotProgress"];
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -5205,6 +5209,8 @@ export interface components {
             /** @enum {string} */
             inactivity: "Active" | "Inactive7" | "Inactive28";
             vacation: boolean;
+            /** @description Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers. */
+            attack_blocker?: components["schemas"]["GameError4"] | null;
             espionage_eligible: boolean;
         };
         PublicDebris4: {
@@ -5223,6 +5229,7 @@ export interface components {
             system: number;
             positions: components["schemas"]["GalaxyPosition4"][];
             observed_at: number;
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         WorldQueryKind4: {
             /** @constant */
@@ -5303,6 +5310,7 @@ export interface components {
         ReportDetail4: {
             header: components["schemas"]["ReportHeader4"];
             payload: components["schemas"]["ReportPayload4"];
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         BoundReport4: {
             /** @constant */
@@ -5365,18 +5373,7 @@ export interface components {
             } | {
                 /** @constant */
                 visibility: "Known";
-                value: {
-                    MetalMine: number;
-                    CrystalMine: number;
-                    DeuteriumSynthesizer: number;
-                    SolarPlant: number;
-                    MetalStorage: number;
-                    CrystalStorage: number;
-                    DeuteriumTank: number;
-                    RoboticsFactory: number;
-                    ResearchLab: number;
-                    Shipyard: number;
-                };
+                value: components["schemas"]["BuildingLevels3"];
             };
             research: {
                 /** @constant */
@@ -5384,15 +5381,7 @@ export interface components {
             } | {
                 /** @constant */
                 visibility: "Known";
-                value: {
-                    EnergyTechnology: number;
-                    ComputerTechnology: number;
-                    CombustionDrive: number;
-                    EspionageTechnology: number;
-                    WeaponsTechnology: number;
-                    ShieldingTechnology: number;
-                    ArmourTechnology: number;
-                };
+                value: components["schemas"]["ResearchLevels3"];
             };
             activity: components["schemas"]["PublicActivity4"];
             counterespionage: {
@@ -5425,7 +5414,7 @@ export interface components {
         };
         MissionOutcomePayload4: {
             /** @enum {unknown} */
-            kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed";
+            kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed" | "Deployed";
             /** Format: uuid */
             fleet: string;
             /** Format: uuid */
@@ -5476,12 +5465,13 @@ export interface components {
             number: number;
             start: components["schemas"]["BattleCounts4"][];
             end: components["schemas"]["BattleCounts4"][];
-            shots: string;
-            raw_attack_ticks: string;
-            shield_removed_ticks: string;
-            hull_removed_ticks: string;
-            explosions: string;
-        };
+            shots?: string;
+            raw_attack_ticks?: string;
+            shield_removed_ticks?: string;
+            hull_removed_ticks?: string;
+            explosions?: string;
+            fire?: components["schemas"]["BattleFire4"][];
+        } & (unknown | unknown);
         CombatPayload4: {
             /** @constant */
             kind: "Combat";
@@ -5510,7 +5500,7 @@ export interface components {
             own_lost_ships: components["schemas"]["PublicShip4"][];
             own_cargo_loss: components["schemas"]["Resources"];
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -5610,7 +5600,7 @@ export interface components {
         } | {
             /** @constant */
             type: "Invalidate";
-            minimum_viewer_revision: string;
+            minimum_viewer_revision: components["schemas"]["Decimal"];
         } | {
             /** @constant */
             type: "Reset";
@@ -5623,9 +5613,84 @@ export interface components {
         SubmittedIntent: {
             quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"];
             submittedAt: number;
-            baseRevision: string;
+            baseRevision: components["schemas"]["Decimal"];
             /** Format: uuid */
             dependsOn?: string;
+        };
+        /** @description Building operating consumption at 100% production, derived from the active rules. Informational; not a construction prerequisite. */
+        BuildingEnergy: {
+            current_consumption: components["schemas"]["Decimal"];
+            target_consumption: components["schemas"]["Decimal"];
+        };
+        /** @description Fire attributed to the shooting participant. Shield and hull damage are inflicted on the opposing side. Explosions are triggered on opposing units; their remaining hull is not included in hull damage. */
+        BattleFire4: {
+            /** Format: uuid */
+            owner: string;
+            origin: {
+                /** Format: uuid */
+                Stationed: string;
+            } | {
+                /** Format: uuid */
+                Fleet: string;
+            };
+            /** @enum {unknown} */
+            side: "Attacker" | "Defender";
+            shots: string;
+            raw_attack_ticks: string;
+            shield_removed_ticks: string;
+            hull_removed_ticks: string;
+            explosions: string;
+        };
+        /** @description Current public usernames keyed by player ID, limited to identities visible in this response. Missing identities use the client fallback. */
+        PublicPlayerNames4: {
+            [key: string]: string;
+        };
+        ColonizedPayload4: {
+            /** @constant */
+            kind: "Colonized";
+            /** Format: uuid */
+            fleet: string;
+            /** Format: uuid */
+            origin: string;
+            destination_coordinates: components["schemas"]["Coordinates"];
+            at: number;
+            /** Format: uuid */
+            body: string;
+            fields: number;
+            diameter_km: number;
+            max_temperature: number;
+            min_temperature: number;
+            resources: components["schemas"]["Resources"];
+            return_at: number | null;
+        };
+        ColonizationFailedPayload4: {
+            /** @constant */
+            kind: "ColonizationFailed";
+            /** Format: uuid */
+            fleet: string;
+            /** Format: uuid */
+            origin: string;
+            destination_coordinates: components["schemas"]["Coordinates"];
+            at: number;
+            /** @enum {unknown} */
+            reason: "Occupied" | "PositionLocked" | "ColonyCapacity";
+            return_at: number;
+        };
+        Colony4: {
+            diameter_km: number;
+            max_temperature: number;
+            min_temperature: number;
+            created_at: number;
+            /** @constant */
+            profile: "oi-redesign-reconstructed-v1";
+        };
+        /** @description Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable. */
+        BuildingLevels3: {
+            [key: string]: number;
+        };
+        /** @description Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable. */
+        ResearchLevels3: {
+            [key: string]: number;
         };
         ProfileSource: {
             /** @constant */
