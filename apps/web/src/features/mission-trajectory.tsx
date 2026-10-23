@@ -1,6 +1,6 @@
 import { Recycle } from 'lucide-react'
 import type { components } from '../contracts'
-import { coordinates } from '../ui/format'
+import { CoordinateLink } from './coordinate-link'
 import styles from './missions.module.css'
 import { BodyIllustration } from './body-illustration'
 import { atmosphereArt } from '../ui/artwork'
@@ -79,7 +79,11 @@ export function MissionTrajectory({
           {originIdentity?.name && (
             <span title={originIdentity.name}>{originIdentity.name}</span>
           )}
-          {coordinates({ coordinates: origin })}
+          <CoordinateLink
+            at={origin}
+            label="origin"
+            className={styles.routeCoordinate}
+          />
         </strong>
       </div>
       {destination && (
@@ -112,7 +116,11 @@ export function MissionTrajectory({
                 {destinationIdentity.name}
               </span>
             )}
-            {coordinates({ coordinates: destination })}
+            <CoordinateLink
+              at={destination}
+              label="destination"
+              className={styles.routeCoordinate}
+            />
           </strong>
         </div>
       )}

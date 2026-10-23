@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import { PlayerName } from './player-name'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { useUniverseName } from '../shell/session-context'
@@ -172,15 +173,19 @@ export function MissionFleets({
               </Heading>
               <Text>{shipManifest(fleet.ships)}</Text>
               <Text>
-                {missionLocation(view, fleet.intent.origin, fleet.origin)}{' '}
+                <CoordinateLink at={fleet.origin} label="origin">
+                  {missionLocation(view, fleet.intent.origin, fleet.origin)}
+                </CoordinateLink>{' '}
                 {fleet.leg === 'Returning' ? '←' : '→'}{' '}
-                {missionLocation(
-                  view,
-                  fleet.intent.destination.type === 'Body'
-                    ? fleet.intent.destination.id
-                    : undefined,
-                  fleet.destination,
-                )}
+                <CoordinateLink at={fleet.destination} label="destination">
+                  {missionLocation(
+                    view,
+                    fleet.intent.destination.type === 'Body'
+                      ? fleet.intent.destination.id
+                      : undefined,
+                    fleet.destination,
+                  )}
+                </CoordinateLink>
               </Text>
             </div>
             <div className={styles.arrival}>

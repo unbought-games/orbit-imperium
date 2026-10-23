@@ -189,7 +189,7 @@ for (const viewport of [
     await page.getByRole('link', { name: 'Back to reports' }).click()
     await firstViewport(page, [
       page.getByRole('link', { name: 'Combat', exact: true }),
-      page.getByRole('checkbox', { name: 'Show hidden reports' }),
+      page.getByRole('checkbox', { name: 'Show deleted reports' }),
     ])
   })
 

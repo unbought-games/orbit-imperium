@@ -7,6 +7,7 @@ import {
 import { useGameSession } from './session-context'
 import { ScreenContext } from './screen-context'
 import { bodyPages, resolveNamedDestination } from './routes'
+import { validateGalaxySearch } from './galaxy-location'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
@@ -67,6 +68,9 @@ export function GameShell() {
     ) {
       void navigate({
         ...routeTarget(universeName, page, body.id, route.item ?? undefined),
+        ...(page === 'galaxy'
+          ? { search: validateGalaxySearch(leaf.search) }
+          : {}),
         replace: true,
       })
     }

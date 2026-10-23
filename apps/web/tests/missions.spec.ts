@@ -262,16 +262,16 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
   await expect
     .poll(async () => (await reportState())?.data.header.read)
     .toBe(true)
-  await page.getByRole('button', { name: 'Hide report', exact: true }).click()
+  await page.getByRole('button', { name: 'Delete report', exact: true }).click()
   await expect(
-    page.getByRole('button', { name: 'Unhide report', exact: true }),
+    page.getByRole('button', { name: 'Restore report', exact: true }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Unhide report', exact: true }).click()
+  await page.getByRole('button', { name: 'Restore report', exact: true }).click()
   await expect
     .poll(async () => (await reportState())?.data.header.hidden)
     .toBe(false)
   await expect(
-    page.getByRole('button', { name: 'Hide report', exact: true }),
+    page.getByRole('button', { name: 'Delete report', exact: true }),
   ).toBeVisible()
   await page.screenshot({
     path: 'test-results/missions-report-mobile.png',
@@ -358,7 +358,7 @@ test('paginated inbox remains usable after leaving a pending report detail', asy
   await expect(
     page.getByRole('button', { name: 'Refresh reports' }),
   ).toBeEnabled()
-  await expect(page.getByLabel('Show hidden reports')).toBeEnabled()
+  await expect(page.getByLabel('Show deleted reports')).toBeEnabled()
   release()
   await page.unrouteAll({ behavior: 'wait' })
 })

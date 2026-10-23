@@ -231,11 +231,6 @@
 .primary .menuAlert svg {
   display: block;
 }
-.menuAlert {
-  position: absolute;
-  top: calc(50% - 12px);
-  right: -6px;
-}
 .srOnly {
   position: absolute;
   width: 1px;
@@ -246,6 +241,7 @@
 }
 @media (max-width: 767px) {
   .menuAlert {
+    position: absolute;
     top: 0;
     right: calc(50% - 34px);
   }

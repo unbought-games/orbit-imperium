@@ -74,3 +74,15 @@
   font-size: 0.75rem;
   padding-inline: 0.6rem;
 }
+
+.rowHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.removalHelp {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
