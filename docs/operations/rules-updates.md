@@ -8,6 +8,8 @@ before changing shared vocabulary or response shapes.
 
 Use the deployed `orbit` binary with the same `DATABASE_URL` as the service. These commands are operator CLI commands, not public HTTP endpoints. The database must already have been prepared by server startup.
 
+For Ion Technology prerequisites and activation, see [Ion Technology](ion-technology.md).
+
 For the reviewed Laser Technology and Light Laser content patch, see
 [Light Laser activation](light-laser.md).
 
