@@ -152,6 +152,7 @@ summary.positionSummary:focus-visible {
   min-width: 0;
 }
 .planetInfo > strong {
+  overflow-wrap: anywhere;
   font:
     400 1.2rem Georgia,
     serif;

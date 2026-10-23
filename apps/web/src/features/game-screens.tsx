@@ -15,10 +15,15 @@ import { Heading, Text } from '../ui/typography'
 import { label } from '../ui/format'
 
 export function OverviewScreen() {
-  const { view, body } = useGameScreen()
+  const { view, body, model } = useGameScreen()
   return body ? (
     <>
-      <EmpireOverview view={view} body={body} />
+      <EmpireOverview
+        key={bindingKey(view.binding)}
+        view={view}
+        body={body}
+        model={model}
+      />
       {view.protocol === 2 && <OperationsScreen />}
     </>
   ) : null

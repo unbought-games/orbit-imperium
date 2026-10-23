@@ -10,6 +10,9 @@ pub struct ResourceCheckpoint {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Body {
+    /// Absent on unnamed planets and historical journals; never persist the fallback label.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     pub id: BodyId,
     pub universe: UniverseId,
     pub owner: PlayerId,
@@ -33,6 +36,8 @@ pub struct Player {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicDestination {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     pub id: BodyId,
     pub coordinates: Coordinates,
     pub kind: BodyKind,

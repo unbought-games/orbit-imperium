@@ -4329,6 +4329,12 @@
               "Planet",
               "Moon"
             ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "Public planet name; omitted until named. Display the body kind as the fallback."
           }
         },
         "required": [
@@ -4436,6 +4442,12 @@
           },
           "energy": {
             "$ref": "#/components/schemas/Energy"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "Public planet name; omitted until named. Display the body kind as the fallback."
           }
         },
         "required": [
@@ -5576,6 +5588,12 @@
             "items": {
               "$ref": "#/components/schemas/Inventory"
             }
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "Public planet name; omitted until named. Display the body kind as the fallback."
           }
         },
         "required": [
@@ -8023,6 +8041,12 @@
           },
           "colony": {
             "$ref": "#/components/schemas/Colony4"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "Public planet name; omitted until named. Display the body kind as the fallback."
           }
         },
         "required": [
@@ -9127,6 +9151,28 @@
               "hidden"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "RenamePlanet"
+              },
+              "body": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string",
+                "description": "1\u201340 Unicode characters after trimming surrounding whitespace; control characters are rejected."
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "name"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -10173,6 +10219,12 @@
           },
           "espionage_eligible": {
             "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "Public planet name; omitted until named. Display the body kind as the fallback."
           }
         },
         "required": [

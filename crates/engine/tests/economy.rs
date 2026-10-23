@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 fn body() -> Body {
     Body {
+        name: None,
         id: Uuid::from_u128(1).into(),
         universe: Uuid::from_u128(2).into(),
         owner: Uuid::from_u128(3).into(),

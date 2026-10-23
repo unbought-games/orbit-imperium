@@ -88,6 +88,7 @@ fn single_ten_speed_scales_production_and_paired_transport_only() {
     use uuid::Uuid;
     let rules = Ruleset::mvp().unwrap();
     let body = Body {
+        name: None,
         id: BodyId(Uuid::from_u128(1)),
         universe: UniverseId(Uuid::from_u128(2)),
         owner: PlayerId(Uuid::from_u128(3)),

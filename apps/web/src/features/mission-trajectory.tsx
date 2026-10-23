@@ -17,8 +17,12 @@ export function MissionTrajectory({
   origin: Coordinates
   destination?: Coordinates
   returning?: boolean
-  originIdentity?: { id: string; kind: 'Planet' | 'Moon' }
-  destinationIdentity?: { id: string; kind: 'Planet' | 'Moon' | 'Debris' }
+  originIdentity?: { id: string; name?: string; kind: 'Planet' | 'Moon' }
+  destinationIdentity?: {
+    id: string
+    name?: string
+    kind: 'Planet' | 'Moon' | 'Debris'
+  }
 }) {
   return (
     <figure className={styles.trajectory} aria-label="Mission route schematic">
@@ -71,7 +75,12 @@ export function MissionTrajectory({
           <span className={styles.unknownWorld} aria-hidden="true" />
         )}
         <span>{returning ? 'Returning to' : 'Origin'}</span>
-        <strong>{coordinates({ coordinates: origin })}</strong>
+        <strong>
+          {originIdentity?.name && (
+            <span title={originIdentity.name}>{originIdentity.name}</span>
+          )}
+          {coordinates({ coordinates: origin })}
+        </strong>
       </div>
       {destination && (
         <div className={styles.routeDestination}>
@@ -97,7 +106,14 @@ export function MissionTrajectory({
                 ? 'Debris field'
                 : 'Destination'}
           </span>
-          <strong>{coordinates({ coordinates: destination })}</strong>
+          <strong>
+            {destinationIdentity?.name && (
+              <span title={destinationIdentity.name}>
+                {destinationIdentity.name}
+              </span>
+            )}
+            {coordinates({ coordinates: destination })}
+          </strong>
         </div>
       )}
       <figcaption>Schematic · not to scale</figcaption>

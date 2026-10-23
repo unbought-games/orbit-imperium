@@ -58,6 +58,8 @@ export function activeAttempt(attempt: Attempt, view: BoundView | null) {
 }
 
 export function commandBody(command: Command, view: BoundView | null) {
+  if (command.type === 'World' && command.action.type === 'RenamePlanet')
+    return command.action.body
   if ('body' in command) return command.body
   if ('host' in command) return command.host
   if ('origin' in command) return command.origin

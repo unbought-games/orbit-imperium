@@ -1,6 +1,6 @@
 import type { components } from '../contracts'
 import { formatRemaining } from '../client-model/clock'
-import { label } from '../ui/format'
+import { coordinates, label } from '../ui/format'
 type S = components['schemas']
 
 export function arrivalCountdown(deadline: number, now: number) {
@@ -47,4 +47,16 @@ export function recallEstimate(fleet: S['OwnMission4'], now: number) {
   return fleet.can_recall && fleet.leg === 'Outbound' && now < fleet.due_at
     ? now + Math.max(0, now - fleet.launched_at)
     : null
+}
+
+/** Names follow current public bodies; routes retain the fleet's recorded coordinates. */
+export function missionLocation(
+  view: Pick<S['GameView'], 'bodies' | 'destinations'>,
+  id: string | undefined,
+  at: S['Coordinates'],
+) {
+  const name = [...view.bodies, ...view.destinations].find(
+    (body) => body.id === id,
+  )?.name
+  return `${name ? `${name} ` : ''}${coordinates({ coordinates: at })}`
 }

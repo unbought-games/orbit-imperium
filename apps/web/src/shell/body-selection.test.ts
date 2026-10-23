@@ -34,3 +34,19 @@ it('searches kind and coordinates while retaining the visible selected context',
   ).toBe(2)
   expect(bodyGroups(bodies, 'missing')).toEqual([])
 })
+it('finds public planet names without losing kind or coordinate search', () => {
+  const named = bodies.map((body) =>
+    body.id === 'remote' ? { ...body, name: 'New Terra 🪐' } : body,
+  )
+  expect(
+    bodyGroups(named, 'terra')
+      .flatMap((group) => group.entries)
+      .map((body) => body.id),
+  ).toEqual(['remote'])
+  expect(
+    bodyGroups(named, 'planet').flatMap((group) => group.entries),
+  ).toHaveLength(2)
+  expect(
+    bodyGroups(named, '1:9:7').flatMap((group) => group.entries)[0].name,
+  ).toBe('New Terra 🪐')
+})

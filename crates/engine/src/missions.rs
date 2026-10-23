@@ -558,6 +558,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     s.research_operations.get(operation).map(|op| op.host)
                 }
                 Command::World {
+                    action: WorldAction::RenamePlanet { body, .. },
+                } => Some(*body),
+                Command::World {
                     action: WorldAction::LaunchFleet { intent, .. },
                 } => Some(intent.origin),
                 Command::World {
@@ -579,7 +582,14 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                         | WorldAction::SetReportHidden { .. }
                 }
             ) {
-                if p.vacation {
+                if p.vacation
+                    && !matches!(
+                        command,
+                        Command::World {
+                            action: WorldAction::RenamePlanet { .. }
+                        }
+                    )
+                {
                     return Err(GameError::ActorVacation.into());
                 }
                 if matches!(
@@ -594,6 +604,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action: WorldAction::RenamePlanet { body, name },
+        }) => {
+            let renamed = crate::planet_names::rename_planet(s, i.actor, *body, name)?;
+            c.affected_viewers.insert(renamed.owner);
+            c.bodies.push(renamed);
+        }
         Input::Command(Command::World {
             action:
                 WorldAction::RecordForegroundPresence {

@@ -147,6 +147,8 @@ pub struct BoundProgressionOptions {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BodyV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colony: Option<ColonyDto>,
     pub id: BodyId,
     pub coordinates: Coordinates,
@@ -384,6 +386,7 @@ pub(crate) fn progression_projection(
             id: b.id,
             coordinates: b.coordinates,
             kind: b.kind,
+            name: b.name.clone(),
             amounts: b.checkpoint.amounts.into(),
             capacity: orbit_engine::body_storage_capacity(b, &facts.rules)
                 .map_err(|_| ServiceError::InvariantFailure)?

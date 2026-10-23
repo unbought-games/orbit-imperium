@@ -60,6 +60,7 @@ fn progression_profile_has_exact_selected_closure() {
 }
 fn body() -> Body {
     Body {
+        name: None,
         id: BodyId::default(),
         universe: UniverseId::default(),
         owner: PlayerId::default(),

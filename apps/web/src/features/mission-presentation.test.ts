@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  missionLocation,
   arrivalCountdown,
   incomingManifest,
   observationAge,
@@ -50,4 +51,16 @@ describe('mission presentation', () => {
     expect(observationAge(1000, 0)).toBe('Less than a minute ago')
     expect(observationAge(1000, 61000)).toBe('1m 0s ago')
   })
+})
+
+it('labels current owned and public fleet destinations without changing recorded coordinates', () => {
+  const view = {
+    bodies: [{ id: 'home', name: 'Terra' }],
+    destinations: [{ id: 'away', name: '世界 🪐' }],
+  } as unknown as components['schemas']['GameView']
+  const at = { galaxy: 1, system: 2, position: 3 }
+  expect(missionLocation(view, 'home', at)).toBe('Terra [1:2:3]')
+  expect(missionLocation(view, 'away', at)).toBe('世界 🪐 [1:2:3]')
+  expect(missionLocation(view, 'unknown', at)).toBe('[1:2:3]')
+  expect(missionLocation(view, undefined, at)).toBe('[1:2:3]')
 })

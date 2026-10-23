@@ -1,5 +1,5 @@
 import type { BoundView } from '../client-model/commands'
-import { coordinates } from '../ui/format'
+import { bodyName, coordinates } from '../ui/format'
 import { classes } from '../ui/classes'
 import styles from './planet-rail.module.css'
 export function PlanetRail({
@@ -29,7 +29,7 @@ export function PlanetRail({
               className={classes(styles.orb, b.kind === 'Moon' && styles.moon)}
               aria-hidden="true"
             />
-            <strong>{b.kind}</strong>
+            <strong>{bodyName(b)}</strong>
             <span>{coordinates(b)}</span>
             {b.id === selected && <small>Selected</small>}
           </button>

@@ -22,6 +22,8 @@ impl From<Resources> for ResourceDto {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BodyDto {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     pub id: BodyId,
     pub coordinates: Coordinates,
     pub kind: BodyKind,
@@ -166,6 +168,7 @@ impl<S: GameStore> GameService<S> {
                         id: b.id,
                         coordinates: b.coordinates,
                         kind: b.kind,
+                        name: b.name.clone(),
                         amounts: b.checkpoint.amounts.into(),
                         capacity: orbit_engine::body_storage_capacity(b, &facts.rules)
                             .map_err(|_| ServiceError::InvariantFailure)?

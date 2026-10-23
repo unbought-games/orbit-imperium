@@ -8,6 +8,8 @@ pub struct GalaxyPosition {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicBody {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     pub id: BodyId,
     pub kind: BodyKind,
     pub owner: PlayerId,
@@ -132,6 +134,7 @@ pub fn galaxy_system(
             Some(PublicBody {
                 id: b.id,
                 kind: b.kind,
+                name: b.name.clone(),
                 owner: b.owner,
                 activity: public_activity(
                     w.records.activity.get(&b.id).map(|a| a.last_signal_at),

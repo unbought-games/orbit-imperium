@@ -208,9 +208,9 @@ function LegacyRecall({
   )
 }
 function coordinates(view: View, id: string) {
-  const d = view.destinations.find((d) => d.id === id)
+  const d = [...view.bodies, ...view.destinations].find((d) => d.id === id)
   return d
-    ? `[${d.coordinates.galaxy}:${d.coordinates.system}:${d.coordinates.position}]`
+    ? `${d.name ? `${d.name} ` : ''}[${d.coordinates.galaxy}:${d.coordinates.system}:${d.coordinates.position}]`
     : 'Unavailable body'
 }
 function Transport({

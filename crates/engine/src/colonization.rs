@@ -248,6 +248,7 @@ pub(crate) fn colony_arrival(
         None,
     )?;
     c.bodies.push(Body {
+        name: None,
         id,
         universe: s.universe,
         owner: f.owner,

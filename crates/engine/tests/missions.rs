@@ -2322,3 +2322,92 @@ fn espionage_contract_keeps_research_added_by_rules_updates() {
 
 #[path = "missions/heavy_fighter.rs"]
 mod heavy_fighter;
+
+#[test]
+fn planet_renaming_is_public_free_repeatable_and_owner_only() {
+    let (mut s, r, p, b, target) = fixture();
+    let original = s.bodies[&b].clone();
+    let rename = |body, name: &str| {
+        Input::Command(Command::World {
+            action: WorldAction::RenamePlanet {
+                body,
+                name: name.into(),
+            },
+        })
+    };
+    // Presentation changes remain available during vacation.
+    s.world
+        .as_mut()
+        .unwrap()
+        .records
+        .policies
+        .get_mut(&p)
+        .unwrap()
+        .vacation = true;
+    for (n, name) in [(5000, "  Terra 🪐  "), (5001, "世界"), (5002, "世界")] {
+        let result = run(&mut s, &r, p, b, 1000, n, rename(b, name));
+        let change = apply(&mut s, result);
+        assert_eq!(s.bodies[&b].name.as_deref(), Some(name.trim()));
+        assert_eq!(s.bodies[&b].checkpoint, original.checkpoint);
+        assert_eq!(s.bodies[&b].levels, original.levels);
+        assert!(change.events.is_empty());
+        assert!(change.inventories.is_empty());
+        assert_eq!(change.affected_viewers, BTreeSet::from([p]));
+        let galaxy = galaxy_system(
+            &s,
+            s.bodies[&target].owner,
+            1,
+            s.bodies[&b].coordinates.system,
+            1000,
+            &r,
+        )
+        .unwrap();
+        assert_eq!(
+            galaxy
+                .positions
+                .iter()
+                .find_map(|position| position.body.as_ref().filter(|body| body.id == b))
+                .unwrap()
+                .name
+                .as_deref(),
+            Some(name.trim())
+        );
+    }
+    for (id, expected) in [
+        (target, GameError::NotOwned),
+        (BodyId(Uuid::new_v4()), GameError::NotOwned),
+    ] {
+        assert!(
+            matches!(run(&mut s, &r, p, id, 1000, 5010, rename(id, "Stolen")), TransitionResult::Rejected(e) if e == expected)
+        );
+    }
+    let other = s.bodies[&target].owner;
+    let result = run(
+        &mut s,
+        &r,
+        other,
+        target,
+        1000,
+        5011,
+        rename(target, "世界"),
+    );
+    apply(&mut s, result);
+    assert_eq!(
+        s.bodies[&target].name, s.bodies[&b].name,
+        "duplicate names are permitted"
+    );
+    s.bodies.get_mut(&b).unwrap().kind = BodyKind::Moon;
+    assert!(matches!(
+        run(&mut s, &r, p, b, 1000, 5012, rename(b, "Moon")),
+        TransitionResult::Rejected(GameError::InvalidInput)
+    ));
+}
+
+#[test]
+fn unnamed_body_journals_keep_their_original_wire_shape() {
+    let (s, _, _, b, _) = fixture();
+    let encoded = serde_json::to_value(&s.bodies[&b]).unwrap();
+    assert!(encoded.get("name").is_none());
+    let decoded: Body = serde_json::from_value(encoded.clone()).unwrap();
+    assert_eq!(serde_json::to_value(decoded).unwrap(), encoded);
+}

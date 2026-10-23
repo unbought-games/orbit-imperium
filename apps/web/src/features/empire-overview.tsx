@@ -1,3 +1,5 @@
+import { PlanetRename } from './planet-rename'
+import type { Coordinator } from '../client-model/coordinator'
 import { PlayerName } from './player-name'
 import { useProfileSource } from '../shell/player-profiles-context'
 import {
@@ -21,7 +23,7 @@ import { resolveDestination, type Page } from '../shell/routes'
 import { Link } from '../ui/link'
 import { ResourceNumber } from '../ui/number-value'
 import { ResourceMark } from '../ui/resource-mark'
-import { coordinates, label } from '../ui/format'
+import { bodyName, coordinates, label } from '../ui/format'
 import { currentResourceRates } from '../ui/resource-rates'
 import { BodyIllustration } from './body-illustration'
 import { WorkSummaries } from './work-summaries'
@@ -188,7 +190,7 @@ function CommandMap({
           <div className={styles.focusLabel}>
             <span>Command focus</span>
             <strong>
-              {body.kind} {coordinates(body)}
+              {bodyName(body)} {coordinates(body)}
             </strong>
             <small>
               {traffic.incoming.length} inbound / {traffic.outgoing.length}{' '}
@@ -208,7 +210,7 @@ function CommandMap({
               style={
                 { '--node-x': `${x}%`, '--node-y': `${y}%` } as CSSProperties
               }
-              aria-label={`Focus ${node.kind} ${coordinates(node)}`}
+              aria-label={`Focus ${bodyName(node)} ${coordinates(node)}`}
               aria-current={node.id === body.id ? 'true' : undefined}
             >
               <BodyIllustration
@@ -217,7 +219,7 @@ function CommandMap({
                 sizes="72px"
               />
               <span>
-                {node.kind} <b>{coordinates(node)}</b>
+                {bodyName(node)} <b>{coordinates(node)}</b>
               </span>
             </Link>
           ))}
@@ -314,6 +316,7 @@ function FleetBoard({
 }
 
 function PlanetDossier({
+  model,
   view,
   body,
   selected,
@@ -322,6 +325,7 @@ function PlanetDossier({
   view: BoundView
   body: Body
   selected: boolean
+  model: Coordinator
   flights: EmpireFlight[]
 }) {
   const rates = currentResourceRates(view, body)
@@ -332,7 +336,7 @@ function PlanetDossier({
   return (
     <article
       className={`${styles.dossier} ${selected ? styles.selectedDossier : ''}`}
-      aria-label={`${body.kind} ${coordinates(body)} dossier`}
+      aria-label={`${bodyName(body)} ${coordinates(body)} dossier`}
     >
       <header className={styles.planetHeader}>
         <BodyIllustration
@@ -345,7 +349,8 @@ function PlanetDossier({
             {body.kind}
             {selected && <b>Command focus</b>}
           </span>
-          <h3>{coordinates(body)}</h3>
+          <h3 className={styles.planetName}>{bodyName(body)}</h3>
+          <span className={styles.planetCoordinates}>{coordinates(body)}</span>
           <span className={styles.bodyFacts}>
             {body.fields_used}/{body.fields} fields · {body.fields_reserved}{' '}
             reserved
@@ -365,10 +370,13 @@ function PlanetDossier({
         >
           <ArrowUpRight size={20} />
           <span className={styles.srOnly}>
-            Manage {body.kind} {coordinates(body)}
+            Manage {bodyName(body)} {coordinates(body)}
           </span>
         </Destination>
       </header>
+      {view.protocol === 4 && body.kind === 'Planet' && (
+        <PlanetRename model={model} body={body} />
+      )}
       <dl className={styles.resources} aria-label="Planet resources">
         {resourceNames.map((name) => (
           <div
@@ -486,11 +494,13 @@ function PlanetDossier({
 }
 
 export function EmpireOverview({
+  model,
   view,
   body,
 }: {
   view: BoundView
   body: Body
+  model: Coordinator
 }) {
   const flights = empireFlights(view)
   const totals = empireTotals(view)
@@ -571,6 +581,7 @@ export function EmpireOverview({
       <div className={styles.planetGrid}>
         {empireNodes(view.bodies).map(({ body: planet }) => (
           <PlanetDossier
+            model={model}
             key={planet.id}
             body={planet}
             view={view}

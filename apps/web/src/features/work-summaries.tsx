@@ -3,7 +3,7 @@ import { useUniverseName } from '../shell/session-context'
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from '../shell/route-target'
 import { resolveDestination, type Page } from '../shell/routes'
-import { label } from '../ui/format'
+import { bodyName, label } from '../ui/format'
 import { Heading } from '../ui/typography'
 import { Link } from '../ui/link'
 import { Hammer, FlaskConical, Rocket, ArrowRight } from 'lucide-react'
@@ -190,7 +190,7 @@ export function WorkSummaries({
               layout === 'compact' && target && work && due !== undefined
             const host =
               category === 'research' && researchHost
-                ? `Host ${researchHost.kind} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
+                ? `Host ${bodyName(researchHost)} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
                 : null
             return (
               <section
