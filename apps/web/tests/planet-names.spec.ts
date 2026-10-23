@@ -243,3 +243,53 @@ test('active fleet routes show current public names and fit a phone', async ({
     ),
   ).toBe(true)
 })
+
+test('the fallback label is a valid explicit name for an unnamed planet', async ({
+  page,
+}) => {
+  const planet = { ...body, name: undefined as string | undefined }
+  let revision = 1
+  await shellFixture(page, {
+    protocol: 4,
+    bodies: [planet],
+    viewerRevision: () => String(revision),
+  })
+  await page.route('**/commands', async (route) => {
+    const pair = route.request().postDataJSON()
+    expect(pair.gameplay.command.action).toEqual({
+      type: 'RenamePlanet',
+      body: planet.id,
+      name: 'Planet',
+    })
+    planet.name = pair.gameplay.command.action.name
+    revision++
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        command_id: pair.gameplay.command_id,
+        admitted_at: Date.now(),
+        executed_at: Date.now(),
+        status: 'Committed',
+        result_ids: [],
+        minimum_viewer_revision: String(revision),
+      },
+    })
+  })
+  await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
+  await page.getByRole('textbox', { name: 'Planet name' }).fill('Planet')
+  const save = page.getByRole('button', { name: 'Save name' })
+  await expect(save).toBeEnabled()
+  await save.click()
+  await expect(
+    page.getByRole('status').filter({ hasText: /^Planet renamed\.$/ }),
+  ).toBeVisible()
+  expect(planet.name).toBe('Planet')
+  await expect(save).toBeDisabled()
+  await page.reload()
+  await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
+  await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
+    'Planet',
+  )
+  await expect(save).toBeDisabled()
+})

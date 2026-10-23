@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import type { BoundView } from '../client-model/commands'
-import { bodyName } from '../ui/format'
 import { actionMessage } from '../ui/action-announcements'
 import {
   pendingPlanetRename,
@@ -39,9 +38,9 @@ export function usePlanetRename(
       !error &&
       !pending &&
       model.ready &&
-      trimmedPlanetName(draft) !== bodyName(body),
+      trimmedPlanetName(draft) !== body.name,
     edit: () => {
-      setDraft(bodyName(body))
+      setDraft(body.name ?? '')
       setCommandId(undefined)
     },
     cancel: () => setDraft(null),
