@@ -1664,8 +1664,9 @@ for (const width of [320, 390, 1440]) {
   }
 }
 
-for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
-  test(`manufacturing shows submitting and ${outcome} beside the order without false success`, async ({ page }) => {
+for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain', 1440]] as const) {
+  test(`manufacturing shows submitting and ${outcome} beside the order without false success at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
     await setup(page)
     let submitted = 0
     let release!: () => void
@@ -1685,9 +1686,13 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
     await page.getByRole('link', { name: 'Build Rocket Launcher', exact: true }).click()
     const build = page.getByRole('button', { name: 'Build', exact: true })
     const result = page.getByRole('group', { name: 'Latest action result', exact: true })
+    await expect(build).toBeEnabled()
+    const initialHeight = (await build.boundingBox())!.height
     try {
       await build.click()
       await expect(result).toContainText('Submitting action.')
+      await expect(build).toHaveText('Confirming')
+      expect((await build.boundingBox())!.height).toBe(initialHeight)
       await expect(result).not.toContainText('confirmed')
       await expect(build).toBeDisabled()
       // The ledger updates before persistence and network delivery finish.

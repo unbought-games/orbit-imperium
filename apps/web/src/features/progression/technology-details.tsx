@@ -335,7 +335,7 @@ export function TechnologyDetails({
             >
               {manufacture ? (
                 order.busy ? (
-                  'Confirming order…'
+                  'Confirming'
                 ) : (
                   <>
                     Order {quantity}
