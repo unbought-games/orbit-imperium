@@ -167,3 +167,43 @@ fn impulse_content_requires_complete_propulsion_and_keeps_retained_hashes() {
         .enabled = false;
     assert!(Ruleset::from_artifact(disabled, 10).is_ok());
 }
+
+#[test]
+fn beginner_protection_multiplier_defaults_preserve_historical_artifacts() {
+    let legacy = baseline();
+    let old = parse(&legacy).unwrap();
+    assert_eq!(
+        old.artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .beginner_protection_multiplier,
+        5
+    );
+    assert_eq!(serde_json::to_value(&old.artifact).unwrap(), legacy);
+    let mut explicit_default = legacy.clone();
+    explicit_default["world"]["beginner_protection_multiplier"] = json!(5);
+    assert_eq!(parse(&explicit_default).unwrap(), old);
+
+    for multiplier in [1, 3, 10, u32::MAX] {
+        let mut custom = legacy.clone();
+        custom["world"]["beginner_protection_multiplier"] = json!(multiplier);
+        let next = parse(&custom).unwrap();
+        assert_ne!(old.hash, next.hash);
+        assert!(validate_rules_update(&old, &next).is_ok());
+        assert!(validate_rules_update(&next, &old).is_ok());
+        assert_eq!(serde_json::to_value(&next.artifact).unwrap(), custom);
+    }
+    for value in [
+        json!(0),
+        json!(-1),
+        json!(1.5),
+        json!("10"),
+        json!(null),
+        json!(4294967296_u64),
+    ] {
+        let mut invalid = legacy.clone();
+        invalid["world"]["beginner_protection_multiplier"] = value;
+        assert!(parse(&invalid).is_err());
+    }
+}

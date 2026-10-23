@@ -2411,3 +2411,79 @@ fn unnamed_body_journals_keep_their_original_wire_shape() {
     let decoded: Body = serde_json::from_value(encoded.clone()).unwrap();
     assert_eq!(serde_json::to_value(decoded).unwrap(), encoded);
 }
+
+#[test]
+fn universe_protection_multiplier_controls_galaxy_quotes_and_launches() {
+    for multiplier in [2, 5, 10, 20] {
+        for mission in [Mission::Attack, Mission::Espionage] {
+            for reverse in [false, true] {
+                let (mut s, rules, player, origin, target) = raid_fixture();
+                let other = s.bodies[&target].owner;
+                for lot in &mut s.world.as_mut().unwrap().records.lots {
+                    if lot.owner == other {
+                        lot.unit_value_micro *= 10;
+                    }
+                }
+                let mut artifact = rules.artifact;
+                artifact
+                    .world
+                    .as_mut()
+                    .unwrap()
+                    .beginner_protection_multiplier = multiplier;
+                let rules = Ruleset::from_artifact(artifact, rules.speed).unwrap();
+                s.profile_hash = rules.hash.clone();
+                let (player, origin, target) = if reverse {
+                    (other, target, origin)
+                } else {
+                    (player, origin, target)
+                };
+                let mut request = intent(&s, player, origin, target);
+                request.mission = mission;
+                if mission == Mission::Espionage {
+                    request.ships[0].ship_type = ShipType::EspionageProbe;
+                    request.cargo = Resources::all(0);
+                }
+                let protected = multiplier < 10;
+                let blocker = galaxy_system(&s, player, 1, 1, 0, &rules)
+                    .unwrap()
+                    .positions
+                    .into_iter()
+                    .filter_map(|p| p.body)
+                    .find(|body| body.id == target)
+                    .unwrap()
+                    .attack_blocker;
+                assert_eq!(blocker, protected.then_some(GameError::BeginnerProtected));
+                let quote = quote_fleet(&s, player, &request, 0, &rules);
+                let hash = if protected {
+                    assert_eq!(quote, Err(GameError::BeginnerProtected));
+                    Hash("unusable-quote".into())
+                } else {
+                    quote.unwrap().terms_hash
+                };
+                let result = run(
+                    &mut s,
+                    &rules,
+                    player,
+                    origin,
+                    0,
+                    9900,
+                    Input::Command(Command::World {
+                        action: WorldAction::LaunchFleet {
+                            intent: request,
+                            expected_terms_hash: hash,
+                        },
+                    }),
+                );
+                if protected {
+                    assert_eq!(
+                        result,
+                        TransitionResult::Rejected(GameError::BeginnerProtected)
+                    );
+                } else {
+                    apply(&mut s, result);
+                    assert_eq!(s.world.as_ref().unwrap().records.fleets.len(), 1);
+                }
+            }
+        }
+    }
+}

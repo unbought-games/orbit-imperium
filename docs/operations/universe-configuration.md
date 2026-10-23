@@ -75,6 +75,21 @@ A successful effective change advances revision once and records an audit entry.
 
 Registration metadata and new attempts read the current policy. Enrollment rechecks availability/capacity transactionally after hashing; a request that locked the previous policy may finish before closure commits. After closure commits, enrollment cannot commit under the old policy. Signup counters stay local to each API process and are preserved through rate changes. The aggregate signup budget remains ten times the per-source/account limit. Command admission uses each universe's current policy and preserves duplicate receipt recovery. Login remains available when signup is closed.
 
+## Beginner protection multiplier
+
+Beginner protection defaults to **5×** for both new and existing universes. Each universe can change its multiplier through the [gameplay rules workflow](rules-updates.md), which orders the change with gameplay. Deploy supporting binaries everywhere before applying a non-default multiplier.
+
+```sh
+orbit rules export --universe "$ORBIT_UNIVERSE_ID" --out rules.json
+node --input-type=module -e 'import fs from "node:fs"; const p="rules.json"; const d=JSON.parse(fs.readFileSync(p)); d.artifact.world.beginner_protection_multiplier=10; fs.writeFileSync(p,JSON.stringify(d,null,2)+"\n")'
+orbit rules diff --universe "$ORBIT_UNIVERSE_ID" --file rules.json
+orbit rules apply --universe "$ORBIT_UNIVERSE_ID" --file rules.json
+```
+
+`artifact.world.beginner_protection_multiplier` accepts positive integers from 1 through 4294967295. At 10, protection blocks attacks and espionage in either direction when the stronger player's completed-asset value is **strictly greater than 10 times** the weaker player's value. Equality is allowed. The existing exemptions remain: the weaker player must have fewer than 5,000 points and must not be inactive for seven days. Transport is unaffected.
+
+Export a fresh document to change the value again. Set it to `5` or remove the field to restore the default. Default-valued exports omit the field to preserve historical rules hashes. Leave the existing `artifact.world.protection` identifier unchanged. Galaxy eligibility, mission quotes and launch validation use the active multiplier; paid flights retain their committed terms. Other universes keep their own settings.
+
 ## Two-artifact upgrade of retained production worlds
 
 A pre-bridge binary can bypass database policy and reject configurable production speeds. Never activate policy or create configurable worlds while any such binary remains connected. This includes API, worker, combined and operator binaries. Verify the deployment inventory externally; the acknowledgement flag does not verify it for you.

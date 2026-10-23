@@ -90,7 +90,11 @@ pub fn beginner_protected(
     b: i64,
     a_inactive: bool,
     b_inactive: bool,
+    multiplier: u32,
 ) -> Result<bool, InvariantError> {
+    if multiplier == 0 {
+        return Err(InvariantError("zero beginner protection multiplier".into()));
+    }
     if a < 0 || b < 0 {
         return Err(InvariantError("negative completed asset valuation".into()));
     }
@@ -99,7 +103,9 @@ pub fn beginner_protected(
     } else {
         (b, a, b_inactive)
     };
-    Ok(low < 5_000_000_000_000 && i128::from(high) > 5 * i128::from(low) && !inactive)
+    Ok(low < 5_000_000_000_000
+        && i128::from(high) > i128::from(multiplier) * i128::from(low)
+        && !inactive)
 }
 pub fn check_mission_eligibility(
     s: &GameState,
@@ -164,7 +170,15 @@ pub fn check_mission_eligibility(
             let bi = inactivity(t.last_presence_at, at)
                 .map_err(|_| GameError::PolicyUnavailable)?
                 != Inactivity::Active;
-            if beginner_protected(a, b, ai, bi).map_err(|_| GameError::PolicyUnavailable)? {
+            let multiplier = r
+                .artifact
+                .world
+                .as_ref()
+                .ok_or(GameError::PolicyUnavailable)?
+                .beginner_protection_multiplier;
+            if beginner_protected(a, b, ai, bi, multiplier)
+                .map_err(|_| GameError::PolicyUnavailable)?
+            {
                 return Err(GameError::BeginnerProtected);
             }
         }
