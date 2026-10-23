@@ -1393,26 +1393,39 @@ fn loaded_fleet_losses_trim_only_overflow_before_plunder_and_preserve_paid_lots(
 fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
     sequential_defense_raids(DefenseId::RocketLauncher);
     sequential_defense_raids(DefenseId::LightLaser);
+    sequential_defense_raids(DefenseId::IonCannon);
 }
 fn sequential_defense_raids(defense: DefenseId) {
     let (mut s, mut r, p, b, t) = raid_fixture();
-    if defense == DefenseId::LightLaser {
+    if matches!(defense, DefenseId::LightLaser | DefenseId::IonCannon) {
         r = common::light_laser_rules(&r);
+        if defense == DefenseId::IonCannon {
+            r = common::ion_cannon_rules(&common::ion_rules(&r));
+        }
         s.profile_hash = r.hash.clone();
         for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
             policy.policy_hash = r.hash.clone();
         }
         for research in s.research.values_mut() {
             research.levels.insert(ResearchId::LaserTechnology, 0);
+            if defense == DefenseId::IonCannon {
+                research.levels.insert(ResearchId::IonTechnology, 0);
+            }
         }
     }
+    // Ion shields need a larger attack to exercise total destruction and recovery.
+    let fighters = if defense == DefenseId::IonCannon {
+        300
+    } else {
+        100
+    };
     for body in [b, t] {
         set_units(
             &mut s,
             &r,
             body,
             ManufacturedItem::Ship(ShipType::LightFighter),
-            100,
+            fighters,
         );
     }
     let mut intent = intent(&s, p, b, t);
@@ -1421,7 +1434,7 @@ fn sequential_defense_raids(defense: DefenseId) {
     intent.ships.push(ManifestStack {
         owner: p,
         ship_type: ShipType::LightFighter,
-        count: 100,
+        count: fighters,
     });
     let event = launch_raid(&mut s, &r, p, b, intent.clone(), 1000, 1800);
     clear_units(&mut s, t);
