@@ -1,3 +1,5 @@
+import { PlayerName } from './player-name'
+import { useProfileSource } from '../shell/player-profiles-context'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -69,6 +71,10 @@ function FlightList({
   view: BoundView
   body: string
 }) {
+  useProfileSource(
+    flights.some((f) => f.sender) ? { type: 'Incoming' } : null,
+    view.viewer_revision,
+  )
   const countdown = useCountdown(view.sampled_at, 'compact')
   const { universeName } = useGameSession()
   const available = resolveDestination(
@@ -96,6 +102,15 @@ function FlightList({
               <strong>{flight.mission}</strong>
               <span className={styles.leg}>{flight.leg}</span>
             </div>
+            {flight.sender && (
+              <small>
+                From{' '}
+                <PlayerName
+                  player={flight.sender}
+                  names={view.protocol === 4 ? view.player_names : undefined}
+                />
+              </small>
+            )}
             <span className={styles.route}>{flight.route}</span>
             <small>{flight.ships || 'No ships reported'}</small>
             <time

@@ -2,7 +2,7 @@
 use crate::{config::ServeConfig, engine_executor::BoundedEngine, runtime};
 use orbit_application::StoreError;
 use orbit_storage_postgres::PgStore;
-use orbit_transport_http::{HttpConfig, router_with_auth};
+use orbit_transport_http::{HttpConfig, router_with_profiles};
 use std::{
     error::Error,
     future::Future,
@@ -103,7 +103,13 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
                     orbit_transport_http::serve(
                         listener,
                         {
-                            let router = router_with_auth(store, config, drain_rx.clone(), oidc);
+                            let router = router_with_profiles(
+                                store,
+                                config,
+                                drain_rx.clone(),
+                                oidc,
+                                serve.profiles,
+                            );
                             if let Some(integration) = analytics {
                                 router.merge(integration.router())
                             } else {

@@ -2,12 +2,21 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { ReportObservation } from './report-observation'
+import { PlayerProfilesContext } from '../shell/player-profiles-context'
+import { PlayerProfilesController } from '../client-model/player-profiles'
+
+const profiles = new PlayerProfilesController(async () => {
+  throw Error('No network in static rendering')
+})
 
 const render = (payload: Record<string, unknown>) =>
-  renderToStaticMarkup(createElement(ReportObservation, { payload })).replace(
-    /<[^>]+>/g,
-    '',
-  )
+  renderToStaticMarkup(
+    createElement(
+      PlayerProfilesContext.Provider,
+      { value: profiles },
+      createElement(ReportObservation, { payload }),
+    ),
+  ).replace(/<[^>]+>/g, '')
 
 it('floors combat points and resource observations while preserving unknown data', () => {
   const text = render({
@@ -75,8 +84,16 @@ it('uses public names consistently across combat rounds and espionage with safe 
       },
     }),
   )
-  expect(markup).toContain('<h3>Vega &lt;Commander&gt;</h3>')
-  expect(markup).toContain('<h4>Attacker · Vega &lt;Commander&gt;</h4>')
+  expect(
+    markup
+      .match(/<h3>.*?<\/h3>/g)
+      ?.map((heading) => heading.replace(/<[^>]+>/g, '')),
+  ).toContain('Vega &lt;Commander&gt;')
+  expect(
+    markup
+      .match(/<h4>.*?<\/h4>/g)
+      ?.map((heading) => heading.replace(/<[^>]+>/g, '')),
+  ).toContain('Attacker · Vega &lt;Commander&gt;')
   expect(markup).toContain('Player afcb76c1')
   expect(markup).not.toContain('Player 9516d363')
   for (const payload of [

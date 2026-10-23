@@ -9,6 +9,8 @@ export interface OidcConfig {
 export interface OidcIdentity {
   username: string
   email_verified: boolean
+  expires_at?: number
+  supporter_tier?: number
 }
 
 export const oidcHttp = {
@@ -17,9 +19,14 @@ export const oidcHttp = {
     if (!response.ok) throw new Error('Unable to load sign-in options.')
     return response.json()
   },
-  async identity(): Promise<OidcIdentity | null> {
-    const response = await fetch('/api/auth/identity')
-    return response.ok ? response.json() : null
+  async identity(signal?: AbortSignal): Promise<OidcIdentity | null> {
+    const response = await fetch('/api/auth/identity', {
+      signal,
+      cache: 'no-store',
+    })
+    if (response.status === 401 || response.status === 403) return null
+    if (!response.ok) throw new Error('Unable to refresh account identity.')
+    return response.json()
   },
   async enroll(universe: string): Promise<void> {
     const session = await fetch('/api/v1/session').then((r) => r.json())
