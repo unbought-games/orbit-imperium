@@ -6,7 +6,7 @@ type S = components['schemas']
 const item = { kind: 'Ship', id: 'Cruiser' } as const
 const catalog = JSON.parse(
   readFileSync(
-    new URL('../../../rules/mvp-v1-slice-10.json', import.meta.url),
+    new URL('../../../rules/mvp-v1-slice-11.json', import.meta.url),
     'utf8',
   ),
 ).catalog as S['CatalogEntry3'][]

@@ -1,0 +1,13 @@
+{
+  "requirements": [
+    { "type": "BodyBuilding", "building": "Shipyard", "level": 4 },
+    { "type": "PlayerResearch", "research": "IonTechnology", "level": 4 }
+  ],
+  "cost": { "metal": 2000, "crystal": 6000, "deuterium": 0 },
+  "combat": {
+    "item": { "kind": "Defense", "id": "IonCannon" },
+    "cost": [2000, 6000, 0],
+    "attack_hundredths": 15000,
+    "shield_hundredths": 50000
+  }
+}

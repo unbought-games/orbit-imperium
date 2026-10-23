@@ -3,7 +3,7 @@ const CRUISER: ManufacturedItem = ManufacturedItem::Ship(ShipType::Cruiser);
 
 fn setup() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     let (mut s, _, p, b, t) = raid_fixture();
-    let r = Ruleset::from_json(include_bytes!("../../../../rules/mvp-v1-slice-10.json")).unwrap();
+    let r = Ruleset::from_json(include_bytes!("../../../../rules/mvp-v1-slice-11.json")).unwrap();
     s.profile_hash = r.hash.clone();
     s.bodies.get_mut(&b).unwrap().checkpoint.amounts = Resources::all(100000 * SCALE);
     for research in s.research.values_mut() {

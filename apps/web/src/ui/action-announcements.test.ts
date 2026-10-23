@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { changedAnnouncements } from './action-announcements'
+import { actionLabel, changedAnnouncements } from './action-announcements'
 import type { Attempt } from '../client-model/commands'
 const a = {
   envelope: { command_id: 'a', command: { type: 'StartUpgrade' } },
@@ -48,4 +48,14 @@ it('identifies nested world actions in live announcements', () => {
   expect(changedAnnouncements(new Map(), [world]).message).toBe(
     'Recall Mission: Response uncertain. Your action is saved.',
   )
+})
+
+it('uses player-facing delete and restore labels for report preferences', () => {
+  for (const hidden of [false, true])
+    expect(
+      actionLabel({
+        type: 'World',
+        action: { type: 'SetReportHidden', report: 'report', hidden },
+      }),
+    ).toBe(hidden ? 'Delete report' : 'Restore report')
 })

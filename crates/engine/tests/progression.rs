@@ -2287,3 +2287,315 @@ fn ion_paid_work_survives_disable_and_restart_with_exact_cancellation_refund() {
         );
     }
 }
+
+fn ion_cannon_fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
+    let (mut s, old, p, b) = ion_fixture();
+    let r = common::ion_cannon_rules(&old);
+    s.profile_hash = r.hash.clone();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::IonTechnology, 4);
+    (s, r, p, b)
+}
+
+#[test]
+fn ion_cannon_checks_completed_gates_and_resources_at_quote_and_append() {
+    let (s, r, p, b) = ion_cannon_fixture();
+    let request = QuoteRequest::Manufacture {
+        body: b,
+        item: ManufacturedItem::Defense(DefenseId::IonCannon),
+        quantity: 3,
+    };
+    let cmd = command(&s, &r, p, 0, request.clone());
+    for (yard, ion, affordable, error) in [
+        (3, 4, true, GameError::PrerequisiteMissing),
+        (4, 3, true, GameError::PrerequisiteMissing),
+        (4, 4, false, GameError::InsufficientResources),
+    ] {
+        let mut missing = s.clone();
+        missing
+            .bodies
+            .get_mut(&b)
+            .unwrap()
+            .levels
+            .insert(Building::Shipyard, yard);
+        missing
+            .research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(ResearchId::IonTechnology, ion);
+        if !affordable {
+            missing
+                .bodies
+                .get_mut(&b)
+                .unwrap()
+                .checkpoint
+                .amounts
+                .crystal = 18_000 * SCALE - 1;
+        }
+        blocked(&missing, &r, p, 0, request.clone(), error.clone());
+        let before = missing.clone();
+        let mut input = common::input(
+            &missing,
+            &r,
+            Actor::Player(p),
+            0,
+            9500,
+            Input::Command(cmd.clone()),
+        );
+        input.protocol = 3;
+        input.schema_version = 3;
+        let expected = if yard < 4 {
+            GameError::QuoteChanged
+        } else {
+            error
+        };
+        assert_eq!(
+            transition(&missing, &input, &r),
+            TransitionResult::Rejected(expected)
+        );
+        assert_eq!(missing, before);
+    }
+}
+
+#[test]
+fn ion_cannon_unlocks_on_research_completion_across_planets_with_local_shipyards() {
+    let (mut s, r, p, b) = ion_cannon_fixture();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::IonTechnology, 3);
+    let mut second = s.bodies[&b].clone();
+    second.id = BodyId(uuid::Uuid::from_u128(9501));
+    second.coordinates.position = 9;
+    second.levels.insert(Building::ResearchLab, 0);
+    let target = second.id;
+    s.bodies.insert(target, second);
+    let mut production = s.production_settings[&b].clone();
+    production.body = target;
+    s.production_settings.insert(target, production);
+    s.coverage.bodies.insert(target);
+    s.coverage.production_bodies.insert(target);
+    s.coverage.manufacturing_bodies.insert(target);
+    s.coverage.construction_bodies.insert(target);
+    s.coverage.inventory_owners.insert((target, p));
+    for category in ["production", "manufacturing", "constructions"] {
+        s.collection_revisions
+            .insert(format!("{category}:{target}"), 0);
+    }
+    s.collection_revisions
+        .insert(format!("inventory:{target}:{p}"), 0);
+    let research = command(
+        &s,
+        &r,
+        p,
+        0,
+        QuoteRequest::Research {
+            host: b,
+            research: ResearchId::IonTechnology,
+        },
+    );
+    let started = run(
+        &mut s,
+        &r,
+        Actor::Player(p),
+        0,
+        9502,
+        Input::Command(research),
+    );
+    let event = &started.events[0];
+    let request = QuoteRequest::Manufacture {
+        body: target,
+        item: ManufacturedItem::Defense(DefenseId::IonCannon),
+        quantity: 1,
+    };
+    blocked(
+        &s,
+        &r,
+        p,
+        event.at - 1,
+        request.clone(),
+        GameError::PrerequisiteMissing,
+    );
+    run(
+        &mut s,
+        &r,
+        Actor::Scheduler,
+        event.at,
+        9503,
+        Input::Event(event.event.clone()),
+    );
+    assert_eq!(s.research[&p].levels[&ResearchId::IonTechnology], 4);
+    s.bodies
+        .get_mut(&target)
+        .unwrap()
+        .levels
+        .insert(Building::Shipyard, 3);
+    blocked(
+        &s,
+        &r,
+        p,
+        event.at,
+        request.clone(),
+        GameError::PrerequisiteMissing,
+    );
+    s.bodies
+        .get_mut(&target)
+        .unwrap()
+        .levels
+        .insert(Building::Shipyard, 4);
+    let cmd = command(&s, &r, p, event.at, request);
+    let built = run(
+        &mut s,
+        &r,
+        Actor::Player(p),
+        event.at,
+        9504,
+        Input::Command(cmd),
+    );
+    assert_eq!(built.manufacturing_batches[0].body, target);
+    // Higher Ion levels only unlock content; they do not change cannon terms.
+    let terms = manufacture_terms(
+        &s.bodies[&target],
+        ManufacturedItem::Defense(DefenseId::IonCannon),
+        1,
+        &r,
+    )
+    .unwrap();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::IonTechnology, 10);
+    assert_eq!(
+        manufacture_terms(
+            &s.bodies[&target],
+            ManufacturedItem::Defense(DefenseId::IonCannon),
+            1,
+            &r
+        )
+        .unwrap(),
+        terms
+    );
+}
+
+#[test]
+fn ion_cannon_paid_fifo_survives_disable_and_restart_without_duplicate_credit() {
+    let (mut s, r, p, b) = ion_cannon_fixture();
+    let item = ManufacturedItem::Defense(DefenseId::IonCannon);
+    let request = QuoteRequest::Manufacture {
+        body: b,
+        item,
+        quantity: 3,
+    };
+    let terms = manufacture_terms(&s.bodies[&b], item, 3, &r).unwrap();
+    assert_eq!(
+        terms.paid(),
+        Resources::from_values([6000 * SCALE, 18000 * SCALE, 0])
+    );
+    assert!(matches!(
+        terms,
+        ProgressionMaterial::Manufacture {
+            unit_duration_ms: 230_000,
+            ..
+        }
+    ));
+    // A full planet still has room for defenses, and ships share the same FIFO.
+    let body = s.bodies.get_mut(&b).unwrap();
+    body.fields = body.levels.values().sum();
+    let fields = body.fields;
+    let cmd = command(
+        &s,
+        &r,
+        p,
+        0,
+        QuoteRequest::Manufacture {
+            body: b,
+            item: ManufacturedItem::Ship(ShipType::LightFighter),
+            quantity: 1,
+        },
+    );
+    let preceding = run(&mut s, &r, Actor::Player(p), 0, 9600, Input::Command(cmd));
+    let before = s.bodies[&b].checkpoint.amounts;
+    let cmd = command(&s, &r, p, 0, request.clone());
+    let mut started = run(&mut s, &r, Actor::Player(p), 0, 9601, Input::Command(cmd));
+    let batch = started.manufacturing_batches[0].clone();
+    assert_eq!(
+        batch.first_start_at,
+        preceding.manufacturing_batches[0].final_due_at
+    );
+    assert_eq!(batch.final_due_at - batch.first_start_at, 690_000);
+    let paid = s.bodies[&b].checkpoint.amounts;
+    assert_eq!(
+        paid,
+        Resources::from_values([
+            before.metal - 6000 * SCALE,
+            before.crystal - 18000 * SCALE,
+            before.deuterium
+        ])
+    );
+    assert!(!s.inventories.iter().any(|v| v.item == item));
+    assert_eq!(reserved_fields(&s, b).unwrap(), 0);
+    // No one-per-planet restriction while another cannon batch is queued.
+    assert!(
+        inspect_progression(&s, Actor::Player(p), &request, 0, &r)
+            .unwrap()
+            .blockers
+            .is_empty()
+    );
+    let mut artifact = r.artifact.clone();
+    artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == item.catalog_key())
+        .unwrap()
+        .enabled = false;
+    let disabled = Ruleset::from_artifact(artifact, r.speed).unwrap();
+    validate_rules_update(&r, &disabled).unwrap();
+    s.profile_hash = disabled.hash.clone();
+    s = serde_json::from_slice(&serde_json::to_vec(&s).unwrap()).unwrap();
+    blocked(&s, &disabled, p, 0, request, GameError::UnavailableContent);
+    let event = &preceding.events[0];
+    run(
+        &mut s,
+        &disabled,
+        Actor::Scheduler,
+        event.at,
+        9602,
+        Input::Event(event.event.clone()),
+    );
+    for count in 1..=3 {
+        let event = started.events.remove(0);
+        started = run(
+            &mut s,
+            &disabled,
+            Actor::Scheduler,
+            event.at,
+            9610 + count as u128,
+            Input::Event(event.event.clone()),
+        );
+        assert_eq!(
+            s.inventories.iter().find(|v| v.item == item).unwrap().count,
+            count
+        );
+        let duplicate = run(
+            &mut s,
+            &disabled,
+            Actor::Scheduler,
+            event.at,
+            9620 + count as u128,
+            Input::Event(event.event),
+        );
+        assert!(duplicate.inventories.is_empty());
+    }
+    assert_eq!(
+        s.manufacturing_batches[&batch.id].status,
+        ManufacturingStatus::Completed
+    );
+    assert_eq!(s.bodies[&b].checkpoint.amounts, paid);
+    assert_eq!(s.bodies[&b].fields, fields);
+}

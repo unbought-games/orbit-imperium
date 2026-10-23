@@ -60,15 +60,15 @@ test('Cruiser patch requires enabled and defined research', () => {
     }
 })
 
-test('complete fixture equals the patch applied to the retained Ion profile', () => {
+test('complete fixture preserves Ion Cannons when adding Cruisers', () => {
   const after = prepareCruiserRules({
     universe: 'fixture',
     base_revision: 0,
     speed: 10,
-    artifact: read('../rules/mvp-v1-slice-9.json'),
+    artifact: read('../rules/mvp-v1-slice-10.json'),
   }).artifact
-  after.id = 'mvp-v1-slice-10'
-  assert.deepEqual(after, read('../rules/mvp-v1-slice-10.json'))
+  after.id = 'mvp-v1-slice-11'
+  assert.deepEqual(after, read('../rules/mvp-v1-slice-11.json'))
 })
 
 test('Cruiser patch requires an enabled, defined Shipyard', () => {

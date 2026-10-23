@@ -10,8 +10,7 @@ import {
 import type { components } from '../src/contracts'
 
 type S = components['schemas']
-function empireFixture() {
-  const now = Date.now()
+function empireFixture(now = Date.now()) {
   const bodies: S['BodyV3'][] = [
     {
       ...body,
@@ -306,6 +305,93 @@ test('desktop and phone command views keep all information readable without hori
   await refreshGame(page)
   await expect(page.getByRole('article')).toHaveCount(5)
 })
+
+for (const longContent of [false, true]) {
+  test(`fleet movements fit their scroll area with ${longContent ? 'long names and manifests' : 'a single outbound flight'}`, async ({
+    page,
+  }) => {
+    const now = new Date('2026-10-23T12:00:00Z')
+    await page.clock.install({ time: now })
+    const options = empireFixture(now.getTime())
+    if (longContent) {
+      options.bodies = options.bodies.map((planet) => ({
+        ...planet,
+        ...(planet.kind === 'Planet' ? { name: 'W'.repeat(40) } : {}),
+      }))
+      for (const fleet of options.missions.fleets) {
+        fleet.ships = [
+          { ship_type: 'LightFighter', count: '9223372036854775807' },
+          { ship_type: 'SmallCargo', count: '9223372036854775807' },
+        ]
+        fleet.destination = { galaxy: 1, system: 499, position: 15 }
+      }
+    } else {
+      options.missions.fleets = [options.missions.fleets[0]]
+      options.missions.incoming = []
+    }
+    await shellFixture(page, { ...options, sampledAt: now.getTime() })
+    const board = page.getByRole('region', {
+      name: 'Fleet movements',
+      exact: true,
+    })
+    const list = board.getByRole('list')
+    const scrollArea = list.locator('..')
+    for (const width of [1778, 1024, 768, 430, 390, 320]) {
+      await page.setViewportSize({ width, height: 1000 })
+      const toggle = board.getByRole('button', {
+        name: /^Show .* fleet movements$/,
+      })
+      if (await toggle.isVisible()) await toggle.click()
+      await expect(list).toBeVisible()
+      expect(
+        await scrollArea.evaluate((el) => el.scrollWidth - el.clientWidth),
+        `horizontal overflow at ${width}px`,
+      ).toBe(0)
+      for (const row of await list.getByRole('listitem').all()) {
+        expect(
+          await row.evaluate((el) => el.scrollWidth - el.clientWidth),
+        ).toBe(0)
+        const action = row.getByRole('link', { name: /^View .* fleet$/ })
+        await action.focus()
+        await expect(action).toBeInViewport()
+        expect(
+          await action.evaluate((el) => {
+            const bounds = el.getBoundingClientRect()
+            const row = el.closest('li')!.getBoundingClientRect()
+            return (
+              bounds.left >= row.left &&
+              bounds.right <= row.right &&
+              bounds.width >= 44
+            )
+          }),
+        ).toBe(true)
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await scrollArea.evaluate((el) => {
+        el.scrollTop = 0
+      })
+      await board.screenshot({
+        path: `test-results/fleet-movements-${longContent ? 'long' : 'single'}-${width}.png`,
+      })
+    }
+    if (longContent) {
+      await expect(list).toContainText('W'.repeat(40))
+      await expect(list).toContainText('9223372036854775807 Light Fighter')
+      await expect(list).toContainText('[1:499:15]')
+    }
+    await list
+      .getByRole('link', { name: /^View .* fleet$/ })
+      .last()
+      .click()
+    await expect(page).toHaveURL(
+      new RegExp(`/fleets/${longContent ? id(32) : id(30)}$`),
+    )
+  })
+}
 
 test('one quiet planet, unavailable fleets and missing art remain usable', async ({
   page,

@@ -4,12 +4,12 @@ use uuid::Uuid;
 mod common;
 
 fn rules() -> Ruleset {
-    Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-10.json")).unwrap()
+    Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-11.json")).unwrap()
 }
 
 #[test]
 fn cruiser_activation_requires_complete_definitions_and_preserves_retained_rules() {
-    let old = Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-9.json")).unwrap();
+    let old = Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-10.json")).unwrap();
     let next = rules();
     let delta = validate_rules_update(&old, &next).unwrap();
     assert!(delta.add_research.is_empty());
