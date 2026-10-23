@@ -1,4 +1,5 @@
-import { playerLabel, type PlayerNames } from './player-label'
+import type { PlayerNames } from './player-label'
+import { PlayerName } from './player-name'
 import { CombatReport } from './combat-report'
 import { Panel } from '../ui/panel'
 import { Section } from '../ui/section'
@@ -190,7 +191,7 @@ export function ReportObservation({
       >
         <Text>
           Target {coordinate(target.coordinates)} ·{' '}
-          {playerLabel(target.owner, playerNames)}
+          <PlayerName player={text(target.owner)} names={playerNames} />
         </Text>
         <Text>
           Activity before contact:{' '}
@@ -226,8 +227,9 @@ export function ReportObservation({
         className={styles.observation}
       >
         <Text>
-          {playerLabel(payload.sender, playerNames)} made espionage contact from{' '}
-          {coordinate(payload.origin)} at {coordinate(payload.target)}.
+          <PlayerName player={text(payload.sender)} names={playerNames} /> made
+          espionage contact from {coordinate(payload.origin)} at{' '}
+          {coordinate(payload.target)}.
         </Text>
         <Risk value={payload} />
         <Text>The observer’s acquired intelligence is private.</Text>

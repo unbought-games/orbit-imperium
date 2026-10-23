@@ -1,3 +1,4 @@
+import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
 import { Button } from '../ui/button'
 import { Input } from '../ui/form'
@@ -41,6 +42,12 @@ export function Reports({
     [olderPages, setOlderPages] = useState(false),
     [loading, setLoading] = useState(false),
     [loadingMore, setLoadingMore] = useState(false)
+  useProfileSource(
+    detail && detail.header.id === item
+      ? { type: 'Report', report: detail.header.id }
+      : null,
+    model.view?.viewer_revision,
+  )
   const failure = reportFailure(error)
   useEffect(() => {
     if (!item) setDetail(null)

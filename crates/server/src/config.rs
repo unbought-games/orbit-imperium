@@ -25,6 +25,51 @@ mod universe_config_tests {
     use super::*;
 
     #[test]
+    fn profile_credentials_are_optional_scoped_to_oidc_and_unused_on_workers() {
+        assert!(ServeConfig::parse(|_| None).unwrap().profiles.is_none());
+        assert!(
+            ServeConfig::parse(
+                |k| (k == "ORBIT_ACCOUNTS_PROFILE_CREDENTIAL").then(|| "secret".into())
+            )
+            .is_err()
+        );
+        assert!(
+            ServeConfig::parse(
+                |k| (k == "ORBIT_ACCOUNTS_API_URL").then(|| "https://accounts.test".into())
+            )
+            .is_err()
+        );
+        let parse = |base: &str| {
+            ServeConfig::parse(|k| match k {
+                "ORBIT_AUTH_MODE" => Some("oidc".into()),
+                "ORBIT_OIDC_ISSUER" => Some("https://accounts.unbought.games/api/auth".into()),
+                "ORBIT_OIDC_CLIENT_ID" => Some("orbit".into()),
+                "ORBIT_OIDC_CLIENT_SECRET" => Some("oauth-secret".into()),
+                "ORBIT_ACCOUNTS_PROFILE_CREDENTIAL" => Some("profile-secret".into()),
+                "ORBIT_ACCOUNTS_API_URL" => Some(base.into()),
+                _ => None,
+            })
+        };
+        assert!(
+            parse("https://accounts.unbought.games")
+                .unwrap()
+                .profiles
+                .is_some()
+        );
+        assert!(parse("http://remote.test").is_err());
+        assert!(
+            ServeConfig::parse(|k| match k {
+                "ORBIT_ROLE" => Some("worker".into()),
+                "ORBIT_ACCOUNTS_PROFILE_CREDENTIAL" => Some("unused".into()),
+                _ => None,
+            })
+            .unwrap()
+            .profiles
+            .is_none()
+        );
+    }
+
+    #[test]
     fn final_server_rejects_every_retired_universe_variable() {
         for key in [
             "ORBIT_SPEED",
@@ -75,6 +120,7 @@ impl RuntimeRole {
     }
 }
 pub struct ServeConfig {
+    pub profiles: Option<orbit_transport_http::AccountProfiles>,
     pub oidc: Option<unbought_auth::Configuration>,
     pub role: RuntimeRole,
     pub metrics_bind: Option<std::net::SocketAddr>,
@@ -239,7 +285,35 @@ impl ServeConfig {
         {
             return Err("Official Orbit requires the Unbought issuer".into());
         }
+        let profiles = if api {
+            match get("ORBIT_ACCOUNTS_PROFILE_CREDENTIAL") {
+                Some(credential) => {
+                    let issuer = &oidc
+                        .as_ref()
+                        .ok_or("Public profiles require OIDC authentication")?
+                        .issuer;
+                    let base = get("ORBIT_ACCOUNTS_API_URL")
+                        .unwrap_or_else(|| issuer.trim_end_matches("/api/auth").to_owned());
+                    Some(
+                        orbit_transport_http::AccountProfiles::new(&base, issuer, &credential)
+                            .map_err(|_| "Invalid Accounts profile configuration")?,
+                    )
+                }
+                None => {
+                    if get("ORBIT_ACCOUNTS_API_URL").is_some() {
+                        return Err(
+                            "ORBIT_ACCOUNTS_API_URL requires ORBIT_ACCOUNTS_PROFILE_CREDENTIAL"
+                                .into(),
+                        );
+                    }
+                    None
+                }
+            }
+        } else {
+            None
+        };
         Ok(Self {
+            profiles,
             oidc,
             role,
             metrics_bind,

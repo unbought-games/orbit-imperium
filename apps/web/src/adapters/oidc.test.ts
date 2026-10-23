@@ -37,9 +37,29 @@ it('unavailable config reports failure while anonymous identity returns no accou
 })
 
 it('returns the verified identity claims without inventing game state', async () => {
-  const identity = { username: 'player', email_verified: false }
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(identity)))
+  const identity = {
+    username: 'player',
+    email_verified: false,
+    supporter_tier: 2,
+    expires_at: 300,
+  }
+  const fetch = vi.fn().mockResolvedValue(Response.json(identity))
+  vi.stubGlobal('fetch', fetch)
   expect(await oidcHttp.identity()).toEqual(identity)
+  expect(fetch).toHaveBeenCalledWith('/api/auth/identity', {
+    signal: undefined,
+    cache: 'no-store',
+  })
+})
+
+it('distinguishes a temporary identity failure from a signed-out account', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(new Response(null, { status: 503 })),
+  )
+  await expect(oidcHttp.identity()).rejects.toThrow(
+    'Unable to refresh account identity.',
+  )
 })
 
 it('enrollment obtains the current session CSRF token before submitting the selected universe', async () => {

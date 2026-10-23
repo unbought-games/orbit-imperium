@@ -13,6 +13,7 @@ async fn authoritative_identity_and_enrollment_are_immutable_and_recoverable() {
         subject: subject.clone(),
         username: format!("analytics_{}", &subject[..8]),
         email_verified: false,
+        supporter_tier: None,
         session_id: Uuid::new_v4().to_string(),
         issued_at: unbought_auth::now(),
         expires_at: unbought_auth::now() + 300,

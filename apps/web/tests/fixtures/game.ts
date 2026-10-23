@@ -85,9 +85,25 @@ export async function shellFixture(
       url = new URL(request.url())
     if (url.pathname === '/api/auth/config')
       return route.fulfill({
-        json: { mode: 'local', universes: [{ universe: binding.universe, name: options.universeName ?? "Andromeda" }] },
+        json: {
+          mode: 'local',
+          universes: [
+            {
+              universe: binding.universe,
+              name: options.universeName ?? 'Andromeda',
+            },
+          ],
+        },
       })
     const context = request.postDataJSON()
+    if (url.pathname.endsWith('/player-profiles'))
+      return route.fulfill({
+        json: {
+          binding: context.context.binding,
+          request_id: context.context.request_id,
+          players: [],
+        },
+      })
     const common = {
       protocol,
       binding,
@@ -99,7 +115,13 @@ export async function shellFixture(
       account: binding.account,
       csrf: 'fixture',
       expires_at: Date.now() + 1000000,
-      memberships: [{ universe_name: options.universeName ?? "Andromeda", universe: binding.universe, player: binding.player }],
+      memberships: [
+        {
+          universe_name: options.universeName ?? 'Andromeda',
+          universe: binding.universe,
+          player: binding.player,
+        },
+      ],
     }
 
     if (
@@ -276,7 +298,9 @@ export async function shellFixture(
     if (url.pathname.endsWith('/commands')) purchases++
     return route.fulfill({ status: 404, json: { code: 'NotFound' } })
   })
-  await page.goto(`/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`)
+  await page.goto(
+    `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
+  )
   // A startup connection surface also has an H1; mutations need the ready game.
   await expect(page.locator('main h1')).toContainText('Empire —')
   return () => purchases
@@ -286,4 +310,33 @@ export async function shellFixture(
  * foreground reconciliation instead of depending on an obsolete polling loop. */
 export async function refreshGame(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+}
+
+export async function playerProfilesFixture(
+  page: Page,
+  profiles: () => Array<{
+    player: string
+    username: string
+    supporter_tier?: number
+    observed_at?: number
+    expires_at?: number
+  }> | null,
+) {
+  await page.route('**/player-profiles', async (route) => {
+    const players = profiles()
+    if (players === null) return route.fulfill({ status: 503 })
+    const { context } = route.request().postDataJSON()
+    const now = Math.floor(Date.now() / 1000)
+    await route.fulfill({
+      json: {
+        binding: context.binding,
+        request_id: context.request_id,
+        players: players.map((p) => ({
+          observed_at: now,
+          expires_at: now + 300,
+          ...p,
+        })),
+      },
+    })
+  })
 }

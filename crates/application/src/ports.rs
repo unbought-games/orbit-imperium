@@ -1,5 +1,12 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn player_identities(
+        &self,
+        _universe: UniverseId,
+        _players: Vec<PlayerId>,
+    ) -> impl std::future::Future<Output = Result<Vec<PlayerIdentity>, StoreError>> + Send {
+        async { Ok(vec![]) }
+    }
     fn universe_summaries(
         &self,
     ) -> impl std::future::Future<Output = Result<Vec<UniverseSummary>, StoreError>> + Send {

@@ -6,6 +6,7 @@ import { coordinates, label } from '../ui/format'
 export type EmpireFlight = {
   key: string
   item?: string
+  sender?: string
   mission: string
   leg: 'Incoming' | 'Outbound' | 'Returning'
   from?: string
@@ -74,6 +75,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
       key: `incoming:${index}`,
       mission: label(f.mission),
       leg: 'Incoming',
+      sender: f.sender,
       to: f.target,
       route: `${coordinates({ coordinates: f.origin })} → ${location(f.target)}`,
       due: f.arrival_at,
