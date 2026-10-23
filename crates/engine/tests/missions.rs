@@ -2487,3 +2487,6 @@ fn universe_protection_multiplier_controls_galaxy_quotes_and_launches() {
         }
     }
 }
+
+#[path = "missions/cruiser.rs"]
+mod cruiser;

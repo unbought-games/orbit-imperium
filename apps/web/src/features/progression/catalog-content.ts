@@ -33,6 +33,8 @@ const content: Record<string, string> = {
   LightFighter: 'A small combat ship for attacking and defending planets.',
   HeavyFighter:
     'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
+  Cruiser:
+    'A fast impulse-powered combat ship with rapid fire against Light Fighters, Rocket Launchers and Espionage Probes. Cargo capacity is shared by resources and mission fuel.',
   Recycler: 'Collects metal and crystal from debris fields.',
   EspionageProbe:
     'Gathers intelligence about another planet on an espionage mission.',
@@ -45,7 +47,7 @@ const content: Record<string, string> = {
   LaserTechnology:
     'Unlocks concentrated energy weapons, including Light Lasers at level 3. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
   IonTechnology:
-    'An unlock technology requiring Research Lab 4, Energy Technology 4 and Laser Technology 5. Future content uses Ion level 2 for Cruisers, level 4 for Ion Cannons and level 5 for Plasma Technology; each also has other prerequisites and must be enabled in this universe. Ion provides no direct combat bonus or demolition discount. Levels above 5 have no further specified unlocks.',
+    'An unlock technology requiring Research Lab 4, Energy Technology 4 and Laser Technology 5. Ion level 2 is required for Cruisers, level 4 for Ion Cannons and level 5 for Plasma Technology; each also has other prerequisites and must be enabled in this universe. Ion provides no direct combat bonus or demolition discount. Levels above 5 have no further specified unlocks.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',
