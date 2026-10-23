@@ -1766,6 +1766,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('Destination [1:1:3]')
+  await expect(quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
   await expect(quote).toContainText('6 deuterium fuel')
   expect(quoteRequests).toBe(1)
   expect(sent).toBe(0)
@@ -1813,6 +1814,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [
       page.getByLabel('Selected body'),
+      page.getByRole('group', { name: 'Planet and resources' }).getByRole('link', { name: 'View [1:371:12] in galaxy', exact: true }),
       page.getByRole('button', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleet', exact: true }),
     ]) {
@@ -1822,7 +1824,8 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
           const box = element.getBoundingClientRect()
           const hit = document.elementFromPoint(
             box.x + box.width / 2,
-            box.y + box.height / 2,
+            // The planet name opens the selector; its coordinates now have their own link.
+            box.y + box.height * (element.tagName === 'SELECT' ? 0.25 : 0.5),
           )
           return element === hit || element.contains(hit)
         }),

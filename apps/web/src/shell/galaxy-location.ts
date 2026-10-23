@@ -45,3 +45,11 @@ export function galaxyTarget(
     search: location,
   })
 }
+
+/** A requested position is revealed after its system loads, including on Back. */
+export function galaxyOwnsScroll(
+  pathname: string,
+  search: Record<string, unknown>,
+) {
+  return pathname.endsWith('/galaxy') && positiveInteger(search.position)
+}

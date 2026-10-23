@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import {
   galaxyTarget,
+  galaxyOwnsScroll,
   readCoordinates,
   validateGalaxySearch,
 } from './galaxy-location'
@@ -65,4 +66,18 @@ it('validates optional galaxy search and rejects malformed or unsafe URL values'
       'invalid galaxy coordinates',
     )
   }
+})
+
+it('leaves ordinary page scroll restoration alone but lets a galaxy position reveal itself', () => {
+  expect(galaxyOwnsScroll('/u/andromeda/b/home/galaxy', { position: 12 })).toBe(
+    true,
+  )
+  expect(galaxyOwnsScroll('/u/andromeda/galaxy', { position: 12 })).toBe(true)
+  expect(galaxyOwnsScroll('/u/andromeda/b/home/galaxy', {})).toBe(false)
+  expect(galaxyOwnsScroll('/u/andromeda/b/home/fleets', { position: 12 })).toBe(
+    false,
+  )
+  expect(galaxyOwnsScroll('/u/andromeda/b/home/galaxy', { position: -1 })).toBe(
+    false,
+  )
 })

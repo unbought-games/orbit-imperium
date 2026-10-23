@@ -99,7 +99,11 @@ export function Dispatch({
         <Text>
           Destination: {targetName}{' '}
           <CoordinateLink
-            at={{ galaxy, system, position }}
+            at={{
+              galaxy: Number(galaxy),
+              system: Number(system),
+              position: Number(position),
+            }}
             label="destination"
           />
         </Text>
@@ -356,9 +360,13 @@ export function Dispatch({
           <Text>
             Origin {bodyName(body)}{' '}
             <CoordinateLink at={body.coordinates} label="origin" /> →
-            Destination
+            Destination{' '}
             <CoordinateLink
-              at={{ galaxy, system, position }}
+              at={{
+                galaxy: Number(galaxy),
+                system: Number(system),
+                position: Number(position),
+              }}
               label="destination"
             />
           </Text>

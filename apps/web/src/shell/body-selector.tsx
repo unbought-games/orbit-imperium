@@ -48,10 +48,17 @@ export function BodySelector({
           />
         )}
         <div className={styles.selection}>
-          <span className={styles.value} aria-hidden="true">
+          <span className={styles.value}>
             {body ? (
               <>
-                <span className={styles.bodyName}>{bodyName(body)}</span>{' '}
+                <span className={styles.bodyName} aria-hidden="true">
+                  {bodyName(body)}
+                </span>{' '}
+                <CoordinateLink
+                  at={body.coordinates}
+                  origin={selected}
+                  className={styles.bodyCoordinates}
+                />
               </>
             ) : (
               'Choose a planet'
@@ -83,13 +90,6 @@ export function BodySelector({
               </optgroup>
             ))}
           </Select>
-          {body && (
-            <CoordinateLink
-              at={body.coordinates}
-              origin={selected}
-              className={styles.bodyCoordinates}
-            />
-          )}
         </div>
         {bodies.length > 1 && (
           <Button

@@ -39,6 +39,7 @@ export function CoordinateLink({
   return (
     <Link
       {...galaxyTarget(context.universeName, body, location)}
+      resetScroll={false}
       className={className}
       aria-label={`View ${label ? `${label} ` : ''}${coordinates({ coordinates: location })} in galaxy`}
     >

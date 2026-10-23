@@ -190,12 +190,16 @@ test('menu and empire coordinates browse other owned worlds without changing sel
 }) => {
   await setup(page)
   await page.goto(path('overview'))
-  await page
-    .getByRole('group', { name: 'Planet and resources' })
-    .getByRole('link', { name: 'View [1:371:12] in galaxy', exact: true })
-    .click()
-  await assertLocation(page, 371, 12)
-  await page.goBack()
+  for (const width of [1280, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    const headerLink = page
+      .getByRole('group', { name: 'Planet and resources' })
+      .getByRole('link', { name: 'View [1:371:12] in galaxy', exact: true })
+    expect((await headerLink.boundingBox())!.height).toBeGreaterThanOrEqual(24)
+    await headerLink.click()
+    await assertLocation(page, 371, 12)
+    await page.goBack()
+  }
   const dossier = page.getByRole('article', {
     name: 'Hades [1:2:4] dossier',
     exact: true,

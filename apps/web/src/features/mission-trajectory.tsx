@@ -79,7 +79,11 @@ export function MissionTrajectory({
           {originIdentity?.name && (
             <span title={originIdentity.name}>{originIdentity.name}</span>
           )}
-          <CoordinateLink at={origin} label="origin" />
+          <CoordinateLink
+            at={origin}
+            label="origin"
+            className={styles.routeCoordinate}
+          />
         </strong>
       </div>
       {destination && (
@@ -112,7 +116,11 @@ export function MissionTrajectory({
                 {destinationIdentity.name}
               </span>
             )}
-            <CoordinateLink at={destination} label="destination" />
+            <CoordinateLink
+              at={destination}
+              label="destination"
+              className={styles.routeCoordinate}
+            />
           </strong>
         </div>
       )}
