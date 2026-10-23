@@ -2278,3 +2278,42 @@ test('planet-scoped gameplay routes retain context and redirect old query URLs',
   }
   expect(purchases()).toBe(0)
 })
+
+for (const width of [320, 390, 1440]) {
+  test(`active building and research summaries use two tight lines at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const now = Date.now()
+    await page.clock.setFixedTime(now)
+    await shellFixture(page, {
+      constructions: [{ id: id(10), body: body.id, building: 'RoboticsFactory', target_level: 3, due_at: now + 35000, paid: resources }],
+      researchOperation: { id: id(11), host: body.id, research: 'EnergyTechnology', source_level: 2, target_level: 3, paid: resources, started_at: now - 1000, due_at: now + 35000, labs: [], effective_lab: '1', can_cancel: true },
+    })
+    for (const [path, region, label] of [
+      ['facilities', 'Buildings', 'Robotics Factory · Level 3'],
+      ['research', 'Research', 'Energy Technology · Level 3'],
+    ]) {
+      await page.goto(`/u/andromeda/b/${body.id}/${path}`)
+      const queue = page.getByRole('region', { name: region, exact: true })
+      const link = queue.getByRole('link', { name: new RegExp(label) })
+      await expect(link).toBeVisible()
+      await expect(queue).not.toContainText('In progress')
+      const lines = await link.locator(':scope > span').all()
+      expect(lines).toHaveLength(2)
+      await expect(lines[0]).toHaveText(label)
+      // The real server fixture clock advances while pages load; formatting is unit-tested separately.
+      await expect(lines[1]).toHaveText(/^\d+s$/)
+      const seconds = parseInt((await lines[1].textContent())!, 10)
+      expect(seconds).toBeGreaterThan(0)
+      expect(seconds).toBeLessThanOrEqual(35)
+      const first = (await lines[0].boundingBox())!
+      const second = (await lines[1].boundingBox())!
+      expect(second.y - (first.y + first.height)).toBeLessThanOrEqual(2)
+      const bounds = (await link.boundingBox())!
+      expect(bounds.height).toBeGreaterThanOrEqual(44)
+      expect(bounds.height).toBeLessThanOrEqual(45)
+      expect((await queue.boundingBox())!.height).toBeLessThanOrEqual(62)
+      await expect(queue.getByRole('button', { name: /^Cancel / })).toBeEnabled()
+      await queue.screenshot({ path: `test-results/compact-work-${path}-${width}.png` })
+    }
+  })
+}

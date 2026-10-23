@@ -63,27 +63,61 @@ pub fn production_rates_with_settings(
     let r = &rules.artifact;
     let output = output_factors(body, settings, rules)?;
     let (_, _, utilization) = energy_ratios(&output, rules);
-    let temperature = ratio(r.temperature[0], r.temperature[2])?
-        + ratio(r.temperature[1], r.temperature[3])? * integer(i64::from(body.max_temperature));
-    if temperature < Rational::zero() {
-        return Err(GameError::NumericRange);
-    }
     let mut rates = [0; 3];
     for i in 0..3 {
-        let modifier = if i == 2 {
-            temperature.clone()
-        } else {
-            Rational::one()
-        };
         rates[i] = floor(
             (integer(r.base_income[i])
-                + utilization.clone() * integer(r.production[i]) * output[i].clone() * modifier)
+                + utilization.clone() * resource_output(body, i, output[i].clone(), rules)?)
                 * integer(i64::from(rules.speed))
                 * integer(SCALE),
         )?;
     }
     Ok(Resources::from_values(rates))
 }
+// Shared by actual production and the full-output building preview. Base income,
+// throttling and energy utilization are applied only to actual planet production.
+fn resource_output(
+    body: &Body,
+    index: usize,
+    output: Rational,
+    rules: &Ruleset,
+) -> Result<Rational, GameError> {
+    let r = &rules.artifact;
+    let temperature = ratio(r.temperature[0], r.temperature[2])?
+        + ratio(r.temperature[1], r.temperature[3])? * integer(i64::from(body.max_temperature));
+    if temperature < Rational::zero() {
+        return Err(GameError::NumericRange);
+    }
+    let modifier = if index == 2 {
+        temperature
+    } else {
+        Rational::one()
+    };
+    Ok(integer(r.production[index]) * output * modifier)
+}
+
+pub(crate) fn building_full_output(
+    body: &Body,
+    building: Building,
+    level: u32,
+    rules: &Ruleset,
+) -> Result<i64, GameError> {
+    let mut preview = body.clone();
+    preview.levels.insert(building, level);
+    let output = output_factors(&preview, &ProductionSettings::default(), rules)?;
+    let index = Building::ALL
+        .iter()
+        .position(|b| *b == building)
+        .ok_or(GameError::UnavailableContent)?;
+    let value = if building == Building::SolarPlant {
+        output[index].clone() * integer(rules.artifact.energy_supply)
+    } else {
+        resource_output(body, index, output[index].clone(), rules)?
+            * integer(i64::from(rules.speed))
+    };
+    floor(value * integer(SCALE))
+}
+
 pub fn settle_economy(
     body: &Body,
     at: Timestamp,

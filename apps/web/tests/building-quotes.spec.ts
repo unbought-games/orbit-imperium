@@ -33,6 +33,13 @@ async function buildingFixture(page: Page, active = false) {
     bodies: [planet],
     constructions,
     catalog: [
+      ...['MetalStorage', 'CrystalMine', 'MetalMine'].map((id) => ({
+        key: { kind: 'Building' as const, id: id as S['BuildingId3'] },
+        enabled: true,
+        mobile: false,
+        body_kinds: ['Planet' as const],
+        requirements: [],
+      })),
       {
         key: { kind: 'Building', id: 'ResearchLab' },
         enabled: true,
@@ -107,6 +114,20 @@ async function buildingFixture(page: Page, active = false) {
         required_energy: '0',
         reserve_fields: 1,
       },
+      building_benefit:
+        building === 'MetalStorage'
+          ? {
+              kind: 'MetalCapacity',
+              current: '10000000000',
+              target: '20000000000',
+            }
+          : building === 'CrystalMine'
+            ? {
+                kind: 'CrystalPerHour',
+                current: '22000000',
+                target: request.type === 'Demolition' ? '0' : '48400000',
+              }
+            : undefined,
       building_energy: {
         current_consumption: building === 'CrystalMine' ? '11000000' : '0',
         target_consumption:
@@ -173,12 +194,12 @@ for (const selected of ['Crystal Mine', 'Metal Mine']) {
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
     ).toHaveText(
-      selected === 'Crystal Mine' ? 'Upgrade to level 3' : 'Upgrade to level 2',
+      selected === 'Crystal Mine' ? 'Build level 3' : 'Build level 2',
     )
   })
 }
 
-for (const width of [390, 1440]) {
+for (const width of [320, 390, 1440]) {
   test(`building quotes distinguish energy and show consistent shortages at ${width}px`, async ({
     page,
   }) => {
@@ -189,9 +210,7 @@ for (const width of [390, 1440]) {
       .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
       .click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane.locator('dl')).toContainText(
-      'Construction energy required:0',
-    )
+    await expect(pane).not.toContainText('Construction energy required')
     await expect(pane.locator('dl')).toContainText(
       'Additional operating energy (100%):13',
     )
@@ -210,17 +229,21 @@ for (const width of [390, 1440]) {
       .getByRole('link', { name: 'Upgrade Research Lab', exact: true })
       .click()
     await expect(pane.getByRole('button', { name: /Demolish/ })).toHaveCount(0)
-    const row = pane.getByRole('row').filter({
-      has: page.getByRole('button', { name: 'Deuterium details', exact: true }),
-    })
+    const row = pane.getByRole('group', { name: 'Required resources' })
     await expect(row).toContainText('200')
-    await expect(row).toContainText('182')
+    await row
+      .getByRole('button', { name: 'Deuterium details', exact: true })
+      .click()
+    await expect(
+      page.getByRole('dialog', { name: 'Deuterium', exact: true }),
+    ).toContainText('182')
+    await page.keyboard.press('Escape')
     await expect(row).toContainText('Need 18 more')
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
     ).toBeDisabled()
-    await expect(pane.locator('dl')).toContainText(
-      'Additional operating energy (100%):0',
+    await expect(pane.locator('dl')).not.toContainText(
+      'Additional operating energy',
     )
     await row.scrollIntoViewIfNeeded()
     await page.screenshot({ path: `test-results/building-quote-${width}.png` })
@@ -229,5 +252,60 @@ for (const width of [390, 1440]) {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true)
+  })
+}
+
+for (const width of [320, 390, 1440]) {
+  test(`storage details prioritize benefits and build action at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await buildingFixture(page)
+    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await page
+      .getByRole('link', { name: 'Upgrade Metal Storage', exact: true })
+      .click()
+    const pane = page.getByRole('region', { name: 'Progression quote' })
+    const current = pane.getByLabel('Current level and benefit')
+    const target = pane.getByLabel('Target level and benefit')
+    await expect(current).toContainText('Level 0')
+    await expect(current).toContainText('10,000 metal capacity')
+    await expect(target).toContainText('20,000 metal capacity')
+    const button = target.getByRole('button', { name: 'Confirm upgrade' })
+    await expect(button).toHaveText('Build level 1')
+    const cost = pane.getByRole('group', { name: 'Required resources' })
+    await expect(
+      cost.getByRole('button', { name: 'Deuterium details' }),
+    ).toHaveCount(0)
+    await expect(pane.getByRole('table')).toHaveCount(0)
+    await expect(
+      pane.getByRole('region', { name: 'Building requirements' }),
+    ).toHaveCount(0)
+    await expect(pane).not.toContainText('Construction possible')
+    const currentBox = (await current.boundingBox())!
+    const targetBox = (await target.boundingBox())!
+    const costBox = (await cost.boundingBox())!
+    expect(currentBox.y + currentBox.height).toBeLessThanOrEqual(targetBox.y)
+    expect(targetBox.y + targetBox.height).toBeLessThanOrEqual(costBox.y)
+    const benefitBox = (await target.locator(':scope > span').boundingBox())!
+    const buttonBox = (await button.boundingBox())!
+    expect(benefitBox.x).toBeGreaterThanOrEqual(buttonBox.x + buttonBox.width)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await pane.screenshot({ path: `test-results/storage-detail-${width}.png` })
+    await pane.getByRole('link', { name: /^Back to / }).click()
+    await page
+      .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
+      .click()
+    await expect(current).toContainText('22 crystal / hour')
+    await expect(target).toContainText('48 crystal / hour')
+    const teardown = pane.getByRole('button', { name: 'Demolish Crystal Mine' })
+    const terms = pane.locator('details')
+    expect((await teardown.boundingBox())!.y).toBeGreaterThanOrEqual(
+      (await terms.boundingBox())!.y + (await terms.boundingBox())!.height,
+    )
   })
 }

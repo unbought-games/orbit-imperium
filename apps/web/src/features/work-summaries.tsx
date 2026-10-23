@@ -1,3 +1,4 @@
+import { workSummaryTiming } from './work-summary-timing'
 import { useUniverseName } from '../shell/session-context'
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from '../shell/route-target'
@@ -166,9 +167,34 @@ export function WorkSummaries({
               },
               view,
             ).available
+            const target =
+              category === 'buildings' && construction
+                ? routeTarget(
+                    universeName,
+                    catalogPage({
+                      kind: 'Building',
+                      id: construction.building,
+                    }),
+                    body.id,
+                    construction.building,
+                  )
+                : category === 'research' && research
+                  ? routeTarget(
+                      universeName,
+                      'research',
+                      researchHost?.id ?? body.id,
+                      research.research,
+                    )
+                  : null
+            const compactWork =
+              layout === 'compact' && target && work && due !== undefined
+            const host =
+              category === 'research' && researchHost
+                ? `Host ${researchHost.kind} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
+                : null
             return (
               <section
-                className={styles.summary}
+                className={`${styles.summary} ${compactWork ? styles.activeSummary : ''}`}
                 key={title}
                 aria-label={title}
               >
@@ -204,61 +230,56 @@ export function WorkSummaries({
                   <div className={styles['summary-content']}>
                     <Icon aria-hidden="true" size={26} />
                     <p>
-                      {category === 'buildings' && construction ? (
+                      {compactWork ? (
                         <Link
-                          {...routeTarget(
-                            universeName,
-                            catalogPage({
-                              kind: 'Building',
-                              id: construction.building,
-                            }),
-                            body.id,
-                            construction.building,
-                          )}
+                          {...target}
+                          className={styles.workLink}
+                          title={host ?? undefined}
+                          aria-description={host ?? undefined}
                         >
-                          {name}
-                        </Link>
-                      ) : category === 'research' && research ? (
-                        <Link
-                          {...routeTarget(
-                            universeName,
-                            'research',
-                            researchHost?.id ?? body.id,
-                            research.research,
-                          )}
-                        >
-                          {name}
+                          <span>{name}</span>{' '}
+                          <span className={styles.workTiming}>
+                            {workSummaryTiming(work.status, countdown(due))}
+                          </span>
                         </Link>
                       ) : (
-                        name
-                      )}
-                      {layout !== 'cards' && work && (
-                        <small className={styles.workStatus}>
-                          {work.status}
-                          {category === 'research' && researchHost
-                            ? ` · Host ${researchHost.kind} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
-                            : ''}
-                        </small>
-                      )}
-                      {layout !== 'cards' &&
-                        category === 'research' &&
-                        researchPercent !== null && (
-                          <progress
-                            aria-label="Research estimated progress"
-                            value={researchPercent}
-                            max={100}
-                          />
-                        )}
-                      {due !== undefined && (
                         <>
-                          <strong>{countdown(due)}</strong>
-                          {layout !== 'cards' && (
-                            <time dateTime={new Date(due).toISOString()}>
-                              {new Date(due).toLocaleString(undefined, {
-                                dateStyle: 'medium',
-                                timeStyle: 'long',
-                              })}
-                            </time>
+                          {target ? <Link {...target}>{name}</Link> : name}
+                          {layout !== 'cards' &&
+                            work &&
+                            (work.status !== 'In progress' || host) && (
+                              <small className={styles.workStatus}>
+                                {[
+                                  work.status !== 'In progress'
+                                    ? work.status
+                                    : null,
+                                  host,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </small>
+                            )}
+                          {layout !== 'cards' &&
+                            category === 'research' &&
+                            researchPercent !== null && (
+                              <progress
+                                aria-label="Research estimated progress"
+                                value={researchPercent}
+                                max={100}
+                              />
+                            )}
+                          {due !== undefined && (
+                            <>
+                              <strong>{countdown(due)}</strong>
+                              {layout !== 'cards' && (
+                                <time dateTime={new Date(due).toISOString()}>
+                                  {new Date(due).toLocaleString(undefined, {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'long',
+                                  })}
+                                </time>
+                              )}
+                            </>
                           )}
                         </>
                       )}

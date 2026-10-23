@@ -2010,3 +2010,92 @@ fn laser_research_and_defense_require_completed_local_and_player_prerequisites()
         before.metal - 4500 * SCALE
     );
 }
+
+#[test]
+fn building_benefits_use_active_rules_without_mutating_state() {
+    let (mut s, old, p, b) = fixture();
+    let mut artifact = old.artifact.clone();
+    artifact.production = [31, 23, 11];
+    artifact.growth = [6, 5];
+    artifact.energy_supply = 27;
+    artifact.temperature = [1, 0, 1, 1];
+    artifact.progression.as_mut().unwrap().storage_capacities[1] = 23456;
+    let rules = Ruleset::from_artifact(artifact, old.speed).unwrap();
+    s.profile_hash = rules.hash.clone();
+    s.production_settings
+        .get_mut(&b)
+        .unwrap()
+        .settings
+        .metal_mine = 0;
+    use BuildingBenefitKind::*;
+    for (building, kind, current, target) in [
+        (Building::MetalMine, MetalPerHour, 372_000_000, 892_800_000),
+        (
+            Building::CrystalMine,
+            CrystalPerHour,
+            276_000_000,
+            662_400_000,
+        ),
+        (
+            Building::DeuteriumSynthesizer,
+            DeuteriumPerHour,
+            132_000_000,
+            316_800_000,
+        ),
+        (Building::SolarPlant, Energy, 32_400_000, 77_760_000),
+    ] {
+        s.bodies.get_mut(&b).unwrap().levels.insert(building, 1);
+        let before = s.clone();
+        let options = inspect_progression(
+            &s,
+            Actor::Player(p),
+            &QuoteRequest::Upgrade { body: b, building },
+            0,
+            &rules,
+        )
+        .unwrap();
+        assert_eq!(s, before);
+        assert_eq!(
+            options.building_benefit,
+            Some(BuildingBenefit {
+                kind,
+                current: current.to_string(),
+                target: target.to_string()
+            })
+        );
+        let reversed = building_benefit(&s.bodies[&b], building, 2, 1, &rules)
+            .unwrap()
+            .unwrap();
+        assert_eq!(reversed.current, target.to_string());
+        assert_eq!(reversed.target, current.to_string());
+        assert_eq!(
+            building_benefit(&s.bodies[&b], building, 0, 1, &rules)
+                .unwrap()
+                .unwrap()
+                .current,
+            "0"
+        );
+    }
+    for (building, kind) in [
+        (Building::MetalStorage, MetalCapacity),
+        (Building::CrystalStorage, CrystalCapacity),
+        (Building::DeuteriumTank, DeuteriumCapacity),
+    ] {
+        let benefit = building_benefit(&s.bodies[&b], building, 0, 1, &rules)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            benefit,
+            BuildingBenefit {
+                kind,
+                current: "10000000000".into(),
+                target: "23456000000".into()
+            }
+        );
+    }
+    assert!(
+        building_benefit(&s.bodies[&b], Building::RoboticsFactory, 0, 1, &rules)
+            .unwrap()
+            .is_none()
+    );
+}

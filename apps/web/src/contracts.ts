@@ -4569,6 +4569,7 @@ export interface components {
             estimates: components["schemas"]["ProgressionEstimate"] | null;
             progress?: components["schemas"]["SnapshotProgress"];
             building_energy?: components["schemas"]["BuildingEnergy"];
+            building_benefit?: components["schemas"]["BuildingBenefit"];
         };
         ProductionDto: {
             /** Format: uuid */
@@ -5010,6 +5011,7 @@ export interface components {
             estimates: components["schemas"]["ProgressionEstimate"] | null;
             progress?: components["schemas"]["SnapshotProgress"];
             building_energy?: components["schemas"]["BuildingEnergy"];
+            building_benefit?: components["schemas"]["BuildingBenefit"];
         };
         GameProgressionOptions: components["schemas"]["BoundProgressionOptions"] | components["schemas"]["BoundProgressionOptions4"];
         Attempt4: {
@@ -5617,6 +5619,13 @@ export interface components {
         /** @description Levels recorded under the selected rules. Baseline entries remain required; later supported content is optional so historical observations remain readable. */
         ResearchLevels3: {
             [key: string]: number;
+        };
+        /** @description Current and target benefits at 100% output with sufficient energy, excluding base income. Derived from active rules. */
+        BuildingBenefit: {
+            /** @enum {string} */
+            kind: "MetalPerHour" | "CrystalPerHour" | "DeuteriumPerHour" | "Energy" | "MetalCapacity" | "CrystalCapacity" | "DeuteriumCapacity";
+            current: components["schemas"]["Decimal"];
+            target: components["schemas"]["Decimal"];
         };
     };
     responses: never;

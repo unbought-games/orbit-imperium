@@ -170,3 +170,30 @@
     grid-column: 1 / -1;
   }
 }
+
+.compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.compactMaterial {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 44px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.compactMaterial span span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.compact small {
+  display: block;
+}

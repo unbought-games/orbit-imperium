@@ -53,7 +53,7 @@ for (const width of [1440, 390, 320]) {
         ).toContainText('Unavailable in this universe.')
         await expect(
           pane.getByText('No prerequisites listed in this universe’s catalog.'),
-        ).toBeVisible()
+        ).toHaveCount(0)
         await expect(
           pane.getByRole('button', { name: 'Confirm upgrade' }),
         ).toHaveCount(0)
