@@ -21,15 +21,15 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  await page.getByRole('button',{name:'Menu',exact:true}).last().click();
  await page.getByRole('dialog').getByRole('link',{name:'Resources',exact:false}).click();
  await expect(async()=>{
-  await page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).click();
+  await page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).click();
   await expect(page.getByRole('button',{name:'Confirm upgrade',exact:true})).toBeVisible({timeout:1000});
  }).toPass({timeout:10000});
  await page.getByRole('button',{name:'Confirm upgrade',exact:true}).click();
- await expect(page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).getByLabel('Construction progress')).toBeVisible();
+ await expect(page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).getByLabel('Construction progress')).toBeVisible();
  const startupReads:string[]=[];
  page.on('request',r=>{const p=new URL(r.url()).pathname;if(p==='/api/v1/bootstrap'||p==='/api/v1/session'||p==='/api/v1/registration'||p.endsWith('/binding')||p.endsWith('/settings'))startupReads.push(p)});
  await page.reload();
- await expect(page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).getByLabel('Construction progress')).toBeVisible();
+ await expect(page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).getByLabel('Construction progress')).toBeVisible();
  expect(startupReads).toEqual([]);
  await page.getByRole('button',{name:'Menu',exact:true}).click();
  await page.getByRole('dialog',{name:'Navigation'}).getByRole('button',{name:'Sign out',exact:true}).click();

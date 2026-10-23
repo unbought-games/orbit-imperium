@@ -127,7 +127,7 @@ async function setup(page: Page) {
       },
     })
   })
-  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect(page.locator('main h1')).toHaveText('Dispatch')
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   return state

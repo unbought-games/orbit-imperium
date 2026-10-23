@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildingUnavailableReason } from './building-availability'
+import {
+  buildingUnavailableReason,
+  visibleFacility,
+} from './building-availability'
 import type { components } from '../../contracts'
 
 type S = components['schemas']
@@ -40,4 +43,22 @@ describe('building inspection availability', () => {
       'Building level unavailable on this body.',
     )
   })
+})
+
+it('omits only Moon-exclusive facilities from planet catalogs', () => {
+  expect(
+    visibleFacility({ ...entry, body_kinds: ['Moon'] }, { kind: 'Planet' }),
+  ).toBe(false)
+  expect(
+    visibleFacility({ ...entry, body_kinds: ['Moon'] }, { kind: 'Moon' }),
+  ).toBe(true)
+  expect(
+    visibleFacility(
+      { ...entry, body_kinds: ['Planet', 'Moon'] },
+      { kind: 'Planet' },
+    ),
+  ).toBe(true)
+  expect(
+    visibleFacility({ ...entry, enabled: false }, { kind: 'Planet' }),
+  ).toBe(true)
 })

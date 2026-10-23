@@ -1,5 +1,4 @@
-import { pageTitles } from '../../shell/navigation-model'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Network } from 'lucide-react'
 import { CatalogStage } from '../../ui/catalog-stage'
 import { CatalogSection, ImageCatalog } from '../../ui/image-catalog'
@@ -7,7 +6,10 @@ import { label } from '../../ui/format'
 import { Button } from '../../ui/button'
 import type { components } from '../../contracts'
 import type { ProgressionProps } from './shared'
-import { buildingUnavailableReason } from './building-availability'
+import {
+  buildingUnavailableReason,
+  visibleFacility,
+} from './building-availability'
 import { BuildingDetails } from './building-details'
 import { TechnologyDetails } from './technology-details'
 import { catalogContent, catalogGroup, facilityIds } from './catalog-content'
@@ -23,65 +25,15 @@ import { useProgressionOptions } from './use-progression-options'
 import { buildingProgress } from '../../client-model/building-progress'
 import { researchProgress } from '../../client-model/research-progress'
 import { ProgressionTile } from './progression-tile'
-import { ProgressionHeading, TechnologyWorld } from './progression-world'
 type Entry = components['schemas']['CatalogEntry3']
 export function TechnologyPage(props: ProgressionProps) {
-  const { view, body, page, coordinator: model } = props
+  const { view, body, page, coordinator: model, selection } = props
   const progress = buildingProgress(model.store.getState(), body.id)
   const research = researchProgress(model.store.getState())
-  const [selectedKey, setSelectedKey] = useState<Entry['key'] | null>(null)
   const selected = view.catalog.find(
-    (entry) =>
-      entry.key.kind === selectedKey?.kind && entry.key.id === selectedKey.id,
+    (entry) => entry.key.id === selection.selectedId,
   )
-  const [open, setOpen] = useState(false)
-  const [technology, setTechnology] = useState(false)
-  const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
-  const [quantity, setQuantity] = useState('1')
-  const request =
-    selected &&
-    open &&
-    !(
-      selected.key.kind === 'Building' &&
-      buildingUnavailableReason(selected, body)
-    ) &&
-    !(
-      selected.key.kind === 'Building' && progress?.building === selected.key.id
-    ) &&
-    !(
-      selected.key.kind === 'Research' && research?.research === selected.key.id
-    )
-      ? technologyRequest(selected.key, body.id, action, '1')
-      : null
-  const {
-    proposal,
-    loading,
-    error: requestError,
-    retry,
-  } = useProgressionOptions(model, view, request)
-  const error =
-    selected &&
-    open &&
-    !technologyRequest(selected.key, body.id, action, quantity) &&
-    (selected.key.kind === 'Ship' || selected.key.kind === 'Defense')
-      ? 'Enter a positive whole quantity within the supported range.'
-      : requestError
-  const opener = useRef<HTMLElement | null>(null)
-  useEffect(() => {
-    if (open) return
-    const frame = requestAnimationFrame(() =>
-      opener.current?.focus({ preventScroll: true }),
-    )
-    return () => cancelAnimationFrame(frame)
-  }, [open])
-  function close() {
-    setOpen(false)
-    setTechnology(false)
-  }
-  function inspect(nextAction: 'Upgrade' | 'Demolition' = 'Upgrade') {
-    setAction(nextAction)
-    retry()
-  }
+  const open = selected !== undefined
   const kind =
     page === 'facilities'
       ? 'Building'
@@ -93,7 +45,8 @@ export function TechnologyPage(props: ProgressionProps) {
   const entries = view.catalog.filter(
     (x) =>
       x.key.kind === kind &&
-      (kind !== 'Building' || facilityIds.includes(x.key.id)),
+      (kind !== 'Building' ||
+        (facilityIds.includes(x.key.id) && visibleFacility(x, body))),
   )
   const groups = [...new Set(entries.map((x) => catalogGroup(x.key)))].sort(
     (a, b) =>
@@ -129,75 +82,19 @@ export function TechnologyPage(props: ProgressionProps) {
   }
   return (
     <>
-      <ProgressionHeading page={page} body={body} compact={open} />
       <CatalogStage
-        scene={
-          <TechnologyWorld
-            entries={entries}
-            body={body}
-            page={page}
-            onSelect={(entry, element) => {
-              opener.current = element
-              setSelectedKey(entry.key)
-              setOpen(true)
-              setQuantity('1')
-              inspect('Upgrade')
-            }}
-          />
-        }
-        sceneLabel={`${pageTitles[page]} colony`}
         open={open}
-        detailKey={`${selected?.key.id}:${action}`}
+        detailKey={selected?.key.id ?? ''}
         detailLabel="Progression quote"
-        onClose={close}
-        footer={
-          page !== 'facilities' && (
-            <span>
-              {kind === 'Research'
-                ? 'Research applies to all your planets.'
-                : `Planet [${body.coordinates.galaxy}:${body.coordinates.system}:${body.coordinates.position}]`}
-            </span>
-          )
-        }
       >
-        {selected &&
-          (selected.key.kind === 'Building' ? (
-            <>
-              <BuildingDetails
-                {...props}
-                building={catalogContent(selected.key)}
-                level={Number(count(selected))}
-                proposal={proposal}
-                loading={loading}
-                error={error}
-                action={action}
-                onInspect={inspect}
-                onClose={close}
-              />
-              <Button
-                className={styles.treeButton}
-                variant="quiet"
-                onClick={() => setTechnology(true)}
-              >
-                <Network size={16} />
-                Technology tree
-              </Button>
-            </>
-          ) : (
-            <TechnologyDetails
-              {...props}
-              entry={selected}
-              count={count(selected)}
-              proposal={proposal}
-              loading={loading}
-              error={error}
-              quantity={quantity}
-              onQuantity={setQuantity}
-              onInspect={() => inspect()}
-              onClose={close}
-              onTechnology={() => setTechnology(true)}
-            />
-          ))}
+        {selected && (
+          <TechnologyInspector
+            key={selected.key.id}
+            {...props}
+            selected={selected}
+            count={count(selected)}
+          />
+        )}
       </CatalogStage>
       <WorkSummaries
         view={view}
@@ -287,17 +184,7 @@ export function TechnologyPage(props: ProgressionProps) {
                             : `unavailable on this ${body.kind.toLowerCase()}`
                       }
                       selected={open && entry.key.id === selected?.key.id}
-                      onClick={(event) => {
-                        if (open && selected?.key.id === entry.key.id) {
-                          close()
-                          return
-                        }
-                        opener.current = event.currentTarget
-                        setSelectedKey(entry.key)
-                        setOpen(true)
-                        setQuantity('1')
-                        inspect('Upgrade')
-                      }}
+                      {...selection.link(entry.key.id)}
                     />
                   )
                 })}
@@ -306,7 +193,89 @@ export function TechnologyPage(props: ProgressionProps) {
         ))}
       </div>
       {!entries.length && <p>No catalog is available for this planet.</p>}
-      {technology && selected && (
+    </>
+  )
+}
+
+function TechnologyInspector({
+  selected,
+  count,
+  ...props
+}: ProgressionProps & { selected: Entry; count: number | string }) {
+  const { view, body, coordinator: model } = props
+  const progress = buildingProgress(model.store.getState(), body.id)
+  const research = researchProgress(model.store.getState())
+  const [technology, setTechnology] = useState(false)
+  const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
+  const [quantity, setQuantity] = useState('1')
+  const request =
+    selected.enabled &&
+    selected.body_kinds.includes(body.kind) &&
+    !(
+      selected.key.kind === 'Building' &&
+      buildingUnavailableReason(selected, body)
+    ) &&
+    !(
+      selected.key.kind === 'Building' && progress?.building === selected.key.id
+    ) &&
+    !(
+      selected.key.kind === 'Research' && research?.research === selected.key.id
+    )
+      ? technologyRequest(selected.key, body.id, action, '1')
+      : null
+  const {
+    proposal,
+    loading,
+    error: requestError,
+    retry,
+  } = useProgressionOptions(model, view, request)
+  const error =
+    !technologyRequest(selected.key, body.id, action, quantity) &&
+    (selected.key.kind === 'Ship' || selected.key.kind === 'Defense')
+      ? 'Enter a positive whole quantity within the supported range.'
+      : requestError
+  function inspect(nextAction: 'Upgrade' | 'Demolition' = 'Upgrade') {
+    setAction(nextAction)
+    retry()
+  }
+  return (
+    <>
+      {selected.key.kind === 'Building' ? (
+        <>
+          <BuildingDetails
+            {...props}
+            building={catalogContent(selected.key)}
+            level={Number(count)}
+            proposal={proposal}
+            loading={loading}
+            error={error}
+            action={action}
+            onInspect={inspect}
+          />
+          <Button
+            className={styles.treeButton}
+            variant="quiet"
+            onClick={() => setTechnology(true)}
+          >
+            <Network size={16} />
+            Technology tree
+          </Button>
+        </>
+      ) : (
+        <TechnologyDetails
+          {...props}
+          entry={selected}
+          count={count}
+          proposal={proposal}
+          loading={loading}
+          error={error}
+          quantity={quantity}
+          onQuantity={setQuantity}
+          onInspect={() => inspect()}
+          onTechnology={() => setTechnology(true)}
+        />
+      )}
+      {technology && (
         <TechnologyDialog
           {...props}
           entry={selected}

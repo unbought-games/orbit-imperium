@@ -28,7 +28,6 @@ export function TechnologyDetails({
   quantity,
   onQuantity,
   onInspect,
-  onClose,
   onTechnology,
   ...props
 }: ProgressionProps & {
@@ -40,10 +39,10 @@ export function TechnologyDetails({
   quantity: string
   onQuantity: (value: string) => void
   onInspect: () => void
-  onClose: () => void
   onTechnology: () => void
 }) {
   const { coordinator: model, body, page } = props
+  const unavailable = !entry.enabled || !entry.body_kinds.includes(body.kind)
   const research = researchProgress(model.store.getState())
   const activeResearch =
     entry.key.kind === 'Research' && research?.research === entry.key.id
@@ -80,12 +79,19 @@ export function TechnologyDetails({
   return (
     <>
       <div className={styles.header}>
-        <button type="button" aria-label="Dismiss quote" onClick={onClose}>
+        <a {...props.selection.back}>
           <ArrowLeft size={18} /> Back
-        </button>
+        </a>
         <h2>{title}</h2>
         {!manufacture && <span>Level: {count}</span>}
       </div>
+      {unavailable && (
+        <p>
+          {!entry.enabled
+            ? 'Unavailable in this universe.'
+            : `Unavailable on this ${body.kind.toLowerCase()}.`}
+        </p>
+      )}
       <div className={styles.body}>
         <div
           className={`${local.portrait} ${entry.key.kind === 'Ship' ? local.shipPortrait : ''}`}
@@ -231,14 +237,16 @@ export function TechnologyDetails({
                   className={styles.improve}
                   aria-label={manufacture ? 'Build' : 'Confirm research'}
                   disabled={
-                    manufacture
+                    unavailable ||
+                    (manufacture
                       ? !order.canBuild
                       : loading ||
                         !command ||
                         !!proposal?.blockers.length ||
-                        (!!command && pending(model, command))
+                        (!!command && pending(model, command)))
                   }
                   onClick={() => {
+                    if (unavailable) return
                     if (manufacture) {
                       void order.build()
                       return

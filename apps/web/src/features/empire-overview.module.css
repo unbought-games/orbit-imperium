@@ -242,12 +242,6 @@
   stroke-width: 1.4;
   stroke-dasharray: 4 8;
   opacity: 0.7;
-  animation: traffic 40s linear infinite;
-}
-@keyframes traffic {
-  to {
-    stroke-dashoffset: -240;
-  }
 }
 .focusPlanet {
   position: absolute;
@@ -325,9 +319,6 @@
   background: #071620c9;
   text-decoration: none;
   z-index: 2;
-  transition:
-    border-color 160ms,
-    background 160ms;
 }
 .mapNode:hover {
   border-color: var(--ice);
@@ -1069,14 +1060,6 @@
   }
   .resources strong {
     font-size: 1rem;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .orbits .flightPath {
-    animation: none;
-  }
-  .mapNode {
-    transition: none;
   }
 }
 

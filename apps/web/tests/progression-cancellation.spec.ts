@@ -186,7 +186,7 @@ async function cancellationFixture(page: Page, lateOptions = false) {
   // The six inactive building tiles each load cost inputs before cancellation.
   await expect.poll(() => inspections.filter((x) => x.delivered).length).toBe(6)
   await page
-    .getByRole('button', { name: 'Upgrade Crystal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
     .click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   const cancel = pane.getByRole('button', {
@@ -253,7 +253,7 @@ for (const width of [390, 1440]) {
         await fixture.startCancellation()
         commandGate.resolve('Committed')
         await expect(cancel).toHaveCount(0)
-        await pane.getByRole('button', { name: 'Dismiss quote' }).click()
+        await pane.getByRole('link', { name: /^Back to / }).click()
         for (const title of titles) await expect(quick(title)).toBeVisible()
         optionsGate.resolve()
         await expect
@@ -328,7 +328,7 @@ test('rejected cancellation keeps construction active and every upgrade blocked'
     ).toHaveCount(0)
     await expect(
       page
-        .getByRole('button', { name: 'Upgrade Crystal Mine', exact: true })
+        .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
         .getByLabel('Construction progress'),
     ).toBeVisible()
   } finally {

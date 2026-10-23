@@ -44,52 +44,11 @@ html {
   outline: var(--focus-ring);
   outline-offset: 3px;
 }
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-/* Keep the live shell outside route snapshots. A mounted GameShell enables only
-   its identity-specific surface; old-account/universe snapshots stay hidden. */
-:root {
-  view-transition-name: none;
-}
-::view-transition {
-  pointer-events: none;
-}
-::view-transition-group(*) {
-  visibility: hidden;
-}
-@keyframes surface-out {
-  to {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-@keyframes surface-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-image-pair(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none !important;
-    transition: none !important;
-  }
-  ::view-transition-old(*) {
-    display: none !important;
-  }
-  ::view-transition-new(*) {
-    opacity: 1 !important;
-    transform: none !important;
-    mix-blend-mode: normal;
-  }
+/* UI state changes are immediate, independent of device motion preferences. */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }

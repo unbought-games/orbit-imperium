@@ -1,5 +1,6 @@
 import { universeSlug } from '../client-model/universe-name'
 import { linkOptions } from '@tanstack/react-router'
+import { catalogSlug } from './catalog-routes'
 import type { Page } from './routes'
 export function routeTarget(
   universeName: string,
@@ -24,45 +25,91 @@ export function routeTarget(
           })
         : linkOptions({ to: '/u/$universe/overview', params, search: {} })
     case 'resources':
-      return linkOptions({
-        to: '/u/$universe/b/$body/resources',
-        params: planetParams(),
-        search: {},
-      })
+      return item
+        ? linkOptions({
+            to: '/u/$universe/b/$body/resources/$item',
+            params: { ...planetParams(), item: catalogSlug(item) },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/b/$body/resources',
+            params: planetParams(),
+            search: {},
+          })
     case 'facilities':
-      return linkOptions({
-        to: '/u/$universe/b/$body/facilities',
-        params: planetParams(),
-        search: {},
-      })
-    case 'shipyard':
-      return linkOptions({
-        to: '/u/$universe/b/$body/shipyard',
-        params: planetParams(),
-        search: {},
-      })
-    case 'defense':
-      return linkOptions({
-        to: '/u/$universe/b/$body/defense',
-        params: planetParams(),
-        search: {},
-      })
+      return item
+        ? linkOptions({
+            to: '/u/$universe/b/$body/facilities/$item',
+            params: { ...planetParams(), item: catalogSlug(item) },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/b/$body/facilities',
+            params: planetParams(),
+            search: {},
+          })
     case 'research':
-      return linkOptions({ to: '/u/$universe/research', params, search })
-    case 'settings':
-      return linkOptions({ to: '/u/$universe/settings', params, search })
-    case 'galaxy':
-      return linkOptions({ to: '/u/$universe/galaxy', params, search })
-    case 'dispatch':
-      return linkOptions({ to: '/u/$universe/dispatch', params, search })
+      return item
+        ? linkOptions({
+            to: '/u/$universe/b/$body/research/$item',
+            params: { ...planetParams(), item: catalogSlug(item) },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/b/$body/research',
+            params: planetParams(),
+            search: {},
+          })
+    case 'shipyard':
+      return item
+        ? linkOptions({
+            to: '/u/$universe/b/$body/shipyard/$item',
+            params: { ...planetParams(), item: catalogSlug(item) },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/b/$body/shipyard',
+            params: planetParams(),
+            search: {},
+          })
+    case 'defense':
+      return item
+        ? linkOptions({
+            to: '/u/$universe/b/$body/defense/$item',
+            params: { ...planetParams(), item: catalogSlug(item) },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/b/$body/defense',
+            params: planetParams(),
+            search: {},
+          })
     case 'fleets':
       return item
         ? linkOptions({
-            to: '/u/$universe/fleets/$item',
-            params: { universe, item },
-            search,
+            to: '/u/$universe/b/$body/fleets/$item',
+            params: { ...planetParams(), item: item },
+            search: {},
           })
-        : linkOptions({ to: '/u/$universe/fleets', params, search })
+        : linkOptions({
+            to: '/u/$universe/b/$body/fleets',
+            params: planetParams(),
+            search: {},
+          })
+    case 'galaxy':
+      return linkOptions({
+        to: '/u/$universe/b/$body/galaxy',
+        params: planetParams(),
+        search: {},
+      })
+    case 'dispatch':
+      return linkOptions({
+        to: '/u/$universe/b/$body/dispatch',
+        params: planetParams(),
+        search: {},
+      })
+    case 'settings':
+      return linkOptions({ to: '/u/$universe/settings', params, search })
     case 'reports':
       return item
         ? linkOptions({

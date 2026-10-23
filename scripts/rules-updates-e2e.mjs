@@ -149,7 +149,7 @@ try {
   await page.context().addCookies([{ name: auth.cookie.slice(0, split), value: auth.cookie.slice(split + 1), domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax' }])
   const browserUniverse = (await db.query('SELECT universe_name_key(name) AS slug FROM universes WHERE id=$1', [universe])).rows[0].slug
   await page.goto(`${active.base}/u/${browserUniverse}/research`)
-  await expect(page.getByRole('button', { name: 'Research Laser Technology', exact: true })).toBeDisabled()
+  await expect(page.getByRole('link', { name: 'Research Laser Technology', exact: true })).toHaveAttribute('title', /unavailable in this universe/)
   cli('export'); const document = JSON.parse(readFileSync(rulesFile))
   document.artifact = JSON.parse(readFileSync('scripts/fixtures/rules-expanded.json'))
   document.artifact.world.combat.max_rounds = 1
@@ -190,9 +190,9 @@ try {
   const newCommitments = (await db.query('SELECT id,data FROM mission_fleets WHERE universe=$1 ORDER BY id', [universe])).rows
   assert.deepEqual(newCommitments, oldCommitments)
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Research Laser Technology', exact: true })).toBeEnabled()
+  await expect(page.getByRole('link', { name: 'Research Laser Technology', exact: true })).not.toHaveAttribute('title', /unavailable/)
   await page.goto(`${active.base}/u/${browserUniverse}/b/${body}/shipyard`)
-  await expect(page.getByRole('button', { name: 'Build Large Cargo', exact: true })).toBeEnabled()
+  await expect(page.getByRole('link', { name: 'Build Large Cargo', exact: true })).not.toHaveAttribute('title', /unavailable/)
   console.log('PASS: atomic activation across new instances, old commitments retained, per-universe isolation, browser refresh exposes content')
   await advance(Math.max(...work, attack.due_at, returning.due_at))
   const combat = (await db.query("SELECT data FROM mission_reports WHERE universe=$1 AND data->>'fleet'=$2 AND kind='Combat'", [universe, attack.id])).rows[0].data

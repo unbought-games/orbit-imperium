@@ -244,7 +244,7 @@ test('empire shows every body, its own work and resources, and directional fleet
   await expect(colony).toContainText('Command focus')
   await expect(page.getByRole('article')).toHaveCount(4)
   await colony.getByRole('link', { name: 'Dispatch fleet' }).click()
-  await expect(page).toHaveURL(new RegExp(`/dispatch\\?body=${id(6)}$`))
+  await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/dispatch$`))
   expect(purchases()).toBe(0)
 })
 

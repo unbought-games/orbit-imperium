@@ -1,3 +1,4 @@
+import type { CatalogSelection } from '../shell/use-catalog-selection'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { canAfford } from '../client-model/resources'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
@@ -7,7 +8,7 @@ import { CatalogActions, CatalogCard, CatalogGrid } from '../ui/catalog-layout'
 import { useCountdown } from '../client-model/use-clock'
 import type { CommandActions } from './operations'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Factory } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { CatalogStage } from '../ui/catalog-stage'
 import {
   CatalogImage,
@@ -23,21 +24,19 @@ import type { View } from '../adapters/http'
 import type { Quote, QuoteRequest } from '../client-model/commands'
 import { buildingProgress } from '../client-model/building-progress'
 import { ConstructionDetails } from './progression/construction-details'
-import {
-  ProgressionHeading,
-  ResourceWorld,
-} from './progression/progression-world'
 type UpgradeRequest = Extract<QuoteRequest, { type: 'Upgrade' }>
 export function Economy({
   view,
   body,
   actions,
   compact = false,
+  selection,
 }: {
   view: View
   body: View['bodies'][number]
   actions: CommandActions
   compact?: boolean
+  selection?: CatalogSelection
 }) {
   const { send, busy } = actions
   const progress = actions.model
@@ -49,8 +48,10 @@ export function Economy({
       quote: Quote
     } | null>(null),
     [error, setError] = useState('')
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [localOpen, setDetailOpen] = useState(false)
+  const [localId, setSelectedId] = useState<string | null>(null)
+  const selectedId = compact ? (selection?.selectedId ?? null) : localId
+  const detailOpen = compact ? selectedId !== null : localOpen
   const selected = resourceBuildings.find(
     (building) => building.id === selectedId,
   )
@@ -62,10 +63,6 @@ export function Economy({
     },
     [],
   )
-  function closePreview() {
-    generation.current++
-    setDetailOpen(false)
-  }
   useEffect(() => {
     if (detailOpen) return
     const frame = requestAnimationFrame(() =>
@@ -74,11 +71,15 @@ export function Economy({
     return () => cancelAnimationFrame(frame)
   }, [detailOpen])
   const active = view.constructions.find((c) => c.body === body.id)
+  const quoteRequest = useRef(actions.quote)
+  quoteRequest.current = actions.quote
   const preview = useCallback(
     async (building: UpgradeRequest['building']) => {
       const current = ++generation.current
-      setDetailOpen(true)
-      setSelectedId(building)
+      if (!compact) {
+        setDetailOpen(true)
+        setSelectedId(building)
+      }
       setProposal(null)
       try {
         setError('')
@@ -87,7 +88,7 @@ export function Economy({
           body: body.id,
           building,
         }
-        const quote = await actions.quote(request)
+        const quote = await quoteRequest.current(request)
         if (current === generation.current) {
           if (quote) setProposal({ request, quote })
           else setError('Quote unavailable. Refresh and try again.')
@@ -97,7 +98,7 @@ export function Economy({
           setError('Quote unavailable. Refresh and try again.')
       }
     },
-    [actions.quote, body.id],
+    [body.id, compact],
   )
   const selectedLevel = selectedId
     ? body.levels[selectedId as keyof typeof body.levels]
@@ -107,41 +108,22 @@ export function Economy({
     selectedLevel === undefined ||
     proposal.quote.target_level === selectedLevel + 1
   useEffect(() => {
-    if (compact && detailOpen && selectedId && !proposalIsCurrent)
+    if (
+      compact &&
+      detailOpen &&
+      selectedId &&
+      selectedLevel !== undefined &&
+      !active
+    )
       void preview(selectedId as UpgradeRequest['building'])
-  }, [compact, detailOpen, selectedId, proposalIsCurrent, preview])
+  }, [compact, detailOpen, selectedId, selectedLevel, active?.id, preview])
   if (compact)
     return (
       <>
-        <ProgressionHeading page="resources" body={body} compact={detailOpen} />
         <CatalogStage
-          scene={
-            <ResourceWorld
-              view={view}
-              body={body}
-              onSelect={(id, element) => {
-                opener.current = element
-                void preview(id as UpgradeRequest['building'])
-              }}
-            />
-          }
-          sceneLabel="Industrial resource colony"
           open={detailOpen}
           detailKey={selected?.id ?? ''}
           detailLabel="Upgrade quote"
-          onClose={closePreview}
-          footer={
-            <>
-              <Factory size={22} aria-hidden="true" />
-              <Button
-                variant="quiet"
-                disabled
-                title="Production settings are unavailable in this universe"
-              >
-                Resource settings
-              </Button>
-            </>
-          }
         >
           {selected && (
             <>
@@ -150,13 +132,9 @@ export function Economy({
                 <span>
                   Level {body.levels[selected.id as keyof typeof body.levels]}
                 </span>
-                <Button
-                  variant="quiet"
-                  aria-label="Dismiss"
-                  onClick={closePreview}
-                >
+                <a {...selection?.back} className={styles.back}>
                   <ArrowLeft size={18} /> Back
-                </Button>
+                </a>
               </div>
               <div className={styles.details}>
                 <CatalogImage art={selected.art} />
@@ -250,10 +228,7 @@ export function Economy({
                       ? 'construction already in progress'
                       : 'command awaiting confirmation'
                 }
-                onClick={(event) => {
-                  opener.current = event.currentTarget
-                  void preview(building.id as UpgradeRequest['building'])
-                }}
+                {...selection?.link(building.id)}
               />
             ))}
           </ImageCatalog>

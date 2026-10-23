@@ -32,7 +32,7 @@ for (const width of [1440, 390, 320]) {
         ['resources', 'FusionReactor', 'Fusion Reactor'],
       ]) {
         await page.goto(path(destination))
-        const tile = page.getByRole('button', {
+        const tile = page.getByRole('link', {
           name: `Upgrade ${title}`,
           exact: true,
         })
@@ -74,7 +74,7 @@ for (const width of [1440, 390, 320]) {
             path: `test-results/locked-unavailable-${width}.png`,
             animations: 'disabled',
           })
-        await page.keyboard.press('Escape')
+        await page.getByRole('link', { name: /^Back to / }).click()
         await expect(pane).toBeHidden()
         await expect(tile).toBeFocused()
         expect(requests).not.toContain(id)
@@ -154,7 +154,7 @@ for (const width of [1440, 390, 320]) {
         ['resources', 'Metal Mine'],
       ]) {
         await page.goto(path(destination))
-        const tile = page.getByRole('button', {
+        const tile = page.getByRole('link', {
           name: `Upgrade ${title}`,
           exact: true,
         })
@@ -162,7 +162,7 @@ for (const width of [1440, 390, 320]) {
         if (width < 600) await tile.tap()
         else {
           await tile.focus()
-          await page.keyboard.press('Space')
+          await page.keyboard.press('Enter')
         }
         const pane = page.getByRole('region', { name: 'Progression quote' })
         const prerequisites = pane.getByRole('list', { name: 'Prerequisites' })
@@ -209,7 +209,7 @@ for (const width of [1440, 390, 320]) {
           pane.getByRole('button', { name: 'Confirm upgrade' }),
         ).toBeDisabled()
         planet.levels.RoboticsFactory = 0
-        await page.keyboard.press('Escape')
+        await page.getByRole('link', { name: /^Back to / }).click()
         await expect(tile).toBeFocused()
       }
       expect(sent).toEqual([])
@@ -217,7 +217,7 @@ for (const width of [1440, 390, 320]) {
   })
 }
 
-test('body restrictions remain inspectable from cards and resource scene markers', async ({
+test('body restrictions remain inspectable from facility and resource cards', async ({
   page,
 }) => {
   const catalog = structuredClone(rules.catalog)
@@ -232,27 +232,21 @@ test('body restrictions remain inspectable from cards and resource scene markers
     ['resources', 'Metal Mine'],
   ]) {
     await page.goto(path(destination))
-    const tile = page.getByRole('button', {
+    const tile = page.getByRole('link', {
       name: `Upgrade ${title}`,
       exact: true,
     })
-    await tile.click()
+    if (destination === 'facilities') {
+      await expect(tile).toHaveCount(0)
+      await page.goto(`${path(destination)}/robotics-factory`)
+    } else await tile.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane).toContainText('Unavailable on this planet.')
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade' }),
     ).toHaveCount(0)
-    await page.keyboard.press('Escape')
-    await expect(tile).toBeFocused()
-    if (destination === 'resources') {
-      await page.getByText('Industrial resource colony', { exact: true }).click()
-      await page
-        .getByRole('button', { name: 'Inspect Metal Mine', exact: true })
-        .click()
-      await expect(pane).toContainText('Unavailable on this planet.')
-      await expect(
-        pane.getByRole('button', { name: 'Confirm upgrade' }),
-      ).toHaveCount(0)
-    }
+    await page.getByRole('link', { name: /^Back to / }).click()
+    if (destination === 'resources') await expect(tile).toBeFocused()
+    else await expect(page).toHaveURL(path(destination))
   }
 })

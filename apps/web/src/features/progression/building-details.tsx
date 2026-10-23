@@ -23,7 +23,6 @@ export function BuildingDetails({
   error,
   action,
   onInspect,
-  onClose,
   ...props
 }: ProgressionProps & {
   building: CatalogContent
@@ -33,7 +32,6 @@ export function BuildingDetails({
   error: string
   action: 'Upgrade' | 'Demolition'
   onInspect: (action: 'Upgrade' | 'Demolition') => void
-  onClose: () => void
 }) {
   const { view, body, coordinator: model } = props
   const progress = buildingProgress(model.store.getState(), body.id)
@@ -52,9 +50,9 @@ export function BuildingDetails({
   return (
     <>
       <div className={styles.header}>
-        <button type="button" aria-label="Dismiss quote" onClick={onClose}>
+        <a {...props.selection.back}>
           <ArrowLeft size={18} /> Back
-        </button>
+        </a>
         <h2>{title}</h2>
         <span>Level {level}</span>
       </div>

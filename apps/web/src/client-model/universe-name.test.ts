@@ -17,7 +17,7 @@ it.each([
   expect(universeSlug(name)).toBe(slug)
   const router = createAppRouter({ history: createMemoryHistory() })
   const href = router.buildLocation(routeTarget(name, 'research', 'earth')).href
-  expect(href).toBe(`/u/${slug}/research?body=earth`)
+  expect(href).toBe(`/u/${slug}/b/earth/research`)
   const loaded = createAppRouter({
     history: createMemoryHistory({ initialEntries: [href] }),
   })

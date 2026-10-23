@@ -1,9 +1,11 @@
+import type { CatalogSelection } from '../../shell/use-catalog-selection'
 import type { components } from '../../contracts'
 import type { Coordinator } from '../../client-model/coordinator'
 import { type Command } from '../../client-model/commands'
 import { pendingCommand } from '../../client-model/game-projection'
 import type { Page } from '../../shell/routes'
 export type ProgressionProps = {
+  selection: CatalogSelection
   coordinator: Coordinator
   view:
     | components['schemas']['BoundView3']

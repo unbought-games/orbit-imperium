@@ -2,7 +2,7 @@
 
 Use shared React components for styled elements and compose them into feature components. Plain, unstyled HTML wrappers are fine; a new component should own a visual pattern or behavior.
 
-- `style.css` is only for document defaults, resets, global focus/scroll behavior, and reduced motion. Shared design values live in `styles/tokens.css`.
+- `style.css` is only for document defaults, resets, global focus/scroll behavior, and the no-animation policy. Shared design values live in `styles/tokens.css`.
 - Keep component styles in an adjacent `*.module.css` file. Import the module in its owner, and keep responsive rules there too. Do not use global feature classes or `:global` escape hatches.
 - Reuse `Button`, `ButtonLink`, `Link`, form controls, `Panel`, `Section`, typography, and the catalog/quote components before adding a new visual pattern.
 - Choose explicit variants (`<Button variant="quiet">`, `<Panel tone="accent">`). Never infer an action's visual meaning from its position among siblings.
@@ -18,7 +18,7 @@ A feature can compose existing components without needing its own stylesheet. Ad
 
 Add screen routes in `src/routes`; TanStack generates `routeTree.gen.ts` (do not edit it). Run `npm run routes` after adding or renaming files; dev and production builds also generate the tree. Route modules declare their page metadata and screen component. Keep the confirmed session/coordinator in the root App and common chrome in GameShell; screens render through its Outlet.
 
-`resolveDestination` checks planet ownership, protocol capabilities and item visibility against each confirmed view. It does not parse URLs. Preserve those checks when extending routes. Planet pages use `/u/$universe/b/$body/...`; player-wide pages use validated `?body=` state for the selected/funding planet. Never silently replace an explicit inaccessible planet.
+`resolveDestination` checks planet ownership, protocol capabilities and item visibility against each confirmed view. It does not parse URLs. Preserve those checks when extending routes. Build catalogs, research, fleets, galaxy, and dispatch use `/u/$universe/b/$body/...`. Catalog items add a stable kebab-case item segment. Research levels remain universe-wide; the path identifies the host/funding body. Legacy query-context URLs redirect to the canonical planet path. Reports and account settings retain their existing routes. Never silently replace an explicit inaccessible planet.
 
 Use native browser links for external destinations and same-page non-navigation helpers. Preserve route title/focus behavior, keyboard menu restoration, and direct-link login. Tests must cover browser-history navigation and actual server refreshes, since Vite's development fallback alone cannot prove production hosting works.
 
@@ -40,13 +40,13 @@ Unavailable implemented destinations are native disabled buttons; future Empire,
 
 The isolated shell browser tests intercept only the HTTP boundary and validate real route, popover, and responsive behavior. With the dev server running, use `ORBIT_TEST_BASE_URL=http://127.0.0.1:5173 npx playwright test shell.spec.ts`. They do not replace the database-backed progression and mission journeys.
 
-Overview composes real selected-body arrivals, ordered work, exact stationed inventory, and a noninteractive world illustration. `WorkSummaries layout="editorial"` preserves queue order, cancellation and uncertain statuses while using aligned rows. Research names its actual host. Progress is estimated only from available timestamps; construction has no invented progress percentage. Deadline expiry continues to await server confirmation. Overview uses the in-flow work actions instead of the duplicate sticky construction notice; other screens retain the notice above the phone dock.
+Overview composes real selected-body arrivals, ordered work, exact stationed inventory, and a noninteractive world illustration. `WorkSummaries layout="editorial"` preserves queue order, cancellation and uncertain statuses while using aligned rows. Research names its actual host. Progress is estimated only from available timestamps; construction has no invented progress percentage. Deadline expiry continues to await server confirmation. Construction status and cancellation belong in work summaries and building details; do not add a duplicate status panel to the shared shell.
 
-Shared motion tokens (`--motion-press`, `--motion-enter`, `--motion-world`, `--ease-settle`) govern controls, dialogs and navigation-only View Transitions. Navigation preloads on intent. The shell/ledger remain mounted while the main surface transitions; authentication does not opt into private-pixel crossfades. The root remains live, and a mounted shell enables snapshot visibility only for its account/player/universe/epoch-specific surface name; unmounting or changing identity immediately hides old snapshots. System reduced motion removes translation and animation. Features should reuse these seams instead of adding route delays, global overlays, or parallel state.
+UI changes are immediate: do not add animations, CSS transitions, smooth scrolling, or View Transitions. Navigation keeps the shell and resource ledger mounted. Keep focus management and live game clock updates independent of visual effects.
 
-## Scene and image catalogs
+## Image catalogs
 
-Use `CatalogStage` for inline details that slide over a scene. It provides the clipped transition, focus entry, Escape handling, and reduced-motion support. Callers own selection, asynchronous request fencing, and focus restoration to the tile. Keep the last detail content mounted during the exit animation; closed details are inert and excluded from the accessibility tree. Scroll the stationary stage, never the transformed panel.
+Use `CatalogStage` for inline item details and optional catalog controls. Do not add expandable colony or scene overviews. It provides focus entry only; Escape never navigates away from item pages. The URL is the sole source of selected item state. Catalog tiles and Back controls are real links, with local edit state scoped to each item and planet. Preserve asynchronous request fencing and focus restoration to the tile. Closed details are hidden, inert, and excluded from the accessibility tree.
 
 Compose `CatalogSection`, `ImageCatalog`, `ImageTile`, and `CatalogImage` for compact image catalogs. `CatalogArt` supports a regular image or a local sprite atlas with explicit row/column and cell proportions; atlas crops preserve their source aspect ratio in any container. Tile levels come from confirmed state; missing content is disabled. `ResourceCosts` displays exact quoted costs and marks resource shortfalls. `WorkSummaries` is shared by Overview and Resources.
 

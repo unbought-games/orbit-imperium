@@ -19,7 +19,9 @@
   font-size: 0.875rem;
   color: var(--text-muted);
 }
-.header > button {
+.header > button,
+.header > a {
+  text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;

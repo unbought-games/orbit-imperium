@@ -21,8 +21,6 @@
   top: 0;
   z-index: 9;
   align-self: start;
-  margin-inline: calc(-1 * var(--shell-inline-gutter));
-  padding-inline: var(--shell-inline-gutter);
   background: color-mix(in srgb, var(--surface-page) 95%, transparent);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);

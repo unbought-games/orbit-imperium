@@ -137,7 +137,7 @@ for (const selected of ['Crystal Mine', 'Metal Mine']) {
     const fixture = await buildingFixture(page, true)
     await page.goto(`/u/andromeda/b/${body.id}/resources`)
     await page
-      .getByRole('button', { name: `Upgrade ${selected}`, exact: true })
+      .getByRole('link', { name: `Upgrade ${selected}`, exact: true })
       .click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     if (selected === 'Crystal Mine')
@@ -186,7 +186,7 @@ for (const width of [390, 1440]) {
     await buildingFixture(page)
     await page.goto(`/u/andromeda/b/${body.id}/resources`)
     await page
-      .getByRole('button', { name: 'Upgrade Crystal Mine', exact: true })
+      .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
       .click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane.locator('dl')).toContainText(
@@ -207,7 +207,7 @@ for (const width of [390, 1440]) {
     )
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
     await page
-      .getByRole('button', { name: 'Upgrade Research Lab', exact: true })
+      .getByRole('link', { name: 'Upgrade Research Lab', exact: true })
       .click()
     await expect(pane.getByRole('button', { name: /Demolish/ })).toHaveCount(0)
     const row = pane.getByRole('row').filter({

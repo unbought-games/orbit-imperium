@@ -12,6 +12,7 @@ import { useContext } from 'react'
 import { SessionContext } from '../shell/session-context'
 import { pendingWork } from '../client-model/game-projection'
 import { buildingProgress } from '../client-model/building-progress'
+import { catalogPage } from '../shell/catalog-routes'
 import { researchProgress } from '../client-model/research-progress'
 import { elapsedProgress } from './overview-progress'
 import { Button } from '../ui/button'
@@ -203,7 +204,34 @@ export function WorkSummaries({
                   <div className={styles['summary-content']}>
                     <Icon aria-hidden="true" size={26} />
                     <p>
-                      {name}
+                      {category === 'buildings' && construction ? (
+                        <Link
+                          {...routeTarget(
+                            universeName,
+                            catalogPage({
+                              kind: 'Building',
+                              id: construction.building,
+                            }),
+                            body.id,
+                            construction.building,
+                          )}
+                        >
+                          {name}
+                        </Link>
+                      ) : category === 'research' && research ? (
+                        <Link
+                          {...routeTarget(
+                            universeName,
+                            'research',
+                            researchHost?.id ?? body.id,
+                            research.research,
+                          )}
+                        >
+                          {name}
+                        </Link>
+                      ) : (
+                        name
+                      )}
                       {layout !== 'cards' && work && (
                         <small className={styles.workStatus}>
                           {work.status}

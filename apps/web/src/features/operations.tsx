@@ -1,3 +1,4 @@
+import type { CatalogSelection } from '../shell/use-catalog-selection'
 import { TaskHeader } from '../ui/task-header'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { canFundFleet } from '../client-model/resources'
@@ -26,12 +27,14 @@ export function Operations({
   view,
   body,
   commands,
+  selection,
   page = 'overview',
   item = null,
 }: {
   view: View
   body: View['bodies'][number]
   commands: ReturnType<typeof useCommands>
+  selection?: CatalogSelection
   page?: Page
   item?: string | null
 }) {
@@ -50,6 +53,7 @@ export function Operations({
           body={body}
           actions={actions}
           compact={page === 'resources'}
+          selection={selection}
         />
       )}
       {['overview', 'dispatch'].includes(page) && !item && (

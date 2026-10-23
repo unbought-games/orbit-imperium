@@ -15,50 +15,20 @@ import styles from './resources-page.module.css'
 import { useProgressionOptions } from './use-progression-options'
 import { buildingProgress } from '../../client-model/building-progress'
 import { ProgressionTile } from './progression-tile'
-import { ProgressionHeading, ResourceWorld } from './progression-world'
 export function ResourcesPage(props: ProgressionProps) {
-  const { coordinator: model, view, body } = props
+  const { coordinator: model, view, body, selection } = props
   const progress = buildingProgress(model.store.getState(), body.id)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedId = selection.selectedId
   const selected = resourceBuildings.find(
     (building) => building.id === selectedId,
   )
-  const selectedEntry = view.catalog.find(
-    (entry) => entry.key.kind === 'Building' && entry.key.id === selectedId,
-  )
-  const [open, setOpen] = useState(false)
+  const open = selectedId !== null
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
-  const { proposal, loading, error, retry } = useProgressionOptions(
-    model,
-    view,
-    open &&
-      selected &&
-      !buildingUnavailableReason(selectedEntry, body, selected.id) &&
-      progress?.building !== selected.id
-      ? {
-          type: action,
-          body: body.id,
-          building: selected.id as components['schemas']['BuildingId3'],
-        }
-      : null,
-  )
-  const opener = useRef<HTMLElement | null>(null)
-  useEffect(() => {
-    if (open) return
-    const frame = requestAnimationFrame(() =>
-      opener.current?.focus({ preventScroll: true }),
-    )
-    return () => cancelAnimationFrame(frame)
-  }, [open])
   const settingsButton = useRef<HTMLButtonElement>(null)
   const settingsPanel = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (settingsOpen) settingsPanel.current?.focus({ preventScroll: true })
   }, [settingsOpen])
-  function closeDetails() {
-    setOpen(false)
-  }
   function closeSettings() {
     setSettingsOpen(false)
     requestAnimationFrame(() =>
@@ -70,68 +40,34 @@ export function ResourcesPage(props: ProgressionProps) {
   )
   return (
     <>
-      <ProgressionHeading
-        page="resources"
-        body={body}
-        compact={open || settingsOpen}
-      />
+      {/* Keep production controls available for a later settings entry point. */}
+      <div hidden>
+        {productionAvailable && (
+          <button
+            ref={settingsButton}
+            type="button"
+            className={styles.settingsButton}
+            onClick={() => {
+              selection.close()
+              setSettingsOpen(true)
+            }}
+          >
+            <SlidersHorizontal size={14} aria-hidden="true" />
+            Resource settings
+          </button>
+        )}
+      </div>
       <div hidden={settingsOpen}>
         <CatalogStage
-          scene={
-            <ResourceWorld
-              view={view}
-              body={body}
-              onSelect={(id, element) => {
-                opener.current = element
-                setSelectedId(id)
-                setOpen(true)
-                setAction('Upgrade')
-                retry()
-              }}
-            />
-          }
-          sceneLabel="Industrial resource colony"
           open={open}
-          detailKey={`${selected?.id}:${action}`}
+          detailKey={selected?.id ?? ''}
           detailLabel="Progression quote"
-          onClose={closeDetails}
-          footer={
-            <>
-              <span>
-                Production, storage and energy · {body.fields_used} /{' '}
-                {body.fields} fields
-              </span>
-              {productionAvailable && (
-                <button
-                  ref={settingsButton}
-                  type="button"
-                  className={styles.settingsButton}
-                  onClick={() => {
-                    setOpen(false)
-                    setSettingsOpen(true)
-                  }}
-                >
-                  <SlidersHorizontal size={14} aria-hidden="true" />
-                  Resource settings
-                </button>
-              )}
-            </>
-          }
         >
           {selected && (
-            <BuildingDetails
+            <ResourceInspector
+              key={selected.id}
               {...props}
               building={selected}
-              level={body.levels[selected.id as keyof typeof body.levels] ?? 0}
-              proposal={proposal}
-              loading={loading}
-              error={error}
-              action={action}
-              onInspect={(type) => {
-                setAction(type)
-                retry()
-              }}
-              onClose={closeDetails}
             />
           )}
         </CatalogStage>
@@ -140,7 +76,7 @@ export function ResourcesPage(props: ProgressionProps) {
           body={body}
           currentPage="resources"
           layout="compact"
-          includeResearch={false}
+          only="buildings"
         />
         <CatalogSection title="Resource buildings">
           <ImageCatalog>
@@ -179,17 +115,7 @@ export function ResourcesPage(props: ProgressionProps) {
                     body,
                     building.id,
                   )}
-                  onClick={(event) => {
-                    if (open && selected?.id === building.id) {
-                      closeDetails()
-                      return
-                    }
-                    opener.current = event.currentTarget
-                    setSelectedId(building.id)
-                    setOpen(true)
-                    setAction('Upgrade')
-                    retry()
-                  }}
+                  {...selection.link(building.id)}
                 />
               )
             })}
@@ -221,5 +147,44 @@ export function ResourcesPage(props: ProgressionProps) {
         {productionAvailable && <Production {...props} />}
       </div>
     </>
+  )
+}
+
+function ResourceInspector({
+  building,
+  ...props
+}: ProgressionProps & { building: (typeof resourceBuildings)[number] }) {
+  const { coordinator: model, view, body } = props
+  const progress = buildingProgress(model.store.getState(), body.id)
+  const entry = view.catalog.find(
+    (entry) => entry.key.kind === 'Building' && entry.key.id === building.id,
+  )
+  const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
+  const { proposal, loading, error, retry } = useProgressionOptions(
+    model,
+    view,
+    !buildingUnavailableReason(entry, body, building.id) &&
+      progress?.building !== building.id
+      ? {
+          type: action,
+          body: body.id,
+          building: building.id as components['schemas']['BuildingId3'],
+        }
+      : null,
+  )
+  return (
+    <BuildingDetails
+      {...props}
+      building={building}
+      level={body.levels[building.id as keyof typeof body.levels] ?? 0}
+      proposal={proposal}
+      loading={loading}
+      error={error}
+      action={action}
+      onInspect={(type) => {
+        setAction(type)
+        retry()
+      }}
+    />
   )
 }
