@@ -96,6 +96,16 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send;
 }
 pub trait GameStore: Send + Sync {
+    /// Current public labels for body IDs already exposed by the viewer's fleets.
+    fn public_fleet_destinations(
+        &self,
+        _binding: Binding,
+        _bodies: Vec<BodyId>,
+    ) -> impl std::future::Future<Output = Result<Vec<orbit_engine::PublicDestination>, StoreError>> + Send
+    {
+        async { Err(StoreError::Unavailable) }
+    }
+
     /// Public usernames only, for IDs already exposed by an authorized projection.
     fn public_player_names(
         &self,

@@ -8,6 +8,7 @@ pub fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     let body = BodyId(Uuid::from_u128(2));
     let u = UniverseId(Uuid::from_u128(3));
     let b = Body {
+        name: None,
         id: body,
         universe: u,
         owner: player,

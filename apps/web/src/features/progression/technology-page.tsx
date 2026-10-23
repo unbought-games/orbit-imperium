@@ -1,3 +1,4 @@
+import { bodyName } from '../../ui/format'
 import { pageTitles } from '../../shell/navigation-model'
 import { useEffect, useRef, useState } from 'react'
 import { Network } from 'lucide-react'
@@ -155,7 +156,7 @@ export function TechnologyPage(props: ProgressionProps) {
             <span>
               {kind === 'Research'
                 ? 'Research applies to all your planets.'
-                : `Planet [${body.coordinates.galaxy}:${body.coordinates.system}:${body.coordinates.position}]`}
+                : `${bodyName(body)} [${body.coordinates.galaxy}:${body.coordinates.system}:${body.coordinates.position}]`}
             </span>
           )
         }

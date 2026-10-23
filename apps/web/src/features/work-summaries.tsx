@@ -1,3 +1,4 @@
+import { bodyName } from '../ui/format'
 import { useUniverseName } from '../shell/session-context'
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from '../shell/route-target'
@@ -208,7 +209,7 @@ export function WorkSummaries({
                         <small className={styles.workStatus}>
                           {work.status}
                           {category === 'research' && researchHost
-                            ? ` · Host ${researchHost.kind} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
+                            ? ` · Host ${bodyName(researchHost)} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
                             : ''}
                         </small>
                       )}

@@ -3786,6 +3786,8 @@ export interface components {
             coordinates: components["schemas"]["Coordinates"];
             /** @enum {unknown} */
             kind: "Planet" | "Moon";
+            /** @description Public planet name; omitted until named. Display the body kind as the fallback. */
+            name?: string;
         };
         Ship: {
             /** @enum {unknown} */
@@ -3812,6 +3814,8 @@ export interface components {
             fields_reserved: number;
             production: components["schemas"]["Resources"];
             energy: components["schemas"]["Energy"];
+            /** @description Public planet name; omitted until named. Display the body kind as the fallback. */
+            name?: string;
         };
         View: {
             /** Format: uuid */
@@ -4098,6 +4102,8 @@ export interface components {
             production: components["schemas"]["Resources"];
             energy: components["schemas"]["Energy"];
             inventories: components["schemas"]["Inventory"][];
+            /** @description Public planet name; omitted until named. Display the body kind as the fallback. */
+            name?: string;
         };
         BoundView: {
             viewer_revision: components["schemas"]["Decimal"];
@@ -4647,6 +4653,8 @@ export interface components {
             energy: components["schemas"]["Energy"];
             inventories: components["schemas"]["Inventory3"][];
             colony?: components["schemas"]["Colony4"];
+            /** @description Public planet name; omitted until named. Display the body kind as the fallback. */
+            name?: string;
         };
         BoundView3: {
             viewer_revision: components["schemas"]["Decimal"];
@@ -4896,6 +4904,13 @@ export interface components {
             /** Format: uuid */
             report: string;
             hidden: boolean;
+        } | {
+            /** @constant */
+            type: "RenamePlanet";
+            /** Format: uuid */
+            body: string;
+            /** @description 1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected. */
+            name: string;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -5138,6 +5153,8 @@ export interface components {
             /** @description Observed attack eligibility only; quote and launch recheck current policy. Absent on older servers. */
             attack_blocker?: components["schemas"]["GameError4"] | null;
             espionage_eligible: boolean;
+            /** @description Public planet name; omitted until named. Display the body kind as the fallback. */
+            name?: string;
         };
         PublicDebris4: {
             /** Format: uuid */

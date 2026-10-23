@@ -1231,3 +1231,17 @@
   min-height: 44px;
   color: var(--text-muted);
 }
+
+.planetName {
+  overflow-wrap: anywhere;
+}
+.planetHeader > div {
+  min-width: 0;
+}
+
+.planetCoordinates {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}

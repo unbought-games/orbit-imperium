@@ -1,5 +1,5 @@
 import type { BoundView } from '../client-model/commands'
-import { coordinates } from '../ui/format'
+import { bodyName, coordinates } from '../ui/format'
 export function bodyGroups(
   bodies: BoundView['bodies'],
   query: string,
@@ -9,7 +9,9 @@ export function bodyGroups(
   const visible = bodies.filter(
     (body) =>
       body.id === selected ||
-      `${body.kind} ${coordinates(body)}`.toLowerCase().includes(search),
+      `${bodyName(body)} ${body.kind} ${coordinates(body)}`
+        .toLowerCase()
+        .includes(search),
   )
   const groups = new Map<string, typeof visible>()
   for (const body of visible) {

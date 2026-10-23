@@ -2,6 +2,7 @@ use orbit_engine::*;
 
 fn body() -> Body {
     Body {
+        name: None,
         id: BodyId::default(),
         universe: UniverseId::default(),
         owner: PlayerId::default(),

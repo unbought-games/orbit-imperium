@@ -65,7 +65,9 @@ export function GalaxyPosition({
         )}
         <span className={styles.planetInfo}>
           <strong>
-            {body ? (owned ? 'Your planet' : body.kind) : 'Empty position'}
+            {body
+              ? (body.name ?? (owned ? 'Your planet' : body.kind))
+              : 'Empty position'}
           </strong>
           <span className={styles.coordinates}>{target}</span>
           {body && (

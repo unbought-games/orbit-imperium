@@ -1,3 +1,4 @@
+import { missionLocation } from './mission-presentation'
 import type { BoundView } from '../client-model/commands'
 import { resourceNames } from '../client-model/resources'
 import { coordinates, label } from '../ui/format'
@@ -22,7 +23,9 @@ const shipSummary = (ships: { count: string; ship_type: string }[]) =>
 export function empireFlights(view: BoundView): EmpireFlight[] {
   const location = (id: string) => {
     const body = [...view.bodies, ...view.destinations].find((b) => b.id === id)
-    return body ? coordinates(body) : 'Unrevealed location'
+    return body
+      ? missionLocation(view, id, body.coordinates)
+      : 'Unrevealed location'
   }
   if (view.protocol !== 4)
     return view.fleets
@@ -49,8 +52,8 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
     const returning = f.leg === 'Returning'
     const destination =
       f.intent.destination.type === 'Body' ? f.intent.destination.id : undefined
-    const originLabel = coordinates({ coordinates: f.origin })
-    const targetLabel = coordinates({ coordinates: f.destination })
+    const originLabel = missionLocation(view, f.intent.origin, f.origin)
+    const targetLabel = missionLocation(view, destination, f.destination)
     return {
       key: f.id,
       item: f.id,

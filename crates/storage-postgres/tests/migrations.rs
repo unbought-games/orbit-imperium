@@ -931,7 +931,12 @@ async fn colony_schema_preserves_old_rows_and_old_writer_slot_creation() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(before, after);
+    let mut expected = before;
+    expected["name"] = serde_json::Value::Null;
+    assert_eq!(
+        expected, after,
+        "only the new nullable name column is added"
+    );
     let heads: i64 = sqlx::query_scalar("SELECT count(*) FROM planet_slot_revisions")
         .fetch_one(&pool)
         .await
@@ -944,6 +949,15 @@ async fn colony_schema_preserves_old_rows_and_old_writer_slot_creation() {
             .await
             .unwrap();
     assert_eq!(revision, 1);
+    let unnamed: Option<String> = sqlx::query_scalar("SELECT name FROM bodies WHERE position=9")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(unnamed.is_none(), "old writers create unnamed planets");
+    sqlx::query("UPDATE bodies SET name='New Terra' WHERE position=9")
+        .execute(&pool)
+        .await
+        .unwrap();
     sqlx::query("UPDATE bodies SET amounts='{}',revision=revision+1 WHERE position=9")
         .execute(&pool)
         .await
@@ -957,6 +971,11 @@ async fn colony_schema_preserves_old_rows_and_old_writer_slot_creation() {
         revision, 1,
         "private changes never change public slot token"
     );
+    let name: String = sqlx::query_scalar("SELECT name FROM bodies WHERE position=9")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(name, "New Terra", "old economy writers preserve names");
     for leg in ["Colonized", "Deployed"] {
         sqlx::query("UPDATE mission_fleets SET data=jsonb_build_object('leg',$1::text)")
             .bind(leg)

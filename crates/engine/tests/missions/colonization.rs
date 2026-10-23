@@ -199,6 +199,7 @@ fn success_consumes_one_ship_deposits_grant_and_cargo_returns_escorts_once() {
     let c = arrive(&mut s, &r, &f, 502);
     assert_eq!(c.bodies.len(), 1);
     let planet = &c.bodies[0];
+    assert!(planet.name.is_none());
     assert_eq!(
         planet.checkpoint.amounts,
         Resources::from_values([1500 * SCALE, 500 * SCALE, 0])
