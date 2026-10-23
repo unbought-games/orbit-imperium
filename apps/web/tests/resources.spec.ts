@@ -1615,3 +1615,53 @@ test('fractional balances stay whole in the ledger and tooltip without enabling 
   await expect(tooltip).toContainText('Shortfall 1')
   expect(sent).toHaveLength(0)
 })
+
+test('legacy item links inspect other buildings during construction without stale or endless loading', async ({ page }) => {
+  const planet = structuredClone(body)
+  const constructions: components['schemas']['Construction3'][] = [{
+    id: '00000000-0000-4000-8000-000000000010', body: body.id,
+    building: 'MetalMine', target_level: 2, due_at: Date.now() + 76000,
+    paid: { metal: '60000000', crystal: '15000000', deuterium: '0' },
+  }]
+  const purchases = await shellFixture(page, { protocol: 2, constructions, bodies: [planet] })
+  const requests: string[] = []
+  await page.route('**/quotes', async route => {
+    const { context, request } = route.request().postDataJSON()
+    requests.push(request.building)
+    await route.fulfill({ json: {
+      protocol: 2, binding, request_id: context.request_id, viewer_revision: '1',
+      sampled_at: Date.now(), as_of_ms: Date.now(), request,
+      terms: {
+        profile_hash: 'a'.repeat(64), terms_hash: 'b'.repeat(64),
+        cost: { metal: request.building === 'SolarPlant' ? '80000000' : '60000000', crystal: '15000000', deuterium: '0' },
+        duration: 76000, target_level: planet.levels[request.building as keyof typeof planet.levels] + 1,
+        fuel: '0', capacity: '0', maximum_payload: '0',
+      },
+    } })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`)
+  await expect(page.getByRole('region', { name: 'Active construction' })).toBeVisible()
+  expect(requests).toEqual([])
+  const pane = page.getByRole('region', { name: 'Upgrade quote' })
+  for (const [name, cost] of [['Crystal Mine', '60'], ['Solar Plant', '80']]) {
+    await page.getByRole('link', { name: `Upgrade ${name}`, exact: true }).click()
+    await expect(pane.getByRole('heading', { name, exact: true })).toBeVisible()
+    await expect(pane.getByRole('button', { name: 'Metal details' }).locator('strong')).toHaveText(`Cost ${cost}`)
+    await expect(pane.getByRole('button', { name: 'Confirm upgrade' })).toBeDisabled()
+    await expect(pane.getByText('Loading building details…')).toHaveCount(0)
+  }
+  await page.goBack()
+  await expect(pane.getByRole('heading', { name: 'Crystal Mine', exact: true })).toBeVisible()
+  await expect(pane.getByRole('button', { name: 'Metal details' }).locator('strong')).toHaveText('Cost 60')
+  await page.getByRole('link', { name: 'Upgrade Fusion Reactor', exact: true }).click()
+  await expect(pane).toContainText('Unavailable in this universe.')
+  await expect(pane.getByText('Loading building details…')).toHaveCount(0)
+  expect(requests).not.toContain('FusionReactor')
+  await page.getByRole('link', { name: 'Upgrade Crystal Mine', exact: true }).click()
+  constructions.length = 0
+  await refreshGame(page)
+  await expect(pane.getByRole('button', { name: 'Confirm upgrade' })).toBeEnabled()
+  expect(requests).toContain('CrystalMine')
+  expect(requests).toContain('SolarPlant')
+  expect(purchases()).toBe(0)
+})

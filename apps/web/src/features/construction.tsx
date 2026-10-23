@@ -104,8 +104,9 @@ export function Economy({
     ? body.levels[selectedId as keyof typeof body.levels]
     : undefined
   const proposalIsCurrent =
-    !proposal ||
-    selectedLevel === undefined ||
+    proposal?.request.body === body.id &&
+    proposal.request.building === selectedId &&
+    selectedLevel !== undefined &&
     proposal.quote.target_level === selectedLevel + 1
   useEffect(() => {
     if (
@@ -113,7 +114,7 @@ export function Economy({
       detailOpen &&
       selectedId &&
       selectedLevel !== undefined &&
-      !active
+      active?.building !== selectedId
     )
       void preview(selectedId as UpgradeRequest['building'])
   }, [compact, detailOpen, selectedId, selectedLevel, active?.id, preview])
@@ -144,6 +145,8 @@ export function Economy({
                       work={progress}
                       model={actions.model}
                     />
+                  ) : selectedLevel === undefined ? (
+                    <Text>Unavailable in this universe.</Text>
                   ) : error ? (
                     <Text role="alert">
                       {error}
