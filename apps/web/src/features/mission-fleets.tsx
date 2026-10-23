@@ -1,4 +1,5 @@
-import { playerLabel } from './player-label'
+import { PlayerName } from './player-name'
+import { useProfileSource } from '../shell/player-profiles-context'
 import { useUniverseName } from '../shell/session-context'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { useState } from 'react'
@@ -106,6 +107,7 @@ export function MissionFleets({
 }) {
   const universeName = useUniverseName()
   const state = useStore(model.store)
+  useProfileSource(item ? null : { type: 'Incoming' }, view.viewer_revision)
   const now = currentServerTime(state)
   const fleets = view.missions.fleets.filter(
     (fleet) => !item || fleet.id === item,
@@ -259,7 +261,7 @@ export function MissionFleets({
               <div>
                 <Heading level={3}>
                   {fleet.mission} ·{' '}
-                  {playerLabel(fleet.sender, view.player_names)}
+                  <PlayerName player={fleet.sender} names={view.player_names} />
                 </Heading>
                 <Text>{incomingManifest(fleet.ships)}</Text>
               </div>

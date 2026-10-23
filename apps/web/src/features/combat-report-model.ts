@@ -117,6 +117,7 @@ export function combatReportModel(
     p.owner === viewer ? 'You' : playerLabel(p.owner, playerNames)
   const forces = participants.map((p) => ({
     key: identity(p),
+    owner: String(p.owner ?? ''),
     name: name(p),
     side: String(p.side),
     technology: Array.isArray(p.technology) ? (p.technology as number[]) : null,
@@ -128,6 +129,7 @@ export function combatReportModel(
     combined: round,
     forces: records(round.start).map((p) => ({
       key: identity(p),
+      owner: String(p.owner ?? ''),
       name: name(p),
       side: String(p.side),
       ...force(p, round.end),

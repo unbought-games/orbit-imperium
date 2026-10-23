@@ -1,5 +1,5 @@
 import { useUniverseName } from './session-context'
-import { useAccountIdentity } from '../client-model/use-oidc'
+import { PlayerName } from '../features/player-name'
 import {
   Orbit,
   Blocks,
@@ -54,7 +54,6 @@ export function Navigation({
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
-  const { identity } = useAccountIdentity()
   const dialog = useRef<HTMLDialogElement>(null)
   const opener = useRef<HTMLElement | null>(null)
   const menuId = useId()
@@ -231,11 +230,9 @@ export function Navigation({
           ))}
         </nav>
         <div className={styles.account}>
-          {identity && (
-            <span className={styles.username} aria-label="Username">
-              {identity.username}
-            </span>
-          )}
+          <span className={styles.username} aria-label="Username">
+            <PlayerName player={view.binding.player} fallback="You" />
+          </span>
           <Button
             variant="quiet"
             onClick={() => {

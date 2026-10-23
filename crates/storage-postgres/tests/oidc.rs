@@ -16,6 +16,7 @@ async fn oidc_mapping_enrollment_rename_and_logout_are_account_bound() {
         subject: subject.clone(),
         username,
         email_verified: false,
+        supporter_tier: None,
         session_id: Uuid::new_v4().to_string(),
         issued_at: unbought_auth::now(),
         expires_at: unbought_auth::now() + 300,
@@ -240,6 +241,7 @@ async fn oidc_display_name_reuse_and_swaps_preserve_subjects_and_local_credentia
             subject: format!("{subject}_{prefix}"),
             username: name.into(),
             email_verified: true,
+            supporter_tier: None,
             session_id: Uuid::new_v4().to_string(),
             issued_at: unbought_auth::now(),
             expires_at: unbought_auth::now() + 300,
@@ -305,6 +307,7 @@ fn refresh_fixture() -> unbought_auth::Tokens {
             subject: Uuid::new_v4().to_string(),
             username: format!("refresh_{}", Uuid::new_v4().simple()),
             email_verified: true,
+            supporter_tier: None,
             session_id: Uuid::new_v4().to_string(),
             issued_at: unbought_auth::now() - 61,
             expires_at: unbought_auth::now() + 300,
@@ -313,6 +316,84 @@ fn refresh_fixture() -> unbought_auth::Tokens {
         refresh_token: Some("old-refresh".into()),
         nonce: "fixture-nonce".into(),
         validated_at: unbought_auth::now() - 61,
+    }
+}
+
+#[tokio::test]
+async fn supporter_claims_follow_reauthentication_refresh_and_legacy_sessions() {
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = PgStore::connect(&url).await.unwrap();
+    store.migrate().await.unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let mut tokens = refresh_fixture();
+    tokens.validated_at = unbought_auth::now();
+    let mut previous = None;
+    let mut account = None;
+    for tier in [Some(1), Some(3), Some(2), None] {
+        tokens.identity.supporter_tier = tier;
+        let digest = Uuid::new_v4().to_string();
+        let session = store
+            .complete_oidc_login(tokens.clone(), &digest, "csrf", previous.clone())
+            .await
+            .unwrap();
+        if let Some(account) = account {
+            assert_eq!(session.account, account);
+        }
+        account = Some(session.account);
+        if let Some(old) = previous {
+            assert!(store.lookup_session(&old).await.unwrap().is_none());
+        }
+        let identity = store
+            .revalidate_oidc_for_test(&digest, &tokens.identity.issuer, "orbit", |_| async {
+                panic!("fresh login is already validated")
+            })
+            .await
+            .unwrap();
+        assert_eq!(identity.supporter_tier, tier);
+        previous = Some(digest);
+    }
+    let digest = previous.unwrap();
+    // Old serialized identities omit the new field; no migration or forced logout.
+    sqlx::query(
+        "UPDATE oidc_session SET payload=payload #- '{identity,supporter_tier}' WHERE digest=$1",
+    )
+    .bind(&digest)
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        store
+            .revalidate_oidc_for_test(&digest, &tokens.identity.issuer, "orbit", |_| async {
+                panic!("legacy snapshot is still current")
+            })
+            .await
+            .unwrap()
+            .supporter_tier,
+        None
+    );
+    for tier in [Some(3), None] {
+        sqlx::query("UPDATE oidc_session SET payload=jsonb_set(payload,'{validated_at}',to_jsonb($2::bigint)) WHERE digest=$1").bind(&digest).bind(unbought_auth::now() - 61).execute(&pool).await.unwrap();
+        let identity = store
+            .revalidate_oidc_for_test(
+                &digest,
+                &tokens.identity.issuer,
+                "orbit",
+                |mut tokens| async move {
+                    tokens.identity.supporter_tier = tier;
+                    tokens.validated_at = unbought_auth::now();
+                    Ok(tokens)
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(identity.supporter_tier, tier);
+        let persisted = store
+            .revalidate_oidc_for_test(&digest, &tokens.identity.issuer, "orbit", |_| async {
+                panic!("refreshed snapshot was persisted")
+            })
+            .await
+            .unwrap();
+        assert_eq!(persisted.supporter_tier, tier);
     }
 }
 
