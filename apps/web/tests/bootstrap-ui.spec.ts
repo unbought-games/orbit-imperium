@@ -881,6 +881,39 @@ for (const mode of ['local', 'oidc']) {
   })
 }
 
+test('homepage centers policies and highlights news and the GitHub repository', async ({ page }) => {
+  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
+    version: 1, signup_enabled: true, result: { status: 'anonymous' },
+  } }))
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: 'by unbought games', exact: true }))
+      .toHaveAttribute('href', 'https://unbought.games/')
+    const policies = page.getByRole('navigation', { name: 'Policies and support' })
+    const bounds = (await policies.boundingBox())!
+    expect(Math.abs(bounds.x + bounds.width / 2 - width / 2)).toBeLessThan(1)
+    await expect(policies.getByRole('link', { name: 'Support', exact: true }))
+      .toHaveAttribute('href', 'mailto:support@unbought.games')
+    const community = page.getByRole('navigation', { name: 'News and community' })
+    const news = community.getByRole('link', { name: 'What’s New', exact: true })
+    const repository = community.getByRole('link', { name: 'View on GitHub', exact: true })
+    await expect(news).toHaveAttribute('href', '/updates/index.html')
+    await expect(repository).toHaveAttribute('href', 'https://github.com/unbought-games/orbit-imperium')
+    await expect(repository.locator('svg')).toBeVisible()
+    const statementBounds = (await page.getByText('Every advantage is earned.', { exact: true }).boundingBox())!
+    const newsBounds = (await news.boundingBox())!
+    const repositoryBounds = (await repository.boundingBox())!
+    expect(newsBounds.y).toBeGreaterThanOrEqual(statementBounds.y + statementBounds.height)
+    expect(repositoryBounds.y).toBeGreaterThanOrEqual(newsBounds.y + newsBounds.height)
+    expect(await news.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
+      .toBeGreaterThan(await policies.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1440 || width === 390)
+      await page.screenshot({ path: `test-results/homepage-${width}.png`, fullPage: true })
+  }
+})
+
 test('starting beta and reset notice appear before public enrollment with approved policy links', async ({ page }) => {
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
     version: 1, signup_enabled: true, result: { status: 'anonymous' },
@@ -894,7 +927,7 @@ test('starting beta and reset notice appear before public enrollment with approv
     const policies = page.getByRole('navigation', { name: 'Policies and support' })
     for (const [name, destination] of [['Terms', 'terms'], ['Privacy', 'privacy'], ['Conduct', 'conduct']])
       await expect(policies.getByRole('link', { name, exact: true })).toHaveAttribute('href', `https://unbought.games/${destination}/`)
-    await expect(policies.getByRole('link', { name: 'Support', exact: true })).toHaveAttribute('href', 'mailto:ethan@unbought.games')
+    await expect(policies.getByRole('link', { name: 'Support', exact: true })).toHaveAttribute('href', 'mailto:support@unbought.games')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (path === '/signup') {
       const action = page.getByRole('button', { name: 'Create account', exact: true })
@@ -911,7 +944,7 @@ test('signed-in settings retain the beta notice and best-effort support target',
   await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
   const help = page.getByRole('region', { name: 'Help and conduct reports' })
   await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
-  await expect(help.getByRole('link', { name: 'ethan@unbought.games' })).toHaveAttribute('href', 'mailto:ethan@unbought.games')
+  await expect(help.getByRole('link', { name: 'support@unbought.games' })).toHaveAttribute('href', 'mailto:support@unbought.games')
   await expect(page.getByRole('navigation', { name: 'Policies and support' })).toHaveCount(0)
   await expect(page.getByRole('contentinfo')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

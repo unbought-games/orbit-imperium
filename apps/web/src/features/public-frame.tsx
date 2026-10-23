@@ -31,7 +31,9 @@ export function PublicFrame({
         ) : (
           <Brand className={styles.brand} to="/" />
         )}
-        <span className={styles.endorsement}>by unbought games</span>
+        <a className={styles.endorsement} href="https://unbought.games/">
+          by unbought games
+        </a>
       </header>
       <div className={styles.composition}>
         <div className={styles.world} aria-hidden="true">
@@ -83,10 +85,14 @@ export function PublicFrame({
       </div>
       <footer className={styles.footer}>
         <span>Deep games. Clear decisions. Fair competition.</span>
-        <span className={styles.footerNote}>An independent universe</span>
         <PolicyLinks />
-        <a href="/updates/index.html">What’s new</a>
-        <SourceLink />
+        <div className={styles.footerDetails}>
+          <span className={styles.footerNote}>An independent universe</span>
+          {variant !== 'landing' && (
+            <a href="/updates/index.html">What’s New</a>
+          )}
+          <SourceLink />
+        </div>
       </footer>
     </main>
   )
