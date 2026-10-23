@@ -118,7 +118,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
     await page.screenshot({path:`${screenshots}/combat-${width}.png`,fullPage:true})
   }
   await page.getByRole('button',{name:'Mark read',exact:true}).click();await expect.poll(async()=>(await detail())?.data.header.read).toBe(true)
-  await page.getByRole('button',{name:'Hide report',exact:true}).click();await expect.poll(async()=>(await detail())?.data.header.hidden).toBe(true)
+  await page.getByRole('button',{name:'Delete report',exact:true}).click();await expect.poll(async()=>(await detail())?.data.header.hidden).toBe(true)
   expect((await freshDetail()).data.payload).toEqual(historical)
   const returning=(await fresh()).missions.fleets[0];advance(returning.due_at);await expect.poll(async()=>(await view())?.missions.fleets.length??-1).toBe(0)
   await page.getByRole('button',{name:'Prepare harvest',exact:true}).click()
