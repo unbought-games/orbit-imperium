@@ -1,3 +1,5 @@
+import { useProfileSource } from '../shell/player-profiles-context'
+import { PlayerName } from './player-name'
 import { ChevronLeft, ChevronRight, RefreshCw, Orbit } from 'lucide-react'
 import { Link } from '../ui/link'
 import { Button } from '../ui/button'
@@ -73,6 +75,10 @@ export function Galaxy({
       : null
   const canAttack = model.view?.capabilities.some(
     (c) => c.capability === 'Attack' && c.enabled,
+  )
+  useProfileSource(
+    data ? { type: 'Galaxy', galaxy: data.galaxy, system: data.system } : null,
+    model.view?.viewer_revision,
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
@@ -166,6 +172,19 @@ export function Galaxy({
                 <GalaxyPosition
                   position={position}
                   playerNames={data.player_names}
+                  playerIdentity={
+                    position.body ? (
+                      <PlayerName
+                        player={position.body.owner}
+                        names={data.player_names}
+                        fallback={
+                          position.body.owner === model.binding?.player
+                            ? 'You'
+                            : undefined
+                        }
+                      />
+                    ) : undefined
+                  }
                   player={model.binding?.player}
                   canAttack={!!canAttack}
                   origin={origin}

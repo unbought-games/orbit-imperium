@@ -1,0 +1,245 @@
+.page {
+  max-width: 1280px;
+  margin: auto;
+  padding: 0 48px 48px;
+}
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 88px;
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.previewLabel,
+.label,
+.tierLabel,
+.legend {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.previewLabel {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 12px;
+}
+.intro {
+  padding: 48px 0 36px;
+}
+.title {
+  font: 400 clamp(2.5rem, 5vw, 4rem) / 1.1 var(--font-editorial);
+  letter-spacing: -0.035em;
+  color: var(--champagne-light);
+  margin-bottom: 16px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 40px;
+}
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.controls h2 {
+  font-size: var(--font-size-base);
+}
+.controls fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.controls legend {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  min-height: 68px;
+}
+.choice strong,
+.choice small {
+  display: block;
+}
+.choice strong {
+  font-weight: 500;
+}
+.choice small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  margin-top: 4px;
+}
+.choice[aria-pressed='true'],
+.tier[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: #cbb68d0c;
+}
+.swatches {
+  display: flex;
+  gap: 4px;
+}
+.swatches i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.note {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  margin: 0;
+}
+.examples {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+.tiers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.tier {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 14px;
+  padding: 16px;
+  text-align: left;
+}
+.tierLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-accent);
+  border-radius: 50%;
+  font: 24px var(--font-editorial);
+  color: var(--accent);
+}
+.accountName {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+}
+.accountName > span:nth-child(2) {
+  font-size: var(--font-size-lg);
+}
+.accountName small {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.account > svg {
+  color: var(--text-muted);
+}
+.galaxy {
+  padding-top: 8px;
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.sectionHeader h2 {
+  font: 400 1.65rem var(--font-editorial);
+  color: var(--champagne-light);
+}
+.sectionHeader > span {
+  font-size: var(--font-size-sm);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.legend {
+  display: flex;
+  justify-content: space-between;
+  border-block: 1px solid var(--border);
+  padding-block: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.galaxy > .note {
+  margin-top: 16px;
+}
+@media (max-width: 900px) {
+  .page {
+    padding-inline: 24px;
+  }
+  .workspace {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 24px;
+  }
+  .tiers {
+    grid-template-columns: 1fr;
+  }
+  .tier {
+    flex-direction: row;
+    align-items: center;
+  }
+  .tierLabel {
+    width: 110px;
+    flex-shrink: 0;
+  }
+}
+@media (max-width: 650px) {
+  .page {
+    padding-inline: 16px;
+  }
+  .masthead {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-block: 16px;
+  }
+  .intro {
+    padding-block: 32px;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .controls {
+    gap: 16px;
+  }
+  .controls fieldset {
+    grid-template-columns: 1fr 1fr;
+  }
+  .choice {
+    flex-wrap: wrap;
+  }
+  .account {
+    padding: 16px;
+  }
+}

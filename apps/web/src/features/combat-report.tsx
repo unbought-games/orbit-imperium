@@ -1,3 +1,4 @@
+import { PlayerName } from './player-name'
 import type { PlayerNames } from './player-label'
 import { Heading } from '../ui/typography'
 import { NumberValue } from '../ui/number-value'
@@ -129,7 +130,9 @@ function ForceCard({ force }: { force: CombatForce }) {
     >
       <header className={styles.forceHeader}>
         <span className={styles.side}>{force.side}</span>
-        <h3>{force.name}</h3>
+        <h3>
+          <PlayerName player={force.owner} fallback={force.name} />
+        </h3>
       </header>
       <div className={styles.strength}>
         <strong>
@@ -250,7 +253,8 @@ export function CombatReport({
                 {round.forces.map((force) => (
                   <span key={force.key}>
                     <span className={styles.side}>
-                      {force.side} · {force.name}
+                      {force.side} ·{' '}
+                      <PlayerName player={force.owner} fallback={force.name} />
                     </span>
                     <span>
                       <Amount value={force.start} /> →{' '}
@@ -285,7 +289,8 @@ export function CombatReport({
                     aria-label={`Round ${String(round.number)} ${force.side} ${force.name}`}
                   >
                     <h4>
-                      {force.side} · {force.name}
+                      {force.side} ·{' '}
+                      <PlayerName player={force.owner} fallback={force.name} />
                     </h4>
                     {force.fire ? (
                       <>

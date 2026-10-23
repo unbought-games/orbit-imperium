@@ -1,4 +1,4 @@
-import { bindAnalytics } from './analytics'
+import { bindAnalytics } from './optional-services'
 export interface OidcConfig {
   mode: 'oidc' | 'local'
   universes: { universe: string; name: string }[]
@@ -9,6 +9,8 @@ export interface OidcConfig {
 export interface OidcIdentity {
   username: string
   email_verified: boolean
+  expires_at?: number
+  supporter_tier?: number
 }
 
 export const oidcHttp = {
@@ -17,9 +19,14 @@ export const oidcHttp = {
     if (!response.ok) throw new Error('Unable to load sign-in options.')
     return response.json()
   },
-  async identity(): Promise<OidcIdentity | null> {
-    const response = await fetch('/api/auth/identity')
-    return response.ok ? response.json() : null
+  async identity(signal?: AbortSignal): Promise<OidcIdentity | null> {
+    const response = await fetch('/api/auth/identity', {
+      signal,
+      cache: 'no-store',
+    })
+    if (response.status === 401 || response.status === 403) return null
+    if (!response.ok) throw new Error('Unable to refresh account identity.')
+    return response.json()
   },
   async enroll(universe: string): Promise<void> {
     const session = await fetch('/api/v1/session').then((r) => r.json())
@@ -31,11 +38,7 @@ export const oidcHttp = {
       },
       body: JSON.stringify({ universe }),
     })
-    if (result.ok)
-      await Promise.race([
-        bindAnalytics(),
-        new Promise((resolve) => setTimeout(resolve, 1200)),
-      ])
+    if (result.ok) bindAnalytics()
     if (!result.ok)
       throw new Error(
         'This universe is closed, full, or temporarily unavailable. Your account is ready; choose another universe or try later.',

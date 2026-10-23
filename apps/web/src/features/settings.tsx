@@ -5,9 +5,12 @@ import { Button } from '../ui/button'
 import styles from './settings.module.css'
 import { TaskHeader } from '../ui/task-header'
 import { BetaNotice } from '../ui/beta-notice'
+import { usePlayerDisplay } from '../shell/player-profiles-context'
+import { PlayerName } from './player-name'
 export function SettingsScreen() {
   const { view, model, logout, universeName } = useGameScreen()
   const settings = model.settings
+  const identity = usePlayerDisplay(view.binding.player)
   return (
     <Section className={styles.screen}>
       <TaskHeader title="Settings" />
@@ -32,6 +35,21 @@ export function SettingsScreen() {
         <Text>Universe settings unavailable. Reconnect to try again.</Text>
       )}
       <dl className={styles.identity}>
+        {identity && (
+          <div>
+            <dt>Account</dt>
+            <dd>
+              <PlayerName player={view.binding.player} fallback="You" />
+            </dd>
+            {identity.supporter_tier && (
+              <dd>
+                <Text>
+                  Supporter · Thank you for supporting unbought games.
+                </Text>
+              </dd>
+            )}
+          </div>
+        )}
         <div>
           <dt>Membership</dt>
           <dd>{view.binding.player}</dd>

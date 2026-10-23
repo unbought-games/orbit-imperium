@@ -1348,3 +1348,41 @@ test('catalog item links open natively in a new tab without changing the origina
   expect(popupFixture.sent).toEqual([])
   await tab.close()
 })
+
+const ionCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-9.json', 'utf8')).catalog
+
+test('Ion Technology shows prerequisite progress, existing artwork, costs and submits research', async ({ page }) => {
+  const research: { research: S['ResearchId3']; level: number }[] = [
+    { research: 'EnergyTechnology', level: 4 },
+    { research: 'LaserTechnology', level: 4 },
+    { research: 'IonTechnology', level: 0 },
+  ]
+  const { sent, planet } = await setup(page, false, { metal: '1000000000', crystal: '300000000', deuterium: '100000000' }, { catalog: ionCatalog, research })
+  planet.levels.ResearchLab = 4
+  await refreshGame(page)
+  await navigate(page, 'Research')
+  await page.getByRole('link', { name: 'Research Ion Technology', exact: true }).click()
+  const pane = page.getByRole('region', { name: 'Progression quote' })
+  await expect(pane).toContainText('Ion provides no direct combat bonus or demolition discount.')
+  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Research Lab')
+  await expect(dialog).toContainText('Energy Technology')
+  await expect(dialog).toContainText('Laser Technology')
+  await expect(dialog).toContainText('4 / 5')
+  await dialog.getByRole('button', { name: 'Close technology' }).click()
+  research[1].level = 5
+  await refreshGame(page)
+  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  await expect(dialog).toContainText('5 / 5 · Met')
+  await dialog.getByRole('button', { name: 'Close technology' }).click()
+  await expect(pane.getByRole('button', { name: 'Metal details' })).toContainText('1,000')
+  await expect(pane.getByRole('button', { name: 'Crystal details' })).toContainText('300')
+  await expect(pane.getByRole('button', { name: 'Deuterium details' })).toContainText('100')
+  const art = pane.locator('img').first()
+  await expect(art).toHaveAttribute('src', /ion-technology/)
+  await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
+  await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
+  await expect.poll(() => sent.length).toBe(1)
+  expect(sent[0].command).toMatchObject({ type: 'StartResearch', research: 'IonTechnology', host: body.id })
+})

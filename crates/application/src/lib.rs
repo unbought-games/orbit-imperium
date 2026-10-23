@@ -1,7 +1,9 @@
 pub use orbit_engine::{
     AccountId, Actor, BodyId, CommandId, Epoch, PlayerId, UniverseId, WorkerId,
 };
+mod player_profiles;
 mod ports;
+pub use player_profiles::*;
 mod snapshot;
 pub use snapshot::*;
 mod scheduling;

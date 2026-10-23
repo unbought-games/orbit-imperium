@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Shield,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { components } from '../contracts'
 import type { DispatchDraft } from './missions'
 import { Button } from '../ui/button'
@@ -24,6 +25,7 @@ export function GalaxyPosition({
   position,
   player,
   playerNames,
+  playerIdentity,
   canAttack,
   colony,
   origin,
@@ -31,6 +33,7 @@ export function GalaxyPosition({
 }: {
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
+  playerIdentity?: ReactNode
   player: string | undefined
   canAttack: boolean
   colony: ReturnType<typeof colonizationStatus>
@@ -71,7 +74,8 @@ export function GalaxyPosition({
           {body && (
             <>
               <span className={owned ? styles.yourPlayer : styles.player}>
-                {owned ? 'You' : playerLabel(body.owner, playerNames)}
+                {playerIdentity ??
+                  (owned ? 'You' : playerLabel(body.owner, playerNames))}
               </span>
               <small>
                 {body.inactivity === 'Active'
