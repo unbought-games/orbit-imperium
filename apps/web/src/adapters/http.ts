@@ -1,4 +1,4 @@
-import { resetAnalytics } from './analytics'
+import { resetAnalytics } from './optional-services'
 import type { Bootstrap } from '../client-model/bootstrap'
 import { validate } from '../client-model/schema'
 import type {
