@@ -233,8 +233,8 @@ test('empire shows every body, its own work and resources, and directional fleet
   await expect(traffic).toContainText('1 incoming attack detected')
   await expect(traffic).toContainText('Ship composition unknown')
   await expect(
-    page.getByRole('region', { name: 'Empire research' }),
-  ).toContainText('Host Planet [1:371:4]')
+    page.getByRole('region', { name: 'Empire research' }).getByRole('link', { name: /Energy Technology/ }),
+  ).toHaveAccessibleDescription('Host Planet [1:371:4]')
   await expect(colony).not.toContainText('Energy Technology')
   await page.getByText('Empire orbital network', { exact: true }).click()
   await page
@@ -244,7 +244,7 @@ test('empire shows every body, its own work and resources, and directional fleet
   await expect(colony).toContainText('Command focus')
   await expect(page.getByRole('article')).toHaveCount(4)
   await colony.getByRole('link', { name: 'Dispatch fleet' }).click()
-  await expect(page).toHaveURL(new RegExp(`/dispatch\\?body=${id(6)}$`))
+  await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/dispatch$`))
   expect(purchases()).toBe(0)
 })
 

@@ -1,3 +1,7 @@
+import { Link } from '../../ui/link'
+import { useUniverseName } from '../../shell/session-context'
+import { routeTarget } from '../../shell/route-target'
+import { catalogPage } from '../../shell/catalog-routes'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
@@ -30,6 +34,7 @@ export function TechnologyDialog({
   onClose,
   ...props
 }: ProgressionProps & { entry: Entry; onClose: () => void }) {
+  const universeName = useUniverseName()
   const ref = useRef<HTMLDialogElement>(null)
   const [tab, setTab] = useState('Techtree')
   useEffect(() => {
@@ -51,7 +56,17 @@ export function TechnologyDialog({
       <li key={identity}>
         <div className={met ? styles.met : styles.missing}>
           <CatalogImage art={catalogContent(key).art} />
-          <strong>{label(key.id)}</strong>
+          <Link
+            {...routeTarget(
+              universeName,
+              catalogPage(key),
+              props.body.id,
+              key.id,
+            )}
+            onClick={onClose}
+          >
+            {label(key.id)}
+          </Link>
           {required !== null ? (
             <span>
               {level} / {required} · {met ? 'Met' : 'Required'}
@@ -156,7 +171,19 @@ export function TechnologyDialog({
               {applications.map((x) => (
                 <section key={`${x.key.kind}:${x.key.id}`}>
                   <CatalogImage art={catalogContent(x.key).art} />
-                  <h3>{label(x.key.id)}</h3>
+                  <h3>
+                    <Link
+                      {...routeTarget(
+                        universeName,
+                        catalogPage(x.key),
+                        props.body.id,
+                        x.key.id,
+                      )}
+                      onClick={onClose}
+                    >
+                      {label(x.key.id)}
+                    </Link>
+                  </h3>
                   <p>
                     {x.enabled
                       ? 'Available in this universe'

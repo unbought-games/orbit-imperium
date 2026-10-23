@@ -102,7 +102,6 @@ export function Navigation({
             : undefined
         }
         preload="intent"
-        viewTransition
         data-analytics={`navigate_${p}`}
         key={p}
         {...routeTarget(universeName, p, body)}

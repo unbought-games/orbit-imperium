@@ -81,7 +81,8 @@ export function SettingsScreen() {
       )}
       <Heading level={2}>Display & accessibility</Heading>
       <Text>
-        Display follows your device’s text size and reduced-motion preferences.
+        Display follows your device’s text size. UI changes appear without
+        animation.
       </Text>
       <section className={styles.session} aria-label="Session actions">
         <Heading level={2}>Current session</Heading>

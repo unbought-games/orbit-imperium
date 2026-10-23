@@ -20,13 +20,13 @@ it('rejects foreign universe and explicit inaccessible planets without a fallbac
       body: null,
     })
 })
-it('uses the URL funding context for player-wide research and the default only when absent', () => {
+it('uses explicit planet context for research and rejects absent context', () => {
   expect(
     resolveDestination({ universe: 'u', page: 'research', body: 'b' }, view),
   ).toMatchObject({ page: 'research', body: 'b', available: true })
   expect(
     resolveDestination({ universe: 'u', page: 'research' }, view),
-  ).toMatchObject({ body: 'a', available: true })
+  ).toMatchObject({ body: null, available: false })
 })
 it('rejects unsupported capability routes and unknown destinations', () => {
   for (const page of ['fleets', 'shipyard', 'galaxy', null] as const)
@@ -48,12 +48,14 @@ it('validates retained-world fleet/report detail IDs', () => {
     ],
   } as unknown as BoundView
   expect(
-    resolveDestination({ universe: 'u', page: 'fleets', item: 'f' }, legacy)
-      .available,
+    resolveDestination(
+      { universe: 'u', page: 'fleets', body: 'a', item: 'f' },
+      legacy,
+    ).available,
   ).toBe(true)
   expect(
     resolveDestination(
-      { universe: 'u', page: 'fleets', item: 'foreign' },
+      { universe: 'u', page: 'fleets', body: 'a', item: 'foreign' },
       legacy,
     ).available,
   ).toBe(false)
@@ -102,13 +104,13 @@ it('enables real fleet routes only for the world profile and keeps report detail
   ).toBe(true)
   expect(
     resolveDestination(
-      { universe: 'u', page: 'fleets', item: 'active-fleet' },
+      { universe: 'u', page: 'fleets', body: 'a', item: 'active-fleet' },
       world,
     ).available,
   ).toBe(true)
   expect(
     resolveDestination(
-      { universe: 'u', page: 'fleets', item: 'foreign' },
+      { universe: 'u', page: 'fleets', body: 'a', item: 'foreign' },
       world,
     ).available,
   ).toBe(false)

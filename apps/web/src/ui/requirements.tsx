@@ -4,6 +4,7 @@ import { Text } from './typography'
 import { Link } from './link'
 import type { components } from '../contracts'
 import { label } from './format'
+import { catalogPage } from '../shell/catalog-routes'
 import { routeTarget } from '../shell/route-target'
 type S = components['schemas']
 export function Requirements({
@@ -24,17 +25,14 @@ export function Requirements({
           r.type === 'BodyBuilding'
             ? body.levels[r.building as keyof typeof body.levels]
             : view.research.find((x) => x.research === r.research)?.level
-        const page =
+        const page = catalogPage(
           r.type === 'BodyBuilding'
-            ? ['RoboticsFactory', 'ResearchLab', 'Shipyard'].includes(
-                r.building,
-              )
-              ? 'facilities'
-              : 'resources'
-            : 'research'
+            ? { kind: 'Building', id: r.building }
+            : { kind: 'Research', id: r.research },
+        )
         return (
           <li key={i}>
-            <Link {...routeTarget(universeName, page, body.id)}>
+            <Link {...routeTarget(universeName, page, body.id, id)}>
               {label(id)} {r.level}
             </Link>
             <span>

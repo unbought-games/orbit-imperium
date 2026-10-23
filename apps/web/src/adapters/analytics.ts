@@ -31,6 +31,16 @@ const routes = [
   '/u/:universe/b/:body/facilities',
   '/u/:universe/b/:body/shipyard',
   '/u/:universe/b/:body/defense',
+  '/u/:universe/b/:body/resources/:item',
+  '/u/:universe/b/:body/facilities/:item',
+  '/u/:universe/b/:body/research/:item',
+  '/u/:universe/b/:body/shipyard/:item',
+  '/u/:universe/b/:body/defense/:item',
+  '/u/:universe/b/:body/research',
+  '/u/:universe/b/:body/galaxy',
+  '/u/:universe/b/:body/dispatch',
+  '/u/:universe/b/:body/fleets',
+  '/u/:universe/b/:body/fleets/:item',
 ]
 function disabled() {
   try {

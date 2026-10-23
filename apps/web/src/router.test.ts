@@ -59,17 +59,17 @@ it('builds browser-history links and preserves funding context', () => {
     router.buildLocation(routeTarget('u', 'resources', 'earth')).href,
   ).toBe('/u/u/b/earth/resources')
   expect(router.buildLocation(routeTarget('u', 'research', 'mars')).href).toBe(
-    '/u/u/research?body=mars',
+    '/u/u/b/mars/research',
   )
   expect(
     router.buildLocation(routeTarget('u', 'fleets', 'mars', 'fleet-1')).href,
-  ).toBe('/u/u/fleets/fleet-1?body=mars')
+  ).toBe('/u/u/b/mars/fleets/fleet-1')
 })
 it('unknown paths do not become gameplay pages', async () => {
   for (const href of [
     '/unknown',
     '/u/u/colonize',
-    '/u/u/b/a/resources/extra',
+    '/u/u/b/a/resources/extra/unknown',
     '/u/u/resources',
   ]) {
     const router = createAppRouter({

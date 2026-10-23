@@ -1,3 +1,7 @@
+import {
+  useCatalogSelection,
+  type CatalogSelection,
+} from '../shell/use-catalog-selection'
 import { Galaxy } from './galaxy'
 import { Dispatch, MissionFleets } from './missions'
 import { Reports } from './reports'
@@ -26,12 +30,14 @@ export function OverviewScreen() {
 }
 export function EconomyScreen() {
   const { view, body, route, model } = useGameScreen()
+  const selection = useCatalogSelection()
   if (!body) return null
-  if (view.protocol === 2) return <OperationsScreen />
+  if (view.protocol === 2) return <OperationsScreen selection={selection} />
   return (
     <>
       <Progression
         key={`${bindingKey(view.binding)}:${body.id}:${route.page}`}
+        selection={selection}
         coordinator={model}
         view={view}
         body={view.bodies.find((b) => b.id === body.id)!}
@@ -40,7 +46,9 @@ export function EconomyScreen() {
     </>
   )
 }
-export function OperationsScreen() {
+export function OperationsScreen({
+  selection,
+}: { selection?: CatalogSelection } = {}) {
   const {
     view,
     body,
@@ -125,6 +133,7 @@ export function OperationsScreen() {
         view={view}
         body={view.bodies.find((b) => b.id === body.id)!}
         commands={commands}
+        selection={selection}
         page={route.page}
         item={route.item}
       />

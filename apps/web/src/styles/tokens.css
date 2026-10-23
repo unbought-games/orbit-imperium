@@ -1,9 +1,5 @@
 :root {
   --font-editorial: Georgia, 'Times New Roman', serif;
-  --motion-press: 100ms;
-  --motion-enter: 280ms;
-  --motion-world: 480ms;
-  --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1);
   /* Champagne + ice: shared with the orbital crest SVG sources. */
   --champagne-light: #f4ead2;
   --champagne: #cbb68d;

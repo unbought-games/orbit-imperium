@@ -5,9 +5,8 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { useGameSession } from './session-context'
-import { ConstructionNotice } from '../ui/construction-notice'
 import { ScreenContext } from './screen-context'
-import { resolveNamedDestination } from './routes'
+import { bodyPages, resolveNamedDestination } from './routes'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
@@ -25,8 +24,6 @@ import { Popover } from '../ui/popover'
 import { WifiOff } from 'lucide-react'
 export function GameShell() {
   const { commands, view, model, logout, universeName } = useGameSession()
-  // Transition snapshots are visible only while this exact identity owns the shell.
-  const surfaceName = `game-${view.binding.account}-${view.binding.player}-${view.binding.universe}-${view.binding.epoch}`
   const navigate = useNavigate()
   const [dispatchDraft, setDispatchDraft] = useState<
     (DispatchDraft & { origin: string }) | null
@@ -44,7 +41,12 @@ export function GameShell() {
     {
       universe: params.universe,
       page: leaf.staticData.page ?? null,
-      body: params.body ?? search.body,
+      body:
+        params.body ??
+        search.body ??
+        (bodyPages.includes(leaf.staticData.page!)
+          ? view.bodies[0]?.id
+          : undefined),
       item: params.item,
     },
     view,
@@ -58,8 +60,9 @@ export function GameShell() {
     if (
       available &&
       body &&
-      !params.body &&
-      (page === 'overview' || !search.body)
+      ((!params.body && bodyPages.includes(page)) ||
+        (!params.body && !search.body) ||
+        (!!params.body && !!search.body && bodyPages.includes(page)))
     ) {
       void navigate({
         ...routeTarget(universeName, page, body.id, route.item ?? undefined),
@@ -100,8 +103,12 @@ export function GameShell() {
   function selectBody(id: string) {
     void model.recordPresence('BodyVisit', id)
     void navigate({
-      ...routeTarget(universeName, available ? page : 'overview', id),
-      viewTransition: true,
+      ...routeTarget(
+        universeName,
+        available ? page : 'overview',
+        id,
+        available ? (route.item ?? undefined) : undefined,
+      ),
     })
   }
   const hasFeatureHeading =
@@ -137,11 +144,6 @@ export function GameShell() {
   )
   return (
     <div className={styles['game-shell']}>
-      <style data-game-surface={surfaceName}>{`
-        ::view-transition-group(${surfaceName}) { visibility: visible; }
-        ::view-transition-old(${surfaceName}) { animation: surface-out var(--motion-enter) var(--ease-settle) both; }
-        ::view-transition-new(${surfaceName}) { animation: surface-in var(--motion-enter) var(--ease-settle) both; }
-      `}</style>
       <div className={styles['shell-columns']}>
         <div className={styles.header}>
           <header className={styles.identity}>
@@ -212,12 +214,7 @@ export function GameShell() {
               Connection interrupted — awaiting server confirmation.
             </p>
           )}
-          <main
-            id="main"
-            tabIndex={-1}
-            className={styles['work-area']}
-            style={{ viewTransitionName: surfaceName }}
-          >
+          <main id="main" tabIndex={-1} className={styles['work-area']}>
             <div
               className={
                 hasFeatureHeading ? styles.routeHeading : styles['page-heading']
@@ -257,9 +254,6 @@ export function GameShell() {
           </main>
         </div>
       </div>
-      {page !== 'overview' && (
-        <ConstructionNotice model={model} body={body?.id} />
-      )}
     </div>
   )
 }

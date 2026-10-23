@@ -1,4 +1,9 @@
-import type { ComponentPropsWithRef, CSSProperties, ReactNode } from 'react'
+import type {
+  HTMLAttributes,
+  CSSProperties,
+  ReactNode,
+  MouseEventHandler,
+} from 'react'
 import { useId } from 'react'
 import { ArrowDown, ArrowUp, Hammer, FlaskConical } from 'lucide-react'
 import { classes } from './classes'
@@ -97,6 +102,7 @@ export function ImageCatalog({
   )
 }
 export function ImageTile({
+  href,
   title,
   level,
   art,
@@ -110,7 +116,10 @@ export function ImageTile({
   progress,
   onQuickUpgrade,
   ...props
-}: Omit<ComponentPropsWithRef<'button'>, 'title'> & {
+}: Omit<HTMLAttributes<HTMLElement>, 'title'> & {
+  disabled?: boolean
+  href?: string
+  onClick?: MouseEventHandler<HTMLElement>
   title: string
   level: number | string
   art: CatalogArt
@@ -130,10 +139,12 @@ export function ImageTile({
   } | null
 }) {
   const progressId = useId()
+  const Tile = href ? 'a' : 'button'
   return (
     <div className={styles.tileContainer}>
-      <button
-        type="button"
+      <Tile
+        href={href}
+        type={href ? undefined : 'button'}
         className={classes(
           styles.tile,
           selected && styles.selected,
@@ -143,7 +154,8 @@ export function ImageTile({
           !!progress && styles.working,
           className,
         )}
-        aria-pressed={selected}
+        aria-pressed={href ? undefined : selected}
+        aria-current={href && selected ? 'page' : undefined}
         aria-describedby={progress ? progressId : undefined}
         title={
           props.disabled
@@ -151,7 +163,7 @@ export function ImageTile({
             : `${title} · ${countLabel} ${level}${locked ? ' · prerequisites required' : ''}${unaffordable ? ' · Not enough resources' : ''}`
         }
         {...props}
-        disabled={props.disabled && !inspectable}
+        disabled={href ? undefined : props.disabled && !inspectable}
       >
         <span className={styles.artwork}>
           <CatalogImage art={art} sizes="100px" loading="lazy" />
@@ -212,7 +224,7 @@ export function ImageTile({
             </small>
           )}
         </span>
-      </button>
+      </Tile>
       {onQuickUpgrade && (
         <button
           type="button"

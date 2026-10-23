@@ -28,10 +28,21 @@ import { Route as UUniverseFleetsItemRouteImport } from './routes/u.$universe.fl
 import { Route as UUniverseReportsIndexRouteImport } from './routes/u.$universe.reports.index'
 import { Route as UUniverseReportsItemRouteImport } from './routes/u.$universe.reports.$item'
 import { Route as UUniverseBBodyDefenseRouteImport } from './routes/u.$universe.b.$body.defense'
+import { Route as UUniverseBBodyDispatchRouteImport } from './routes/u.$universe.b.$body.dispatch'
 import { Route as UUniverseBBodyFacilitiesRouteImport } from './routes/u.$universe.b.$body.facilities'
+import { Route as UUniverseBBodyFleetsRouteImport } from './routes/u.$universe.b.$body.fleets'
+import { Route as UUniverseBBodyGalaxyRouteImport } from './routes/u.$universe.b.$body.galaxy'
 import { Route as UUniverseBBodyOverviewRouteImport } from './routes/u.$universe.b.$body.overview'
+import { Route as UUniverseBBodyResearchRouteImport } from './routes/u.$universe.b.$body.research'
 import { Route as UUniverseBBodyResourcesRouteImport } from './routes/u.$universe.b.$body.resources'
 import { Route as UUniverseBBodyShipyardRouteImport } from './routes/u.$universe.b.$body.shipyard'
+import { Route as UUniverseBBodyDefenseItemRouteImport } from './routes/u.$universe.b.$body.defense.$item'
+import { Route as UUniverseBBodyFacilitiesItemRouteImport } from './routes/u.$universe.b.$body.facilities.$item'
+import { Route as UUniverseBBodyFleetsIndexRouteImport } from './routes/u.$universe.b.$body.fleets.index'
+import { Route as UUniverseBBodyFleetsItemRouteImport } from './routes/u.$universe.b.$body.fleets.$item'
+import { Route as UUniverseBBodyResearchItemRouteImport } from './routes/u.$universe.b.$body.research.$item'
+import { Route as UUniverseBBodyResourcesItemRouteImport } from './routes/u.$universe.b.$body.resources.$item'
+import { Route as UUniverseBBodyShipyardItemRouteImport } from './routes/u.$universe.b.$body.shipyard.$item'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -128,15 +139,35 @@ const UUniverseBBodyDefenseRoute = UUniverseBBodyDefenseRouteImport.update({
   path: '/b/$body/defense',
   getParentRoute: () => UUniverseRoute,
 } as any)
+const UUniverseBBodyDispatchRoute = UUniverseBBodyDispatchRouteImport.update({
+  id: '/b/$body/dispatch',
+  path: '/b/$body/dispatch',
+  getParentRoute: () => UUniverseRoute,
+} as any)
 const UUniverseBBodyFacilitiesRoute =
   UUniverseBBodyFacilitiesRouteImport.update({
     id: '/b/$body/facilities',
     path: '/b/$body/facilities',
     getParentRoute: () => UUniverseRoute,
   } as any)
+const UUniverseBBodyFleetsRoute = UUniverseBBodyFleetsRouteImport.update({
+  id: '/b/$body/fleets',
+  path: '/b/$body/fleets',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBBodyGalaxyRoute = UUniverseBBodyGalaxyRouteImport.update({
+  id: '/b/$body/galaxy',
+  path: '/b/$body/galaxy',
+  getParentRoute: () => UUniverseRoute,
+} as any)
 const UUniverseBBodyOverviewRoute = UUniverseBBodyOverviewRouteImport.update({
   id: '/b/$body/overview',
   path: '/b/$body/overview',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBBodyResearchRoute = UUniverseBBodyResearchRouteImport.update({
+  id: '/b/$body/research',
+  path: '/b/$body/research',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseBBodyResourcesRoute = UUniverseBBodyResourcesRouteImport.update({
@@ -149,6 +180,48 @@ const UUniverseBBodyShipyardRoute = UUniverseBBodyShipyardRouteImport.update({
   path: '/b/$body/shipyard',
   getParentRoute: () => UUniverseRoute,
 } as any)
+const UUniverseBBodyDefenseItemRoute =
+  UUniverseBBodyDefenseItemRouteImport.update({
+    id: '/$item',
+    path: '/$item',
+    getParentRoute: () => UUniverseBBodyDefenseRoute,
+  } as any)
+const UUniverseBBodyFacilitiesItemRoute =
+  UUniverseBBodyFacilitiesItemRouteImport.update({
+    id: '/$item',
+    path: '/$item',
+    getParentRoute: () => UUniverseBBodyFacilitiesRoute,
+  } as any)
+const UUniverseBBodyFleetsIndexRoute =
+  UUniverseBBodyFleetsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => UUniverseBBodyFleetsRoute,
+  } as any)
+const UUniverseBBodyFleetsItemRoute =
+  UUniverseBBodyFleetsItemRouteImport.update({
+    id: '/$item',
+    path: '/$item',
+    getParentRoute: () => UUniverseBBodyFleetsRoute,
+  } as any)
+const UUniverseBBodyResearchItemRoute =
+  UUniverseBBodyResearchItemRouteImport.update({
+    id: '/$item',
+    path: '/$item',
+    getParentRoute: () => UUniverseBBodyResearchRoute,
+  } as any)
+const UUniverseBBodyResourcesItemRoute =
+  UUniverseBBodyResourcesItemRouteImport.update({
+    id: '/$item',
+    path: '/$item',
+    getParentRoute: () => UUniverseBBodyResourcesRoute,
+  } as any)
+const UUniverseBBodyShipyardItemRoute =
+  UUniverseBBodyShipyardItemRouteImport.update({
+    id: '/$item',
+    path: '/$item',
+    getParentRoute: () => UUniverseBBodyShipyardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -169,11 +242,22 @@ export interface FileRoutesByFullPath {
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
-  '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRoute
-  '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRoute
+  '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
+  '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
+  '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
+  '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
+  '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
-  '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRoute
-  '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRoute
+  '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
+  '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
+  '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
+  '/u/$universe/b/$body/facilities/$item': typeof UUniverseBBodyFacilitiesItemRoute
+  '/u/$universe/b/$body/fleets/$item': typeof UUniverseBBodyFleetsItemRoute
+  '/u/$universe/b/$body/research/$item': typeof UUniverseBBodyResearchItemRoute
+  '/u/$universe/b/$body/resources/$item': typeof UUniverseBBodyResourcesItemRoute
+  '/u/$universe/b/$body/shipyard/$item': typeof UUniverseBBodyShipyardItemRoute
+  '/u/$universe/b/$body/fleets/': typeof UUniverseBBodyFleetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -191,11 +275,21 @@ export interface FileRoutesByTo {
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports': typeof UUniverseReportsIndexRoute
-  '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRoute
-  '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRoute
+  '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
+  '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
+  '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
+  '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
-  '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRoute
-  '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRoute
+  '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
+  '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
+  '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
+  '/u/$universe/b/$body/facilities/$item': typeof UUniverseBBodyFacilitiesItemRoute
+  '/u/$universe/b/$body/fleets/$item': typeof UUniverseBBodyFleetsItemRoute
+  '/u/$universe/b/$body/research/$item': typeof UUniverseBBodyResearchItemRoute
+  '/u/$universe/b/$body/resources/$item': typeof UUniverseBBodyResourcesItemRoute
+  '/u/$universe/b/$body/shipyard/$item': typeof UUniverseBBodyShipyardItemRoute
+  '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -217,11 +311,22 @@ export interface FileRoutesById {
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
-  '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRoute
-  '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRoute
+  '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
+  '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
+  '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
+  '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
+  '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
-  '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRoute
-  '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRoute
+  '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
+  '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
+  '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
+  '/u/$universe/b/$body/facilities/$item': typeof UUniverseBBodyFacilitiesItemRoute
+  '/u/$universe/b/$body/fleets/$item': typeof UUniverseBBodyFleetsItemRoute
+  '/u/$universe/b/$body/research/$item': typeof UUniverseBBodyResearchItemRoute
+  '/u/$universe/b/$body/resources/$item': typeof UUniverseBBodyResourcesItemRoute
+  '/u/$universe/b/$body/shipyard/$item': typeof UUniverseBBodyShipyardItemRoute
+  '/u/$universe/b/$body/fleets/': typeof UUniverseBBodyFleetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -245,10 +350,21 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
     | '/u/$universe/b/$body/defense'
+    | '/u/$universe/b/$body/dispatch'
     | '/u/$universe/b/$body/facilities'
+    | '/u/$universe/b/$body/fleets'
+    | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/overview'
+    | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resources'
     | '/u/$universe/b/$body/shipyard'
+    | '/u/$universe/b/$body/defense/$item'
+    | '/u/$universe/b/$body/facilities/$item'
+    | '/u/$universe/b/$body/fleets/$item'
+    | '/u/$universe/b/$body/research/$item'
+    | '/u/$universe/b/$body/resources/$item'
+    | '/u/$universe/b/$body/shipyard/$item'
+    | '/u/$universe/b/$body/fleets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -267,10 +383,20 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets'
     | '/u/$universe/reports'
     | '/u/$universe/b/$body/defense'
+    | '/u/$universe/b/$body/dispatch'
     | '/u/$universe/b/$body/facilities'
+    | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/overview'
+    | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resources'
     | '/u/$universe/b/$body/shipyard'
+    | '/u/$universe/b/$body/defense/$item'
+    | '/u/$universe/b/$body/facilities/$item'
+    | '/u/$universe/b/$body/fleets/$item'
+    | '/u/$universe/b/$body/research/$item'
+    | '/u/$universe/b/$body/resources/$item'
+    | '/u/$universe/b/$body/shipyard/$item'
+    | '/u/$universe/b/$body/fleets'
   id:
     | '__root__'
     | '/'
@@ -292,10 +418,21 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
     | '/u/$universe/b/$body/defense'
+    | '/u/$universe/b/$body/dispatch'
     | '/u/$universe/b/$body/facilities'
+    | '/u/$universe/b/$body/fleets'
+    | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/overview'
+    | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resources'
     | '/u/$universe/b/$body/shipyard'
+    | '/u/$universe/b/$body/defense/$item'
+    | '/u/$universe/b/$body/facilities/$item'
+    | '/u/$universe/b/$body/fleets/$item'
+    | '/u/$universe/b/$body/research/$item'
+    | '/u/$universe/b/$body/resources/$item'
+    | '/u/$universe/b/$body/shipyard/$item'
+    | '/u/$universe/b/$body/fleets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -441,6 +578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUniverseBBodyDefenseRouteImport
       parentRoute: typeof UUniverseRoute
     }
+    '/u/$universe/b/$body/dispatch': {
+      id: '/u/$universe/b/$body/dispatch'
+      path: '/b/$body/dispatch'
+      fullPath: '/u/$universe/b/$body/dispatch'
+      preLoaderRoute: typeof UUniverseBBodyDispatchRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
     '/u/$universe/b/$body/facilities': {
       id: '/u/$universe/b/$body/facilities'
       path: '/b/$body/facilities'
@@ -448,11 +592,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUniverseBBodyFacilitiesRouteImport
       parentRoute: typeof UUniverseRoute
     }
+    '/u/$universe/b/$body/fleets': {
+      id: '/u/$universe/b/$body/fleets'
+      path: '/b/$body/fleets'
+      fullPath: '/u/$universe/b/$body/fleets'
+      preLoaderRoute: typeof UUniverseBBodyFleetsRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/galaxy': {
+      id: '/u/$universe/b/$body/galaxy'
+      path: '/b/$body/galaxy'
+      fullPath: '/u/$universe/b/$body/galaxy'
+      preLoaderRoute: typeof UUniverseBBodyGalaxyRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
     '/u/$universe/b/$body/overview': {
       id: '/u/$universe/b/$body/overview'
       path: '/b/$body/overview'
       fullPath: '/u/$universe/b/$body/overview'
       preLoaderRoute: typeof UUniverseBBodyOverviewRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/research': {
+      id: '/u/$universe/b/$body/research'
+      path: '/b/$body/research'
+      fullPath: '/u/$universe/b/$body/research'
+      preLoaderRoute: typeof UUniverseBBodyResearchRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/b/$body/resources': {
@@ -468,6 +633,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/u/$universe/b/$body/shipyard'
       preLoaderRoute: typeof UUniverseBBodyShipyardRouteImport
       parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/defense/$item': {
+      id: '/u/$universe/b/$body/defense/$item'
+      path: '/$item'
+      fullPath: '/u/$universe/b/$body/defense/$item'
+      preLoaderRoute: typeof UUniverseBBodyDefenseItemRouteImport
+      parentRoute: typeof UUniverseBBodyDefenseRoute
+    }
+    '/u/$universe/b/$body/facilities/$item': {
+      id: '/u/$universe/b/$body/facilities/$item'
+      path: '/$item'
+      fullPath: '/u/$universe/b/$body/facilities/$item'
+      preLoaderRoute: typeof UUniverseBBodyFacilitiesItemRouteImport
+      parentRoute: typeof UUniverseBBodyFacilitiesRoute
+    }
+    '/u/$universe/b/$body/fleets/': {
+      id: '/u/$universe/b/$body/fleets/'
+      path: '/'
+      fullPath: '/u/$universe/b/$body/fleets/'
+      preLoaderRoute: typeof UUniverseBBodyFleetsIndexRouteImport
+      parentRoute: typeof UUniverseBBodyFleetsRoute
+    }
+    '/u/$universe/b/$body/fleets/$item': {
+      id: '/u/$universe/b/$body/fleets/$item'
+      path: '/$item'
+      fullPath: '/u/$universe/b/$body/fleets/$item'
+      preLoaderRoute: typeof UUniverseBBodyFleetsItemRouteImport
+      parentRoute: typeof UUniverseBBodyFleetsRoute
+    }
+    '/u/$universe/b/$body/research/$item': {
+      id: '/u/$universe/b/$body/research/$item'
+      path: '/$item'
+      fullPath: '/u/$universe/b/$body/research/$item'
+      preLoaderRoute: typeof UUniverseBBodyResearchItemRouteImport
+      parentRoute: typeof UUniverseBBodyResearchRoute
+    }
+    '/u/$universe/b/$body/resources/$item': {
+      id: '/u/$universe/b/$body/resources/$item'
+      path: '/$item'
+      fullPath: '/u/$universe/b/$body/resources/$item'
+      preLoaderRoute: typeof UUniverseBBodyResourcesItemRouteImport
+      parentRoute: typeof UUniverseBBodyResourcesRoute
+    }
+    '/u/$universe/b/$body/shipyard/$item': {
+      id: '/u/$universe/b/$body/shipyard/$item'
+      path: '/$item'
+      fullPath: '/u/$universe/b/$body/shipyard/$item'
+      preLoaderRoute: typeof UUniverseBBodyShipyardItemRouteImport
+      parentRoute: typeof UUniverseBBodyShipyardRoute
     }
   }
 }
@@ -499,6 +713,88 @@ const UUniverseReportsRouteChildren: UUniverseReportsRouteChildren = {
 const UUniverseReportsRouteWithChildren =
   UUniverseReportsRoute._addFileChildren(UUniverseReportsRouteChildren)
 
+interface UUniverseBBodyDefenseRouteChildren {
+  UUniverseBBodyDefenseItemRoute: typeof UUniverseBBodyDefenseItemRoute
+}
+
+const UUniverseBBodyDefenseRouteChildren: UUniverseBBodyDefenseRouteChildren = {
+  UUniverseBBodyDefenseItemRoute: UUniverseBBodyDefenseItemRoute,
+}
+
+const UUniverseBBodyDefenseRouteWithChildren =
+  UUniverseBBodyDefenseRoute._addFileChildren(
+    UUniverseBBodyDefenseRouteChildren,
+  )
+
+interface UUniverseBBodyFacilitiesRouteChildren {
+  UUniverseBBodyFacilitiesItemRoute: typeof UUniverseBBodyFacilitiesItemRoute
+}
+
+const UUniverseBBodyFacilitiesRouteChildren: UUniverseBBodyFacilitiesRouteChildren =
+  {
+    UUniverseBBodyFacilitiesItemRoute: UUniverseBBodyFacilitiesItemRoute,
+  }
+
+const UUniverseBBodyFacilitiesRouteWithChildren =
+  UUniverseBBodyFacilitiesRoute._addFileChildren(
+    UUniverseBBodyFacilitiesRouteChildren,
+  )
+
+interface UUniverseBBodyFleetsRouteChildren {
+  UUniverseBBodyFleetsItemRoute: typeof UUniverseBBodyFleetsItemRoute
+  UUniverseBBodyFleetsIndexRoute: typeof UUniverseBBodyFleetsIndexRoute
+}
+
+const UUniverseBBodyFleetsRouteChildren: UUniverseBBodyFleetsRouteChildren = {
+  UUniverseBBodyFleetsItemRoute: UUniverseBBodyFleetsItemRoute,
+  UUniverseBBodyFleetsIndexRoute: UUniverseBBodyFleetsIndexRoute,
+}
+
+const UUniverseBBodyFleetsRouteWithChildren =
+  UUniverseBBodyFleetsRoute._addFileChildren(UUniverseBBodyFleetsRouteChildren)
+
+interface UUniverseBBodyResearchRouteChildren {
+  UUniverseBBodyResearchItemRoute: typeof UUniverseBBodyResearchItemRoute
+}
+
+const UUniverseBBodyResearchRouteChildren: UUniverseBBodyResearchRouteChildren =
+  {
+    UUniverseBBodyResearchItemRoute: UUniverseBBodyResearchItemRoute,
+  }
+
+const UUniverseBBodyResearchRouteWithChildren =
+  UUniverseBBodyResearchRoute._addFileChildren(
+    UUniverseBBodyResearchRouteChildren,
+  )
+
+interface UUniverseBBodyResourcesRouteChildren {
+  UUniverseBBodyResourcesItemRoute: typeof UUniverseBBodyResourcesItemRoute
+}
+
+const UUniverseBBodyResourcesRouteChildren: UUniverseBBodyResourcesRouteChildren =
+  {
+    UUniverseBBodyResourcesItemRoute: UUniverseBBodyResourcesItemRoute,
+  }
+
+const UUniverseBBodyResourcesRouteWithChildren =
+  UUniverseBBodyResourcesRoute._addFileChildren(
+    UUniverseBBodyResourcesRouteChildren,
+  )
+
+interface UUniverseBBodyShipyardRouteChildren {
+  UUniverseBBodyShipyardItemRoute: typeof UUniverseBBodyShipyardItemRoute
+}
+
+const UUniverseBBodyShipyardRouteChildren: UUniverseBBodyShipyardRouteChildren =
+  {
+    UUniverseBBodyShipyardItemRoute: UUniverseBBodyShipyardItemRoute,
+  }
+
+const UUniverseBBodyShipyardRouteWithChildren =
+  UUniverseBBodyShipyardRoute._addFileChildren(
+    UUniverseBBodyShipyardRouteChildren,
+  )
+
 interface UUniverseRouteChildren {
   UUniverseSplatRoute: typeof UUniverseSplatRoute
   UUniverseDispatchRoute: typeof UUniverseDispatchRoute
@@ -509,11 +805,15 @@ interface UUniverseRouteChildren {
   UUniverseResearchRoute: typeof UUniverseResearchRoute
   UUniverseSettingsRoute: typeof UUniverseSettingsRoute
   UUniverseIndexRoute: typeof UUniverseIndexRoute
-  UUniverseBBodyDefenseRoute: typeof UUniverseBBodyDefenseRoute
-  UUniverseBBodyFacilitiesRoute: typeof UUniverseBBodyFacilitiesRoute
+  UUniverseBBodyDefenseRoute: typeof UUniverseBBodyDefenseRouteWithChildren
+  UUniverseBBodyDispatchRoute: typeof UUniverseBBodyDispatchRoute
+  UUniverseBBodyFacilitiesRoute: typeof UUniverseBBodyFacilitiesRouteWithChildren
+  UUniverseBBodyFleetsRoute: typeof UUniverseBBodyFleetsRouteWithChildren
+  UUniverseBBodyGalaxyRoute: typeof UUniverseBBodyGalaxyRoute
   UUniverseBBodyOverviewRoute: typeof UUniverseBBodyOverviewRoute
-  UUniverseBBodyResourcesRoute: typeof UUniverseBBodyResourcesRoute
-  UUniverseBBodyShipyardRoute: typeof UUniverseBBodyShipyardRoute
+  UUniverseBBodyResearchRoute: typeof UUniverseBBodyResearchRouteWithChildren
+  UUniverseBBodyResourcesRoute: typeof UUniverseBBodyResourcesRouteWithChildren
+  UUniverseBBodyShipyardRoute: typeof UUniverseBBodyShipyardRouteWithChildren
 }
 
 const UUniverseRouteChildren: UUniverseRouteChildren = {
@@ -526,11 +826,15 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseResearchRoute: UUniverseResearchRoute,
   UUniverseSettingsRoute: UUniverseSettingsRoute,
   UUniverseIndexRoute: UUniverseIndexRoute,
-  UUniverseBBodyDefenseRoute: UUniverseBBodyDefenseRoute,
-  UUniverseBBodyFacilitiesRoute: UUniverseBBodyFacilitiesRoute,
+  UUniverseBBodyDefenseRoute: UUniverseBBodyDefenseRouteWithChildren,
+  UUniverseBBodyDispatchRoute: UUniverseBBodyDispatchRoute,
+  UUniverseBBodyFacilitiesRoute: UUniverseBBodyFacilitiesRouteWithChildren,
+  UUniverseBBodyFleetsRoute: UUniverseBBodyFleetsRouteWithChildren,
+  UUniverseBBodyGalaxyRoute: UUniverseBBodyGalaxyRoute,
   UUniverseBBodyOverviewRoute: UUniverseBBodyOverviewRoute,
-  UUniverseBBodyResourcesRoute: UUniverseBBodyResourcesRoute,
-  UUniverseBBodyShipyardRoute: UUniverseBBodyShipyardRoute,
+  UUniverseBBodyResearchRoute: UUniverseBBodyResearchRouteWithChildren,
+  UUniverseBBodyResourcesRoute: UUniverseBBodyResourcesRouteWithChildren,
+  UUniverseBBodyShipyardRoute: UUniverseBBodyShipyardRouteWithChildren,
 }
 
 const UUniverseRouteWithChildren = UUniverseRoute._addFileChildren(

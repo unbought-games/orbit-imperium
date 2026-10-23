@@ -1,3 +1,4 @@
+import { catalogPages, resolveCatalogItem } from './catalog-routes'
 import { universeSlug } from '../client-model/universe-name'
 import type { BoundView } from '../client-model/commands'
 export type Page =
@@ -31,6 +32,10 @@ export const bodyPages: Page[] = [
   'facilities',
   'shipyard',
   'defense',
+  'research',
+  'fleets',
+  'galaxy',
+  'dispatch',
 ]
 export function validateBodySearch(search: Record<string, unknown>): {
   body?: string
@@ -83,8 +88,15 @@ export function resolveDestination(
     !view.capabilities.some((c) => c.capability === capability && c.enabled)
   )
     return unavailable('This destination is not available in this universe.')
+  const catalogItem =
+    item && catalogPages.includes(page)
+      ? resolveCatalogItem(page, item, view)
+      : null
+  if (item && catalogPages.includes(page) && !catalogItem)
+    return unavailable('This catalog item is unavailable in this universe.')
   if (
     item &&
+    !catalogPages.includes(page) &&
     !(view.protocol === 4
       ? page === 'reports'
         ? /^[0-9a-f-]{36}$/.test(item)
@@ -98,7 +110,13 @@ export function resolveDestination(
     )
   if (!body && page !== 'settings')
     return unavailable('No planet is available for this membership.')
-  return { page, body, item: item ?? null, available: true, reason: '' }
+  return {
+    page,
+    body,
+    item: catalogItem ?? item ?? null,
+    available: true,
+    reason: '',
+  }
 }
 
 // Browser identity is a current name only; UUID and former-name URLs are invalid.

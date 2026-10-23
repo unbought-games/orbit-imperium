@@ -326,8 +326,3 @@
     padding: 0.8rem;
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .expand {
-    transition: transform 120ms;
-  }
-}

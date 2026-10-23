@@ -178,7 +178,7 @@ test('login and signup preserve the requested game destination', async ({
   await page.route('**/api/v1/session?bootstrap=true', (route) =>
     route.fulfill({ json: payload }),
   )
-  const destination = `/u/andromeda/b/${body.id}/resources`
+  const destination = `/u/andromeda/b/${body.id}/resources/metal-mine`
   await page.goto(destination)
   await expect(page).toHaveURL(/\/login\?/)
   await expect(

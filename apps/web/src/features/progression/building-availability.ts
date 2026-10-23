@@ -14,3 +14,14 @@ export function buildingUnavailableReason(
     return 'Building level unavailable on this body.'
   return undefined
 }
+
+export function visibleFacility(
+  entry: S['CatalogEntry3'],
+  body: Pick<S['BodyV3'], 'kind'>,
+) {
+  return !(
+    body.kind === 'Planet' &&
+    entry.body_kinds.length > 0 &&
+    entry.body_kinds.every((kind) => kind === 'Moon')
+  )
+}

@@ -127,7 +127,7 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
     )
     await expect(
       page.getByRole('link', { name: 'Open research' }),
-    ).toHaveAttribute('href', `/u/andromeda/research?body=${body.id}`)
+    ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/research`)
     await page.getByRole('link', { name: 'Build', exact: true }).click()
     const nav = page.getByRole('navigation', { name: 'Build navigation' })
     for (const destination of ['Resources', 'Facilities'] as const) {
@@ -139,7 +139,7 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
           : building === 'MetalMine' && destination === 'Facilities'
             ? 'resources'
             : null
-      await expect(buildings.getByRole('link')).toHaveCount(crossPage ? 1 : 0)
+      await expect(buildings.getByRole('link', { name: /^Open / })).toHaveCount(crossPage ? 1 : 0)
       if (crossPage) {
         const link = buildings.getByRole('link', { name: `Open ${crossPage}` })
         await expect(link).toHaveAttribute(
@@ -160,7 +160,7 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
     }
     await nav.getByRole('link', { name: 'Research', exact: true }).click()
     const research = page.getByRole('region', { name: 'Research', exact: true })
-    await expect(research.getByRole('link')).toHaveCount(0)
+    await expect(research.getByRole('link', { name: /^Open / })).toHaveCount(0)
     await expect(research).toContainText(
       building ? 'Energy Technology · Level 1' : 'No research in progress.',
     )
@@ -385,6 +385,8 @@ for (const width of [320, 390]) {
       const resources = (await bar.boundingBox())!
       const submenu = (await nav.boundingBox())!
       expect(resources.y).toBe(0)
+      expect(resources.x).toBe(0)
+      expect(resources.width).toBe(width)
       expect(submenu.y).toBe(resources.y + resources.height)
       expect(submenu.x).toBe(0)
       expect(submenu.width).toBe(width)
@@ -420,6 +422,25 @@ for (const width of [320, 390]) {
   })
 }
 
+for (const width of [768, 1440, 1920]) {
+  test(`desktop header dividers align with content at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await shellFixture(page)
+    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    const submenu = page.getByRole('navigation', { name: 'Build navigation' })
+    const header = page.getByRole('banner').locator('..')
+    const content = (await page.locator('main#main').boundingBox())!
+    for (const divider of [header, submenu]) {
+      const bounds = (await divider.boundingBox())!
+      expect(bounds.x).toBeCloseTo(content.x, 1)
+      expect(bounds.x + bounds.width).toBeCloseTo(content.x + content.width, 1)
+    }
+    await expect(header).toHaveCSS('border-bottom-width', '1px')
+    await expect(submenu).toHaveCSS('border-top-width', '1px')
+    await page.screenshot({ path: `test-results/header-dividers-${width}.png` })
+  })
+}
+
 test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   page,
 }) => {
@@ -435,7 +456,7 @@ test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   ])
   await expect(
     nav.getByRole('link', { name: 'Galaxy', exact: true }),
-  ).toHaveAttribute('href', `/u/andromeda/galaxy?body=${body.id}`)
+  ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy`)
   await page.evaluate(() => window.scrollTo(0, 250))
   const bar = page.getByRole('group', { name: 'Planet and resources' })
   await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
@@ -1008,13 +1029,6 @@ for (const width of [390, 1440]) {
       exact: true,
     })
     await expect(signOut).toBeVisible()
-    // Visibility does not mean the drawer's entrance animation has settled.
-    // Finish it before separate geometry reads can sample different frames.
-    await drawer.evaluate((element) =>
-      Promise.all(
-        element.getAnimations().map((animation) => animation.finished),
-      ),
-    )
     const nameBounds = await username.boundingBox()
     const buttonBounds = await signOut.boundingBox()
     expect(nameBounds!.x + nameBounds!.width).toBeLessThan(buttonBounds!.x)
@@ -1057,9 +1071,6 @@ test('mobile sidebar signs out through the existing account session', async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await shellFixture(page)
-  const surfaceName = await page
-    .locator('style[data-game-surface]')
-    .getAttribute('data-game-surface')
   await page.getByRole('button', { name: 'Menu', exact: true }).click()
   await page
     .getByRole('dialog', { name: 'Navigation' })
@@ -1069,17 +1080,7 @@ test('mobile sidebar signs out through the existing account session', async ({
     page.getByRole('button', { name: 'Sign in', exact: true }),
   ).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Navigation' })).toHaveCount(0)
-  await expect(page.locator('style[data-game-surface]')).toHaveCount(0)
-  expect(
-    await page.evaluate(
-      (name) =>
-        getComputedStyle(
-          document.documentElement,
-          `::view-transition-group(${name})`,
-        ).visibility,
-      surfaceName,
-    ),
-  ).toBe('hidden')
+  await expect(page.getByLabel('Current resources')).toHaveCount(0)
 })
 
 test('overview preserves rich work, exact inventory, incoming visibility and responsive composition', async ({
@@ -1224,7 +1225,7 @@ test('large world rosters search and retain funding context on player-wide route
   await expect(page.locator('main h1')).toHaveText('Research')
   await page.getByLabel('Search owned worlds').fill('1:9:4')
   await page.getByLabel('Selected body').selectOption(id(28))
-  await expect(page).toHaveURL(new RegExp(`/research\\?body=${id(28)}$`))
+  await expect(page).toHaveURL(new RegExp(`/b/${id(28)}/research$`))
   await expect(page.getByLabel('Search owned worlds')).toHaveValue('')
   await page.goBack()
   await expect(page.getByLabel('Selected body')).toHaveValue(body.id)
@@ -1238,7 +1239,7 @@ test('large world rosters search and retain funding context on player-wide route
   expect(purchases()).toBe(0)
 })
 
-test('navigation motion is interruptible and keeps shell identity mounted', async ({
+test('navigation keeps shell identity mounted through rapid route changes', async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -1370,7 +1371,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   const mission = page.getByRole('article', { name: 'Transport fleet' })
   await expect(mission).toContainText('4 Small Cargo')
   await expect(mission).toContainText(/6m \d+s/)
@@ -1380,6 +1381,13 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   )
   await expect(page.getByText('No visible incoming fleets.')).toBeVisible()
   await mission.getByRole('link', { name: 'Mission details' }).click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
+  await page.getByLabel('Selected body').selectOption(id(6))
+  await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets/${fleet.id}`)
+  await page.reload()
+  await expect(mission).toContainText('4 Small Cargo')
+  await page.goto(`/u/andromeda/fleets/${fleet.id}?body=${body.id}`)
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   await expect(mission).toContainText('2,000')
   await mission.getByText('Flight path', { exact: true }).click()
   for (const width of [1440, 390, 320]) {
@@ -1640,13 +1648,13 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
       score_value_micro: '0',
     },
   })
-  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   await expect(page.getByText('No active fleets.')).toBeVisible()
   await page.screenshot({
     path: 'test-results/fleets-empty-phone.png',
     fullPage: true,
   })
-  await page.goto(`/u/andromeda/fleets/${id(99)}?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/fleets/${id(99)}`)
   await expect(
     page.getByText(
       'This item is unavailable or outside the current authorized view.',
@@ -1747,7 +1755,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     sent++
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   await page.getByLabel('Position', { exact: true }).fill('2')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
@@ -1870,7 +1878,7 @@ test('legacy fleets retain trajectory, exact arrival and reviewed recall', async
       },
     ],
   })
-  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   await expect(
     page.getByRole('figure', { name: 'Mission route schematic' }),
   ).toBeVisible()
@@ -1963,7 +1971,7 @@ test('selected body context truncates on phones and retains full labels and acce
   ).toBeLessThanOrEqual(1)
   await expect(
     page.getByRole('heading', { name: 'Resources', level: 2 }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: 'Planet information details' }),
   ).toHaveCount(0)
@@ -1977,51 +1985,41 @@ test('selected body context truncates on phones and retains full labels and acce
   expect((await unavailable.boundingBox())!.height).toBeGreaterThan(20)
 })
 
-test('construction status stays in document flow beside editorial work summaries', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await shellFixture(page, {
-    constructions: [
-      {
-        id: id(10),
-        body: body.id,
-        building: 'MetalMine',
-        target_level: 2,
-        due_at: Date.now() + 76000,
-        paid: resources,
-      },
-    ],
+for (const width of [390, 1440]) {
+  test(`construction stays in queues and details without a shared footer at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await shellFixture(page, {
+      constructions: [{
+        id: id(10), body: body.id, building: 'MetalMine', target_level: 2,
+        due_at: Date.now() + 76000, paid: resources,
+      }],
+    })
+    for (const route of [
+      `/u/andromeda/b/${body.id}/resources`,
+      `/u/andromeda/b/${body.id}/facilities`,
+      `/u/andromeda/b/${body.id}/research`,
+      `/u/andromeda/b/${body.id}/shipyard`,
+      `/u/andromeda/b/${body.id}/defense`,
+      `/u/andromeda/settings`,
+    ]) {
+      await page.goto(route)
+      await expect(page.locator('main h1')).toBeAttached()
+      await expect(page.getByRole('region', { name: 'Construction status', includeHidden: true })).toHaveCount(0)
+      // Construction controls are contained in the page, never appended to the shell.
+      expect(await page.getByRole('button', { name: 'Cancel construction', includeHidden: true }).evaluateAll(
+        buttons => buttons.every(button => button.closest('main') !== null),
+      )).toBe(true)
+    }
+    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    const work = page.getByRole('region', { name: 'Buildings', exact: true })
+    await expect(work).toContainText('Metal Mine · Level 2')
+    await expect(work.getByRole('button', { name: 'Cancel construction' })).toBeEnabled()
+    await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
+    const detail = page.getByRole('region', { name: 'Active construction' })
+    await expect(detail).toContainText('Upgrading Metal Mine to level 2')
+    await expect(detail.getByRole('button', { name: 'Cancel construction' })).toBeEnabled()
   })
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
-  const notice = page.getByRole('region', { name: 'Construction status' })
-  expect(
-    await notice.evaluate((element) =>
-      ['fixed', 'sticky', 'absolute'].includes(
-        getComputedStyle(element).position,
-      ),
-    ),
-  ).toBe(false)
-  const mainBounds = await page.locator('main').boundingBox()
-  expect((await notice.boundingBox())!.y).toBeGreaterThanOrEqual(
-    mainBounds!.y + mainBounds!.height,
-  )
-  const work = page.getByRole('region', { name: 'Buildings', exact: true })
-  await expect(
-    work.getByRole('button', { name: 'Cancel construction' }),
-  ).toBeEnabled()
-  expect(
-    await work
-      .getByRole('heading')
-      .evaluate((element) => getComputedStyle(element).backgroundImage),
-  ).toBe('none')
-  await notice
-    .getByRole('button', { name: 'Cancel construction' })
-    .scrollIntoViewIfNeeded()
-  await expect(
-    notice.getByRole('button', { name: 'Cancel construction' }),
-  ).toBeInViewport()
-})
+}
 
 test('phone Build navigation keeps full-size links on one keyboard-scrollable row', async ({
   page,
@@ -2135,7 +2133,7 @@ test('server recall eligibility survives an elapsed client countdown', async ({
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   await page.route('**/overview', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
   )
@@ -2165,112 +2163,47 @@ test('server recall eligibility survives an elapsed client countdown', async ({
   release()
 })
 
-test('real pointer navigation interrupts an active route transition without dispatching commands', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1280, height: 720 })
-  const purchases = await shellFixture(page, { protocol: 4 })
-  await page.addStyleTag({
-    content: ':root { --motion-enter: 30s !important }',
-  })
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
-  const active = () =>
-    page.evaluate(() =>
-      document
-        .getAnimations()
-        .some(
-          (animation) =>
-            animation instanceof CSSAnimation &&
-            animation.animationName === 'surface-in' &&
-            animation.playState === 'running',
-        ),
-    )
-  await expect.poll(active).toBe(true)
-  for (const [name, heading] of [
-    ['Fleet', 'Fleets'],
-    ['Empire', 'Empire'],
-  ]) {
-    const link = page.getByRole('link', { name, exact: true })
-    const bounds = await link.boundingBox()
-    const point = {
-      x: bounds!.x + bounds!.width / 2,
-      y: bounds!.y + bounds!.height / 2,
-    }
-    expect(
-      await link.evaluate((element, point) => {
-        const hit = document.elementFromPoint(point.x, point.y)
-        return hit === element || element.contains(hit)
-      }, point),
-    ).toBe(true)
-    await page.mouse.click(point.x, point.y)
-    await expect(page.locator('main h1')).toContainText(heading)
-    await expect.poll(active).toBe(true)
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  for (const width of [390, 1280]) {
+    test(`navigation and menus have no motion at ${width}px with ${reducedMotion}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await page.emulateMedia({ reducedMotion })
+      await page.addInitScript(() => {
+        const events: string[] = []
+        Object.assign(window, { uiMotionEvents: events })
+        document.addEventListener('animationstart', () => events.push('animation'), true)
+        document.addEventListener('transitionrun', () => events.push('transition'), true)
+        const start = document.startViewTransition.bind(document)
+        document.startViewTransition = (...args) => {
+          events.push('view-transition')
+          return start(...args)
+        }
+      })
+      const purchases = await shellFixture(page, { protocol: 4 })
+      const assertStill = async () => {
+        expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+        expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
+      }
+      await assertStill()
+      for (const [name, heading] of [['Resources', 'Resources'], ['Fleets', 'Fleets'], ['Empire', 'Empire']]) {
+        await page.getByRole('button', { name: 'Menu', exact: true }).click()
+        const drawer = page.getByRole('dialog', { name: 'Navigation' })
+        await expect(drawer).toBeVisible()
+        await assertStill()
+        const link = drawer.getByRole('link', { name, exact: true })
+        await link.hover()
+        await assertStill()
+        await link.click()
+        await expect(page.locator('main h1')).toContainText(heading)
+        await expect(page.locator('main h1')).toBeFocused()
+        await expect(drawer).not.toBeVisible()
+        await assertStill()
+      }
+      await assertStill()
+      expect(purchases()).toBe(0)
+    })
   }
-  expect(purchases()).toBe(0)
-})
-
-test('reduced motion shows only the new route with no snapshot geometry animation', async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  const purchases = await shellFixture(page, { protocol: 4 })
-  await page.evaluate(() => {
-    document.documentElement.dataset.motionSamples = '[]'
-    const start = document.startViewTransition.bind(document)
-    document.startViewTransition = (...args) => {
-      const transition = start(...args)
-      void transition.ready
-        .then(() => {
-          const name = document
-            .querySelector('style[data-game-surface]')
-            ?.getAttribute('data-game-surface')
-          const style = (part: string) =>
-            getComputedStyle(
-              document.documentElement,
-              `::view-transition-${part}(${name})`,
-            )
-          const samples = JSON.parse(
-            document.documentElement.dataset.motionSamples!,
-          )
-          samples.push({
-            group: style('group').animationName,
-            pair: style('image-pair').animationName,
-            old: style('old').display,
-            next: style('new').opacity,
-            transform: style('new').transform,
-          })
-          document.documentElement.dataset.motionSamples =
-            JSON.stringify(samples)
-        })
-        .catch(() => {})
-      return transition
-    }
-  })
-  for (const name of ['Build', 'Shipyard', 'Fleet', 'Empire']) {
-    await page.getByRole('link', { name, exact: true }).click()
-  }
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          JSON.parse(document.documentElement.dataset.motionSamples!).length,
-      ),
-    )
-    .toBe(4)
-  const samples = await page.evaluate(() =>
-    JSON.parse(document.documentElement.dataset.motionSamples!),
-  )
-  expect(samples).toEqual(
-    Array.from({ length: 4 }, () => ({
-      group: 'none',
-      pair: 'none',
-      old: 'none',
-      next: '1',
-      transform: 'none',
-    })),
-  )
-  expect(purchases()).toBe(0)
-})
+}
 
 
 for (const width of [390, 1440]) {
@@ -2402,5 +2335,62 @@ for (const width of [768, 1024, 1440, 1800]) {
     await expect(planet).toHaveValue(bodies[8].id)
     await expect(search).toHaveValue('')
     await assertAlignment()
+  })
+}
+
+test('planet-scoped gameplay routes retain context and redirect old query URLs', async ({ page }) => {
+  const purchases = await shellFixture(page, { protocol: 4 })
+  for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch']]) {
+    await page.goto(`/u/andromeda/${path}?body=${body.id}`)
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
+    await expect(page.locator('main h1')).toHaveText(heading)
+    await page.getByLabel('Selected body').selectOption(id(6))
+    await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${path}`)
+    await page.reload()
+    await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+    await expect(page.locator('main h1')).toHaveText(heading)
+    await page.goto(`/u/andromeda/b/${id(99)}/${path}`)
+    await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
+    await expect(page).toHaveURL(`/u/andromeda/b/${id(99)}/${path}`)
+  }
+  expect(purchases()).toBe(0)
+})
+
+for (const width of [320, 390, 1440]) {
+  test(`active building and research summaries use two tight lines at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const now = Date.now()
+    await page.clock.setFixedTime(now)
+    await shellFixture(page, {
+      constructions: [{ id: id(10), body: body.id, building: 'RoboticsFactory', target_level: 3, due_at: now + 35000, paid: resources }],
+      researchOperation: { id: id(11), host: body.id, research: 'EnergyTechnology', source_level: 2, target_level: 3, paid: resources, started_at: now - 1000, due_at: now + 35000, labs: [], effective_lab: '1', can_cancel: true },
+    })
+    for (const [path, region, label] of [
+      ['facilities', 'Buildings', 'Robotics Factory · Level 3'],
+      ['research', 'Research', 'Energy Technology · Level 3'],
+    ]) {
+      await page.goto(`/u/andromeda/b/${body.id}/${path}`)
+      const queue = page.getByRole('region', { name: region, exact: true })
+      const link = queue.getByRole('link', { name: new RegExp(label) })
+      await expect(link).toBeVisible()
+      await expect(queue).not.toContainText('In progress')
+      const lines = await link.locator(':scope > span').all()
+      expect(lines).toHaveLength(2)
+      await expect(lines[0]).toHaveText(label)
+      // The real server fixture clock advances while pages load; formatting is unit-tested separately.
+      await expect(lines[1]).toHaveText(/^\d+s$/)
+      const seconds = parseInt((await lines[1].textContent())!, 10)
+      expect(seconds).toBeGreaterThan(0)
+      expect(seconds).toBeLessThanOrEqual(35)
+      const first = (await lines[0].boundingBox())!
+      const second = (await lines[1].boundingBox())!
+      expect(second.y - (first.y + first.height)).toBeLessThanOrEqual(2)
+      const bounds = (await link.boundingBox())!
+      expect(bounds.height).toBeGreaterThanOrEqual(44)
+      expect(bounds.height).toBeLessThanOrEqual(45)
+      expect((await queue.boundingBox())!.height).toBeLessThanOrEqual(62)
+      await expect(queue.getByRole('button', { name: /^Cancel / })).toBeEnabled()
+      await queue.screenshot({ path: `test-results/compact-work-${path}-${width}.png` })
+    }
   })
 }

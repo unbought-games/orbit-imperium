@@ -19,7 +19,9 @@
   font-size: 0.875rem;
   color: var(--text-muted);
 }
-.header > button {
+.header > button,
+.header > a {
+  text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,5 +219,45 @@
   }
   .body > :first-child {
     max-width: 180px;
+  }
+}
+
+.overview {
+  display: grid;
+  gap: 14px;
+  padding-block: 16px;
+}
+.current,
+.buildRow {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+.current > span:first-child {
+  color: var(--text-muted);
+}
+.overview small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.buildRow button {
+  font-size: 1rem;
+  padding: 10px 14px;
+}
+.prerequisites p {
+  margin: 0;
+}
+.bottomAction {
+  border-top: 1px solid var(--border);
+  padding-block: 16px;
+}
+@media (max-width: 400px) {
+  .current,
+  .buildRow {
+    gap: 10px;
+    font-size: 0.875rem;
   }
 }

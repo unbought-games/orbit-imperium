@@ -1,3 +1,4 @@
+import { openRetainedProductionSettings } from './fixtures/production-settings'
 import { captureCatalog } from './fixtures/catalog-capture'
 import { test, expect, type Page } from '@playwright/test'
 import { shellFixture, body, binding, refreshGame } from './fixtures/game'
@@ -130,7 +131,7 @@ test('tile upgrade arrow starts one quoted upgrade without opening details', asy
     exact: true,
   })
   await expect(
-    page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }),
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   ).toHaveAttribute('title', /Not enough resources/)
   await expect(quick).toHaveCount(0)
   planet.amounts.metal = '60000000'
@@ -171,7 +172,7 @@ test('tile upgrade arrow starts one quoted upgrade without opening details', asy
   ).toHaveCount(0)
   await expect(
     page
-      .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+      .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
       .getByLabel('Construction progress'),
   ).toContainText('Confirming')
   await expect(quick).toHaveCount(0)
@@ -185,7 +186,7 @@ test('unaffordable building tiles show resource shortages before opening and upd
   const { planet, economy } = await setup(page, true)
   economy.gross_per_hour.metal = '0'
   await refreshGame(page)
-  const tile = page.getByRole('button', {
+  const tile = page.getByRole('link', {
     name: 'Upgrade Metal Mine',
     exact: true,
   })
@@ -253,7 +254,7 @@ test('unaffordable tiles stay striped when another building starts and quote ref
     })
   })
   await page.goto(`/u/andromeda/b/${body.id}/resources`)
-  const metal = page.getByRole('button', {
+  const metal = page.getByRole('link', {
     name: 'Upgrade Metal Mine',
     exact: true,
   })
@@ -271,7 +272,7 @@ test('unaffordable tiles stay striped when another building starts and quote ref
   await refreshGame(page)
   await expect(
     page
-      .getByRole('button', { name: 'Upgrade Solar Plant', exact: true })
+      .getByRole('link', { name: 'Upgrade Solar Plant', exact: true })
       .getByLabel('Construction progress'),
   ).toBeVisible()
   expect(requests).toBe(before)
@@ -293,7 +294,7 @@ test('Improve and resource blockers follow current balances while the quote stay
     if (request.url().endsWith('/progression-options')) quotes++
   })
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   const confirm = page.getByRole('button', { name: 'Confirm upgrade' })
   await expect(confirm).toBeDisabled()
@@ -318,7 +319,7 @@ test('an open quote refreshes when a confirmed building level changes', async ({
 }) => {
   const { planet } = await setup(page)
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   const quote = page.getByRole('region', { name: 'Progression quote' })
   await quote.getByText('Construction terms', { exact: true }).click()
@@ -328,19 +329,17 @@ test('an open quote refreshes when a confirmed building level changes', async ({
     }),
   ).toBeVisible()
   await expect(quote).not.toContainText('A quote reserves nothing')
-  await expect(quote).toContainText('Required to improve to level 2')
+  await expect(quote).toContainText('Build level 2')
   planet.levels.MetalMine = 2
   await refreshGame(page)
-  await expect(quote).toContainText('Required to improve to level 3')
+  await expect(quote).toContainText('Build level 3')
 })
 
 test('resource settings keep production rules and fuel figures without repeated helpers', async ({
   page,
 }) => {
   await setup(page)
-  await page
-    .getByRole('button', { name: 'Resource settings', exact: true })
-    .click()
+  await openRetainedProductionSettings(page)
   const settings = page.getByRole('region', { name: 'Production controls' })
   await expect(settings.getByRole('combobox')).toHaveCount(4)
   await settings.getByText('Production rules and unavailable sources', { exact: true }).click()
@@ -370,9 +369,7 @@ test('unedited production controls follow current saved settings', async ({
   page,
 }) => {
   const { economy } = await setup(page)
-  await page
-    .getByRole('button', { name: 'Resource settings', exact: true })
-    .click()
+  await openRetainedProductionSettings(page)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
   economy.settings = { ...economy.settings, metal_mine: 70 }
   await refreshGame(page)
@@ -391,7 +388,7 @@ test('resource cost images expose live details on hover and keyboard focus', asy
   economy.gross_per_hour.metal = '0'
   await refreshGame(page)
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   const metal = page
     .getByLabel('Required resources')
@@ -426,9 +423,9 @@ test('resource cost images expose live details on hover and keyboard focus', asy
     page.getByRole('region', { name: 'Progression quote' }),
   ).toBeVisible()
   await page.mouse.move(0, 0)
-  const demolition = page.getByRole('button', { name: 'Demolish Metal Mine' })
-  await demolition.focus()
-  await expect(demolition).toBeFocused()
+  const confirm = page.getByRole('button', { name: 'Confirm upgrade' })
+  await confirm.focus()
+  await expect(confirm).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(metal).toBeFocused()
   await expect(details).toBeVisible()
@@ -445,7 +442,7 @@ test('resource cost details open by tap and fit a phone viewport', async ({
   const page = await context.newPage()
   await setup(page)
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .tap()
   await page
     .getByLabel('Required resources')
@@ -467,7 +464,7 @@ test('level zero buildings offer upgrades without a tear-down option', async ({
 }) => {
   await setup(page)
   await page
-    .getByRole('button', { name: 'Upgrade Deuterium Synthesizer', exact: true })
+    .getByRole('link', { name: 'Upgrade Deuterium Synthesizer', exact: true })
     .click()
   const quote = page.getByRole('region', { name: 'Progression quote' })
   await expect(quote).toContainText('Level 0')
@@ -485,8 +482,8 @@ test('building tiles open top details, preserve quoted commands, and restore key
   const { sent } = await setup(page)
   await expect(
     page.getByRole('button', { name: 'Resource settings', exact: true }),
-  ).toBeVisible()
-  const tile = page.getByRole('button', {
+  ).toHaveCount(0)
+  const tile = page.getByRole('link', {
     name: 'Upgrade Metal Mine',
     exact: true,
   })
@@ -499,7 +496,7 @@ test('building tiles open top details, preserve quoted commands, and restore key
   await expect(quote).toBeFocused()
   expect(sent).toHaveLength(0)
   await page.getByRole('button', { name: 'Demolish Metal Mine' }).click()
-  await expect(quote).toContainText('Tear down to level 0')
+  await expect(quote).toContainText('Demolish to level 0')
   await page.getByRole('button', { name: 'Confirm demolition' }).click()
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toEqual({
@@ -509,8 +506,7 @@ test('building tiles open top details, preserve quoted commands, and restore key
     expected_terms_hash: 'b'.repeat(64),
   })
   await expect(quote).toBeVisible()
-  await quote.focus()
-  await page.keyboard.press('Escape')
+  await quote.getByRole('link', { name: /^Back to / }).click()
   await expect(quote).toBeHidden()
   await expect(tile).toBeFocused()
 })
@@ -546,9 +542,7 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
       },
     })
   })
-  await page
-    .getByRole('button', { name: 'Resource settings', exact: true })
-    .click()
+  await openRetainedProductionSettings(page)
   const panel = page.getByRole('region', { name: 'Production controls' })
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
   await expect(page.getByLabel('solar satellite production')).toHaveCount(0)
@@ -577,9 +571,7 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
   // A route change unmounts the controls while the user edits remain queued.
   await page.getByRole('link', { name: 'Facilities', exact: true }).click()
   await page.getByRole('link', { name: 'Resources', exact: true }).click()
-  await page
-    .getByRole('button', { name: 'Resource settings', exact: true })
-    .click()
+  await openRetainedProductionSettings(page)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
   await expect(page.getByLabel('solar plant production')).toHaveValue('60')
   release()
@@ -631,9 +623,7 @@ test('production rejection retains edits and retry preserves unrelated server ch
       },
     })
   })
-  await page
-    .getByRole('button', { name: 'Resource settings', exact: true })
-    .click()
+  await openRetainedProductionSettings(page)
   const settings = page.getByRole('region', { name: 'Production controls' })
   await expect(settings).toBeVisible()
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
@@ -714,9 +704,7 @@ for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
       return route.fulfill({ json: receipts.get(id) })
     })
     if (restoredCommand === 'production') {
-      await page
-        .getByRole('button', { name: 'Resource settings', exact: true })
-        .click()
+      await openRetainedProductionSettings(page)
       await page.getByLabel('metal mine production').selectOption('50')
     } else {
       await page
@@ -745,9 +733,7 @@ for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
         }
       })
     await page.reload()
-    await page
-      .getByRole('button', { name: 'Resource settings', exact: true })
-      .click()
+    await openRetainedProductionSettings(page)
     const panel = page.getByRole('region', { name: 'Production controls' })
     const metal = page.getByLabel('metal mine production')
     await expect(metal).toHaveValue(
@@ -820,12 +806,10 @@ test('resources fit compact and touch layouts in all three states', async ({
     for (const state of ['scene', 'building', 'settings']) {
       if (state === 'building')
         await page
-          .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+          .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
           .click()
       if (state === 'settings')
-        await page
-          .getByRole('button', { name: 'Resource settings', exact: true })
-          .click()
+        await openRetainedProductionSettings(page)
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -840,7 +824,7 @@ test('resources fit compact and touch layouts in all three states', async ({
       })
       if (state === 'building')
         await page
-          .getByRole('button', { name: 'Dismiss quote', exact: true })
+          .getByRole('link', { name: /^Back to /, exact: true })
           .click()
       if (state === 'settings')
         await page
@@ -867,11 +851,11 @@ test('a late inspection cannot overwrite another building or reopen dismissed de
     { times: 1 },
   )
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   await expect(page.getByText('Loading building details…')).toBeVisible()
   await page
-    .getByRole('button', { name: 'Upgrade Crystal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
     .click()
   const quote = page.getByRole('region', { name: 'Progression quote' })
   await expect(
@@ -890,7 +874,7 @@ test('a late inspection cannot overwrite another building or reopen dismissed de
   await expect(
     quote.getByRole('heading', { name: 'Crystal Mine', exact: true }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss quote' }).click()
+  await page.getByRole('link', { name: /^Back to / }).click()
   await expect(quote).toHaveCount(0)
   expect(sent).toHaveLength(0)
 })
@@ -902,7 +886,7 @@ test('blocked quotes cannot purchase and details remain usable with reduced moti
   const { sent } = await setup(page, true)
   await page.setViewportSize({ width: 390, height: 844 })
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   await expect(page.getByLabel('Action blockers')).toContainText(
     'Insufficient Resources',
@@ -919,10 +903,8 @@ test('blocked quotes cannot purchase and details remain usable with reduced moti
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true)
-  await page.getByRole('button', { name: 'Dismiss quote' }).click()
-  await page
-    .getByRole('button', { name: 'Resource settings', exact: true })
-    .click()
+  await page.getByRole('link', { name: /^Back to / }).click()
+  await openRetainedProductionSettings(page)
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -1004,7 +986,7 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
     page.getByRole('button', { name: 'Resource settings', exact: true }),
   ).toHaveCount(0)
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   await expect(
     page.getByRole('region', { name: 'Upgrade quote' }),
@@ -1013,28 +995,28 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   await expect(
     page.getByRole('button', { name: 'Confirm upgrade', exact: true }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss', exact: true }).click()
+  await page.getByRole('link', { name: 'Back to Resources', exact: true }).click()
   await expect(
-    page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }),
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   ).toBeFocused()
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   await page
     .getByRole('button', { name: 'Confirm upgrade', exact: true })
     .click()
   await expect(
-    page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }),
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   ).toBeEnabled()
   releaseUpgrade()
   await expect(
-    page.getByRole('region', { name: 'Construction status' }),
+    page.getByRole('region', { name: 'Active construction' }),
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }),
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   ).toBeEnabled()
   await expect(
-    page.getByRole('button', { name: 'Upgrade Fusion Reactor', exact: true }),
+    page.getByRole('link', { name: 'Upgrade Fusion Reactor', exact: true }),
   ).toHaveAttribute('title', 'Fusion Reactor · unavailable in this universe')
   expect(sent[0].command).toMatchObject({
     type: 'StartUpgrade',
@@ -1050,7 +1032,7 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
     .getByRole('button', { name: 'Cancel construction', exact: true })
     .click()
   await expect(
-    page.getByRole('region', { name: 'Construction status' }),
+    page.getByRole('region', { name: 'Active construction' }),
   ).toHaveCount(0)
   expect(sent[1].command).toEqual({
     type: 'CancelConstruction',
@@ -1176,7 +1158,7 @@ for (const [pageName, building, title] of [
       page.getByRole('complementary', { name: 'Activity' }),
     ).toHaveCount(0)
     await page
-      .getByRole('button', { name: `Upgrade ${title}`, exact: true })
+      .getByRole('link', { name: `Upgrade ${title}`, exact: true })
       .click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane).toContainText('level 2')
@@ -1242,7 +1224,7 @@ for (const [protocol, pageName, building, title] of [
       ],
     })
     await page.goto(`/u/andromeda/b/${body.id}/${pageName}`)
-    const tile = page.getByRole('button', {
+    const tile = page.getByRole('link', {
       name: `Upgrade ${title}`,
       exact: true,
     })
@@ -1293,16 +1275,16 @@ test('mobile construction starts visibly before the server responds and rejectio
     })
   })
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   await page.getByRole('button', { name: 'Confirm upgrade' }).click()
-  const notice = page.getByRole('region', { name: 'Construction status' })
+  const notice = page.getByRole('region', { name: 'Active construction' })
   await expect(notice).toContainText('Metal Mine')
   await expect(notice).toContainText('level 2')
-  await expect(notice).toContainText(/seconds remaining/)
-  await expect(notice).toContainText('Submitting')
+  await expect(notice).toContainText(/1m \d+s/)
+  await expect(notice).toContainText('Confirming')
   const tileProgress = page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .getByLabel('Construction progress')
   await expect(tileProgress).toContainText('Confirming')
   await expect(
@@ -1329,7 +1311,7 @@ test('mobile construction starts visibly before the server responds and rejectio
   await expect(page.getByLabel('Action needs attention')).toHaveCount(0)
 })
 
-test('construction cancellation is reachable in the in-flow notice and recovers on rejection', async ({
+test('construction cancellation is reachable in the building queue and recovers on rejection', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -1373,7 +1355,8 @@ test('construction cancellation is reachable in the in-flow notice and recovers 
     })
   })
   await page.getByRole('link', { name: 'Build', exact: true }).click()
-  const notice = page.getByRole('region', { name: 'Construction status' })
+  await expect(page.locator('main h1')).toHaveText('Resources')
+  const notice = page.getByRole('region', { name: 'Buildings', exact: true })
   await notice.scrollIntoViewIfNeeded()
   await expect(notice).toBeInViewport()
   const cancel = notice.getByRole('button', {
@@ -1391,7 +1374,8 @@ test('construction cancellation is reachable in the in-flow notice and recovers 
   await page.getByRole('button', { name: 'Dismiss notice' }).click()
   reject = false
   await cancel.click()
-  await expect(notice).toHaveCount(0)
+  await expect(notice).toContainText('No construction in progress.')
+  await expect(cancel).toHaveCount(0)
   expect(sent).toHaveLength(2)
   expect(sent[0].command).toEqual({
     type: 'CancelConstruction',
@@ -1413,7 +1397,7 @@ test('resource accrual enables an open quote even while the next server snapshot
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   const confirm = page.getByRole('button', { name: 'Confirm upgrade' })
   await expect(confirm).toBeDisabled()
@@ -1446,16 +1430,17 @@ test('active construction stays visible without covering current work at enlarge
     ],
   })
   await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Resources')
   await page.addStyleTag({
     content:
       'html { font-size: 200% !important } * { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; }',
   })
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
   await page
-    .getByRole('region', { name: 'Construction status' })
+    .getByRole('region', { name: 'Buildings', exact: true })
     .scrollIntoViewIfNeeded()
   await expect(
-    page.getByRole('region', { name: 'Construction status' }),
+    page.getByRole('region', { name: 'Buildings', exact: true }),
   ).toBeInViewport()
   await expect(
     page.getByRole('complementary', { name: 'Activity' }),
@@ -1466,7 +1451,7 @@ test('active construction stays visible without covering current work at enlarge
     .getByRole('link', { name: 'Resources', exact: true })
     .click()
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   await expect(
     page
@@ -1501,13 +1486,13 @@ for (const dismissFirst of ['message', 'saved action'] as const) {
       })
     })
     await page
-      .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+      .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
       .click()
     await page.getByRole('button', { name: 'Confirm upgrade' }).click()
     const saved = page.getByRole('group', { name: 'Saved action', exact: true })
     await expect(saved).toContainText('Action rejected')
     await page
-      .getByRole('button', { name: 'Upgrade Crystal Mine', exact: true })
+      .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
       .click()
     await expect(
       page.getByRole('button', { name: 'Confirm upgrade' }),
@@ -1563,13 +1548,13 @@ test('an accepted construction can be cancelled before its engine outcome arrive
   })
   await page.goto(`/u/andromeda/b/${body.id}/resources`)
   await page
-    .getByRole('button', { name: 'Upgrade Metal Mine', exact: true })
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
   await page
     .getByRole('button', { name: 'Confirm upgrade', exact: true })
     .click()
-  const notice = page.getByRole('region', { name: 'Construction status' })
-  await expect(notice).toContainText('order accepted')
+  const notice = page.getByRole('region', { name: 'Active construction' })
+  await expect(notice).toContainText('Confirming')
   const cancel = notice.getByRole('button', { name: 'Cancel construction' })
   await expect(cancel).toBeEnabled()
   await cancel.click()
@@ -1584,7 +1569,7 @@ test('an accepted construction can be cancelled before its engine outcome arrive
   await expect(notice).toContainText('Cancelling')
 })
 
-test('resource orbit and exact decision ledger fit desktop and narrow phones', async ({
+test('resource catalog and exact decision ledger fit desktop and narrow phones', async ({
   page,
 }) => {
   const { economy, planet } = await setup(page, true)
@@ -1594,14 +1579,12 @@ test('resource orbit and exact decision ledger fit desktop and narrow phones', a
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto(`/u/andromeda/b/${body.id}/resources`)
-    await page.getByText('Industrial resource colony', { exact: true }).click()
-    await expect(page.getByLabel('Planet energy')).toContainText('Supply')
-    await page.getByLabel('Planet energy').locator('..').locator('img').evaluate(image => (image as HTMLImageElement).decode())
-    await expect(page.getByLabel('Resource economy')).toContainText('Capacity')
+    await expect(page.locator('main details')).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Resources', level: 2 })).toHaveCount(0)
     await captureCatalog(page, `test-results/progression-resources-${width}.png`)
-    await page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }).click()
+    await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane.getByRole('table')).toContainText('Need 60 more')
+    await expect(pane.getByRole('group', { name: 'Required resources' })).toContainText('Need 60 more')
     await expect(pane.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeDisabled()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await captureCatalog(page, `test-results/progression-resources-blocked-${width}.png`)
@@ -1616,18 +1599,71 @@ test('fractional balances stay whole in the ledger and tooltip without enabling 
   economy.gross_per_hour.crystal = '0'
   await refreshGame(page)
   await page.goto(`/u/andromeda/b/${body.id}/resources`)
-  await page.getByRole('button', { name: 'Upgrade Metal Mine', exact: true }).click()
+  await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
-  const metal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Metal details' }) })
-  const crystal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Crystal details' }) })
-  await expect(metal.locator('td').nth(0)).toHaveText('Available59')
-  await expect(metal.locator('td').nth(1)).toHaveText('After spendingNeed 1 more')
-  await expect(crystal.locator('td').nth(0)).toHaveText('Available864')
-  await expect(crystal.locator('td').nth(1)).toHaveText('After spending849')
+  const costs = pane.getByRole('group', { name: 'Required resources' })
+  const metal = costs.getByRole('button', { name: 'Metal details' })
+  const crystal = costs.getByRole('button', { name: 'Crystal details' })
+  await expect(costs).toContainText('Need 1 more')
+  await crystal.click()
+  const crystalDetails = page.getByRole('dialog', { name: 'Crystal', exact: true })
+  await expect(crystalDetails).toContainText('Available 864')
+  await expect(crystalDetails).toContainText('After spending 849')
+  await page.keyboard.press('Escape')
   await expect(pane.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeDisabled()
-  await metal.getByRole('button', { name: 'Metal details' }).click()
+  await metal.click()
   const tooltip = page.getByRole('dialog', { name: 'Metal', exact: true })
   await expect(tooltip).toContainText('Available 59')
   await expect(tooltip).toContainText('Shortfall 1')
   expect(sent).toHaveLength(0)
+})
+
+test('legacy item links inspect other buildings during construction without stale or endless loading', async ({ page }) => {
+  const planet = structuredClone(body)
+  const constructions: components['schemas']['Construction3'][] = [{
+    id: '00000000-0000-4000-8000-000000000010', body: body.id,
+    building: 'MetalMine', target_level: 2, due_at: Date.now() + 76000,
+    paid: { metal: '60000000', crystal: '15000000', deuterium: '0' },
+  }]
+  const purchases = await shellFixture(page, { protocol: 2, constructions, bodies: [planet] })
+  const requests: string[] = []
+  await page.route('**/quotes', async route => {
+    const { context, request } = route.request().postDataJSON()
+    requests.push(request.building)
+    await route.fulfill({ json: {
+      protocol: 2, binding, request_id: context.request_id, viewer_revision: '1',
+      sampled_at: Date.now(), as_of_ms: Date.now(), request,
+      terms: {
+        profile_hash: 'a'.repeat(64), terms_hash: 'b'.repeat(64),
+        cost: { metal: request.building === 'SolarPlant' ? '80000000' : '60000000', crystal: '15000000', deuterium: '0' },
+        duration: 76000, target_level: planet.levels[request.building as keyof typeof planet.levels] + 1,
+        fuel: '0', capacity: '0', maximum_payload: '0',
+      },
+    } })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`)
+  await expect(page.getByRole('region', { name: 'Active construction' })).toBeVisible()
+  expect(requests).toEqual([])
+  const pane = page.getByRole('region', { name: 'Upgrade quote' })
+  for (const [name, cost] of [['Crystal Mine', '60'], ['Solar Plant', '80']]) {
+    await page.getByRole('link', { name: `Upgrade ${name}`, exact: true }).click()
+    await expect(pane.getByRole('heading', { name, exact: true })).toBeVisible()
+    await expect(pane.getByRole('button', { name: 'Metal details' }).locator('strong')).toHaveText(`Cost ${cost}`)
+    await expect(pane.getByRole('button', { name: 'Confirm upgrade' })).toBeDisabled()
+    await expect(pane.getByText('Loading building details…')).toHaveCount(0)
+  }
+  await page.goBack()
+  await expect(pane.getByRole('heading', { name: 'Crystal Mine', exact: true })).toBeVisible()
+  await expect(pane.getByRole('button', { name: 'Metal details' }).locator('strong')).toHaveText('Cost 60')
+  await page.getByRole('link', { name: 'Upgrade Fusion Reactor', exact: true }).click()
+  await expect(pane).toContainText('Unavailable in this universe.')
+  await expect(pane.getByText('Loading building details…')).toHaveCount(0)
+  expect(requests).not.toContain('FusionReactor')
+  await page.getByRole('link', { name: 'Upgrade Crystal Mine', exact: true }).click()
+  constructions.length = 0
+  await refreshGame(page)
+  await expect(pane.getByRole('button', { name: 'Confirm upgrade' })).toBeEnabled()
+  expect(requests).toContain('CrystalMine')
+  expect(requests).toContain('SolarPlant')
+  expect(purchases()).toBe(0)
 })

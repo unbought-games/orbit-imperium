@@ -1,7 +1,7 @@
 import { captureCatalog } from './fixtures/catalog-capture'
 import { readFileSync } from 'node:fs'
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import { shellFixture, body, binding, refreshGame } from './fixtures/game'
+import { shellFixture, body, binding, refreshGame, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 type S = components['schemas']
 test('active research remains cancellable from its details after removing Current work', async ({
@@ -44,9 +44,9 @@ test('active research remains cancellable from its details after removing Curren
       },
     })
   })
-  await page.goto(`/u/andromeda/research?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/research`)
   const progress = page
-    .getByRole('button', { name: 'Research Energy Technology', exact: true })
+    .getByRole('link', { name: 'Research Energy Technology', exact: true })
     .getByRole('group', { name: 'Research progress' })
   await expect(progress).toContainText(/1m \d+s/)
   await expect(progress.getByLabel('Target level 2')).toBeVisible()
@@ -54,7 +54,7 @@ test('active research remains cancellable from its details after removing Curren
     page.getByRole('group', { name: 'Research progress' }),
   ).toHaveCount(1)
   await page
-    .getByRole('button', { name: 'Research Energy Technology', exact: true })
+    .getByRole('link', { name: 'Research Energy Technology', exact: true })
     .click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('60 metal')
@@ -165,7 +165,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
         ? {
             ...common,
             type: 'Research',
-            host: body.id,
+            host: request.host,
             research: request.research,
             source_level: 0,
             target_level: 1,
@@ -179,7 +179,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
           ? {
               ...common,
               type: 'Manufacture',
-              body: body.id,
+              body: request.body,
               item: request.item,
               quantity: request.quantity,
               unit_cost: paid,
@@ -196,7 +196,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
           : {
               ...common,
               type: 'Building',
-              body: body.id,
+              body: request.body,
               building: request.building,
               action: request.type,
               source_level: 0,
@@ -248,7 +248,7 @@ test('facility upgrade arrow respects server blockers and submits directly when 
   const { sent, planet, blockers } = await setup(page, true)
   await navigate(page, 'Facilities')
   await page
-    .getByRole('button', { name: 'Upgrade Robotics Factory', exact: true })
+    .getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })
     .click()
   await expect(page.getByLabel('Action blockers')).toContainText(
     'No Free Field',
@@ -258,7 +258,7 @@ test('facility upgrade arrow respects server blockers and submits directly when 
     exact: true,
   })
   await expect(quick).toHaveCount(0)
-  await page.getByRole('button', { name: 'Dismiss quote' }).click()
+  await page.getByRole('link', { name: /^Back to / }).click()
   blockers.length = 0
   planet.fields++
   await refreshGame(page)
@@ -317,7 +317,7 @@ for (const [pageName, tile, action, region] of [
       })
     })
     await navigate(page, pageName)
-    await page.getByRole('button', { name: tile, exact: true }).click()
+    await page.getByRole('link', { name: tile, exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await pane.getByRole('button', { name: action, exact: true }).click()
     await expect(pane).toBeVisible()
@@ -326,7 +326,7 @@ for (const [pageName, tile, action, region] of [
     await expect(work.getByRole('button', { name: /Cancel/ })).toBeDisabled()
     await expect(work.getByRole('heading')).toBeFocused()
     const progress = page
-      .getByRole('button', { name: tile, exact: true })
+      .getByRole('link', { name: tile, exact: true })
       .getByRole('group', {
         name:
           pageName === 'Research'
@@ -342,7 +342,7 @@ for (const [pageName, tile, action, region] of [
     await expect(
       pane.getByRole('button', { name: action, exact: true }),
     ).toBeEnabled()
-    await pane.getByRole('button', { name: 'Dismiss quote' }).click()
+    await pane.getByRole('link', { name: /^Back to / }).click()
     await expect(pane).toBeHidden()
   })
 }
@@ -358,7 +358,7 @@ for (const [pageName, tile, action] of [
   }) => {
     const { planet } = await setup(page)
     await navigate(page, pageName)
-    await page.getByRole('button', { name: tile, exact: true }).click()
+    await page.getByRole('link', { name: tile, exact: true }).click()
     const confirm = page.getByRole('button', { name: action, exact: true })
     await expect(confirm).toBeEnabled()
     planet.amounts.deuterium = '0'
@@ -379,7 +379,7 @@ test('facility tiles mark insufficient resources while remaining inspectable', a
   planet.amounts.metal = '0'
   await refreshGame(page)
   await navigate(page, 'Facilities')
-  const tile = page.getByRole('button', {
+  const tile = page.getByRole('link', {
     name: 'Upgrade Robotics Factory',
     exact: true,
   })
@@ -401,7 +401,7 @@ const navigate = async (page: Page, name: string) => {
 }
 
 async function expectLegibleInspector(pane: Locator) {
-  // Selection may move into place, but prices and blockers never fade with art.
+  // Details appear in place immediately, with prices and blockers fully visible.
   await expect(pane).toHaveCSS('opacity', '1')
   const dimmed = await pane.locator('h2, table, [aria-label="Action blockers"]').evaluateAll(nodes => {
     const ancestors = []
@@ -414,7 +414,9 @@ async function expectLegibleInspector(pane: Locator) {
     return ancestors
   })
   expect(dimmed).toEqual([])
-  await expect(pane).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
+  await expect(pane).toHaveCSS('transform', 'none')
+  await expect(pane).toHaveCSS('animation-name', 'none')
+  await expect(pane).toHaveCSS('transition-duration', '0s')
   await expectUndistortedArt(pane)
 }
 
@@ -468,7 +470,7 @@ test('catalog detail artwork preserves source proportions in a tall panel', asyn
   await setup(page)
   await navigate(page, 'Facilities')
   await page
-    .getByRole('button', { name: 'Upgrade Robotics Factory', exact: true })
+    .getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })
     .click()
   await expectUndistortedArt(
     page.getByRole('region', { name: 'Progression quote' }),
@@ -476,20 +478,57 @@ test('catalog detail artwork preserves source proportions in a tall panel', asyn
   await page.screenshot({ path: 'test-results/catalog-detail-art.png' })
 })
 
-test('object stages preserve source proportions at desktop and phone widths', async ({
-  page,
-}) => {
-  await setup(page)
-  for (const width of [1440, 320]) {
+for (const width of [1440, 390, 320]) {
+  test(`catalog tabs omit colony expanders and repeated titles at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
-    await page.goto(`/u/andromeda/b/${body.id}/facilities`)
-    await page.getByText('Facilities colony', { exact: true }).click()
-    const scene = page.getByRole('region', { name: 'Facilities objects' })
-    await expect(scene).toBeVisible()
-    await expectUndistortedArt(scene.locator('..'))
-    await page.screenshot({ path: `test-results/catalog-scene-${width}.png` })
-  }
-})
+    await setup(page)
+    for (const [tab, tile] of [
+      ['Resources', 'Upgrade Metal Mine'],
+      ['Facilities', 'Upgrade Robotics Factory'],
+      ['Research', 'Research Combustion Drive'],
+      ['Shipyard', 'Build Small Cargo'],
+      ['Defense', 'Build Rocket Launcher'],
+    ]) {
+      await navigate(page, tab)
+      await expect(page.getByRole('link', { name: tab, exact: true })).toHaveAttribute('aria-current', 'page')
+      await expect(page.locator('main h1')).toHaveText(tab)
+      // Work summaries can have their own headings; the repeated page header is gone.
+      await expect(page.locator('main > header').getByRole('heading', { name: tab, exact: true })).toHaveCount(0)
+      await expect(page.locator('main details')).toHaveCount(0)
+      await expect(page.locator('main summary')).toHaveCount(0)
+      if (tab === 'Resources') {
+        await expect(page.getByText(/Production, storage and energy/)).toHaveCount(0)
+        await expect(page.getByRole('button', { name: 'Resource settings', exact: true })).toHaveCount(0)
+        await expect(page.getByRole('region', { name: 'Production controls' })).toBeHidden()
+        await expect(page.getByRole('region', { name: 'Shipyard & defense', exact: true })).toHaveCount(0)
+        await expect(page.getByRole('region', { name: 'Buildings', exact: true })).toBeVisible()
+      }
+      await expect(page.getByRole('link', { name: tile, exact: true })).toBeVisible()
+      const queueName = ['Resources', 'Facilities'].includes(tab)
+        ? 'Buildings'
+        : tab === 'Research' ? 'Research' : 'Shipyard & defense'
+      const queueBounds = (await page.getByRole('region', { name: queueName, exact: true }).boundingBox())!
+      const catalog = page.getByRole('region').filter({ has: page.getByRole('link', { name: /^(Upgrade|Research|Build) / }) }).first()
+      const catalogHeading = (await catalog.getByRole('heading', { level: 2 }).boundingBox())!
+      const catalogGap = catalogHeading.y - (queueBounds.y + queueBounds.height)
+      expect(catalogGap).toBeGreaterThanOrEqual(0)
+      expect(catalogGap).toBeLessThanOrEqual(20)
+      if (['Research', 'Shipyard', 'Defense'].includes(tab)) {
+        await expect(page.getByText(/Universe-wide research · host and funding body/)).toHaveCount(0)
+        await expect(page.getByText('Research applies to all your planets.', { exact: true })).toHaveCount(0)
+        await expect(page.locator('main').getByText(/^Planet \[.*\]$/)).toHaveCount(0)
+        const queue = page.getByRole('region', { name: tab === 'Research' ? 'Research' : 'Shipyard & defense', exact: true })
+        await expect(queue).toBeVisible()
+        const queueBounds = (await queue.boundingBox())!
+        const tabs = (await page.getByRole('navigation', { name: 'Build navigation' }).boundingBox())!
+        expect(queueBounds.y - (tabs.y + tabs.height)).toBeGreaterThanOrEqual(0)
+        expect(queueBounds.y - (tabs.y + tabs.height)).toBeLessThanOrEqual(20)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    }
+    await page.screenshot({ path: `test-results/catalog-without-scene-${width}.png` })
+  })
+}
 
 test('facilities and research share inline details and technology prerequisites', async ({
   page,
@@ -497,7 +536,7 @@ test('facilities and research share inline details and technology prerequisites'
   const { sent } = await setup(page)
   await navigate(page, 'Facilities')
   await page
-    .getByRole('button', { name: 'Upgrade Robotics Factory', exact: true })
+    .getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })
     .click()
   const details = page.getByRole('region', { name: 'Progression quote' })
   await expect(details).toContainText('1m 16s')
@@ -510,7 +549,7 @@ test('facilities and research share inline details and technology prerequisites'
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command.type).toBe('StartUpgrade')
   await navigate(page, 'Research')
-  const tile = page.getByRole('button', {
+  const tile = page.getByRole('link', {
     name: 'Research Combustion Drive',
     exact: true,
   })
@@ -548,7 +587,7 @@ test('facilities and research share inline details and technology prerequisites'
     expected_terms_hash: 'b'.repeat(64),
   })
   await expect(details).toBeVisible()
-  await details.getByRole('button', { name: 'Dismiss quote' }).click()
+  await details.getByRole('link', { name: /^Back to / }).click()
   await expect(tile).toBeFocused()
 })
 
@@ -558,10 +597,10 @@ test('manufacturing updates totals locally and Build validates without dismissin
   const { sent, inspections } = await setup(page)
   await navigate(page, 'Shipyard')
   await expect(
-    page.getByRole('button', { name: 'Build Deathstar', exact: true }),
-  ).toBeDisabled()
+    page.getByRole('link', { name: 'Build Deathstar', exact: true }),
+  ).toHaveAttribute('title', 'Deathstar · unavailable in this universe')
   await page
-    .getByRole('button', { name: 'Build Small Cargo', exact: true })
+    .getByRole('link', { name: 'Build Small Cargo', exact: true })
     .click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('1 × Small Cargo')
@@ -593,7 +632,7 @@ test('manufacturing updates totals locally and Build validates without dismissin
   await expect(pane).toBeVisible()
   await navigate(page, 'Defense')
   await page
-    .getByRole('button', { name: 'Build Rocket Launcher', exact: true })
+    .getByRole('link', { name: 'Build Rocket Launcher', exact: true })
     .click()
   await page.getByLabel('Defenses quantity').fill('0')
 
@@ -620,7 +659,7 @@ for (const action of ['edit', 'dismiss', 'reopen']) {
     const { sent } = await setup(page)
     await navigate(page, 'Shipyard')
     await page
-      .getByRole('button', { name: 'Build Small Cargo', exact: true })
+      .getByRole('link', { name: 'Build Small Cargo', exact: true })
       .click()
     const build = page.getByRole('button', { name: 'Build', exact: true })
     await expect(build).toBeEnabled()
@@ -644,10 +683,10 @@ for (const action of ['edit', 'dismiss', 'reopen']) {
     await build.click()
     await expect(build).toBeDisabled()
     if (action === 'edit') await page.getByLabel('Shipyard quantity').fill('4')
-    else await page.getByRole('button', { name: 'Dismiss quote' }).click()
+    else await page.getByRole('link', { name: /^Back to / }).click()
     if (action === 'reopen')
       await page
-        .getByRole('button', { name: 'Build Small Cargo', exact: true })
+        .getByRole('link', { name: 'Build Small Cargo', exact: true })
         .click()
     release()
     await responded
@@ -670,7 +709,7 @@ test('manufacturing does not submit when server costs differ from the displayed 
   const { sent } = await setup(page)
   await navigate(page, 'Shipyard')
   await page
-    .getByRole('button', { name: 'Build Small Cargo', exact: true })
+    .getByRole('link', { name: 'Build Small Cargo', exact: true })
     .click()
   const build = page.getByRole('button', { name: 'Build', exact: true })
   await expect(build).toBeEnabled()
@@ -725,7 +764,7 @@ for (const [destination, tile] of [
   }) => {
     await setup(page)
     await navigate(page, destination)
-    await page.getByRole('button', { name: tile, exact: true }).click()
+    await page.getByRole('link', { name: tile, exact: true }).click()
     let release!: () => void
     const gate = new Promise<void>((resolve) => {
       release = resolve
@@ -762,12 +801,12 @@ test('catalogs fit narrow screens and enlarged text without losing controls', as
   ]) {
     await page.goto(
       path === 'research'
-        ? `/u/andromeda/research?body=${body.id}`
+        ? `/u/andromeda/b/${body.id}/research`
         : `/u/andromeda/b/${body.id}/${path}`,
     )
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 })
-      await page.getByRole('button', { name: tile, exact: true }).click()
+      await page.getByRole('link', { name: tile, exact: true }).click()
       const panel = page.getByRole('region', { name: 'Progression quote' })
       await expect(panel).toBeVisible()
       expect(
@@ -787,7 +826,7 @@ test('catalogs fit narrow screens and enlarged text without losing controls', as
       await page.keyboard.press('Escape')
       await expect(panel).toBeVisible()
       if (width !== 1440) {
-        await panel.getByRole('button', { name: 'Dismiss quote' }).click()
+        await panel.getByRole('link', { name: /^Back to / }).click()
         await expect(panel).toBeHidden()
       }
     }
@@ -825,7 +864,7 @@ test('changing manufacturing quantity while unit terms load uses the latest quan
   )
   await navigate(page, 'Shipyard')
   await page
-    .getByRole('button', { name: 'Build Small Cargo', exact: true })
+    .getByRole('link', { name: 'Build Small Cargo', exact: true })
     .click()
   await reached
   await page.getByLabel('Shipyard quantity').fill('4')
@@ -837,7 +876,7 @@ test('changing manufacturing quantity while unit terms load uses the latest quan
   await expect(
     page.getByRole('region', { name: 'Progression quote' }),
   ).toContainText('4 × Small Cargo')
-  await page.getByRole('button', { name: 'Dismiss quote' }).click()
+  await page.getByRole('link', { name: /^Back to / }).click()
   await expect(
     page.getByRole('region', { name: 'Progression quote' }),
   ).toHaveCount(0)
@@ -889,7 +928,7 @@ test('selected unit decisions floor balances and retain large inventory on phone
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
-    await page.getByRole('button', { name: 'Build Small Cargo', exact: true }).click()
+    await page.getByRole('link', { name: 'Build Small Cargo', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expectLegibleInspector(pane)
     await expect(pane.getByLabel('Unit inventory')).toContainText('9007199254740993')
@@ -897,7 +936,7 @@ test('selected unit decisions floor balances and retain large inventory on phone
     await expect(metal.locator('td').nth(0).getByText('60', { exact: true })).toBeVisible()
     await expect(metal.locator('td').nth(1).getByText('0', { exact: true })).toBeVisible()
     await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
-    await expect(pane.getByRole('button', { name: 'Dismiss quote' })).toHaveText('Back')
+    await expect(pane.getByRole('link', { name: /^Back to / })).toHaveText('Back')
     await expect(pane.getByRole('button', { name: 'Build', exact: true })).toHaveText('Order 1 Small Cargo')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await captureCatalog(page, `test-results/progression-ships-selected-${width}.png`)
@@ -907,18 +946,17 @@ test('selected unit decisions floor balances and retain large inventory on phone
   }
 })
 
-test('facility and research object stages remain usable when artwork fails', async ({ page }) => {
+test('facility catalog details remain usable when artwork fails', async ({ page }) => {
   await page.route('**/art/**', route => route.abort())
   const { sent } = await setup(page)
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
-    await page.getByText('Facilities colony', { exact: true }).click()
-    const marker = page.getByRole('button', { name: 'Inspect Robotics Factory', exact: true })
+    const marker = page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })
     await marker.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeEnabled()
-    await page.keyboard.press('Escape')
+    await page.getByRole('link', { name: 'Back to Facilities' }).click()
     await expect(marker).toBeFocused()
     await expect(pane).toBeHidden()
   }
@@ -928,16 +966,16 @@ test('facility and research object stages remain usable when artwork fails', asy
 test('selected facilities research and defense show reviewable decisions at all target widths', async ({ page }) => {
   await setup(page, true)
   for (const [path, tile] of [['facilities', 'Upgrade Robotics Factory'], ['research', 'Research Combustion Drive'], ['defense', 'Build Rocket Launcher']]) {
-    await page.goto(path === 'research' ? `/u/andromeda/research?body=${body.id}` : `/u/andromeda/b/${body.id}/${path}`)
+    await page.goto(path === 'research' ? `/u/andromeda/b/${body.id}/research` : `/u/andromeda/b/${body.id}/${path}`)
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 })
-      await page.getByRole('button', { name: tile, exact: true }).click()
+      await page.getByRole('link', { name: tile, exact: true }).click()
       const pane = page.getByRole('region', { name: 'Progression quote' })
       await expect(pane.getByLabel('Action blockers')).toContainText('No Free Field')
       await expectLegibleInspector(pane)
       await expect(pane.getByRole('button', { name: path === 'facilities' ? 'Confirm upgrade' : path === 'research' ? 'Confirm research' : 'Build', exact: true })).toBeDisabled()
       await captureCatalog(page, `test-results/progression-${path}-blocked-${width}.png`)
-      await pane.getByRole('button', { name: 'Dismiss quote' }).click()
+      await pane.getByRole('link', { name: /^Back to / }).click()
       await expect(pane).toBeHidden()
     }
   }
@@ -952,7 +990,7 @@ test('active facility remains cancellable without a fresh quote at each target w
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
-    await page.getByRole('button', { name: 'Upgrade Robotics Factory', exact: true }).click()
+    await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
     await expect(pane).toContainText('60 metal')
@@ -975,7 +1013,7 @@ test('narrow spending ledgers keep whole large balances intact with visible labe
     // Also exercise wider glyphs on hosts whose default system font is narrow.
     if (wideFont) await page.addStyleTag({ content: 'html { font-family: monospace !important }' })
     await page
-      .getByRole('button', { name: 'Build Small Cargo', exact: true })
+      .getByRole('link', { name: 'Build Small Cargo', exact: true })
       .click()
     const table = page
       .getByRole('region', { name: 'Progression quote' })
@@ -1046,8 +1084,8 @@ test('activated Impulse Drive uses server gates, supports level four, and shows 
     await route.fulfill({ json: { protocol: 3, binding, command_id: envelope.command_id,
       admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1' } })
   })
-  await page.goto(`/u/andromeda/research?body=${body.id}`)
-  await page.getByRole('button', { name: 'Research Impulse Drive', exact: true }).click()
+  await page.goto(`/u/andromeda/b/${body.id}/research`)
+  await page.getByRole('link', { name: 'Research Impulse Drive', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('16,000')
   await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
@@ -1104,8 +1142,8 @@ test('activated Astrophysics shows three gates, exact rounded costs, and deferre
     await route.fulfill({ json: { protocol: 3, binding, command_id: envelope.command_id,
       admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1' } })
   })
-  await page.goto(`/u/andromeda/research?body=${body.id}`)
-  await page.getByRole('button', { name: 'Research Astrophysics', exact: true }).click()
+  await page.goto(`/u/andromeda/b/${body.id}/research`)
+  await page.getByRole('link', { name: 'Research Astrophysics', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('37,500')
   await expect(pane).toContainText('75,000')
@@ -1132,7 +1170,7 @@ test('Laser Technology shows its requirements, artwork and research action', asy
   planet.levels.ResearchLab = 1
   await refreshGame(page)
   await navigate(page, 'Research')
-  await page.getByRole('button', { name: 'Research Laser Technology', exact: true }).click()
+  await page.getByRole('link', { name: 'Research Laser Technology', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('Weapon damage is improved by Weapons Technology.')
   await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
@@ -1159,7 +1197,7 @@ test('Light Laser shows completed inventory and builds a batch at its catalog co
   planet.inventories.push({ item: { kind: 'Defense', id: 'LightLaser' }, count: '7' })
   await refreshGame(page)
   await navigate(page, 'Defense')
-  const tile = page.getByRole('button', { name: 'Build Light Laser', exact: true })
+  const tile = page.getByRole('link', { name: 'Build Light Laser', exact: true })
   await expect(tile).toContainText('7')
   await tile.click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
@@ -1179,6 +1217,137 @@ test('Light Laser shows completed inventory and builds a batch at its catalog co
   expect(sent[0].command).toMatchObject({ type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'LightLaser' }, quantity: '3' })
 })
 
+for (const width of [390, 1440]) {
+  test(`catalog deep links survive refresh and history without Escape dismissal at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const { sent } = await setup(page)
+    for (const [tab, path, item, title, linkName] of [
+      ['Resources', 'resources', 'metal-mine', 'Metal Mine', 'Upgrade Metal Mine'],
+      ['Facilities', 'facilities', 'robotics-factory', 'Robotics Factory', 'Upgrade Robotics Factory'],
+      ['Research', 'research', 'combustion-drive', 'Combustion Drive', 'Research Combustion Drive'],
+      ['Shipyard', 'shipyard', 'small-cargo', 'Small Cargo', 'Build Small Cargo'],
+      ['Defense', 'defense', 'rocket-launcher', 'Rocket Launcher', 'Build Rocket Launcher'],
+    ]) {
+      const parent = `/u/andromeda/b/${body.id}/${path}`
+      const detail = `${parent}/${item}`
+      await navigate(page, tab)
+      const tile = page.getByRole('link', { name: linkName, exact: true })
+      await expect(tile).toHaveAttribute('href', detail)
+      await tile.click()
+      await expect(page).toHaveURL(detail)
+      const panel = page.getByRole('region', { name: 'Progression quote' })
+      await expect(panel.getByRole('heading', { name: title, exact: true })).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(page).toHaveURL(detail)
+      await expect(panel).toBeVisible()
+      await page.reload()
+      await expect(panel).toBeVisible()
+      const back = panel.getByRole('link', { name: `Back to ${tab}`, exact: true })
+      await expect(back).toHaveAttribute('href', parent)
+      await back.click()
+      await expect(page).toHaveURL(parent)
+      await expect(tile).toBeFocused()
+      await page.goBack()
+      await expect(page).toHaveURL(detail)
+      await expect(panel).toBeVisible()
+      await page.goForward()
+      await expect(page).toHaveURL(parent)
+    }
+    expect(sent).toEqual([])
+  })
+}
+
+test('planet changes retain the item, reset edits, and link across prerequisites in the selected context', async ({ page }) => {
+  const other = { ...structuredClone(body), id: id(6), coordinates: { galaxy: 1, system: 10, position: 4 } }
+  const entries = catalog.map(entry => entry.key.id === 'SmallCargo' ? {
+    ...entry, requirements: [
+      { type: 'PlayerResearch' as const, research: 'CombustionDrive' as const, level: 1 },
+      { type: 'BodyBuilding' as const, building: 'Shipyard' as const, level: 2 },
+    ],
+  } : entry)
+  const { sent, inspections } = await setup(page, false, undefined, { bodies: [body, other], catalog: entries })
+  await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
+  await page.getByLabel('Shipyard quantity').fill('7')
+  await page.getByLabel('Selected body').selectOption(other.id)
+  await expect(page).toHaveURL(`/u/andromeda/b/${other.id}/shipyard/small-cargo`)
+  await expect(page.getByLabel('Shipyard quantity')).toHaveValue('1')
+  await expect.poll(() => inspections.some(r => r.type === 'Manufacture' && r.body === other.id)).toBe(true)
+  await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Technology — Small Cargo' })
+  const drive = dialog.getByRole('link', { name: 'Combustion Drive', exact: true })
+  await expect(drive).toHaveAttribute('href', `/u/andromeda/b/${other.id}/research/combustion-drive`)
+  await drive.click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${other.id}/research/combustion-drive`)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect.poll(() => inspections.some(r => r.type === 'Research' && r.host === other.id)).toBe(true)
+  expect(sent).toEqual([])
+  await page.getByRole('button', { name: 'Confirm research', exact: true }).click()
+  await expect.poll(() => sent.length).toBe(1)
+  expect(sent[0].command).toMatchObject({ type: 'StartResearch', research: 'CombustionDrive', host: other.id })
+  await page.goBack()
+  await expect(page).toHaveURL(`/u/andromeda/b/${other.id}/shipyard/small-cargo`)
+  expect(sent).toHaveLength(1)
+})
+
+test('unknown catalog IDs and inaccessible planets fail closed while disabled items remain inspectable', async ({ page }) => {
+  const { sent, inspections } = await setup(page)
+  for (const path of [
+    `/u/andromeda/b/${body.id}/resources/not-a-building`,
+    `/u/andromeda/b/${body.id}/facilities/metal-mine`,
+    `/u/andromeda/b/${id(99)}/research/combustion-drive`,
+  ]) {
+    await page.goto(path)
+    await expect(page.getByRole('heading', { name: 'Destination unavailable' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Progression quote' })).toHaveCount(0)
+    await expect(page).toHaveURL(path)
+  }
+  await page.goto(`/u/andromeda/b/${body.id}/shipyard/deathstar`)
+  const detail = page.getByRole('region', { name: 'Progression quote' })
+  await expect(detail).toContainText('Unavailable in this universe.')
+  await expect(detail.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
+  expect(inspections.some(r => r.type === 'Manufacture' && r.item.id === 'Deathstar')).toBe(false)
+  expect(sent).toEqual([])
+})
+
+test('Moon-only facilities are omitted on planets and available on moons', async ({ page }) => {
+  const moon = { ...structuredClone(body), id: id(7), kind: 'Moon' as const }
+  const moonEntries: S['CatalogEntry3'][] = ['LunarBase', 'SensorPhalanx', 'JumpGate'].map(name => ({
+    key: { kind: 'Building', id: name as S['BuildingId3'] },
+    requirements: [], enabled: false, mobile: false, body_kinds: ['Moon'],
+  }))
+  const { sent } = await setup(page, false, undefined, { bodies: [body, moon], catalog: [...catalog, ...moonEntries] })
+  await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+  for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
+    await expect(page.getByRole('link', { name: `Upgrade ${name}`, exact: true })).toHaveCount(0)
+  await page.getByLabel('Selected body').selectOption(moon.id)
+  for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
+    await expect(page.getByRole('link', { name: `Upgrade ${name}`, exact: true })).toBeVisible()
+  expect(sent).toEqual([])
+})
+
+test('catalog item links open natively in a new tab without changing the original selection', async ({ page, context }) => {
+  const { sent } = await setup(page)
+  await navigate(page, 'Resources')
+  const parent = `/u/andromeda/b/${body.id}/resources`
+  const detail = `${parent}/metal-mine`
+  // Hold the popup at a static document until its isolated HTTP fixtures are attached.
+  await context.route('**/u/**', route => route.fulfill({ contentType: 'text/html', body: '<html><body>Preparing fixture</body></html>' }))
+  const opened = context.waitForEvent('page')
+  await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click({ button: 'middle' })
+  const tab = await opened
+  await expect(tab).toHaveURL(detail)
+  await expect(page).toHaveURL(parent)
+  await expect(page.getByRole('region', { name: 'Progression quote' })).toHaveCount(0)
+  await context.unroute('**/u/**')
+  const popupFixture = await setup(tab)
+  await tab.goto(detail)
+  const panel = tab.getByRole('region', { name: 'Progression quote' })
+  await expect(panel.getByRole('heading', { name: 'Metal Mine', exact: true })).toBeVisible()
+  await expect(panel.getByRole('link', { name: 'Back to Resources' })).toHaveAttribute('href', parent)
+  expect(sent).toEqual([])
+  expect(popupFixture.sent).toEqual([])
+  await tab.close()
+})
 
 const ionCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-9.json', 'utf8')).catalog
 
@@ -1192,7 +1361,7 @@ test('Ion Technology shows prerequisite progress, existing artwork, costs and su
   planet.levels.ResearchLab = 4
   await refreshGame(page)
   await navigate(page, 'Research')
-  await page.getByRole('button', { name: 'Research Ion Technology', exact: true }).click()
+  await page.getByRole('link', { name: 'Research Ion Technology', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('Ion provides no direct combat bonus or demolition discount.')
   await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()

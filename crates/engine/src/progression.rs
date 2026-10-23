@@ -102,6 +102,8 @@ pub struct ProgressionInspection {
     pub estimates: Option<ProgressionEstimate>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub building_energy: Option<BuildingEnergy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub building_benefit: Option<BuildingBenefit>,
 }
 fn block(code: GameError) -> ProgressionBlocker {
     ProgressionBlocker {
@@ -319,6 +321,7 @@ pub fn inspect_progression(
         blockers: vec![],
         estimates: None,
         building_energy: None,
+        building_benefit: None,
     };
     let Some((id, key)) = request_identity(q) else {
         out.blockers.push(block(GameError::UnavailableContent));
@@ -378,6 +381,7 @@ pub fn inspect_progression(
         ..
     } = &terms
     {
+        out.building_benefit = building_benefit(b, *building, *source_level, *target_level, r)?;
         out.building_energy = Some(building_energy(
             b,
             *building,

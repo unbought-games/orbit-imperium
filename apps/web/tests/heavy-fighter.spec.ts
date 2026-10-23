@@ -124,7 +124,7 @@ test('Heavy Fighter exposes its missing Impulse Drive prerequisite', async ({
   await setup(page, 1)
   await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
   await page
-    .getByRole('button', { name: 'Build Heavy Fighter', exact: true })
+    .getByRole('link', { name: 'Build Heavy Fighter', exact: true })
     .click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('Impulse Drive')
@@ -158,7 +158,7 @@ test('Heavy Fighter submits the selected build quantity', async ({ page }) => {
   })
   await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
   await page
-    .getByRole('button', { name: 'Build Heavy Fighter', exact: true })
+    .getByRole('link', { name: 'Build Heavy Fighter', exact: true })
     .click()
   await expect(pane).toContainText('An impulse-powered combat ship')
   await expect(pane.locator('img').first()).toHaveAttribute(
@@ -232,7 +232,7 @@ test('Heavy Fighters can be selected, quoted and launched in an attack fleet', a
       },
     })
   })
-  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page
     .getByRole('combobox', { name: 'Mission', exact: true })
     .selectOption('Attack')

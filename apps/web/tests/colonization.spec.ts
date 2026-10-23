@@ -41,7 +41,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
   sent=pair.gameplay.command;launches++
   await route.fulfill({json:{protocol:4,binding,command_id:pair.gameplay.command_id,admitted_at:Date.now(),executed_at:Date.now(),status:'Committed',result_ids:[id(80)],minimum_viewer_revision:'1'}})
  })
- await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
+ await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
  const cards=page.getByRole('region',{name:'Galaxy positions'}).getByRole('listitem')
  await cards.nth(2).locator('summary').click()
  await expect(cards.nth(2)).toContainText('Astrophysics level 4')
@@ -107,7 +107,7 @@ test('occupied colony positions retain the actionable error through shared dispa
     resolved++
     await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PositionOccupied' } })
   })
-  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect.poll(() => observed).toBe(1)
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
   await page.getByLabel('Position', { exact: true }).fill('8')
@@ -125,7 +125,7 @@ test('dispatch blocks a known locked colony position and enables an eligible pos
   page.on('request', request => {
     if (request.url().endsWith('/world')) requests.push(request.postDataJSON().type)
   })
-  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
   await page.getByLabel('Position', { exact: true }).fill('3')
   await expect(page.getByRole('status').filter({ hasText: 'Planets:' })).toContainText('Astrophysics level 4 is required for this position.')
@@ -154,7 +154,7 @@ test('authoritative colony quote rejection explains the position research requir
       await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PrerequisiteMissing' } })
     }
   })
-  await page.goto(`/u/andromeda/dispatch?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect.poll(() => requests).toEqual(['Galaxy'])
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
   await page.getByLabel('Position', { exact: true }).fill('3')

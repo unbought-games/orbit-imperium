@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import type { BoundView } from '../client-model/commands'
 import { readyFixture } from '../test-support/bootstrap'
-import { ResourceWorld } from '../features/progression/progression-world'
 import { ResourceStrip } from './resource-strip'
 import styles from './resource-amount.module.css'
 
@@ -41,12 +40,6 @@ it.each([
       inventories: [],
     }
     const view = readyFixture(4).snapshot.view as BoundView
-    const ledger = renderToStaticMarkup(
-      createElement(ResourceWorld, { view, body, onSelect: () => {} }),
-    )
-    expect(
-      ledger.split('Storage full · production suppressed').length - 1,
-    ).toBe(full ? 3 : 0)
     const strip = renderToStaticMarkup(
       createElement(ResourceStrip, { view, body }),
     )

@@ -13,10 +13,6 @@
   text-decoration: none;
   overflow-wrap: anywhere;
   touch-action: manipulation;
-  transition:
-    background var(--motion-press),
-    border-color var(--motion-press),
-    transform var(--motion-press) var(--ease-settle);
 }
 :where(.primary) {
   background: var(--accent);
@@ -47,8 +43,4 @@ a:where(.primary):hover {
 :where(.quiet):disabled {
   background: transparent;
   color: var(--text);
-}
-
-:where(.button):active:enabled {
-  transform: translateY(1px);
 }

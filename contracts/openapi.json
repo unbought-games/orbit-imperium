@@ -7701,6 +7701,9 @@
           },
           "building_energy": {
             "$ref": "#/components/schemas/BuildingEnergy"
+          },
+          "building_benefit": {
+            "$ref": "#/components/schemas/BuildingBenefit"
           }
         },
         "required": [
@@ -9638,6 +9641,9 @@
           },
           "building_energy": {
             "$ref": "#/components/schemas/BuildingEnergy"
+          },
+          "building_benefit": {
+            "$ref": "#/components/schemas/BuildingBenefit"
           }
         },
         "required": [
@@ -12513,6 +12519,36 @@
           "request_id",
           "players"
         ]
+      },
+      "BuildingBenefit": {
+        "type": "object",
+        "description": "Current and target benefits at 100% output with sufficient energy, excluding base income. Derived from active rules.",
+        "required": [
+          "kind",
+          "current",
+          "target"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "MetalPerHour",
+              "CrystalPerHour",
+              "DeuteriumPerHour",
+              "Energy",
+              "MetalCapacity",
+              "CrystalCapacity",
+              "DeuteriumCapacity"
+            ]
+          },
+          "current": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "target": {
+            "$ref": "#/components/schemas/Decimal"
+          }
+        },
+        "additionalProperties": false
       }
     }
   }

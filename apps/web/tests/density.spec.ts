@@ -69,7 +69,7 @@ for (const viewport of [
         fleet_slots: '2',
       },
     })
-    await page.goto(`/u/andromeda/fleets?body=${body.id}`)
+    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
     const recall = page.getByRole('button', {
       name: 'Review recall',
       exact: true,
@@ -193,7 +193,7 @@ for (const viewport of [
     ])
   })
 
-  test(`building choices precede optional artwork at ${viewport.width}px`, async ({
+  test(`building choices remain visible without colony artwork at ${viewport.width}px`, async ({
     page,
   }) => {
     await page.setViewportSize(viewport)
@@ -210,7 +210,7 @@ for (const viewport of [
       ],
     })
     await page.goto(`/u/andromeda/b/${body.id}/resources`)
-    const tile = page.getByRole('button', {
+    const tile = page.getByRole('link', {
       name: 'Upgrade Metal Mine',
       exact: true,
     })
@@ -218,12 +218,12 @@ for (const viewport of [
     await expect(
       page.getByRole('button', { name: 'Resource settings', exact: true }),
     ).toHaveCount(0)
-    await expect(page.getByLabel('Planet energy')).toBeHidden()
+    await expect(page.getByLabel('Planet energy')).toHaveCount(0)
+    await expect(page.locator('main details')).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Resources', level: 2 })).toHaveCount(0)
     await page.screenshot({
       path: `test-results/density-resources-${viewport.width}.png`,
     })
-    await page.getByText('Industrial resource colony', { exact: true }).click()
-    await expect(page.getByLabel('Planet energy')).toBeVisible()
   })
 }
 
@@ -263,7 +263,7 @@ for (const width of [1280, 390]) {
       .getByRole('link', { name: 'View Transport outbound fleet' })
       .first()
       .click()
-    const detailUrl = `/u/andromeda/fleets/${legacyFleet.id}?body=${body.id}`
+    const detailUrl = `/u/andromeda/b/${body.id}/fleets/${legacyFleet.id}`
     await expect(page).toHaveURL(detailUrl)
     await expect(
       page.getByRole('button', { name: 'Review recall', exact: true }),
@@ -278,13 +278,13 @@ for (const width of [1280, 390]) {
     })
     await expect(allFleets).toHaveAttribute(
       'href',
-      `/u/andromeda/fleets?body=${body.id}`,
+      `/u/andromeda/b/${body.id}/fleets`,
     )
     await expect(
       navigation.getByRole('button', { name: 'Galaxy', exact: true }),
     ).toBeDisabled()
     await allFleets.click()
-    await expect(page).toHaveURL(`/u/andromeda/fleets?body=${body.id}`)
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
     await expect(
       page.getByRole('button', { name: 'Review recall', exact: true }),
     ).toHaveCount(2)
@@ -293,7 +293,7 @@ for (const width of [1280, 390]) {
     await navigation
       .getByRole('link', { name: 'Dispatch', exact: true })
       .click()
-    await expect(page).toHaveURL(`/u/andromeda/dispatch?body=${body.id}`)
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/dispatch`)
     await expect(
       page.getByRole('heading', { name: 'Dispatch fleet', exact: true }),
     ).toBeVisible()
