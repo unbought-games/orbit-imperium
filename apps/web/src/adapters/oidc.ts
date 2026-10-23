@@ -1,4 +1,4 @@
-import { bindAnalytics } from './analytics'
+import { bindAnalytics } from './optional-services'
 export interface OidcConfig {
   mode: 'oidc' | 'local'
   universes: { universe: string; name: string }[]
@@ -38,11 +38,7 @@ export const oidcHttp = {
       },
       body: JSON.stringify({ universe }),
     })
-    if (result.ok)
-      await Promise.race([
-        bindAnalytics(),
-        new Promise((resolve) => setTimeout(resolve, 1200)),
-      ])
+    if (result.ok) bindAnalytics()
     if (!result.ok)
       throw new Error(
         'This universe is closed, full, or temporarily unavailable. Your account is ready; choose another universe or try later.',

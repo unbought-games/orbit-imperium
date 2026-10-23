@@ -135,6 +135,14 @@ export function startAnalytics() {
       disable: disableAnalytics,
       coverage: () => client?.getCoverage(),
     }
+    let attempts = 0
+    const retry = setInterval(() => {
+      if (++attempts >= 5) clearInterval(retry)
+      void bindAnalytics()
+    }, 15000)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void bindAnalytics()
+    })
     await bindAnalytics()
   })().catch(() => {})
   return ready

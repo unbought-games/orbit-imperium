@@ -11,6 +11,79 @@ test.beforeEach(async ({ page }) => {
   )
 })
 
+for (const blocked of [
+  'scripts',
+  'requests',
+  'SDK requests',
+  'pending requests',
+] as const) {
+  test(`content blockers cannot prevent startup, navigation, or logout (${blocked})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await shellFixture(page)
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    let intercepted = 0
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(/analytics/i, async (route) => {
+      if (
+        blocked === 'SDK requests' &&
+        new URL(route.request().url()).pathname === '/api/analytics'
+      ) {
+        return route.fulfill({
+          json: {
+            enabled: true,
+            config: {
+              endpoint: 'https://analytics.example',
+              propertyId: binding.account,
+              publicToken: 'fixture',
+              policyVersion: 1,
+              handoffOrigins: {},
+            },
+          },
+        })
+      }
+      const script = route.request().resourceType() === 'script'
+      if ((blocked === 'scripts') !== script) return route.fallback()
+      intercepted++
+      if (blocked === 'pending requests') await gate
+      await route.abort('blockedbyclient')
+    })
+    try {
+      await page.reload()
+      await expect(page.locator('main h1')).toContainText('Empire —')
+      await expect.poll(() => intercepted).toBeGreaterThan(0)
+      await page.getByRole('button', { name: 'Menu', exact: true }).click()
+      await page
+        .getByRole('dialog', { name: 'Navigation' })
+        .getByRole('link', { name: 'Resources', exact: true })
+        .click()
+      await expect(page.locator('main h1')).toHaveText('Resources')
+      const logout = page.waitForRequest(
+        (request) =>
+          new URL(request.url()).pathname === '/api/v1/session' &&
+          request.method() === 'DELETE',
+      )
+      await page.getByRole('button', { name: 'Menu', exact: true }).click()
+      await page
+        .getByRole('dialog', { name: 'Navigation' })
+        .getByRole('button', { name: 'Sign out' })
+        .click()
+      await logout
+      await expect(
+        page.getByRole('button', { name: 'Sign in', exact: true }),
+      ).toBeVisible()
+      expect(errors).toEqual([])
+    } finally {
+      release()
+    }
+  })
+}
+
 test('OIDC sign-in offers one prominent account action and retains the destination', async ({
   page,
 }) => {
