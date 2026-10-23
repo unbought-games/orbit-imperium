@@ -11,6 +11,8 @@ import type { ReactNode } from 'react'
 import { label } from '../ui/format'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
+import { groupReportBuildings } from './report-buildings'
+import type { ObservedLevel } from './report-buildings'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
   v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -70,8 +72,7 @@ function Units({ value }: { value: unknown }) {
     <Text>Known empty</Text>
   )
 }
-function Levels({ value }: { value: unknown }) {
-  const rows = Object.entries(record(value))
+function Levels({ rows }: { rows: ObservedLevel[] }) {
   return rows.length ? (
     <dl className={styles.grid}>
       {rows.map(([name, level]) => (
@@ -81,6 +82,19 @@ function Levels({ value }: { value: unknown }) {
         </div>
       ))}
     </dl>
+  ) : (
+    <Text>Known empty</Text>
+  )
+}
+function Buildings({ value }: { value: unknown }) {
+  const groups = groupReportBuildings(record(value))
+  return groups.length ? (
+    groups.map(({ title, rows }) => (
+      <div key={title}>
+        <h4>{title}</h4>
+        <Levels rows={rows} />
+      </div>
+    ))
   ) : (
     <Text>Known empty</Text>
   )
@@ -211,10 +225,10 @@ export function ReportObservation({
           {(v) => <Units value={v} />}
         </KnownSection>
         <KnownSection title="Buildings" value={payload.buildings}>
-          {(v) => <Levels value={v} />}
+          {(v) => <Buildings value={v} />}
         </KnownSection>
         <KnownSection title="Research" value={payload.research}>
-          {(v) => <Levels value={v} />}
+          {(v) => <Levels rows={Object.entries(record(v))} />}
         </KnownSection>
       </Panel>
     )
