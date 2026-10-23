@@ -40,11 +40,15 @@ export function latestProgressionAttempt(
     }
   })
   // A cancellation of one of these orders supersedes its earlier confirmation.
-  // The receipt owns this relationship; do not save a second operation mapping.
+  // Before execution, cancellation uses the accepted start command ID as an
+  // alias. Keep that relationship after its committed operation IDs arrive.
   const operations = new Set(
-    orders.flatMap((attempt) =>
-      attempt.receipt?.status === 'Committed' ? attempt.receipt.result_ids : [],
-    ),
+    orders.flatMap((attempt) => [
+      attempt.envelope.command_id,
+      ...(attempt.receipt?.status === 'Committed'
+        ? attempt.receipt.result_ids
+        : []),
+    ]),
   )
   return [...attempts.values()]
     .filter((attempt) => {

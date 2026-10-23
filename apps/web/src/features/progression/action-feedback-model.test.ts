@@ -164,3 +164,70 @@ it('replaces a construction confirmation with its cancellation result, not an un
     }),
   ).toBe(cancelled)
 })
+
+it.each([
+  [
+    { kind: 'Building', id: 'MetalMine' },
+    {
+      type: 'StartUpgrade',
+      body: 'planet',
+      building: 'MetalMine',
+      expected_terms_hash: 'hash',
+    },
+    'CancelConstruction',
+  ],
+  [
+    { kind: 'Research', id: 'EnergyTechnology' },
+    {
+      type: 'StartResearch',
+      host: 'planet',
+      research: 'EnergyTechnology',
+      expected_terms_hash: 'hash',
+    },
+    'CancelResearch',
+  ],
+] as const)(
+  'tracks cancellation of an accepted %j start before and after its receipt arrives',
+  (item, command, cancelType) => {
+    const started = attempt('start', command, 'pending')
+    started.receipt = {
+      protocol: 4,
+      binding: started.envelope.binding,
+      command_id: 'start',
+      status: 'Pending',
+      admitted_at: 1,
+      executed_at: null,
+    }
+    const cancelled = attempt(
+      'cancel',
+      { type: cancelType, operation: 'start' },
+      'uncertain',
+    )
+    const unrelated = attempt(
+      'other',
+      { type: cancelType, operation: 'other-start' },
+      'pending',
+    )
+    const attempts = new Map(
+      [started, cancelled, unrelated].map((a) => [a.envelope.command_id, a]),
+    )
+    expect(latestProgressionAttempt(attempts, { body: 'planet', item })).toBe(
+      cancelled,
+    )
+    const committed = {
+      ...started,
+      status: 'committed' as const,
+      receipt: {
+        ...started.receipt,
+        status: 'Committed' as const,
+        executed_at: 2,
+        result_ids: ['operation'],
+        minimum_viewer_revision: '2',
+      },
+    }
+    attempts.set('start', committed)
+    expect(latestProgressionAttempt(attempts, { body: 'planet', item })).toBe(
+      cancelled,
+    )
+  },
+)

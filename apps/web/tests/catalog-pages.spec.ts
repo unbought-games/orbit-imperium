@@ -1714,3 +1714,33 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
     expect(submitted).toBe(1)
   })
 }
+
+for (const [section, tile, startAction, cancelAction, cancelType, cancelLabel] of [
+  ['Facilities', 'Upgrade Robotics Factory', 'Confirm upgrade', 'Cancel construction', 'CancelConstruction', 'Cancel Construction'],
+  ['Research', 'Research Combustion Drive', 'Confirm research', 'Cancel research', 'CancelResearch', 'Cancel Research'],
+] as const) {
+  test(`accepted ${section} start aliases keep cancellation feedback beside the action`, async ({ page }) => {
+    await setup(page, false, undefined, { commandReferences: true })
+    const sent: S['CommandEnvelopeV3'][] = []
+    await page.route('**/commands', route => {
+      const envelope = route.request().postDataJSON()
+      sent.push(envelope)
+      return route.fulfill({ json: {
+        protocol: 3, binding, command_id: envelope.command_id,
+        admitted_at: Date.now(), executed_at: null, status: 'Pending',
+      } })
+    })
+    await navigate(page, section)
+    await page.getByRole('link', { name: tile, exact: true }).click()
+    await page.getByRole('button', { name: startAction, exact: true }).click()
+    const result = page.getByRole('group', { name: 'Latest action result', exact: true })
+    await expect(result).toContainText('Order accepted; awaiting the game result.')
+    await page.getByRole('button', { name: cancelAction, exact: true }).click()
+    await confirmCancellation(page)
+    await expect.poll(() => sent.length).toBe(2)
+    expect(sent[1].command).toEqual({ type: cancelType, operation: sent[0].command_id })
+    await expect(result).toContainText(`Last submitted: ${cancelLabel}`)
+    await expect(result).toContainText('Order accepted; awaiting the game result.')
+    await expect(result).not.toContainText('confirmed')
+  })
+}
