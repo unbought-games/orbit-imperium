@@ -1684,15 +1684,21 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
     await navigate(page, 'Defense')
     await page.getByRole('link', { name: 'Build Rocket Launcher', exact: true }).click()
     const build = page.getByRole('button', { name: 'Build', exact: true })
-    await build.click()
     const result = page.getByRole('group', { name: 'Latest action result', exact: true })
-    await expect(result).toContainText('Submitting action.')
-    await expect(result).not.toContainText('confirmed')
-    await expect(build).toBeDisabled()
-    // A rapid second activation must not send another command.
-    await build.evaluate((button: HTMLButtonElement) => button.click())
-    expect(submitted).toBe(1)
-    release()
+    try {
+      await build.click()
+      await expect(result).toContainText('Submitting action.')
+      await expect(result).not.toContainText('confirmed')
+      await expect(build).toBeDisabled()
+      // The ledger updates before persistence and network delivery finish.
+      await expect.poll(() => submitted).toBe(1)
+      // A rapid second activation must not send another command.
+      await build.evaluate((button: HTMLButtonElement) => button.click())
+      expect(submitted).toBe(1)
+    } finally {
+      // Never leave an intercepted response held when an assertion fails.
+      release()
+    }
     await expect(result).toContainText(outcome === 'Pending'
       ? 'Order accepted; awaiting the game result.'
       : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'Response uncertain. Your action is saved.')
