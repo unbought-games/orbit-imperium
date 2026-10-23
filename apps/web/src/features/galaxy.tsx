@@ -97,6 +97,8 @@ export function Galaxy({
           </Select>
         </Field>
         <Button
+          variant="secondary"
+          size="icon"
           aria-label="Previous system"
           title="Previous system"
           disabled={system <= 1}
@@ -119,6 +121,8 @@ export function Galaxy({
           </Select>
         </Field>
         <Button
+          variant="secondary"
+          size="icon"
           aria-label="Next system"
           title="Next system"
           disabled={system >= (model.settings?.systems_per_galaxy ?? 5)}
@@ -127,6 +131,7 @@ export function Galaxy({
           <ChevronRight size={18} />
         </Button>
         <Button
+          variant="secondary"
           aria-label="Refresh galaxy"
           onClick={() => setRefresh((n) => n + 1)}
         >

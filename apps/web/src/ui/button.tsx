@@ -3,28 +3,50 @@ import type { ComponentPropsWithRef } from 'react'
 import { classes } from './classes'
 import styles from './button.module.css'
 
-type Variant = 'primary' | 'quiet'
-export function Button({
+export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'
+export type ButtonSize = 'default' | 'small' | 'large' | 'icon' | 'icon-small'
+export type ButtonAppearance = {
+  variant?: ButtonVariant
+  size?: ButtonSize
+  className?: string
+}
+
+/** Shared appearance for native actions and links; semantics stay with the caller. */
+export function buttonClasses({
   variant = 'primary',
+  size = 'default',
+  className,
+}: ButtonAppearance = {}) {
+  return classes(
+    styles.button,
+    styles[variant],
+    size !== 'default' && styles[size],
+    className,
+  )
+}
+
+export function Button({
+  variant,
+  size,
   className,
   ...props
-}: ComponentPropsWithRef<'button'> & { variant?: Variant }) {
+}: ComponentPropsWithRef<'button'> & ButtonAppearance) {
   return (
     <button
-      className={classes(styles.button, styles[variant], className)}
+      className={buttonClasses({ variant, size, className })}
       {...props}
     />
   )
 }
+
 export function ButtonLinkAnchor({
+  variant,
+  size,
   className,
   ...props
-}: ComponentPropsWithRef<'a'>) {
+}: ComponentPropsWithRef<'a'> & ButtonAppearance) {
   return (
-    <a
-      className={classes(styles.button, styles.primary, className)}
-      {...props}
-    />
+    <a className={buttonClasses({ variant, size, className })} {...props} />
   )
 }
 

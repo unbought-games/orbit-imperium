@@ -27,7 +27,7 @@ export function PlanetRename({
       {rename.draft === null ? (
         <Button
           ref={opener}
-          variant="quiet"
+          variant="secondary"
           onClick={rename.edit}
           aria-label={`Rename planet ${coordinates(body)}`}
         >
@@ -66,7 +66,7 @@ export function PlanetRename({
             <Button type="submit" disabled={!rename.canSave}>
               Save name
             </Button>
-            <Button type="button" variant="quiet" onClick={cancel}>
+            <Button type="button" variant="secondary" onClick={cancel}>
               Cancel
             </Button>
           </div>

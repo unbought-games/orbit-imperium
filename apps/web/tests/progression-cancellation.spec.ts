@@ -1,3 +1,4 @@
+import { confirmCancellation } from './fixtures/confirmation'
 import { expect, test, type Page } from '@playwright/test'
 import type { components } from '../src/contracts'
 import { binding, body, id, refreshGame, shellFixture } from './fixtures/game'
@@ -193,12 +194,21 @@ async function cancellationFixture(page: Page, lateOptions = false) {
     name: 'Cancel construction',
     exact: true,
   })
-  const quick = (title: string) =>
-    page.getByRole('button', { name: `Start upgrade ${title}`, exact: true })
+  async function inspect(title: string) {
+    await pane.getByRole('link', { name: /^Back to / }).click()
+    await page.getByRole('link', { name: `Upgrade ${title}`, exact: true }).click()
+    return pane.getByRole('button', { name: 'Confirm upgrade', exact: true })
+  }
   async function startCancellation() {
     cancelling = true
     await cancel.click()
+    await confirmCancellation(page)
     await expect(cancel).toBeDisabled()
+    await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
+    for (const title of titles.filter((title) => title !== 'Crystal Mine')) {
+      await inspect(title)
+      if (!lateOptions) await expect(pane.getByLabel('Action blockers')).toContainText('Active Construction')
+    }
     await expect
       .poll(() =>
         siblings.every((building) =>
@@ -220,13 +230,15 @@ async function cancellationFixture(page: Page, lateOptions = false) {
     await expect(
       page.getByRole('button', { name: /^Start upgrade / }),
     ).toHaveCount(0)
+    await inspect('Crystal Mine')
+    await expect(cancel).toBeDisabled()
   }
   return {
     planet,
     inspections,
     pane,
     cancel,
-    quick,
+    inspect,
     startCancellation,
     commandGate,
     optionsGate,
@@ -235,7 +247,7 @@ async function cancellationFixture(page: Page, lateOptions = false) {
 
 for (const width of [390, 1440]) {
   for (const lateOptions of [false, true]) {
-    test(`cancellation restores eligible arrows at ${width}px with old options delivered ${lateOptions ? 'after' : 'before'} confirmation`, async ({
+    test(`cancellation restores eligible detail actions at ${width}px with old options delivered ${lateOptions ? 'after' : 'before'} confirmation`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 900 })
@@ -245,7 +257,7 @@ for (const width of [390, 1440]) {
         inspections,
         pane,
         cancel,
-        quick,
+        inspect,
         commandGate,
         optionsGate,
       } = fixture
@@ -253,8 +265,7 @@ for (const width of [390, 1440]) {
         await fixture.startCancellation()
         commandGate.resolve('Committed')
         await expect(cancel).toHaveCount(0)
-        await pane.getByRole('link', { name: /^Back to / }).click()
-        for (const title of titles) await expect(quick(title)).toBeVisible()
+        for (const title of titles) await expect(await inspect(title)).toBeEnabled()
         optionsGate.resolve()
         await expect
           .poll(() =>
@@ -265,19 +276,20 @@ for (const width of [390, 1440]) {
           .toBe(true)
         // Consume late responses and another snapshot without losing the fresh eligibility.
         await refreshGame(page)
-        for (const title of titles) await expect(quick(title)).toBeVisible()
-        await expect(quick('Metal Storage')).toHaveCount(0)
-        await expect(quick('Deuterium Tank')).toHaveCount(0)
-        await expect(quick('Fusion Reactor')).toHaveCount(0)
+        for (const title of titles) await expect(await inspect(title)).toBeEnabled()
+        await expect(await inspect('Metal Storage')).toBeDisabled()
+        await expect(await inspect('Deuterium Tank')).toBeDisabled()
+        await expect(await inspect('Fusion Reactor')).toHaveCount(0)
+        const upgrade = await inspect('Metal Mine')
+        await expect(upgrade).toBeEnabled()
         const requestCount = inspections.length
         planet.amounts.metal = '89999999'
         await refreshGame(page)
-        await expect(quick('Metal Mine')).toHaveCount(0)
+        await expect(upgrade).toBeDisabled()
         planet.amounts.metal = '90000000'
         await refreshGame(page)
-        await expect(quick('Metal Mine')).toBeVisible()
+        await expect(upgrade).toBeEnabled()
         expect(inspections).toHaveLength(requestCount)
-        await expect(quick('Deuterium Tank')).toHaveCount(0)
         let started: S['CommandEnvelopeV4']['command'] | null = null
         await page.route('**/commands', async (route) => {
           const envelope = route.request().postDataJSON().gameplay
@@ -293,7 +305,7 @@ for (const width of [390, 1440]) {
             },
           })
         })
-        await quick('Metal Mine').click()
+        await upgrade.click()
         await expect
           .poll(() => started)
           .toEqual({
@@ -320,9 +332,10 @@ test('rejected cancellation keeps construction active and every upgrade blocked'
     fixture.commandGate.resolve('Rejected')
     await expect(fixture.cancel).toBeEnabled()
     await expect(
-      fixture.pane.getByRole('region', { name: 'Active construction' }),
-    ).toContainText('Upgrading Crystal Mine')
+      fixture.pane.getByRole('region', { name: 'Active construction' }).getByRole('heading', { name: 'Upgrading Crystal Mine to level 2', exact: true }),
+    ).toBeVisible()
     await refreshGame(page)
+    await fixture.pane.getByRole('link', { name: /^Back to / }).click()
     await expect(
       page.getByRole('button', { name: /^Start upgrade / }),
     ).toHaveCount(0)

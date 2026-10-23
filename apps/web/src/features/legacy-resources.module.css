@@ -2,10 +2,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding-block: 16px;
+  gap: 8px;
+  padding-block: 8px;
   border-bottom: 1px solid var(--border);
   color: var(--champagne-light);
+  margin-inline: max(-8px, calc(8px - var(--shell-inline-gutter, 18px)));
 }
 .header h2 {
   flex: 1;
@@ -55,15 +56,4 @@
   .header h2 {
     font-size: 1.4rem;
   }
-}
-
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px;
-  color: var(--link);
-  border: 1px solid var(--border-control);
-  text-decoration: none;
 }

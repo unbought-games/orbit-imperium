@@ -2,7 +2,9 @@ import type { CatalogSelection } from '../shell/use-catalog-selection'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { canAfford } from '../client-model/resources'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
-import { Button } from '../ui/button'
+import { ConfirmationButton } from '../ui/confirmation-button'
+import { ResourceSummary } from '../ui/number-value'
+import { Button, ButtonLinkAnchor } from '../ui/button'
 import { Heading, Text } from '../ui/typography'
 import { CatalogActions, CatalogCard, CatalogGrid } from '../ui/catalog-layout'
 import { useCountdown } from '../client-model/use-clock'
@@ -121,121 +123,133 @@ export function Economy({
   if (compact)
     return (
       <>
-        <CatalogStage
-          open={detailOpen}
-          detailKey={selected?.id ?? ''}
-          detailLabel="Upgrade quote"
-        >
-          {selected && (
-            <>
-              <div className={styles.header}>
-                <h2>{label(selected.id)}</h2>
-                <span>
-                  Level {body.levels[selected.id as keyof typeof body.levels]}
-                </span>
-                <a {...selection?.back} className={styles.back}>
-                  <ArrowLeft size={18} /> Back
-                </a>
-              </div>
-              <div className={styles.details}>
-                <CatalogImage art={selected.art} />
-                <div>
-                  {progress?.building === selected.id && actions.model ? (
-                    <ConstructionDetails
-                      work={progress}
-                      model={actions.model}
-                    />
-                  ) : selectedLevel === undefined ? (
-                    <Text>Unavailable in this universe.</Text>
-                  ) : error ? (
-                    <Text role="alert">
-                      {error}
-                      <Button
-                        onClick={() =>
-                          void preview(
-                            selected.id as UpgradeRequest['building'],
-                          )
-                        }
-                      >
-                        Retry
-                      </Button>
-                    </Text>
-                  ) : !proposal || !proposalIsCurrent ? (
-                    <Text role="status">Loading building details…</Text>
-                  ) : (
-                    <>
-                      <Heading level={3}>
-                        Upgrade to level {proposal.quote.target_level}
-                      </Heading>
-                      <Text>
-                        Production duration:{' '}
-                        <NumberValue
-                          value={proposal.quote.duration}
-                          divisor={1000}
-                        />{' '}
-                        seconds
-                      </Text>
-                      <ResourceCosts
-                        cost={proposal.quote.cost}
-                        available={body.amounts}
-                      />
-                      <Button
-                        disabled={
-                          busy ||
-                          !!active ||
-                          !canAfford(proposal.quote.cost, body.amounts)
-                        }
-                        aria-label="Confirm upgrade"
-                        onClick={() => {
-                          void send(
-                            {
-                              ...proposal.request,
-                              type: 'StartUpgrade',
-                              expected_terms_hash: proposal.quote.terms_hash,
-                            },
-                            proposal.quote,
-                          )
-                        }}
-                      >
-                        Improve
-                      </Button>
-                    </>
-                  )}
+        {detailOpen ? (
+          <CatalogStage
+            open={detailOpen}
+            detailKey={selected?.id ?? ''}
+            detailLabel="Upgrade quote"
+          >
+            {selected && (
+              <>
+                <div className={styles.header}>
+                  <h2>{label(selected.id)}</h2>
+                  <span>
+                    Level {body.levels[selected.id as keyof typeof body.levels]}
+                  </span>
+                  <ButtonLinkAnchor
+                    variant="secondary"
+                    size="icon-small"
+                    {...selection?.back}
+                    aria-label={selection?.back['aria-label'] ?? 'Back'}
+                  >
+                    <ArrowLeft size={18} aria-hidden="true" />
+                  </ButtonLinkAnchor>
                 </div>
-              </div>
-              <Text className={styles.description}>{selected.description}</Text>
-            </>
-          )}
-        </CatalogStage>
-        <CatalogSection title="Resource buildings">
-          <ImageCatalog>
-            {resourceBuildings.map((building) => (
-              <ImageTile
-                key={building.id}
-                title={label(building.id)}
-                aria-label={`Upgrade ${label(building.id)}`}
-                art={building.art}
-                progress={progress?.building === building.id ? progress : null}
-                level={
-                  body.levels[building.id as keyof typeof body.levels] ?? 0
-                }
-                selected={detailOpen && selected?.id === building.id}
-                disabled={
-                  !(building.id in body.levels) ||
-                  ((busy || !!active) && progress?.building !== building.id)
-                }
-                disabledReason={
-                  !(building.id in body.levels)
-                    ? 'unavailable in this universe'
-                    : active
-                      ? 'construction already in progress'
-                      : 'command awaiting confirmation'
-                }
-                {...selection?.link(building.id)}
-              />
-            ))}
-          </ImageCatalog>
-        </CatalogSection>
+                <div className={styles.details}>
+                  <CatalogImage art={selected.art} />
+                  <div>
+                    {progress?.building === selected.id && actions.model ? (
+                      <ConstructionDetails
+                        work={progress}
+                        model={actions.model}
+                      />
+                    ) : selectedLevel === undefined ? (
+                      <Text>Unavailable in this universe.</Text>
+                    ) : error ? (
+                      <Text role="alert">
+                        {error}
+                        <Button
+                          onClick={() =>
+                            void preview(
+                              selected.id as UpgradeRequest['building'],
+                            )
+                          }
+                        >
+                          Retry
+                        </Button>
+                      </Text>
+                    ) : !proposal || !proposalIsCurrent ? (
+                      <Text role="status">Loading building details…</Text>
+                    ) : (
+                      <>
+                        <Heading level={3}>
+                          Upgrade to level {proposal.quote.target_level}
+                        </Heading>
+                        <Text>
+                          Production duration:{' '}
+                          <NumberValue
+                            value={proposal.quote.duration}
+                            divisor={1000}
+                          />{' '}
+                          seconds
+                        </Text>
+                        <ResourceCosts
+                          cost={proposal.quote.cost}
+                          available={body.amounts}
+                        />
+                        <Button
+                          disabled={
+                            busy ||
+                            !!active ||
+                            !canAfford(proposal.quote.cost, body.amounts)
+                          }
+                          aria-label="Confirm upgrade"
+                          onClick={() => {
+                            void send(
+                              {
+                                ...proposal.request,
+                                type: 'StartUpgrade',
+                                expected_terms_hash: proposal.quote.terms_hash,
+                              },
+                              proposal.quote,
+                            )
+                          }}
+                        >
+                          Improve
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <Text className={styles.description}>
+                  {selected.description}
+                </Text>
+              </>
+            )}
+          </CatalogStage>
+        ) : (
+          <CatalogSection title="Resource buildings">
+            <ImageCatalog>
+              {resourceBuildings.map((building) => (
+                <ImageTile
+                  key={building.id}
+                  title={label(building.id)}
+                  aria-label={`Upgrade ${label(building.id)}`}
+                  art={building.art}
+                  progress={
+                    progress?.building === building.id ? progress : null
+                  }
+                  level={
+                    body.levels[building.id as keyof typeof body.levels] ?? 0
+                  }
+                  selected={detailOpen && selected?.id === building.id}
+                  disabled={
+                    !(building.id in body.levels) ||
+                    ((busy || !!active) && progress?.building !== building.id)
+                  }
+                  disabledReason={
+                    !(building.id in body.levels)
+                      ? 'unavailable in this universe'
+                      : active
+                        ? 'construction already in progress'
+                        : 'command awaiting confirmation'
+                  }
+                  {...selection?.link(building.id)}
+                />
+              ))}
+            </ImageCatalog>
+          </CatalogSection>
+        )}
       </>
     )
   return (
@@ -300,14 +314,24 @@ export function Economy({
             {active.building.replace(/([a-z])([A-Z])/g, '$1 $2')} → level{' '}
             {active.target_level} · {countdown(active.due_at)}
           </Text>
-          <QuoteAction
+          <ConfirmationButton
+            key={active.id}
             disabled={busy}
-            onClick={() =>
+            dialogTitle="Cancel construction?"
+            confirmLabel="Confirm cancellation"
+            cancelLabel="Keep construction"
+            review={
+              <p>
+                Stop construction and refund{' '}
+                <ResourceSummary value={active.paid} />?
+              </p>
+            }
+            onConfirm={() =>
               void send({ type: 'CancelConstruction', operation: active.id })
             }
           >
             Cancel construction · full refund
-          </QuoteAction>
+          </ConfirmationButton>
         </QuotePanel>
       )}
       {error && (

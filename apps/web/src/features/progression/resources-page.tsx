@@ -19,18 +19,18 @@ export function ResourcesPage(props: ProgressionProps) {
   const selected = resourceBuildings.find(
     (building) => building.id === selectedId,
   )
-  const open = selectedId !== null
-  return (
-    <>
+  if (selected)
+    return (
       <CatalogStage
-        open={open}
-        detailKey={selected?.id ?? ''}
+        open
+        detailKey={selected.id}
         detailLabel="Progression quote"
       >
-        {selected && (
-          <ResourceInspector key={selected.id} {...props} building={selected} />
-        )}
+        <ResourceInspector key={selected.id} {...props} building={selected} />
       </CatalogStage>
+    )
+  return (
+    <>
       <WorkSummaries
         view={view}
         body={body}
@@ -60,7 +60,6 @@ export function ResourcesPage(props: ProgressionProps) {
                 level={level ?? 0}
                 progress={progress?.building === building.id ? progress : null}
                 art={building.art}
-                selected={open && selected?.id === building.id}
                 locked={catalog?.requirements.some(
                   (r) => technologyLevel(requirementKey(r), props) < r.level,
                 )}

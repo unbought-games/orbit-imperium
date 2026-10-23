@@ -1,10 +1,10 @@
-import { ResourceSummary } from '../../ui/number-value'
-import { useLayoutEffect, useRef } from 'react'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { researchProgress } from '../../client-model/research-progress'
-import { Button } from '../../ui/button'
+import { ConfirmationButton } from '../../ui/confirmation-button'
 import { label } from '../../ui/format'
-import styles from './building-details.module.css'
+import { ActiveWorkDetails, RefundAmounts } from './active-work-details'
+import { DetailRow } from './detail-layout'
+import styles from './detail-layout.module.css'
 
 export function ResearchWorkDetails({
   research,
@@ -13,26 +13,40 @@ export function ResearchWorkDetails({
   research: NonNullable<ReturnType<typeof researchProgress>>
   model: Coordinator
 }) {
-  const heading = useRef<HTMLHeadingElement>(null)
-  useLayoutEffect(() => {
-    heading.current?.focus({ preventScroll: true })
-  }, [])
+  const verb = 'Researching'
+  const target = `${verb} ${label(research.research)} to level ${research.targetLevel}`
   return (
-    <section className={styles.activeWork} aria-label="Active research">
-      <h3 ref={heading} tabIndex={-1}>
-        Researching {label(research.research)} to level {research.targetLevel}
-      </h3>
-      <p>{research.countdown}</p>
-      {research.status !== 'In progress' &&
-        research.status !== research.countdown && (
-          <p role="status">{research.status}</p>
-        )}
-      <p>
-        Full refund before completion: <ResourceSummary value={research.paid} />
-      </p>
-      <Button
+    <ActiveWorkDetails
+      label="Active research"
+      title={`${verb} to level ${research.targetLevel}`}
+      accessibleTitle={target}
+      secondsRemaining={research.secondsRemaining}
+      dueAt={research.dueAt}
+      status={research.status}
+      paid={research.paid}
+    >
+      <ConfirmationButton
+        key={research.operationId ?? 'pending'}
+        variant="secondary"
+        className={styles.cancelWork}
+        dialogTitle="Cancel research?"
+        confirmLabel="Confirm cancellation"
+        cancelLabel="Keep research"
+        review={
+          <>
+            <p>
+              Cancel {verb.toLowerCase()} {label(research.research)} to level{' '}
+              {research.targetLevel}? Progress on this level will be lost.
+            </p>
+            <dl className={styles.compare}>
+              <DetailRow label="Full refund">
+                <RefundAmounts paid={research.paid} />
+              </DetailRow>
+            </dl>
+          </>
+        }
         disabled={!research.canCancel}
-        onClick={() => {
+        onConfirm={() => {
           if (research.operationId && research.canCancel)
             void model.send({
               type: 'CancelResearch',
@@ -41,10 +55,7 @@ export function ResearchWorkDetails({
         }}
       >
         Cancel research
-      </Button>
-      {!research.operationId && (
-        <small>Cancellation is available after confirmation.</small>
-      )}
-    </section>
+      </ConfirmationButton>
+    </ActiveWorkDetails>
   )
 }

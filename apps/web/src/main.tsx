@@ -14,6 +14,11 @@ async function start() {
     root.render(<SupporterPreview />)
     return
   }
+  if (import.meta.env.DEV && location.pathname === '/detail-playground') {
+    const { DetailPlayground } = await import('./dev/detail-playground')
+    root.render(<DetailPlayground />)
+    return
+  }
   root.render(<ConnectionScreen />)
   void startAnalytics()
   const initialRuntime = await loadInitialRuntime(browserDependencies())

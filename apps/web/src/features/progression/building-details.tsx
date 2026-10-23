@@ -1,21 +1,38 @@
-import { DurationValue, ResourceNumber } from '../../ui/number-value'
+import {
+  DurationValue,
+  ResourceNumber,
+  ResourceSummary,
+} from '../../ui/number-value'
 import { progressionCommand } from './options'
-import { ArrowLeft, ArrowDown, ArrowUp, Info } from 'lucide-react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import { Button } from '../../ui/button'
-import { CatalogImage } from '../../ui/image-catalog'
-import { ResourceCosts } from '../../ui/resource-costs'
-import { Requirements } from '../../ui/requirements'
+import { ConfirmationButton } from '../../ui/confirmation-button'
 import { label } from '../../ui/format'
 import { ProgressionBlockers } from './quote-review'
 import { pending, type ProgressionProps } from './shared'
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { CatalogContent } from './catalog-content'
-import styles from './building-details.module.css'
 import { buildingProgress } from '../../client-model/building-progress'
+import { currentServerTime } from '../../client-model/game-projection'
 import { buildingUnavailableReason } from './building-availability'
 import { ConstructionDetails } from './construction-details'
-import { ObjectOrbit } from './progression-world'
-import { BuildingBenefit } from './building-benefit'
+import { buildingInsights, affordabilityTime } from './detail-insights'
+import {
+  DetailLayout,
+  DetailIntroduction,
+  DetailSection,
+  DetailStat,
+  DetailRow,
+} from './detail-layout'
+import {
+  BenefitValue,
+  benefitLabels,
+  StorageInsight,
+  EnergyComparison,
+  DecisionCosts,
+} from './detail-metrics'
+import styles from './detail-layout.module.css'
+
 export function BuildingDetails({
   building,
   level,
@@ -35,195 +52,238 @@ export function BuildingDetails({
   onInspect: (action: 'Upgrade' | 'Demolition') => void
 }) {
   const { view, body, coordinator: model } = props
-  const progress = buildingProgress(model.store.getState(), body.id)
+  const state = model.store.getState()
+  const progress = buildingProgress(state, body.id)
   const work = progress?.building === building.id ? progress : null
   const title = label(building.id)
+  const firstBuild = level === 0 && action === 'Upgrade'
   const terms = proposal?.terms?.type === 'Building' ? proposal.terms : null
   const entry = view.catalog.find(
     (entry) => entry.key.kind === 'Building' && entry.key.id === building.id,
   )
   const unavailable = buildingUnavailableReason(entry, body, building.id)
   const command = progressionCommand(proposal)
-  const energy = proposal?.building_energy
-  const energyChange = energy
-    ? BigInt(energy.target_consumption) - BigInt(energy.current_consumption)
-    : null
+  const insight = buildingInsights(view, body, building.id, proposal)
+  const canBuild =
+    !unavailable &&
+    !loading &&
+    !!command &&
+    !proposal?.blockers.length &&
+    !pending(model, command)
+  const wait = terms ? affordabilityTime(view, body, terms.paid) : null
+  const now = currentServerTime(state)
+  const submit = () => {
+    if (canBuild && command) void model.send(command, proposal ?? undefined)
+  }
+  const actionText = terms
+    ? action === 'Upgrade'
+      ? firstBuild
+        ? `Build ${title}`
+        : `Build level ${terms.target_level}`
+      : `Demolish to level ${terms.target_level}`
+    : loading
+      ? 'Loading…'
+      : 'Unavailable'
   return (
-    <>
-      <div className={styles.header}>
-        <a {...props.selection.back}>
-          <ArrowLeft size={18} /> Back
-        </a>
-        <h2>{title}</h2>
-      </div>
-      <div className={styles.overview}>
-        <div className={styles.current} aria-label="Current level and benefit">
-          <span>Level {level}</span>
-          {proposal?.building_benefit && (
-            <BuildingBenefit benefit={proposal.building_benefit} />
-          )}
-        </div>
-        {!work && !unavailable && terms && (
-          <div
-            className={styles.buildRow}
-            aria-label="Target level and benefit"
+    <DetailLayout
+      content={building}
+      back={props.selection.back}
+      footer={
+        !work &&
+        !unavailable &&
+        (level > 0 || action === 'Demolition') && (
+          <Button
+            variant={action === 'Upgrade' ? 'destructive' : 'secondary'}
+            aria-label={
+              action === 'Upgrade'
+                ? `Demolish ${title}`
+                : `Review upgrade ${title}`
+            }
+            disabled={loading}
+            onClick={() =>
+              onInspect(action === 'Upgrade' ? 'Demolition' : 'Upgrade')
+            }
           >
-            <Button
-              className={action === 'Upgrade' ? styles.improve : styles.destroy}
-              data-analytics={
-                action === 'Upgrade' ? 'confirm_upgrade' : 'confirm_demolition'
-              }
-              aria-label={`Confirm ${action.toLowerCase()}`}
-              disabled={
-                loading ||
-                !command ||
-                !!proposal?.blockers.length ||
-                (!!command && pending(model, command))
-              }
-              onClick={() => {
-                if (command) void model.send(command, proposal ?? undefined)
-              }}
-            >
-              {action === 'Upgrade'
-                ? `Build level ${terms.target_level}`
-                : `Demolish to level ${terms.target_level}`}
-            </Button>
-            {proposal?.building_benefit && (
-              <BuildingBenefit benefit={proposal.building_benefit} target />
+            {action === 'Upgrade' ? (
+              <ArrowDown size={16} />
+            ) : (
+              <ArrowUp size={16} />
+            )}
+            {action === 'Upgrade' ? 'Tear down' : 'Review upgrade'}
+          </Button>
+        )
+      }
+    >
+      {level > 0 && (
+        <DetailSection label="Current level and benefit">
+          <div className={styles.stats}>
+            <DetailStat label="Current level">Level {level}</DetailStat>
+            {insight.benefit && (
+              <DetailStat label={benefitLabels[insight.benefit.kind]}>
+                <BenefitValue insight={insight.benefit} />
+              </DetailStat>
             )}
           </div>
-        )}
-      </div>
-      <div className={styles.body}>
-        <ObjectOrbit>
-          <CatalogImage art={building.art} className={styles.art} />
-        </ObjectOrbit>
-        <div className={styles.details}>
-          {(unavailable || !entry || !!entry.requirements.length) && (
-            <section
-              aria-label="Building requirements"
-              className={styles.prerequisites}
-            >
-              {unavailable && <p>{unavailable}</p>}
-              {entry?.requirements.length ? (
-                <Requirements
-                  requirements={entry.requirements}
-                  view={view}
-                  body={body}
-                />
-              ) : !entry ? (
-                <p>Prerequisites unavailable.</p>
-              ) : null}
-            </section>
+          {insight.storage && <StorageInsight storage={insight.storage} />}
+        </DetailSection>
+      )}
+      {work ? (
+        <ConstructionDetails work={work} model={model} />
+      ) : (
+        <DetailSection
+          title={
+            firstBuild
+              ? undefined
+              : action === 'Demolition'
+                ? `Tear down to level ${terms?.target_level ?? Math.max(0, level - 1)}`
+                : `Next · level ${terms?.target_level ?? level + 1}`
+          }
+          label="Target level and benefit"
+        >
+          {firstBuild && !unavailable && <DetailIntroduction name={title} />}
+          {unavailable && <p role="status">{unavailable}</p>}
+          {loading && <p role="status">Loading building details…</p>}
+          {error && (
+            <p role="alert">
+              {error}{' '}
+              <Button variant="secondary" onClick={() => onInspect(action)}>
+                Retry
+              </Button>
+            </p>
           )}
-          {work ? (
-            <ConstructionDetails work={work} model={model} />
-          ) : unavailable ? null : (
+          {terms && !unavailable && (
             <>
-              <div className={styles.facts}>
-                {loading ? (
-                  <p role="status">Loading building details…</p>
-                ) : error ? (
-                  <p role="alert">
-                    {error}{' '}
-                    <Button variant="quiet" onClick={() => onInspect(action)}>
-                      Retry
-                    </Button>
-                  </p>
-                ) : (
-                  terms && (
-                    <dl>
-                      <div>
-                        <dt>Build time:</dt>
-                        <dd>
-                          <DurationValue milliseconds={terms.duration_ms} />
-                        </dd>
-                      </div>
-                      {BigInt(terms.required_energy) > 0n && (
-                        <div>
-                          <dt>Construction energy required:</dt>
-                          <dd>
-                            <ResourceNumber value={terms.required_energy} />
-                          </dd>
-                        </div>
-                      )}
-                      {energyChange !== null && energyChange !== 0n && (
-                        <div>
-                          <dt>
-                            {action === 'Upgrade'
-                              ? 'Additional operating energy'
-                              : 'Operating energy saved'}{' '}
-                            (100%):
-                          </dt>
-                          <dd>
-                            <ResourceNumber
-                              value={
-                                action === 'Upgrade'
-                                  ? energyChange
-                                  : -energyChange
-                              }
-                            />
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-                  )
+              <dl className={styles.compare}>
+                {insight.benefit && (
+                  <DetailRow
+                    label={
+                      firstBuild && insight.benefit.kind.endsWith('PerHour')
+                        ? 'Production with power'
+                        : benefitLabels[insight.benefit.kind]
+                    }
+                  >
+                    {!firstBuild && (
+                      <>
+                        <BenefitValue insight={insight.benefit} />{' '}
+                        <span aria-hidden="true">→</span>{' '}
+                      </>
+                    )}
+                    <strong>
+                      <BenefitValue
+                        insight={insight.benefit}
+                        target
+                        potential={firstBuild}
+                      />
+                    </strong>
+                  </DetailRow>
                 )}
-              </div>
-              {terms && (
-                <ResourceCosts
+                {!firstBuild &&
+                  insight.benefit?.fullPowerTarget &&
+                  BigInt(insight.benefit.fullPowerTarget) / 1000000n >
+                    BigInt(insight.benefit.target) / 1000000n && (
+                    <DetailRow label="With enough energy">
+                      <ResourceNumber value={insight.benefit.fullPowerTarget} />{' '}
+                      / h
+                    </DetailRow>
+                  )}
+                {(insight.energy.show ||
+                  insight.energy.constructionBlocked) && (
+                  <EnergyComparison
+                    energy={insight.energy}
+                    firstBuild={firstBuild}
+                    view={view}
+                    body={body}
+                  />
+                )}
+                <DetailRow label="Build time">
+                  <DurationValue milliseconds={terms.duration_ms} />
+                </DetailRow>
+                {BigInt(terms.required_energy) > 0n && (
+                  <DetailRow label="Construction energy required">
+                    <ResourceNumber value={terms.required_energy} />
+                  </DetailRow>
+                )}
+                <DecisionCosts
+                  title={
+                    action === 'Upgrade'
+                      ? firstBuild
+                        ? 'Build cost'
+                        : 'Upgrade cost'
+                      : 'Demolition cost'
+                  }
                   cost={terms.paid}
                   available={body.amounts}
-                  compact
+                  wait={wait}
                 />
-              )}
-              {proposal && <ProgressionBlockers proposal={proposal} />}
-              {!loading && !terms && !error && (
-                <p>Construction is unavailable.</p>
+              </dl>
+              {!firstBuild && insight.benefit?.qualifier && (
+                <p className={styles.note}>{insight.benefit.qualifier}.</p>
               )}
             </>
           )}
-        </div>
-      </div>
-      <div className={styles.description}>
-        <Info size={17} aria-hidden="true" />
-        <p>{building.description}</p>
-      </div>
-      {!work && (
-        <details className={styles.requirements}>
-          <summary>Construction terms</summary>
-          <p>Full refund if cancelled before completion.</p>
           {proposal && (
-            <p>Confirmed {new Date(proposal.as_of_ms).toLocaleString()}</p>
+            <ProgressionBlockers
+              proposal={proposal}
+              view={view}
+              body={body}
+              now={now}
+              resourceWait={wait}
+              resourcesInCosts={!!terms && !unavailable}
+            />
           )}
-        </details>
-      )}
-      {!work && !unavailable && (
-        <div className={styles.bottomAction}>
-          {(level > 0 || action === 'Demolition') && (
-            <Button
-              variant="quiet"
-              className={styles.demolish}
-              aria-label={
-                action === 'Upgrade'
-                  ? `Demolish ${title}`
-                  : `Review upgrade ${title}`
-              }
-              disabled={loading}
-              onClick={() =>
-                onInspect(action === 'Upgrade' ? 'Demolition' : 'Upgrade')
-              }
-            >
-              {action === 'Upgrade' ? (
-                <ArrowDown size={20} />
+          {!unavailable && (
+            <>
+              {action === 'Demolition' ? (
+                <ConfirmationButton
+                  key={`${building.id}:${terms?.target_level}:${proposal?.terms_hash}`}
+                  className={styles.action}
+                  variant="destructive"
+                  aria-label="Confirm demolition"
+                  disabled={!canBuild}
+                  dialogTitle={`Tear down ${title}?`}
+                  confirmLabel="Confirm demolition"
+                  cancelLabel="Keep this level"
+                  review={
+                    <>
+                      <p>
+                        Reduce {title} from level {level} to{' '}
+                        {terms?.target_level}. Its benefits will decrease.
+                      </p>
+                      {terms && (
+                        <>
+                          <p>
+                            Cost: <ResourceSummary value={terms.paid} />
+                          </p>
+                          <p>
+                            Time:{' '}
+                            <DurationValue milliseconds={terms.duration_ms} />
+                          </p>
+                        </>
+                      )}
+                    </>
+                  }
+                  onConfirm={submit}
+                >
+                  {actionText}
+                </ConfirmationButton>
               ) : (
-                <ArrowUp size={20} />
+                <Button
+                  className={styles.action}
+                  aria-label="Confirm upgrade"
+                  data-analytics="confirm_upgrade"
+                  disabled={!canBuild}
+                  onClick={submit}
+                >
+                  {actionText}
+                </Button>
               )}
-              {action === 'Upgrade' ? 'Tear down' : 'Upgrade'}
-            </Button>
+            </>
           )}
-        </div>
+          {!loading && !terms && !error && !unavailable && (
+            <p>Construction is unavailable.</p>
+          )}
+        </DetailSection>
       )}
-    </>
+    </DetailLayout>
   )
 }

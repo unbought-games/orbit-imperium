@@ -26,7 +26,10 @@ export function researchProgress(state: GameState) {
   )
   const dueAt =
     confirmed?.due_at ?? optimistic!.submittedAt + terms!.duration_ms
+  const seconds = remaining(dueAt, view.sampled_at, state.receivedAt, state.now)
   return {
+    secondsRemaining: seconds,
+    dueAt,
     research: work.research,
     targetLevel: work.target_level,
     paid: work.paid,
@@ -38,9 +41,7 @@ export function researchProgress(state: GameState) {
         type: 'CancelResearch',
         operation: operationId,
       }),
-    countdown: formatRemaining(
-      remaining(dueAt, view.sampled_at, state.receivedAt, state.now),
-    ),
+    countdown: formatRemaining(seconds),
     status: cancelling
       ? 'Cancelling'
       : confirmed

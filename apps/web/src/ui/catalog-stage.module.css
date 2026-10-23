@@ -1,8 +1,7 @@
 .stage {
   position: relative;
-  overflow: clip;
   min-width: 0;
-  border-block: 1px solid var(--border-accent);
+  border-bottom: 1px solid var(--border-accent);
 }
 .panel[hidden] {
   display: none;

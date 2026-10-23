@@ -32,7 +32,7 @@ export function ConnectionScreen({
           <div className={styles.actions}>
             {retry && <Button onClick={retry}>Retry connection</Button>}
             {logout && (
-              <Button variant="quiet" onClick={() => void logout()}>
+              <Button variant="secondary" onClick={() => void logout()}>
                 Sign out
               </Button>
             )}

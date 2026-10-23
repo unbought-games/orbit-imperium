@@ -1,46 +1,152 @@
 :where(.button) {
+  --button-cut: var(--control-cut);
+  --button-inset: 0px;
+  --button-edge: var(--champagne-light);
+  --button-face: var(--accent);
+  --button-ink: var(--text-on-accent);
+  --button-highlight: #ffffff35;
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
   min-height: var(--control-size);
   min-width: var(--control-size);
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-control);
-  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--button-ink);
+  padding: 10px 18px;
   font: inherit;
   font-weight: 650;
+  line-height: 1.4;
+  text-align: center;
   cursor: pointer;
   text-decoration: none;
   overflow-wrap: anywhere;
   touch-action: manipulation;
 }
-:where(.primary) {
-  background: var(--accent);
-  color: var(--text-on-accent);
+/* Only the decorative plates are clipped: focus rings and hit areas stay whole. */
+:where(.button:not(.ghost))::before,
+:where(.button:not(.ghost))::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  clip-path: polygon(
+    var(--button-cut) 0,
+    100% 0,
+    100% calc(100% - var(--button-cut)),
+    calc(100% - var(--button-cut)) 100%,
+    0 100%,
+    0 var(--button-cut)
+  );
 }
-:where(.primary):hover:enabled,
-a:where(.primary):hover {
-  background: var(--accent-hover);
+:where(.button:not(.ghost))::before {
+  inset: var(--button-inset);
+  background: var(--button-edge);
 }
-:where(.quiet) {
-  background: transparent;
-  color: var(--text);
+:where(.button:not(.ghost))::after {
+  inset: calc(var(--button-inset) + 1px) calc(var(--button-inset) + 1px)
+    calc(var(--button-inset) + 3px);
+  background:
+    linear-gradient(var(--button-highlight), transparent 55%),
+    var(--button-face);
+  box-shadow:
+    inset 0 1px #ffffff25,
+    inset 0 -1px #00000035;
 }
-:where(.quiet):hover:enabled {
-  background: var(--surface-selected);
+:where(.secondary) {
+  --button-edge: var(--ice-shadow);
+  --button-face: var(--surface-input);
+  --button-ink: var(--ice-light);
+  --button-highlight: #a4dbef18;
 }
-:where(.button):disabled {
-  background: var(--surface-disabled);
-  color: var(--text-disabled);
-  border-color: var(--border-control);
-  cursor: not-allowed;
+:where(.destructive) {
+  --button-edge: var(--danger);
+  --button-face: #351f26;
+  --button-ink: var(--danger);
+  --button-highlight: #ffb4a416;
+}
+:where(.ghost) {
+  --button-ink: var(--link);
+  font-weight: inherit;
+  padding: 8px;
+}
+:where(.small) {
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+}
+:where(.large) {
+  min-height: 52px;
+  padding: 12px 22px;
+  font-size: var(--font-size-lg);
+}
+:where(.icon, .icon-small) {
+  flex-shrink: 0;
+  width: var(--control-size);
+  height: var(--control-size);
+  padding: 8px;
+}
+:where(.icon-small) {
+  --button-inset: 4px;
+  --button-cut: 6px;
+}
+:where(.button) > svg {
+  flex-shrink: 0;
+}
+@media (hover: hover) {
+  :where(.button:not(:disabled):not([aria-disabled='true'])):hover {
+    --button-highlight: #ffffff50;
+    --button-edge: var(--ice-light);
+  }
+  :where(.primary:not(:disabled):not([aria-disabled='true'])):hover {
+    --button-edge: var(--champagne-light);
+    --button-face: var(--accent-hover);
+  }
+  :where(.ghost:not(:disabled):not([aria-disabled='true'])):hover {
+    color: var(--link-hover);
+  }
+}
+:where(.button:not(:disabled):not([aria-disabled='true'])):active {
+  transform: translateY(1px);
+  --button-highlight: #00000025;
+}
+:where(
+    .button:not(.ghost):not(:disabled):not([aria-disabled='true'])
+  ):active::after {
+  inset-block: calc(var(--button-inset) + 2px) calc(var(--button-inset) + 1px);
+  box-shadow: inset 0 2px 4px #0006;
 }
 :where(.button):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 3px;
 }
-
-:where(.quiet):disabled {
-  background: transparent;
-  color: var(--text);
+:where(.button:disabled, .button[aria-disabled='true']) {
+  --button-edge: var(--border);
+  --button-face: var(--surface-disabled);
+  --button-ink: var(--text-disabled);
+  --button-highlight: transparent;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.button):active {
+    transform: none;
+  }
+}
+@media (forced-colors: active) {
+  :where(.button) {
+    border: 1px solid ButtonText;
+    color: ButtonText;
+    background: ButtonFace;
+  }
+  :where(.button:not(.ghost))::before,
+  :where(.button:not(.ghost))::after {
+    display: none;
+  }
+  :where(.button:disabled, .button[aria-disabled='true']) {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }

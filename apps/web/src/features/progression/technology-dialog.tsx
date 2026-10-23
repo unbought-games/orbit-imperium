@@ -1,3 +1,4 @@
+import { Button } from '../../ui/button'
 import { Link } from '../../ui/link'
 import { useUniverseName } from '../../shell/session-context'
 import { routeTarget } from '../../shell/route-target'
@@ -105,13 +106,15 @@ export function TechnologyDialog({
     >
       <header>
         <h2>Technology — {label(entry.key.id)}</h2>
-        <button
+        <Button
+          variant="secondary"
           type="button"
+          size="icon"
           aria-label="Close technology"
           onClick={() => ref.current?.close()}
         >
           <X size={20} />
-        </button>
+        </Button>
       </header>
       <div
         className={styles.tabs}
@@ -119,7 +122,8 @@ export function TechnologyDialog({
         aria-label="Technology information"
       >
         {['Techtree', 'Applications', 'Techinfo'].map((t) => (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             key={t}
             role="tab"
@@ -149,7 +153,7 @@ export function TechnologyDialog({
             onClick={() => setTab(t)}
           >
             {t}
-          </button>
+          </Button>
         ))}
       </div>
       <div

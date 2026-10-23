@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { remaining, formatRemaining } from './clock'
 export function useCountdown(
   sample: number,
-  format: 'exact' | 'compact' = 'exact',
+  format: 'remaining' | 'compact' = 'remaining',
 ) {
   const [clock, setClock] = useState(() => ({
     sample,
@@ -23,6 +23,6 @@ export function useCountdown(
     if (format === 'compact') return formatRemaining(seconds)
     return seconds === null
       ? 'Awaiting confirmation'
-      : `${seconds} seconds remaining`
+      : `${formatRemaining(seconds)} remaining`
   }
 }

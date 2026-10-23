@@ -1,3 +1,4 @@
+import { confirmCancellation } from './fixtures/confirmation'
 import { test, expect } from '@playwright/test'
 import {
   shellFixture,
@@ -134,11 +135,9 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
       await nav.getByRole('link', { name: destination, exact: true }).click()
       await expect(page.locator('main h1')).toHaveText(destination)
       const crossPage =
-        building === 'ResearchLab' && destination === 'Resources'
-          ? 'facilities'
-          : building === 'MetalMine' && destination === 'Facilities'
-            ? 'resources'
-            : null
+        building === 'MetalMine' && destination === 'Facilities'
+          ? 'resources'
+          : null
       await expect(buildings.getByRole('link', { name: /^Open / })).toHaveCount(crossPage ? 1 : 0)
       if (crossPage) {
         const link = buildings.getByRole('link', { name: `Open ${crossPage}` })
@@ -682,6 +681,7 @@ for (const kind of ['construction', 'research'] as const) {
       exact: true,
     })
     await cancel.click()
+    await confirmCancellation(page)
     await expect(cancel).toBeDisabled()
     await expect(cancel).toHaveText('Cancelling…')
     await expect(summary).toContainText(
@@ -1374,7 +1374,8 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   const mission = page.getByRole('article', { name: 'Transport fleet' })
   await expect(mission).toContainText('4 Small Cargo')
-  await expect(mission).toContainText(/6m \d+s/)
+  await expect(mission).toContainText('6m')
+  await expect(mission).not.toContainText(/6m \d+s/)
   await expect(mission.locator('time')).toHaveAttribute(
     'datetime',
     new Date(fleet.due_at).toISOString(),
@@ -1581,7 +1582,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     'Unknown — this observation did not reveal this section.',
   )
   await expect(report.getByText('0', { exact: true })).toHaveCount(2)
-  await expect(page.getByText(/1h .* ago/)).toBeVisible()
+  await expect(page.getByText(/1 hour ago/)).toBeVisible()
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     expect(
@@ -2016,7 +2017,7 @@ for (const width of [390, 1440]) {
     await expect(work.getByRole('button', { name: 'Cancel construction' })).toBeEnabled()
     await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
     const detail = page.getByRole('region', { name: 'Active construction' })
-    await expect(detail).toContainText('Upgrading Metal Mine to level 2')
+    await expect(detail.getByRole('heading', { name: 'Upgrading Metal Mine to level 2', exact: true })).toBeVisible()
     await expect(detail.getByRole('button', { name: 'Cancel construction' })).toBeEnabled()
   })
 }

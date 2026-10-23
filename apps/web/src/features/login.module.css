@@ -30,7 +30,6 @@
 .submit {
   min-height: 52px;
   margin-top: var(--space-1);
-  border-radius: 2px;
 }
 .modeSwitch {
   margin-top: var(--space-4);
@@ -45,7 +44,6 @@
 .primary {
   min-height: 52px;
   padding-inline: var(--space-6);
-  border-radius: 2px;
 }
 .accountAction {
   width: 100%;

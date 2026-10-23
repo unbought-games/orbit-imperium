@@ -49,7 +49,7 @@ for (const width of [1440, 390, 320]) {
           pane.getByRole('heading', { name: title, exact: true }),
         ).toBeVisible()
         await expect(
-          pane.getByRole('region', { name: 'Building requirements' }),
+          pane.getByRole('status'),
         ).toContainText('Unavailable in this universe.')
         await expect(
           pane.getByText('No prerequisites listed in this universe’s catalog.'),
@@ -119,6 +119,14 @@ for (const width of [1440, 390, 320]) {
             terms_hash: 'b'.repeat(64),
             estimates: null,
             blockers: [
+              ...(planet.levels.RoboticsFactory < 2 ? [{
+                code: 'PrerequisiteMissing',
+                requirement: requirements[0],
+                required: '2',
+                actual: String(planet.levels.RoboticsFactory),
+                resource: null,
+                unit: 'Level',
+              }] : []),
               {
                 code: 'PrerequisiteMissing',
                 requirement: requirements[1],
@@ -165,17 +173,14 @@ for (const width of [1440, 390, 320]) {
           await page.keyboard.press('Enter')
         }
         const pane = page.getByRole('region', { name: 'Progression quote' })
-        const prerequisites = pane.getByRole('list', { name: 'Prerequisites' })
-        await expect(
-          prerequisites
-            .getByRole('listitem')
-            .filter({ hasText: 'Robotics Factory 2' }),
-        ).toContainText('current 0 · required')
-        await expect(
-          prerequisites
-            .getByRole('listitem')
-            .filter({ hasText: 'Energy Technology 3' }),
-        ).toContainText('current 1 · required')
+        await expect(pane.getByText('Requirements & construction terms', { exact: true })).toHaveCount(0)
+        const blockers = pane.getByRole('list', { name: 'Action blockers' })
+        const robotics = blockers.getByRole('link', { name: 'Robotics Factory', exact: true })
+        await expect(robotics).toHaveAttribute('href', path('facilities/robotics-factory'))
+        await expect(blockers.getByRole('link', { name: 'Energy Technology', exact: true })).toHaveAttribute('href', path('research/energy-technology'))
+
+        await expect(blockers.getByRole('listitem').filter({ hasText: 'Robotics Factory' })).toContainText('requires 2; current 0')
+        await expect(blockers.getByRole('listitem').filter({ hasText: 'Energy Technology' })).toContainText('requires 3; current 1')
         await expect(
           pane.getByRole('button', { name: 'Confirm upgrade' }),
         ).toBeDisabled()
@@ -198,13 +203,15 @@ for (const width of [1440, 390, 320]) {
             path: `test-results/locked-requirements-${width}.png`,
             animations: 'disabled',
           })
+        await robotics.click()
+        await expect(page).toHaveURL(new RegExp(`/b/${body.id}/facilities/robotics-factory$`))
+        await expect(page.getByRole('heading', { name: 'Robotics Factory', exact: true })).toBeVisible()
+        await page.goBack()
+        await expect(blockers).toBeVisible()
         planet.levels.RoboticsFactory = 2
         await refreshGame(page)
-        await expect(
-          prerequisites
-            .getByRole('listitem')
-            .filter({ hasText: 'Robotics Factory 2' }),
-        ).toContainText('current 2 · met')
+        await expect(blockers.getByRole('listitem').filter({ hasText: 'Robotics Factory' })).toHaveCount(0)
+        await expect(blockers).toContainText('requires 3; current 1')
         await expect(
           pane.getByRole('button', { name: 'Confirm upgrade' }),
         ).toBeDisabled()

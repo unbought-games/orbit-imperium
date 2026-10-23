@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
   buildingUnavailableReason,
   visibleFacility,
@@ -61,4 +62,35 @@ it('omits only Moon-exclusive facilities from planet catalogs', () => {
   expect(
     visibleFacility({ ...entry, enabled: false }, { kind: 'Planet' }),
   ).toBe(true)
+})
+
+it('hides moon-only placeholders from the published catalog on planets', () => {
+  const rules = JSON.parse(
+    readFileSync(
+      new URL('../../../../../rules/mvp-v1-slice-9.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { catalog: S['CatalogEntry3'][] }
+  for (const id of ['LunarBase', 'SensorPhalanx', 'JumpGate']) {
+    const placeholder = rules.catalog.find((item) => item.key.id === id)!
+    expect(placeholder).toBeDefined()
+    expect(placeholder.enabled).toBe(false)
+    expect(visibleFacility(placeholder, { kind: 'Planet' })).toBe(false)
+    expect(visibleFacility(placeholder, { kind: 'Moon' })).toBe(true)
+  }
+  const disabledPlanetFacility = rules.catalog.find(
+    (item) => item.key.id === 'NaniteFactory',
+  )!
+  expect(visibleFacility(disabledPlanetFacility, { kind: 'Planet' })).toBe(true)
+})
+
+it('retains server-defined body support when a placeholder becomes enabled', () => {
+  const enabled = {
+    ...entry,
+    key: { kind: 'Building', id: 'LunarBase' },
+  } satisfies S['CatalogEntry3']
+  expect(visibleFacility(enabled, { kind: 'Planet' })).toBe(true)
+  expect(
+    visibleFacility({ ...enabled, body_kinds: ['Moon'] }, { kind: 'Planet' }),
+  ).toBe(false)
 })

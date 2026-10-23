@@ -1,3 +1,4 @@
+import { confirmCancellation } from './fixtures/confirmation'
 import { captureCatalog } from './fixtures/catalog-capture'
 import { readFileSync } from 'node:fs'
 import { test, expect, type Locator, type Page } from '@playwright/test'
@@ -57,11 +58,12 @@ test('active research remains cancellable from its details after removing Curren
     .getByRole('link', { name: 'Research Energy Technology', exact: true })
     .click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('60 metal')
-  await expect(pane.getByText(/Full refund before completion:/)).toHaveCount(1)
+  await expect(pane.getByRole('group', { name: 'Cancellation refund', exact: true })).toContainText('60')
+  await expect(pane.getByText('Refund on cancel', { exact: true })).toHaveCount(1)
   await pane
     .getByRole('button', { name: 'Cancel research', exact: true })
     .click()
+  await confirmCancellation(page)
   await expect
     .poll(() => sent)
     .toEqual({ type: 'CancelResearch', operation: operation.id })
@@ -242,7 +244,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
   return { sent, planet, blockers, inspections }
 }
 
-test('facility upgrade arrow respects server blockers and submits directly when eligible', async ({
+test('facility rows have no upgrade action and require confirmation on the detail page', async ({
   page,
 }) => {
   const { sent, planet, blockers } = await setup(page, true)
@@ -262,8 +264,12 @@ test('facility upgrade arrow respects server blockers and submits directly when 
   blockers.length = 0
   planet.fields++
   await refreshGame(page)
-  await expect(quick).toBeVisible()
-  await quick.focus()
+  await expect(quick).toHaveCount(0)
+  await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
+  expect(sent).toHaveLength(0)
+  const confirm = page.getByRole('button', { name: 'Confirm upgrade', exact: true })
+  await expect(confirm).toBeEnabled()
+  await confirm.focus()
   await page.keyboard.press('Enter')
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toEqual({
@@ -274,7 +280,7 @@ test('facility upgrade arrow respects server blockers and submits directly when 
   })
   await expect(
     page.getByRole('region', { name: 'Progression quote' }),
-  ).toHaveCount(0)
+  ).toBeVisible()
 })
 
 for (const [pageName, tile, action, region] of [
@@ -323,7 +329,7 @@ for (const [pageName, tile, action, region] of [
     await expect(pane).toBeVisible()
     const work = pane.getByRole('region', { name: region, exact: true })
     await expect(work).toContainText('Confirming')
-    await expect(work.getByRole('button', { name: /Cancel/ })).toBeDisabled()
+    await expect(work.getByRole('button', { name: /^Cancel (construction|research)$/ })).toBeDisabled()
     await expect(work.getByRole('heading')).toBeFocused()
     const progress = page
       .getByRole('link', { name: tile, exact: true })
@@ -333,7 +339,10 @@ for (const [pageName, tile, action, region] of [
             ? 'Research progress'
             : 'Construction progress',
       })
+    await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
+    await pane.getByRole('link', { name: /^Back to / }).click()
     await expect(progress).toContainText('Confirming')
+    await page.getByRole('link', { name: tile, exact: true }).click()
     expect(writes.size).toBe(1)
     release()
     await expect(work).toHaveCount(0)
@@ -344,6 +353,7 @@ for (const [pageName, tile, action, region] of [
     ).toBeEnabled()
     await pane.getByRole('link', { name: /^Back to / }).click()
     await expect(pane).toBeHidden()
+    await expect(progress).toHaveCount(0)
   })
 }
 
@@ -366,7 +376,7 @@ for (const [pageName, tile, action] of [
     planet.amounts.metal = '59999999'
     await refreshGame(page)
     await expect(confirm).toBeDisabled()
-    await expect(page.getByLabel('Action blockers')).toContainText('metal')
+    await expect(page.getByLabel('Missing resources').getByRole('img', { name: 'metal', exact: true })).toBeVisible()
     planet.amounts.metal = '60000000'
     await refreshGame(page)
     await expect(confirm).toBeEnabled()
@@ -386,9 +396,10 @@ test('facility tiles mark insufficient resources while remaining inspectable', a
   await expect(tile).toHaveAttribute('title', /Not enough resources/)
   await expect(tile).toBeEnabled()
   await tile.click()
-  await expect(page.getByLabel('Action blockers')).toContainText('metal')
+  await expect(page.getByLabel('Missing resources').getByRole('img', { name: 'metal', exact: true })).toBeVisible()
   planet.amounts.metal = '60000000'
   await refreshGame(page)
+  await page.getByRole('link', { name: /^Back to / }).click()
   await expect(tile).not.toHaveAttribute('title', /Not enough resources/)
 })
 
@@ -530,7 +541,7 @@ for (const width of [1440, 390, 320]) {
   })
 }
 
-test('facilities and research share inline details and technology prerequisites', async ({
+test('facilities and research share detail pages and technology prerequisites', async ({
   page,
 }) => {
   const { sent } = await setup(page)
@@ -759,7 +770,7 @@ for (const [destination, tile] of [
   ['Shipyard', 'Build Small Cargo'],
   ['Defense', 'Build Rocket Launcher'],
 ]) {
-  test(`${destination} keeps details open and shows the order in the shared queue while submitting`, async ({
+  test(`${destination} keeps the item route while submitting and exposes the order on the catalog`, async ({
     page,
   }) => {
     await setup(page)
@@ -778,9 +789,12 @@ for (const [destination, tile] of [
     await expect(build).toBeDisabled()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Manufacturing queue' })).toHaveCount(0)
+    await pane.getByRole('link', { name: /^Back to / }).click()
     await expect(
       page.getByRole('list', { name: 'Manufacturing queue' }),
     ).toContainText('Confirming')
+    await page.getByRole('link', { name: tile, exact: true }).click()
     release()
     await expect(build).toBeEnabled()
     await expect(pane).toBeVisible()
@@ -931,12 +945,19 @@ test('selected unit decisions floor balances and retain large inventory on phone
     await page.getByRole('link', { name: 'Build Small Cargo', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expectLegibleInspector(pane)
-    await expect(pane.getByLabel('Unit inventory')).toContainText('9007199254740993')
+    await expect(pane.getByLabel('Unit inventory')).toContainText('9,007,199,254,740,993')
+    await pane.getByText('Requirements & order terms', { exact: true }).click()
     const metal = pane.getByRole('row').filter({ has: page.getByRole('button', { name: 'Metal details' }) })
     await expect(metal.locator('td').nth(0).getByText('60', { exact: true })).toBeVisible()
     await expect(metal.locator('td').nth(1).getByText('0', { exact: true })).toBeVisible()
     await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
-    await expect(pane.getByRole('link', { name: /^Back to / })).toHaveText('Back')
+    const back = pane.getByRole('link', { name: 'Back to Shipyard', exact: true })
+    await expect(back).toHaveText('')
+    await expect(back.locator('svg')).toBeVisible()
+    const backBox = await back.boundingBox()
+    expect(backBox?.width).toBeGreaterThanOrEqual(44)
+    expect(backBox?.height).toBeGreaterThanOrEqual(44)
+    expect(await back.evaluate((element) => getComputedStyle(element, '::before').width)).toBe('36px')
     await expect(pane.getByRole('button', { name: 'Build', exact: true })).toHaveText('Order 1 Small Cargo')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await captureCatalog(page, `test-results/progression-ships-selected-${width}.png`)
@@ -993,7 +1014,7 @@ test('active facility remains cancellable without a fresh quote at each target w
     await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
-    await expect(pane).toContainText('60 metal')
+    await expect(pane.getByRole('group', { name: 'Cancellation refund', exact: true })).toContainText('60')
     await expectLegibleInspector(pane)
     await captureCatalog(page, `test-results/progression-facilities-active-${width}.png`)
   }
@@ -1015,6 +1036,7 @@ test('narrow spending ledgers keep whole large balances intact with visible labe
     await page
       .getByRole('link', { name: 'Build Small Cargo', exact: true })
       .click()
+    await page.getByText('Requirements & order terms', { exact: true }).click()
     const table = page
       .getByRole('region', { name: 'Progression quote' })
       .getByRole('table')
@@ -1235,6 +1257,8 @@ for (const width of [390, 1440]) {
       await expect(tile).toHaveAttribute('href', detail)
       await tile.click()
       await expect(page).toHaveURL(detail)
+      await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
+      await expect(page.getByRole('region', { name: /^(Buildings|Research|Shipyard & defense)$/ })).toHaveCount(0)
       const panel = page.getByRole('region', { name: 'Progression quote' })
       await expect(panel.getByRole('heading', { name: title, exact: true })).toBeVisible()
       await page.keyboard.press('Escape')
@@ -1242,6 +1266,7 @@ for (const width of [390, 1440]) {
       await expect(panel).toBeVisible()
       await page.reload()
       await expect(panel).toBeVisible()
+      await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
       const back = panel.getByRole('link', { name: `Back to ${tab}`, exact: true })
       await expect(back).toHaveAttribute('href', parent)
       await back.click()
@@ -1309,12 +1334,14 @@ test('unknown catalog IDs and inaccessible planets fail closed while disabled it
   expect(sent).toEqual([])
 })
 
-test('Moon-only facilities are omitted on planets and available on moons', async ({ page }) => {
+for (const catalogSource of ['published', 'moon-tagged'] as const) {
+test(`Moon-only facilities from ${catalogSource} metadata are omitted on planets and inspectable on moons`, async ({ page }) => {
   const moon = { ...structuredClone(body), id: id(7), kind: 'Moon' as const }
-  const moonEntries: S['CatalogEntry3'][] = ['LunarBase', 'SensorPhalanx', 'JumpGate'].map(name => ({
-    key: { kind: 'Building', id: name as S['BuildingId3'] },
-    requirements: [], enabled: false, mobile: false, body_kinds: ['Moon'],
-  }))
+  const published: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-9.json', 'utf8')).catalog
+  const moonEntries = published.filter(entry => ['LunarBase', 'SensorPhalanx', 'JumpGate'].includes(entry.key.id)).map(entry =>
+    catalogSource === 'moon-tagged' ? { ...entry, body_kinds: ['Moon'] as S['CatalogEntry3']['body_kinds'] } : entry,
+  )
+  expect(moonEntries).toHaveLength(3)
   const { sent } = await setup(page, false, undefined, { bodies: [body, moon], catalog: [...catalog, ...moonEntries] })
   await page.goto(`/u/andromeda/b/${body.id}/facilities`)
   for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
@@ -1324,6 +1351,8 @@ test('Moon-only facilities are omitted on planets and available on moons', async
     await expect(page.getByRole('link', { name: `Upgrade ${name}`, exact: true })).toBeVisible()
   expect(sent).toEqual([])
 })
+
+}
 
 test('catalog item links open natively in a new tab without changing the original selection', async ({ page, context }) => {
   const { sent } = await setup(page)
@@ -1386,3 +1415,190 @@ test('Ion Technology shows prerequisite progress, existing artwork, costs and su
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toMatchObject({ type: 'StartResearch', research: 'IonTechnology', host: body.id })
 })
+
+for (const width of [1440, 390]) {
+  test(`machined actions preserve native links, focus and tactile presses at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await setup(page)
+    await navigate(page, 'Facilities')
+    await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
+    const panel = page.getByRole('region', { name: 'Progression quote' })
+    const primary = panel.getByRole('button', { name: 'Confirm upgrade', exact: true })
+    const back = panel.getByRole('link', { name: 'Back to Facilities', exact: true })
+    await expect(primary).toBeEnabled()
+    const faces = []
+    for (const control of [primary, back]) {
+      await control.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }))
+      const paint = await control.evaluate((element) => ({
+        face: getComputedStyle(element, '::after').backgroundColor,
+        faceTop: parseFloat(getComputedStyle(element, '::after').top),
+        plate: getComputedStyle(element, '::before').clipPath,
+        hitArea: getComputedStyle(element).clipPath,
+      }))
+      expect(paint.plate).toContain('polygon')
+      expect(paint.hitArea).toBe('none')
+      faces.push(paint.face)
+      const box = (await control.boundingBox())!
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await page.mouse.down()
+      await expect(control).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 1)')
+      expect(await control.evaluate((element) => parseFloat(getComputedStyle(element, '::after').top))).toBe(paint.faceTop + 1)
+      // Releasing outside cancels the native action and restores the raised face.
+      await page.mouse.move(0, 0)
+      await page.mouse.up()
+      await expect(control).toHaveCSS('transform', 'none')
+    }
+    expect(faces[0]).not.toBe(faces[1])
+    const tree = panel.getByRole('button', { name: 'Technology tree', exact: true })
+    await tree.focus()
+    await page.keyboard.down('Space')
+    await expect(tree).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 1)')
+    await expect(tree).toHaveCSS('outline-style', 'solid')
+    await page.keyboard.up('Space')
+    await expect(page.getByRole('dialog', { name: 'Technology — Robotics Factory', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Close technology' }).click()
+    await back.focus()
+    await page.screenshot({ path: `test-results/machined-buttons-${width}.png` })
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })).toBeFocused()
+  })
+}
+
+test('disabled and reduced-motion buttons retain honest feedback and high-contrast focus', async ({ page }) => {
+  const { sent } = await setup(page, true)
+  await navigate(page, 'Facilities')
+  await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
+  const primary = page.getByRole('button', { name: 'Confirm upgrade', exact: true })
+  await expect(primary).toBeDisabled()
+  const box = (await primary.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await expect(primary).toHaveCSS('transform', 'none')
+  await page.mouse.up()
+  expect(sent).toHaveLength(0)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const tree = page.getByRole('button', { name: 'Technology tree', exact: true })
+  await tree.focus()
+  await page.keyboard.down('Space')
+  await expect(tree).toHaveCSS('transform', 'none')
+  expect(await tree.evaluate((element) => getComputedStyle(element, '::after').top)).toBe('2px')
+  await page.keyboard.up('Space')
+  const close = page.getByRole('button', { name: 'Close technology' })
+  await page.emulateMedia({ forcedColors: 'active' })
+  await close.focus()
+  await expect(close).toHaveCSS('border-top-style', 'solid')
+  await expect(close).toHaveCSS('outline-style', 'solid')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog', { name: 'Technology — Robotics Factory', exact: true })).not.toBeVisible()
+})
+
+test('machined icon links and secondary actions work with touch', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+  const page = await context.newPage()
+  try {
+    // This separate context shares the configured test origin, not a live account.
+    await setup(page)
+    await navigate(page, 'Facilities')
+    await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).tap()
+    await page.getByRole('button', { name: 'Technology tree', exact: true }).tap()
+    await page.getByRole('button', { name: 'Close technology' }).tap()
+    await page.getByRole('link', { name: 'Back to Facilities', exact: true }).tap()
+    await expect(page.getByRole('region', { name: 'Progression quote' })).toHaveCount(0)
+  } finally {
+    await context.close()
+  }
+})
+
+test('clickable catalog cards keep artwork and labels left aligned independently of action buttons', async ({ page }) => {
+  const now = Date.now()
+  await page.clock.install({ time: now - 1000 })
+  await page.clock.pauseAt(now)
+  const planet = structuredClone(body)
+  planet.levels.RoboticsFactory = 4
+  planet.levels.ResearchLab = 2
+  await setup(page, false, undefined, {
+    sampledAt: now,
+    bodies: [planet],
+    catalog: [...catalog, {
+      key: { kind: 'Building', id: 'Shipyard' },
+      enabled: true,
+      mobile: false,
+      body_kinds: ['Planet'],
+      requirements: [],
+    }],
+    constructions: [{
+      id: id(10), body: body.id, building: 'RoboticsFactory', target_level: 5,
+      due_at: now + 363000, paid: { metal: '0', crystal: '0', deuterium: '0' },
+    }],
+  })
+  await navigate(page, 'Facilities')
+  await expect(page.getByRole('button', { name: /^Start upgrade / })).toHaveCount(0)
+  for (const width of [1440, 768, 767, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 })
+    for (const title of ['Robotics Factory', 'Research Lab', 'Shipyard']) {
+      const card = page.getByRole('link', { name: `Upgrade ${title}`, exact: true })
+      await expect(card).toBeVisible()
+      const bounds = await card.evaluate((element) => {
+        const card = element.getBoundingClientRect()
+        const artwork = element.firstElementChild!.getBoundingClientRect()
+        const caption = element.children[1].getBoundingClientRect()
+        return { cardLeft: card.left, artLeft: artwork.left, artRight: artwork.right, captionLeft: caption.left }
+      })
+      // Art sits at the card's left border; the caption immediately follows it.
+      // Applying the action-button flex centering or gap breaks these invariants.
+      expect(bounds.artLeft - bounds.cardLeft).toBeCloseTo(1, 0)
+      expect(bounds.captionLeft - bounds.artRight).toBeCloseTo(0, 0)
+      await expect(card).toHaveCSS('text-align', 'left')
+      const cardBox = (await card.boundingBox())!
+      expect(cardBox.height).toBeGreaterThanOrEqual(width >= 768 ? 100 : 44)
+      expect(cardBox.height).toBeLessThanOrEqual(width >= 768 ? 110 : 60)
+    }
+    const robotics = page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })
+    await expect(robotics.getByLabel('Construction progress')).toContainText('6m')
+    await expect(robotics).toContainText('Level 4')
+    const list = page.getByRole('region', { name: 'Facility buildings', exact: true })
+    await list.screenshot({ path: `test-results/facilities-left-aligned-${width}.png` })
+  }
+})
+
+for (const width of [390, 1440]) {
+  test(`game routes use the final shared decision layout at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { sent } = await setup(page)
+    for (const [route, tile, title, quantityLabel] of [
+      ['facilities', 'Upgrade Robotics Factory', 'Robotics Factory', null],
+      ['research', 'Research Combustion Drive', 'Combustion Drive', null],
+      ['shipyard', 'Build Small Cargo', 'Small Cargo', 'Shipyard quantity'],
+      ['defense', 'Build Rocket Launcher', 'Rocket Launcher', 'Defenses quantity'],
+    ] as const) {
+      await page.goto(`/u/andromeda/b/${body.id}/${route}`)
+      await page.getByRole('link', { name: tile, exact: true }).click()
+      const pane = page.getByRole('region', { name: 'Progression quote' })
+      await expect(pane.getByRole('heading', { name: title, exact: true })).toBeVisible()
+      await expect(pane.locator('article > header').getByText(/^(Building|Research|Ship|Defense)$/)).toHaveCount(0)
+      await expect(page.getByRole('link', { name: tile, exact: true })).toHaveCount(0)
+      const cost = pane.getByRole('group', { name: 'Required resources', exact: true }).first()
+      await expect(cost.getByRole('button', { name: 'Metal details', exact: true })).toBeVisible()
+      await expect(cost.getByText('Metal', { exact: true })).toHaveCount(0)
+      if (quantityLabel) {
+        const input = pane.getByRole('textbox', { name: quantityLabel, exact: true })
+        const action = pane.getByRole('button', { name: 'Build', exact: true })
+        await input.fill('12345')
+        const fieldBox = (await input.boundingBox())!, actionBox = (await action.boundingBox())!
+        expect(Math.abs(fieldBox.width - actionBox.width)).toBeLessThan(1)
+        expect(fieldBox.x + fieldBox.width).toBeLessThan(actionBox.x)
+        expect(Math.abs(fieldBox.y - actionBox.y)).toBeLessThan(1)
+        await expect.poll(async () => (await action.innerText()).replace(/\s+/g, ' ').trim()).toBe(width < 768 ? 'Order 12345' : `Order 12345 ${title}`)
+        await input.fill('1')
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await pane.screenshot({ path: `test-results/final-integration/game-detail-${route}-${width}.png` })
+      await pane.getByRole('link', { name: /^Back to / }).click()
+      await expect(page.getByRole('link', { name: tile, exact: true })).toBeFocused()
+    }
+    expect(sent).toHaveLength(0)
+  })
+}

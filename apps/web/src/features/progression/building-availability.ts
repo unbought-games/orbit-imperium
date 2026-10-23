@@ -1,6 +1,10 @@
 import type { components } from '../../contracts'
 type S = components['schemas']
 
+// Retained rulesets tag these unimplemented placeholders as Planet. This is
+// display classification only; enabled content still follows server metadata.
+const moonOnlyPlaceholders = new Set(['LunarBase', 'SensorPhalanx', 'JumpGate'])
+
 /** Inspection stays available even when the catalog cannot offer construction. */
 export function buildingUnavailableReason(
   entry: S['CatalogEntry3'] | undefined,
@@ -21,7 +25,10 @@ export function visibleFacility(
 ) {
   return !(
     body.kind === 'Planet' &&
-    entry.body_kinds.length > 0 &&
-    entry.body_kinds.every((kind) => kind === 'Moon')
+    ((entry.body_kinds.length > 0 &&
+      entry.body_kinds.every((kind) => kind === 'Moon')) ||
+      (!entry.enabled &&
+        entry.key.kind === 'Building' &&
+        moonOnlyPlaceholders.has(entry.key.id)))
   )
 }

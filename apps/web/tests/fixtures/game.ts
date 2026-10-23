@@ -59,6 +59,7 @@ export async function shellFixture(
     destinations?: components['schemas']['Destination'][]
     commandReferences?: boolean
     manufacturing?: components['schemas']['ManufacturingBatchDto'][]
+    sampledAt?: number
     production?: components['schemas']['ProductionDto'][]
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
@@ -135,7 +136,7 @@ export async function shellFixture(
           protocol,
           binding,
           request_id: common.request_id,
-          sampled_at: Date.now(),
+          sampled_at: options.sampledAt ?? Date.now(),
         },
       })
     const settings = {
@@ -156,14 +157,14 @@ export async function shellFixture(
       ...common,
       viewer_revision: options.viewerRevision?.() ?? '1',
       progress: {
-        sampled_at: Date.now(),
+        sampled_at: options.sampledAt ?? Date.now(),
         scopes: [],
         minimum_revision_pending: false,
         projection_limit: null,
         command_references: options.commandReferences ?? false,
       },
-      sampled_at: Date.now(),
-      as_of_ms: Date.now(),
+      sampled_at: options.sampledAt ?? Date.now(),
+      as_of_ms: options.sampledAt ?? Date.now(),
       speed: 1,
       bodies: (
         options.bodies ?? [
@@ -268,7 +269,7 @@ export async function shellFixture(
                   protocol,
                   binding,
                   request_id: common.request_id,
-                  sampled_at: Date.now(),
+                  sampled_at: options.sampledAt ?? Date.now(),
                 },
                 view,
                 settings,

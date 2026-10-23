@@ -125,9 +125,14 @@ export function Navigation({
         {contents}
       </Link>
     ) : (
-      <button key={p} disabled title="Not available in this universe">
+      <Button
+        variant="ghost"
+        key={p}
+        disabled
+        title="Not available in this universe"
+      >
         {contents}
-      </button>
+      </Button>
     )
   }
   const primaryNavigation = (
@@ -135,7 +140,8 @@ export function Navigation({
       {destination('overview', 'Empire', Orbit, true)}
       {destination('resources', 'Build', Blocks, true)}
       {destination('fleets', 'Fleet', Radar, true)}
-      <button
+      <Button
+        variant="ghost"
         type="button"
         aria-label="Menu"
         aria-description={hasUnreadReports ? 'Unread reports' : undefined}
@@ -159,7 +165,7 @@ export function Navigation({
             <span className={styles.srOnly}>Unread reports</span>
           </span>
         )}
-      </button>
+      </Button>
     </nav>
   )
   return (
@@ -211,7 +217,8 @@ export function Navigation({
           <Button
             autoFocus
             aria-label="Close menu"
-            variant="quiet"
+            variant="secondary"
+            size="icon"
             onClick={close}
           >
             <X size={20} aria-hidden="true" />
@@ -233,7 +240,7 @@ export function Navigation({
             <PlayerName player={view.binding.player} fallback="You" />
           </span>
           <Button
-            variant="quiet"
+            variant="secondary"
             onClick={() => {
               opener.current = null
               close()

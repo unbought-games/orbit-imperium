@@ -166,7 +166,7 @@ export function Reports({
             </Text>
             <div className={styles.controls}>
               <Button
-                variant="quiet"
+                variant="secondary"
                 onClick={() =>
                   void model.send({
                     type: 'World',
@@ -180,7 +180,7 @@ export function Reports({
                 Mark read
               </Button>
               <Button
-                variant="quiet"
+                variant="secondary"
                 onClick={() =>
                   void model.send({
                     type: 'World',

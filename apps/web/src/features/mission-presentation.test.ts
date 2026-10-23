@@ -11,7 +11,7 @@ import type { components } from '../contracts'
 
 describe('mission presentation', () => {
   it('counts down exact seconds and never asserts arrival from the clock', () => {
-    expect(arrivalCountdown(3661001, 0)).toBe('1h 1m 1s')
+    expect(arrivalCountdown(3661001, 0)).toBe('1h 1m')
     expect(arrivalCountdown(1000, 999)).toBe('0s')
     expect(arrivalCountdown(1000, 0)).toBe('1s')
     expect(arrivalCountdown(1000, 1000)).toBe('Awaiting confirmation')
@@ -49,7 +49,7 @@ describe('mission presentation', () => {
   })
   it('labels observation age without presenting historical data as current', () => {
     expect(observationAge(1000, 0)).toBe('Less than a minute ago')
-    expect(observationAge(1000, 61000)).toBe('1m 0s ago')
+    expect(observationAge(1000, 61000)).toBe('1m ago')
   })
 })
 

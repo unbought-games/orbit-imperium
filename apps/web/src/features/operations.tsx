@@ -182,7 +182,7 @@ function LegacyRecall({
             may resolve first.
           </Text>
           <div className={missionStyles.actions}>
-            <Button variant="quiet" onClick={() => setReviewing(false)}>
+            <Button variant="secondary" onClick={() => setReviewing(false)}>
               Keep mission
             </Button>
             <Button
@@ -197,7 +197,7 @@ function LegacyRecall({
         </>
       ) : (
         <Button
-          variant="quiet"
+          variant="secondary"
           disabled={pending}
           onClick={() => setReviewing(true)}
         >

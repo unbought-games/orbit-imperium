@@ -5,7 +5,7 @@ import type {
   MouseEventHandler,
 } from 'react'
 import { useId } from 'react'
-import { ArrowDown, ArrowUp, Hammer, FlaskConical } from 'lucide-react'
+import { ArrowDown, Hammer, FlaskConical } from 'lucide-react'
 import { classes } from './classes'
 import styles from './image-catalog.module.css'
 export type CatalogSprite = {
@@ -114,7 +114,6 @@ export function ImageTile({
   disabledReason = 'unavailable',
   className,
   progress,
-  onQuickUpgrade,
   ...props
 }: Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   disabled?: boolean
@@ -126,7 +125,6 @@ export function ImageTile({
   selected?: boolean
   locked?: boolean
   unaffordable?: boolean
-  onQuickUpgrade?: () => void
   countLabel?: string
   inspectable?: boolean
   disabledReason?: string
@@ -166,50 +164,11 @@ export function ImageTile({
         disabled={href ? undefined : props.disabled && !inspectable}
       >
         <span className={styles.artwork}>
-          <CatalogImage art={art} sizes="100px" loading="lazy" />
-          {progress && (
-            <span
-              id={progressId}
-              className={styles.progress}
-              role="group"
-              aria-label={
-                progress.kind === 'research'
-                  ? 'Research progress'
-                  : 'Construction progress'
-              }
-            >
-              <span className={styles.progressHeader}>
-                <span
-                  className={styles.direction}
-                  aria-label={
-                    progress.kind === 'research'
-                      ? 'Researching'
-                      : progress.direction === 'up'
-                        ? 'Upgrading'
-                        : 'Tearing down'
-                  }
-                >
-                  {progress.kind === 'research' ? (
-                    <FlaskConical size={18} aria-hidden="true" />
-                  ) : progress.direction === 'up' ? (
-                    <Hammer size={18} aria-hidden="true" />
-                  ) : (
-                    <ArrowDown size={18} aria-hidden="true" />
-                  )}
-                </span>
-                <strong aria-label={`Target level ${progress.targetLevel}`}>
-                  {progress.targetLevel}
-                </strong>
-              </span>
-              <span className={styles.countdown}>
-                {progress.countdown}
-                {progress.status !== 'In progress' &&
-                  progress.status !== progress.countdown && (
-                    <small>{progress.status}</small>
-                  )}
-              </span>
-            </span>
-          )}
+          <CatalogImage
+            art={art}
+            sizes="(max-width: 767px) 52px, 100px"
+            loading="lazy"
+          />
         </span>
         <span className={styles.caption}>
           <span>{title}</span>
@@ -224,19 +183,50 @@ export function ImageTile({
             </small>
           )}
         </span>
+        {progress && (
+          <span
+            id={progressId}
+            className={styles.progress}
+            role="group"
+            aria-label={
+              progress.kind === 'research'
+                ? 'Research progress'
+                : 'Construction progress'
+            }
+          >
+            <span className={styles.progressHeader}>
+              <span
+                className={styles.direction}
+                aria-label={
+                  progress.kind === 'research'
+                    ? 'Researching'
+                    : progress.direction === 'up'
+                      ? 'Upgrading'
+                      : 'Tearing down'
+                }
+              >
+                {progress.kind === 'research' ? (
+                  <FlaskConical size={14} aria-hidden="true" />
+                ) : progress.direction === 'up' ? (
+                  <Hammer size={14} aria-hidden="true" />
+                ) : (
+                  <ArrowDown size={14} aria-hidden="true" />
+                )}
+              </span>
+              <strong aria-label={`Target level ${progress.targetLevel}`}>
+                {progress.targetLevel}
+              </strong>
+            </span>
+            <span className={styles.countdown}>
+              {progress.countdown}
+              {progress.status !== 'In progress' &&
+                progress.status !== progress.countdown && (
+                  <small>{progress.status}</small>
+                )}
+            </span>
+          </span>
+        )}
       </Tile>
-      {onQuickUpgrade && (
-        <button
-          type="button"
-          className={styles.quickUpgrade}
-          aria-label={`Start upgrade ${title}`}
-          title={`Start upgrade ${title}`}
-          data-analytics="quick_upgrade"
-          onClick={onQuickUpgrade}
-        >
-          <ArrowUp size={16} aria-hidden="true" />
-        </button>
-      )}
     </div>
   )
 }

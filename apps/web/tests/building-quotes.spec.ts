@@ -211,8 +211,9 @@ for (const width of [320, 390, 1440]) {
       .click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane).not.toContainText('Construction energy required')
+    await expect(pane).not.toContainText('Extra operating energy')
     await expect(pane.locator('dl')).toContainText(
-      'Additional operating energy (100%):13',
+      /Energy balance\+26\s*→\s*\+13/,
     )
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
@@ -222,8 +223,9 @@ for (const width of [320, 390, 1440]) {
       .getByRole('button', { name: 'Demolish Crystal Mine', exact: true })
       .click()
     await expect(pane.locator('dl')).toContainText(
-      'Operating energy saved (100%):11',
+      /Energy balance\+26\s*→\s*\+37/,
     )
+    await expect(pane).not.toContainText('Operating energy saved')
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
     await page
       .getByRole('link', { name: 'Upgrade Research Lab', exact: true })
@@ -238,12 +240,12 @@ for (const width of [320, 390, 1440]) {
       page.getByRole('dialog', { name: 'Deuterium', exact: true }),
     ).toContainText('182')
     await page.keyboard.press('Escape')
-    await expect(row).toContainText('Need 18 more')
+    await expect(pane.getByLabel('Missing resources')).toContainText(/Missing\s*18/)
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
     ).toBeDisabled()
     await expect(pane.locator('dl')).not.toContainText(
-      'Additional operating energy',
+      'Extra operating energy',
     )
     await row.scrollIntoViewIfNeeded()
     await page.screenshot({ path: `test-results/building-quote-${width}.png` })
@@ -268,11 +270,14 @@ for (const width of [320, 390, 1440]) {
     const pane = page.getByRole('region', { name: 'Progression quote' })
     const current = pane.getByLabel('Current level and benefit')
     const target = pane.getByLabel('Target level and benefit')
-    await expect(current).toContainText('Level 0')
-    await expect(current).toContainText('10,000 metal capacity')
-    await expect(target).toContainText('20,000 metal capacity')
+    await expect(current).toHaveCount(0)
+    const empty = target.getByText('No Metal Storage', { exact: true })
+    await expect(empty).toBeVisible()
+    await expect(target.getByRole('heading', { name: 'First Build', exact: true })).toBeVisible()
+    await expect(target).toContainText('Metal capacity')
+    await expect(target).toContainText('20,000')
     const button = target.getByRole('button', { name: 'Confirm upgrade' })
-    await expect(button).toHaveText('Build level 1')
+    await expect(button).toHaveText('Build Metal Storage')
     const cost = pane.getByRole('group', { name: 'Required resources' })
     await expect(
       cost.getByRole('button', { name: 'Deuterium details' }),
@@ -282,14 +287,15 @@ for (const width of [320, 390, 1440]) {
       pane.getByRole('region', { name: 'Building requirements' }),
     ).toHaveCount(0)
     await expect(pane).not.toContainText('Construction possible')
-    const currentBox = (await current.boundingBox())!
+    const emptyBox = (await empty.boundingBox())!
     const targetBox = (await target.boundingBox())!
     const costBox = (await cost.boundingBox())!
-    expect(currentBox.y + currentBox.height).toBeLessThanOrEqual(targetBox.y)
-    expect(targetBox.y + targetBox.height).toBeLessThanOrEqual(costBox.y)
-    const benefitBox = (await target.locator(':scope > span').boundingBox())!
+    expect(costBox.y).toBeGreaterThanOrEqual(targetBox.y)
+    const benefitBox = (await target.locator('dl > div').first().boundingBox())!
     const buttonBox = (await button.boundingBox())!
-    expect(benefitBox.x).toBeGreaterThanOrEqual(buttonBox.x + buttonBox.width)
+    expect(emptyBox.y + emptyBox.height).toBeLessThan(benefitBox.y)
+    expect(benefitBox.y + benefitBox.height).toBeLessThanOrEqual(costBox.y)
+    expect(buttonBox.y).toBeGreaterThanOrEqual(costBox.y + costBox.height)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -300,12 +306,28 @@ for (const width of [320, 390, 1440]) {
     await page
       .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
       .click()
-    await expect(current).toContainText('22 crystal / hour')
-    await expect(target).toContainText('48 crystal / hour')
+    await expect(current).toContainText('22 / h')
+    await expect(target).toContainText('48 / h')
     const teardown = pane.getByRole('button', { name: 'Demolish Crystal Mine' })
-    const terms = pane.locator('details')
     expect((await teardown.boundingBox())!.y).toBeGreaterThanOrEqual(
-      (await terms.boundingBox())!.y + (await terms.boundingBox())!.height,
+      (await target.getByRole('button', { name: 'Confirm upgrade' }).boundingBox())!.y,
     )
   })
 }
+
+
+test('a pending building quote labels its disabled action as loading', async ({ page }) => {
+  await buildingFixture(page)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/progression-options', async route => { await gate; await route.fallback() })
+  try {
+    await page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`)
+    const action = page.getByRole('button', { name: 'Confirm upgrade', exact: true })
+    await expect(action).toBeDisabled()
+    await expect(action).toHaveText('Loading…')
+    release()
+    await expect(action).toBeEnabled()
+    await expect(action).toHaveText('Build level 2')
+  } finally { release() }
+})

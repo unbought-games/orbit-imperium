@@ -342,7 +342,7 @@ export function Dispatch({
             <Heading level={2}>Review dispatch</Heading>
             <Button
               type="button"
-              variant="quiet"
+              variant="secondary"
               onClick={() => setQuote(null)}
             >
               Edit mission

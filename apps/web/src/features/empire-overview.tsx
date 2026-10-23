@@ -1,3 +1,4 @@
+import { Button } from '../ui/button'
 import { PlanetRename } from './planet-rename'
 import type { Coordinator } from '../client-model/coordinator'
 import { PlayerName } from './player-name'
@@ -276,7 +277,8 @@ function FleetBoard({
             ? `${threats} incoming attack${threats === 1 ? '' : 's'} detected`
             : 'No incoming attacks detected'}
       </div>
-      <button
+      <Button
+        variant="secondary"
         type="button"
         className={styles.mobileFleetToggle}
         aria-expanded={expanded}
@@ -285,7 +287,7 @@ function FleetBoard({
       >
         {expanded ? 'Hide movements' : `Show ${flights.length} fleet movements`}{' '}
         <span aria-hidden="true">{expanded ? '−' : '+'}</span>
-      </button>
+      </Button>
       <div className={styles.fleetBody} id={panelId}>
         {flights.length ? (
           <div className={styles.fleetScroll}>
