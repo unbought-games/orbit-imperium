@@ -32,6 +32,7 @@ import {
 import { DecisionCosts, EnergyAdvice } from './detail-metrics'
 import { affordabilityTime, nextLevelDependents } from './detail-insights'
 import styles from './detail-layout.module.css'
+import { ProgressionActionFeedback } from './action-feedback'
 
 export function TechnologyDetails({
   entry,
@@ -273,7 +274,7 @@ export function TechnologyDetails({
                   </DetailRow>
                 )}
                 <DecisionCosts
-                  title={manufacture ? 'Order cost' : 'Research cost'}
+                  title={manufacture ? 'New order cost' : 'Research cost'}
                   cost={material.paid}
                   available={body.amounts}
                   wait={wait}
@@ -346,7 +347,21 @@ export function TechnologyDetails({
               )}
             </Button>
           </div>
+          {manufacture && (
+            <ProgressionActionFeedback
+              model={model}
+              body={body.id}
+              item={entry.key}
+            />
+          )}
         </DetailSection>
+      )}
+      {!manufacture && (
+        <ProgressionActionFeedback
+          model={model}
+          body={body.id}
+          item={entry.key}
+        />
       )}
     </DetailLayout>
   )

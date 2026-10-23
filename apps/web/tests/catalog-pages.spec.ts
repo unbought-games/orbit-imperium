@@ -1602,3 +1602,104 @@ for (const width of [390, 1440]) {
     expect(sent).toHaveLength(0)
   })
 }
+
+for (const width of [320, 390, 1440]) {
+  for (const [pageName, itemName, quantityLabel] of [
+    ['Defense', 'Rocket Launcher', 'Defenses quantity'],
+    ['Shipyard', 'Small Cargo', 'Shipyard quantity'],
+  ] as const) {
+    test(`${pageName} confirms the paid order separately from next-order affordability at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      const manufacturing: S['ManufacturingBatchDto'][] = []
+      const { planet } = await setup(page, false, { metal: '2000000000', crystal: '0', deuterium: '0' }, { manufacturing })
+      planet.amounts.metal = '12226000000'
+      await refreshGame(page)
+      let submitted = 0
+      await page.route('**/commands', async route => {
+        const envelope = route.request().postDataJSON()
+        submitted++
+        planet.amounts.metal = (BigInt(planet.amounts.metal) - BigInt(envelope.command.quantity) * 2000000000n).toString()
+        manufacturing.push({
+          id: envelope.command_id, body: body.id, item: envelope.command.item, quantity: envelope.command.quantity,
+          completed_prefix: '0', remaining: envelope.command.quantity,
+          paid: { metal: (BigInt(envelope.command.quantity) * 2000000000n).toString(), crystal: '0', deuterium: '0' },
+          accepted_at: Date.now(), first_start_at: Date.now(), next_due_at: Date.now() + 30000,
+          final_due_at: Date.now() + 30000 * Number(envelope.command.quantity), unit_duration_ms: 30000, state: 'Producing', can_cancel: false,
+        })
+        await route.fulfill({ json: {
+          protocol: 3, binding, command_id: envelope.command_id,
+          admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1',
+        } })
+      })
+      await navigate(page, pageName)
+      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
+      await page.getByLabel(quantityLabel).fill('4')
+      const build = page.getByRole('button', { name: 'Build', exact: true })
+      await expect(build).toBeEnabled()
+      await build.click()
+      const result = page.getByRole('group', { name: 'Latest action result', exact: true })
+      await expect(result).toContainText(`Last submitted: 4 × ${itemName}`)
+      await expect(result).toContainText('Order confirmed. Costs shown are for a new order.')
+      await expect(page.getByRole('status').filter({ hasText: `4 × ${itemName}: Order confirmed.` })).toHaveCount(1)
+      await expect(page.getByLabel('Missing resources')).toBeVisible()
+      await expect(page.getByText('New order cost', { exact: true })).toBeVisible()
+      await expect(build).toBeDisabled()
+      expect(submitted).toBe(1)
+      await result.scrollIntoViewIfNeeded()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await page.screenshot({ path: `test-results/action-confirmation-${pageName}-${width}.png`, fullPage: true })
+      // Editing the next order never changes the acknowledged quantity.
+      await page.getByLabel(quantityLabel).fill('1')
+      await expect(result).toContainText(`4 × ${itemName}`)
+      await expect(build).toBeEnabled()
+      await build.click()
+      await expect(result).toContainText(`Last submitted: 1 × ${itemName}`)
+      await expect(result).toContainText('Order confirmed.')
+      expect(submitted).toBe(2)
+      await page.getByRole('link', { name: /^Back to / }).click()
+      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
+      await expect(result).toContainText(`Last submitted: 1 × ${itemName}`)
+    })
+  }
+}
+
+for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
+  test(`manufacturing shows submitting and ${outcome} beside the order without false success`, async ({ page }) => {
+    await setup(page)
+    let submitted = 0
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    await page.route('**/commands', async route => {
+      const envelope = route.request().postDataJSON()
+      submitted++
+      await held
+      if (outcome === 'uncertain') return route.abort('failed')
+      await route.fulfill({ json: {
+        protocol: 3, binding, command_id: envelope.command_id,
+        admitted_at: Date.now(), executed_at: outcome === 'Pending' ? null : Date.now(), status: outcome,
+        ...(outcome === 'Rejected' ? { code: 'InsufficientResources' } : {}),
+      } })
+    })
+    await navigate(page, 'Defense')
+    await page.getByRole('link', { name: 'Build Rocket Launcher', exact: true }).click()
+    const build = page.getByRole('button', { name: 'Build', exact: true })
+    await build.click()
+    const result = page.getByRole('group', { name: 'Latest action result', exact: true })
+    await expect(result).toContainText('Submitting action.')
+    await expect(result).not.toContainText('confirmed')
+    await expect(build).toBeDisabled()
+    // A rapid second activation must not send another command.
+    await build.evaluate((button: HTMLButtonElement) => button.click())
+    expect(submitted).toBe(1)
+    release()
+    await expect(result).toContainText(outcome === 'Pending'
+      ? 'Order accepted; awaiting the game result.'
+      : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'Response uncertain. Your action is saved.')
+    await expect(result).not.toContainText('confirmed')
+    if (outcome === 'Rejected') await expect(build).toBeEnabled()
+    else await expect(build).toBeDisabled()
+    if (outcome === 'uncertain') await expect(result.getByRole('button', { name: 'Resolve saved command' })).toBeVisible()
+    expect(submitted).toBe(1)
+  })
+}
