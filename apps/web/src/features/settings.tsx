@@ -18,9 +18,10 @@ export function SettingsScreen() {
       <Section aria-label="Help and conduct reports">
         <Heading level={2}>Help & conduct reports</Heading>
         <Text>
-          Email <a href="mailto:ethan@unbought.games">ethan@unbought.games</a>{' '}
-          for help or to report a conduct concern. Support is best effort: we
-          aim to respond within 24 hours, but response times are not guaranteed.
+          Email{' '}
+          <a href="mailto:support@unbought.games">support@unbought.games</a> for
+          help or to report a conduct concern. Support is best effort: we aim to
+          respond within 24 hours, but response times are not guaranteed.
         </Text>
       </Section>
       <Heading level={2}>Universe settings</Heading>

@@ -61,6 +61,29 @@
     1.15rem/1.5 Georgia,
     serif;
 }
+.community {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.community a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+.updates {
+  color: var(--champagne-light);
+  font-size: var(--font-size-lg);
+  font-weight: 650;
+}
+.repository {
+  font-size: var(--font-size-sm);
+}
+.repository svg {
+  flex-shrink: 0;
+}
 .error {
   margin: 0;
   padding: var(--space-3) var(--space-4);
