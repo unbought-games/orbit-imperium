@@ -15,6 +15,7 @@ import { routeTarget } from '../shell/route-target'
 import { ReportObservation } from './report-observation'
 import { reportFailure } from './report-failure'
 import { ReportVisibilityButton } from './report-visibility-button'
+import { pendingReportVisibility } from './report-visibility'
 import type { DispatchDraft } from './missions'
 import { label } from '../ui/format'
 import { useStore } from 'zustand'
@@ -35,6 +36,10 @@ export function Reports({
   onDraft: (draft: DispatchDraft) => void
 }) {
   const now = useStore(model.store, currentServerTime)
+  const changingVisibility = useStore(
+    model.store,
+    (state) => !!pendingReportVisibility(state.attempts.values()),
+  )
   const [page, setPage] = useState<S['ReportsPage4'] | null>(null),
     [detail, setDetail] = useState<S['ReportDetail4'] | null>(null),
     [error, setError] = useState<unknown>(null),
@@ -308,7 +313,7 @@ export function Reports({
               <Input
                 type="checkbox"
                 className={styles.checkbox}
-                disabled={loading || loadingMore}
+                disabled={loading || loadingMore || changingVisibility}
                 checked={includeHidden}
                 onChange={(e) => {
                   setIncludeHidden(e.target.checked)
@@ -319,7 +324,7 @@ export function Reports({
               Show deleted reports
             </Field>
             <Button
-              disabled={loading || loadingMore}
+              disabled={loading || loadingMore || changingVisibility}
               onClick={() => {
                 setPage(null)
                 setOlderPages(false)
@@ -354,7 +359,7 @@ export function Reports({
                   model={model}
                   report={r.id}
                   hidden={r.hidden}
-                  disabled={loading || loadingMore}
+                  disabled={loading || loadingMore || changingVisibility}
                   onRequest={() => setOlderPages(false)}
                 />
               </div>
@@ -370,7 +375,7 @@ export function Reports({
           ))}
           {page.has_more && (
             <Button
-              disabled={loading || loadingMore}
+              disabled={loading || loadingMore || changingVisibility}
               onClick={() => void more()}
             >
               Load more reports

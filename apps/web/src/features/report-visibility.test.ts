@@ -23,6 +23,7 @@ it('blocks both delete and restore while the same report has an unresolved prefe
       expect(
         pendingReportVisibility([{ ...attempt, status }], 'report'),
       ).toBeDefined()
+    expect(pendingReportVisibility([attempt])).toBe(attempt)
     expect(pendingReportVisibility([attempt], 'other')).toBeUndefined()
     expect(
       pendingReportVisibility([{ ...attempt, status: 'rejected' }], 'report'),

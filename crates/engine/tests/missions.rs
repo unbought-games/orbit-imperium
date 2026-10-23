@@ -200,7 +200,17 @@ fn run(
                 presence: InputId(Uuid::from_u128(n + 10000)),
                 gameplay: i.id,
                 player: p,
-                body: Some(b),
+                body: if matches!(
+                    i.payload,
+                    Input::Command(Command::World {
+                        action: WorldAction::SetReportHidden { .. }
+                            | WorldAction::MarkReportRead { .. }
+                    })
+                ) {
+                    None
+                } else {
+                    Some(b)
+                },
                 at,
             },
         );
