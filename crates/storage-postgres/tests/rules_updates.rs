@@ -1194,3 +1194,66 @@ async fn ion_activation_preserves_players_and_initializes_new_signups() {
     destructive.artifact = before.artifact;
     assert!(service.diff(&destructive).await.is_err());
 }
+
+#[tokio::test]
+async fn beginner_protection_multiplier_is_saved_per_universe_and_can_be_reset() {
+    let (store, _, universe, binding) = setup().await;
+    let (_, _, other, _) = setup().await;
+    let service = RulesService::new(store.clone());
+    let other_rules = store.load_rules(other).await.unwrap();
+    let original = store.load_rules(universe).await.unwrap();
+    let mut document = service.export(universe).await.unwrap();
+    document
+        .artifact
+        .world
+        .as_mut()
+        .unwrap()
+        .beginner_protection_multiplier = 10;
+    let diff = service.diff(&document).await.unwrap();
+    assert_eq!(diff.changes.len(), 1);
+    assert_eq!(diff.changes[0].after, Some(serde_json::json!(10)));
+    assert_ne!(diff.current_hash, diff.proposed_hash);
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::Applied { revision: 1, .. }
+    ));
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::AlreadyActive { revision: 1, .. }
+    ));
+    let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    let rules = &snapshot.rules;
+    assert_eq!(
+        rules
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .beginner_protection_multiplier,
+        10
+    );
+    assert_eq!(snapshot.state.profile_hash, rules.hash);
+    assert_eq!(store.load_rules(other).await.unwrap(), other_rules);
+    drop(store.server_guard_config(None).await.unwrap());
+    let mut reset = service.export(universe).await.unwrap();
+    assert_eq!(
+        reset
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .beginner_protection_multiplier,
+        10
+    );
+    reset
+        .artifact
+        .world
+        .as_mut()
+        .unwrap()
+        .beginner_protection_multiplier = 5;
+    assert!(matches!(
+        service.apply(&reset).await.unwrap(),
+        RulesApplyOutcome::Applied { revision: 2, .. }
+    ));
+    assert_eq!(store.load_rules(universe).await.unwrap(), original);
+}
