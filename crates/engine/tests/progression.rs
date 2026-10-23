@@ -2014,7 +2014,6 @@ fn laser_research_and_defense_require_completed_local_and_player_prerequisites()
 fn ion_fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     let (mut s, old, p, b) = prepared();
     let r = common::ion_rules(&common::light_laser_rules(&old));
-    let r = Ruleset::from_artifact(r.artifact, 5).unwrap();
     s.profile_hash = r.hash.clone();
     s.bodies
         .get_mut(&b)
@@ -2083,9 +2082,9 @@ fn ion_requires_each_completed_gate_and_doubles_costs_with_exact_duration() {
     }
     let mut at = 0;
     for (level, costs, duration) in [
-        (1, [1000, 300, 100], 187_000),
-        (2, [2000, 600, 200], 374_000),
-        (3, [4000, 1200, 400], 748_000),
+        (1, [1000, 300, 100], 93_000),
+        (2, [2000, 600, 200], 187_000),
+        (3, [4000, 1200, 400], 374_000),
     ] {
         let terms = research_terms(
             &s.bodies[&b],
@@ -2146,7 +2145,7 @@ fn ion_paid_work_survives_disable_and_restart_with_exact_cancellation_refund() {
         let cmd = command(&s, &r, p, 0, request.clone());
         let started = run(&mut s, &r, Actor::Player(p), 0, 9400, Input::Command(cmd));
         let op = started.research_operations[0].clone();
-        assert_eq!(op.commitment.due_at, 187_000);
+        assert_eq!(op.commitment.due_at, 93_000); // Legacy progression fixture runs at 10x.
         let mut artifact = r.artifact.clone();
         artifact
             .catalog
