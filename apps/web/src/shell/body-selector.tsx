@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { BoundView } from '../client-model/commands'
 import { Button } from '../ui/button'
 import { Input, Select } from '../ui/form'
-import { coordinates } from '../ui/format'
+import { bodyName, coordinates } from '../ui/format'
 import { resolveBodyArt } from '../ui/artwork'
 import { bodyGroups } from './body-selection'
 import styles from './body-selector.module.css'
@@ -50,7 +50,7 @@ export function BodySelector({
           <span className={styles.value} aria-hidden="true">
             {body ? (
               <>
-                <span className={styles.bodyName}>{body.kind}</span>{' '}
+                <span className={styles.bodyName}>{bodyName(body)}</span>{' '}
                 <span className={styles.bodyCoordinates}>
                   {coordinates(body)}
                 </span>
@@ -79,7 +79,7 @@ export function BodySelector({
               <optgroup key={group.position} label={group.position}>
                 {group.entries.map((body) => (
                   <option key={body.id} value={body.id}>
-                    {body.kind} {coordinates(body)}
+                    {bodyName(body)} {coordinates(body)}
                   </option>
                 ))}
               </optgroup>

@@ -80,6 +80,13 @@
   justify-self: end;
   white-space: nowrap;
 }
+.routeOrigin > strong > span,
+.routeDestination > strong > span {
+  display: block;
+  max-width: min(36vw, 12rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .worldArt,
 .unknownWorld {
   width: var(--world-size);

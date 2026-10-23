@@ -34,6 +34,7 @@ pub(crate) async fn bodies(
             return Err(StoreError::CorruptData);
         }
         out.push(Body {
+            name: r.try_get("name").map_err(db_error)?,
             id: id.into(),
             universe: UniverseId(r.try_get("universe").map_err(db_error)?),
             owner: PlayerId(r.try_get("owner").map_err(db_error)?),
@@ -77,10 +78,35 @@ pub(crate) async fn public_destinations(
     tx: &mut crate::ordering::Tx<'_>,
     universe: UniverseId,
 ) -> Result<Vec<PublicDestination>, StoreError> {
-    let destinations = sqlx::query("SELECT id,galaxy,system,position,kind FROM bodies WHERE universe=$1 ORDER BY galaxy,system,position,kind,id LIMIT 101").bind(universe.0).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(|r|Ok(PublicDestination{id:BodyId(r.try_get("id").map_err(db_error)?),coordinates:coordinates(&r)?,kind:enum_text(r.try_get("kind").map_err(db_error)?)?})).collect::<Result<Vec<_>,StoreError>>()?;
+    let destinations = sqlx::query("SELECT id,galaxy,system,position,kind,name FROM bodies WHERE universe=$1 ORDER BY galaxy,system,position,kind,id LIMIT 101").bind(universe.0).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(|r|Ok(PublicDestination{name:r.try_get("name").map_err(db_error)?,id:BodyId(r.try_get("id").map_err(db_error)?),coordinates:coordinates(&r)?,kind:enum_text(r.try_get("kind").map_err(db_error)?)?})).collect::<Result<Vec<_>,StoreError>>()?;
     Ok(destinations)
 }
 impl GameStore for PgStore {
+    async fn public_fleet_destinations(
+        &self,
+        binding: Binding,
+        bodies: Vec<BodyId>,
+    ) -> Result<Vec<PublicDestination>, StoreError> {
+        let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
+        crate::binding::check_read(&mut tx, binding).await?;
+        let ids: Vec<_> = bodies.into_iter().map(|body| body.0).collect();
+        let rows = sqlx::query("SELECT id,galaxy,system,position,kind,name FROM bodies WHERE universe=$1 AND id=ANY($2) ORDER BY id")
+            .bind(binding.universe.0).bind(ids).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let destinations = rows
+            .into_iter()
+            .map(|row| {
+                Ok(PublicDestination {
+                    id: BodyId(row.try_get("id").map_err(db_error)?),
+                    coordinates: coordinates(&row)?,
+                    kind: enum_text(row.try_get("kind").map_err(db_error)?)?,
+                    name: row.try_get("name").map_err(db_error)?,
+                })
+            })
+            .collect::<Result<_, StoreError>>()?;
+        tx.commit().await.map_err(db_error)?;
+        Ok(destinations)
+    }
+
     async fn public_player_names(
         &self,
         binding: Binding,

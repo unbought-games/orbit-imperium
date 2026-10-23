@@ -16,10 +16,10 @@ import { Button, ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { routeTarget } from '../shell/route-target'
-import { coordinates } from '../ui/format'
 import { TaskHeader } from '../ui/task-header'
 import { MissionTrajectory } from './mission-trajectory'
 import {
+  missionLocation,
   arrivalCountdown,
   exactTime,
   incomingManifest,
@@ -172,9 +172,15 @@ export function MissionFleets({
               </Heading>
               <Text>{shipManifest(fleet.ships)}</Text>
               <Text>
-                {coordinates({ coordinates: fleet.origin })}{' '}
+                {missionLocation(view, fleet.intent.origin, fleet.origin)}{' '}
                 {fleet.leg === 'Returning' ? '←' : '→'}{' '}
-                {coordinates({ coordinates: fleet.destination })}
+                {missionLocation(
+                  view,
+                  fleet.intent.destination.type === 'Body'
+                    ? fleet.intent.destination.id
+                    : undefined,
+                  fleet.destination,
+                )}
               </Text>
             </div>
             <div className={styles.arrival}>
@@ -233,6 +239,11 @@ export function MissionFleets({
                     fleet.intent.destination.type === 'Body'
                       ? {
                           id: fleet.intent.destination.id,
+                          name: [...view.bodies, ...view.destinations].find(
+                            (body) =>
+                              fleet.intent.destination.type === 'Body' &&
+                              body.id === fleet.intent.destination.id,
+                          )?.name,
                           kind: fleet.intent.destination.expected_kind,
                         }
                       : fleet.intent.destination.type === 'Debris'

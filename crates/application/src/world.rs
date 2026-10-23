@@ -254,6 +254,31 @@ impl<S: GameStore> GameService<S> {
         let snapshot = self.store.bound_view(binding).await?;
         let mut projected =
             snapshot.try_map(|snapshot| projection::world_projection(&snapshot, p.player, c))?;
+        // Current labels are presentation metadata; never rewrite immutable fleet terms.
+        let destinations: std::collections::BTreeSet<_> = projected
+            .facts
+            .missions
+            .fleets
+            .iter()
+            .filter_map(|fleet| match fleet.intent.destination {
+                MissionDestination::Body { id, .. } => Some(id),
+                _ => None,
+            })
+            .filter(|id| {
+                !projected
+                    .facts
+                    .progression
+                    .bodies
+                    .iter()
+                    .any(|body| body.id == *id)
+            })
+            .collect();
+        if !destinations.is_empty() {
+            projected.facts.progression.destinations = self
+                .store
+                .public_fleet_destinations(binding, destinations.into_iter().collect())
+                .await?;
+        }
         projected.facts.player_names = self
             .public_names(
                 binding,

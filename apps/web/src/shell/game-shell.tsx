@@ -18,7 +18,7 @@ import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ResourceStrip } from '../ui/resource-strip'
 import { ActionStatus } from '../ui/action-status'
-import { coordinates, label } from '../ui/format'
+import { bodyName, coordinates, label } from '../ui/format'
 import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
 import { Popover } from '../ui/popover'
@@ -118,7 +118,7 @@ export function GameShell() {
   const title = !available
     ? 'Destination unavailable'
     : page === 'overview'
-      ? `Empire — ${body?.kind ?? 'Planet'} ${body ? coordinates(body) : ''}`
+      ? `Empire — ${body ? bodyName(body) : 'Planet'} ${body ? coordinates(body) : ''}`
       : page[0].toUpperCase() + page.slice(1)
   const freshness = model.stale && (
     <Popover

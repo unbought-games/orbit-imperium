@@ -22,7 +22,7 @@ import { DispatchReceipt } from './dispatch-receipt'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
-import { label } from '../ui/format'
+import { bodyName, label } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
   origin?: string
@@ -83,16 +83,22 @@ export function Dispatch({
     command,
     clear,
     review,
+    targetName,
   } = useDispatch({ model, view, body, draft })
   return (
     <Section className={styles.screen}>
       <TaskHeader title={quote ? 'Dispatch review' : 'Dispatch fleet'}>
         <span>
-          Origin [{body.coordinates.galaxy}:{body.coordinates.system}:
-          {body.coordinates.position}] · Fleet slots: {occupiedSlots} /{' '}
-          {view.missions.fleet_slots}
+          Origin {bodyName(body)} [{body.coordinates.galaxy}:
+          {body.coordinates.system}:{body.coordinates.position}] · Fleet slots:{' '}
+          {occupiedSlots} / {view.missions.fleet_slots}
         </span>
       </TaskHeader>
+      {targetName && (
+        <Text>
+          Destination: {targetName} [{galaxy}:{system}:{position}]
+        </Text>
+      )}
       {mission === 'Colonize' && (
         <Text role="status">
           Planets: {colony.count} / {colony.capacity}.{' '}
@@ -343,9 +349,9 @@ export function Dispatch({
             </Button>
           </div>
           <Text>
-            Origin [{body.coordinates.galaxy}:{body.coordinates.system}:
-            {body.coordinates.position}] → Destination [{galaxy}:{system}:
-            {position}]
+            Origin {bodyName(body)} [{body.coordinates.galaxy}:
+            {body.coordinates.system}:{body.coordinates.position}] → Destination
+            [{galaxy}:{system}:{position}]
           </Text>
           <Text>
             {quote.intent.ships

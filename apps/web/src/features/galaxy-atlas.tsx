@@ -1,3 +1,4 @@
+import { bodyName } from '../ui/format'
 import type { components } from '../contracts'
 import styles from './galaxy.module.css'
 import { BodyIllustration } from './body-illustration'
@@ -27,7 +28,7 @@ export function GalaxyAtlas({
           key={position.coordinates.position}
           href={`#position-${position.coordinates.position}`}
           className={styles.atlasPosition}
-          aria-label={`Position ${position.coordinates.position}${position.body ? ` · ${position.body.kind}` : ' · Empty'}`}
+          aria-label={`Position ${position.coordinates.position}${position.body ? ` · ${bodyName(position.body)}` : ' · Empty'}`}
         >
           {position.body ? (
             <BodyIllustration

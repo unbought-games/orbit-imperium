@@ -1,0 +1,28 @@
+.editor {
+  padding: 0 18px 12px;
+  min-width: 0;
+}
+.editor form {
+  display: grid;
+  gap: 8px;
+}
+.editor input {
+  width: 100%;
+  min-width: 0;
+}
+.editor small {
+  color: var(--text-muted);
+}
+.editor p {
+  margin: 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.editor p:empty {
+  display: none;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

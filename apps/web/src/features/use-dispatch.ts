@@ -51,7 +51,8 @@ export function useDispatch({
   useEffect(() => {
     let current = true
     setObservation(null)
-    if (!coordinatesValid || mission !== 'Attack') return
+    if (!coordinatesValid || mission === 'Harvest' || mission === 'Colonize')
+      return
     const timer = setTimeout(() => {
       void model
         .world({
@@ -89,7 +90,12 @@ export function useDispatch({
         )?.body
       : undefined
   const target = ownedTarget
-    ? { id: ownedTarget.id, owner: view.binding.player, kind: ownedTarget.kind }
+    ? {
+        id: ownedTarget.id,
+        owner: view.binding.player,
+        kind: ownedTarget.kind,
+        name: ownedTarget.name,
+      }
     : observedTarget
   const colony = colonizationStatus(view, Number(position))
   const targetProblem =
@@ -261,6 +267,10 @@ export function useDispatch({
     }
   }
   return {
+    targetName:
+      mission !== 'Harvest' && mission !== 'Colonize'
+        ? target?.name
+        : undefined,
     colony,
     coordinateProblems,
     coordinatesValid,

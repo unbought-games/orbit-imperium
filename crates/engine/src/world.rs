@@ -122,6 +122,10 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    RenamePlanet {
+        body: BodyId,
+        name: String,
+    },
     RecordForegroundPresence {
         body: Option<BodyId>,
         cause: PresenceCause,
