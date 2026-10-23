@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import { PlayerName } from './player-name'
 import type { PlayerNames } from './player-label'
 import { Heading } from '../ui/typography'
@@ -181,7 +182,10 @@ export function CombatReport({
     <section aria-label="Report observation" className={styles.report}>
       <header className={`${styles.outcome} ${styles[report.tone]}`}>
         <p className={styles.kicker}>
-          Combat report · {report.target}
+          Combat report ·{' '}
+          <CoordinateLink at={payload.target} label="target">
+            {report.target}
+          </CoordinateLink>
           {report.side && ` · You were the ${report.side.toLowerCase()}`}
         </p>
         <Heading level={2} className={styles.result}>

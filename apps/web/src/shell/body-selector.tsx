@@ -1,3 +1,4 @@
+import { CoordinateLink } from '../features/coordinate-link'
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { BoundView } from '../client-model/commands'
@@ -51,9 +52,6 @@ export function BodySelector({
             {body ? (
               <>
                 <span className={styles.bodyName}>{bodyName(body)}</span>{' '}
-                <span className={styles.bodyCoordinates}>
-                  {coordinates(body)}
-                </span>
               </>
             ) : (
               'Choose a planet'
@@ -85,6 +83,13 @@ export function BodySelector({
               </optgroup>
             ))}
           </Select>
+          {body && (
+            <CoordinateLink
+              at={body.coordinates}
+              origin={selected}
+              className={styles.bodyCoordinates}
+            />
+          )}
         </div>
         {bodies.length > 1 && (
           <Button

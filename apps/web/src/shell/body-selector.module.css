@@ -63,10 +63,19 @@
   white-space: nowrap;
 }
 .bodyCoordinates {
+  position: relative;
+  z-index: 2;
+  min-height: 24px;
+  min-width: 24px;
+  width: fit-content;
   color: var(--text-muted);
   font-size: 0.6875rem;
 }
 .chevron,
 .next {
   display: none;
+}
+
+.bodyCoordinates:not(a) {
+  pointer-events: none;
 }

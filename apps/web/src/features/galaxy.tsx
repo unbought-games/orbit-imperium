@@ -6,6 +6,8 @@ import { Button } from '../ui/button'
 import { Select, Field } from '../ui/form'
 import styles from './galaxy.module.css'
 import { useEffect, useState } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
+import { galaxyTarget } from '../shell/galaxy-location'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
@@ -31,8 +33,21 @@ export function Galaxy({
   ) => void
 }) {
   const home = model.view?.bodies.find((b) => b.id === origin)?.coordinates
-  const [galaxy, setGalaxy] = useState(home?.galaxy ?? 1)
-  const [system, setSystem] = useState(home?.system ?? 1)
+  const search = useSearch({ strict: false })
+  const navigate = useNavigate()
+  const galaxy = search.galaxy ?? home?.galaxy ?? 1
+  const system = search.system ?? home?.system ?? 1
+  const position = search.position
+  const valid =
+    galaxy <= (model.settings?.galaxies ?? 1) &&
+    system <= (model.settings?.systems_per_galaxy ?? 5) &&
+    (position === undefined ||
+      position <= (model.settings?.positions_per_system ?? 15))
+  const browse = (galaxy: number, system: number) =>
+    void navigate({
+      ...galaxyTarget(universe, origin, { galaxy, system }),
+      resetScroll: false,
+    })
   const [result, setResult] = useState<{
     data: System | null
     error: string
@@ -40,6 +55,7 @@ export function Galaxy({
   }>({ data: null, error: '', loading: true })
   const [refresh, setRefresh] = useState(0)
   useEffect(() => {
+    if (!valid) return
     let current = true
     setResult({ data: null, error: '', loading: true })
     void model
@@ -67,12 +83,22 @@ export function Galaxy({
     return () => {
       current = false
     }
-  }, [model, galaxy, system, model.view?.viewer_revision, refresh])
+  }, [model, galaxy, system, valid, model.view?.viewer_revision, refresh])
   // A response for a previous system must never supply actionable rows.
   const data =
-    result.data?.galaxy === galaxy && result.data.system === system
+    valid && result.data?.galaxy === galaxy && result.data.system === system
       ? result.data
       : null
+  const loaded = !!data
+  useEffect(() => {
+    if (loaded && position !== undefined) {
+      const target = document.getElementById(`position-${position}`)
+      // Focus the destination so the shell's deferred heading scroll cannot
+      // hide a position selected within an already loaded system.
+      target?.focus({ preventScroll: true })
+      target?.scrollIntoView({ block: 'center' })
+    }
+  }, [loaded, galaxy, system, position])
   const canAttack = model.view?.capabilities.some(
     (c) => c.capability === 'Attack' && c.enabled,
   )
@@ -89,7 +115,7 @@ export function Galaxy({
           Galaxy
           <Select
             value={galaxy}
-            onChange={(e) => setGalaxy(Number(e.target.value))}
+            onChange={(e) => browse(Number(e.target.value), system)}
           >
             {Array.from({ length: model.settings?.galaxies ?? 1 }, (_, i) => (
               <option key={i + 1}>{i + 1}</option>
@@ -102,7 +128,7 @@ export function Galaxy({
           aria-label="Previous system"
           title="Previous system"
           disabled={system <= 1}
-          onClick={() => setSystem((s) => s - 1)}
+          onClick={() => browse(galaxy, system - 1)}
         >
           <ChevronLeft size={18} />
         </Button>
@@ -110,7 +136,7 @@ export function Galaxy({
           Solar system
           <Select
             value={system}
-            onChange={(e) => setSystem(Number(e.target.value))}
+            onChange={(e) => browse(galaxy, Number(e.target.value))}
           >
             {Array.from(
               { length: model.settings?.systems_per_galaxy ?? 5 },
@@ -126,7 +152,7 @@ export function Galaxy({
           aria-label="Next system"
           title="Next system"
           disabled={system >= (model.settings?.systems_per_galaxy ?? 5)}
-          onClick={() => setSystem((s) => s + 1)}
+          onClick={() => browse(galaxy, system + 1)}
         >
           <ChevronRight size={18} />
         </Button>
@@ -150,12 +176,15 @@ export function Galaxy({
         </span>
         <span>Browsing is free · Activity can be caused by fleets</span>
       </div>
-      {result.error && (
+      {!valid && (
+        <p role="alert">These coordinates are outside this universe.</p>
+      )}
+      {valid && result.error && (
         <p role="alert" className={styles.error}>
           {result.error}
         </p>
       )}
-      {result.loading && (
+      {valid && result.loading && (
         <p role="status" className={styles.loading}>
           Loading system…
         </p>
@@ -172,8 +201,24 @@ export function Galaxy({
             {data.positions.map((position) => (
               <li
                 id={`position-${position.coordinates.position}`}
+                tabIndex={-1}
+                aria-current={
+                  position.coordinates.position === search.position
+                    ? 'location'
+                    : undefined
+                }
+                className={
+                  position.coordinates.position === search.position
+                    ? styles.selectedPosition
+                    : undefined
+                }
                 key={`${data.galaxy}:${data.system}:${position.coordinates.position}`}
               >
+                {position.coordinates.position === search.position && (
+                  <p className={styles.locationLabel}>
+                    Selected location [{galaxy}:{system}:{search.position}]
+                  </p>
+                )}
                 <GalaxyPosition
                   position={position}
                   playerNames={data.player_names}
