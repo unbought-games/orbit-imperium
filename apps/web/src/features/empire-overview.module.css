@@ -427,6 +427,7 @@
 .flightCopy {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .flightCopy > div {
   display: flex;
@@ -472,7 +473,6 @@
   place-items: center;
   min-height: 44px;
   min-width: 44px;
-  margin-right: -8px;
 }
 .quietSpace {
   display: flex;
