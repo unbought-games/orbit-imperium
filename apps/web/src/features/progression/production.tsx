@@ -10,7 +10,7 @@ export function Production({
   coordinator: model,
   view,
   body,
-}: ProgressionProps) {
+}: Pick<ProgressionProps, 'coordinator' | 'view' | 'body'>) {
   const production = view.progression.production.find(
     (x) => x.body === body.id,
   )!

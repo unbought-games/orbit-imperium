@@ -36,6 +36,12 @@ export function routeTarget(
             params: planetParams(),
             search: {},
           })
+    case 'resource-settings':
+      return linkOptions({
+        to: '/u/$universe/b/$body/resource-settings',
+        params: planetParams(),
+        search: {},
+      })
     case 'facilities':
       return item
         ? linkOptions({

@@ -131,3 +131,36 @@ it('enables real fleet routes only for the world profile and keeps report detail
     ).available,
   ).toBe(false)
 })
+
+it('requires production data for the selected planet to open resource settings', () => {
+  const productionView = {
+    ...view,
+    progression: { production: [{ body: 'a' }] },
+  } as typeof view
+  const destination = {
+    universe: 'u',
+    page: 'resource-settings' as const,
+    body: 'a',
+  }
+  expect(resolveDestination(destination, productionView)).toMatchObject({
+    available: true,
+    page: 'resource-settings',
+    body: 'a',
+  })
+  for (const body of [undefined, 'b', 'foreign'])
+    expect(
+      resolveDestination({ ...destination, body }, productionView).available,
+    ).toBe(false)
+  expect(
+    resolveDestination(destination, {
+      ...productionView,
+      progression: { ...productionView.progression, production: [] },
+    }).available,
+  ).toBe(false)
+  expect(
+    resolveDestination(destination, {
+      ...productionView,
+      protocol: 2,
+    } as unknown as BoundView).available,
+  ).toBe(false)
+})
