@@ -1,4 +1,4 @@
-import { openRetainedProductionSettings } from './fixtures/production-settings'
+import { openProductionSettings } from './fixtures/production-settings'
 import {universeSlug} from '../src/client-model/universe-name'
 import {navigate,foreground} from './fixtures/navigation'
 import { test, expect } from '@playwright/test';
@@ -87,7 +87,7 @@ test('keyboard completes production, facility, research and shared ship/defense 
  const session=await(await page.request.get('/api/v1/session')).json(),u=session.memberships[0].universe,binding=await(await page.request.get(`/api/v3/universes/${u}/binding?request_id=${randomUUID()}`)).json();
  const read=async()=>{for(let retry=0;retry<50;retry++){const response=await page.request.post(`/api/v3/universes/${u}/overview`,{headers:{Origin:process.env.ORBIT_TEST_BASE_URL!,'X-CSRF-Token':session.csrf},data:{binding:binding.binding,request_id:randomUUID()}});if(response.status()===503){await page.waitForTimeout(50);continue}expect(response.ok()).toBe(true);return response.json()}throw Error('Authoritative view did not catch up')};
  const before=await read();
- await navigate('Resources');await openRetainedProductionSettings(page);await page.getByLabel('metal mine production').focus();await page.keyboard.type('100');await expect(page.getByLabel('metal mine production')).toHaveValue('100');await press('Close resource settings');await expect.poll(async()=>(await read()).progression.production[0].settings.metal_mine).toBe(100);
+ await navigate('Resources');await openProductionSettings(page);await page.getByLabel('metal mine production').focus();await page.keyboard.type('100');await expect(page.getByLabel('metal mine production')).toHaveValue('100');await page.getByRole('link',{name:'Build',exact:true}).click();await expect.poll(async()=>(await read()).progression.production[0].settings.metal_mine).toBe(100);
  await navigate('Facilities');await press('Upgrade Robotics Factory');await expect(page.getByRole('region',{name:'Progression quote'})).toBeFocused();await press('Confirm upgrade');await expect.poll(async()=>(await read()).constructions.length).toBe(1);
  await navigate('Research');await press('Research Computer Technology');await press('Confirm research');await expect.poll(async()=>(await read()).progression.research_operation?.research).toBe('ComputerTechnology');
  await navigate('Shipyard');await press('Build Light Fighter');await expect(page.getByRole('region',{name:'Progression quote'})).toContainText('Prepaid · shared ship/defense queue.');await press('Build');await expect.poll(async()=>(await read()).progression.manufacturing.length).toBe(1);

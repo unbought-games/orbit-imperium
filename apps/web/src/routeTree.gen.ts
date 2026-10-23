@@ -34,6 +34,7 @@ import { Route as UUniverseBBodyFleetsRouteImport } from './routes/u.$universe.b
 import { Route as UUniverseBBodyGalaxyRouteImport } from './routes/u.$universe.b.$body.galaxy'
 import { Route as UUniverseBBodyOverviewRouteImport } from './routes/u.$universe.b.$body.overview'
 import { Route as UUniverseBBodyResearchRouteImport } from './routes/u.$universe.b.$body.research'
+import { Route as UUniverseBBodyResourceSettingsRouteImport } from './routes/u.$universe.b.$body.resource-settings'
 import { Route as UUniverseBBodyResourcesRouteImport } from './routes/u.$universe.b.$body.resources'
 import { Route as UUniverseBBodyShipyardRouteImport } from './routes/u.$universe.b.$body.shipyard'
 import { Route as UUniverseBBodyDefenseItemRouteImport } from './routes/u.$universe.b.$body.defense.$item'
@@ -170,6 +171,12 @@ const UUniverseBBodyResearchRoute = UUniverseBBodyResearchRouteImport.update({
   path: '/b/$body/research',
   getParentRoute: () => UUniverseRoute,
 } as any)
+const UUniverseBBodyResourceSettingsRoute =
+  UUniverseBBodyResourceSettingsRouteImport.update({
+    id: '/b/$body/resource-settings',
+    path: '/b/$body/resource-settings',
+    getParentRoute: () => UUniverseRoute,
+  } as any)
 const UUniverseBBodyResourcesRoute = UUniverseBBodyResourcesRouteImport.update({
   id: '/b/$body/resources',
   path: '/b/$body/resources',
@@ -249,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
+  '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
@@ -281,6 +289,7 @@ export interface FileRoutesByTo {
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
+  '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
@@ -318,6 +327,7 @@ export interface FileRoutesById {
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
+  '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
@@ -356,6 +366,7 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/research'
+    | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/defense/$item'
@@ -388,6 +399,7 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/research'
+    | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/defense/$item'
@@ -424,6 +436,7 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/research'
+    | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/defense/$item'
@@ -620,6 +633,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUniverseBBodyResearchRouteImport
       parentRoute: typeof UUniverseRoute
     }
+    '/u/$universe/b/$body/resource-settings': {
+      id: '/u/$universe/b/$body/resource-settings'
+      path: '/b/$body/resource-settings'
+      fullPath: '/u/$universe/b/$body/resource-settings'
+      preLoaderRoute: typeof UUniverseBBodyResourceSettingsRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
     '/u/$universe/b/$body/resources': {
       id: '/u/$universe/b/$body/resources'
       path: '/b/$body/resources'
@@ -812,6 +832,7 @@ interface UUniverseRouteChildren {
   UUniverseBBodyGalaxyRoute: typeof UUniverseBBodyGalaxyRoute
   UUniverseBBodyOverviewRoute: typeof UUniverseBBodyOverviewRoute
   UUniverseBBodyResearchRoute: typeof UUniverseBBodyResearchRouteWithChildren
+  UUniverseBBodyResourceSettingsRoute: typeof UUniverseBBodyResourceSettingsRoute
   UUniverseBBodyResourcesRoute: typeof UUniverseBBodyResourcesRouteWithChildren
   UUniverseBBodyShipyardRoute: typeof UUniverseBBodyShipyardRouteWithChildren
 }
@@ -833,6 +854,7 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseBBodyGalaxyRoute: UUniverseBBodyGalaxyRoute,
   UUniverseBBodyOverviewRoute: UUniverseBBodyOverviewRoute,
   UUniverseBBodyResearchRoute: UUniverseBBodyResearchRouteWithChildren,
+  UUniverseBBodyResourceSettingsRoute: UUniverseBBodyResourceSettingsRoute,
   UUniverseBBodyResourcesRoute: UUniverseBBodyResourcesRouteWithChildren,
   UUniverseBBodyShipyardRoute: UUniverseBBodyShipyardRouteWithChildren,
 }

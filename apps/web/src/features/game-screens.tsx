@@ -9,6 +9,7 @@ import { bindingKey } from '../client-model/commands'
 import { useGameScreen } from '../shell/screen-context'
 import { EmpireOverview } from './empire-overview'
 import { Progression } from './progression'
+import { Production } from './progression/production'
 import { Operations } from './operations'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
@@ -44,6 +45,24 @@ export function EconomyScreen() {
         page={route.page}
       />
     </>
+  )
+}
+export function ResourceSettingsScreen() {
+  const { view, body, model } = useGameScreen()
+  if (!body || view.protocol === 2) return null
+  const planet = view.bodies.find((candidate) => candidate.id === body.id)
+  if (
+    !planet ||
+    !view.progression.production.some((entry) => entry.body === planet.id)
+  )
+    return null
+  return (
+    <Production
+      key={`${bindingKey(view.binding)}:${planet.id}`}
+      coordinator={model}
+      view={view}
+      body={planet}
+    />
   )
 }
 export function OperationsScreen({

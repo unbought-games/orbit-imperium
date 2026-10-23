@@ -17,9 +17,10 @@ import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ResourceStrip } from '../ui/resource-strip'
 import { ActionStatus } from '../ui/action-status'
-import { bodyName, coordinates, label } from '../ui/format'
+import { bodyName, coordinates } from '../ui/format'
 import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
+import { pageTitles } from './navigation-model'
 import { Popover } from '../ui/popover'
 import { WifiOff } from 'lucide-react'
 export function GameShell() {
@@ -80,7 +81,7 @@ export function GameShell() {
     navigate,
   ])
   useLayoutEffect(() => {
-    document.title = `${available ? (page === 'overview' ? 'Empire' : label(page)) : 'Unavailable'} · ${universeName} · Orbit Imperium`
+    document.title = `${available ? pageTitles[page] : 'Unavailable'} · ${universeName} · Orbit Imperium`
     heading.current?.focus()
     const frame = requestAnimationFrame(() => {
       // Scroll restoration can run after the commit. Never steal focus back
@@ -126,7 +127,7 @@ export function GameShell() {
     ? 'Destination unavailable'
     : page === 'overview'
       ? `Empire — ${body ? bodyName(body) : 'Planet'} ${body ? coordinates(body) : ''}`
-      : page[0].toUpperCase() + page.slice(1)
+      : pageTitles[page]
   const freshness = model.stale && (
     <Popover
       label="Connection"
@@ -166,6 +167,7 @@ export function GameShell() {
                 [
                   'overview',
                   'resources',
+                  'resource-settings',
                   'facilities',
                   'shipyard',
                   'defense',
@@ -176,6 +178,7 @@ export function GameShell() {
                 [
                   'overview',
                   'resources',
+                  'resource-settings',
                   'facilities',
                   'shipyard',
                   'defense',

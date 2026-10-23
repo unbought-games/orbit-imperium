@@ -62,7 +62,7 @@ Open an active building's details to see its countdown, refund, and cancellation
 
 Submitting a building upgrade, demolition, or research keeps its details pane open. It switches immediately to work derived from the submitted quote, then follows confirmation or rejection from the game store. Focus moves to the work heading without scrolling. Players dismiss the pane themselves; manufacturing also stays open while submitting and after confirmation.
 
-Resources keeps upgrades/demolition behind server inspection and explicit confirmation. Selecting a different building or closing details invalidates pending inspections. Production settings remain mounted while closed to retain drafts; changing bodies resets the page through its existing body/session key. Production totals are server-confirmed aggregates, not per-building estimates or unsaved previews. Save retains the existing revision-conflict acknowledgment and command-recovery behavior.
+Resources keeps upgrades/demolition behind server inspection and explicit confirmation. Selecting a different building or closing details invalidates pending inspections. Resource settings is a planet-specific screen in the Menu. Production drafts and autosave live in the game store and survive navigation; changing bodies selects that body’s settings. Production totals are server-confirmed aggregates, not per-building estimates or unsaved previews. Save retains the existing revision-conflict acknowledgment and command-recovery behavior.
 
 Run the HTTP-fixture browser checks with the dev server running: `ORBIT_TEST_BASE_URL=http://127.0.0.1:5173 npx playwright test resources.spec.ts shell.spec.ts`.
 

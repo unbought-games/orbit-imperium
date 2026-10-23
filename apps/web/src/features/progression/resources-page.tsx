@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { SlidersHorizontal, ArrowLeft } from 'lucide-react'
+import { useState } from 'react'
 import { CatalogStage } from '../../ui/catalog-stage'
 import { CatalogSection, ImageCatalog } from '../../ui/image-catalog'
 import { label } from '../../ui/format'
@@ -9,9 +8,7 @@ import { resourceBuildings } from './resource-buildings'
 import { buildingUnavailableReason } from './building-availability'
 import { requirementKey, technologyLevel } from './technology-dialog'
 import { BuildingDetails } from './building-details'
-import { Production } from './production'
 import { WorkSummaries } from '../work-summaries'
-import styles from './resources-page.module.css'
 import { useProgressionOptions } from './use-progression-options'
 import { buildingProgress } from '../../client-model/building-progress'
 import { ProgressionTile } from './progression-tile'
@@ -23,129 +20,64 @@ export function ResourcesPage(props: ProgressionProps) {
     (building) => building.id === selectedId,
   )
   const open = selectedId !== null
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const settingsButton = useRef<HTMLButtonElement>(null)
-  const settingsPanel = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (settingsOpen) settingsPanel.current?.focus({ preventScroll: true })
-  }, [settingsOpen])
-  function closeSettings() {
-    setSettingsOpen(false)
-    requestAnimationFrame(() =>
-      settingsButton.current?.focus({ preventScroll: true }),
-    )
-  }
-  const productionAvailable = view.progression.production.some(
-    (x) => x.body === body.id,
-  )
   return (
     <>
-      {/* Keep production controls available for a later settings entry point. */}
-      <div hidden>
-        {productionAvailable && (
-          <button
-            ref={settingsButton}
-            type="button"
-            className={styles.settingsButton}
-            onClick={() => {
-              selection.close()
-              setSettingsOpen(true)
-            }}
-          >
-            <SlidersHorizontal size={14} aria-hidden="true" />
-            Resource settings
-          </button>
-        )}
-      </div>
-      <div hidden={settingsOpen}>
-        <CatalogStage
-          open={open}
-          detailKey={selected?.id ?? ''}
-          detailLabel="Progression quote"
-        >
-          {selected && (
-            <ResourceInspector
-              key={selected.id}
-              {...props}
-              building={selected}
-            />
-          )}
-        </CatalogStage>
-        <WorkSummaries
-          view={view}
-          body={body}
-          currentPage="resources"
-          layout="compact"
-          only="buildings"
-        />
-        <CatalogSection title="Resource buildings">
-          <ImageCatalog>
-            {resourceBuildings.map((building) => {
-              const level = body.levels[building.id as keyof typeof body.levels]
-              const catalog = view.catalog.find(
-                (c) => c.key.kind === 'Building' && c.key.id === building.id,
-              )
-              return (
-                <ProgressionTile
-                  key={building.id}
-                  model={model}
-                  view={view}
-                  request={{
-                    type: 'Upgrade',
-                    body: body.id,
-                    building:
-                      building.id as components['schemas']['BuildingId3'],
-                  }}
-                  title={label(building.id)}
-                  aria-label={`Upgrade ${label(building.id)}`}
-                  level={level ?? 0}
-                  progress={
-                    progress?.building === building.id ? progress : null
-                  }
-                  art={building.art}
-                  selected={open && selected?.id === building.id}
-                  locked={catalog?.requirements.some(
-                    (r) => technologyLevel(requirementKey(r), props) < r.level,
-                  )}
-                  disabled={
-                    !!buildingUnavailableReason(catalog, body, building.id)
-                  }
-                  disabledReason={buildingUnavailableReason(
-                    catalog,
-                    body,
-                    building.id,
-                  )}
-                  {...selection.link(building.id)}
-                />
-              )
-            })}
-          </ImageCatalog>
-        </CatalogSection>
-      </div>
-      <div
-        hidden={!settingsOpen}
-        ref={settingsPanel}
-        tabIndex={-1}
-        className={styles.settings}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape' && !event.defaultPrevented) {
-            event.preventDefault()
-            closeSettings()
-          }
-        }}
+      <CatalogStage
+        open={open}
+        detailKey={selected?.id ?? ''}
+        detailLabel="Progression quote"
       >
-        <div className={styles.settingsHeader}>
-          <h2>Resource settings</h2>
-          <button
-            type="button"
-            aria-label="Close resource settings"
-            onClick={closeSettings}
-          >
-            <ArrowLeft size={18} /> Back
-          </button>
-        </div>
-        {productionAvailable && <Production {...props} />}
-      </div>
+        {selected && (
+          <ResourceInspector key={selected.id} {...props} building={selected} />
+        )}
+      </CatalogStage>
+      <WorkSummaries
+        view={view}
+        body={body}
+        currentPage="resources"
+        layout="compact"
+        only="buildings"
+      />
+      <CatalogSection title="Resource buildings">
+        <ImageCatalog>
+          {resourceBuildings.map((building) => {
+            const level = body.levels[building.id as keyof typeof body.levels]
+            const catalog = view.catalog.find(
+              (c) => c.key.kind === 'Building' && c.key.id === building.id,
+            )
+            return (
+              <ProgressionTile
+                key={building.id}
+                model={model}
+                view={view}
+                request={{
+                  type: 'Upgrade',
+                  body: body.id,
+                  building: building.id as components['schemas']['BuildingId3'],
+                }}
+                title={label(building.id)}
+                aria-label={`Upgrade ${label(building.id)}`}
+                level={level ?? 0}
+                progress={progress?.building === building.id ? progress : null}
+                art={building.art}
+                selected={open && selected?.id === building.id}
+                locked={catalog?.requirements.some(
+                  (r) => technologyLevel(requirementKey(r), props) < r.level,
+                )}
+                disabled={
+                  !!buildingUnavailableReason(catalog, body, building.id)
+                }
+                disabledReason={buildingUnavailableReason(
+                  catalog,
+                  body,
+                  building.id,
+                )}
+                {...selection.link(building.id)}
+              />
+            )
+          })}
+        </ImageCatalog>
+      </CatalogSection>
     </>
   )
 }
