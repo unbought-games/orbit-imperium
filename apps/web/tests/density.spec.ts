@@ -317,6 +317,9 @@ for (const width of [1280, 390]) {
       ['dispatch', 'Dispatch fleet'],
     ]) {
       await page.goto(`/u/andromeda/${route}?body=${body.id}`)
+      // The legacy URL replaces the route's heading during canonicalization.
+      // Measure the final planet-scoped screen, not the outgoing route.
+      await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${route}`)
       const heading = page.getByRole('heading', {
         name: title,
         level: 2,
@@ -326,12 +329,17 @@ for (const width of [1280, 390]) {
       // Keep the task's styled title, without a second large shell heading.
       await expect(heading).toHaveCSS('margin', '0px')
       await expect(heading).toHaveCSS('font-size', '24px')
-      expect(
-        (await heading.locator('..').boundingBox())!.height,
-      ).toBeLessThanOrEqual(64)
-      expect(
-        (await page.locator('main h1').locator('..').boundingBox())!.height,
-      ).toBeLessThanOrEqual(1)
+      for (const [header, maxHeight] of [
+        [heading.locator('..'), 64],
+        [page.locator('main h1').locator('..'), 1],
+      ] as const) {
+        await expect
+          .poll(async () => {
+            const box = await header.boundingBox()
+            return box?.height ?? Number.POSITIVE_INFINITY
+          })
+          .toBeLessThanOrEqual(maxHeight)
+      }
       await expect(
         page.getByRole('combobox', { name: 'Destination', exact: true }),
       ).toHaveValue(id(6))
