@@ -4019,6 +4019,43 @@
           }
         }
       }
+    },
+    "/api/v1/session/renew": {
+      "post": {
+        "description": "Renew a live session after foreground player activity. Requires the session cookie, matching Origin and X-CSRF-Token. Passive reads and streams never renew.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Renewed; Set-Cookie resets the browser idle deadline."
+          },
+          "401": {
+            "description": "Session expired or revoked."
+          },
+          "403": {
+            "description": "Origin or CSRF mismatch."
+          },
+          "503": {
+            "description": "Renewal unavailable; retain the existing cookie and retry on activity."
+          }
+        }
+      }
     }
   },
   "components": {

@@ -270,7 +270,7 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
             }
-            let expires_at: i64 = sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+28800000) RETURNING expires_at")
+            let expires_at: i64 = sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000) RETURNING expires_at")
             .bind(digest).bind(account.0).bind(&csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
             let universe_name = sqlx::query_scalar("SELECT name FROM universes WHERE id=$1")
                 .bind(u.0)

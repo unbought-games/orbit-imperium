@@ -1,3 +1,5 @@
+import { startSessionActivity } from '../adapters/session-activity'
+import { http, HttpError } from '../adapters/http'
 import { useEffect, useRef, type FormEvent } from 'react'
 import { useStore } from 'zustand'
 import { useNavigate } from '@tanstack/react-router'
@@ -46,6 +48,26 @@ export function useAppSession() {
       String(data.get('password')),
     )
   }
+  const csrf =
+    runtime.status === 'authenticated' ? runtime.session.csrf : undefined
+  useEffect(() => {
+    if (!csrf) return
+    return startSessionActivity(document, window, async () => {
+      try {
+        await http.renewSession(csrf)
+      } catch (error) {
+        const current = controller.store.getState().runtime
+        if (
+          error instanceof HttpError &&
+          error.status === 401 &&
+          current.status === 'authenticated' &&
+          current.session.csrf === csrf
+        )
+          controller.loseAccess()
+        throw error
+      }
+    })
+  }, [csrf, controller])
   const logout = async () => {
     if (await controller.logout()) {
       await navigate({ to: '/login', replace: true })

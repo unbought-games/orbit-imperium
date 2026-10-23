@@ -523,3 +523,213 @@ async fn oidc_session_rotation_wakes_the_revoked_accounts_streams() {
     assert!(store.lookup_session(&previous).await.unwrap().is_none());
     assert!(store.lookup_session(&next).await.unwrap().is_some());
 }
+
+#[tokio::test]
+async fn only_activity_renews_and_logout_or_expiry_wins_over_late_renewal() {
+    use orbit_application::{SESSION_IDLE_SECONDS, StoreError};
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = refresh_store(&url).await;
+    store.migrate().await.unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let tokens = refresh_fixture();
+    let issuer = tokens.identity.issuer.clone();
+    let digest = Uuid::new_v4().to_string();
+    let session = store
+        .complete_oidc_login(tokens.clone(), &digest, "csrf", None)
+        .await
+        .unwrap();
+    assert!(
+        (session.expires_at / 1000 - unbought_auth::now() - i64::from(SESSION_IDLE_SECONDS)).abs()
+            < 2
+    );
+    let old = (unbought_auth::now() + 60) * 1000;
+    sqlx::query("UPDATE sessions SET expires_at=$2 WHERE digest=$1")
+        .bind(&digest)
+        .bind(old)
+        .execute(&pool)
+        .await
+        .unwrap();
+    store
+        .revalidate_oidc_for_test(&digest, &issuer, "orbit", |mut tokens| async move {
+            tokens.validated_at = unbought_auth::now();
+            Ok(tokens)
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .lookup_session(&digest)
+            .await
+            .unwrap()
+            .unwrap()
+            .expires_at,
+        old
+    );
+    let deadline = unbought_auth::now() + i64::from(SESSION_IDLE_SECONDS);
+    // Cached identity must not suppress foreground renewal.
+    store
+        .renew_oidc_for_test(&digest, &issuer, "orbit", |tokens| async move {
+            Ok((tokens, Some(deadline)))
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .lookup_session(&digest)
+            .await
+            .unwrap()
+            .unwrap()
+            .expires_at,
+        deadline * 1000
+    );
+    for expire in [false, true] {
+        let digest = Uuid::new_v4().to_string();
+        store
+            .complete_oidc_login(tokens.clone(), &digest, "csrf", None)
+            .await
+            .unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, held) = tokio::sync::oneshot::channel();
+        let running = {
+            let store = store.clone();
+            let digest = digest.clone();
+            let issuer = issuer.clone();
+            tokio::spawn(async move {
+                store
+                    .renew_oidc_for_test(&digest, &issuer, "orbit", |tokens| async move {
+                        entered.send(()).unwrap();
+                        held.await.unwrap();
+                        Ok((tokens, Some(deadline)))
+                    })
+                    .await
+            })
+        };
+        started.await.unwrap();
+        if expire {
+            sqlx::query("UPDATE sessions SET expires_at=0 WHERE digest=$1")
+                .bind(&digest)
+                .execute(&pool)
+                .await
+                .unwrap();
+        } else {
+            store.revoke_session(&digest).await.unwrap();
+        }
+        release.send(()).unwrap();
+        assert!(matches!(running.await.unwrap(), Err(StoreError::Conflict)));
+        assert!(store.lookup_session(&digest).await.unwrap().is_none());
+        assert!(matches!(
+            store
+                .renew_oidc_for_test(&digest, &issuer, "orbit", |_| async {
+                    panic!("expired sessions must not contact Accounts")
+                })
+                .await,
+            Err(StoreError::Conflict)
+        ));
+    }
+    // Local self-hosted login follows the same idle deadline without Accounts.
+    let digest = Uuid::new_v4().to_string();
+    store
+        .create_session(session.account, &digest, "csrf", None)
+        .await
+        .unwrap();
+    let until = store.renew_session(&digest, None).await.unwrap();
+    assert!((until / 1000 - unbought_auth::now() - i64::from(SESSION_IDLE_SECONDS)).abs() < 2);
+    store.revoke_session(&digest).await.unwrap();
+    assert!(store.renew_session(&digest, None).await.is_err());
+}
+
+#[tokio::test]
+async fn interrupted_activity_preserves_committed_rotation_and_retries_with_latest_token() {
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = refresh_store(&url).await;
+    store.migrate().await.unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    for cancel in [true, false] {
+        let tokens = refresh_fixture();
+        let issuer = tokens.identity.issuer.clone();
+        let digest = Uuid::new_v4().to_string();
+        let before = store
+            .complete_oidc_login(tokens, &digest, "csrf", None)
+            .await
+            .unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let running = {
+            let store = store.clone();
+            let digest = digest.clone();
+            let issuer = issuer.clone();
+            tokio::spawn(async move {
+                store
+                    .renew_oidc_after_revalidation_for_test(
+                        &digest,
+                        &issuer,
+                        "orbit",
+                        |mut tokens| async move {
+                            tokens.refresh_token = Some("committed-refresh".into());
+                            tokens.validated_at = unbought_auth::now();
+                            Ok(tokens)
+                        },
+                        |tokens| async move {
+                            assert_eq!(tokens.refresh_token.as_deref(), Some("committed-refresh"));
+                            entered.send(()).unwrap();
+                            // This pending remote operation models a stalled activity
+                            // request. Its own timeout must leave rotation committed.
+                            std::future::pending().await
+                        },
+                    )
+                    .await
+            })
+        };
+        started.await.unwrap();
+        let saved: serde_json::Value =
+            sqlx::query_scalar("SELECT payload FROM oidc_session WHERE digest=$1")
+                .bind(&digest)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            saved["refresh_token"], "committed-refresh",
+            "rotation must already be durable before activity starts"
+        );
+        if cancel {
+            running.abort();
+            assert!(running.await.unwrap_err().is_cancelled());
+        } else {
+            assert!(matches!(
+                running.await.unwrap(),
+                Err(orbit_application::StoreError::Unavailable)
+            ));
+        }
+        assert_eq!(
+            store
+                .lookup_session(&digest)
+                .await
+                .unwrap()
+                .unwrap()
+                .expires_at,
+            before.expires_at
+        );
+        let deadline = unbought_auth::now() + i64::from(orbit_application::SESSION_IDLE_SECONDS);
+        store
+            .renew_oidc_after_revalidation_for_test(
+                &digest,
+                &issuer,
+                "orbit",
+                |_| async { panic!("a recent committed validation should not rotate again") },
+                |tokens| async move {
+                    assert_eq!(tokens.refresh_token.as_deref(), Some("committed-refresh"));
+                    Ok((tokens, Some(deadline)))
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            store
+                .lookup_session(&digest)
+                .await
+                .unwrap()
+                .unwrap()
+                .expires_at,
+            deadline * 1000
+        );
+    }
+}

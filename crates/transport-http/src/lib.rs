@@ -110,6 +110,7 @@ where
         .route("/api/auth/identity", get(oidc::identity::<S>))
         .route("/api/auth/enroll", post(oidc::enroll::<S>))
         .route("/api/auth/backchannel-logout", post(oidc::logout::<S>))
+        .route("/api/v1/session/renew", post(renew_session::<S>))
         .route("/api/v1/bootstrap", get(bootstrap::get::<S>))
         .route(
             "/api/v1/registration",
@@ -404,7 +405,7 @@ async fn login<S: GameStore + IdentityStore + Clone + 'static>(
     };
     response.headers_mut().insert(
         header::SET_COOKIE,
-        cookie(&s, &result.token, 28800)
+        cookie(&s, &result.token, SESSION_IDLE_SECONDS)
             .parse()
             .map_err(|_| ServiceError::InvariantFailure)?,
     );
@@ -483,7 +484,7 @@ async fn signup<S: GameStore + IdentityStore + Clone + 'static>(
     };
     response.headers_mut().insert(
         header::SET_COOKIE,
-        cookie(&s, &result.token, 28800)
+        cookie(&s, &result.token, SESSION_IDLE_SECONDS)
             .parse()
             .map_err(|_| ServiceError::InvariantFailure)?,
     );
@@ -643,4 +644,31 @@ mod problem_tests {
             serde_json::json!({"type":"about:blank","status":503,"code":"Unavailable"})
         );
     }
+}
+
+/// Foreground activity is explicit; SSE, polling and token revalidation never renew.
+async fn renew_session<S: IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+) -> Result<Response, Problem> {
+    origin(&s, &h)?;
+    let value = token(&h).ok_or(ServiceError::Unauthenticated)?;
+    let session = s.sessions.authenticate(value).await?;
+    if h.get("x-csrf-token").and_then(|v| v.to_str().ok()) != Some(session.csrf.as_str()) {
+        return Err(ServiceError::Forbidden.into());
+    }
+    let expires = s
+        .updates
+        .renew_session(&token_digest(value), s.oidc.as_ref())
+        .await
+        .map_err(oidc::session_error)?;
+    let age = ((expires / 1000 - unbought_auth::now()).max(0) as u32).min(SESSION_IDLE_SECONDS);
+    Ok((
+        [
+            (header::SET_COOKIE, cookie(&s, value, age)),
+            (header::CACHE_CONTROL, "no-store".into()),
+        ],
+        StatusCode::NO_CONTENT,
+    )
+        .into_response())
 }
