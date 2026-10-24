@@ -98,3 +98,24 @@ remaining. `docker compose down --volumes` removed the project's container,
 network and volume in 0.54 s. Browser runners stopped their temporary Vite
 processes. No full-system acceptance, production-container validation, deployment,
 push or merge was performed.
+
+## PR #83 review follow-up
+
+Source revision `865c790752e5a68ea9c837c3a3c032ebd40ddf84` fixes detail-dialog
+cleanup. A browser regression reproduced loss of useful focus when an already
+pending ranking refresh removed the selected player. The selection also needed
+clearing so a later snapshot could not reopen the dialog without a new gesture.
+Ordinary browser-back navigation was already usable in Chromium; the regression
+retains coverage for it rather than claiming that case failed.
+
+The dialog now closes its native modal during layout cleanup. If the selected
+player disappears, the local interaction selection clears and focus returns to
+the ranking table. Normal Close/Escape still restores the opener, with a table
+fallback if that element has gone away. Queued close events from effect replay
+cannot dismiss a reopened dialog.
+
+The new browser test failed before the fix (10.23 s including all four selected
+tests). After the repair, all four High Scores browser tests passed in 7.50 s;
+661 client tests passed in 4.46 s, static checks in 7.69 s, and the production
+build in 7.57 s. The browser runner cleaned up its temporary Vite process. No
+additional database or Docker resources were started for this UI-only repair.
