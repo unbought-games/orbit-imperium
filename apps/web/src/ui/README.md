@@ -18,6 +18,12 @@ Decorative pseudo-elements provide clipped corners and beveled edges without cli
 
 A feature can compose existing components without needing its own stylesheet. Add local CSS when that feature has layout or appearance of its own. Extract a new shared component when a real pattern repeats; do not add a general layout framework for hypothetical future screens.
 
+## Empty collections
+
+Use `EmptyState` for empty lists and collections: a decorative Lucide icon, a clear heading, a short explanation of what will appear, and an optional real next action. The default `page` variant provides a spacious focal point; `compact` fits dashboard sections and search results. Set `headingLevel` to match the surrounding hierarchy. Actions use shared buttons/links and must respect destination availability and the selected planet. Search results can offer a Clear search action.
+
+Only render an empty collection after a successful response. Loading, failures, missing details, locked content, idle work queues, and known-zero intelligence have different meanings; retain their specific feedback. Use `StatePanel` for application connection/session states. Do not replace factual zero values inside reports with a decorative empty collection.
+
 ## Routes
 
 Add screen routes in `src/routes`; TanStack generates `routeTree.gen.ts` (do not edit it). Run `npm run routes` after adding or renaming files; dev and production builds also generate the tree. Route modules declare their page metadata and screen component. Keep the confirmed session/coordinator in the root App and common chrome in GameShell; screens render through its Outlet.

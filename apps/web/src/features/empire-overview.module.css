@@ -465,29 +465,6 @@
   min-height: 44px;
   min-width: 44px;
 }
-.quietSpace {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  flex: 1;
-  padding: 35px 0;
-  text-align: center;
-}
-.quietSpace svg {
-  color: var(--ice-shadow);
-}
-.quietSpace strong {
-  font: 1.25rem var(--font-editorial);
-  color: var(--champagne-light);
-}
-.quietSpace p {
-  font-size: 0.75rem;
-  line-height: 1.8;
-  color: var(--hud-muted);
-  margin: 0;
-}
 .boardLink {
   display: flex;
   align-items: center;
@@ -757,11 +734,6 @@
   color: var(--ice);
   font-variant-numeric: tabular-nums;
 }
-.empty {
-  color: var(--hud-muted);
-  font-size: 0.75rem;
-  line-height: 1.6;
-}
 .cardFooter {
   display: flex;
   justify-content: space-between;
@@ -956,16 +928,6 @@
   }
   .flightList > li {
     padding: 14px 0;
-  }
-  .quietSpace {
-    padding: 20px 0;
-    gap: 8px;
-  }
-  .quietSpace svg {
-    display: none;
-  }
-  .quietSpace p br {
-    display: none;
   }
   .boardLink {
     min-height: 48px;
