@@ -443,6 +443,14 @@ fn schedule(c: &mut ChangeSet, i: &OrderedInput, f: &MissionFleet) {
         },
     });
 }
+fn is_probe_only_espionage(f: &MissionFleet) -> bool {
+    // Use the launch manifest so losing an escort does not silence its return report.
+    f.intent.mission == Mission::Espionage
+        && f.intent
+            .ships
+            .iter()
+            .all(|s| s.ship_type == ShipType::EspionageProbe)
+}
 fn terminal_return(
     c: &mut ChangeSet,
     s: &GameState,
@@ -481,7 +489,9 @@ fn terminal_return(
     }
     f.leg = MissionLeg::Returned;
     signal(w, home.id, i, ActivityCause::Return);
-    own_report(w, i, f, "Returned");
+    if !is_probe_only_espionage(f) {
+        own_report(w, i, f, "Returned");
+    }
     Ok(())
 }
 fn empty(s: &GameState, i: &OrderedInput, r: &Ruleset) -> ChangeSet {
@@ -772,6 +782,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             f.leg = MissionLeg::Returning;
             if i.at == f.launched_at {
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
+                if is_probe_only_espionage(&f) {
+                    own_report(&mut w, i, &f, "Recalled");
+                }
             } else {
                 f.due_at = deadline(i.at, i.at - f.launched_at)?;
                 schedule(&mut c, i, &f);

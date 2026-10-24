@@ -2346,6 +2346,9 @@ fn espionage_contract_keeps_research_added_by_rules_updates() {
 #[path = "missions/heavy_fighter.rs"]
 mod heavy_fighter;
 
+#[path = "missions/espionage_returns.rs"]
+mod espionage_returns;
+
 #[test]
 fn planet_renaming_is_public_free_repeatable_and_owner_only() {
     let (mut s, r, p, b, target) = fixture();
