@@ -83,3 +83,19 @@ export function projectedReportHeader(
     ? source.header
     : { ...source.header, hidden }
 }
+
+// Keep later failures and unresolved commands. Only a confirmed preference
+// supersedes earlier rejections for that same report.
+export function supersededReportFailures(
+  attempts: import('./commands').AttemptLedger,
+) {
+  const confirmed = new Set<string>()
+  return [...attempts].reverse().filter(([, attempt]) => {
+    const command = attempt.envelope.command
+    if (command.type !== 'World' || command.action.type !== 'SetReportHidden')
+      return false
+    if (attempt.status === 'committed' && attempt.reconciled)
+      confirmed.add(command.action.report)
+    return attempt.status === 'rejected' && confirmed.has(command.action.report)
+  })
+}

@@ -26,7 +26,11 @@ import {
   terminal,
 } from './commands'
 import { validate } from './schema'
-import { acceptReportVisibility, mergeReportHeaders } from './report-state'
+import {
+  acceptReportVisibility,
+  mergeReportHeaders,
+  supersededReportFailures,
+} from './report-state'
 import { startGameDelivery, type DeliveryController } from './delivery'
 import { createGameStore, type GameState } from './game-store'
 import {
@@ -979,6 +983,21 @@ export class Coordinator {
     if (this.current(generation, view.binding)) await this.pruneSuccesses()
   }
   private async pruneSuccesses() {
+    for (const [key, attempt] of supersededReportFailures(this.attempts)) {
+      try {
+        await this.writes.get(key)
+        await this.storage.remove(
+          attempt.envelope.binding,
+          attempt.envelope.command_id,
+        )
+      } catch {
+        // Retain the confirming success until the older failure is durably
+        // removed, so it cannot become the latest feedback after pruning.
+        return
+      }
+      if (this.attempts.get(key) === attempt) this.removeAttempt(key)
+      this.writes.delete(key)
+    }
     const successes = [...this.attempts].filter(
       ([, attempt]) => attempt.status === 'committed' && attempt.reconciled,
     )
