@@ -2560,3 +2560,6 @@ fn report_removal_is_recipient_scoped_reversible_and_preserves_evidence() {
         assert!(!w.report_states[0].read);
     }
 }
+
+#[path = "missions/cruiser.rs"]
+mod cruiser;

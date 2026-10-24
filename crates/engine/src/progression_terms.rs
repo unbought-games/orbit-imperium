@@ -85,6 +85,7 @@ impl ProgressionRules {
                     | ShipType::LargeCargo
                     | ShipType::LightFighter
                     | ShipType::HeavyFighter
+                    | ShipType::Cruiser
                     | ShipType::Recycler
                     | ShipType::EspionageProbe
             ) {

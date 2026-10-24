@@ -1581,3 +1581,135 @@ async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_
     assert!(service.diff(&destructive).await.is_err());
     assert_eq!(store.load_rules(other).await.unwrap(), other_rules);
 }
+
+#[tokio::test]
+async fn cruiser_activation_preserves_players_and_survives_restart_and_disable() {
+    let (store, _, universe, binding) = setup().await;
+    let service = RulesService::new(store.clone());
+    let mut prerequisites = service.export(universe).await.unwrap();
+    let profile = prerequisites.artifact.universe.clone();
+    prerequisites.artifact =
+        serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-slice-9.json")).unwrap();
+    prerequisites.artifact.universe = profile;
+    service.apply(&prerequisites).await.unwrap();
+    let before = service.export(universe).await.unwrap();
+    let (old, _) = store.bound_world(binding).await.unwrap().facts;
+    let mut document = before.clone();
+    let content: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../rules/content/cruiser.json")).unwrap();
+    document.artifact.ships.insert(
+        ShipType::Cruiser,
+        serde_json::from_value(content["ship"].clone()).unwrap(),
+    );
+    document
+        .artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .push(UnitCost {
+            item: ManufacturedItem::Ship(ShipType::Cruiser),
+            cost: serde_json::from_value(content["cost"].clone()).unwrap(),
+        });
+    let combat = &mut document.artifact.world.as_mut().unwrap().combat;
+    combat
+        .units
+        .push(serde_json::from_value(content["combat"].clone()).unwrap());
+    combat
+        .rapid_fire
+        .extend(serde_json::from_value::<Vec<RapidFire>>(content["rapid_fire"].clone()).unwrap());
+    let entry = document
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Ship(ShipType::Cruiser))
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    let diff = service.diff(&document).await.unwrap();
+    assert!(diff.initialize.add_research.is_empty());
+    assert!(diff.initialize.add_buildings.is_empty());
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::AlreadyActive { .. }
+    ));
+    let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(
+        snapshot.state.research[&binding.player].levels,
+        old.state.research[&binding.player].levels
+    );
+    assert_eq!(snapshot.state.epoch, binding.epoch);
+    let mut bodies = old.state.bodies.clone();
+    for body in bodies.values_mut() {
+        body.revision += 1;
+    }
+    assert_eq!(snapshot.state.bodies, bodies);
+    assert_eq!(snapshot.state.inventories, old.state.inventories);
+    assert_eq!(
+        snapshot.state.manufacturing_batches,
+        old.state.manufacturing_batches
+    );
+    let saved = store.load_rules(universe).await.unwrap();
+    assert_eq!(
+        saved.artifact.ships[&ShipType::Cruiser].drive,
+        Some(ResearchId::ImpulseDrive)
+    );
+    drop(store.server_guard_config(None).await.unwrap());
+    assert_eq!(store.load_rules(universe).await.unwrap(), saved);
+    let joined = SessionService::new(store.clone())
+        .signup(
+            &format!("cruiser{}", Uuid::new_v4().simple()),
+            "password",
+            SignupPolicy {
+                universe,
+                max_players: 45,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let joined_binding = GameService::new(store.clone())
+        .current_binding(joined.session.account, universe, Uuid::new_v4())
+        .await
+        .unwrap()
+        .binding;
+    let (new_player, _) = store.bound_world(joined_binding).await.unwrap().facts;
+    assert_eq!(new_player.rules, saved);
+    assert_eq!(
+        new_player.state.research[&joined_binding.player].levels[&ResearchId::IonTechnology],
+        0
+    );
+    assert_eq!(
+        new_player.state.research[&joined_binding.player].levels[&ResearchId::ImpulseDrive],
+        0
+    );
+    assert!(
+        !new_player
+            .state
+            .inventories
+            .iter()
+            .any(|i| i.item == ManufacturedItem::Ship(ShipType::Cruiser))
+    );
+    let mut disabled = service.export(universe).await.unwrap();
+    disabled
+        .artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Ship(ShipType::Cruiser))
+        .unwrap()
+        .enabled = false;
+    service.apply(&disabled).await.unwrap();
+    let retained = store.load_rules(universe).await.unwrap();
+    assert_eq!(retained.artifact.ships, saved.artifact.ships);
+    assert_eq!(
+        retained.artifact.world.as_ref().unwrap().combat,
+        saved.artifact.world.as_ref().unwrap().combat
+    );
+    let mut destructive = service.export(universe).await.unwrap();
+    destructive.artifact = before.artifact;
+    assert!(service.diff(&destructive).await.is_err());
+}

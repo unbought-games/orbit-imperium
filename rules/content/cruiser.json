@@ -1,0 +1,82 @@
+{
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 5
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "IonTechnology",
+      "level": 2
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "ImpulseDrive",
+      "level": 4
+    }
+  ],
+  "ship": {
+    "drive": "ImpulseDrive",
+    "base_speed": 15000,
+    "drive_coefficient": [
+      1,
+      5
+    ],
+    "fuel": 300,
+    "capacity": 800
+  },
+  "cost": {
+    "metal": 20000,
+    "crystal": 7000,
+    "deuterium": 2000
+  },
+  "combat": {
+    "item": {
+      "kind": "Ship",
+      "id": "Cruiser"
+    },
+    "cost": [
+      20000,
+      7000,
+      2000
+    ],
+    "attack_hundredths": 40000,
+    "shield_hundredths": 5000
+  },
+  "rapid_fire": [
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "LightFighter"
+      },
+      "factor": 6
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "RocketLauncher"
+      },
+      "factor": 10
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "factor": 5
+    }
+  ]
+}
