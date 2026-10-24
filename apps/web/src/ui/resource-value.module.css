@@ -1,0 +1,22 @@
+.value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+  max-width: 100%;
+  white-space: normal;
+  font-variant-numeric: tabular-nums;
+}
+.value > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.value svg {
+  flex: 0 0 auto;
+}
+.summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}

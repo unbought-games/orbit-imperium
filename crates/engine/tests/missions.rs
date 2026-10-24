@@ -2294,6 +2294,7 @@ mod colonization;
 #[test]
 fn espionage_contract_keeps_research_added_by_rules_updates() {
     let (mut s, baseline, p, b, t) = raid_fixture();
+    s.bodies.get_mut(&t).unwrap().name = Some("Nova Roma".into());
     let r = common::astrophysics_rules(&baseline);
     s.profile_hash = r.hash.clone();
     for research in s.research.values_mut() {

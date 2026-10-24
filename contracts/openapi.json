@@ -10892,6 +10892,13 @@
               },
               "kind": {
                 "const": "Planet"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Planet name at the time of observation. Older reports may omit it."
               }
             },
             "required": [
@@ -12736,6 +12743,13 @@
                   },
                   "kind": {
                     "const": "Planet"
+                  },
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Planet name at the time of observation. Older reports may omit it."
                   }
                 },
                 "required": [

@@ -1,3 +1,5 @@
+import { BodyIllustration } from './body-illustration'
+import { readCoordinates } from '../shell/galaxy-location'
 import { CoordinateLink } from './coordinate-link'
 import type { PlayerNames } from './player-label'
 import { PlayerName } from './player-name'
@@ -10,7 +12,7 @@ import styles from './report-observation.module.css'
 import combatStyles from './combat-report.module.css'
 import type { ReactNode } from 'react'
 import { label } from '../ui/format'
-import { NumberValue, ResourceNumber } from '../ui/number-value'
+import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
 import { groupReportBuildings } from './report-buildings'
 import type { ObservedLevel } from './report-buildings'
@@ -25,23 +27,27 @@ const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 function Resources({ value }: { value: unknown }) {
   const r = record(value)
   return (
-    <dl className={styles.grid}>
-      {['metal', 'crystal', 'deuterium'].map((k) => (
-        <div key={k}>
-          <dt>{label(k)}</dt>
-          <dd>
-            {typeof r[k] === 'string' && /^(0|[1-9][0-9]*)$/.test(r[k]) ? (
-              <ResourceNumber value={r[k]} />
-            ) : (
-              'Unknown'
-            )}
-          </dd>
-        </div>
+    <div
+      className={styles.resources}
+      role="group"
+      aria-label="Resource amounts"
+    >
+      {(['metal', 'crystal', 'deuterium'] as const).map((resource) => (
+        <ResourceQuantity
+          key={resource}
+          resource={resource}
+          value={
+            typeof r[resource] === 'string' &&
+            /^(0|[1-9][0-9]*)$/.test(r[resource])
+              ? r[resource]
+              : null
+          }
+        />
       ))}
-    </dl>
+    </div>
   )
 }
-function Units({ value }: { value: unknown }) {
+function Units({ value, emptyLabel }: { value: unknown; emptyLabel: string }) {
   const units = list(value)
   return units.length ? (
     <dl className={styles.grid}>
@@ -64,10 +70,16 @@ function Units({ value }: { value: unknown }) {
       })}
     </dl>
   ) : (
-    <Text>Known empty</Text>
+    <Text>{emptyLabel}</Text>
   )
 }
-function Levels({ rows }: { rows: ObservedLevel[] }) {
+function Levels({
+  rows,
+  emptyLabel,
+}: {
+  rows: ObservedLevel[]
+  emptyLabel: string
+}) {
   return rows.length ? (
     <dl className={styles.grid}>
       {rows.map(([name, level]) => (
@@ -78,7 +90,7 @@ function Levels({ rows }: { rows: ObservedLevel[] }) {
       ))}
     </dl>
   ) : (
-    <Text>Known empty</Text>
+    <Text>{emptyLabel}</Text>
   )
 }
 function Buildings({ value }: { value: unknown }) {
@@ -87,11 +99,11 @@ function Buildings({ value }: { value: unknown }) {
     groups.map(({ title, rows }) => (
       <div key={title}>
         <h4>{title}</h4>
-        <Levels rows={rows} />
+        <Levels rows={rows} emptyLabel="No buildings" />
       </div>
     ))
   ) : (
-    <Text>Known empty</Text>
+    <Text>No buildings</Text>
   )
 }
 function KnownSection({
@@ -142,11 +154,13 @@ export function ReportObservation({
   viewer,
   playerNames,
   combatActions,
+  targetActions,
 }: {
   payload: RecordValue
   viewer?: string
   playerNames?: PlayerNames
   combatActions?: ReactNode
+  targetActions?: ReactNode
 }) {
   const kind = payload.kind
   if (kind === 'Colonized' || kind === 'ColonizationFailed') {
@@ -200,39 +214,75 @@ export function ReportObservation({
   if (kind === 'Espionage') {
     const target = record(payload.target),
       activity = record(payload.activity)
+    const coordinates = readCoordinates(target.coordinates)
     return (
       <Panel
         as="section"
         aria-label="Report observation"
         className={styles.observation}
       >
-        <Text>
-          Target <CoordinateLink at={target.coordinates} label="target" /> ·{' '}
-          <PlayerName player={text(target.owner)} names={playerNames} />
-        </Text>
-        <Text>
-          Activity before contact:{' '}
-          {activity.type === 'Minutes'
-            ? `${text(activity.minutes)} minutes`
-            : text(activity.type)}
-          . Fleet contact may cause activity.
-        </Text>
-        <Risk value={payload.counterespionage} />
+        <div className={styles.targetSection} aria-label="Espionage target">
+          <Heading level={3} className={styles.targetHeading}>
+            Target
+          </Heading>
+          <div className={styles.target}>
+            <div className={styles.targetIdentity}>
+              {coordinates && typeof target.body === 'string' && (
+                <BodyIllustration
+                  body={{
+                    id: target.body,
+                    kind: target.kind === 'Moon' ? 'Moon' : 'Planet',
+                    coordinates,
+                  }}
+                  className={styles.planet}
+                  sizes="36px"
+                />
+              )}
+              <div className={styles.targetInfo}>
+                <PlayerName player={text(target.owner)} names={playerNames} />
+                <span className={styles.targetDetails}>
+                  {typeof target.name === 'string' && target.name.trim()
+                    ? target.name
+                    : text(target.kind === 'Moon' ? 'Moon' : 'Planet')}{' '}
+                  ·{' '}
+                  <CoordinateLink
+                    at={target.coordinates}
+                    label="target"
+                    className={styles.targetCoordinates}
+                  />
+                </span>
+              </div>
+            </div>
+            {targetActions}
+          </div>
+        </div>
         <KnownSection title="Resources" value={payload.resources}>
           {(v) => <Resources value={v} />}
         </KnownSection>
         <KnownSection title="Stationed ships" value={payload.fleet}>
-          {(v) => <Units value={v} />}
+          {(v) => <Units value={v} emptyLabel="No stationed ships" />}
         </KnownSection>
         <KnownSection title="Defenses" value={payload.defenses}>
-          {(v) => <Units value={v} />}
+          {(v) => <Units value={v} emptyLabel="No defenses" />}
         </KnownSection>
         <KnownSection title="Buildings" value={payload.buildings}>
           {(v) => <Buildings value={v} />}
         </KnownSection>
         <KnownSection title="Research" value={payload.research}>
-          {(v) => <Levels rows={Object.entries(record(v))} />}
+          {(v) => (
+            <Levels rows={Object.entries(record(v))} emptyLabel="No research" />
+          )}
         </KnownSection>
+        <footer className={styles.footnotes}>
+          <Text>
+            Activity before contact:{' '}
+            {activity.type === 'Minutes'
+              ? `${text(activity.minutes)} minutes`
+              : text(activity.type)}
+            . Fleet contact may cause activity.
+          </Text>
+          <Risk value={payload.counterespionage} />
+        </footer>
       </Panel>
     )
   }
@@ -269,7 +319,7 @@ export function ReportObservation({
           </p>
         </header>
         <Heading level={3}>Your ships lost</Heading>
-        <Units value={payload.own_lost_ships} />
+        <Units value={payload.own_lost_ships} emptyLabel="No ships lost" />
         <div className={combatStyles.resources}>
           <div className={combatStyles.resourceGroup}>
             <h3>Your cargo lost</h3>
@@ -347,7 +397,7 @@ export function ReportObservation({
         {'ships' in payload && (
           <>
             <Heading level={3}>Your ships</Heading>
-            <Units value={payload.ships} />
+            <Units value={payload.ships} emptyLabel="No ships" />
           </>
         )}
       </Panel>

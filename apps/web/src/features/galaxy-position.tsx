@@ -1,5 +1,5 @@
 import { playerLabel, type PlayerNames } from './player-label'
-import { ResourceNumber } from '../ui/number-value'
+import { ResourceQuantity } from '../ui/number-value'
 import {
   Truck,
   Crosshair,
@@ -156,10 +156,10 @@ export function GalaxyPosition({
           <>
             <strong>Debris field</strong>
             <span>
-              <ResourceNumber value={debris.metal} /> <small>metal</small>
+              <ResourceQuantity resource="metal" value={debris.metal} />
             </span>
             <span>
-              <ResourceNumber value={debris.crystal} /> <small>crystal</small>
+              <ResourceQuantity resource="crystal" value={debris.crystal} />
             </span>
           </>
         ) : body ? (

@@ -3,7 +3,7 @@ import {test,expect} from './fixtures/test';
 import {execFileSync} from 'node:child_process';
 test('quote, commit, cancel, and deadline completion through the real scheduler',async({page})=>{
  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill('alpha');await page.getByLabel('Password').fill(process.env.ALPHA_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();
- await page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).click();await expect(page.getByRole('region',{name:'Upgrade quote'})).toContainText('90 metal · 22 crystal · 161 seconds');
+ await page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).click();await expect(page.getByRole('region',{name:'Upgrade quote'})).toContainText('90 · 22 · 161 seconds');
  await page.getByRole('button',{name:'Confirm upgrade'}).click();await expect(page.getByRole('heading',{name:'Construction in progress'})).toBeVisible();
  await page.getByRole('button',{name:'Cancel construction · full refund'}).click()
   await confirmCancellation(page);await expect(page.getByRole('heading',{name:'Construction in progress'})).toHaveCount(0);

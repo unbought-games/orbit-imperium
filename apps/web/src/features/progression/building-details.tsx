@@ -1,6 +1,6 @@
 import {
   DurationValue,
-  ResourceNumber,
+  ResourceQuantity,
   ResourceSummary,
 } from '../../ui/number-value'
 import { progressionCommand } from './options'
@@ -183,8 +183,11 @@ export function BuildingDetails({
                   BigInt(insight.benefit.fullPowerTarget) / 1000000n >
                     BigInt(insight.benefit.target) / 1000000n && (
                     <DetailRow label="With enough energy">
-                      <ResourceNumber value={insight.benefit.fullPowerTarget} />{' '}
-                      / h
+                      <BenefitValue
+                        insight={insight.benefit}
+                        target
+                        potential
+                      />
                     </DetailRow>
                   )}
                 {(insight.energy.show ||
@@ -201,7 +204,10 @@ export function BuildingDetails({
                 </DetailRow>
                 {BigInt(terms.required_energy) > 0n && (
                   <DetailRow label="Construction energy required">
-                    <ResourceNumber value={terms.required_energy} />
+                    <ResourceQuantity
+                      resource="energy"
+                      value={terms.required_energy}
+                    />
                   </DetailRow>
                 )}
                 <DecisionCosts

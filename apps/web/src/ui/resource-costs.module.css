@@ -47,7 +47,6 @@
   font: inherit;
 }
 .material svg {
-  color: var(--accent);
   flex-shrink: 0;
 }
 .material > span {

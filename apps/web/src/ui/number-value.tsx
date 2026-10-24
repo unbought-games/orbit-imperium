@@ -1,3 +1,5 @@
+import { ResourceValue, type ResourceKind } from './resource-value'
+import styles from './resource-value.module.css'
 import { formatDuration } from '../client-model/duration'
 import type { components } from '../contracts'
 import { formatWholeNumber, type NumericValue } from './whole-number'
@@ -17,17 +19,36 @@ export function ResourceNumber({ value }: { value: string | bigint }) {
   return <NumberValue value={value} divisor={1000000} />
 }
 
+/** Resource numbers shown to players always carry their identity. */
+export function ResourceQuantity({
+  resource,
+  value,
+}: {
+  resource: ResourceKind
+  value: string | bigint | null
+}) {
+  return (
+    <ResourceValue resource={resource}>
+      {value === null ? 'Unknown' : <ResourceNumber value={value} />}
+    </ResourceValue>
+  )
+}
+
 export function ResourceSummary({
   value,
 }: {
   value: components['schemas']['Resources']
 }) {
   return (
-    <>
-      <ResourceNumber value={value.metal} /> metal ·{' '}
-      <ResourceNumber value={value.crystal} /> crystal ·{' '}
-      <ResourceNumber value={value.deuterium} /> deuterium
-    </>
+    <span className={styles.summary}>
+      {(['metal', 'crystal', 'deuterium'] as const).map((resource) => (
+        <ResourceQuantity
+          key={resource}
+          resource={resource}
+          value={value[resource]}
+        />
+      ))}
+    </span>
   )
 }
 

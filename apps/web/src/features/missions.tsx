@@ -1,7 +1,12 @@
 import { CoordinateLink } from './coordinate-link'
 import { useId } from 'react'
 import { useUniverseName } from '../shell/session-context'
-import { NumberValue, ResourceNumber } from '../ui/number-value'
+import {
+  NumberValue,
+  ResourceNumber,
+  ResourceQuantity,
+  ResourceSummary,
+} from '../ui/number-value'
 import { useStore } from 'zustand'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { useDispatch } from './use-dispatch'
@@ -418,14 +423,13 @@ export function Dispatch({
               .join(' · ')}
           </Text>
           <Text>
-            Cargo: <ResourceNumber value={quote.intent.cargo.metal} /> metal ·{' '}
-            <ResourceNumber value={quote.intent.cargo.crystal} /> crystal ·{' '}
-            <ResourceNumber value={quote.intent.cargo.deuterium} /> deuterium
+            Cargo: <ResourceSummary value={quote.intent.cargo} />
           </Text>
           <Text>
             {quote.intent.mission} ·{' '}
             <NumberValue value={quote.duration_ms} divisor={1000} /> seconds one
-            way · <ResourceNumber value={quote.fuel} /> deuterium fuel
+            way · <ResourceQuantity resource={'deuterium'} value={quote.fuel} />{' '}
+            fuel
           </Text>
           <Text>
             Estimated contact {exactTime(now + quote.duration_ms)} · Return if

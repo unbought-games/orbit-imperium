@@ -22,8 +22,8 @@ it('renders floored numbers, scaled resources, and durations through shared comp
       createElement(ResourceSummary, {
         value: { metal: '1999999', crystal: '2000000', deuterium: '999999' },
       }),
-    ),
-  ).toBe('1 metal · 2 crystal · 0 deuterium')
+    ).replace(/<[^>]+>/g, ''),
+  ).toBe('120')
   expect(
     renderToStaticMarkup(
       createElement(DurationValue, { milliseconds: 3661999 }),
@@ -81,3 +81,35 @@ it.each([
     )
   },
 )
+
+it('gives every summary amount a canonical icon, full accessible name, and tooltip', () => {
+  const markup = renderToStaticMarkup(
+    createElement(ResourceSummary, {
+      value: {
+        metal: '18763000000',
+        crystal: '10441000000',
+        deuterium: '560000000',
+      },
+    }),
+  )
+  for (const resource of ['metal', 'crystal', 'deuterium']) {
+    const title = resource[0].toUpperCase() + resource.slice(1)
+    expect(markup).toContain(`title="${title}"`)
+    expect(markup).toContain(`aria-label="${title}"`)
+    expect(markup).toContain(`color:var(--resource-${resource})`)
+  }
+  expect(markup.match(/<svg/g)).toHaveLength(3)
+  expect(markup.replace(/<[^>]+>/g, '')).toBe('18,76310,441560')
+})
+
+it('shows one icon per cost in compact presentation', () => {
+  const markup = renderToStaticMarkup(
+    createElement(ResourceCosts, {
+      compact: true,
+      showShortfalls: false,
+      cost: { metal: '1000000', crystal: '2000000', deuterium: '0' },
+      available: { metal: '3000000', crystal: '3000000', deuterium: '0' },
+    }),
+  )
+  expect(markup.match(/<svg/g)).toHaveLength(2)
+})

@@ -25,7 +25,7 @@ test('five private accounts see only their starter, build, and switch safely at 
   await expect(page.getByRole('button',{name:'Calculate transport'})).toBeDisabled();
   if(i===0){
    await page.getByRole('button',{name:'Upgrade Metal Mine',exact:true}).click();
-   await expect(page.getByRole('region',{name:'Upgrade quote'})).toContainText('60 metal · 15 crystal · 10 seconds');
+   await expect(page.getByRole('region',{name:'Upgrade quote'})).toContainText('60 · 15 · 10 seconds');
    await page.getByRole('button',{name:'Confirm upgrade'}).click();await expect(page.getByRole('heading',{name:'Construction in progress'})).toBeVisible();
    await page.reload();await expect(page.getByRole('heading',{name:'Construction in progress'})).toBeVisible();
    execFileSync('docker',['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c','UPDATE orbit_test_clock SET at_ms=1010000'],{stdio:'pipe'});
