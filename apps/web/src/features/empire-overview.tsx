@@ -1,3 +1,4 @@
+import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
 import { PlanetRename } from './planet-rename'
 import type { Coordinator } from '../client-model/coordinator'
@@ -278,15 +279,13 @@ function FleetBoard({
         {flights.length ? (
           <FlightList flights={flights} view={view} body={body.id} />
         ) : (
-          <div className={styles.quietSpace}>
-            <Radar size={56} strokeWidth={0.7} />
-            <strong>The lanes are quiet.</strong>
-            <p>
-              No visible fleet movements.
-              <br />
-              Your next move starts here.
-            </p>
-          </div>
+          <EmptyState
+            icon={Radar}
+            variant="compact"
+            headingLevel={3}
+            title="The lanes are quiet."
+            description="No visible fleet movements. Your next move starts here."
+          />
         )}
       </div>
       <Destination
@@ -443,7 +442,12 @@ function PlanetDossier({
             body={body.id}
           />
         ) : (
-          <p className={styles.empty}>No visible fleets in transit.</p>
+          <EmptyState
+            icon={Radar}
+            variant="compact"
+            headingLevel={3}
+            title="No visible fleets in transit."
+          />
         )}
       </details>
       <details className={styles.inventory}>
@@ -464,7 +468,13 @@ function PlanetDossier({
               ))}
             </dl>
           ) : (
-            <p className={styles.empty}>No units stationed here.</p>
+            <EmptyState
+              icon={Orbit}
+              variant="compact"
+              headingLevel={3}
+              title="No units stationed here."
+              description="Ships and defenses stationed at this world will appear here."
+            />
           )}
         </section>
       </details>

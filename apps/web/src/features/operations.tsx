@@ -1,3 +1,5 @@
+import { FileText, Rocket } from 'lucide-react'
+import { EmptyState } from '../ui/empty-state'
 import { ResourceValue } from '../ui/resource-value'
 import type { CatalogSelection } from '../shell/use-catalog-selection'
 import {
@@ -66,7 +68,13 @@ export function Operations({
         <>
           <Heading level={2}>Active fleets</Heading>
           {view.fleets.length === 0 ? (
-            <Text>No fleets in flight.</Text>
+            <EmptyState
+              icon={Rocket}
+              variant="compact"
+              headingLevel={3}
+              title="No fleets in flight."
+              description="Your transports will appear here after launch."
+            />
           ) : (
             view.fleets
               .filter((f) => !item || f.id === item)
@@ -133,7 +141,13 @@ export function Operations({
             <Text>Showing the newest 100 reports.</Text>
           )}
           {view.reports.length === 0 ? (
-            <Text>No reports yet.</Text>
+            <EmptyState
+              icon={FileText}
+              variant="compact"
+              headingLevel={3}
+              title="No reports to show."
+              description="Completed transports will leave their reports here."
+            />
           ) : (
             <div className={styles['reports']}>
               {view.reports

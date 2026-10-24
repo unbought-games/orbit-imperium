@@ -66,6 +66,11 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(table.locator('tr[data-self]')).toContainText('777')
   await page.getByRole('searchbox', { name: 'Find a player' }).fill('does not exist')
   await expect(page.getByRole('status').filter({ hasText: 'No players match' })).toBeVisible()
+  await page.getByRole('button', { name: 'Clear search' }).click()
+  await expect(page.getByRole('searchbox', { name: 'Find a player' })).toBeFocused()
+  await expect(page.getByRole('searchbox', { name: 'Find a player' })).toHaveValue('')
+  await expect(table.getByRole('row')).toHaveCount(51)
+  await expect(page.getByRole('button', { name: 'Clear search' })).toHaveCount(0)
 })
 
 test('High Scores has a retryable initial error and honest empty result', async ({ page }) => {

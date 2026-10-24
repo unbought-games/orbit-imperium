@@ -228,9 +228,6 @@
   cursor: pointer;
   min-height: 44px;
 }
-.empty {
-  padding-bottom: 1.5rem;
-}
 .fieldset {
   display: grid;
   gap: 1.25rem;

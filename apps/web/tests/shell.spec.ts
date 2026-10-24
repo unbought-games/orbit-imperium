@@ -3,6 +3,7 @@ import { confirmCancellation } from './fixtures/confirmation'
 import { test, expect } from './fixtures/test'
 import {
   installGameFixture,
+  refreshGame,
   shellFixture,
   playerProfilesFixture,
   id,
@@ -1622,7 +1623,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   })
   reportMode = 'empty'
   await page.goto(`/u/andromeda/reports?body=${body.id}`)
-  await expect(page.getByText('No reports yet.', { exact: true })).toBeVisible()
+  await expect(page.getByText('No reports to show.', { exact: true })).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/reports-empty-phone.png',
     fullPage: true,
@@ -2452,3 +2453,155 @@ for (const width of [320, 390, 1440]) {
     }
   })
 }
+
+test('empty reports wait for a successful response and offer planet-aware navigation at every size', async ({
+  page,
+}) => {
+  let revision = 1
+  let requests = 0
+  await installGameFixture(page, {
+    protocol: 4,
+    viewerRevision: () => String(revision),
+  })
+  let release!: () => void
+  let pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/api/**/reports', async (route) => {
+    requests++
+    await pending
+    const request = route.request().postDataJSON()
+    const context = request.context ?? request
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        request_id: context.request_id,
+        viewer_revision: String(revision),
+        sampled_at: Date.now(),
+        as_of_ms: Date.now(),
+        data: {
+          items: [],
+          has_more: false,
+          next_cursor: null,
+          as_of_ms: Date.now(),
+        },
+      },
+    })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
+  await expect(page.getByText('Loading report history…')).toBeVisible()
+  const empty = page.getByRole('region', { name: 'No reports to show.' })
+  await expect(empty).toHaveCount(0)
+  release()
+  await expect(empty).toBeVisible()
+  await expect(empty).toContainText(
+    'Fleet arrivals, espionage findings, and battle outcomes',
+  )
+  const explore = empty.getByRole('link', { name: 'Explore the galaxy' })
+  await expect(explore).toHaveAttribute(
+    'href',
+    `/u/andromeda/b/${body.id}/galaxy`,
+  )
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(explore).toBeInViewport()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await diagnosticScreenshot(page, {
+      path: `test-results/reports-empty-${width}.png`,
+      fullPage: true,
+    })
+  }
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%'
+  })
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = ''
+  })
+  const beforeRefresh = await empty.boundingBox()
+  const previousRequests = requests
+  pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  revision++
+  try {
+    await refreshGame(page)
+    await expect.poll(() => requests).toBeGreaterThan(previousRequests)
+    await expect(empty).toBeVisible()
+    expect(await empty.boundingBox()).toEqual(beforeRefresh)
+  } finally {
+    release()
+  }
+  await explore.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/galaxy$`))
+  await page.goBack()
+  await expect(empty).toBeVisible()
+})
+
+test('failed report requests do not claim the archive is empty', async ({
+  page,
+}) => {
+  await installGameFixture(page, { protocol: 4 })
+  await page.route('**/api/**/reports', (route) =>
+    route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
+  )
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
+  await expect(
+    page.getByRole('button', { name: 'Retry reports' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'No reports to show.' }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('link', { name: 'Explore the galaxy' }),
+  ).toHaveCount(0)
+})
+
+test('incoming attacks stay in the phone viewport when there are no outgoing fleets', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 667 })
+  await installGameFixture(page, {
+    protocol: 4,
+    missions: {
+      fleets: [],
+      incoming: [
+        {
+          sender: id(99),
+          origin: { galaxy: 1, system: 400, position: 9 },
+          target: body.id,
+          mission: 'Attack',
+          arrival_at: Date.now() + 95000,
+          ships: { visibility: 'Unknown' },
+        },
+      ],
+      score_value_micro: '0',
+      fleet_slots: '1',
+    },
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await expect(
+    page.getByRole('heading', { name: 'No active fleets.' }),
+  ).toBeVisible()
+  const incoming = page.getByRole('region', { name: 'Incoming fleets' })
+  const attack = incoming.getByRole('heading', { name: /Attack/ })
+  await expect(attack).toBeInViewport()
+  const dock = await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .boundingBox()
+  const arrival = await attack.boundingBox()
+  expect(arrival!.y + arrival!.height).toBeLessThan(dock!.y)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/fleet-empty-incoming-phone.png',
+  })
+})
