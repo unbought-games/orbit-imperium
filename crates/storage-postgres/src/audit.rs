@@ -83,7 +83,7 @@ async fn audit_state(
                 .map_err(db_error)?;
         if populated {
             // The world loader already validates every player's progression: do not do it twice.
-            let state = crate::world::load(tx, u, epoch, rules.hash.clone(), &input, None).await?;
+            let state = crate::world::load(tx, u, epoch, rules, &input, None).await?;
             crate::facts::validate_rule_references(tx, &state).await?;
         }
     } else if rules.progression() {
@@ -98,7 +98,7 @@ async fn audit_state(
                 tx,
                 u,
                 epoch,
-                rules.hash.clone(),
+                rules,
                 Actor::Player(PlayerId(player)),
                 &input,
                 None,

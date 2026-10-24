@@ -429,7 +429,7 @@ impl PgStore {
                     &mut tx,
                     universe,
                     Epoch(u.try_get("epoch").map_err(db_error)?),
-                    rules.hash.clone(),
+                    &rules,
                     actor,
                     &Input::Command(Command::RecallFleet {
                         fleet: FleetId::default(),

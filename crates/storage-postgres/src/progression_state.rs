@@ -8,11 +8,12 @@ use orbit_engine::*;
 use sqlx::Row;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// `rules` must be validated for `u` by `facts::rules` in this transaction.
 pub(crate) async fn load(
     tx: &mut Tx<'_>,
     u: UniverseId,
     epoch: Epoch,
-    profile_hash: Hash,
+    rules: &Ruleset,
     actor: Actor,
     input: &Input,
     input_id: Option<InputId>,
@@ -178,7 +179,7 @@ pub(crate) async fn load(
         progression_reservations: BTreeMap::new(),
         universe: u,
         epoch,
-        profile_hash,
+        profile_hash: rules.hash.clone(),
         bodies,
         players: BTreeMap::from([(
             owner,
@@ -195,9 +196,8 @@ pub(crate) async fn load(
         coverage,
         collection_revisions,
     };
-    let rules = crate::facts::rules(tx, u).await?;
     for id in s.bodies.keys() {
-        orbit_engine::validate_body(&s, *id, &rules).map_err(|_| StoreError::CorruptData)?;
+        orbit_engine::validate_body(&s, *id, rules).map_err(|_| StoreError::CorruptData)?;
         orbit_engine::validate_progression_collections(&s, &s.bodies[id])
             .map_err(|_| StoreError::CorruptData)?;
     }
