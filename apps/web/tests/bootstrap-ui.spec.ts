@@ -891,8 +891,10 @@ test('homepage centers policies and highlights news and the GitHub repository', 
     await expect(page.getByRole('link', { name: 'by unbought games', exact: true }))
       .toHaveAttribute('href', 'https://unbought.games/')
     const policies = page.getByRole('navigation', { name: 'Policies and support' })
-    const bounds = (await policies.boundingBox())!
-    expect(Math.abs(bounds.x + bounds.width / 2 - width / 2)).toBeLessThan(1)
+    await expect.poll(async () => {
+      const bounds = await policies.boundingBox()
+      return bounds ? Math.abs(bounds.x + bounds.width / 2 - width / 2) : Infinity
+    }).toBeLessThan(1)
     await expect(policies.getByRole('link', { name: 'Support', exact: true }))
       .toHaveAttribute('href', 'mailto:support@unbought.games')
     const community = page.getByRole('navigation', { name: 'News and community' })
