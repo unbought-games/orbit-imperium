@@ -2209,7 +2209,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           return start(...args)
         }
       })
-      const purchases = await shellFixture(page, { protocol: 4 })
+      // Navigation stays motionless; the intentional hostile-fleet signal has
+      // its own coverage, so keep this fixture free of incoming threats.
+      const purchases = await shellFixture(page, {
+        protocol: 4,
+        missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+      })
       const assertStill = async () => {
         expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
         expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
@@ -2605,3 +2610,80 @@ test('incoming attacks stay in the phone viewport when there are no outgoing fle
     path: 'test-results/fleet-empty-incoming-phone.png',
   })
 })
+
+for (const mission of ['Attack', 'Espionage'] as const) {
+  test(`mobile hostile fleet pulse follows incoming ${mission} across planets and clears on reconciliation`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    const missions = {
+      fleets: [],
+      incoming: [] as import('../src/contracts').components['schemas']['IncomingMission4'][],
+      score_value_micro: '0',
+      fleet_slots: '1',
+    }
+    let revision = 1
+    await shellFixture(page, { protocol: 4, missions, viewerRevision: () => String(revision) })
+    const bar = page.getByRole('group', { name: 'Planet and resources' })
+    const overlay = () => bar.evaluate(element => {
+      const style = getComputedStyle(element, '::after')
+      return { animation: style.animationName, duration: style.animationDuration, content: style.content, opacity: style.opacity }
+    })
+    const refresh = async () => {
+      revision++
+      await page.evaluate(() => window.dispatchEvent(new Event('online')))
+    }
+    expect((await overlay()).content).toBe('none')
+    missions.incoming.push({
+      sender: id(9), origin: { galaxy: 1, system: 372, position: 3 },
+      target: id(6), mission: 'Transport', arrival_at: Date.now() + 300000,
+      ships: { visibility: 'Unknown' },
+    })
+    await refresh()
+    expect((await overlay()).content).toBe('none')
+    missions.incoming.push({ ...missions.incoming[0], mission })
+    await refresh()
+    await expect(bar.getByRole('status')).toHaveText('Incoming hostile fleet: attack or espionage detected.')
+    await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(113, 50, 59)')
+    expect(await bar.evaluate(element => getComputedStyle(element, '::after').boxShadow)).toBe('none')
+    for (const width of [320, 390, 767]) {
+      await page.setViewportSize({ width, height: 844 })
+      expect((await overlay()).animation).toContain('hostile-pulse')
+      expect((await overlay()).duration).toBe('3.2s')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByLabel('Selected body').selectOption(id(6))
+    expect((await overlay()).animation).toContain('hostile-pulse')
+    await page.getByRole('button', { name: 'Metal details', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    expect((await overlay()).animation).toContain('hostile-pulse')
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect.poll(overlay).toMatchObject({ animation: 'none', opacity: '0.7' })
+    await page.setViewportSize({ width: 1024, height: 844 })
+    expect((await overlay()).content).toBe('none')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    // Seek only after testing normal CSS lifecycle: manual playback takes ownership
+    // of a CSS animation and can otherwise outlive changes to animation-name.
+    const pulseOpacity = await bar.evaluate(element => {
+      const animation = element.getAnimations({ subtree: true }).find(
+        animation => animation instanceof CSSAnimation && animation.animationName.includes('hostile-pulse'),
+      )!
+      animation.pause()
+      animation.currentTime = 0
+      const low = Number(getComputedStyle(element, '::after').opacity)
+      animation.currentTime = 1600
+      const high = Number(getComputedStyle(element, '::after').opacity)
+      animation.cancel()
+      return { low, high }
+    })
+    expect(pulseOpacity).toEqual({ low: 0.3, high: 1 })
+    missions.incoming.pop()
+    await refresh()
+    await expect(bar.getByRole('status')).toHaveText('')
+    await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(133, 115, 84)')
+    expect((await overlay()).content).toBe('none')
+  })
+}
