@@ -60,9 +60,7 @@ for (const width of [1280, 390]) {
       'Terra 世界 🪐 [1:371:12]',
     )
     await expect(
-      page
-        .getByRole('combobox', { name: 'Selected body' })
-        .locator('option:checked'),
+      page.getByRole('combobox', { name: 'Selected body' }),
     ).toHaveText('Terra 世界 🪐 [1:371:12]')
     await expect(
       page.getByRole('status').filter({ hasText: /^Planet renamed\.$/ }),

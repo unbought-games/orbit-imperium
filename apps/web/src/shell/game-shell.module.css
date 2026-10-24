@@ -48,9 +48,9 @@
 .worldBar {
   grid-area: world;
   display: grid;
-  grid-template-columns: minmax(0, 120px) auto minmax(0, 1fr);
-  grid-template-areas: 'context navigation resources' 'body-search body-search body-search';
-  grid-template-rows: minmax(64px, auto) auto;
+  grid-template-columns: minmax(0, 144px) auto minmax(0, 1fr);
+  grid-template-areas: 'context navigation resources';
+  grid-template-rows: minmax(64px, auto);
   align-items: center;
   gap: 0 12px;
   min-width: 0;
@@ -143,8 +143,8 @@
   }
   .worldBar {
     grid-template-columns: minmax(0, 104px) minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    grid-template-areas: 'context resources' 'body-search body-search';
+    grid-template-rows: auto;
+    grid-template-areas: 'context resources';
     gap: 0 4px;
     min-height: 0;
     padding: max(8px, env(safe-area-inset-top)) var(--shell-inline-gutter) 0;
@@ -235,7 +235,7 @@
     letter-spacing: 1px;
   }
   .worldBar {
-    grid-template-columns: minmax(0, 96px) auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 120px) auto minmax(0, 1fr);
     gap: 0 8px;
   }
 }
