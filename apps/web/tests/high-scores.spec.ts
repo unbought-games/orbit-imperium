@@ -81,3 +81,46 @@ test('High Scores has a retryable initial error and honest empty result', async 
   await expect(page.getByText('No players are ranked yet.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Around me' })).toBeDisabled()
 })
+
+test('a refresh removing the selected player closes details, restores useful focus, and does not reopen them later', async ({ page }) => {
+  await shellFixture(page, { protocol: 4 })
+  const players = [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }]
+  let visible = true, requests = 0
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/rankings', async route => {
+    requests++
+    if (requests === 2) await pending
+    await route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000 + requests, processing_pending: false, players: visible ? players : [] } })
+  })
+  await page.goto('/u/andromeda/high-scores')
+  const table = page.getByRole('table', { name: 'Universe total-score rankings' })
+  const player = table.getByRole('button', { name: 'Selected Commander' })
+  await expect(player).toBeVisible()
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await player.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  visible = false
+  release()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(table).toBeFocused()
+  visible = true
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(player).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('browser navigation away from player details leaves the destination usable', async ({ page }) => {
+  await shellFixture(page, { protocol: 4 })
+  await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }] } }))
+  await page.goto(`/u/andromeda/overview?body=${body.id}`)
+  await page.getByRole('button', { name: 'Menu', exact: true }).click()
+  await page.getByRole('link', { name: 'High Scores', exact: true }).click()
+  await page.getByRole('table').getByRole('button', { name: 'Selected Commander' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: 'Empire', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Menu', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'High Scores', exact: true })).toBeVisible()
+})

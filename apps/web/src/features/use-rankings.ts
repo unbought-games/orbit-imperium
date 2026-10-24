@@ -25,6 +25,7 @@ export function useRankings(model: Coordinator, player: string) {
     search,
     window: rankingWindow(players, search, offset),
     me: players.find((p) => p.player === player),
+    selectedId: selected,
     selected: players.find((p) => p.player === selected),
     select,
     browse: setOffset,

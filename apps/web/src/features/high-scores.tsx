@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useLayoutEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Trophy } from 'lucide-react'
 import { bindingKey } from '../client-model/commands'
@@ -38,6 +38,12 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
   const opener = useRef<HTMLButtonElement | null>(null)
   const ownPlayer = useRef<HTMLButtonElement | null>(null)
   const table = useRef<HTMLTableElement | null>(null)
+  useEffect(() => {
+    if (ranking.selectedId && !ranking.selected) {
+      ranking.select(null)
+      table.current?.focus({ preventScroll: true })
+    }
+  }, [ranking.selectedId, ranking.selected, ranking.select])
   const browse = (offset: number) => {
     ranking.browse(offset)
     requestAnimationFrame(() => {
@@ -208,7 +214,10 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
           row={ranking.selected}
           onClose={() => {
             ranking.select(null)
-            opener.current?.focus({ preventScroll: true })
+            const target = opener.current?.isConnected
+              ? opener.current
+              : table.current
+            target?.focus({ preventScroll: true })
           }}
         />
       )}
@@ -225,15 +234,23 @@ function RankingDetails({
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const title = useId()
-  useEffect(() => {
-    dialog.current?.showModal()
+  useLayoutEffect(() => {
+    const element = dialog.current
+    element?.showModal()
+    return () => {
+      if (element?.open) element.close()
+    }
   }, [])
   return createPortal(
     <dialog
       className={styles.dialog}
       ref={dialog}
       aria-labelledby={title}
-      onClose={onClose}
+      onClose={() => {
+        // Ignore a close event queued by an earlier effect cleanup if a strict
+        // effect replay has already reopened this same element.
+        if (!dialog.current?.open) onClose()
+      }}
     >
       <h2 id={title}>
         <PlayerName player={row.player} fallback={row.username} />
