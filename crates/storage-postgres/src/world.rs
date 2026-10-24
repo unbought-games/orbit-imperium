@@ -21,11 +21,12 @@ async fn records<T: serde::de::DeserializeOwned>(
     .map(decode)
     .collect()
 }
+/// `rules` must be validated for `u` by `facts::rules` in this transaction.
 pub(crate) async fn load(
     tx: &mut Tx<'_>,
     u: UniverseId,
     epoch: Epoch,
-    profile_hash: Hash,
+    rules: &Ruleset,
     input: &Input,
     input_id: Option<InputId>,
 ) -> Result<GameState, StoreError> {
@@ -40,13 +41,14 @@ pub(crate) async fn load(
             .await
             .map_err(db_error)?;
     selected.owners.extend(owners.into_iter().map(PlayerId));
-    load_selected(tx, u, epoch, profile_hash, input, input_id, selected).await
+    load_selected(tx, u, epoch, rules, input, input_id, selected).await
 }
+/// Share the transaction's validated rules across every selected owner.
 pub(crate) async fn load_selected(
     tx: &mut Tx<'_>,
     u: UniverseId,
     epoch: Epoch,
-    profile_hash: Hash,
+    rules: &Ruleset,
     input: &Input,
     input_id: Option<InputId>,
     selected: crate::scoped_facts::Selection,
@@ -59,7 +61,6 @@ pub(crate) async fn load_selected(
             .fetch_all(&mut **tx)
             .await
             .map_err(db_error)?;
-    let rules = crate::facts::rules(tx, u).await?;
     let capacity = rules
         .artifact
         .universe
@@ -76,7 +77,7 @@ pub(crate) async fn load_selected(
             tx,
             u,
             epoch,
-            profile_hash.clone(),
+            rules,
             Actor::Player(PlayerId(*owner)),
             input,
             input_id,
@@ -123,7 +124,7 @@ pub(crate) async fn load_selected(
         reports: BTreeMap::new(),
         universe: u,
         epoch,
-        profile_hash,
+        profile_hash: rules.hash.clone(),
         bodies: BTreeMap::new(),
         players: BTreeMap::new(),
         inventories: Vec::new(),
@@ -499,7 +500,7 @@ pub(crate) async fn viewer_snapshot(
         tx,
         universe,
         epoch,
-        rules.hash.clone(),
+        &rules,
         &Input::Command(Command::RecallFleet {
             fleet: FleetId::default(),
         }),
@@ -841,7 +842,7 @@ impl PgStore {
             return Err(StoreError::UnsupportedProtocol);
         }
         let selected = if let Some(query) = query {
-            crate::scoped_facts::select_query(&mut tx, b, query).await?
+            crate::scoped_facts::select_query(&mut tx, b, query, &rules).await?
         } else {
             crate::scoped_facts::Selection {
                 owners: BTreeSet::from([b.player]),
@@ -853,7 +854,7 @@ impl PgStore {
             &mut tx,
             b.universe,
             b.epoch,
-            rules.hash.clone(),
+            &rules,
             &Input::Command(Command::RecallFleet {
                 fleet: FleetId::default(),
             }),

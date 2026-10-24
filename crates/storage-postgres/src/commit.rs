@@ -71,7 +71,7 @@ impl PgStore {
             return Ok(CommitOutcome::StaleClaim);
         }
         let rt = runtime(&mut tx, i.universe).await?;
-        let facts = match claim {
+        let (facts, rules) = match claim {
             CommitClaim::Serial(_) => {
                 let at = now(&mut tx).await?;
                 let frontier: i64 = rt.try_get("frontier").map_err(db_error)?;
@@ -79,24 +79,23 @@ impl PgStore {
                     return Err(StoreError::CorruptData);
                 }
                 let rules = crate::facts::rules(&mut tx, i.universe).await?;
-                crate::facts::load(
+                let facts = crate::facts::load(
                     &mut tx,
                     i.universe,
                     i.epoch,
-                    rules.hash.clone(),
+                    &rules,
                     i.actor,
                     &i.payload,
                     Some(i.id),
                 )
-                .await?
+                .await?;
+                (facts, rules)
             }
             CommitClaim::Scoped(c) => {
-                crate::scoped_facts::load_execution(&mut tx, i, &c.scopes)
-                    .await?
-                    .state
+                let snapshot = crate::scoped_facts::load_execution(&mut tx, i, &c.scopes).await?;
+                (snapshot.state, snapshot.rules)
             }
         };
-        let rules = crate::facts::rules(&mut tx, i.universe).await?;
         crate::facts::validate_rule_references(&mut tx, &facts).await?;
         let mut result_ids = Vec::new();
         match &outcome {
