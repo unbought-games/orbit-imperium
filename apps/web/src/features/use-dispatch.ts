@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ClipboardEvent } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
-import type { Command } from '../client-model/commands'
+import { attemptKey, type Command } from '../client-model/commands'
 import {
+  canSubmitQuote,
   currentServerTime,
   projectGameView,
 } from '../client-model/game-projection'
@@ -201,6 +202,21 @@ export function useDispatch({
     wasReviewing.current = !!quote
   }, [quote])
   const generation = useRef(0)
+  const [submitted, setSubmitted] = useState<{
+    key: string
+    generation: number
+  } | null>(null)
+  const submittedStatus = useStore(model.store, (state) =>
+    submitted ? state.attempts.get(submitted.key)?.status : undefined,
+  )
+  useEffect(() => {
+    if (!submitted || submittedStatus !== 'committed') return
+    if (submitted.generation === generation.current) {
+      setShips({})
+      setCargo(['0', '0', '0'])
+    }
+    setSubmitted(null)
+  }, [submitted, submittedStatus])
   useEffect(
     () => () => {
       generation.current++
@@ -212,6 +228,22 @@ export function useDispatch({
     setQuote(null)
     setBusy(false)
     setError('')
+  }
+  async function send() {
+    if (
+      !command ||
+      !quote ||
+      !canSubmitQuote(model.store.getState(), command, quote)
+    )
+      return
+    const requestGeneration = ++generation.current
+    setQuote(null)
+    const id = await model.send(command, quote)
+    if (id && requestGeneration === generation.current)
+      setSubmitted({
+        key: attemptKey(view.binding, id),
+        generation: requestGeneration,
+      })
   }
   async function review(addAllCargo = false) {
     const requestGeneration = ++generation.current
@@ -361,6 +393,7 @@ export function useDispatch({
     quoteRef,
     reviewButtonRef,
     command,
+    send,
     clear,
     review,
   }

@@ -91,6 +91,7 @@ export function Dispatch({
     quoteRef,
     reviewButtonRef,
     command,
+    send,
     clear,
     review,
     targetName,
@@ -446,15 +447,7 @@ export function Dispatch({
               !command ||
               !canSubmitQuote(model.store.getState(), command, quote)
             }
-            onClick={() => {
-              if (
-                !command ||
-                !canSubmitQuote(model.store.getState(), command, quote)
-              )
-                return
-              void model.send(command, quote)
-              setQuote(null)
-            }}
+            onClick={() => void send()}
           >
             Send {shipManifest(quote.intent.ships)}
           </QuoteAction>
