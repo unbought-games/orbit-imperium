@@ -1,3 +1,4 @@
+import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { openProductionSettings } from './fixtures/production-settings'
@@ -1725,10 +1726,10 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
   await shellFixture(page, { protocol: 4, bodies: [body, colony], production: [homeProduction, colonyProduction] })
   await openProductionSettings(page)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
-  await page.getByLabel('Selected body', { exact: true }).selectOption(colony.id)
+  await selectBody(page, colony.id)
   await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resource-settings$`))
   await expect(page.getByLabel('metal mine production')).toHaveValue('30')
-  await page.getByLabel('Selected body', { exact: true }).selectOption(body.id)
+  await selectBody(page, body.id)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
 })
 

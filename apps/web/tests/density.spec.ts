@@ -331,7 +331,7 @@ for (const width of [1280, 390]) {
     ).toBeVisible()
     await expect(
       page.getByRole('combobox', { name: 'Selected body' }),
-    ).toHaveValue(body.id)
+    ).toHaveAttribute('data-value', body.id)
   })
 
   test(`legacy fleet and dispatch tabs replace page titles at ${width}px`, async ({
