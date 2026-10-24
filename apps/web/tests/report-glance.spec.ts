@@ -18,11 +18,27 @@ test('report glances expose historical mission facts in compact rows on desktop 
     await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: now, as_of_ms: now, data: { items, has_more: false, next_cursor: null, as_of_ms: now } } })
   })
   await page.goto(`/u/andromeda/b/${body.id}/reports`)
+  // Keep the original warm metal color in the HUD, its tooltip, and report previews.
+  // Comparing only against the resource token would miss a regression in that token.
+  const metalDetails = page.getByLabel('Current resources').getByRole('button', { name: 'Metal details' })
+  await expect(metalDetails.locator('svg')).toHaveCSS('color', 'rgb(203, 182, 141)')
+  await metalDetails.click()
+  const metalTooltip = page.getByRole('dialog', { name: 'Metal', exact: true })
+  const metalIcons = metalTooltip.locator('svg[data-resource="metal"]')
+  // This report fixture has balances and capacity, but no production data.
+  await expect(metalTooltip).toContainText('Flow unavailable')
+  await expect(metalIcons).toHaveCount(2)
+  for (const icon of await metalIcons.all()) {
+    await expect(icon).toHaveCSS('color', 'rgb(203, 182, 141)')
+  }
+  await page.keyboard.press('Escape')
+  await expect(metalTooltip).toBeHidden()
   const rows = page.locator('main article')
   await expect(rows).toHaveCount(4)
   await expect(rows.first()).toContainText('[1:1:5]')
   await expect(rows.first()).toContainText('1 Espionage Probe')
   await expect(rows.first()).toContainText('No cargo')
+  await expect(rows.nth(1).getByRole('img', { name: 'metal', exact: true })).toHaveCSS('color', 'rgb(203, 182, 141)')
   for (const [name, value] of [['metal', '125,000'], ['crystal', '80,000'], ['deuterium', '12,000']]) {
     const symbol = rows.nth(1).getByRole('img', { name, exact: true })
     await expect(symbol).toBeVisible()
