@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { shellFixture, binding, body, id } from './fixtures/game'
+import { shellFixture, refreshGame, binding, body, id } from './fixtures/game'
 
 async function reportsFixture(page: Page) {
   let revision = 1
@@ -74,9 +74,20 @@ async function reportsFixture(page: Page) {
   let mode: 'success' | 'rejected' | 'uncertain' = 'success'
   let pause: Promise<void> | undefined
   let submitted = 0
+  const readRequests: string[] = []
   await page.route('**/commands', async (route) => {
     const envelope = route.request().postDataJSON().gameplay
     expect(envelope.command.type).toBe('World')
+    if (envelope.command.action.type === 'MarkReportRead') {
+      readRequests.push(envelope.command.action.report)
+      headers.find(r => r.id === envelope.command.action.report)!.read = true
+      revision++
+      return route.fulfill({ json: {
+        protocol: 4, binding, command_id: envelope.command_id,
+        admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed',
+        result_ids: [], minimum_viewer_revision: String(revision),
+      } })
+    }
     expect(envelope.command.action.type).toBe('SetReportHidden')
     submitted++
     await pause
@@ -105,11 +116,13 @@ async function reportsFixture(page: Page) {
     })
   })
   await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
   await expect(
     page.getByRole('button', { name: 'Load more reports' }),
   ).toBeVisible()
   return {
     headers,
+    readRequests,
     setMode: (v: typeof mode) => {
       mode = v
     },
@@ -126,6 +139,9 @@ for (const width of [1440, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 900 })
     const fixture = await reportsFixture(page)
+    await expect(page.getByRole('button', { name: 'Refresh reports' })).toHaveCount(0)
+    await expect(page.getByLabel('Show deleted reports')).toHaveCount(0)
+    await expect(page.getByText('Deleted reports leave your list and unread indicator.', { exact: false })).toHaveCount(0)
     await page.getByRole('button', { name: 'Load more reports' }).click()
     const rows = page.locator('main article')
     await expect(rows).toHaveCount(2)
@@ -154,25 +170,21 @@ for (const width of [1440, 390]) {
     expect(fixture.headers[1].read).toBe(false)
     await page.reload()
     await expect(rows).toHaveCount(1)
-    await page.getByLabel('Show deleted reports').check()
-    await page.getByRole('button', { name: 'Load more reports' }).click()
-    await expect(rows.last()).toContainText('Deleted')
-    await rows
-      .last()
-      .getByRole('link', { name: 'Espionage', exact: true })
-      .click()
+    await page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`)
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
     await expect(
       page.getByRole('region', { name: 'Report observation' }),
     ).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Restore report' }),
     ).toBeVisible()
+    await expect.poll(() => fixture.headers[1].read).toBe(true)
     await page.reload()
     await page.getByRole('button', { name: 'Restore report' }).click()
     await expect(
       page.getByRole('button', { name: 'Delete report' }),
     ).toBeEnabled()
-    await expect(unread).toBeVisible()
+    await expect(unread).toHaveCount(0)
     await page.getByRole('button', { name: 'Delete report' }).click()
     await expect(
       page.getByRole('button', { name: 'Restore report' }),
@@ -187,14 +199,17 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.getByRole('link', { name: 'Back to reports' }).click()
-    await page.getByLabel('Show deleted reports').uncheck()
+    const back = page.getByRole('link', { name: 'Back to reports' })
+    await expect(back).toHaveText('')
+    await expect(back.locator('svg.lucide-arrow-left')).toBeVisible()
+    expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await back.click()
     await expect(rows).toHaveCount(1)
-    await page.getByLabel('Show deleted reports').check()
-    await page.getByRole('button', { name: 'Load more reports' }).click()
-    await rows.last().getByRole('button', { name: 'Restore report' }).click()
-    await expect(unread).toBeVisible()
-    await page.getByLabel('Show deleted reports').uncheck()
+    await page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`)
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
+    await page.getByRole('button', { name: 'Restore report' }).click()
+    await expect(unread).toHaveCount(0)
+    await page.getByRole('link', { name: 'Back to reports' }).click()
     await page.getByRole('button', { name: 'Load more reports' }).click()
     await expect(rows).toHaveCount(2)
     expect(fixture.submitted()).toBe(4)
@@ -224,7 +239,7 @@ test('failed and uncertain deletion preserve the report and offer durable recove
   expect(fixture.submitted()).toBe(2)
 })
 
-test('pagination and filters cannot suppress reconciliation during a pending deletion', async ({
+test('pagination cannot suppress reconciliation during a pending deletion', async ({
   page,
 }) => {
   const fixture = await reportsFixture(page)
@@ -241,15 +256,74 @@ test('pagination and filters cannot suppress reconciliation during a pending del
   await expect(
     page.getByRole('button', { name: 'Load more reports' }),
   ).toBeDisabled()
-  await expect(
-    page.getByRole('button', { name: 'Refresh reports' }),
-  ).toBeDisabled()
-  await expect(page.getByLabel('Show deleted reports')).toBeDisabled()
   release()
-  await expect(row).toContainText('Unread')
+  await expect(row.getByLabel('Unread', { exact: true })).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Load more reports' }),
   ).toHaveCount(0)
-  await expect(page.getByLabel('Show deleted reports')).toBeEnabled()
   expect(fixture.headers[0].hidden).toBe(true)
+})
+
+
+test('opening a report marks it read after loading, clears the inbox badge and does not resubmit after refresh', async ({ page }) => {
+  const fixture = await reportsFixture(page)
+  expect(fixture.readRequests).toEqual([])
+  await page.getByRole('button', { name: 'Load more reports' }).click()
+  await expect(page.locator('main article')).toHaveCount(2)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let requested = false
+  await page.route(`**/api/**/reports/${id(71)}`, async route => {
+    requested = true
+    await gate
+    await route.fallback()
+  })
+  await page.locator('main article').last().getByRole('link', { name: 'Espionage', exact: true }).click()
+  await expect.poll(() => requested).toBe(true)
+  await expect(page.getByText('Fetching this report…')).toBeVisible()
+  expect(fixture.readRequests).toEqual([])
+  release()
+  await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+  await expect.poll(() => fixture.headers[1].read).toBe(true)
+  await expect(page.getByRole('status', { name: 'Unread reports' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Mark read', exact: true })).toHaveCount(0)
+  expect(fixture.readRequests).toEqual([id(71)])
+  await refreshGame(page)
+  await page.reload()
+  await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+  await expect.poll(() => fixture.headers[1].read).toBe(true)
+  expect(fixture.readRequests).toEqual([id(71)])
+  await page.getByRole('link', { name: 'Back to reports' }).click()
+  await page.locator('main article').first().getByRole('link', { name: 'Espionage', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+  await expect.poll(() => fixture.headers[1].read).toBe(true)
+  expect(fixture.readRequests).toEqual([id(71)])
+})
+
+test('failed or abandoned report loads do not mark reports read', async ({ page }) => {
+  const fixture = await reportsFixture(page)
+  await page.route(`**/api/**/reports/${id(71)}`, route => route.fulfill({ status: 503, json: { code: 'Unavailable' } }))
+  await page.goto(`/u/andromeda/b/${body.id}/reports/${id(71)}`)
+  await expect(page.getByRole('button', { name: 'Retry reports' })).toBeVisible()
+  expect(fixture.readRequests).toEqual([])
+  let release!: () => void
+  let requested = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.unroute(`**/api/**/reports/${id(71)}`)
+  await page.route(`**/api/**/reports/${id(71)}`, async route => {
+    requested = true
+    await gate
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Retry reports' }).click()
+  await expect.poll(() => requested).toBe(true)
+  await page.getByRole('link', { name: 'Back to reports' }).click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+  const response = page.waitForResponse(response => response.url().endsWith(`/reports/${id(71)}`))
+  release()
+  await response
+  await expect(page.locator('main article')).toHaveCount(1)
+  expect(fixture.readRequests).toEqual([])
+  expect(fixture.headers[1].read).toBe(false)
 })

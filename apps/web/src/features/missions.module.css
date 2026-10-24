@@ -263,10 +263,6 @@
 .quote {
   margin-top: 1.5rem;
 }
-.receipt {
-  padding: 1.5rem 0;
-  border-top: 1px solid var(--accent);
-}
 @media (min-width: 768px) {
   .fieldset {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -347,4 +343,100 @@
 
 .routeCoordinate {
   min-height: 24px;
+}
+
+.destinationFields {
+  display: grid;
+  grid-template-columns: minmax(112px, 1.8fr) repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.destinationFields > label {
+  min-width: 0;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.destinationFields input,
+.destinationFields select {
+  min-width: 0;
+  height: 44px;
+  padding: 6px;
+  font-size: 1rem;
+}
+.destinationFields input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.destinationFields > label:nth-of-type(5) {
+  grid-column: 1;
+}
+
+.cargoFields {
+  min-width: 0;
+  width: 100%;
+  max-width: 600px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.cargoHeader {
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.cargoInputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 8px;
+}
+.cargoInputs > label {
+  position: relative;
+  min-width: 0;
+}
+.cargoInputs svg {
+  position: absolute;
+  left: 8px;
+  top: 12px;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+.cargoInputs input {
+  height: 44px;
+  min-width: 0;
+  padding: 6px 6px 6px 32px;
+  font-size: 1rem;
+}
+
+.flightTiming {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-block: 4px;
+}
+.flightTiming dl {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+.flightTiming dt {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+.flightTiming dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.flightTiming p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }

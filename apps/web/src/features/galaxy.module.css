@@ -3,97 +3,37 @@
   overflow-wrap: anywhere;
 }
 .toolbar {
+  position: sticky;
+  top: var(--shell-header-height, 0px);
+  z-index: 8;
+  background: var(--surface-page);
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
-  gap: 0.65rem;
-  padding: 1rem 0;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
   border-block: 1px solid #cbb68d55;
 }
-.toolbar > svg {
-  align-self: center;
-  color: var(--accent);
+.coordinateField {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.coordinateField > span {
+  line-height: 1.2;
 }
 .toolbar select {
-  min-width: 74px;
+  width: auto;
+  min-width: 64px;
+  padding: 8px;
+  font-size: 1rem;
 }
 .toolbar button {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-}
-.slots {
-  margin-left: auto;
-  align-self: center;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-}
-.status {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding-block: 1rem;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
-.atlas {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  align-items: center;
-  justify-content: space-evenly;
-  min-height: 175px;
-  overflow: hidden;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #cbb68d55;
-}
-.atlasOrbits {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  stroke: #cbb68d35;
-  stroke-width: 0.7;
-}
-.atlasPosition {
-  min-width: 32px;
-  min-height: 44px;
-  display: grid;
-  align-content: end;
-  justify-items: center;
-  gap: 0.8rem;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  text-decoration: none;
-}
-.atlasPlanet {
-  display: block;
-  width: clamp(20px, 3vw, 40px);
-  height: auto;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  object-fit: contain;
-  outline: 1px solid #cbb68d25;
-  outline-offset: 3px;
-}
-.atlasEmpty {
-  display: block;
-  width: 5px;
-  height: 5px;
-  border: 1px solid #a4dbef60;
-  border-radius: 50%;
-  margin-bottom: 10px;
-}
-.atlasCaption {
-  position: absolute;
-  bottom: 0.5rem;
-  right: 0;
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
 }
 .positions {
   min-width: 0;
@@ -106,18 +46,20 @@
   padding: 0;
 }
 .positionList > li {
-  scroll-margin-block: 1rem;
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 90px);
+  scroll-margin-block-end: 6rem;
 }
 .positionCard {
   border-bottom: 1px solid #cbb68d35;
+  border-left: 3px solid transparent;
   overflow-wrap: anywhere;
 }
 .positionSummary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
   align-items: center;
-  padding: 1.3rem 0;
+  padding: 12px;
   list-style: none;
 }
 summary.positionSummary {
@@ -143,20 +85,64 @@ summary.positionSummary:focus-visible {
 .planetCell {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 12px;
   min-width: 0;
 }
 .planetInfo {
   display: grid;
-  gap: 0.3rem;
+  gap: 4px;
   min-width: 0;
 }
-.planetInfo > strong {
+.planetTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+}
+.planetTitle > strong {
   overflow-wrap: anywhere;
   font:
-    400 1.2rem Georgia,
+    400 1.05rem Georgia,
     serif;
   color: #efdfc4;
+}
+.coordinates {
+  white-space: nowrap;
+}
+.playerStatus {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.2rem 0.4rem;
+  font-size: 0.8rem;
+}
+.flights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--link);
+  font-size: 0.75rem;
+}
+.flights > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.playerStatus > small::before {
+  content: '·';
+  margin-right: 0.4rem;
+  color: var(--text-muted);
+}
+.playerStatus > small {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.playerStatus > .player,
+.playerStatus > .yourPlayer {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .coordinates,
 .positionSummary small {
@@ -168,8 +154,8 @@ summary.positionSummary:focus-visible {
 }
 .planet {
   display: block;
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
   border-radius: 50%;
   object-fit: contain;
@@ -183,14 +169,12 @@ summary.positionSummary:focus-visible {
   color: #e5c28c;
 }
 .owned {
-  border-left: 2px solid #cbb68d70;
-  padding-left: 0.75rem;
+  border-left-color: #cbb68d70;
 }
 .protected,
 .protected[open] {
   border-left: 3px solid #86d8b1;
   background: #86d8b10c;
-  padding-left: 0.75rem;
 }
 .protected .player {
   color: #a4e8c8;
@@ -200,7 +184,7 @@ summary.positionSummary:focus-visible {
   align-items: center;
   justify-self: start;
   gap: 0.35rem;
-  padding: 0.25rem 0.45rem;
+  padding: 0.1rem 0.3rem;
   border: 1px solid #86d8b155;
   border-radius: 4px;
   color: #a4e8c8;
@@ -232,23 +216,29 @@ summary.positionSummary:focus-visible {
 .actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 0.6rem;
-  padding: 0.5rem 0 1.3rem;
+  padding: 0 12px 8px;
+}
+.actions p {
+  margin: 0;
+  align-self: center;
+  flex: 1 1 220px;
+}
+.empty .positionSummary {
+  min-height: 44px;
+  padding-block: 4px;
+}
+.empty .planetTitle > strong {
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
 }
 .actions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-}
-.screen footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.5rem 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
 }
 .error,
 .loading {
@@ -258,15 +248,21 @@ summary.positionSummary:focus-visible {
   color: var(--danger);
 }
 @media (max-width: 599px) {
-  .slots {
-    width: 100%;
+  .toolbar {
+    align-items: end;
+    gap: 6px;
   }
-  .toolbar > svg {
-    display: none;
+  .coordinateField {
+    display: grid;
+    gap: 2px;
+    font-size: 0.75rem;
+  }
+  .toolbar select {
+    min-width: 54px;
   }
   .planet {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
   }
   .planetCell {
     gap: 0.7rem;
@@ -274,31 +270,16 @@ summary.positionSummary:focus-visible {
   .positionSummary {
     gap: 0.5rem;
   }
-  .atlas {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    padding-block: 1rem 2rem;
-    gap: 0.75rem 0.4rem;
+  .planetTitle > strong {
+    font-size: 1rem;
   }
-  .atlasPosition {
-    min-width: 44px;
-  }
-  .planetInfo > strong {
-    font-size: 1.05rem;
-  }
-}
-
-.map > summary {
-  min-height: 44px;
-  padding-block: 12px;
-  cursor: pointer;
-  color: var(--text-muted);
 }
 
 .selectedPosition {
   outline: 2px solid var(--link);
   outline-offset: 3px;
-  scroll-margin-block: 6rem;
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 90px);
+  scroll-margin-block-end: 6rem;
 }
 .locationLabel {
   padding: 0.5rem 1rem;

@@ -5358,6 +5358,7 @@ export interface components {
             observed_at: number;
             read: boolean;
             hidden: boolean;
+            preview?: components["schemas"]["ReportPreview4"];
         };
         ReportsPage4: {
             items: components["schemas"]["ReportHeader4"][];
@@ -5811,6 +5812,104 @@ export interface components {
             kind: "MetalPerHour" | "CrystalPerHour" | "DeuteriumPerHour" | "Energy" | "MetalCapacity" | "CrystalCapacity" | "DeuteriumCapacity";
             current: components["schemas"]["Decimal"];
             target: components["schemas"]["Decimal"];
+        };
+        ReportPreview4: {
+            /** @constant */
+            kind: "Espionage";
+            target?: {
+                /** Format: uuid */
+                body: string;
+                coordinates: components["schemas"]["Coordinates"];
+                /** Format: uuid */
+                owner: string;
+                /** @constant */
+                kind: "Planet";
+            };
+            resources?: {
+                /** @constant */
+                visibility: "Unknown";
+            } | {
+                /** @constant */
+                visibility: "Known";
+                value: components["schemas"]["Resources"];
+            };
+            fleet?: {
+                /** @constant */
+                visibility: "Unknown";
+            } | {
+                /** @constant */
+                visibility: "Known";
+                value: {
+                    item: components["schemas"]["ItemKey3"];
+                    count: components["schemas"]["Decimal"];
+                }[];
+            };
+            defenses?: {
+                /** @constant */
+                visibility: "Unknown";
+            } | {
+                /** @constant */
+                visibility: "Known";
+                value: {
+                    item: components["schemas"]["ItemKey3"];
+                    count: components["schemas"]["Decimal"];
+                }[];
+            };
+            counterespionage?: {
+                probability_ppm: number;
+                detected: boolean;
+            };
+        } | {
+            /** @constant */
+            kind: "SpyContact";
+            origin?: components["schemas"]["Coordinates"];
+            target?: components["schemas"]["Coordinates"];
+            detected?: boolean;
+        } | {
+            /** @constant */
+            kind: "Delivered";
+            origin?: components["schemas"]["Coordinates"];
+            target?: components["schemas"]["Coordinates"];
+            cargo?: components["schemas"]["Resources"];
+        } | {
+            /** @enum {unknown} */
+            kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed" | "Deployed";
+            origin_coordinates?: components["schemas"]["Coordinates"];
+            destination_coordinates?: components["schemas"]["Coordinates"];
+            cargo?: components["schemas"]["Resources"];
+            ships?: components["schemas"]["PublicShip4"][];
+        } | {
+            /** @constant */
+            kind: "Combat";
+            target?: components["schemas"]["Coordinates"];
+            /** @enum {unknown} */
+            outcome?: "AttackerVictory" | "DefenderVictory" | "MutualDestruction" | "Draw";
+            loot?: components["schemas"]["Resources"];
+            debris?: components["schemas"]["Resources"];
+            /** @enum {unknown} */
+            mission?: "Attack" | "Espionage";
+            participants?: {
+                /** Format: uuid */
+                owner: string;
+                /** @enum {string} */
+                side: "Attacker" | "Defender";
+            }[];
+        } | {
+            /** @constant */
+            kind: "ContactLost";
+            target?: components["schemas"]["Coordinates"];
+            own_lost_ships?: components["schemas"]["PublicShip4"][];
+            own_cargo_loss?: components["schemas"]["Resources"];
+        } | {
+            /** @constant */
+            kind: "Colonized";
+            destination_coordinates?: components["schemas"]["Coordinates"];
+        } | {
+            /** @constant */
+            kind: "ColonizationFailed";
+            destination_coordinates?: components["schemas"]["Coordinates"];
+            /** @enum {unknown} */
+            reason?: "Occupied" | "PositionLocked" | "ColonyCapacity";
         };
     };
     responses: never;

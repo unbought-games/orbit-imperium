@@ -10529,6 +10529,9 @@
           },
           "hidden": {
             "type": "boolean"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/ReportPreview4"
           }
         },
         "required": [
@@ -12549,6 +12552,389 @@
           }
         },
         "additionalProperties": false
+      },
+      "ReportPreview4": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "Espionage"
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "coordinates": {
+                    "$ref": "#/components/schemas/Coordinates"
+                  },
+                  "owner": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "kind": {
+                    "const": "Planet"
+                  }
+                },
+                "required": [
+                  "body",
+                  "coordinates",
+                  "owner",
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "resources": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "visibility": {
+                        "const": "Unknown"
+                      }
+                    },
+                    "required": [
+                      "visibility"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "visibility": {
+                        "const": "Known"
+                      },
+                      "value": {
+                        "$ref": "#/components/schemas/Resources"
+                      }
+                    },
+                    "required": [
+                      "visibility",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "fleet": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "visibility": {
+                        "const": "Unknown"
+                      }
+                    },
+                    "required": [
+                      "visibility"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "visibility": {
+                        "const": "Known"
+                      },
+                      "value": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "item": {
+                              "$ref": "#/components/schemas/ItemKey3"
+                            },
+                            "count": {
+                              "$ref": "#/components/schemas/Decimal"
+                            }
+                          },
+                          "required": [
+                            "item",
+                            "count"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "visibility",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "defenses": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "visibility": {
+                        "const": "Unknown"
+                      }
+                    },
+                    "required": [
+                      "visibility"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "visibility": {
+                        "const": "Known"
+                      },
+                      "value": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "item": {
+                              "$ref": "#/components/schemas/ItemKey3"
+                            },
+                            "count": {
+                              "$ref": "#/components/schemas/Decimal"
+                            }
+                          },
+                          "required": [
+                            "item",
+                            "count"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "visibility",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "counterespionage": {
+                "type": "object",
+                "properties": {
+                  "probability_ppm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "detected": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "probability_ppm",
+                  "detected"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "SpyContact"
+              },
+              "origin": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "target": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "detected": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "Delivered"
+              },
+              "origin": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "target": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "cargo": {
+                "$ref": "#/components/schemas/Resources"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "Returned",
+                  "Recalled",
+                  "Harvested",
+                  "MissionFailed",
+                  "Deployed"
+                ]
+              },
+              "origin_coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "destination_coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "cargo": {
+                "$ref": "#/components/schemas/Resources"
+              },
+              "ships": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PublicShip4"
+                }
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "Combat"
+              },
+              "target": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "outcome": {
+                "enum": [
+                  "AttackerVictory",
+                  "DefenderVictory",
+                  "MutualDestruction",
+                  "Draw"
+                ]
+              },
+              "loot": {
+                "$ref": "#/components/schemas/Resources"
+              },
+              "debris": {
+                "$ref": "#/components/schemas/Resources"
+              },
+              "mission": {
+                "enum": [
+                  "Attack",
+                  "Espionage"
+                ]
+              },
+              "participants": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "owner": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "Attacker",
+                        "Defender"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "owner",
+                    "side"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "ContactLost"
+              },
+              "target": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "own_lost_ships": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PublicShip4"
+                }
+              },
+              "own_cargo_loss": {
+                "$ref": "#/components/schemas/Resources"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "Colonized"
+              },
+              "destination_coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "ColonizationFailed"
+              },
+              "destination_coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "reason": {
+                "enum": [
+                  "Occupied",
+                  "PositionLocked",
+                  "ColonyCapacity"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
       }
     }
   }

@@ -386,18 +386,6 @@
 .resourceValue svg {
   flex-shrink: 0;
 }
-.resourceValue[data-resource='metal'] svg {
-  color: var(--resource-metal);
-}
-.resourceValue[data-resource='crystal'] svg {
-  color: var(--resource-crystal);
-}
-.resourceValue[data-resource='deuterium'] svg {
-  color: var(--resource-deuterium);
-}
-.resourceValue[data-resource='energy'] svg {
-  color: var(--accent);
-}
 
 .metricTrigger {
   display: inline-flex;

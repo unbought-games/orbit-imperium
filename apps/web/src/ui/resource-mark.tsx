@@ -1,7 +1,14 @@
 import type { ComponentProps } from 'react'
-/** Original material silhouettes; callers provide visible or accessible names. */
+const colors = {
+  metal: 'var(--resource-metal)',
+  crystal: 'var(--resource-crystal)',
+  deuterium: 'var(--resource-deuterium)',
+  energy: 'var(--ice)',
+}
+/** Resource identity owns its color everywhere; callers provide sizing and accessible names. */
 export function ResourceMark({
   resource,
+  style,
   ...props
 }: ComponentProps<'svg'> & {
   resource: 'metal' | 'crystal' | 'deuterium' | 'energy'
@@ -16,6 +23,8 @@ export function ResourceMark({
       strokeLinejoin="round"
       aria-hidden="true"
       {...props}
+      data-resource={resource}
+      style={{ ...style, color: colors[resource] }}
     >
       {resource === 'metal' && (
         <>

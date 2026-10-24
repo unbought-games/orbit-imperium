@@ -1,15 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ClipboardEvent } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { Command } from '../client-model/commands'
-import { currentServerTime } from '../client-model/game-projection'
+import {
+  currentServerTime,
+  projectGameView,
+} from '../client-model/game-projection'
+import { allDispatchCargo } from '../client-model/dispatch-cargo'
+import {
+  dispatchShips,
+  dispatchSelection,
+} from '../client-model/dispatch-timing'
+import { useDispatchTiming } from './use-dispatch-timing'
 import type { DispatchDraft } from './missions'
 import { colonizationStatus } from '../client-model/colonization'
 import {
   coordinateErrors,
   destinationError,
   dispatchFailure,
+  dispatchQuantity,
+  parsePastedCoordinates,
 } from '../client-model/dispatch-validation'
 type S = components['schemas']
 export function useDispatch({
@@ -49,8 +60,15 @@ export function useDispatch({
     null,
   )
   useEffect(() => {
-    let current = true
     setObservation(null)
+  }, [model])
+  useEffect(() => {
+    let current = true
+    setObservation((previous) =>
+      previous?.galaxy === Number(galaxy) && previous.system === Number(system)
+        ? previous
+        : null,
+    )
     if (!coordinatesValid || mission === 'Harvest' || mission === 'Colonize')
       return
     const timer = setTimeout(() => {
@@ -132,6 +150,35 @@ export function useDispatch({
       : [],
   )
   const quoteRef = useRef<HTMLElement>(null)
+  let timingShips: S['FleetIntent4']['ships'] = []
+  try {
+    timingShips = dispatchShips(types, ships, view.binding.player)
+  } catch {
+    // Keep invalid edits local; review reports the validation error.
+  }
+  const timingReady =
+    coordinatesValid && !targetProblem && timingShips.length > 0
+  const timing = useDispatchTiming(
+    model,
+    timingReady
+      ? {
+          coordinates: {
+            galaxy: Number(galaxy),
+            system: Number(system),
+            position: Number(position),
+          },
+          intent: {
+            origin: body.id,
+            mission,
+            ships: timingShips,
+            cargo: { metal: '0', crystal: '0', deuterium: '0' },
+            speed_percent: speed as S['FleetIntent4']['speed_percent'],
+          },
+        }
+      : null,
+    view.viewer_revision,
+    !busy && !quote,
+  )
   const reviewButtonRef = useRef<HTMLButtonElement>(null)
   const wasReviewing = useRef(false)
   const command: Command | null = quote
@@ -166,7 +213,7 @@ export function useDispatch({
     setBusy(false)
     setError('')
   }
-  async function review() {
+  async function review(addAllCargo = false) {
     const requestGeneration = ++generation.current
     setError('')
     setQuote(null)
@@ -186,12 +233,7 @@ export function useDispatch({
         system: Number(system),
         position: Number(position),
       }
-      const selection: S['DestinationSelection4'] =
-        mission === 'Harvest'
-          ? { type: 'DebrisAt', coordinates }
-          : mission === 'Colonize'
-            ? { type: 'EmptyPositionAt', coordinates }
-            : { type: 'BodyAt', coordinates, kind: 'Planet' }
+      const selection = dispatchSelection(mission, coordinates)
       const destination = await model
         .world({
           type: 'ResolveDestination',
@@ -223,26 +265,18 @@ export function useDispatch({
         throw Error(
           'The observed target has changed. Choose a current target in Galaxy.',
         )
-      if (
-        cargo.some((n) => !/^(0|[1-9][0-9]*)$/.test(n)) ||
-        Object.values(ships).some((n) => !/^(0|[1-9][0-9]*)$/.test(n))
-      )
-        throw Error('Enter whole nonnegative cargo and ship counts.')
+      const cargoAmounts = addAllCargo
+        ? ['0', '0', '0']
+        : cargo.map(dispatchQuantity)
       const intent: S['FleetIntent4'] = {
         origin: body.id,
         destination,
         mission,
-        ships: types
-          .filter((k) => BigInt(ships[k] ?? '0') > 0n)
-          .map((ship_type) => ({
-            owner: view.binding.player,
-            ship_type,
-            count: ships[ship_type],
-          })),
+        ships: dispatchShips(types, ships, view.binding.player),
         cargo: {
-          metal: (BigInt(cargo[0]) * 1000000n).toString(),
-          crystal: (BigInt(cargo[1]) * 1000000n).toString(),
-          deuterium: (BigInt(cargo[2]) * 1000000n).toString(),
+          metal: (BigInt(cargoAmounts[0]) * 1000000n).toString(),
+          crystal: (BigInt(cargoAmounts[1]) * 1000000n).toString(),
+          deuterium: (BigInt(cargoAmounts[2]) * 1000000n).toString(),
         },
         speed_percent: speed as S['FleetIntent4']['speed_percent'],
       }
@@ -256,7 +290,15 @@ export function useDispatch({
         throw Error(
           'Unable to confirm this fleet quote. Review it again after reconnecting.',
         )
-      setQuote(terms)
+      if (addAllCargo) {
+        const origin = projectGameView(model.store.getState())?.bodies.find(
+          (candidate) => candidate.id === body.id,
+        )
+        if (!origin) return
+        setCargo(
+          allDispatchCargo(origin.amounts, terms.maximum_payload, terms.fuel),
+        )
+      } else setQuote(terms)
     } catch (e) {
       if (requestGeneration === generation.current)
         setError(
@@ -266,7 +308,27 @@ export function useDispatch({
       if (requestGeneration === generation.current) setBusy(false)
     }
   }
+  function pasteCoordinates(event: ClipboardEvent<HTMLInputElement>) {
+    const parsed = parsePastedCoordinates(
+      event.clipboardData.getData('text/plain'),
+    )
+    if (!parsed) return
+    event.preventDefault()
+    setGalaxy(parsed.galaxy)
+    setSystem(parsed.system)
+    setPosition(parsed.position)
+    clear()
+  }
   return {
+    timing: timing?.terms,
+    timingMessage: !coordinatesValid
+      ? 'Enter a valid destination to see flight times.'
+      : targetProblem ||
+        (timingShips.length === 0
+          ? 'Select ships to see flight times.'
+          : timing?.error),
+    addAllCargo: () => review(true),
+    pasteCoordinates,
     targetName:
       mission !== 'Harvest' && mission !== 'Colonize'
         ? target?.name

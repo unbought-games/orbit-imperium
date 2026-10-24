@@ -1,6 +1,8 @@
+mod report_preview;
 pub use orbit_engine::{
     AccountId, Actor, BodyId, CommandId, Epoch, PlayerId, UniverseId, WorkerId,
 };
+pub use report_preview::report_preview;
 mod player_profiles;
 mod ports;
 pub use player_profiles::*;

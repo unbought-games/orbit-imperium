@@ -43,11 +43,18 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  })
  await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
  const cards=page.getByRole('region',{name:'Galaxy positions'}).getByRole('listitem')
- await cards.nth(2).locator('summary').click()
- await expect(cards.nth(2)).toContainText('Astrophysics level 4')
- await expect(cards.nth(2).getByRole('button',{name:'Colonize',exact:true})).toBeDisabled()
+ const lockedSlot=cards.nth(2).locator('summary')
+ await expect(lockedSlot).toBeVisible()
+ expect((await lockedSlot.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+ expect((await lockedSlot.boundingBox())!.height).toBeLessThanOrEqual(46)
+ await lockedSlot.click()
+ await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
+ await cards.nth(2).getByRole('button',{name:'Colonize',exact:true}).click()
+ await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Colonize')
+ await expect(page.getByRole('status').filter({hasText:'Astrophysics level 4'}).first()).toBeVisible()
+ await expect(page.getByRole('button',{name:'Review fleet',exact:true})).toBeDisabled()
+ await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
  await cards.nth(3).locator('summary').click()
- await expect(cards.nth(3)).toContainText('Launch is allowed')
  await cards.nth(3).getByRole('button',{name:'Colonize',exact:true}).click()
  await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Colonize')
  await expect(page.getByRole('status').filter({hasText:'Planets:'})).toContainText('2 / 2')
@@ -70,7 +77,7 @@ for(const success of [true,false])test(`colonization ${success?'success links to
  const kind=success?'Colonized':'ColonizationFailed'
  const payload=success?{kind,body:colony.id,fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,fields:230,diameter_km:15191,min_temperature:24,max_temperature:64,resources:{metal:'1500000000',crystal:'500000000',deuterium:'0'},return_at:null}
  :{kind,reason:'Occupied',fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,return_at:120000}
- await page.route(`**/reports/${id(81)}`,async route=>{
+ await page.route(`**/api/**/reports/${id(81)}`,async route=>{
   const request=route.request().postDataJSON()
   await route.fulfill({json:bound(request.request_id,{header:{id:id(81),kind,observed_at:1000,read:false,hidden:false},payload})})
  })
