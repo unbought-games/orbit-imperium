@@ -230,7 +230,7 @@ describe.each(['building', 'research'] as const)(
         domain === 'building'
           ? buildingProgress(s, 'body')
           : researchProgress(s)
-      const cancelType =
+      const cancelType: 'CancelConstruction' | 'CancelResearch' =
         domain === 'building' ? 'CancelConstruction' : 'CancelResearch'
       function confirm() {
         const common = {
