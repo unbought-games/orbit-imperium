@@ -1174,9 +1174,9 @@ it('reconciles unread report alerts from live invalidations and reconnect snapsh
   expect(model.store.getState().view).toBeNull()
 })
 
-it.each([false, true])(
-  'does not resurrect report failures after pruning a successful retry (storage blocked: %s)',
-  async (blocked) => {
+it.each(['none', 'remove', 'write'])(
+  'does not resurrect report failures after pruning a successful retry (storage failure: %s)',
+  async (failureMode) => {
     const { readyFixture } = await import('../test-support/bootstrap')
     const { mergeReportHeaders } = await import('./report-state')
     const { session, snapshot } = readyFixture(4)
@@ -1198,6 +1198,12 @@ it.each([false, true])(
       ),
     })
     let reject = true
+    const put = storage.put
+    storage.put = async (attempt) => {
+      if (failureMode === 'write' && attempt.status === 'rejected')
+        throw Error('status write failed')
+      await put(attempt)
+    }
     port.submit = async (envelope) =>
       ({
         protocol: 4,
@@ -1228,13 +1234,14 @@ it.each([false, true])(
     const unrelated = await change(id(702))
     const remove = storage.remove
     storage.remove = async (binding, id) => {
-      if (blocked && id === failure) throw Error('storage unavailable')
+      if (failureMode === 'remove' && id === failure)
+        throw Error('storage unavailable')
       await remove(binding, id)
     }
     reject = false
     const retry = await change(report)
     for (let i = 0; i < 10; i++) await change(other, i % 2 === 0)
-    if (blocked) {
+    if (failureMode === 'remove') {
       expect(saved.has(failure!)).toBe(true)
       expect(
         [...c.ledger.values()].some((a) => a.envelope.command_id === retry),
@@ -1252,6 +1259,7 @@ it.each([false, true])(
         .map((a) => a.envelope.command_id),
     ).toEqual([unrelated])
     reject = true
+    storage.put = put
     const latestFailure = await change(report, false)
     await c.refresh()
     expect(saved.has(latestFailure!)).toBe(true)

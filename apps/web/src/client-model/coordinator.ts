@@ -985,7 +985,8 @@ export class Coordinator {
   private async pruneSuccesses() {
     for (const [key, attempt] of supersededReportFailures(this.attempts)) {
       try {
-        await this.writes.get(key)
+        // A failed status write must still allow removal of its older record.
+        await this.writes.get(key)?.catch(() => {})
         await this.storage.remove(
           attempt.envelope.binding,
           attempt.envelope.command_id,
