@@ -189,6 +189,7 @@ export function CombatReport({
           {report.side && ` · You were the ${report.side.toLowerCase()}`}
         </p>
         <Heading level={2} className={styles.result}>
+          {report.symbol && <span aria-hidden="true">{report.symbol} </span>}
           {report.title}
         </Heading>
         <p className={styles.explanation}>

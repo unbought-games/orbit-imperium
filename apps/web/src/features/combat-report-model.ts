@@ -38,12 +38,14 @@ export function combatOutcome(outcome: unknown, side?: string) {
   if (outcome === 'Draw')
     return {
       title: 'Draw',
+      symbol: '＝',
       tone: 'neutral',
       explanation: 'Both sides still had units when combat ended.',
     }
   if (outcome === 'MutualDestruction')
     return {
-      title: 'Both sides destroyed',
+      title: 'Defeat',
+      symbol: '✕',
       tone: 'loss',
       explanation: 'Neither side had units left at the end of combat.',
     }
@@ -56,18 +58,35 @@ export function combatOutcome(outcome: unknown, side?: string) {
   if (!winner)
     return {
       title: 'Outcome unavailable',
+      symbol: '',
       tone: 'neutral',
       explanation: 'This report does not contain a confirmed result.',
     }
   const won = side === winner
   return {
-    title: side ? (won ? 'You won' : 'You lost') : `${winner} victory`,
+    title: side ? (won ? 'Victory' : 'Defeat') : `${winner} victory`,
+    symbol: side ? (won ? '✓' : '✕') : '',
     tone: side ? (won ? 'win' : 'loss') : 'neutral',
     explanation:
       winner === 'Attacker'
         ? 'The defending force was destroyed.'
         : 'The attacking fleet was destroyed.',
   }
+}
+
+/** Only a victorious attacking viewer receives loot; zero balances add no useful summary. */
+export function hasCombatLoot(
+  outcome: unknown,
+  side: string | undefined,
+  loot: unknown,
+) {
+  return (
+    outcome === 'AttackerVictory' &&
+    side === 'Attacker' &&
+    Object.values(record(loot)).some(
+      (value) => (combatInteger(value) ?? 0n) > 0n,
+    )
+  )
 }
 
 function force(participant: Observation, end: unknown, recovery?: unknown) {
@@ -140,7 +159,7 @@ export function combatReportModel(
   const resources = [
     {
       key: 'loot',
-      title: side === 'Defender' ? 'Loot taken by attacker' : 'Loot',
+      title: 'Loot',
     },
     { key: 'debris', title: 'Debris created' },
     { key: 'own_cargo_loss', title: 'Your cargo lost' },
@@ -148,6 +167,8 @@ export function combatReportModel(
     .filter(
       ({ key }) =>
         key in payload &&
+        (key !== 'loot' ||
+          hasCombatLoot(payload.outcome, side, payload.loot)) &&
         (key !== 'own_cargo_loss' ||
           Object.values(record(payload[key])).some(
             (v) => combatInteger(v) !== 0n,

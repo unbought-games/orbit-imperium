@@ -104,7 +104,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   const launched=(await fresh()).missions.fleets[0];advance(launched.due_at)
   await expect.poll(async()=>(await view())?.missions.fleets[0]?.leg).toBe('Returning')
   await go('reports');await page.getByRole('link',{name:'Combat',exact:true}).first().click()
-  await expect(page.getByRole('region',{name:'Report observation'})).toContainText('You won')
+  await expect(page.getByRole('region',{name:'Report observation'})).toContainText('Victory')
   await expect(page.getByRole('region',{name:'Report observation'})).toContainText('Survivors return')
   const reportUrl=page.url(),reportId=new URL(reportUrl).pathname.split('/').at(-1)!
   const detail=async()=>{const r=await page.request.post(`/api/v4/universes/${a.u}/reports/${reportId}`,{headers:a.headers,data:{binding:a.binding,request_id:randomUUID()}});return r.status()===503?null:r.json()}

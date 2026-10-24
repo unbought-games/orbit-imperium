@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { galaxyFlights, pendingProbe, probeAvailability } from './galaxy-fleets'
+import { sendGalaxyProbe } from './send-galaxy-probe'
 import type { components } from '../contracts'
 import type { Attempt, BoundProgressionOptions, Command } from './commands'
 import { attemptKey } from './commands'
@@ -893,4 +895,226 @@ it('derives due work from confirmed state and the anchored server clock', () => 
   expect(nextWorkDelay(store.getState())).toBe(-500)
   view.constructions = []
   expect(nextWorkDelay(store.getState())).toBe(Infinity)
+})
+
+describe('galaxy fleet actions', () => {
+  const at: S['GalaxyPosition4'] = {
+    coordinates: { galaxy: 1, system: 1, position: 2 },
+    debris: null,
+    body: {
+      id: 'target',
+      owner: 'enemy',
+      kind: 'Planet',
+      activity: { type: 'None' },
+      inactivity: 'Active',
+      vacation: false,
+      attack_blocker: null,
+      espionage_eligible: true,
+    },
+  }
+  const spyIntent: S['FleetIntent4'] = {
+    origin: 'body',
+    destination: {
+      type: 'Body',
+      id: 'target',
+      expected_kind: 'Planet',
+      expected_owner: 'enemy',
+    },
+    mission: 'Espionage',
+    ships: [{ owner: 'p', ship_type: 'EspionageProbe', count: '1' }],
+    cargo: { metal: '0', crystal: '0', deuterium: '0' },
+    speed_percent: 100,
+  }
+  const terms: S['FleetTerms4'] = {
+    intent: spyIntent,
+    profile_hash: 'profile',
+    terms_hash: 'spy-quote',
+    distance: 1000,
+    speeds: [],
+    duration_ms: 30000,
+    fuel: '75',
+    capacity: '1000',
+    maximum_payload: '925',
+    slot_limit: '3',
+  }
+  function spyState() {
+    const s = state()
+    s.ready = true
+    s.binding = s.view!.binding
+    const v = s.view as S['BoundView4']
+    v.capabilities = [
+      { capability: 'Espionage', enabled: true, reason: 'Available' },
+    ]
+    v.bodies[0].inventories.push({
+      item: { kind: 'Ship', id: 'EspionageProbe' },
+      count: '2',
+    })
+    v.missions.fleet_slots = '3'
+    return s
+  }
+  const command = {
+    type: 'World',
+    action: {
+      type: 'LaunchFleet',
+      intent: spyIntent,
+      expected_terms_hash: terms.terms_hash,
+    },
+  } as const
+  const fleet: S['OwnMission4'] = {
+    id: 'fleet',
+    intent: spyIntent,
+    origin: { galaxy: 1, system: 1, position: 1 },
+    destination: at.coordinates,
+    leg: 'Outbound',
+    ships: [{ ship_type: 'EspionageProbe', count: '1' }],
+    cargo: spyIntent.cargo,
+    due_at: 31000,
+    launched_at: 1000,
+    duration_ms: 30000,
+    paid_fuel: '75',
+    can_recall: true,
+  }
+
+  it('marks confirmed outbound fleets at their destination and return legs only at home', () => {
+    const s = spyState(),
+      v = s.view as S['BoundView4']
+    v.missions.fleets = [structuredClone(fleet)]
+    expect(galaxyFlights(s, at)).toEqual([
+      { id: 'fleet', mission: 'Espionage', phase: 'en route', dueAt: 31000 },
+    ])
+    expect(
+      galaxyFlights(s, { ...at, body: { ...at.body!, id: 'replacement' } }),
+    ).toEqual([])
+    v.missions.fleets[0].leg = 'Returning'
+    v.missions.fleets[0].due_at = 61000
+    expect(galaxyFlights(s, at)).toEqual([])
+    expect(
+      galaxyFlights(s, { ...at, body: { ...at.body!, id: 'body' } }),
+    ).toEqual([
+      { id: 'fleet', mission: 'Espionage', phase: 'returning', dueAt: 61000 },
+    ])
+    v.missions.fleets = []
+    expect(galaxyFlights(s, at)).toEqual([])
+  })
+
+  it('derives uncertain departures and probe reservations, then removes rejected or reconciled overlays', () => {
+    const s = spyState()
+    const attempt = intent(s, command, terms)
+    attempt.status = 'uncertain'
+    expect(pendingProbe(s, 'body', 'target')).toBe(true)
+    expect(galaxyFlights(s, at)).toEqual([
+      {
+        id: 'command',
+        mission: 'Espionage',
+        phase: 'departure pending',
+        dueAt: null,
+      },
+    ])
+    expect(probeAvailability(s, 'body')).toBeNull()
+    s.view!.bodies[0].inventories.at(-1)!.count = '1'
+    expect(probeAvailability(s, 'body')).toContain('No espionage probes')
+    attempt.status = 'rejected'
+    expect(galaxyFlights(s, at)).toEqual([])
+    expect(pendingProbe(s, 'body', 'target')).toBe(false)
+    expect(probeAvailability(s, 'body')).toBeNull()
+    attempt.status = 'committed'
+    attempt.reconciled = true
+    ;(s.view as S['BoundView4']).missions.fleets = [fleet]
+    expect(galaxyFlights(s, at)).toHaveLength(1)
+  })
+
+  it('matches colonization and debris destinations by complete coordinates', () => {
+    const s = spyState(),
+      v = s.view as S['BoundView4']
+    for (const destination of [
+      {
+        type: 'EmptyPosition',
+        coordinates: at.coordinates,
+        slot_revision: '1',
+      },
+      { type: 'Debris', coordinates: at.coordinates, field_identity: 'debris' },
+    ] as S['MissionDestination4'][]) {
+      v.missions.fleets = [{ ...fleet, intent: { ...spyIntent, destination } }]
+      expect(galaxyFlights(s, at)).toHaveLength(1)
+      expect(
+        galaxyFlights(s, {
+          ...at,
+          coordinates: { ...at.coordinates, system: 2 },
+        }),
+      ).toEqual([])
+    }
+  })
+
+  it('sends one probe at full speed with no cargo using the server quote and durable command path', async () => {
+    const store = createGameStore()
+    store.setState(spyState())
+    const model = {
+      store,
+      world: vi.fn(async () => terms),
+      send: vi.fn(async () => 'command'),
+    }
+    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    expect(model.world).toHaveBeenCalledExactlyOnceWith({
+      type: 'FleetQuote',
+      intent: spyIntent,
+    })
+    expect(model.send).toHaveBeenCalledExactlyOnceWith(command, terms)
+  })
+
+  it('does not send after navigation or a binding change while quoting', async () => {
+    const store = createGameStore()
+    store.setState(spyState())
+    let current = true
+    const model = {
+      store,
+      world: vi.fn(async () => {
+        current = false
+        return terms
+      }),
+      send: vi.fn(async () => 'command'),
+    }
+    await sendGalaxyProbe(model, 'body', at.body!, () => current)
+    expect(model.send).not.toHaveBeenCalled()
+    current = true
+    model.world.mockImplementation(async () => {
+      store.setState({
+        binding: { ...store.getState().binding!, epoch: 'new' },
+      })
+      return terms
+    })
+    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    expect(model.send).not.toHaveBeenCalled()
+  })
+
+  it('blocks absent probes, full slots, duplicate pending probes and failed quotes without sending', async () => {
+    const store = createGameStore()
+    const s = spyState()
+    store.setState(s)
+    const model = {
+      store,
+      world: vi.fn(async () => terms),
+      send: vi.fn(async () => 'command'),
+    }
+    s.view!.bodies[0].inventories.at(-1)!.count = '0'
+    await expect(
+      sendGalaxyProbe(model, 'body', at.body!, () => true),
+    ).rejects.toThrow('No espionage probes')
+    expect(model.world).not.toHaveBeenCalled()
+    s.view!.bodies[0].inventories.at(-1)!.count = '2'
+    ;(s.view as S['BoundView4']).missions.fleet_slots = '0'
+    await expect(
+      sendGalaxyProbe(model, 'body', at.body!, () => true),
+    ).rejects.toThrow('All fleet slots')
+    ;(s.view as S['BoundView4']).missions.fleet_slots = '3'
+    intent(s, command, terms)
+    store.setState(s)
+    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    expect(model.world).not.toHaveBeenCalled()
+    store.setState(spyState())
+    model.world.mockRejectedValue(new Error('InsufficientResources'))
+    await expect(
+      sendGalaxyProbe(model, 'body', at.body!, () => true),
+    ).rejects.toThrow('not enough resources')
+    expect(model.send).not.toHaveBeenCalled()
+  })
 })

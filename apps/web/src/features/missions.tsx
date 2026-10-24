@@ -88,7 +88,7 @@ export function Dispatch({
   } = useDispatch({ model, view, body, draft })
   return (
     <Section className={styles.screen}>
-      <TaskHeader title={quote ? 'Dispatch review' : 'Dispatch fleet'}>
+      <TaskHeader>
         <span>
           Origin {bodyName(body)}{' '}
           <CoordinateLink at={body.coordinates} label="origin" /> · Fleet slots:{' '}
@@ -155,10 +155,12 @@ export function Dispatch({
                     'Deploy',
                   ] as const
                 )
-                  .filter((m) =>
-                    view.capabilities.some(
-                      (c) => c.capability === m && c.enabled,
-                    ),
+                  .filter(
+                    (m) =>
+                      m === mission ||
+                      view.capabilities.some(
+                        (c) => c.capability === m && c.enabled,
+                      ),
                   )
                   .map((m) => (
                     <option key={m}>{m}</option>

@@ -37,12 +37,12 @@ const payload = {
 
 describe('combat outcome is relative to the viewer', () => {
   it.each([
-    ['AttackerVictory', 'Attacker', 'You won', 'win'],
-    ['AttackerVictory', 'Defender', 'You lost', 'loss'],
-    ['DefenderVictory', 'Attacker', 'You lost', 'loss'],
-    ['DefenderVictory', 'Defender', 'You won', 'win'],
+    ['AttackerVictory', 'Attacker', 'Victory', 'win'],
+    ['AttackerVictory', 'Defender', 'Defeat', 'loss'],
+    ['DefenderVictory', 'Attacker', 'Defeat', 'loss'],
+    ['DefenderVictory', 'Defender', 'Victory', 'win'],
     ['Draw', 'Attacker', 'Draw', 'neutral'],
-    ['MutualDestruction', 'Defender', 'Both sides destroyed', 'loss'],
+    ['MutualDestruction', 'Defender', 'Defeat', 'loss'],
     ['AttackerVictory', undefined, 'Attacker victory', 'neutral'],
   ])('%s for %s', (outcome, side, title, tone) => {
     expect(combatOutcome(outcome, side)).toMatchObject({ title, tone })
@@ -50,7 +50,7 @@ describe('combat outcome is relative to the viewer', () => {
 })
 it('matches by identity, derives losses, and separates recovery from survival', () => {
   const model = combatReportModel(payload, 'defender')
-  expect(model.title).toBe('You lost')
+  expect(model.title).toBe('Defeat')
   expect(model.forces[0]).toMatchObject({
     start: 12n,
     finish: 9n,
@@ -130,13 +130,36 @@ it('attributes round fire by shooter identity, never infers it from casualties',
   expect(old.rounds[0].legacy).toBe(true)
   expect(old.rounds[0].forces.every((f) => f.fire === undefined)).toBe(true)
 })
-it('labels plunder as attacker loot for a defender and omits empty cargo loss', () => {
+it('omits loot and empty cargo loss from the defeated defender report', () => {
   const zero = { metal: '0', crystal: '0', deuterium: '0' }
   const model = combatReportModel(
     { ...payload, loot: zero, own_cargo_loss: zero },
     'defender',
   )
-  expect(model.resources.map((r) => r.title)).toEqual([
-    'Loot taken by attacker',
-  ])
+  expect(model.resources).toEqual([])
+})
+
+it('only displays nonzero loot for the victorious attacker', () => {
+  const loot = { metal: '12000000', crystal: '0', deuterium: '0' }
+  for (const [outcome, viewer, expected] of [
+    ['AttackerVictory', 'attacker', true],
+    ['AttackerVictory', 'defender', false],
+    ['DefenderVictory', 'attacker', false],
+    ['DefenderVictory', 'defender', false],
+    ['Draw', 'attacker', false],
+    ['MutualDestruction', 'attacker', false],
+    ['AttackerVictory', undefined, false],
+  ] as const) {
+    expect(
+      combatReportModel({ ...payload, outcome, loot }, viewer).resources.some(
+        (group) => group.key === 'loot',
+      ),
+    ).toBe(expected)
+  }
+  expect(
+    combatReportModel(
+      { ...payload, loot: { metal: '0', crystal: '0', deuterium: '0' } },
+      'attacker',
+    ).resources.some((group) => group.key === 'loot'),
+  ).toBe(false)
 })

@@ -356,9 +356,8 @@ test('paginated inbox remains usable after leaving a pending report detail', asy
   await expect.poll(() => pending).toBe(true)
   await page.goBack()
   await expect(
-    page.getByRole('button', { name: 'Refresh reports' }),
+    page.getByRole('button', { name: 'Load more reports' }),
   ).toBeEnabled()
-  await expect(page.getByLabel('Show deleted reports')).toBeEnabled()
   release()
   await page.unrouteAll({ behavior: 'wait' })
 })

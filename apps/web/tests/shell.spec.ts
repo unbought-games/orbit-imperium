@@ -1570,7 +1570,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   ).toHaveCount(0)
   await expect(
     page.getByRole('checkbox', { name: 'Show deleted reports' }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await page.screenshot({
     path: 'test-results/reports-list-desktop.png',
     fullPage: true,
@@ -1814,7 +1814,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     ).toBe('static')
     const noticeBox = await recovery.boundingBox()
     const intro = await page
-      .getByRole('heading', { name: 'Dispatch fleet', exact: true })
+      .getByText(/Origin .*Fleet slots:/)
       .boundingBox()
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [
@@ -2376,7 +2376,7 @@ for (const width of [768, 1024, 1440, 1800]) {
 
 test('planet-scoped gameplay routes retain context and redirect old query URLs', async ({ page }) => {
   const purchases = await shellFixture(page, { protocol: 4 })
-  for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch']]) {
+  for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch'], ['reports', 'Reports']]) {
     await page.goto(`/u/andromeda/${path}?body=${body.id}`)
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
     await expect(page.locator('main h1')).toHaveText(heading)
