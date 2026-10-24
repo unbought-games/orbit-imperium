@@ -186,20 +186,38 @@ test('context-free direct links preserve coordinates and invalid locations are s
   expect(requests).toEqual([])
 })
 
-test('menu and empire coordinates browse other owned worlds without changing selection', async ({
+test('planet selector is one target while empire coordinates browse without changing selection', async ({
   page,
 }) => {
   await setup(page)
   await page.goto(path('overview'))
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
-    const headerLink = page
-      .getByRole('group', { name: 'Planet and resources' })
-      .getByRole('link', { name: 'View [1:371:12] in galaxy', exact: true })
-    expect((await headerLink.boundingBox())!.height).toBeGreaterThanOrEqual(24)
-    await headerLink.click()
-    await assertLocation(page, 371, 12)
-    await page.goBack()
+    const selector = page.getByRole('combobox', { name: 'Selected body' })
+    const controls = selector.locator('../..')
+    await expect(controls.getByRole('link')).toHaveCount(0)
+    for (const label of [
+      controls.locator('img'),
+      controls.getByText('Planet', { exact: true }),
+      controls.getByText('[1:371:12]', { exact: true }),
+    ]) {
+      const box = (await label.boundingBox())!
+      const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+      expect(
+        await selector.evaluate(
+          (element, { x, y }) => document.elementFromPoint(x, y) === element,
+          point,
+        ),
+      ).toBe(true)
+      await page.mouse.click(point.x, point.y)
+      await expect(selector).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
+    }
+    await selector.selectOption(other.id)
+    await expect(page).toHaveURL(new RegExp(`/b/${other.id}/overview$`))
+    await selector.selectOption(body.id)
+    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
   }
   const dossier = page.getByRole('article', {
     name: 'Hades [1:2:4] dossier',

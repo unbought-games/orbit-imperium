@@ -1840,7 +1840,6 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [
       page.getByLabel('Selected body'),
-      page.getByRole('group', { name: 'Planet and resources' }).getByRole('link', { name: 'View [1:371:12] in galaxy', exact: true }),
       page.getByRole('button', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleet', exact: true }),
     ]) {
@@ -1850,8 +1849,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
           const box = element.getBoundingClientRect()
           const hit = document.elementFromPoint(
             box.x + box.width / 2,
-            // The planet name opens the selector; its coordinates now have their own link.
-            box.y + box.height * (element.tagName === 'SELECT' ? 0.25 : 0.5),
+            box.y + box.height / 2,
           )
           return element === hit || element.contains(hit)
         }),
