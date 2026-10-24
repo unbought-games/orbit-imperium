@@ -60,7 +60,9 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         },
       })
     })
-    await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
+    // Measure the canonical page, without racing the legacy query-URL redirect
+    // that remounts the report. Redirect behavior has separate shell coverage.
+    await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
     const report = page.getByRole('region', { name: 'Report observation' })
     const buildings = report.locator('section').filter({
       has: page.getByRole('heading', { name: 'Buildings', exact: true }),
