@@ -4,7 +4,7 @@ The same release binary runs locally and in the container. PostgreSQL stores eve
 
 ## Initialize and operate locally
 
-Follow the [local setup instructions](../../README.md#running-locally). Compose uses `orbit` for the local database username, password, and name, with PostgreSQL bound to `127.0.0.1:55432`. Set `ORBIT_DB_PASSWORD` to override the password. Create player accounts through the browser.
+Follow the [local setup instructions](../development.md#running-locally). Compose uses `orbit` for the local database username, password, and name, with PostgreSQL bound to `127.0.0.1:55432`. Set `ORBIT_DB_PASSWORD` to override the password. Create player accounts through the browser.
 
 `make dev` serves on localhost:8080; stop with Ctrl-C. It retains state. The independent Vite proxy on localhost:5173 requires `ORBIT_ORIGIN=http://localhost:5173` on the backend. `make test-db`, `make test-migrations`, `make test-e2e` and `make test-recovery` create and delete only their own disposable databases. Test time and commit barriers exist only behind the `test-support` Cargo feature; production images do not enable it.
 

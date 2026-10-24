@@ -1,20 +1,68 @@
+<img src="apps/web/public/brand-mark.svg" align="right" width="72" alt="">
+
 # Orbit Imperium
 
-A browser-based space strategy game with no purchased gameplay advantages. Develop planets, manage resources, research technologies, build fleets, and battle other players.
+Build your first planet into an empire. Research new technologies, scout your
+neighbors, and send fleets across a persistent multiplayer universe—all in your
+browser. You can't buy your way ahead.
 
-The backend is written in Rust with PostgreSQL for persistent game state. A React and TypeScript frontend is served by the same application process.
+**[Play Orbit Imperium →](https://orbitimperium.com/)** ·
+[Join us on Discord](https://discord.gg/AVMHp7jUcw) ·
+[Run your own universe](#run-your-own-universe)
 
-## Requirements
+[![Orbit Imperium empire overview showing two planets, their resources, and fleet activity.](docs/assets/readme-hero.png)](https://orbitimperium.com/)
 
-- Rust 1.99.0, with rustfmt and Clippy (configured in `rust-toolchain.toml`)
-- Node.js 24.18.0 and npm 11.16.0
-- Make
-- Docker with Docker Compose
-- PostgreSQL 16.10 (provided by Docker Compose)
+## What you can do
 
-## Running Locally
+- **Build an economy.** Develop mines, balance energy, and turn your planet's
+  resources into buildings, research, ships, and defenses.
+- **Plan your next move.** Research technologies, scout other planets with
+  espionage probes, and decide where to send your fleets.
+- **Fight for your place.** Raid other players, defend your planets, and read
+  combat reports to see how your fleet held up.
+- **Expand beyond your homeworld.** Research Astrophysics, build Colony Ships,
+  and establish new planets. Keep track of them from the Empire overview.
+- **Find your people.** Form or join an alliance and get to know the other players
+  sharing your universe.
 
-From the repository root:
+## Why we're building it
+
+We want a space strategy game where your decisions matter and competition stays
+fair. No purchased resources, faster queues, or stronger fleets. Every gameplay
+advantage is earned.
+
+We're building Orbit Imperium in the open. You can read the game rules, report
+what feels wrong, and help improve it. You can also run your own universe, choose
+its configuration, and play with your own community.
+
+## Start playing
+
+1. Open **[Orbit Imperium](https://orbitimperium.com/)** in your browser.
+2. Create or sign in to your unbought games account and join a universe.
+3. Start developing your homeworld: build your resource production, keep an eye
+   on energy, and work toward your first research and ships.
+
+There's nothing to install. If you get stuck, find a bug, or want to talk about
+what should come next, **[join us on Discord](https://discord.gg/AVMHp7jUcw)**.
+
+## Open beta and updates
+
+Orbit Imperium is in open beta. It's early, the game is incomplete, and the
+official universe may be reset before the full public launch.
+
+Read **What's new** in the game for updates, or browse the
+[release notes](docs/news/releases/). Self-hosters can find the latest numbered
+release on [GitHub Releases](https://github.com/unbought-games/orbit-imperium/releases/latest).
+Numbered releases and updates to the official server are published separately;
+available features also depend on the universe's active rules.
+
+## Run your own universe
+
+You can run an independent universe with local accounts and your own settings.
+You'll need Rust, Node.js/npm, Make, and Docker Compose; the
+[setup guide](docs/development.md#requirements) lists the pinned versions.
+
+From a checkout of this repository:
 
 ```sh
 npm ci
@@ -22,104 +70,39 @@ make dev-setup UNIVERSE=00000000-0000-4000-8000-000000000001
 make dev
 ```
 
-`make dev-setup` explicitly initializes the database and creates one universe at the default 5× speed. Choose a UUID for your installation; repeating setup with that UUID conflicts without resetting it. `make dev` starts PostgreSQL, builds the application, and starts the existing world. Open [localhost:8080](http://localhost:8080) and choose **Create an account** to play.
+Open [localhost:8080](http://localhost:8080) and choose **Create an account**.
+Setup creates a universe at the default 5× speed. Run setup once with a UUID of
+your choice; repeating it with the same UUID conflicts. Use `make dev` to restart
+your existing universe. Game data persists in the Docker volume.
 
-Run `make dev` again to restart. Game data persists in the Docker volume. The local database uses `orbit` for its username, password, and database name and listens on `127.0.0.1:55432`. Set `ORBIT_DB_PASSWORD` to override the local password.
+For a public server, follow the [production setup guide](docs/operations/signup.md)
+and [universe configuration guide](docs/operations/universe-configuration.md).
+The [rules update guide](docs/operations/rules-updates.md) explains how to activate
+new content without replacing player progress.
 
-## Development
+## Help build Orbit Imperium
 
-For frontend hot reload, start the backend with the development frontend origin:
+Playing and telling us what feels confusing is useful, too. Share feedback on
+[Discord](https://discord.gg/AVMHp7jUcw), report a reproducible bug in
+[GitHub Issues](https://github.com/unbought-games/orbit-imperium/issues), or open a
+pull request. For larger changes, start a discussion in an issue so we can agree
+on the direction before you build it.
 
-```sh
-ORBIT_ORIGIN=http://localhost:5173 make dev
-```
+The game uses Rust, PostgreSQL, React, and TypeScript. Start here:
 
-In another terminal, start Vite:
+- [Development and self-hosting](docs/development.md): setup, hot reload, project
+  layout, tests, and deployment.
+- [Technical documentation](docs/README.md): architecture, game configuration,
+  and operator guides.
+- [Engineering principles](docs/engineering-principles.md) and
+  [conventions](docs/engineering-conventions.md): how we structure changes.
+- [Release preparation](docs/operations/open-source-releases.md): numbered
+  releases and publication.
 
-```sh
-npm run dev
-```
+### Licensing
 
-Open [localhost:5173](http://localhost:5173). Vite proxies API requests to the Rust server.
+Code, tooling, and game rules are licensed under **AGPL-3.0-only**. Documentation
+and ordinary game artwork are **CC BY-SA 4.0**. Names, logos, and third-party
+materials have separate terms; see [LICENSE](LICENSE) for the full scope.
 
-For a phone on the same Wi-Fi, use your computer's private LAN IP as the frontend
-origin and expose Vite on the network:
-
-```sh
-ORBIT_ORIGIN=http://192.168.50.48:5173 make dev
-# In another terminal:
-npm run dev -- --host 0.0.0.0
-```
-
-Replace the example IP with your computer's address, then open that URL on both
-devices. Local development enables `ORBIT_LOCAL_INSECURE=1`, which permits HTTP
-cookies on loopback and private network IPs with an explicit port. Production
-still requires HTTPS. The backend can remain bound to loopback behind Vite.
-
-The project is organized into these components:
-
-| Directory | Responsibility |
-| --- | --- |
-| `apps/web` | React frontend |
-| `crates/engine` | Game rules and calculations |
-| `crates/application` | Signup, login, player authorization, game commands, and game-state queries |
-| `crates/storage-postgres` | PostgreSQL persistence and migrations |
-| `crates/transport-http` | HTTP API |
-| `crates/server` | Server configuration and startup |
-| `contracts` | OpenAPI specification and API schemas |
-
-After changing the OpenAPI specification, run `npm run contracts` to regenerate the frontend types.
-
-## Deploying and enabling content
-
-Fresh installations require `db-init` and `universe create` before serving. Retained installations require the separate configuration bridge before activating database policy. See [universe configuration](docs/operations/universe-configuration.md) for exact creation, live policy, two-artifact rollout and rollback commands.
-
-Roll out the updated server/frontend to all instances, then use the server's `rules export`, `rules diff`, and `rules apply` commands to activate content per universe. Existing configurations and player progress survive deployment; new content stays disabled until applied. See [rules updates](docs/operations/rules-updates.md) for the operator workflow.
-
-## Testing
-
-GitHub Actions runs [CI](.github/workflows/ci.yml) on pull requests and pushes to `main`. It runs tooling, client and server tests; client changes also run fixture-only browser tests, and backend/shared/unknown changes run database and browser tests. Documentation-only changes skip those two integration classes. Unknown diff bases conservatively run both. Fixture browser tests run on a separate disposable Ubuntu VM in parallel with the native checks and PostgreSQL tests, so browser feedback does not wait for Rust compilation. The existing `Build, lint and unit tests` check passes only when every selected job passes.
-
-Routine CI has **no configured job, step, suite or per-test execution deadlines**. Node uses its unlimited default, Vitest explicitly sets test/hook timeouts to zero, Nextest only reports slow tests, and fixture Playwright tests use zero test/global timeouts. The continuous release-image workflow also has no custom job deadline. GitHub-hosted jobs still have the platform's six-hour maximum; removing YAML limits cannot remove that cap.
-
-Use controlled clocks and deterministic fixtures, investigate slow setup, and retain every assertion. Functional network timeouts and checks that verify timeout behavior remain in place. Native runners report durations and failures normally; no automatic failure retries are enabled.
-
-| Routine class | Local command | Configuration |
-|---|---|---|
-| Tooling | `make test-tooling` | Make's Node test command |
-| Client | `npm test` | `apps/web/vite.config.ts` |
-| Server without PostgreSQL | `make test-server` | `.config/nextest.toml` |
-| PostgreSQL integration | `make test-db` | `.config/nextest.toml` |
-| Browser with HTTP fixtures | `npm run test:ui` | `playwright.config.ts` |
-
-Install the pinned Node/npm/Rust tools and npm dependencies. Rust tests additionally need **cargo-nextest 0.9.114** (`cargo install cargo-nextest --version 0.9.114 --locked`, or the [official prebuilt binary](https://nexte.st/docs/installation/pre-built-binaries/)). CI installs that pinned prebuilt version. `make test-tooling` uses Node’s built-in test runner for all tooling tests; no separate environment or test dependencies are needed. No custom test scheduler or timing framework is used.
-
-`make check` runs the three unit classes, static/contract/boundary checks and one frontend build. It does not compile a release binary or start a database. Nextest prepares test binaries before execution; Make runs database suites two at a time, each against its own disposable database, with tests inside each suite serial. Database commands require PostgreSQL already running. CI sets up its own Compose project and removes it in an `always()` step. Install Chromium with `npx playwright install chromium` before browser validation.
-
-Full-system and container validation remain **explicit-only**. Generous guards allow cold builds and full journeys: Rust and container-image preparation each get 15 minutes, web preparation 5 minutes, individual suites 10 minutes (recovery 15 minutes), combined acceptance 30 minutes, container behavior tests 10 minutes, and database startup/cleanup 3 minutes each. The manual workflow's outer job guard is two hours. The [deadline helper](scripts/test-timeout.mjs) and [named durations](scripts/test-budgets.json) apply only to explicit validation, preparation and cleanup. Image building completes under its own preparation guard before the container smoke/isolation deadline begins.
-
-After [disposable database setup](docs/runbooks/ci-runners.md#disposable-test-resources), use `make test-explicit SUITE=signup` for signup alone, or choose `core`, `mvp`, `progression`, `missions`, `raiding`, `recovery`, `migrations`, `rules-updates`, `acceptance`, `container`, or `all`. `all` runs acceptance then container validation. The [explicit workflow](.github/workflows/explicit-tests.yml) requires an exact `expected_sha` and has no push/PR/schedule trigger. Report real failures and cleanup results; do not omit coverage or claim success from a partial run.
-
-
-## Deployment
-
-Trusted `main` revisions publish one API/worker image to private ECR after CI
-passes. The [image release contract](docs/operations/image-releases.md) describes
-OIDC setup, license and dependency notice inspection, and the commit/digest record.
-
-Production requires PostgreSQL, a `DATABASE_URL`, an `ORBIT_ORIGIN` matching the public URL, and HTTPS. See the [production setup guide](docs/operations/signup.md) for build commands and configuration, and the [operator runbook](docs/runbooks/development-server.md) for deployment and database maintenance.
-
-For Fly.io deployments:
-
-```sh
-make fly-launch FLY_APP=<app-name>
-make fly-deploy FLY_APP=<app-name>
-```
-
-Provision PostgreSQL separately before launching the application.
-
-## Updates and numbered releases
-
-Read changes from **What’s new** in the game, or browse `docs/news/` in this
-repository. [Release preparation and downloads](docs/operations/open-source-releases.md)
-explain version suggestions, editorial, and automatic publication after a release PR merges.
+Built by [unbought games](https://unbought.games/) and contributors.

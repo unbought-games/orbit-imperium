@@ -2,7 +2,7 @@
 
 # MVP v1 local setup
 
-This creates one private five-player development universe. It does not deploy Fly or alter an existing world. This is a historical test-support fixture guide; use the [project README](../../README.md) for normal local setup.
+This creates one private five-player development universe. It does not deploy Fly or alter an existing world. This is a historical test-support fixture guide; use the [development guide](../development.md) for normal local setup.
 
 ## Profile and retained-world boundary
 
