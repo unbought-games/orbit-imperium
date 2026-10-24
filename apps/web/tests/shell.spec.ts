@@ -1,4 +1,5 @@
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { navigate } from './fixtures/navigation'
 import { confirmCancellation } from './fixtures/confirmation'
 import { test, expect } from './fixtures/test'
 import {
@@ -441,6 +442,20 @@ for (const width of [768, 1440, 1920]) {
     await expect(header).toHaveCSS('border-bottom-width', '1px')
     await expect(submenu).toHaveCSS('border-top-width', '1px')
     await diagnosticScreenshot(page, { path: `test-results/header-dividers-${width}.png` })
+  })
+}
+
+for (const protocol of [3, 4] as const) {
+  test(`Fleets navigation helper opens the fleet list with protocol ${protocol}`, async ({ page }) => {
+    await shellFixture(page, { protocol, extraCapabilities: ['Transport'] })
+    await navigate(page, 'Fleets')
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(page.locator('main h1')).toHaveText('Fleets')
+    await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${protocol === 4 ? 'galaxy' : 'fleets'}`)
+    await navigate(page, 'Fleets')
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(page.locator('main h1')).toHaveText('Fleets')
   })
 }
 
