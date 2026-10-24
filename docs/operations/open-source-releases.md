@@ -31,8 +31,9 @@ release is not rebuilt or overwritten on retry; only the website notification re
 
 ## Release assets
 
-Each release has a complete source archive, a compressed Linux amd64 Docker image,
-and SHA256SUMS. GitHub hosts the public assets; self-hosters don't need access to
+Each release publishes a compressed Linux amd64 Docker image and SHA256SUMS.
+Source is available in the GitHub repository at the release tag.
+GitHub hosts the public assets; self-hosters don't need access to
 Unbought's private ECR registry or a separate package registry account.
 
 ```sh
@@ -53,7 +54,7 @@ announcement and detailed release notes. Markdown frontmatter includes a stable
 orbit-imperium`, `kind: release`, `template: release`, and `version`.
 
 `npm run news:build` renders a self-contained `/updates/index.html` and individual
-pages included in every application build and source distribution. No Git checkout,
+pages included in every application build. No Git checkout,
 website API, external account, or Unbought service is required at runtime. These
 pages describe the installed build, not the official server's deployment history.
 
@@ -74,4 +75,4 @@ The first recorded deployment establishes a baseline.
 
 The build also bundles player-facing Conventional Commit history into paginated
 local pages. `docs/news/history.json` is a generated build input, excluded from Git
-and included in released source so archives rebuild without a Git checkout.
+and generated before Docker builds so the image includes history without Git.

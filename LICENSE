@@ -116,15 +116,12 @@ descriptive references, fair use and other uses permitted by applicable law are
 unaffected. Replacing the branding does not remove AGPL or CC BY-SA obligations;
 ending a branding permission does not terminate compliant open-source use.
 
-5. Deployed source and build instructions
+5. Source and build instructions
 
-Production frontend builds package the current project sources, including local
-modifications, into /source.tar.gz and expose a Source link before and after
-login. The archive includes this file, Cargo/npm lockfiles, source artwork,
-schemas, migrations, build scripts and the README/operator build instructions.
-It can be rebuilt without a Git checkout. /LICENSE.txt contains this document.
+Project source is available at:
+https://github.com/unbought-games/orbit-imperium
 
-From an extracted source archive, install the Node/npm and Rust versions pinned
+Check out the desired revision and install the Node/npm and Rust versions pinned
 in package.json and rust-toolchain.toml, then run:
 
   npm ci
@@ -132,24 +129,17 @@ in package.json and rust-toolchain.toml, then run:
   cargo build --locked --release -p orbit-server
 
 The outputs are apps/web/dist and target/release/orbit. Alternatively,
-`docker build -t orbit-imperium .` builds both from one source snapshot and
-includes their notices. README.md and docs/operations/universe-configuration.md
-describe database initialization and operation. Explicit validation scripts that
-compare historical Git revisions additionally require a repository checkout.
+`make release-image ORBIT_RELEASE_IMAGE=orbit-imperium ORBIT_RELEASE_SHA=$(git rev-parse HEAD)`
+builds both from one source snapshot and includes their notices. README.md and
+docs/operations/universe-configuration.md describe database initialization and
+operation. The container includes this document at /app/web/LICENSE.txt.
 
-Build the backend and frontend from the same source tree and deploy the source
-archive alongside that build. Rebuild the archive after any source modification.
-The development server snapshots source at startup; rerun `npm run source:package`
-to refresh its download after edits, or use a production build for public hosting.
-Do not place secrets in source directories: runtime credentials, private data,
-installed dependencies, build outputs and local environment files are not source
-distribution inputs. See scripts/package-source.mjs for the packaged paths.
-Use the documented pinned public dependencies when rebuilding. Operators adding
-non-system libraries or other required sources must also provide the complete
-Corresponding Source required by the AGPL; the project archive is not a substitute
-for those additional obligations. Keep existing notices and any required notices
-of changes. Modified network versions must prominently offer their Corresponding
-Source to all remote users as required by AGPL section 13.
+Build the backend and frontend from the same source tree. Use the documented
+pinned public dependencies when rebuilding. Operators adding non-system libraries
+or other required sources must also provide the complete Corresponding Source
+required by the AGPL. Keep existing notices and any required notices of changes.
+Modified network versions must prominently offer their Corresponding Source to
+all remote users as required by AGPL section 13.
 
 ===============================================================================
 GNU AFFERO GENERAL PUBLIC LICENSE, VERSION 3 ONLY

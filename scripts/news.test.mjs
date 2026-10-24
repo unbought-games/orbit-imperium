@@ -26,6 +26,8 @@ test('game updates build without Git or any Unbought service and omit drafts',()
     const page=readFileSync(join(root,'apps/web/public/updates/beta.html'),'utf8')
     assert.doesNotMatch(page,/<script>/)
     assert.match(page,/Return to Orbit Imperium/)
+    assert.match(page,/href="https:\/\/github.com\/unbought-games\/orbit-imperium"/)
+    assert.doesNotMatch(page,/source\.tar\.gz/)
     assert.throws(()=>readNote('no metadata'))
   }finally{rmSync(root,{recursive:true,force:true})}
 })

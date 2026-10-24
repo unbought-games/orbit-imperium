@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// A build artifact, never committed. Including it in the source archive makes
-// the installed build's history available even when rebuilt without Git.
+// A build artifact, never committed. Generate before the Docker build so
+// the installed build includes history without needing Git in the image.
 export function writeHistory(root=process.cwd()) {
   if(!existsSync(join(root,'.git')))return
   const raw=execFileSync('git',['-C',root,'log','--first-parent','--format=%H%x09%cI%x09%s'],{encoding:'utf8'})

@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Brand, BrandLogo, BrandWordmark } from '../ui/brand'
 import { atmosphereArt, resolvePlanetArt } from '../ui/artwork'
 import styles from './public-frame.module.css'
-import { SourceLink } from '../ui/source-link'
 import { BetaNotice } from '../ui/beta-notice'
 import { PolicyLinks } from '../ui/policy-links'
 
@@ -91,7 +90,6 @@ export function PublicFrame({
           {variant !== 'landing' && (
             <a href="/updates/index.html">What’s New</a>
           )}
-          <SourceLink />
         </div>
       </footer>
     </main>

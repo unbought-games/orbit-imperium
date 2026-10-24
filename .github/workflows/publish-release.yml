@@ -77,7 +77,7 @@ jobs:
         run: |
           make release-image
           make inspect-release-image
-      - name: Publish prepared notes, source, and downloadable container
+      - name: Publish prepared notes and downloadable container
         if: steps.select.outputs.release == 'true' && steps.state.outputs.published != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -86,9 +86,6 @@ jobs:
           TITLE: ${{ steps.release.outputs.title }}
         run: |
           mkdir -p release-assets
-          container=$(docker create "orbit-release:$SHA")
-          trap 'docker rm "$container" >/dev/null' EXIT
-          docker cp "$container:/app/web/source.tar.gz" "release-assets/orbit-imperium-$TAG-source.tar.gz"
           docker tag "orbit-release:$SHA" "orbit-imperium:${TAG#v}"
           docker save "orbit-imperium:${TAG#v}" | gzip > "release-assets/orbit-imperium-$TAG-linux-amd64.tar.gz"
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)

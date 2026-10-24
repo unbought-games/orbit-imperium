@@ -134,7 +134,7 @@ test('OIDC sign-in offers one prominent account action and retains the destinati
   await expect(page.getByLabel('Password')).toHaveCount(0)
   await expect(
     page.getByRole('link', { name: 'Source', exact: true }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await page.route('**/api/auth/login?*', (route) =>
     route.fulfill({ contentType: 'text/html', body: '<h1>Hosted accounts</h1>' }),
   )
@@ -183,7 +183,7 @@ test('login and signup preserve the requested game destination', async ({
   await expect(page).toHaveURL(/\/login\?/)
   await expect(
     page.getByRole('link', { name: 'Source', exact: true }),
-  ).toHaveAttribute('href', '/source.tar.gz')
+  ).toHaveCount(0)
   expect(new URL(page.url()).searchParams.get('redirect')).toBe(destination)
   await page
     .getByRole('link', { name: 'Create an account', exact: true })
@@ -191,7 +191,7 @@ test('login and signup preserve the requested game destination', async ({
   await expect(page).toHaveURL(/\/signup\?/)
   await expect(
     page.getByRole('link', { name: 'Source', exact: true }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   expect(new URL(page.url()).searchParams.get('redirect')).toBe(destination)
   await page.reload()
   await page.getByRole('link', { name: 'Back to sign in', exact: true }).click()
@@ -890,6 +890,7 @@ test('homepage centers policies and highlights news and the GitHub repository', 
     await page.goto('/')
     await expect(page.getByRole('link', { name: 'by unbought games', exact: true }))
       .toHaveAttribute('href', 'https://unbought.games/')
+    await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
     const policies = page.getByRole('navigation', { name: 'Policies and support' })
     const bounds = (await policies.boundingBox())!
     expect(Math.abs(bounds.x + bounds.width / 2 - width / 2)).toBeLessThan(1)
