@@ -1,22 +1,12 @@
 import type { BoundView } from '../client-model/commands'
+import { rawResourceRates } from '../client-model/production-rates'
 import { resourceNames } from '../client-model/resources'
 
 export function currentResourceRates(
   view: BoundView,
   body: BoundView['bodies'][number],
 ) {
-  const production =
-    view.protocol !== 2
-      ? view.progression.production.find((entry) => entry.body === body.id)
-      : null
-  const rates = production
-    ? {
-        ...production.gross_per_hour,
-        deuterium: `${production.net_deuterium_per_hour.sign === 'Negative' ? '-' : ''}${production.net_deuterium_per_hour.magnitude}`,
-      }
-    : 'production' in body
-      ? body.production
-      : null
+  const rates = rawResourceRates(view, body)
   if (!rates) return null
   return Object.fromEntries(
     resourceNames.map((name) => {
