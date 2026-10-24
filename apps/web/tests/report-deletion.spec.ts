@@ -318,10 +318,17 @@ test('failed or abandoned report loads do not mark reports read', async ({ page 
   })
   await page.getByRole('button', { name: 'Retry reports' }).click()
   await expect.poll(() => requested).toBe(true)
-  await page.getByRole('link', { name: 'Back to reports' }).click()
-  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
   const response = page.waitForResponse(response => response.url().endsWith(`/reports/${id(71)}`))
-  release()
+  try {
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    // The URL changes before React commits the inbox and cancels the detail load.
+    // Deliver the held response only after the user has actually left the report.
+    await expect(page.getByRole('heading', { name: 'Reports', level: 2, exact: true })).toBeVisible()
+    await expect(page.locator('main article')).toHaveCount(1)
+  } finally {
+    release()
+  }
   await response
   await expect(page.locator('main article')).toHaveCount(1)
   expect(fixture.readRequests).toEqual([])
