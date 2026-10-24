@@ -620,7 +620,7 @@ fn execution_failures_block_only_invariants_and_never_commit() {
     });
 }
 #[test]
-fn stale_ownership_while_blocking_characterizes_serial_and_scoped_results() {
+fn stale_ownership_while_blocking_retries_without_consuming_input() {
     futures::executor::block_on(async {
         for scoped in [false, true] {
             for stage in ["load", "invalid", "execute", "commit"] {
@@ -641,11 +641,7 @@ fn stale_ownership_while_blocking_characterizes_serial_and_scoped_results() {
                     _ => Execution::Inline,
                 };
                 let result = resolve(&store, scoped, execution).await;
-                if !scoped && matches!(stage, "load" | "invalid") {
-                    assert!(matches!(result, Err(ServiceError::Unavailable)));
-                } else {
-                    assert_eq!(result.unwrap(), StepOutcome::Retry);
-                }
+                assert_eq!(result.unwrap(), StepOutcome::Retry);
                 let calls: &[&str] = match stage {
                     "load" => &["load", "block"],
                     "commit" => &["load", "execute", "commit", "block"],
