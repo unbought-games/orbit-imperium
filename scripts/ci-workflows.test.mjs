@@ -1,8 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { join, dirname } from 'node:path'
 import { load } from 'js-yaml'
+import { temporaryDirectory } from './test-helpers.mjs'
 
 const directory = new URL('../.github/workflows/', import.meta.url)
 const workflows = readdirSync(directory)
@@ -81,6 +83,70 @@ test('PR checks remain automatic and full validation remains dispatch-only', () 
       assert.equal(checkout?.with?.['persist-credentials'], false, file)
     }
   }
+})
+
+test('merge queue checks use the complete integration group without cancelling other events', () => {
+  const ci = workflows.find(({ file }) => file === 'ci.yml').workflow
+  assert.deepEqual(ci.on.merge_group, { types: ['checks_requested'] })
+  const scope = ci.jobs.scope.steps.find((step) => step.id === 'integration')
+  assert.equal(scope.env.BASE_SHA,
+    '${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}')
+  assert.equal(ci.concurrency.group,
+    "${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}")
+  assert.equal(ci.concurrency['cancel-in-progress'], "${{ github.event_name == 'pull_request' }}")
+})
+
+test('integration selection includes earlier queued changes and fails safe without a valid base', (t) => {
+  const root = temporaryDirectory(t)
+  const repository = join(root, 'repository')
+  mkdirSync(repository)
+  const git = (...args) => {
+    const result = spawnSync('git', args, {
+      cwd: repository,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'CI fixture', GIT_AUTHOR_EMAIL: 'ci@example.test',
+        GIT_COMMITTER_NAME: 'CI fixture', GIT_COMMITTER_EMAIL: 'ci@example.test',
+      },
+    })
+    assert.equal(result.status, 0, result.stderr)
+    return result.stdout.trim()
+  }
+  const commit = (path) => {
+    mkdirSync(dirname(join(repository, path)), { recursive: true })
+    writeFileSync(join(repository, path), path)
+    git('add', path)
+    git('-c', 'commit.gpgsign=false', 'commit', '-m', path)
+    return git('rev-parse', 'HEAD')
+  }
+  git('init', '--quiet')
+  const base = commit('README.md')
+  const scope = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs.scope
+    .steps.find((step) => step.id === 'integration')
+  const select = (sha) => {
+    const output = join(root, 'outputs')
+    writeFileSync(output, '')
+    const result = spawnSync('bash', ['-e', '-c', scope.run], {
+      cwd: repository,
+      encoding: 'utf8',
+      env: { ...process.env, BASE_SHA: sha, RUNNER_TEMP: root, GITHUB_OUTPUT: output },
+    })
+    assert.equal(result.status, 0, result.stderr)
+    return readFileSync(output, 'utf8')
+  }
+  const docs = commit('docs/queue.md')
+  assert.equal(select(base), 'database=false\nui=false\n')
+  const web = commit('apps/web/src/queue.ts')
+  assert.equal(select(docs), 'database=false\nui=true\n')
+  commit('crates/storage-postgres/migrations/9999_queue.sql')
+  const database = git('rev-parse', 'HEAD')
+  commit('docs/last-in-queue.md')
+  assert.equal(select(database), 'database=false\nui=false\n')
+  assert.equal(select(web), 'database=true\nui=true\n')
+  assert.equal(select(base), 'database=true\nui=true\n')
+  assert.equal(select(''), 'database=true\nui=true\n')
+  assert.equal(select('unavailable-base'), 'database=true\nui=true\n')
 })
 
 test('fixture browsers start independently of native compilation and stay routine-only', () => {
