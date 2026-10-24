@@ -50,3 +50,26 @@ it('uses the legacy body production and does not consume below zero', () => {
   const empty = { ...planet, amounts: { ...planet.amounts, deuterium: '0' } }
   expect(currentResourceRates(view, empty)?.deuterium).toBe('0')
 })
+
+it.each([3, 4] as const)(
+  'applies stock limits to displayed protocol %i rates without changing raw production',
+  (protocol) => {
+    const current = { ...view, protocol } as BoundView
+    const original = structuredClone(current)
+    for (const [amount, metal, deuterium] of [
+      ['0', '50', '0'],
+      ['5', '50', '-40'],
+      ['10', '0', '-40'],
+      ['20', '0', '-40'],
+    ]) {
+      expect(
+        currentResourceRates(current, {
+          ...planet,
+          amounts: { metal: amount, crystal: amount, deuterium: amount },
+          capacity: { metal: '10', crystal: '10', deuterium: '10' },
+        }),
+      ).toEqual({ metal, crystal: metal === '0' ? '0' : '60', deuterium })
+    }
+    expect(current).toEqual(original)
+  },
+)

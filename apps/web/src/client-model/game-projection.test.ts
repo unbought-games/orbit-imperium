@@ -300,6 +300,78 @@ describe('one live game projection', () => {
       deuterium: '750',
     })
   })
+  it.each([3, 4] as const)(
+    'integrates protocol %i signed rates at empty, full and overfull storage',
+    (protocol) => {
+      for (const [amount, metal, deuterium] of [
+        ['0', '1000', '0'],
+        ['2000', '2000', '1500'],
+        ['3000', '3000', '2500'],
+      ]) {
+        const s = state()
+        s.view = { ...snapshot(), protocol }
+        s.view.bodies[0].amounts = {
+          metal: amount,
+          crystal: amount,
+          deuterium: amount,
+        }
+        s.now = 1100
+        expect(projectGameView(s)?.bodies[0].amounts).toEqual({
+          metal,
+          crystal: amount === '0' ? '500' : amount,
+          deuterium,
+        })
+      }
+    },
+  )
+  it.each([3, 4] as const)(
+    'keeps protocol %i stocks unchanged when production is missing',
+    (protocol) => {
+      const s = state()
+      s.view = { ...snapshot(), protocol }
+      s.view.progression.production = []
+      s.now = 1100
+      expect(projectGameView(s)?.bodies[0].amounts).toEqual(
+        s.view.bodies[0].amounts,
+      )
+    },
+  )
+  it('integrates legacy body production without progression data', () => {
+    const s = state()
+    const modern = snapshot()
+    s.view = {
+      protocol: 2,
+      binding: modern.binding,
+      request_id: modern.request_id,
+      viewer_revision: modern.viewer_revision,
+      sampled_at: modern.sampled_at,
+      as_of_ms: modern.as_of_ms,
+      progress: modern.progress,
+      speed: modern.speed,
+      profile_hash: modern.profile_hash,
+      research: [],
+      catalog: [],
+      capabilities: [],
+      constructions: [],
+      fleets: [],
+      reports: [],
+      destinations: [],
+      reports_truncated: false,
+      destinations_truncated: false,
+      bodies: [
+        {
+          ...modern.bodies[0],
+          production: { metal: '3600000', crystal: '0', deuterium: '1800000' },
+        },
+      ],
+    }
+    s.now = 1100
+    expect(projectGameView(s)?.bodies[0].amounts).toEqual({
+      metal: '2000',
+      crystal: '1000',
+      deuterium: '1500',
+    })
+  })
   it('reserves quote payment immediately and exposes an estimated queue without fabricating operation IDs', () => {
     const s = state()
     intent(s, upgrade, quote())
