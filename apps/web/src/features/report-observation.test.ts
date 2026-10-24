@@ -23,7 +23,7 @@ it('floors combat points and resource observations while preserving unknown data
     kind: 'Combat',
     outcome: 'Draw',
     mission: 'Attack',
-    loot: {
+    debris: {
       metal: '1999999',
       crystal: '9007199254740993123456',
       deuterium: 'invalid',
