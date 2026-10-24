@@ -67,7 +67,13 @@ function ForceTable({
                   <Amount value={row.recovered} />
                 </td>
               )}
-              <td className={styles.lossNumber}>
+              <td
+                className={
+                  (settled ? row.permanent : row.lost) === 0n
+                    ? undefined
+                    : styles.lossNumber
+                }
+              >
                 <Amount value={settled ? row.permanent : row.lost} />
               </td>
             </tr>
