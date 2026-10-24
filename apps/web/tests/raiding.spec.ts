@@ -1,5 +1,6 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {universeSlug} from '../src/client-model/universe-name'
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/test'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -81,7 +82,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   for(const [width,height] of [[320,800],[360,800],[390,844],[768,1024],[1440,900],[844,390]]){
     await page.setViewportSize({width,height})
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-    await page.screenshot({path:`${screenshots}/dispatch-${width}.png`,fullPage:true})
+    await diagnosticScreenshot(page, {path:`${screenshots}/dispatch-${width}.png`,fullPage:true})
   }
   let pair: {gameplay:{command_id:string};presence:{command_id:string}}|undefined
   await page.route('**/api/v4/universes/*/commands',async route=>{const data=route.request().postDataJSON();if(data.gameplay?.command.action?.type==='LaunchFleet'){await route.fetch();pair=data;await route.abort('failed')}else await route.continue()})
@@ -96,11 +97,11 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   await defender.goto(`/u/${da.slug}/fleets?body=${dv.bodies[0].id}`)
   await expect(defender.locator('main')).toContainText('Attack')
   await expect(defender.locator('main')).toContainText('Types unknown')
-  await defender.screenshot({path:`${screenshots}/incoming-360.png`,fullPage:true})
+  await diagnosticScreenshot(defender, {path:`${screenshots}/incoming-360.png`,fullPage:true})
   // Defender can still inspect ordinary defense/manufacture controls while incoming.
   await defender.goto(`/u/${da.slug}/b/${dv.bodies[0].id}/defense`)
   await expect(defender.locator('main')).toContainText('Rocket Launcher')
-  await defender.screenshot({path:`${screenshots}/defense-360.png`,fullPage:true})
+  await diagnosticScreenshot(defender, {path:`${screenshots}/defense-360.png`,fullPage:true})
   const launched=(await fresh()).missions.fleets[0];advance(launched.due_at)
   await expect.poll(async()=>(await view())?.missions.fleets[0]?.leg).toBe('Returning')
   await go('reports');await page.getByRole('link',{name:'Combat',exact:true}).first().click()
@@ -115,7 +116,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
     await page.setViewportSize({width,height})
     const rounds=page.locator('main details');if(await rounds.count())await rounds.first().evaluate(el=>{el.setAttribute('open','')})
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-    await page.screenshot({path:`${screenshots}/combat-${width}.png`,fullPage:true})
+    await diagnosticScreenshot(page, {path:`${screenshots}/combat-${width}.png`,fullPage:true})
   }
   await expect.poll(async()=>(await detail())?.data.header.read).toBe(true)
   await page.getByRole('button',{name:'Delete report',exact:true}).click();await expect.poll(async()=>(await detail())?.data.header.hidden).toBe(true)

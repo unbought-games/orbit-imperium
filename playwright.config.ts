@@ -55,6 +55,9 @@ export default defineConfig({
   use: {
     baseURL: process.env.ORBIT_TEST_BASE_URL ?? 'http://localhost:18080',
     headless: true,
+    // The shared test fixture captures actual failures. Playwright 1.56's
+    // only-on-failure mode also captures successful contexts before discarding.
+    screenshot: 'off',
   },
   reporter: [['list'], ['json', { outputFile: `${process.env.ORBIT_TEST_OUTPUT_DIR ?? 'test-results/browser'}/results.json` }]],
 })

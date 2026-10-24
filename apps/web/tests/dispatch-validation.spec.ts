@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Route } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Page, type Route } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 type S = components['schemas']
@@ -188,7 +189,7 @@ test('flight timing updates with speed and selected ships without opening review
   await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   expect(state.launches).toBe(0)
-  await page.screenshot({ path: 'test-results/dispatch-flight-timing-390.png' })
+  await diagnosticScreenshot(page, { path: 'test-results/dispatch-flight-timing-390.png' })
 })
 
 test('late timing replies cannot replace a newer speed and failed estimates clear obsolete times', async ({
@@ -445,7 +446,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/dispatch-validation-${width}.png`,
       fullPage: true,
     })
@@ -503,7 +504,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   expect(state.launches).toBe(0)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 900 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-protection-mobile.png',
     fullPage: true,
   })
@@ -658,7 +659,7 @@ for (const width of [320, 390, 1280]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/dispatch-compact-${width}.png`,
     })
     const cargo = page.getByRole('group', { name: 'Cargo', exact: true })
@@ -681,7 +682,7 @@ for (const width of [320, 390, 1280]) {
       .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).color))
     expect(new Set(colors).size).toBe(3)
     await cargo.scrollIntoViewIfNeeded()
-    await page.screenshot({ path: `test-results/dispatch-cargo-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-cargo-${width}.png` })
     await mission(page).selectOption('Attack')
     await expect(
       page.getByText('Beginner protection can prevent attacks', {

@@ -1,4 +1,5 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { shellFixture, binding, body, id, resources } from './fixtures/game'
 
@@ -79,7 +80,7 @@ for (const viewport of [
       page.getByRole('link', { name: 'Dispatch a fleet' }),
       page.getByText('Arrival in', { exact: true }),
     ])
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/density-fleets-${viewport.width}.png`,
     })
     await page
@@ -99,7 +100,7 @@ for (const viewport of [
       .locator('details')
       .filter({ has: page.locator('summary', { hasText: 'Flight path' }) })
     await expect(path).not.toHaveAttribute('open')
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/density-mission-${viewport.width}.png`,
     })
     await recall.click()
@@ -198,7 +199,7 @@ for (const viewport of [
       expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
       expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
     } else expect(harvest.y).toBeLessThan(outcome.y)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/density-combat-${viewport.width}.png`,
     })
     await page.getByRole('button', { name: 'Prepare harvest' }).click()
@@ -243,7 +244,7 @@ for (const viewport of [
     await expect(page.getByLabel('Planet energy')).toHaveCount(0)
     await expect(page.locator('main details')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Resources', level: 2 })).toHaveCount(0)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/density-resources-${viewport.width}.png`,
     })
   })
@@ -363,7 +364,7 @@ for (const width of [1280, 390]) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBeLessThanOrEqual(width)
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         path: `test-results/legacy-${route}-header-${width}.png`,
       })
     }

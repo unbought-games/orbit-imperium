@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 
@@ -74,8 +75,8 @@ test('report glances expose historical mission facts in compact rows on desktop 
     expect(Math.abs(icon.y + icon.height / 2 - age.y - age.height / 2)).toBeLessThanOrEqual(1)
     expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(44)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-    await page.screenshot({ path: `test-results/report-glance-${width}.png` })
-    if (width === 390) await rows.first().locator('..').screenshot({ path: 'test-results/report-glance-preview.png' })
+    await diagnosticScreenshot(page, { path: `test-results/report-glance-${width}.png` })
+    if (width === 390) await diagnosticScreenshot(rows.first().locator('..'), { path: 'test-results/report-glance-preview.png' })
   }
   const combat = items[2].preview
   if (combat?.kind !== 'Combat') throw Error('Expected combat fixture')

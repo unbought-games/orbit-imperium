@@ -1,5 +1,6 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {navigate,signOut} from './fixtures/navigation'
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/test'
 import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -123,7 +124,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/missions-galaxy-${width}.png`,
       fullPage: true,
     })
@@ -172,7 +173,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
   await page.unroute('**/api/v4/universes/*/world')
   await page.getByRole('button', { name: 'Review fleet' }).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/missions-dispatch-mobile.png',
     fullPage: true,
   })
@@ -272,12 +273,12 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
   await expect(
     page.getByRole('button', { name: 'Delete report', exact: true }),
   ).toBeVisible()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/missions-report-mobile.png',
     fullPage: true,
   })
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/missions-report-desktop.png',
     fullPage: true,
   })

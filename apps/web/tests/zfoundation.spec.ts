@@ -1,6 +1,7 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import {foreground} from './fixtures/navigation'
-import {test,expect} from '@playwright/test'
+import {test,expect} from './fixtures/test'
 import {execFileSync} from 'node:child_process'
 import {randomUUID} from 'node:crypto'
 import {overview} from './v2'
@@ -27,7 +28,7 @@ test('two bodies retain independent pending actions through keyboard switching a
  await page.reload();await expect(attention).toHaveCount(1);await expect(attention).toContainText('2 actions need attention.');await expect.poll(async()=>(await saved()).filter(a=>a.status==='uncertain').length).toBe(2);await expect(page.getByRole('heading',{name:'Active fleets',exact:true})).toHaveCount(1);await expect(page.getByRole('heading',{name:'Recent reports',exact:true})).toHaveCount(1)
  await page.unrouteAll({behavior:'wait'});await expect.poll(async()=>(await saved()).filter(a=>sent.includes(a.envelope.command_id)&&a.status==='committed'&&a.reconciled).length).toBe(2);await expect(attention).toHaveCount(0);expect(sent).toHaveLength(2);expect(new Set(sent).size).toBe(2)
  await expect.poll(async()=>(await overview(page.request)).constructions.map((work:{body:string})=>work.body).sort()).toEqual([source,body].sort())
- await expect(page.getByText('Research actions: unavailable in this universe.')).toBeVisible();await expect(page.getByText('Manufacturing actions: unavailable in this universe.')).toBeVisible();await page.screenshot({path:'target/foundation-mobile.png',fullPage:true})
+ await expect(page.getByText('Research actions: unavailable in this universe.')).toBeVisible();await expect(page.getByText('Manufacturing actions: unavailable in this universe.')).toBeVisible();await diagnosticScreenshot(page, {path:'target/foundation-mobile.png',fullPage:true})
  await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'Settings',exact:true}).click();await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible()
  expect(new URL(page.url()).searchParams.get('body')).toBe(body);await page.reload();await expect(page.getByLabel('Selected body')).toHaveValue(body)
  await page.getByLabel('Selected body').selectOption(source);await expect(page).toHaveURL(new RegExp(`body=${source}`));await page.goBack();await expect(page.getByLabel('Selected body')).toHaveValue(body)

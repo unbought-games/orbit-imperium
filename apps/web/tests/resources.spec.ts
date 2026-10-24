@@ -1,8 +1,9 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { openProductionSettings } from './fixtures/production-settings'
 import { captureCatalog } from './fixtures/catalog-capture'
-import { test, expect, type Page } from '@playwright/test'
-import { shellFixture, body, binding, refreshGame } from './fixtures/game'
+import { test, expect, type Page } from './fixtures/test'
+import { installGameFixture, shellFixture, body, binding, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
 
 function production(): components['schemas']['ProductionDto'] {
@@ -41,7 +42,7 @@ async function setup(page: Page, blocked = false, commandReferences = false) {
   const planet = structuredClone(body)
   if (blocked) planet.amounts.metal = '0'
   const sent: components['schemas']['CommandEnvelopeV3'][] = []
-  await shellFixture(page, {
+  await installGameFixture(page, {
     production: [economy],
     bodies: [planet],
     commandReferences,
@@ -360,7 +361,7 @@ test('resource settings keep production rules and fuel figures without repeated 
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     await page.evaluate(() => window.scrollTo(0, 0))
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/copy-production-${width}.png`,
       fullPage: true,
     })
@@ -568,7 +569,7 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
   expect(await totals.innerText()).toBe(confirmedTotals)
   expect(sent).toHaveLength(1)
   await panel.getByRole('status').scrollIntoViewIfNeeded()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/production-autosave-pending-390.png',
   })
   await page.getByRole('link', { name: 'Build', exact: true }).click()
@@ -602,7 +603,7 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
     ),
   ).toBe(true)
   await panel.getByRole('status').scrollIntoViewIfNeeded()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/production-autosave-saved-390.png',
   })
 })
@@ -636,7 +637,7 @@ test('production rejection retains edits and retry preserves unrelated server ch
   await expect(panel.getByRole('alert')).toContainText('rejected')
   await expect(page.getByLabel('metal mine production')).toHaveValue('50')
   expect(sent).toHaveLength(0)
-  await panel.screenshot({
+  await diagnosticScreenshot(panel, {
     path: 'test-results/production-autosave-rejected-1440.png',
   })
   await page.route('**/commands', async (route) => {
@@ -821,7 +822,7 @@ test('resources fit compact and touch layouts in all three states', async ({
         `${width} ${state}`,
       ).toBe(true)
       await page.evaluate(() => window.scrollTo(0, 0))
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         animations: 'disabled',
         path: `test-results/resources-${state}-${width}.png`,
         fullPage: true,
@@ -1310,7 +1311,7 @@ test('mobile construction starts visibly before the server responds and rejectio
   await notice.scrollIntoViewIfNeeded()
   await expect(notice).toBeInViewport()
   await expect(page.getByText('Action log', { exact: true })).toHaveCount(0)
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/construction-pending-mobile.png',
   })
   release()
@@ -1518,7 +1519,7 @@ for (const dismissFirst of ['message', 'saved action'] as const) {
     await expect(message).toContainText('Connect before confirming an action.')
     await expect(saved).toContainText('Action rejected')
     await page.getByRole('link', { name: /^Back to / }).click()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/action-notices-${dismissFirst.replaceAll(' ', '-')}.png`,
     })
     if (dismissFirst === 'message') {
@@ -1595,7 +1596,6 @@ test('resource catalog and exact decision ledger fit desktop and narrow phones',
   await refreshGame(page)
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
     await expect(page.locator('main details')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Resources', level: 2 })).toHaveCount(0)
     await captureCatalog(page, `test-results/progression-resources-${width}.png`)
@@ -1605,6 +1605,8 @@ test('resource catalog and exact decision ledger fit desktop and narrow phones',
     await expect(pane.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeDisabled()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await captureCatalog(page, `test-results/progression-resources-blocked-${width}.png`)
+    await pane.getByRole('link', { name: 'Back to Resources', exact: true }).click()
+    await expect(pane).toBeHidden()
   }
 })
 

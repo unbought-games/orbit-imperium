@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import schema from '../../../contracts/openapi.json' with { type: 'json' }

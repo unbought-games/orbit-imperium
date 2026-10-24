@@ -1,5 +1,7 @@
-import { test, expect, type Page } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Page } from './fixtures/test'
 import {
+  installGameFixture,
   shellFixture,
   refreshGame,
   playerProfilesFixture,
@@ -15,7 +17,7 @@ async function setup(
   options: Parameters<typeof shellFixture>[1] = {},
 ) {
   let revision = 1
-  await shellFixture(page, {
+  await installGameFixture(page, {
     protocol: 4,
     viewerRevision: () => String(revision),
     extraCapabilities: ['Attack', 'Espionage', 'Harvest'],
@@ -282,7 +284,7 @@ test('galaxy cards use page scrolling and keep debris beside planets at every wi
     expect(debris!.x).toBeGreaterThan(planet!.x + planet!.width)
     await cards.last().scrollIntoViewIfNeeded()
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/galaxy-cards-${width}.png`,
       fullPage: true,
     })
@@ -430,12 +432,12 @@ test('supporter preview compares identities without a session or game requests',
     .getByRole('button', { name: 'Preview $25 / month', exact: true })
     .click()
   await page.setViewportSize({ width: 1440, height: 1200 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/supporter-preview-desktop.png',
     fullPage: true,
   })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/supporter-preview-mobile.png',
     fullPage: true,
   })
@@ -469,7 +471,7 @@ test('Galaxy uses the signed-in supporter identity for the owned planet', async 
   await expect(
     cards.nth(1).getByRole('img', { name: /Supporter/ }),
   ).toHaveCount(0)
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/supporter-live-galaxy.png',
     fullPage: true,
   })
@@ -510,7 +512,7 @@ for (const width of [320, 390, 1280]) {
     await expect(controls[2]).toHaveValue('371')
     await expect(page.getByRole('button', { name: /Refresh galaxy|Retry loading galaxy/ })).toHaveCount(0)
     await expect(page.getByRole('region', { name: 'Galaxy positions' }).getByRole('listitem')).toHaveCount(15)
-    await page.screenshot({ path: `test-results/galaxy-compact-controls-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/galaxy-compact-controls-${width}.png` })
   })
 }
 
@@ -555,7 +557,7 @@ test('galaxy rows keep coordinates first, inline player facts, inset art and pin
     }).toBeLessThanOrEqual(1)
     await expect(controls).toBeInViewport({ ratio: 1 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-    await page.screenshot({ path: `test-results/galaxy-pinned-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/galaxy-pinned-${width}.png` })
   }
 })
 
@@ -657,7 +659,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   await expect(target.getByRole('status')).toHaveText(/Espionage en route · \d/)
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  await page.screenshot({ path: 'test-results/galaxy-espionage-outbound.png' })
+  await diagnosticScreenshot(page, { path: 'test-results/galaxy-espionage-outbound.png' })
   await target.locator('summary').focus()
   const scrollY = await page.evaluate(() => window.scrollY)
   missions.fleets[0].leg = 'Returning'; revision++

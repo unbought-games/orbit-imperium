@@ -22,6 +22,26 @@ Fixture browsers use at most three workers, bounded by available CPUs. Responsiv
 catalog checks keep routes mounted across viewport changes to avoid redundant
 application startup while retaining every viewport and control assertion.
 
+Browser screenshots are diagnostic, not snapshot assertions. Routine runs skip
+named captures and the shared test fixture captures open pages after an unexpected
+failure into the selected browser output directory. Playwright's built-in
+`only-on-failure` mode is disabled because version 1.56 also captures successful
+contexts before discarding their images. CI uploads fixture-browser failure
+diagnostics for seven days. For visual inspection, opt in to the existing named page and element
+captures (including viewport loops):
+
+```sh
+ORBIT_TEST_SCREENSHOTS=1 npm run test:ui -- catalog-pages.spec.ts
+```
+
+This flag also enables the shell navigation test's diagnostic video. Normal
+runs keep its DOM identity and history assertions without recording video.
+
+The same flag works with explicit browser suites. Layout, accessibility and image
+loading assertions run with or without it. See the
+[test performance audit](test-performance-audit.md) for measurements and the
+prioritized follow-up experiments.
+
 ## Public repository runner isolation
 
 The public repository has no registered self-hosted runners, verified on

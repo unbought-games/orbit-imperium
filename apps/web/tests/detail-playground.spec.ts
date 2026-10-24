@@ -1,6 +1,7 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { body, id, refreshGame, shellFixture } from './fixtures/game'
 import type { components } from '../src/contracts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures/test'
 
 const examples = [
   ['mine-zero', 'Metal Mine', 'Confirm upgrade'],
@@ -89,7 +90,7 @@ for (const [scene, title, action] of examples) {
       await expect(page.getByLabel('Action blockers')).toContainText(/Robotics Factory level 4 · finishes in/)
     }
     if (scene === 'storage-full') await expect(page.getByText('Storage full', { exact: true })).toBeVisible()
-    await page.screenshot({ path: `test-results/decision-${scene}-mobile.png`, fullPage: true })
+    await diagnosticScreenshot(page, { path: `test-results/decision-${scene}-mobile.png`, fullPage: true })
     expect(api).toEqual([])
     expect(errors).toEqual([])
   })
@@ -110,7 +111,7 @@ test('desktop uses large real artwork with an overlapping description and the sa
   expect(panel.height).toBeLessThanOrEqual(502)
   expect(caption.y + caption.height).toBeLessThanOrEqual(art.y + art.height + 1)
   expect((await page.getByRole('button', { name: 'Confirm upgrade', exact: true }).boundingBox())!.x).toBeLessThan(art.x)
-  await page.screenshot({ path: 'test-results/decision-desktop.png', fullPage: true })
+  await diagnosticScreenshot(page, { path: 'test-results/decision-desktop.png', fullPage: true })
 })
 
 for (const [scene, label] of [['mine-active', 'Cancel construction'], ['research-active', 'Cancel research']] as const) {
@@ -260,7 +261,9 @@ for (const [scene, region, initial, next, elapsed] of [
     const before = await timer.innerText()
     await page.clock.runFor(5000)
     await expect(timer).not.toHaveText(before)
-    await page.clock.runFor(elapsed - 5000)
+    // The ticking check above exercises intermediate updates. Completion only
+    // needs the next tick after the deadline, not every intervening 250ms tick.
+    await page.clock.fastForward(elapsed - 5000)
     await expect(active).toHaveCount(0)
     await expect(page.getByText(next, { exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: scene === 'mine-active' ? 'Next · level 6' : 'Next · level 4', exact: true })).toBeVisible()
@@ -315,7 +318,7 @@ for (const width of [320, 390, 1440]) {
       const itemName = scene === 'ship-ready' ? 'Small Cargo' : 'Rocket Launcher'
       await expect.poll(async () => (await button.innerText()).replace(/\s+/g, ' ').trim()).toBe(width < 768 ? 'Order 123456' : `Order 123456 ${itemName}`)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: `test-results/order-controls-${scene}-${width}.png`, fullPage: true })
+      await diagnosticScreenshot(page, { path: `test-results/order-controls-${scene}-${width}.png`, fullPage: true })
     })
   }
 }

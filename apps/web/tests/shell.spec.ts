@@ -1,6 +1,8 @@
+import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/test'
 import {
+  installGameFixture,
   shellFixture,
   playerProfilesFixture,
   id,
@@ -151,7 +153,7 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
         )
       }
       if (!building && destination === 'Facilities')
-        await page.screenshot({
+        await diagnosticScreenshot(page, {
           fullPage: true,
           animations: 'disabled',
           path: 'test-results/contextual-facilities-summary.png',
@@ -282,7 +284,7 @@ test('mobile resource stock uses icons and compact balances with capacity detail
     expect((await ledger.locator('..').boundingBox())!.height).toBe(46)
     const planet = await page.getByLabel('Selected body').boundingBox()
     const stock = await ledger.boundingBox()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/mobile-planet-resources-${width}.png`,
       clip: {
         x: planet!.x - 1,
@@ -311,9 +313,10 @@ test('mobile resource stock uses icons and compact balances with capacity detail
   await page.setViewportSize({ width: 1440, height: 900 })
   expect((await metal.innerText()).trim()).toBe('1B')
   await metal.evaluate((element) => element.blur())
-  await page
-    .getByRole('group', { name: 'Planet and resources' })
-    .screenshot({ path: 'test-results/desktop-planet-resources.png' })
+  await diagnosticScreenshot(
+    page.getByRole('group', { name: 'Planet and resources' }),
+    { path: 'test-results/desktop-planet-resources.png' },
+  )
   await metal.click()
   await expect(details).toContainText('Available 1,000,000,000')
   await expect(details).toContainText('Capacity 10,000')
@@ -359,7 +362,7 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
   await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
   await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
   await page.evaluate(() => window.scrollTo(0, 250))
-  await page.screenshot({ path: 'test-results/mobile-pinned-top-bar.png' })
+  await diagnosticScreenshot(page, { path: 'test-results/mobile-pinned-top-bar.png' })
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(bar).toHaveCSS('position', 'static')
 })
@@ -406,7 +409,7 @@ for (const width of [320, 390]) {
     await page.keyboard.press('Enter')
     await expect(page.locator('main h1')).toHaveText('Defense')
     await assertPinned()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/mobile-pinned-build-${width}.png`,
     })
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
@@ -415,7 +418,7 @@ for (const width of [320, 390]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/mobile-pinned-build-large-text-${width}.png`,
     })
   })
@@ -436,7 +439,7 @@ for (const width of [768, 1440, 1920]) {
     }
     await expect(header).toHaveCSS('border-bottom-width', '1px')
     await expect(submenu).toHaveCSS('border-top-width', '1px')
-    await page.screenshot({ path: `test-results/header-dividers-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/header-dividers-${width}.png` })
   })
 }
 
@@ -605,7 +608,7 @@ test('shipyard and defense show every batch in the same ordered queue', async ({
     )
     await expect(queue).not.toContainText('Large Cargo')
   }
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: '/tmp/orbit-shared-manufacturing-queue.png',
     fullPage: true,
   })
@@ -855,7 +858,7 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
           .map((n) => n.textContent),
       )
     expect(undersized, `${width}px control targets`).toEqual([])
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/compact-shell-${width}.png`,
       fullPage: true,
     })
@@ -904,7 +907,7 @@ test('touch details show whole resources and remain usable with enlarged text', 
   const rect = await popover.boundingBox()
   expect(rect!.x).toBeGreaterThanOrEqual(0)
   expect(rect!.x + rect!.width).toBeLessThanOrEqual(390)
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/compact-shell-text-size.png',
     fullPage: true,
   })
@@ -1170,11 +1173,11 @@ test('overview preserves rich work, exact inventory, incoming visibility and res
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/foundation-overview-${width}.png`,
       fullPage: true,
     })
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/foundation-viewport-${width}.png`,
     })
   }
@@ -1244,10 +1247,10 @@ test('navigation keeps shell identity mounted through rapid route changes', asyn
 }) => {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
-    recordVideo: {
+    recordVideo: process.env.ORBIT_TEST_SCREENSHOTS === '1' ? {
       dir: 'test-results/foundation-motion',
       size: { width: 1440, height: 900 },
-    },
+    } : undefined,
   })
   const page = await context.newPage()
   const purchases = await shellFixture(page, { protocol: 4 })
@@ -1293,6 +1296,9 @@ test('navigation keeps shell identity mounted through rapid route changes', asyn
       page.getByRole('link', { name: 'Empire', exact: true }),
     ).toHaveAttribute('aria-current', 'page')
     expect(purchases()).toBe(0)
+  } catch (error) {
+    await attachFailureScreenshots([page], test.info())
+    throw error
   } finally {
     release()
     await page.unrouteAll({ behavior: 'wait' })
@@ -1440,11 +1446,11 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
         }),
       ).toBe(1)
     }
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/fleet-populated-${width}.png`,
       fullPage: true,
     })
-    await diagram.screenshot({
+    await diagnosticScreenshot(diagram, {
       path: `test-results/fleet-diagram-${width}.png`,
     })
   }
@@ -1453,7 +1459,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     .getByRole('button', { name: 'Review recall', exact: true })
     .scrollIntoViewIfNeeded()
   await mission.getByText('Flight path', { exact: true }).click()
-  await page.screenshot({ path: 'test-results/fleet-facts-phone.png' })
+  await diagnosticScreenshot(page, { path: 'test-results/fleet-facts-phone.png' })
   await expect(
     page.getByRole('link', { name: 'All fleets', exact: true }),
   ).toBeVisible()
@@ -1462,7 +1468,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     page.getByRole('region', { name: 'Review recall' }),
   ).toContainText('Estimated return if recalled now')
   expect(sent).toBe(0)
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/fleet-recall-review-phone.png',
     fullPage: true,
   })
@@ -1571,12 +1577,12 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await expect(
     page.getByRole('checkbox', { name: 'Show deleted reports' }),
   ).toHaveCount(0)
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/reports-list-desktop.png',
     fullPage: true,
   })
   await page.setViewportSize({ width: 390, height: 900 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/reports-list-phone.png',
     fullPage: true,
   })
@@ -1595,7 +1601,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/reports-detail-${width}.png`,
       fullPage: true,
     })
@@ -1610,14 +1616,14 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await expect(page.getByLabel('System', { exact: true })).toHaveValue('372')
   await expect(page.getByLabel('Position', { exact: true })).toHaveValue('10')
   await expect(page.getByText(/Prepared from an observation/)).toBeVisible()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-draft-phone.png',
     fullPage: true,
   })
   reportMode = 'empty'
   await page.goto(`/u/andromeda/reports?body=${body.id}`)
   await expect(page.getByText('No reports yet.', { exact: true })).toBeVisible()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/reports-empty-phone.png',
     fullPage: true,
   })
@@ -1629,7 +1635,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await expect(
     page.getByRole('region', { name: 'Report observation' }),
   ).toHaveCount(0)
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/reports-unavailable-phone.png',
     fullPage: true,
   })
@@ -1655,7 +1661,7 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
   })
   await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   await expect(page.getByText('No active fleets.')).toBeVisible()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/fleets-empty-phone.png',
     fullPage: true,
   })
@@ -1665,7 +1671,7 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
       'This item is unavailable or outside the current authorized view.',
     ),
   ).toBeVisible()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/fleets-unavailable-phone.png',
     fullPage: true,
   })
@@ -1678,12 +1684,12 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
       .getByRole('region', { name: 'Session actions' })
       .getByRole('button', { name: 'Sign out', exact: true }),
   ).toBeVisible()
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/settings-phone.png',
     fullPage: true,
   })
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/settings-desktop.png',
     fullPage: true,
   })
@@ -1775,12 +1781,12 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   expect(quoteRequests).toBe(1)
   expect(sent).toBe(0)
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-review-desktop.png',
     fullPage: true,
   })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-review-phone.png',
     fullPage: true,
   })
@@ -1852,7 +1858,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   ).toBeDisabled()
   expect(sent).toBe(1)
 
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-uncertain-phone.png',
     fullPage: true,
   })
@@ -1906,7 +1912,7 @@ test('legacy fleets retain trajectory, exact arrival and reviewed recall', async
     page.getByRole('button', { name: 'Recall fleet', exact: true }),
   ).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/legacy-fleet-phone.png',
     fullPage: true,
   })
@@ -2254,14 +2260,14 @@ for (const width of [320, 390, 768, 1024, 1440]) {
       await page.evaluate(() => window.dispatchEvent(new Event('online')))
       await expect(alert).toBeVisible()
       await expect(menu).toHaveAccessibleDescription('Unread reports')
-      await page.screenshot({ path: `test-results/unread-reports-${width}-${textScale}.png` })
+      await diagnosticScreenshot(page, { path: `test-results/unread-reports-${width}-${textScale}.png` })
       await assertLayout()
       await menu.focus()
       await page.keyboard.press('Enter')
       const reports = page.getByRole('link', { name: 'Reports — unread reports' })
       await expect(reports).toBeVisible()
       await expect(reports.locator('svg')).toHaveCount(2)
-      await page.screenshot({ path: `test-results/unread-report-menu-${width}-${textScale}.png` })
+      await diagnosticScreenshot(page, { path: `test-results/unread-report-menu-${width}-${textScale}.png` })
       await reports.focus()
       await expect(reports).toBeFocused()
       await page.keyboard.press('Escape')
@@ -2325,7 +2331,7 @@ for (const width of [768, 1024, 1440, 1800]) {
     await primary.getByRole('link', { name: 'Build', exact: true }).click()
     await expect(page.locator('main h1')).toHaveText('Resources')
     await page.mouse.move(width / 2, 300)
-    await page.screenshot({ path: `test-results/desktop-pinned-header-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/desktop-pinned-header-${width}.png` })
   })
 }
 
@@ -2373,22 +2379,24 @@ for (const width of [768, 1024, 1440, 1800]) {
   })
 }
 
-test('planet-scoped gameplay routes retain context and redirect old query URLs', async ({ page }) => {
-  const purchases = await shellFixture(page, { protocol: 4 })
+test.describe('planet-scoped gameplay routes retain context and redirect old query URLs', () => {
   for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch'], ['reports', 'Reports']]) {
-    await page.goto(`/u/andromeda/${path}?body=${body.id}`)
-    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
-    await expect(page.locator('main h1')).toHaveText(heading)
-    await page.getByLabel('Selected body').selectOption(id(6))
-    await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${path}`)
-    await page.reload()
-    await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
-    await expect(page.locator('main h1')).toHaveText(heading)
-    await page.goto(`/u/andromeda/b/${id(99)}/${path}`)
-    await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
-    await expect(page).toHaveURL(`/u/andromeda/b/${id(99)}/${path}`)
+    test(path, async ({ page }) => {
+      const purchases = await installGameFixture(page, { protocol: 4 })
+      await page.goto(`/u/andromeda/${path}?body=${body.id}`)
+      await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
+      await expect(page.locator('main h1')).toHaveText(heading)
+      await page.getByLabel('Selected body').selectOption(id(6))
+      await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${path}`)
+      await page.reload()
+      await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+      await expect(page.locator('main h1')).toHaveText(heading)
+      await page.goto(`/u/andromeda/b/${id(99)}/${path}`)
+      await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
+      await expect(page).toHaveURL(`/u/andromeda/b/${id(99)}/${path}`)
+      expect(purchases()).toBe(0)
+    })
   }
-  expect(purchases()).toBe(0)
 })
 
 for (const width of [320, 390, 1440]) {
@@ -2425,7 +2433,7 @@ for (const width of [320, 390, 1440]) {
       expect(bounds.height).toBeLessThanOrEqual(45)
       expect((await queue.boundingBox())!.height).toBeLessThanOrEqual(62)
       await expect(queue.getByRole('button', { name: /^Cancel / })).toBeEnabled()
-      await queue.screenshot({ path: `test-results/compact-work-${path}-${width}.png` })
+      await diagnosticScreenshot(queue, { path: `test-results/compact-work-${path}-${width}.png` })
     }
   })
 }

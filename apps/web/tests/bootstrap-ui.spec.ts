@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect } from './fixtures/test'
 import { binding, body, shellFixture } from './fixtures/game'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 
@@ -127,7 +128,7 @@ test('OIDC sign-in offers one prominent account action and retains the destinati
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     }
-    await page.screenshot({ path: `test-results/oidc-sign-in-${width}.png`, fullPage: true })
+    await diagnosticScreenshot(page, { path: `test-results/oidc-sign-in-${width}.png`, fullPage: true })
   }
   await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
   await expect(page.getByRole('navigation', { name: 'Policies and support' })).toBeVisible()
@@ -595,6 +596,7 @@ for (const restoreDuringSubmit of [false, true]) {
   test(`slow Login presence waits before polling and cancels cleanly (restore=${restoreDuringSubmit})`, async ({
     page,
   }) => {
+    await page.clock.install()
     const { bootstrapFixture } = await import('../src/test-support/bootstrap')
     const { body } = await import('./fixtures/game')
     const payload = bootstrapFixture(4)
@@ -666,7 +668,7 @@ for (const restoreDuringSubmit of [false, true]) {
     await expect.poll(() => presenceRequests).toBe(1)
     // Exercise more than the initial 500 ms polling delay while submit is held.
     try {
-      await page.waitForTimeout(1000)
+      await page.clock.runFor(1000)
       expect({ receiptRequests, discoveries, views }).toEqual({
         receiptRequests: 0,
         discoveries: 0,
@@ -684,7 +686,7 @@ for (const restoreDuringSubmit of [false, true]) {
       release()
     }
     if (restoreDuringSubmit) {
-      await page.waitForTimeout(700)
+      await page.clock.runFor(700)
       expect({ receiptRequests, discoveries, views }).toEqual({
         receiptRequests: 0,
         discoveries: 0,
@@ -920,7 +922,7 @@ test('homepage centers policies and highlights news, GitHub, and Discord', async
       .toBeGreaterThan(await policies.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (width === 1440 || width === 390)
-      await page.screenshot({ path: `test-results/homepage-${width}.png`, fullPage: true })
+      await diagnosticScreenshot(page, { path: `test-results/homepage-${width}.png`, fullPage: true })
   }
 })
 
@@ -942,7 +944,7 @@ test('starting beta and reset notice appear before public enrollment with approv
     if (path === '/signup') {
       const action = page.getByRole('button', { name: 'Create account', exact: true })
       expect((await notice.boundingBox())!.y).toBeLessThan((await action.boundingBox())!.y)
-      await page.screenshot({ path: 'test-results/open-beta-signup-mobile.png', fullPage: true })
+      await diagnosticScreenshot(page, { path: 'test-results/open-beta-signup-mobile.png', fullPage: true })
     }
   }
 })
@@ -958,7 +960,7 @@ test('signed-in settings retain the beta notice and best-effort support target',
   await expect(page.getByRole('navigation', { name: 'Policies and support' })).toHaveCount(0)
   await expect(page.getByRole('contentinfo')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await page.screenshot({ path: 'test-results/open-beta-settings-mobile.png', fullPage: true })
+  await diagnosticScreenshot(page, { path: 'test-results/open-beta-settings-mobile.png', fullPage: true })
 })
 
 test('universe names stay out of the header while every game link uses the current name', async ({ page }) => {
@@ -987,7 +989,7 @@ test('universe names stay out of the header while every game link uses the curre
   await expect(page).toHaveURL(new RegExp(`/u/my-~2f~-universe~3f~-~23~1/b/${body.id}/overview$`))
   await expect(page).toHaveTitle(/My \/ Universe\? #1/)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await page.screenshot({ path: 'test-results/universe-name-mobile.png', fullPage: true })
+  await diagnosticScreenshot(page, { path: 'test-results/universe-name-mobile.png', fullPage: true })
 
   const uuidPath = `/u/${binding.universe}/b/${body.id}/overview`
   await page.goto(uuidPath)
@@ -1067,7 +1069,7 @@ test('mobile startup automatically recovers from a transient restart without sig
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   await ready(page.getByText('Connection temporarily unavailable. Reconnecting automatically…')).toBeVisible()
   await ready(page.getByLabel('Password')).toHaveCount(0)
-  await page.screenshot({ path: 'test-results/transient-recovery-mobile.png', fullPage: true })
+  await diagnosticScreenshot(page, { path: 'test-results/transient-recovery-mobile.png', fullPage: true })
   await page.clock.runFor(1000)
   await ready.poll(() => reads).toBe(2)
   // A request reaching the fixture does not mean the client applied its response.
@@ -1084,7 +1086,7 @@ test('mobile startup automatically recovers from a transient restart without sig
   await ready(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   expect(reads).toBe(3)
   await ready(page.getByLabel('Password')).toHaveCount(0)
-  await page.screenshot({ path: 'test-results/transient-recovered-mobile.png', fullPage: true })
+  await diagnosticScreenshot(page, { path: 'test-results/transient-recovered-mobile.png', fullPage: true })
 })
 
 

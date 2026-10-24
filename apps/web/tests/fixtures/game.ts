@@ -43,7 +43,8 @@ export const body: components['schemas']['BodyV3'] = {
   energy: { supply: '48400000', demand: '22000000', utilization: '1000000' },
   inventories: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '2' }],
 }
-export async function shellFixture(
+/** Install HTTP fixtures before navigating directly to the page under test. */
+export async function installGameFixture(
   page: Page,
   options: {
     universeName?: string
@@ -305,12 +306,21 @@ export async function shellFixture(
     if (url.pathname.endsWith('/commands')) purchases++
     return route.fulfill({ status: 404, json: { code: 'NotFound' } })
   })
+  return () => purchases
+}
+
+/** Tests of the shell and navigation still start from the ready overview. */
+export async function shellFixture(
+  page: Page,
+  options: Parameters<typeof installGameFixture>[1] = {},
+) {
+  const purchases = await installGameFixture(page, options)
   await page.goto(
     `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
   )
   // A startup connection surface also has an H1; mutations need the ready game.
   await expect(page.locator('main h1')).toContainText('Empire —')
-  return () => purchases
+  return purchases
 }
 
 /** Fixture mutations stand in for authoritative changes; trigger the client's

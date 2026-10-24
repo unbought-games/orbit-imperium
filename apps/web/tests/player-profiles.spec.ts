@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect } from './fixtures/test'
 import type { components } from '../src/contracts'
 import {
   shellFixture,
@@ -112,7 +113,7 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/public-supporters-${width}.png`,
       fullPage: true,
     })

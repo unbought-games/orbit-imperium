@@ -1,8 +1,10 @@
+import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { captureCatalog } from './fixtures/catalog-capture'
 import { readFileSync } from 'node:fs'
-import { test, expect, type Locator, type Page } from '@playwright/test'
-import { shellFixture, body, binding, refreshGame, id } from './fixtures/game'
+import { test, expect, type Locator, type Page } from './fixtures/test'
+import { installGameFixture, shellFixture, body, binding, refreshGame, id } from './fixtures/game'
+import { universeSlug } from '../src/client-model/universe-name'
 import type { components } from '../src/contracts'
 type S = components['schemas']
 test('active research remains cancellable from its details after removing Current work', async ({
@@ -132,7 +134,7 @@ const catalog: S['CatalogEntry3'][] = [
     body_kinds: ['Planet'],
   },
 ]
-async function setup(page: Page, blocked = false, unitCost?: S['Resources'], options: Parameters<typeof shellFixture>[1] = {}) {
+async function installCatalogFixture(page: Page, blocked = false, unitCost?: S['Resources'], options: Parameters<typeof shellFixture>[1] = {}) {
   const blockers = blocked
     ? [
         {
@@ -148,7 +150,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
   const sent: S['CommandEnvelopeV3'][] = []
   const inspections: S['QuoteRequest3'][] = []
   const planet = structuredClone(body)
-  await shellFixture(page, {
+  await installGameFixture(page, {
     bodies: [planet],
     catalog,
     research: [
@@ -242,6 +244,13 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
     })
   })
   return { sent, planet, blockers, inspections }
+}
+
+async function setup(page: Page, blocked = false, unitCost?: S['Resources'], options: Parameters<typeof shellFixture>[1] = {}) {
+  const fixture = await installCatalogFixture(page, blocked, unitCost, options)
+  await page.goto(`/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`)
+  await expect(page.locator('main h1')).toContainText('Empire —')
+  return fixture
 }
 
 test('facility rows have no upgrade action and require confirmation on the detail page', async ({
@@ -486,7 +495,7 @@ test('catalog detail artwork preserves source proportions in a tall panel', asyn
   await expectUndistortedArt(
     page.getByRole('region', { name: 'Progression quote' }),
   )
-  await page.screenshot({ path: 'test-results/catalog-detail-art.png' })
+  await diagnosticScreenshot(page, { path: 'test-results/catalog-detail-art.png' })
 })
 
 for (const width of [1440, 390, 320]) {
@@ -537,7 +546,7 @@ for (const width of [1440, 390, 320]) {
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     }
-    await page.screenshot({ path: `test-results/catalog-without-scene-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/catalog-without-scene-${width}.png` })
   })
 }
 
@@ -804,7 +813,7 @@ for (const [destination, tile] of [
 test('catalogs fit narrow screens and enlarged text without losing controls', async ({
   page,
 }) => {
-  await setup(page)
+  await installCatalogFixture(page)
   // Keep each route mounted while exercising every viewport. Rebooting the
   // fixture application for each size adds no responsive-layout coverage.
   for (const [path, tile] of [
@@ -844,15 +853,22 @@ test('catalogs fit narrow screens and enlarged text without losing controls', as
         await expect(panel).toBeHidden()
       }
     }
+    // Every category must remain usable at enlarged text, not just the last one.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.evaluate(() => (document.documentElement.style.fontSize = '200%'))
+    const panel = page.getByRole('region', { name: 'Progression quote' })
+    await expect(panel).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.keyboard.press('Escape')
+    await panel.getByRole('link', { name: /^Back to / }).click()
+    await expect(page.getByRole('link', { name: tile, exact: true })).toBeFocused()
+    await page.evaluate(() => document.documentElement.style.removeProperty('font-size'))
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
   }
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.evaluate(() => (document.documentElement.style.fontSize = '200%'))
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true)
 })
 
 test('changing manufacturing quantity while unit terms load uses the latest quantity', async ({
@@ -928,7 +944,7 @@ for (const width of [1440, 390]) {
       expect(
         await hero.evaluate((image) => (image as HTMLImageElement).currentSrc),
       ).toContain('/planet-04-640.webp')
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/artwork-${width}.png`,
       fullPage: true,
     })
@@ -961,9 +977,9 @@ test('selected unit decisions floor balances and retain large inventory on phone
     await expect(pane.getByRole('button', { name: 'Build', exact: true })).toHaveText('Order 1 Small Cargo')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await captureCatalog(page, `test-results/progression-ships-selected-${width}.png`)
-    await page.screenshot({ path: `test-results/progression-ships-selected-${width}-viewport.png`, animations: 'disabled' })
+    await diagnosticScreenshot(page, { path: `test-results/progression-ships-selected-${width}-viewport.png`, animations: 'disabled' })
     await pane.getByRole('button', { name: 'Build', exact: true }).click({ trial: true })
-    await page.screenshot({ path: `test-results/progression-ships-decision-${width}-viewport.png`, animations: 'disabled' })
+    await diagnosticScreenshot(page, { path: `test-results/progression-ships-decision-${width}-viewport.png`, animations: 'disabled' })
   }
 })
 
@@ -985,7 +1001,7 @@ test('facility catalog details remain usable when artwork fails', async ({ page 
 })
 
 test('selected facilities research and defense show reviewable decisions at all target widths', async ({ page }) => {
-  await setup(page, true)
+  await installCatalogFixture(page, true)
   for (const [path, tile] of [['facilities', 'Upgrade Robotics Factory'], ['research', 'Research Combustion Drive'], ['defense', 'Build Rocket Launcher']]) {
     await page.goto(path === 'research' ? `/u/andromeda/b/${body.id}/research` : `/u/andromeda/b/${body.id}/${path}`)
     for (const width of [1440, 390, 320]) {
@@ -1003,15 +1019,15 @@ test('selected facilities research and defense show reviewable decisions at all 
 })
 
 test('active facility remains cancellable without a fresh quote at each target width', async ({ page }) => {
-  await shellFixture(page, {
+  await installGameFixture(page, {
     catalog,
     constructions: [{ id: '00000000-0000-4000-8000-000000000020', body: body.id, building: 'RoboticsFactory', target_level: 1, paid: { metal: '60000000', crystal: '15000000', deuterium: '0' }, due_at: Date.now() + 76000 }],
   })
   await page.route('**/progression-options', route => route.abort())
+  await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+  await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto(`/u/andromeda/b/${body.id}/facilities`)
-    await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
     await expect(pane.getByRole('group', { name: 'Cancellation refund', exact: true })).toContainText('60')
@@ -1063,7 +1079,7 @@ test('narrow spending ledgers keep whole large balances intact with visible labe
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/final-integration/exact-large-cost-${width}-${textSize}${wideFont ? '-wide-font' : ''}.png`,
       fullPage: true,
       animations: 'disabled',
@@ -1461,7 +1477,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('dialog', { name: 'Technology — Robotics Factory', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Close technology' }).click()
     await back.focus()
-    await page.screenshot({ path: `test-results/machined-buttons-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/machined-buttons-${width}.png` })
     await page.keyboard.press('Enter')
     await expect(page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })).toBeFocused()
   })
@@ -1507,6 +1523,9 @@ test('machined icon links and secondary actions work with touch', async ({ brows
     await page.getByRole('button', { name: 'Close technology' }).tap()
     await page.getByRole('link', { name: 'Back to Facilities', exact: true }).tap()
     await expect(page.getByRole('region', { name: 'Progression quote' })).toHaveCount(0)
+  } catch (error) {
+    await attachFailureScreenshots([page], test.info())
+    throw error
   } finally {
     await context.close()
   }
@@ -1560,7 +1579,7 @@ test('clickable catalog cards keep artwork and labels left aligned independently
     await expect(robotics.getByLabel('Construction progress')).toContainText('6m')
     await expect(robotics).toContainText('Level 4')
     const list = page.getByRole('region', { name: 'Facility buildings', exact: true })
-    await list.screenshot({ path: `test-results/facilities-left-aligned-${width}.png` })
+    await diagnosticScreenshot(list, { path: `test-results/facilities-left-aligned-${width}.png` })
   }
 })
 
@@ -1595,7 +1614,7 @@ for (const width of [390, 1440]) {
         await input.fill('1')
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await pane.screenshot({ path: `test-results/final-integration/game-detail-${route}-${width}.png` })
+      await diagnosticScreenshot(pane, { path: `test-results/final-integration/game-detail-${route}-${width}.png` })
       await pane.getByRole('link', { name: /^Back to / }).click()
       await expect(page.getByRole('link', { name: tile, exact: true })).toBeFocused()
     }
@@ -1648,7 +1667,7 @@ for (const width of [320, 390, 1440]) {
       expect(submitted).toBe(1)
       await result.scrollIntoViewIfNeeded()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: `test-results/action-confirmation-${pageName}-${width}.png`, fullPage: true })
+      await diagnosticScreenshot(page, { path: `test-results/action-confirmation-${pageName}-${width}.png`, fullPage: true })
       // Editing the next order never changes the acknowledged quantity.
       await page.getByLabel(quantityLabel).fill('1')
       await expect(result).toContainText(`4 × ${itemName}`)

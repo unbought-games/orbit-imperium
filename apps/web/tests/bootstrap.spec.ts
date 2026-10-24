@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/test'
 
 test('production HTML bootstraps an authenticated refresh without startup reads or screen flashes', async ({
   page,
