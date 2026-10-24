@@ -35,15 +35,24 @@ for (const mode of ['ios-installed', 'ios-browser', 'other-browser'] as const) {
       }, type)
       expect(cancelled).toBe(installed && type.startsWith('gesture'))
     }
-    // Chromium can inject a native pinch; WebKit's driver only exposes taps.
+    // Chromium can inject two-finger input; WebKit's driver only exposes taps.
     if (browserName === 'chromium') {
       const session = await context.newCDPSession(page)
-      await session.send('Input.synthesizePinchGesture', {
-        x: 195,
-        y: 350,
-        scaleFactor: 2,
-        gestureSourceType: 'touch',
+      await session.send('Emulation.setTouchEmulationEnabled', {
+        enabled: true,
+        maxTouchPoints: 2,
       })
+      for (let step = 0; step <= 10; step++) {
+        await session.send('Input.dispatchTouchEvent', {
+          type: step === 0 ? 'touchStart' : 'touchMove',
+          touchPoints: [
+            { id: 0, x: 150 - step * 6, y: 350 },
+            { id: 1, x: 240 + step * 6, y: 350 },
+          ],
+        })
+        await page.evaluate(() => new Promise(requestAnimationFrame))
+      }
+      await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
       const scale = () => page.evaluate(() => window.visualViewport!.scale)
       if (installed) await expect.poll(scale).toBe(1)
       else await expect.poll(scale).toBeGreaterThan(1)
