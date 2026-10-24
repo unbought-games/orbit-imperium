@@ -7,14 +7,12 @@ import { Text } from '../ui/typography'
 import { ReportListRow } from './report-list-row'
 import { TaskHeader } from '../ui/task-header'
 import styles from './reports.module.css'
-import { useEffect, useRef, useState } from 'react'
-import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
 import { ReportObservation } from './report-observation'
 import { reportFailure } from './report-failure'
 import { ReportVisibilityButton } from './report-visibility-button'
-import { pendingReportVisibility } from './report-visibility'
+import { useReports } from './use-reports'
 import type { DispatchDraft } from './missions'
 import { label } from '../ui/format'
 import { useStore } from 'zustand'
@@ -22,7 +20,6 @@ import { currentServerTime } from '../client-model/game-projection'
 import { Popover } from '../ui/popover'
 import { reportAge } from './report-preview'
 import { exactTime } from './mission-presentation'
-type S = components['schemas']
 export function Reports({
   model,
   universe,
@@ -37,102 +34,24 @@ export function Reports({
   onDraft: (draft: DispatchDraft) => void
 }) {
   const now = useStore(model.store, currentServerTime)
-  const changingVisibility = useStore(
-    model.store,
-    (state) => !!pendingReportVisibility(state.attempts.values()),
-  )
-  const [page, setPage] = useState<S['ReportsPage4'] | null>(null),
-    [detail, setDetail] = useState<S['ReportDetail4'] | null>(null),
-    [error, setError] = useState<unknown>(null),
-    [refresh, setRefresh] = useState(0),
-    [olderPages, setOlderPages] = useState(false),
-    [loading, setLoading] = useState(false),
-    [loadingMore, setLoadingMore] = useState(false)
+  const {
+    page,
+    detail,
+    error,
+    loading,
+    loadingMore,
+    changingVisibility,
+    more,
+    retry,
+    invalidate,
+  } = useReports(model, item)
   useProfileSource(
     detail && detail.header.id === item
       ? { type: 'Report', report: detail.header.id }
       : null,
     model.view?.viewer_revision,
   )
-  // One read gesture per opened report; server refreshes must not resubmit it.
-  const readRequested = useRef<string | null>(null)
-  useEffect(() => {
-    readRequested.current = null
-  }, [model, item])
   const failure = reportFailure(error)
-  useEffect(() => {
-    if (!item) setDetail(null)
-    if (!item && page && olderPages) return
-    let live = true
-    setLoading(true)
-    setError(null)
-    if (detail?.header.id !== item) setDetail(null)
-    const load = item ? model.reportDetail(item) : model.reportPage(null, false)
-    void load
-      .then((v) => {
-        if (!live) return
-        setLoading(false)
-        if (!v) {
-          setError('Unable to confirm this report response. Try again.')
-          return
-        }
-        if ('header' in v) {
-          setDetail(v)
-          if (
-            v.header.id === item &&
-            !v.header.read &&
-            readRequested.current !== item
-          ) {
-            readRequested.current = item
-            setOlderPages(false)
-            void model.send({
-              type: 'World',
-              action: { type: 'MarkReportRead', report: v.header.id },
-            })
-          }
-          setPage((old) =>
-            old
-              ? {
-                  ...old,
-                  items: old.items
-                    .map((row) => (row.id === v.header.id ? v.header : row))
-                    .filter((row) => !row.hidden),
-                }
-              : old,
-          )
-        } else {
-          setPage(v)
-        }
-      })
-      .catch((error: unknown) => {
-        if (live) {
-          setLoading(false)
-          setError(error)
-        }
-      })
-    return () => {
-      live = false
-      // A cancelled detail request cannot leave a retained paginated inbox busy.
-      setLoading(false)
-    }
-  }, [model, item, model.view?.viewer_revision, refresh])
-  async function more() {
-    setError(null)
-    setOlderPages(true)
-    setLoadingMore(true)
-    try {
-      const next = await model.reportPage(page?.next_cursor ?? null, false)
-      if (next)
-        setPage((old) => ({
-          ...next,
-          items: [...(old?.items ?? []), ...next.items],
-        }))
-    } catch (error) {
-      setError(error)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
   const combat = detail?.payload.kind === 'Combat' ? detail.payload : null
   const harvestAction =
     combat &&
@@ -175,8 +94,7 @@ export function Reports({
                 window.location.reload()
                 return
               }
-              setOlderPages(false)
-              setRefresh((n) => n + 1)
+              retry()
             }}
           >
             {failure.reload ? 'Reload app' : 'Retry reports'}
@@ -214,7 +132,7 @@ export function Reports({
                 hidden={detail.header.hidden}
                 compact
                 disabled={loading}
-                onRequest={() => setOlderPages(false)}
+                onRequest={invalidate}
               />
               {detail.payload.kind === 'Espionage' &&
                 model.view?.capabilities.some(
@@ -321,7 +239,7 @@ export function Reports({
               origin={origin}
               now={now}
               disabled={loading || loadingMore || changingVisibility}
-              onRequest={() => setOlderPages(false)}
+              onRequest={invalidate}
             />
           ))}
           {page.has_more && (
