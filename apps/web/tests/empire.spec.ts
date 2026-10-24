@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { expect, test } from './fixtures/test'
 import {
   binding,
   body,
@@ -277,8 +278,8 @@ test('desktop and phone command views keep all information readable without hori
         await dossier.evaluate((el) => el.scrollWidth <= el.clientWidth),
       ).toBe(true)
     }
-    await page.screenshot({ path: `test-results/empire-viewport-${width}.png` })
-    await page.screenshot({
+    await diagnosticScreenshot(page, { path: `test-results/empire-viewport-${width}.png` })
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-${width}.png`,
       fullPage: true,
     })
@@ -374,7 +375,7 @@ for (const longContent of [false, true]) {
       await scrollArea.evaluate((el) => {
         el.scrollTop = 0
       })
-      await board.screenshot({
+      await diagnosticScreenshot(board, {
         path: `test-results/fleet-movements-${longContent ? 'long' : 'single'}-${width}.png`,
       })
     }

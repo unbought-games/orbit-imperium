@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Route } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Page, type Route } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 type S = components['schemas']
@@ -178,7 +179,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/dispatch-validation-${width}.png`,
       fullPage: true,
     })
@@ -234,7 +235,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   ).toBeVisible()
   expect(state.quotes).toBe(0)
   await page.setViewportSize({ width: 390, height: 900 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-protection-mobile.png',
     fullPage: true,
   })

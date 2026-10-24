@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { expect, test, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { binding, body, id, shellFixture } from './fixtures/game'
 
@@ -218,7 +219,7 @@ for (const width of [320, 390, 1440]) {
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
     ).toBeEnabled()
-    await page.screenshot({ path: `test-results/building-energy-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/building-energy-${width}.png` })
     await pane
       .getByRole('button', { name: 'Demolish Crystal Mine', exact: true })
       .click()
@@ -248,7 +249,7 @@ for (const width of [320, 390, 1440]) {
       'Extra operating energy',
     )
     await row.scrollIntoViewIfNeeded()
-    await page.screenshot({ path: `test-results/building-quote-${width}.png` })
+    await diagnosticScreenshot(page, { path: `test-results/building-quote-${width}.png` })
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -301,7 +302,7 @@ for (const width of [320, 390, 1440]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await pane.screenshot({ path: `test-results/storage-detail-${width}.png` })
+    await diagnosticScreenshot(pane, { path: `test-results/storage-detail-${width}.png` })
     await pane.getByRole('link', { name: /^Back to / }).click()
     await page
       .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })

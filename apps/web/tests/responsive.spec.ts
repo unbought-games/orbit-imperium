@@ -1,7 +1,8 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { openProductionSettings } from './fixtures/production-settings'
 import {universeSlug} from '../src/client-model/universe-name'
 import {navigate,foreground} from './fixtures/navigation'
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 test('routed progression shell: viewport matrix, keyboard, history, invalid IDs and no navigation purchases', async ({page,browser})=>{
@@ -27,9 +28,9 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
    const small=await page.locator('button,input,select,summary,nav a,main a,aside a').evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect();return r.width>0&&r.height>0&&(r.width<(innerWidth<1024?44:24)||r.height<(innerWidth<1024?44:24))}).map(n=>n.textContent));expect(small).toEqual([]);
   }
   await go('overview');if(width===1440){expect((await page.getByRole('main').boundingBox())?.width).toBe(1368);await expect(page.getByRole('complementary',{name:'Planets and moons'})).toHaveCount(0);const nav=page.getByRole('navigation',{name:'Main navigation',exact:true});const world=await nav.getByRole('link',{name:'Empire',exact:true}).boundingBox(),build=await nav.getByRole('link',{name:'Build',exact:true}).boundingBox();expect(world!.y).toBe(build!.y);expect(world!.x+world!.width).toBeLessThan(build!.x)}
-  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`test-results/overview-${width}x${height}.png`});
+  await page.evaluate(()=>window.scrollTo(0,0));await diagnosticScreenshot(page, {path:`test-results/overview-${width}x${height}.png`});
   await go('resources');await page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).click();await expect(page.getByRole('region',{name:'Progression quote'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.screenshot({path:`test-results/responsive-${width}x${height}.png`,fullPage:true});await page.getByRole('link',{name:/^Back to /}).click();
+  await diagnosticScreenshot(page, {path:`test-results/responsive-${width}x${height}.png`,fullPage:true});await page.getByRole('link',{name:/^Back to /}).click();
  }
  await page.setViewportSize({width:390,height:844});await go('overview');
  await page.getByRole('button',{name:'Menu',exact:true}).last().focus();await page.keyboard.press('Enter');await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Menu',exact:true}).last()).toBeFocused();
@@ -46,7 +47,7 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
  await page.route('**/progression-options',async r=>{const response=await r.fetch();inspectionStarted();await released;await r.fulfill({response})},{times:1});
  await page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).click();await started;await go('facilities');releaseInspection();await page.waitForResponse(r=>r.url().endsWith('/progression-options'));await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);
  await page.getByRole('link',{name:'Upgrade Research Lab',exact:true}).click();await expect(page.getByRole('region',{name:'Progression quote'})).toContainText('Research Lab');await page.getByRole('link',{name:/^Back to /}).click();
- await page.addStyleTag({content:'html {font-size:200%!important} * {line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important} p {margin-bottom:2em!important}'});await go('resources');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/responsive-text-spacing.png',fullPage:true});
+ await page.addStyleTag({content:'html {font-size:200%!important} * {line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important} p {margin-bottom:2em!important}'});await go('resources');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await diagnosticScreenshot(page, {path:'test-results/responsive-text-spacing.png',fullPage:true});
 
  // Presentation-only stress, independently labeled from the real journeys above.
  await page.route('**/api/v3/universes/*/overview',async r=>{
@@ -61,7 +62,7 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
  await expect(page.getByText('9,223,372,036,854',{exact:true}).first()).toBeVisible({timeout:15000});
  await page.keyboard.press('Escape');
  await expect(page.getByRole('complementary',{name:'Activity'})).toHaveCount(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.screenshot({path:'test-results/responsive-stress.png',fullPage:true});await page.unrouteAll({behavior:'wait'});
+ await diagnosticScreenshot(page, {path:'test-results/responsive-stress.png',fullPage:true});await page.unrouteAll({behavior:'wait'});
  expect(writes).toBe(0);console.log(`Browser ${browser.version()}; keyboard and pointer emulation; all routes at six viewports; text resize/spacing; zero navigation command submissions.`);
 });
 

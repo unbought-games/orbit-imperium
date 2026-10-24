@@ -1,5 +1,5 @@
 import {navigate,menuDestination,signOut} from './fixtures/navigation'
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/test'
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 

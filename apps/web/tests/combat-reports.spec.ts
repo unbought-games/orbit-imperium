@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect } from './fixtures/test'
 import { mkdirSync } from 'node:fs'
 import { shellFixture, binding, body, id } from './fixtures/game'
 
@@ -264,7 +265,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
           ),
         ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `${output}/${size}-full.png`,
       fullPage: true,
     })
@@ -273,10 +274,10 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
         report.getByRole('cell', { name: '500,000', exact: true }),
       ).toBeVisible()
     await report.locator('details').first().locator('summary').click()
-    await report
-      .locator('details')
-      .first()
-      .screenshot({ path: `${output}/${size}-round.png` })
+    await diagnosticScreenshot(
+      report.locator('details').first(),
+      { path: `${output}/${size}-round.png` },
+    )
     if (size === 'legacy') {
       await expect(
         report.getByText(/Per-player damage is unavailable/).first(),
@@ -305,7 +306,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
       ).toBe(true)
       await expect(report.getByRole('heading', { level: 2 })).toBeVisible()
       await page.evaluate(() => window.scrollTo(0, 0))
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         path: `${output}/${size}-${width}.png`,
         fullPage: true,
       })

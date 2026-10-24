@@ -1,6 +1,7 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {signOut} from './fixtures/navigation'
 import {overview} from './v2';
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures/test';
 test('two keyboard sign-ins expose separate owned planets and revoke logout',async({browser})=>{
  const a=await browser.newContext(),b=await browser.newContext();
  const alpha=await a.newPage(),beta=await b.newPage();
@@ -12,10 +13,10 @@ test('two keyboard sign-ins expose separate owned planets and revoke logout',asy
   for(const level of view.research)await expect(research.getByText(`${level.research.replace(/([a-z])([A-Z])/g,'$1 $2')} · Level ${level.level}`,{exact:true})).toBeVisible();
   await expect(research.getByRole('button')).toHaveCount(0);await expect(page.getByRole('link',{name:'Research',exact:true})).toHaveCount(0);
  }
- await beta.screenshot({path:'target/ui-desktop.png',fullPage:true});
+ await diagnosticScreenshot(beta, {path:'target/ui-desktop.png',fullPage:true});
  await beta.setViewportSize({width:390,height:844});
  await expect(beta.getByRole('region',{name:'Completed research'})).toBeVisible();
- await beta.screenshot({path:'target/ui-mobile.png',fullPage:true});
+ await diagnosticScreenshot(beta, {path:'target/ui-mobile.png',fullPage:true});
  await signOut(alpha);await expect(alpha.getByLabel('Password')).toBeVisible();
  expect((await a.request.get('/api/v1/session')).status()).toBe(401);
  expect((await b.request.get('/api/v1/session')).status()).toBe(200);

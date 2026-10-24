@@ -1,6 +1,7 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { openProductionSettings } from './fixtures/production-settings'
 import {navigate,signOut,foreground} from './fixtures/navigation'
-import {test,expect,type APIResponse} from '@playwright/test';
+import {test,expect,type APIResponse} from './fixtures/test';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
@@ -60,14 +61,14 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await expect.poll(async()=>(await view()).constructions.map((work:{building:string})=>work.building)).toEqual(['MetalMine']);
  const v=await view();expect(v.progression.research_operation).toBeTruthy();expect(v.constructions).toHaveLength(1);expect(v.progression.manufacturing).toHaveLength(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.screenshot({path:'test-results/progression-mobile.png',fullPage:true});
+ await diagnosticScreenshot(page, {path:'test-results/progression-mobile.png',fullPage:true});
  await page.reload();await go('research');await page.getByRole('link',{name:'Research Computer Technology',exact:true}).click();await expect(page.getByRole('region',{name:'Active research'})).toBeVisible();
  advance(Math.max(v.progression.research_operation.due_at,v.constructions[0].due_at,v.progression.manufacturing[0].final_due_at));
  await expect(page.getByRole('region',{name:'Active research'})).toHaveCount(0);await expect.poll(async()=>(await view()).constructions).toHaveLength(0);await go('shipyard');await expect(page.getByText('No ships or defenses in production.',{exact:true})).toBeVisible();
  await page.setViewportSize({width:1440,height:900});
  await go('defense');
  await page.getByRole('link',{name:'Build Small Shield Dome',exact:true}).click();await expect(page.getByLabel('Action blockers')).toContainText('Capacity Reserved');
- await page.screenshot({path:'test-results/progression-desktop.png',fullPage:true});
+ await diagnosticScreenshot(page, {path:'test-results/progression-desktop.png',fullPage:true});
  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),signOut(page)]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(1);await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);const other=await view();expect(other.bodies[0].inventories).toEqual([]);expect(other.research.every((x:{level:number})=>x.level===0)).toBe(true);expect(other.bodies[0].id).not.toBe(v.bodies[0].id);expect((await page.evaluate(()=>Object.keys(sessionStorage))).filter(k=>k.startsWith('orbit:attempts:v3:'))).toHaveLength(0);
  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='DELETE'),signOut(page)]);await expect(page.getByLabel('Password')).toBeVisible();await signIn(0);await go('resources');await openProductionSettings(page);await expect(page.getByLabel('metal mine production')).toHaveValue('50');await expect(page.getByRole('region',{name:'Progression quote'})).toHaveCount(0);
 });

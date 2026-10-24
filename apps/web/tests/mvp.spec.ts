@@ -1,4 +1,5 @@
-import {test,expect} from '@playwright/test';
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import {test,expect} from './fixtures/test';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
@@ -30,7 +31,7 @@ test('five private accounts see only their starter, build, and switch safely at 
    execFileSync('docker',['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c','UPDATE orbit_test_clock SET at_ms=1010000'],{stdio:'pipe'});
    await expect(page.getByRole('heading',{name:'Construction in progress'})).toHaveCount(0);
    await expect(page.locator('article').filter({has:page.getByRole('heading',{name:'Metal Mine',exact:true})})).toContainText('Level 1');
-   await page.screenshot({path:'test-results/mvp-v1-mobile.png',fullPage:true});
+   await diagnosticScreenshot(page, {path:'test-results/mvp-v1-mobile.png',fullPage:true});
   } else {
    await expect(page.getByText('Action confirmed.',{exact:true})).toHaveCount(0);
    await expect(page.getByRole('region',{name:'Upgrade quote'})).toHaveCount(0);

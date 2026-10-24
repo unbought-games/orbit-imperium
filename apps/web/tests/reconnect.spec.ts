@@ -1,6 +1,6 @@
 import { confirmCancellation } from './fixtures/confirmation'
 import {foreground,signOut} from './fixtures/navigation'
-import {test,expect} from '@playwright/test'
+import {test,expect} from './fixtures/test'
 import {execFileSync} from 'node:child_process'
 import {randomUUID} from 'node:crypto'
 import {overview} from './v2'

@@ -1,5 +1,5 @@
 import { confirmCancellation } from './fixtures/confirmation'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { binding, body, id, refreshGame, shellFixture } from './fixtures/game'
 

@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Page } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
 
 async function reportsFixture(page: Page) {
@@ -131,7 +132,7 @@ for (const width of [1440, 390]) {
     await expect(rows).toHaveCount(2)
     const unread = page.getByRole('status', { name: 'Unread reports' }).first()
     await expect(unread).toBeVisible()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/reports-delete-list-${width}.png`,
       fullPage: true,
     })
@@ -178,7 +179,7 @@ for (const width of [1440, 390]) {
       page.getByRole('button', { name: 'Restore report' }),
     ).toBeEnabled()
     await expect(unread).toHaveCount(0)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/reports-delete-detail-${width}.png`,
       fullPage: true,
     })

@@ -1,5 +1,5 @@
 import { confirmCancellation } from './fixtures/confirmation'
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures/test';
 import {execFileSync} from 'node:child_process';
 test('quote, commit, cancel, and deadline completion through the real scheduler',async({page})=>{
  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill('alpha');await page.getByLabel('Password').fill(process.env.ALPHA_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();

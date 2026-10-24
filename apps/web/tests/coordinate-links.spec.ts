@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { shellFixture, binding, body, id, resources } from './fixtures/game'
 
@@ -115,14 +116,14 @@ for (const width of [1280, 390, 320]) {
       })
       .first()
     await expect(target).toBeVisible()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/coordinate-mission-${width}.png`,
     })
     await target.focus()
     await page.keyboard.press('Enter')
     await assertLocation(page, 5, 12)
     expect(requests.at(-1)).toEqual({ galaxy: 1, system: 5 })
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/coordinate-galaxy-${width}.png`,
     })
     await page.reload()

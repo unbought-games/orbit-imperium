@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 type S = components['schemas']
@@ -81,7 +82,7 @@ for(const success of [true,false])test(`colonization ${success?'success links to
   await page.setViewportSize({width,height:900})
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
  }
- await page.screenshot({path:`test-results/colony-${success?'success':'failure'}.png`,fullPage:true})
+ await diagnosticScreenshot(page, {path:`test-results/colony-${success?'success':'failure'}.png`,fullPage:true})
  if(success){
   await expect(report).toContainText('230 fields')
   await page.getByRole('link',{name:'Open colony resources'}).click()
