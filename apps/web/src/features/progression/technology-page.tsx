@@ -230,6 +230,7 @@ function TechnologyInspector({
     retry,
   } = useProgressionOptions(model, view, request)
   const error =
+    quantity !== '0' &&
     !technologyRequest(selected.key, body.id, action, quantity) &&
     (selected.key.kind === 'Ship' || selected.key.kind === 'Defense')
       ? 'Enter a positive whole quantity within the supported range.'
