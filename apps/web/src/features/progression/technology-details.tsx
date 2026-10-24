@@ -8,7 +8,7 @@ import { progressionCommand } from './options'
 import { useEffect, useRef } from 'react'
 import { Network } from 'lucide-react'
 import { Button } from '../../ui/button'
-import { Field, Input } from '../../ui/form'
+import { Field, NumberInput } from '../../ui/form'
 import { ResourceCosts } from '../../ui/resource-costs'
 import { CatalogItemLink } from '../../ui/catalog-item-link'
 import { Requirements } from '../../ui/requirements'
@@ -311,10 +311,9 @@ export function TechnologyDetails({
             {manufacture && (
               <Field className={styles.quantity}>
                 <span className={styles.quantityLabel}>Qty</span>
-                <Input
+                <NumberInput
                   ref={quantityInput}
                   aria-label={`${orderTitle} quantity`}
-                  inputMode="numeric"
                   value={quantity}
                   onChange={(e) => onQuantity(e.target.value)}
                   required
