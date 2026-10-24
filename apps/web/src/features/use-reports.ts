@@ -108,8 +108,14 @@ export function useReports(model: ReportsSource, item: string | null) {
     owner.current = { model, binding }
     dispatch(rebound ? { type: 'reset' } : { type: 'navigate', item })
     if (changingVisibility) dispatch({ type: 'invalidate' })
-    else if (rebound || item || !state.page || !state.retainPages)
-      void load(item ? 'detail' : 'initial')
+    // A pending preference blocks pagination, not access to an uncached inbox
+    // or detail (including recovery after an uncertain command).
+    const retainInbox =
+      !rebound &&
+      !item &&
+      state.page &&
+      (state.retainPages || changingVisibility)
+    if (!retainInbox) void load(item ? 'detail' : 'initial')
     return () => {
       active.current = null
     }

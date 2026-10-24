@@ -355,17 +355,17 @@ test('failed or abandoned report loads do not mark reports read', async ({ page 
 for (const fail of [false, true]) {
   test(`late load-more ${fail ? 'failure' : 'success'} cannot change a refreshed inbox`, async ({ page }) => {
     const fixture = await reportsFixture(page)
-    const firstPageCount = fixture.pageRequests.length
     let release!: () => void
     fixture.holdMore(new Promise<void>(resolve => { release = resolve }), fail)
     await page.getByRole('button', { name: 'Load more reports' }).click()
-    await expect.poll(() => fixture.pageRequests.slice(firstPageCount)).toEqual([id(72)])
+    await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null)).toEqual([id(72)])
+    const requestCount = fixture.pageRequests.length
     // Refresh the first page while its old continuation is still in flight.
     fixture.headers[0].hidden = true
     fixture.bumpRevision()
     await refreshGame(page)
     const rows = page.locator('main article')
-    await expect.poll(() => fixture.pageRequests.slice(firstPageCount)).toEqual([id(72), null])
+    await expect.poll(() => fixture.pageRequests.slice(requestCount)).toEqual([null])
     await expect(rows).toHaveCount(1)
     await expect(rows.first().getByLabel('Unread', { exact: true })).toBeVisible()
     const response = page.waitForResponse(r => r.url().endsWith('/reports') && r.request().postDataJSON().cursor === id(72))
@@ -477,4 +477,28 @@ test('report hook ignores stale initial/detail failures and treats a current unc
   expect(result.failed).toMatchObject({ ids: ['fresh'], error: 'Unable to confirm this report response. Try again.', loadingMore: false })
   expect(result.retried).toMatchObject({ ids: ['replacement'], error: null, loading: false })
   expect(result.sent).toEqual([])
+})
+
+
+test('report hook loads uncached reports while a visibility command is unresolved', async ({ page }) => {
+  await shellFixture(page, { protocol: 4 })
+  await page.goto('/')
+  const result = await page.evaluate(async () => {
+    const { reportsHarness, reportPage, reportDetail } = await import('/tests/fixtures/reports-hook.ts')
+    const h = await reportsHarness()
+    await h.visibility()
+    await h.resolve(1, reportPage(['a'], 'cursor'))
+    await h.reject(0)
+    const inbox = h.state()
+    await h.more()
+    const requestsAfterMore = h.calls.length
+    await h.navigate('a')
+    await h.resolve(2, reportDetail('a', true))
+    const detail = h.state()
+    await h.close()
+    return { inbox, requestsAfterMore, detail }
+  })
+  expect(result.inbox).toMatchObject({ ids: ['a'], error: null, loading: false })
+  expect(result.requestsAfterMore).toBe(2)
+  expect(result.detail).toMatchObject({ detail: 'a', error: null, loading: false })
 })
