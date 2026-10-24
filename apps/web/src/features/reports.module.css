@@ -83,12 +83,6 @@
 .screen {
   padding-top: 12px;
 }
-.context summary {
-  cursor: pointer;
-  min-height: 44px;
-  padding-block: 12px;
-  color: var(--text-muted);
-}
 .detailToolbar {
   display: flex;
   align-items: center;
@@ -147,4 +141,22 @@
 }
 .neutral {
   color: #cbb68d;
+}
+
+.detailToolbar .timestamp {
+  padding: 0 4px;
+  min-height: 44px;
+  font-size: 0.75rem;
+}
+.mobileHarvest {
+  display: none;
+}
+@media (max-width: 767px) {
+  .desktopHarvest {
+    display: none;
+  }
+  .mobileHarvest {
+    display: flex;
+    margin: 0 0 12px;
+  }
 }

@@ -1601,10 +1601,9 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     })
   }
   const unreadAlert = page.getByRole('button', { name: 'Menu', exact: true }).getByRole('status', { name: 'Unread reports' })
-  await expect(unreadAlert).toBeVisible()
-  await page.getByRole('button', { name: 'Mark read', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Mark read', exact: true })).toHaveCount(0)
   await expect(unreadAlert).toHaveCount(0)
-  await expect(page.locator('main')).toContainText('· Read')
+  await expect.poll(() => header.read).toBe(true)
   await page
     .getByRole('button', { name: 'Prepare attack', exact: true })
     .click()

@@ -176,6 +176,28 @@ for (const viewport of [
     await expect(
       page.getByRole('heading', { name: 'Dispatches from the frontier.' }),
     ).toHaveCount(0)
+    const back = page.getByRole('link', { name: 'Back to reports' })
+    await expect(back).toHaveText('')
+    await expect(back.locator('svg.lucide-arrow-left')).toBeVisible()
+    const remove = page.getByRole('button', { name: 'Delete report' })
+    await expect(remove).toHaveText('')
+    await expect(remove.locator('svg.lucide-trash-2')).toBeVisible()
+    const timestamp = page.getByRole('button', { name: 'Report time details' })
+    await expect(timestamp).toHaveText('1 hour ago')
+    await timestamp.click()
+    const fullTime = page.getByRole('dialog', { name: 'Report time', exact: true })
+    await expect(fullTime.locator('time')).toHaveAttribute('datetime', new Date(header.observed_at).toISOString())
+    await page.keyboard.press('Escape')
+    await expect(fullTime).toHaveCount(0)
+    await timestamp.hover()
+    await expect(fullTime).toBeVisible()
+    await page.keyboard.press('Escape')
+    const harvest = (await page.getByRole('button', { name: 'Prepare harvest' }).boundingBox())!
+    const outcome = (await page.getByRole('region', { name: 'Report observation' }).locator('header').boundingBox())!
+    if (viewport.width < 768) {
+      expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
+      expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
+    } else expect(harvest.y).toBeLessThan(outcome.y)
     await page.screenshot({
       path: `test-results/density-combat-${viewport.width}.png`,
     })

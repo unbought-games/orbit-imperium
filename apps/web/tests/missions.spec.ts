@@ -258,7 +258,6 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
     )
     return response.status() === 503 ? null : response.json()
   }
-  await page.getByRole('button', { name: 'Mark read', exact: true }).click()
   await expect
     .poll(async () => (await reportState())?.data.header.read)
     .toBe(true)

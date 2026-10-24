@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { CoordinateLink } from './coordinate-link'
 import { PlayerName } from './player-name'
 import type { PlayerNames } from './player-label'
@@ -172,10 +173,12 @@ export function CombatReport({
   payload,
   viewer,
   playerNames,
+  actions,
 }: {
   payload: Observation
   viewer?: string
   playerNames?: PlayerNames
+  actions?: ReactNode
 }) {
   const report = combatReportModel(payload, viewer, playerNames)
   return (
@@ -210,6 +213,7 @@ export function CombatReport({
           </p>
         )}
       </header>
+      {actions}
       <div className={styles.resources}>
         {report.resources.map((group) => (
           <div className={styles.resourceGroup} key={group.key}>

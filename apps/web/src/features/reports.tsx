@@ -1,12 +1,13 @@
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
-import { Button } from '../ui/button'
+import { Button, ButtonLink } from '../ui/button'
+import { ArrowLeft } from 'lucide-react'
 import { Section } from '../ui/section'
 import { Text } from '../ui/typography'
 import { ReportListRow } from './report-list-row'
 import { TaskHeader } from '../ui/task-header'
 import styles from './reports.module.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
@@ -18,7 +19,9 @@ import type { DispatchDraft } from './missions'
 import { label } from '../ui/format'
 import { useStore } from 'zustand'
 import { currentServerTime } from '../client-model/game-projection'
-import { exactTime, observationAge } from './mission-presentation'
+import { Popover } from '../ui/popover'
+import { reportAge } from './report-preview'
+import { exactTime } from './mission-presentation'
 type S = components['schemas']
 export function Reports({
   model,
@@ -51,6 +54,11 @@ export function Reports({
       : null,
     model.view?.viewer_revision,
   )
+  // One read gesture per opened report; server refreshes must not resubmit it.
+  const readRequested = useRef<string | null>(null)
+  useEffect(() => {
+    readRequested.current = null
+  }, [model, item])
   const failure = reportFailure(error)
   useEffect(() => {
     if (!item) setDetail(null)
@@ -70,6 +78,18 @@ export function Reports({
         }
         if ('header' in v) {
           setDetail(v)
+          if (
+            v.header.id === item &&
+            !v.header.read &&
+            readRequested.current !== item
+          ) {
+            readRequested.current = item
+            setOlderPages(false)
+            void model.send({
+              type: 'World',
+              action: { type: 'MarkReportRead', report: v.header.id },
+            })
+          }
           setPage((old) =>
             old
               ? {
@@ -113,16 +133,36 @@ export function Reports({
       setLoadingMore(false)
     }
   }
+  const combat = detail?.payload.kind === 'Combat' ? detail.payload : null
+  const harvestAction =
+    combat &&
+    (BigInt(combat.debris.metal) > 0n || BigInt(combat.debris.crystal) > 0n) ? (
+      <Button
+        onClick={() =>
+          onDraft({
+            coordinates: combat.target,
+            mission: 'Harvest',
+            observedAt: detail!.header.observed_at,
+          })
+        }
+      >
+        Prepare harvest
+      </Button>
+    ) : null
   return (
     <Section className={styles.screen}>
       {!item && <TaskHeader title="Reports" />}
       {item && !detail && (
-        <Link
+        <ButtonLink
+          variant="secondary"
+          size="icon-small"
+          aria-label="Back to reports"
+          title="Back to reports"
           onClick={() => void model.recordPresence('AccountVisit', null)}
           {...routeTarget(universe, 'reports', origin)}
         >
-          Back to reports
-        </Link>
+          <ArrowLeft size={18} aria-hidden="true" />
+        </ButtonLink>
       )}
       {error !== null && (
         <>
@@ -146,41 +186,33 @@ export function Reports({
       {detail ? (
         <>
           <div className={styles.detailToolbar}>
-            <Link
+            <ButtonLink
+              variant="secondary"
+              size="icon-small"
+              aria-label="Back to reports"
+              title="Back to reports"
               onClick={() => void model.recordPresence('AccountVisit', null)}
               {...routeTarget(universe, 'reports', origin)}
             >
-              Back to reports
-            </Link>
-            <Text className={styles.timestamp}>
+              <ArrowLeft size={18} aria-hidden="true" />
+            </ButtonLink>
+            <Popover
+              label="Report time"
+              className={styles.timestamp}
+              trigger={reportAge(detail.header.observed_at, now)}
+            >
               <time
                 dateTime={new Date(detail.header.observed_at).toISOString()}
               >
                 {exactTime(detail.header.observed_at)}
-              </time>{' '}
-              · {observationAge(detail.header.observed_at, now)} ·{' '}
-              {detail.header.read ? 'Read' : 'Unread'}
-              {detail.header.hidden ? ' · Deleted' : ''}
-            </Text>
+              </time>
+            </Popover>
             <div className={styles.controls}>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  void model.send({
-                    type: 'World',
-                    action: {
-                      type: 'MarkReportRead',
-                      report: detail.header.id,
-                    },
-                  })
-                }
-              >
-                Mark read
-              </Button>
               <ReportVisibilityButton
                 model={model}
                 report={detail.header.id}
                 hidden={detail.header.hidden}
+                compact
                 disabled={loading}
                 onRequest={() => setOlderPages(false)}
               />
@@ -207,24 +239,9 @@ export function Reports({
                     Prepare attack
                   </Button>
                 )}
-              {detail.payload.kind === 'Combat' &&
-                (BigInt(detail.payload.debris.metal) > 0n ||
-                  BigInt(detail.payload.debris.crystal) > 0n) && (
-                  <>
-                    <Button
-                      onClick={() => {
-                        if (detail.payload.kind === 'Combat')
-                          onDraft({
-                            coordinates: detail.payload.target,
-                            mission: 'Harvest',
-                            observedAt: detail.header.observed_at,
-                          })
-                      }}
-                    >
-                      Prepare harvest
-                    </Button>
-                  </>
-                )}
+              {harvestAction && (
+                <div className={styles.desktopHarvest}>{harvestAction}</div>
+              )}
             </div>
           </div>
           {detail.payload.kind !== 'Combat' &&
@@ -235,15 +252,13 @@ export function Reports({
             payload={detail.payload}
             viewer={model.binding?.player}
             playerNames={detail.player_names}
+            combatActions={
+              harvestAction && (
+                <div className={styles.mobileHarvest}>{harvestAction}</div>
+              )
+            }
           />
-          {detail.payload.kind === 'Combat' && (
-            <details className={styles.context}>
-              <summary>About harvesting</summary>
-              <Text>
-                Debris may already have been collected by another fleet.
-              </Text>
-            </details>
-          )}
+
           {detail.payload.kind === 'Colonized' && (
             <div className={styles.controls}>
               <Link
