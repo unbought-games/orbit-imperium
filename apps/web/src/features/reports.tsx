@@ -9,7 +9,11 @@ import { Panel } from '../ui/panel'
 import { TaskHeader } from '../ui/task-header'
 import styles from './reports.module.css'
 import { useEffect, useState } from 'react'
-import type { components } from '../contracts'
+import {
+  projectedReportHeader,
+  type ReportPage,
+  type ReportDetail,
+} from '../client-model/report-state'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
 import { ReportObservation } from './report-observation'
@@ -21,7 +25,6 @@ import { label } from '../ui/format'
 import { useStore } from 'zustand'
 import { currentServerTime } from '../client-model/game-projection'
 import { exactTime, observationAge } from './mission-presentation'
-type S = components['schemas']
 export function Reports({
   model,
   universe,
@@ -40,14 +43,27 @@ export function Reports({
     model.store,
     (state) => !!pendingReportVisibility(state.attempts.values()),
   )
-  const [page, setPage] = useState<S['ReportsPage4'] | null>(null),
-    [detail, setDetail] = useState<S['ReportDetail4'] | null>(null),
+  const headers = useStore(model.store, (state) => state.reportHeaders)
+  const attempts = useStore(model.store, (state) => state.attempts)
+  const [page, setPage] = useState<ReportPage | null>(null),
+    [detailSource, setDetail] = useState<ReportDetail | null>(null),
     [error, setError] = useState<unknown>(null),
     [includeHidden, setIncludeHidden] = useState(false),
     [refresh, setRefresh] = useState(0),
     [olderPages, setOlderPages] = useState(false),
     [loading, setLoading] = useState(false),
     [loadingMore, setLoadingMore] = useState(false)
+  const detailHeader =
+    detailSource &&
+    projectedReportHeader(headers, attempts.values(), detailSource.report)
+  const detail =
+    detailSource && detailHeader
+      ? { ...detailSource, header: detailHeader }
+      : null
+  const rows = (page?.items ?? []).flatMap((id) => {
+    const header = projectedReportHeader(headers, attempts.values(), id)
+    return header && (includeHidden || !header.hidden) ? [header] : []
+  })
   useProfileSource(
     detail && detail.header.id === item
       ? { type: 'Report', report: detail.header.id }
@@ -73,18 +89,8 @@ export function Reports({
           setError('Unable to confirm this report response. Try again.')
           return
         }
-        if ('header' in v) {
+        if ('report' in v) {
           setDetail(v)
-          setPage((old) =>
-            old
-              ? {
-                  ...old,
-                  items: old.items
-                    .map((row) => (row.id === v.header.id ? v.header : row))
-                    .filter((row) => includeHidden || !row.hidden),
-                }
-              : old,
-          )
         } else {
           setPage(v)
         }
@@ -189,8 +195,7 @@ export function Reports({
                 model={model}
                 report={detail.header.id}
                 hidden={detail.header.hidden}
-                disabled={loading}
-                onRequest={() => setOlderPages(false)}
+                disabled={false}
               />
               {detail.payload.kind === 'Espionage' &&
                 model.view?.capabilities.some(
@@ -338,8 +343,8 @@ export function Reports({
             Deleted reports leave your list and unread indicator. Show deleted
             reports to restore them.
           </Text>
-          {!page.items.length && <Text>No reports yet.</Text>}
-          {page.items.map((r) => (
+          {!rows.length && <Text>No reports yet.</Text>}
+          {rows.map((r) => (
             <Panel
               as="article"
               className={styles.reportRow}
@@ -359,8 +364,7 @@ export function Reports({
                   model={model}
                   report={r.id}
                   hidden={r.hidden}
-                  disabled={loading || loadingMore || changingVisibility}
-                  onRequest={() => setOlderPages(false)}
+                  disabled={loadingMore}
                 />
               </div>
               <Text>
