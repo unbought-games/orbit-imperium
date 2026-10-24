@@ -1,3 +1,4 @@
+import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { captureCatalog } from './fixtures/catalog-capture'
@@ -1310,7 +1311,7 @@ test('planet changes retain the item, reset edits, and link across prerequisites
   const { sent, inspections } = await setup(page, false, undefined, { bodies: [body, other], catalog: entries })
   await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
   await page.getByLabel('Shipyard quantity').fill('7')
-  await page.getByLabel('Selected body').selectOption(other.id)
+  await selectBody(page, other.id)
   await expect(page).toHaveURL(`/u/andromeda/b/${other.id}/shipyard/small-cargo`)
   await expect(page.getByLabel('Shipyard quantity')).toHaveValue('1')
   await expect.poll(() => inspections.some(r => r.type === 'Manufacture' && r.body === other.id)).toBe(true)
@@ -1363,7 +1364,7 @@ test(`Moon-only facilities from ${catalogSource} metadata are omitted on planets
   await page.goto(`/u/andromeda/b/${body.id}/facilities`)
   for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
     await expect(page.getByRole('link', { name: `Upgrade ${name}`, exact: true })).toHaveCount(0)
-  await page.getByLabel('Selected body').selectOption(moon.id)
+  await selectBody(page, moon.id)
   for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
     await expect(page.getByRole('link', { name: `Upgrade ${name}`, exact: true })).toBeVisible()
   expect(sent).toEqual([])
