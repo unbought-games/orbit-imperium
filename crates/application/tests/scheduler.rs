@@ -18,6 +18,12 @@ struct MemoryState {
     unsupported_load: bool,
     scoped_claimed: bool,
     conflict_commit: bool,
+    load_fault: Option<Fault>,
+    commit_fault: Option<Fault>,
+    block_fault: Option<Fault>,
+    release_fault: Option<Fault>,
+    stale_commit: bool,
+    calls: Vec<&'static str>,
 }
 fn legacy_claim(c: &ScopedClaim) -> Claim {
     Claim {
@@ -69,12 +75,21 @@ impl ScopedOrderStore for Memory {
         _error: &InvariantError,
     ) -> Result<(), StoreError> {
         let mut s = self.inner.lock().unwrap();
+        s.calls.push("block");
+        if let Some(fault) = s.block_fault {
+            return Err(fault.error());
+        }
         s.blocked = true;
         s.scoped_claimed = false;
         Ok(())
     }
     async fn release_scoped(&self, _c: &ScopedClaim) -> Result<(), StoreError> {
-        self.inner.lock().unwrap().scoped_claimed = false;
+        let mut s = self.inner.lock().unwrap();
+        s.calls.push("release");
+        if let Some(fault) = s.release_fault {
+            return Err(fault.error());
+        }
+        s.scoped_claimed = false;
         Ok(())
     }
 }
@@ -84,11 +99,8 @@ impl ScopedGameStore for Memory {
         c: &ScopedClaim,
         result: TransitionResult,
     ) -> Result<CommitOutcome, StoreError> {
-        if self.inner.lock().unwrap().conflict_commit {
-            return Ok(CommitOutcome::Conflict);
-        }
         let result = self.commit_claim(&legacy_claim(c), result).await;
-        if result.is_ok() {
+        if matches!(result, Ok(CommitOutcome::Committed { .. })) {
             self.inner.lock().unwrap().scoped_claimed = false;
         }
         result
@@ -110,7 +122,11 @@ impl GameStore for Memory {
         Ok(s.claim.clone())
     }
     async fn load_claim(&self, _c: &Claim) -> Result<ClaimSnapshot, StoreError> {
-        let s = self.inner.lock().unwrap();
+        let mut s = self.inner.lock().unwrap();
+        s.calls.push("load");
+        if let Some(fault) = s.load_fault {
+            return Err(fault.error());
+        }
         if s.unsupported_load {
             Err(StoreError::UnsupportedState)
         } else if s.corrupt {
@@ -131,6 +147,16 @@ impl GameStore for Memory {
         result: TransitionResult,
     ) -> Result<CommitOutcome, StoreError> {
         let mut s = self.inner.lock().unwrap();
+        s.calls.push("commit");
+        if let Some(fault) = s.commit_fault {
+            return Err(fault.error());
+        }
+        if s.stale_commit {
+            return Ok(CommitOutcome::StaleClaim);
+        }
+        if s.conflict_commit {
+            return Ok(CommitOutcome::Conflict);
+        }
         if s.corrupt_commit {
             return Err(StoreError::CorruptData);
         }
@@ -152,7 +178,12 @@ impl GameStore for Memory {
         })
     }
     async fn fail_claim(&self, _c: &Claim, _e: &InvariantError) -> Result<(), StoreError> {
-        self.inner.lock().unwrap().blocked = true;
+        let mut s = self.inner.lock().unwrap();
+        s.calls.push("block");
+        if let Some(fault) = s.block_fault {
+            return Err(fault.error());
+        }
+        s.blocked = true;
         Ok(())
     }
     async fn load_rules(&self, _u: UniverseId) -> Result<Ruleset, StoreError> {
@@ -256,6 +287,12 @@ fn memory(corrupt: bool) -> (Memory, UniverseId) {
                 unsupported_load: false,
                 scoped_claimed: false,
                 conflict_commit: false,
+                load_fault: None,
+                commit_fault: None,
+                block_fault: None,
+                release_fault: None,
+                stale_commit: false,
+                calls: vec![],
             })),
             rules,
         },
@@ -404,5 +441,320 @@ fn scoped_capability_mismatch_does_not_poison_a_durable_order() {
                 .unwrap(),
             StepOutcome::Committed { .. }
         ));
+    });
+}
+
+// Inject failures at the port boundary without changing the durable input.
+#[derive(Clone, Copy, Debug)]
+enum Fault {
+    Stale,
+    Corrupt,
+    Schema,
+    Unsupported,
+    Unavailable,
+    Conflict,
+}
+impl Fault {
+    fn error(self) -> StoreError {
+        match self {
+            Self::Stale => StoreError::StaleClaim,
+            Self::Corrupt => StoreError::CorruptData,
+            Self::Schema => StoreError::IncompatibleSchema,
+            Self::Unsupported => StoreError::UnsupportedState,
+            Self::Unavailable => StoreError::Unavailable,
+            Self::Conflict => StoreError::Conflict,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug)]
+enum Execution {
+    Inline,
+    Invalid,
+    Invariant,
+    Unavailable,
+    Unsupported,
+}
+struct Executor {
+    store: Memory,
+    execution: Execution,
+}
+impl EngineExecutor for Executor {
+    async fn execute(
+        &self,
+        snapshot: ClaimSnapshot,
+        input: OrderedInput,
+    ) -> Result<TransitionResult, ServiceError> {
+        self.store.inner.lock().unwrap().calls.push("execute");
+        match self.execution {
+            Execution::Inline => InlineEngine.execute(snapshot, input).await,
+            Execution::Invalid => Ok(TransitionResult::InvalidState(InvariantError(
+                "invalid engine facts".into(),
+            ))),
+            Execution::Invariant => Err(ServiceError::InvariantFailure),
+            Execution::Unavailable => Err(ServiceError::Unavailable),
+            Execution::Unsupported => Err(ServiceError::UnsupportedState),
+        }
+    }
+}
+async fn resolve(
+    store: &Memory,
+    scoped: bool,
+    execution: Execution,
+) -> Result<StepOutcome, ServiceError> {
+    let service = GameService::new(store.clone());
+    let executor = Executor {
+        store: store.clone(),
+        execution,
+    };
+    let claim = store.inner.lock().unwrap().claim.clone().unwrap();
+    if scoped {
+        let claim = store
+            .claim_scoped(claim.input.universe, claim.owner)
+            .await
+            .unwrap()
+            .unwrap();
+        service.resolve_scoped_claim(claim, &executor).await
+    } else {
+        service.resolve_claim_with_executor(claim, &executor).await
+    }
+}
+fn assert_pending(store: &Memory, calls: &[&str], blocked: bool) {
+    let s = store.inner.lock().unwrap();
+    assert_eq!(s.calls, calls);
+    assert_eq!(s.commits, 0);
+    assert_eq!(s.blocked, blocked);
+    let input = &s.claim.as_ref().expect("input must not be skipped").input;
+    assert_eq!(input.id, InputId(Uuid::from_u128(3)));
+    assert_eq!((input.at, input.phase, input.sequence), (0, 1, 1));
+}
+#[test]
+fn load_failures_preserve_retry_block_and_capability_classification() {
+    futures::executor::block_on(async {
+        for scoped in [false, true] {
+            for fault in [
+                Fault::Stale,
+                Fault::Corrupt,
+                Fault::Schema,
+                Fault::Unsupported,
+                Fault::Unavailable,
+            ] {
+                let (store, _) = memory(false);
+                store.inner.lock().unwrap().load_fault = Some(fault);
+                let result = resolve(&store, scoped, Execution::Inline).await;
+                let blocked = matches!(fault, Fault::Corrupt | Fault::Schema);
+                match fault {
+                    Fault::Stale => assert_eq!(result.unwrap(), StepOutcome::Retry),
+                    Fault::Corrupt | Fault::Schema => assert_eq!(
+                        result.unwrap(),
+                        StepOutcome::Blocked {
+                            input_id: InputId(Uuid::from_u128(3)),
+                            reason: "invalid persisted transition facts".into(),
+                        }
+                    ),
+                    Fault::Unsupported => {
+                        assert!(matches!(result, Err(ServiceError::UnsupportedState)))
+                    }
+                    Fault::Unavailable => assert!(matches!(result, Err(ServiceError::Unavailable))),
+                    Fault::Conflict => unreachable!(),
+                }
+                assert_pending(
+                    &store,
+                    if blocked {
+                        &["load", "block"]
+                    } else {
+                        &["load"]
+                    },
+                    blocked,
+                );
+            }
+        }
+    });
+}
+#[test]
+fn execution_failures_block_only_invariants_and_never_commit() {
+    futures::executor::block_on(async {
+        for scoped in [false, true] {
+            for execution in [
+                Execution::Invalid,
+                Execution::Invariant,
+                Execution::Unavailable,
+                Execution::Unsupported,
+            ] {
+                let (store, _) = memory(false);
+                let result = resolve(&store, scoped, execution).await;
+                let reason = match execution {
+                    Execution::Invalid => Some("invalid engine facts"),
+                    Execution::Invariant => Some("engine execution invariant failure"),
+                    _ => None,
+                };
+                if let Some(reason) = reason {
+                    assert_eq!(
+                        result.unwrap(),
+                        StepOutcome::Blocked {
+                            input_id: InputId(Uuid::from_u128(3)),
+                            reason: reason.into(),
+                        }
+                    );
+                } else {
+                    match execution {
+                        Execution::Unavailable => {
+                            assert!(matches!(result, Err(ServiceError::Unavailable)))
+                        }
+                        Execution::Unsupported => {
+                            assert!(matches!(result, Err(ServiceError::UnsupportedState)))
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                assert_pending(
+                    &store,
+                    if reason.is_some() {
+                        &["load", "execute", "block"]
+                    } else {
+                        &["load", "execute"]
+                    },
+                    reason.is_some(),
+                );
+            }
+        }
+    });
+}
+#[test]
+fn stale_ownership_while_blocking_characterizes_serial_and_scoped_results() {
+    futures::executor::block_on(async {
+        for scoped in [false, true] {
+            for stage in ["load", "invalid", "execute", "commit"] {
+                let (store, _) = memory(false);
+                {
+                    let mut s = store.inner.lock().unwrap();
+                    s.block_fault = Some(Fault::Stale);
+                    if stage == "load" {
+                        s.load_fault = Some(Fault::Corrupt);
+                    }
+                    if stage == "commit" {
+                        s.commit_fault = Some(Fault::Schema);
+                    }
+                }
+                let execution = match stage {
+                    "invalid" => Execution::Invalid,
+                    "execute" => Execution::Invariant,
+                    _ => Execution::Inline,
+                };
+                let result = resolve(&store, scoped, execution).await;
+                if !scoped && matches!(stage, "load" | "invalid") {
+                    assert!(matches!(result, Err(ServiceError::Unavailable)));
+                } else {
+                    assert_eq!(result.unwrap(), StepOutcome::Retry);
+                }
+                let calls: &[&str] = match stage {
+                    "load" => &["load", "block"],
+                    "commit" => &["load", "execute", "commit", "block"],
+                    _ => &["load", "execute", "block"],
+                };
+                assert_pending(&store, calls, false);
+            }
+        }
+    });
+}
+#[test]
+fn commit_failures_keep_serial_and_scoped_lease_semantics() {
+    futures::executor::block_on(async {
+        for scoped in [false, true] {
+            for fault in [
+                Fault::Stale,
+                Fault::Corrupt,
+                Fault::Schema,
+                Fault::Unavailable,
+                Fault::Unsupported,
+                Fault::Conflict,
+            ] {
+                let (store, _) = memory(false);
+                store.inner.lock().unwrap().commit_fault = Some(fault);
+                let result = resolve(&store, scoped, Execution::Inline).await;
+                let blocked = matches!(fault, Fault::Corrupt | Fault::Schema);
+                match fault {
+                    Fault::Stale if scoped => assert_eq!(result.unwrap(), StepOutcome::Retry),
+                    Fault::Stale | Fault::Unavailable => {
+                        assert!(matches!(result, Err(ServiceError::Unavailable)))
+                    }
+                    Fault::Unsupported => {
+                        assert!(matches!(result, Err(ServiceError::UnsupportedState)))
+                    }
+                    Fault::Conflict => assert!(matches!(result, Err(ServiceError::Conflict))),
+                    Fault::Corrupt | Fault::Schema => assert_eq!(
+                        result.unwrap(),
+                        StepOutcome::Blocked {
+                            input_id: InputId(Uuid::from_u128(3)),
+                            reason: "invalid commit facts or schema".into(),
+                        }
+                    ),
+                }
+                assert_pending(
+                    &store,
+                    if blocked {
+                        &["load", "execute", "commit", "block"]
+                    } else {
+                        &["load", "execute", "commit"]
+                    },
+                    blocked,
+                );
+            }
+            for stale in [false, true] {
+                let (store, _) = memory(false);
+                {
+                    let mut s = store.inner.lock().unwrap();
+                    s.stale_commit = stale;
+                    s.conflict_commit = !stale;
+                }
+                assert_eq!(
+                    resolve(&store, scoped, Execution::Inline).await.unwrap(),
+                    StepOutcome::Retry
+                );
+                assert_pending(
+                    &store,
+                    if scoped && !stale {
+                        &["load", "execute", "commit", "release"]
+                    } else {
+                        &["load", "execute", "commit"]
+                    },
+                    false,
+                );
+            }
+        }
+    });
+}
+#[test]
+fn scoped_conflict_release_tolerates_stale_ownership_but_propagates_storage_failure() {
+    futures::executor::block_on(async {
+        for fault in [Fault::Stale, Fault::Unavailable, Fault::Corrupt] {
+            let (store, _) = memory(false);
+            {
+                let mut s = store.inner.lock().unwrap();
+                s.conflict_commit = true;
+                s.release_fault = Some(fault);
+            }
+            let result = resolve(&store, true, Execution::Inline).await;
+            match fault {
+                Fault::Stale => assert_eq!(result.unwrap(), StepOutcome::Retry),
+                Fault::Unavailable => assert!(matches!(result, Err(ServiceError::Unavailable))),
+                Fault::Corrupt => assert!(matches!(result, Err(ServiceError::InvariantFailure))),
+                _ => unreachable!(),
+            }
+            assert_pending(&store, &["load", "execute", "commit", "release"], false);
+        }
+    });
+}
+#[test]
+fn block_storage_failure_does_not_claim_success_or_consume_input() {
+    futures::executor::block_on(async {
+        for scoped in [false, true] {
+            let (store, _) = memory(true);
+            store.inner.lock().unwrap().block_fault = Some(Fault::Unavailable);
+            assert!(matches!(
+                resolve(&store, scoped, Execution::Inline).await,
+                Err(ServiceError::Unavailable)
+            ));
+            assert_pending(&store, &["load", "block"], false);
+        }
     });
 }
