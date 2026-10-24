@@ -7,6 +7,78 @@ test.use({
   viewport: { width: 390, height: 844 },
 })
 
+for (const mode of ['ios-installed', 'ios-browser', 'other-browser'] as const) {
+  test(`${mode} applies zoom prevention only to the iOS Home Screen app`, async ({ page, context, browserName }) => {
+    await page.addInitScript((mode) => {
+      if (mode !== 'other-browser') {
+        Object.defineProperty(navigator, 'standalone', {
+          value: mode === 'ios-installed',
+        })
+      }
+    }, mode)
+    await shellFixture(page)
+    const installed = mode === 'ios-installed'
+    const viewport = await page.locator('meta[name="viewport"]').getAttribute('content')
+    if (installed) {
+      expect(viewport).toContain('maximum-scale=1')
+      expect(viewport).toContain('user-scalable=no')
+    } else {
+      expect(viewport).toBe('width=device-width, initial-scale=1')
+    }
+    await expect(page.locator('html')).toHaveCSS('touch-action', installed ? 'pan-x pan-y' : 'auto')
+    // Exercise the WebKit gesture fallback without cancelling ordinary touch input.
+    for (const type of ['gesturestart', 'gesturechange', 'touchstart', 'touchmove', 'touchend']) {
+      const cancelled = await page.locator('main').evaluate((element, type) => {
+        const event = new Event(type, { bubbles: true, cancelable: true })
+        element.dispatchEvent(event)
+        return event.defaultPrevented
+      }, type)
+      expect(cancelled).toBe(installed && type.startsWith('gesture'))
+    }
+    // Chromium can inject a native pinch; WebKit's driver only exposes taps.
+    if (browserName === 'chromium') {
+      const session = await context.newCDPSession(page)
+      await session.send('Input.synthesizePinchGesture', {
+        x: 195,
+        y: 350,
+        scaleFactor: 2,
+        gestureSourceType: 'touch',
+      })
+      const scale = () => page.evaluate(() => window.visualViewport!.scale)
+      if (installed) await expect.poll(scale).toBe(1)
+      else await expect.poll(scale).toBeGreaterThan(1)
+      await session.detach()
+    }
+  })
+}
+
+test('iOS installed app keeps scrolling, fixed navigation and menu taps after resizing', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'standalone', { value: true })
+  })
+  await shellFixture(page, { protocol: 4 })
+  const dock = page.getByRole('navigation', { name: 'Main navigation', exact: true })
+  await dock.getByRole('link', { name: 'Build', exact: true }).tap()
+  for (const height of [844, 640, 844]) {
+    await page.setViewportSize({ width: 390, height })
+    for (const y of [0, 250, 100000]) {
+      await page.evaluate(y => window.scrollTo(0, y), y)
+      await expect.poll(async () => {
+        const box = (await dock.boundingBox())!
+        return box.y + box.height
+      }).toBe(height)
+      expect((await page.getByRole('group', { name: 'Planet and resources' }).boundingBox())!.y).toBe(0)
+      if (y > 0) expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0)
+    }
+  }
+  await dock.getByRole('button', { name: 'Menu', exact: true }).tap()
+  const menu = page.getByRole('dialog', { name: 'Navigation', exact: true })
+  await expect(menu).toBeVisible()
+  await menu.getByRole('link', { name: 'Settings', exact: true }).tap()
+  await expect(page.locator('main h1')).toHaveText('Settings')
+  await expect(menu).not.toBeVisible()
+})
+
 test('installation from a deep link declares the whole game as a standalone app', async ({
   page,
 }) => {

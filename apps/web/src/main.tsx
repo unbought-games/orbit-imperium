@@ -1,4 +1,5 @@
 import { startAnalytics } from './adapters/optional-services'
+import { configureInstalledViewport } from './adapters/installed-viewport'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { createAppRouter } from './router'
@@ -7,6 +8,7 @@ import { browserDependencies, loadInitialRuntime } from './adapters/runtime'
 import { BootstrapProvider } from './shell/bootstrap-context'
 import { ConnectionScreen } from './features/connection-screen'
 async function start() {
+  configureInstalledViewport()
   const root = createRoot(document.getElementById('root')!)
   // Local UX playground; no session, membership, or backend changes.
   if (import.meta.env.DEV && location.pathname === '/supporter-preview') {
