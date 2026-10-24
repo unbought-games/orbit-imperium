@@ -579,4 +579,3 @@ test('a successful HTTP response confirms deletion before the game view refreshe
     release()
   }
 })
-
