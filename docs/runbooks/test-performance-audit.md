@@ -4,8 +4,9 @@ Audited October 24, 2026, against checkout
 `42e03e89afd4e2b813837e4c326f21c87c09d0fe`. Recommendations below preserve
 the existing assertions, viewport cases, test selection and isolation.
 The diagnostic screenshot change and the first browser optimization pass below
-are implemented. Sharding, database timing changes and compilation-cache work
-remain follow-up experiments.
+are implemented. CI now uses three browser shards as described in the
+[runner runbook](ci-runners.md); the measurements below predate sharding.
+Database timing changes and compilation-cache work remain follow-up experiments.
 
 ## Implemented diagnostic capture policy
 

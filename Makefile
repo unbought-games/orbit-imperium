@@ -73,7 +73,7 @@ $(DB_TARGETS): _db-%:
 	sh scripts/test-db.sh "$*"
 
 test-ui:
-	npm run test:ui
+	npm run test:ui $(if $(UI_SHARD),-- --shard=$(UI_SHARD))
 
 db-up:
 	docker compose up -d --wait db

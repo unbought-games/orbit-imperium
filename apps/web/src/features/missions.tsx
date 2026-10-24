@@ -14,7 +14,7 @@ import { canSubmitQuote } from '../client-model/game-projection'
 import { ButtonLink } from '../ui/button'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
 import { Button } from '../ui/button'
-import { Input } from '../ui/form'
+import { NumberInput } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
 import { resourceNames } from '../client-model/resources'
 import { Select } from '../ui/form'
@@ -182,8 +182,7 @@ export function Dispatch({
             </Field>
             <Field>
               <span id={`${validationId}-galaxy-label`}>Galaxy</span>
-              <Input
-                inputMode="numeric"
+              <NumberInput
                 aria-labelledby={`${validationId}-galaxy-label`}
                 onPaste={pasteCoordinates}
                 aria-invalid={!!coordinateProblems.galaxy}
@@ -204,8 +203,7 @@ export function Dispatch({
             </Field>
             <Field>
               <span id={`${validationId}-system-label`}>System</span>
-              <Input
-                inputMode="numeric"
+              <NumberInput
                 aria-labelledby={`${validationId}-system-label`}
                 onPaste={pasteCoordinates}
                 aria-invalid={!!coordinateProblems.system}
@@ -226,8 +224,7 @@ export function Dispatch({
             </Field>
             <Field>
               <span id={`${validationId}-position-label`}>Position</span>
-              <Input
-                inputMode="numeric"
+              <NumberInput
                 aria-labelledby={`${validationId}-position-label`}
                 onPaste={pasteCoordinates}
                 aria-invalid={!!coordinateProblems.position}
@@ -289,8 +286,7 @@ export function Dispatch({
               return (
                 <Field key={k}>
                   {label(k)} · {available} available
-                  <Input
-                    inputMode="numeric"
+                  <NumberInput
                     value={ships[k] ?? '0'}
                     placeholder="0"
                     onBlur={(e) => {
@@ -326,9 +322,8 @@ export function Dispatch({
                   title={resource[0].toUpperCase() + resource.slice(1)}
                 >
                   <ResourceMark resource={resource} />
-                  <Input
+                  <NumberInput
                     aria-label={resource[0].toUpperCase() + resource.slice(1)}
-                    inputMode="numeric"
                     value={cargo[i]}
                     placeholder="0"
                     onBlur={(e) => {
