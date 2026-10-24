@@ -49,6 +49,7 @@
   line-height: 1.5;
 }
 .table {
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;

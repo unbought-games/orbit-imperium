@@ -42,6 +42,8 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(dialog).toHaveCount(0)
   await expect(leader).toBeFocused()
   await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await expect(table).toBeFocused()
+  await expect(table.getByRole('row').nth(1)).toBeInViewport()
   await expect(table).toContainText('Pilot 50')
   await expect(table).not.toContainText('Pilot 49')
   await page.getByRole('searchbox', { name: 'Find a player' }).fill('pILot 122')
@@ -51,6 +53,8 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(page.getByRole('searchbox', { name: 'Find a player' })).toHaveValue('')
   await expect(table.locator('tr[data-self]')).toContainText('My Commander')
   await expect(table.getByRole('row').nth(1)).toContainText('Pilot 55')
+  await expect(table.locator('tr[data-self]').getByRole('button')).toBeFocused()
+  await expect(table.locator('tr[data-self]')).toBeInViewport()
   expect(requests).toBe(1)
   failed = true
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()

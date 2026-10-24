@@ -36,6 +36,22 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
       : null,
   )
   const opener = useRef<HTMLButtonElement | null>(null)
+  const ownPlayer = useRef<HTMLButtonElement | null>(null)
+  const table = useRef<HTMLTableElement | null>(null)
+  const browse = (offset: number) => {
+    ranking.browse(offset)
+    requestAnimationFrame(() => {
+      table.current?.focus({ preventScroll: true })
+      table.current?.scrollIntoView({ block: 'start' })
+    })
+  }
+  const aroundMe = () => {
+    ranking.aroundMe()
+    requestAnimationFrame(() => {
+      ownPlayer.current?.focus({ preventScroll: true })
+      ownPlayer.current?.scrollIntoView({ block: 'center' })
+    })
+  }
   return (
     <section className={styles.screen} aria-label="Universe rankings">
       <div className={styles.summary}>
@@ -70,11 +86,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
         >
           Top players
         </Button>
-        <Button
-          variant="secondary"
-          onClick={ranking.aroundMe}
-          disabled={!ranking.me}
-        >
+        <Button variant="secondary" onClick={aroundMe} disabled={!ranking.me}>
           Around me
         </Button>
         <Button
@@ -114,7 +126,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
       )}
       {ranking.data && (
         <>
-          <table className={styles.table}>
+          <table className={styles.table} ref={table} tabIndex={-1}>
             <caption className={styles.caption}>
               Universe total-score rankings
             </caption>
@@ -136,6 +148,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                     <Button
                       variant="ghost"
                       className={styles.player}
+                      ref={row.player === player ? ownPlayer : undefined}
                       onClick={(e) => {
                         opener.current = e.currentTarget
                         ranking.select(row.player)
@@ -163,9 +176,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
             <Button
               variant="secondary"
               disabled={start === 0}
-              onClick={() =>
-                ranking.browse(Math.max(0, start - rankingPageSize))
-              }
+              onClick={() => browse(Math.max(0, start - rankingPageSize))}
             >
               Previous
             </Button>
@@ -177,7 +188,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
             <Button
               variant="secondary"
               disabled={start + rows.length >= count}
-              onClick={() => ranking.browse(start + rankingPageSize)}
+              onClick={() => browse(start + rankingPageSize)}
             >
               Next
             </Button>
