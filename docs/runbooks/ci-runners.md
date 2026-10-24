@@ -5,21 +5,26 @@ run on GitHub-hosted `ubuntu-24.04` VMs. Each job gets a disposable host, includ
 Docker and Chromium's Linux dependencies. Explicit suites remain opt-in with
 generous preparation and execution guards.
 
-Routine fixture-browser tests run on their own VM in parallel with the native
-build/lint/unit and database job, after a short changed-path selection job. This
-gives browser feedback without waiting for Rust compilation or sharing its CPU
+Routine fixture-browser tests run in three Playwright shards on separate VMs,
+in parallel with the native build/lint/unit and database job, after a short
+changed-path selection job. This gives browser feedback without waiting for
+Rust compilation or sharing its CPU
 load. Make still limits database execution to two isolated binaries at a time.
 The existing `Build, lint and unit tests` check is an always-run aggregate gate:
-scope selection and native checks must succeed, and selected browser tests must
-pass. An intentionally unselected browser job may be skipped; failures,
-cancellations, and unexpected skips cannot pass the gate.
+scope selection and native checks must succeed, and every selected browser shard
+must pass. Shards finish independently even if another fails. An intentionally
+unselected browser job may be skipped; failures, cancellations, and unexpected
+skips cannot pass the gate.
 
 Routine and continuous image-publication jobs have no custom job or step timeout.
 Routine Node, Vitest, Nextest and fixture Playwright execution has no per-test or
 suite deadline. GitHub-hosted jobs retain the platform's six-hour cap. Functional
 network timeouts and assertions about timeout behavior remain unchanged.
-Fixture browsers use at most three workers, bounded by available CPUs. Responsive
-catalog checks keep routes mounted across viewport changes to avoid redundant
+Each browser shard uses at most three workers, bounded by available CPUs.
+Playwright's `fullyParallel` mode partitions individual tests across shards.
+`make test-ui` still runs the whole suite locally; use `make test-ui UI_SHARD=2/3`
+to reproduce one CI shard. No test selection or assertion changes with sharding.
+Responsive catalog checks keep routes mounted across viewport changes to avoid redundant
 application startup while retaining every viewport and control assertion.
 
 Browser screenshots are diagnostic, not snapshot assertions. Routine runs skip
@@ -27,7 +32,8 @@ named captures and the shared test fixture captures open pages after an unexpect
 failure into the selected browser output directory. Playwright's built-in
 `only-on-failure` mode is disabled because version 1.56 also captures successful
 contexts before discarding their images. CI uploads fixture-browser failure
-diagnostics for seven days. For visual inspection, opt in to the existing named page and element
+diagnostics for seven days, with a separate artifact name for each shard.
+For visual inspection, opt in to the existing named page and element
 captures (including viewport loops):
 
 ```sh
