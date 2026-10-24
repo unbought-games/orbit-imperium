@@ -70,23 +70,22 @@ pub(crate) async fn validate_rule_references(
     }
     Ok(())
 }
+/// `rules` must be validated for `u` by `facts::rules` in this transaction.
 pub(crate) async fn load(
     tx: &mut Tx<'_>,
     u: UniverseId,
     epoch: Epoch,
-    profile_hash: Hash,
+    rules: &Ruleset,
     actor: Actor,
     input: &Input,
     input_id: Option<InputId>,
 ) -> Result<GameState, StoreError> {
-    if rules(tx, u).await?.world() {
+    if rules.world() {
         let selected = crate::scoped_facts::select(tx, u, actor, input).await?;
-        return crate::world::load_selected(tx, u, epoch, profile_hash, input, input_id, selected)
-            .await;
+        return crate::world::load_selected(tx, u, epoch, rules, input, input_id, selected).await;
     }
-    if rules(tx, u).await?.progression() {
-        return crate::progression_state::load(tx, u, epoch, profile_hash, actor, input, input_id)
-            .await;
+    if rules.progression() {
+        return crate::progression_state::load(tx, u, epoch, rules, actor, input, input_id).await;
     }
     let mut body_ids = BTreeSet::new();
     let mut explicit_operations = BTreeSet::new();
@@ -230,7 +229,7 @@ pub(crate) async fn load(
         progression_reservations: Default::default(),
         universe: u,
         epoch,
-        profile_hash,
+        profile_hash: rules.hash.clone(),
         bodies,
         players,
         inventories,
@@ -279,15 +278,14 @@ impl PgStore {
         let state = if rules.world() {
             let selected =
                 crate::scoped_facts::select(&mut tx, i.universe, i.actor, &i.payload).await?;
-            crate::scoped_facts::load_execution(&mut tx, i, &selected.scopes())
+            crate::scoped_facts::load_execution_with_rules(&mut tx, i, &selected.scopes(), &rules)
                 .await?
-                .state
         } else {
             load(
                 &mut tx,
                 i.universe,
                 i.epoch,
-                rules.hash.clone(),
+                &rules,
                 i.actor,
                 &i.payload,
                 Some(i.id),
@@ -392,7 +390,7 @@ impl PgStore {
             &mut tx,
             u,
             Epoch(row.try_get("epoch").map_err(db_error)?),
-            r.hash.clone(),
+            &r,
             actor,
             &Input::Command(input),
             None,

@@ -118,15 +118,6 @@
   margin-top: 3px;
   overflow-wrap: anywhere;
 }
-.total:nth-child(2) > svg {
-  color: var(--resource-metal);
-}
-.total:nth-child(3) > svg {
-  color: var(--resource-crystal);
-}
-.total:nth-child(4) > svg {
-  color: var(--resource-deuterium);
-}
 .commandDeck {
   display: grid;
   grid-template-columns: minmax(0, 1.9fr) minmax(280px, 1fr);

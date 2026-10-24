@@ -118,7 +118,7 @@ export function MissionFleets({
   )
   return (
     <section className={styles.screen}>
-      <TaskHeader title={item ? 'Mission details' : 'Fleets'}>
+      <TaskHeader title={item ? 'Mission details' : undefined}>
         <div className={styles.actions}>
           {item && (
             <Link {...routeTarget(universeName, 'fleets', origin)}>

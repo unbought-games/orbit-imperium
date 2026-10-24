@@ -114,21 +114,6 @@ impl<S: GameStore> GameService<S> {
         };
         self.resolve_claim(claim).await
     }
-    async fn block_resolution(
-        &self,
-        claim: &Claim,
-        reason: &str,
-    ) -> Result<StepOutcome, ServiceError> {
-        let error = InvariantError(reason.to_owned());
-        match self.store.fail_claim(claim, &error).await {
-            Ok(()) => Ok(StepOutcome::Blocked {
-                input_id: claim.input.id,
-                reason: reason.to_owned(),
-            }),
-            Err(StoreError::StaleClaim) => Ok(StepOutcome::Retry),
-            Err(error) => Err(error.into()),
-        }
-    }
     pub async fn resolve_claim(&self, claim: Claim) -> Result<StepOutcome, ServiceError> {
         self.resolve_claim_with_executor(claim, &InlineEngine).await
     }
@@ -137,48 +122,28 @@ impl<S: GameStore> GameService<S> {
         claim: Claim,
         executor: &E,
     ) -> Result<StepOutcome, ServiceError> {
-        let snapshot = match self.store.load_claim(&claim).await {
-            Ok(s) => s,
-            Err(StoreError::StaleClaim) => return Ok(StepOutcome::Retry),
-            Err(StoreError::CorruptData | StoreError::IncompatibleSchema) => {
-                let error = InvariantError("invalid persisted transition facts".into());
-                self.store.fail_claim(&claim, &error).await?;
-                return Ok(StepOutcome::Blocked {
-                    input_id: claim.input.id,
-                    reason: error.0,
-                });
+        let resolution = async {
+            let outcome =
+                load_and_execute(self.store.load_claim(&claim), claim.input.clone(), executor)
+                    .await?;
+            // Serial resolution leaves lease cleanup to its caller. Preserve its error contract:
+            // a stale commit outcome retries; a stale store error propagates.
+            match self.store.commit_claim(&claim, outcome).await {
+                Ok(CommitOutcome::Committed { input_id, .. }) => {
+                    Ok(StepOutcome::Committed { input_id })
+                }
+                Ok(CommitOutcome::Conflict | CommitOutcome::StaleClaim) => Ok(StepOutcome::Retry),
+                Err(error) => Err(ResolutionFailure::persisted(
+                    error,
+                    "invalid commit facts or schema",
+                )),
             }
-            Err(e) => return Err(e.into()),
-        };
-        let outcome = match executor.execute(snapshot, claim.input.clone()).await {
-            Ok(result) => result,
-            Err(ServiceError::InvariantFailure) => {
-                return self
-                    .block_resolution(&claim, "engine execution invariant failure")
-                    .await;
-            }
-            Err(error) => return Err(error),
-        };
-        if let TransitionResult::InvalidState(ref error) = outcome {
-            self.store.fail_claim(&claim, error).await?;
-            return Ok(StepOutcome::Blocked {
-                input_id: claim.input.id,
-                reason: error.0.clone(),
-            });
         }
-        let committed = match self.store.commit_claim(&claim, outcome).await {
-            Ok(committed) => committed,
-            Err(StoreError::CorruptData | StoreError::IncompatibleSchema) => {
-                return self
-                    .block_resolution(&claim, "invalid commit facts or schema")
-                    .await;
-            }
-            Err(error) => return Err(error.into()),
-        };
-        match committed {
-            CommitOutcome::Committed { input_id, .. } => Ok(StepOutcome::Committed { input_id }),
-            CommitOutcome::Conflict | CommitOutcome::StaleClaim => Ok(StepOutcome::Retry),
-        }
+        .await;
+        finish_resolution(claim.input.id, resolution, |error| async move {
+            self.store.fail_claim(&claim, &error).await
+        })
+        .await
     }
 }
 
@@ -194,65 +159,99 @@ impl<S: ScopedGameStore> GameService<S> {
         };
         self.resolve_scoped_claim(claim, executor).await
     }
-    async fn block_scoped_resolution(
-        &self,
-        claim: &ScopedClaim,
-        reason: &str,
-    ) -> Result<StepOutcome, ServiceError> {
-        match self
-            .store
-            .fail_scoped(claim, &InvariantError(reason.to_owned()))
-            .await
-        {
-            Ok(()) => Ok(StepOutcome::Blocked {
-                input_id: claim.input.id,
-                reason: reason.to_owned(),
-            }),
-            Err(StoreError::StaleClaim) => Ok(StepOutcome::Retry),
-            Err(error) => Err(error.into()),
-        }
-    }
     pub async fn resolve_scoped_claim<E: EngineExecutor>(
         &self,
         claim: ScopedClaim,
         executor: &E,
     ) -> Result<StepOutcome, ServiceError> {
-        let snapshot = match self.store.load_scoped(&claim).await {
-            Ok(snapshot) => snapshot,
-            Err(StoreError::StaleClaim) => return Ok(StepOutcome::Retry),
-            Err(StoreError::CorruptData | StoreError::IncompatibleSchema) => {
-                return self
-                    .block_scoped_resolution(&claim, "invalid persisted transition facts")
-                    .await;
+        let resolution = async {
+            let outcome = load_and_execute(
+                self.store.load_scoped(&claim),
+                claim.input.clone(),
+                executor,
+            )
+            .await?;
+            match self.store.commit_scoped(&claim, outcome).await {
+                Ok(CommitOutcome::Committed { input_id, .. }) => {
+                    Ok(StepOutcome::Committed { input_id })
+                }
+                Ok(CommitOutcome::StaleClaim) | Err(StoreError::StaleClaim) => {
+                    Ok(StepOutcome::Retry)
+                }
+                // Scoped conflicts retain ownership until explicitly released.
+                // Release failures are storage errors, not reasons to block the input.
+                Ok(CommitOutcome::Conflict) => match self.store.release_scoped(&claim).await {
+                    Ok(()) | Err(StoreError::StaleClaim) => Ok(StepOutcome::Retry),
+                    Err(error) => Err(ResolutionFailure::Error(error.into())),
+                },
+                Err(error) => Err(ResolutionFailure::persisted(
+                    error,
+                    "invalid commit facts or schema",
+                )),
             }
-            Err(error) => return Err(error.into()),
-        };
-        let outcome = match executor.execute(snapshot, claim.input.clone()).await {
-            Ok(outcome) => outcome,
-            Err(ServiceError::InvariantFailure) => {
-                return self
-                    .block_scoped_resolution(&claim, "engine execution invariant failure")
-                    .await;
-            }
-            Err(error) => return Err(error),
-        };
-        if let TransitionResult::InvalidState(error) = &outcome {
-            return self.block_scoped_resolution(&claim, &error.0).await;
         }
-        match self.store.commit_scoped(&claim, outcome).await {
-            Ok(CommitOutcome::Committed { input_id, .. }) => {
-                Ok(StepOutcome::Committed { input_id })
+        .await;
+        finish_resolution(claim.input.id, resolution, |error| async move {
+            self.store.fail_scoped(&claim, &error).await
+        })
+        .await
+    }
+}
+
+// This policy describes a single resolution attempt, never durable scheduler state.
+enum ResolutionFailure {
+    Retry,
+    Block(InvariantError),
+    Error(ServiceError),
+}
+impl ResolutionFailure {
+    fn persisted(error: StoreError, reason: &str) -> Self {
+        match error {
+            StoreError::CorruptData | StoreError::IncompatibleSchema => {
+                Self::Block(InvariantError(reason.to_owned()))
             }
-            Ok(CommitOutcome::StaleClaim) | Err(StoreError::StaleClaim) => Ok(StepOutcome::Retry),
-            Ok(CommitOutcome::Conflict) => match self.store.release_scoped(&claim).await {
-                Ok(()) | Err(StoreError::StaleClaim) => Ok(StepOutcome::Retry),
+            error => Self::Error(error.into()),
+        }
+    }
+}
+
+async fn load_and_execute<E: EngineExecutor>(
+    load: impl Future<Output = Result<ClaimSnapshot, StoreError>>,
+    input: OrderedInput,
+    executor: &E,
+) -> Result<TransitionResult, ResolutionFailure> {
+    let snapshot = load.await.map_err(|error| match error {
+        StoreError::StaleClaim => ResolutionFailure::Retry,
+        error => ResolutionFailure::persisted(error, "invalid persisted transition facts"),
+    })?;
+    match executor.execute(snapshot, input).await {
+        Ok(TransitionResult::InvalidState(error)) => Err(ResolutionFailure::Block(error)),
+        Ok(outcome) => Ok(outcome),
+        Err(ServiceError::InvariantFailure) => Err(ResolutionFailure::Block(InvariantError(
+            "engine execution invariant failure".into(),
+        ))),
+        Err(error) => Err(ResolutionFailure::Error(error)),
+    }
+}
+
+async fn finish_resolution<F: Future<Output = Result<(), StoreError>>>(
+    input_id: InputId,
+    resolution: Result<StepOutcome, ResolutionFailure>,
+    block: impl FnOnce(InvariantError) -> F,
+) -> Result<StepOutcome, ServiceError> {
+    match resolution {
+        Ok(outcome) => Ok(outcome),
+        Err(ResolutionFailure::Retry) => Ok(StepOutcome::Retry),
+        Err(ResolutionFailure::Error(error)) => Err(error),
+        Err(ResolutionFailure::Block(error)) => {
+            let reason = error.0.clone();
+            match block(error).await {
+                Ok(()) => Ok(StepOutcome::Blocked { input_id, reason }),
+                // Losing ownership while recording any invariant failure is a
+                // retry. The stale worker must neither block nor consume input.
+                Err(StoreError::StaleClaim) => Ok(StepOutcome::Retry),
                 Err(error) => Err(error.into()),
-            },
-            Err(StoreError::CorruptData | StoreError::IncompatibleSchema) => {
-                self.block_scoped_resolution(&claim, "invalid commit facts or schema")
-                    .await
             }
-            Err(error) => Err(error.into()),
         }
     }
 }

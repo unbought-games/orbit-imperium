@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { expect, test } from './fixtures/test'
 import { binding, body, id, shellFixture } from './fixtures/game'
 
 for (const width of [1280, 390]) {
@@ -84,7 +85,7 @@ for (const width of [1280, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/planet-name-${width}.png`,
       fullPage: true,
     })
@@ -132,7 +133,7 @@ for (const width of [1280, 390]) {
       page.getByRole('button', { name: /Rename planet/ }),
     ).toHaveCount(0)
     publicName = 'W'.repeat(40)
-    await page.getByRole('button', { name: 'Refresh galaxy' }).click()
+    await page.reload()
     await expect(page.getByText(publicName, { exact: true })).toBeVisible()
     expect(
       await page.evaluate(

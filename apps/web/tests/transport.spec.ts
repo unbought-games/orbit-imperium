@@ -1,5 +1,5 @@
 import {overview} from './v2';
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures/test';
 import {execFileSync} from 'node:child_process';
 function clock(at:number){execFileSync('docker',['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c',`UPDATE orbit_test_clock SET at_ms=${at}`],{stdio:'pipe'})}
 test('two players deliver cargo, return ships, then recall without delivery',async({browser})=>{

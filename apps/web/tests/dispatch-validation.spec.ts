@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Route } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Page, type Route } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 type S = components['schemas']
@@ -16,6 +17,13 @@ async function setup(page: Page) {
     catalog: [
       {
         key: { kind: 'Ship', id: 'SmallCargo' },
+        requirements: [],
+        enabled: true,
+        mobile: true,
+        body_kinds: ['Planet'],
+      },
+      {
+        key: { kind: 'Ship', id: 'LightFighter' },
         requirements: [],
         enabled: true,
         mobile: true,
@@ -54,6 +62,7 @@ async function setup(page: Page) {
                   id: id(20),
                   kind: 'Planet',
                   owner: id(30),
+                  name: query.system === 1 ? 'Ember Watch' : 'Other Planet',
                   activity: { type: 'None' },
                   inactivity: 'Active',
                   vacation: false,
@@ -92,7 +101,7 @@ async function setup(page: Page) {
         profile_hash: 'a'.repeat(64),
         distance: 1000,
         speeds: [],
-        duration_ms: 100000,
+        duration_ms: (100000 * 100) / query.intent.speed_percent,
         fuel: '1000000',
         capacity: '5000000000',
         maximum_payload: '4999000000',
@@ -129,6 +138,10 @@ async function setup(page: Page) {
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect(page.locator('main h1')).toHaveText('Dispatch')
+  await expect(
+    page.getByText('Latest departure order', { exact: true }),
+  ).toHaveCount(0)
+  await expect(page.getByText('Mission rules', { exact: true })).toHaveCount(0)
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   return state
 }
@@ -137,6 +150,261 @@ const review = (page: Page) =>
   page.getByRole('button', { name: 'Review fleet', exact: true })
 const mission = (page: Page) =>
   page.getByRole('combobox', { name: 'Mission', exact: true })
+
+test('flight timing updates with speed and selected ships without opening review or sending fleets', async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date())
+  await page.setViewportSize({ width: 390, height: 844 })
+  const state = await setup(page)
+  const timing = page.getByRole('region', { name: 'Flight timing' })
+  const ship = page.getByLabel('Small Cargo · 2 available')
+  await ship.fill('')
+  await expect(timing).toHaveText('Select ships to see flight times.')
+  await ship.fill('1')
+  await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
+  await expect(timing.locator('dd').nth(2)).toHaveText('3m 20s')
+  const firstReturn = Date.parse(
+    (await timing.locator('time').getAttribute('datetime'))!,
+  )
+  const started = await page.evaluate(() => performance.now())
+  await page.getByLabel('Speed', { exact: true }).selectOption('50')
+  await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
+  await expect(timing.locator('dd').nth(2)).toHaveText('6m 40s')
+  const slowerReturn = Date.parse(
+    (await timing.locator('time').getAttribute('datetime'))!,
+  )
+  // The game's monotonic clock keeps advancing while the estimate is fetched.
+  const elapsed = (await page.evaluate(() => performance.now())) - started
+  expect(slowerReturn - firstReturn).toBeGreaterThanOrEqual(200000)
+  expect(slowerReturn - firstReturn).toBeLessThanOrEqual(200000 + elapsed + 500)
+  const request = page.waitForRequest(
+    (request) =>
+      request.url().endsWith('/world') &&
+      request.postDataJSON().type === 'FleetQuote' &&
+      request.postDataJSON().intent.ships[0]?.count === '2',
+  )
+  await ship.fill('2')
+  expect((await request).postDataJSON().intent.speed_percent).toBe(50)
+  await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+  await diagnosticScreenshot(page, { path: 'test-results/dispatch-flight-timing-390.png' })
+})
+
+test('late timing replies cannot replace a newer speed and failed estimates clear obsolete times', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  const timing = page.getByRole('region', { name: 'Flight timing' })
+  await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  state.hold = async (route) => {
+    const query = route.request().postDataJSON()
+    if (query.type === 'FleetQuote' && query.intent.speed_percent === 50) {
+      held = true
+      await gate
+    }
+  }
+  await page.getByLabel('Speed', { exact: true }).selectOption('50')
+  await expect.poll(() => held).toBe(true)
+  await page.getByLabel('Speed', { exact: true }).selectOption('20')
+  await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
+  const response = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/world') &&
+      response.request().postDataJSON().type === 'FleetQuote' &&
+      response.request().postDataJSON().intent.speed_percent === 50,
+  )
+  release()
+  await response
+  await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
+  state.quoteError = 'TargetVacation'
+  await page.getByLabel('Speed', { exact: true }).selectOption('10')
+  await expect(timing).toContainText('vacation mode')
+  await expect(timing.locator('time')).toHaveCount(0)
+  expect(state.launches).toBe(0)
+})
+
+test('Add all fills the fleet capacity without opening review or consuming fuel reserves', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  const fields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
+    page.getByLabel(name, { exact: true }),
+  )
+  await fields[0].fill('invalid')
+  await page.getByRole('button', { name: 'Add all', exact: true }).click()
+  await expect(fields[0]).toHaveValue(/^\d+$/)
+  const amounts = await Promise.all(
+    fields.map(async (field) => BigInt(await field.inputValue())),
+  )
+  expect(amounts.reduce((sum, amount) => sum + amount, 0n)).toBe(4999n)
+  expect(amounts[0]).toBeLessThanOrEqual(BigInt(body.amounts.metal) / 1000000n)
+  expect(amounts[1]).toBeLessThanOrEqual(
+    BigInt(body.amounts.crystal) / 1000000n,
+  )
+  expect(amounts[2] * 1000000n + 1000000n).toBeLessThanOrEqual(
+    BigInt(body.amounts.deuterium),
+  )
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+  await review(page).click()
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
+})
+
+test('an edited cargo amount wins over a delayed Add all response', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  state.hold = async (route) => {
+    if (route.request().postDataJSON().type === 'FleetQuote') {
+      held = true
+      await gate
+    }
+  }
+  await page.getByRole('button', { name: 'Add all', exact: true }).click()
+  await expect.poll(() => held).toBe(true)
+  await page.getByLabel('Metal', { exact: true }).fill('42')
+  const response = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/world') &&
+      response.request().postDataJSON().type === 'FleetQuote',
+  )
+  release()
+  await response
+  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
+  await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+})
+
+test('mission changes keep the same destination visible during refresh but never reuse it for other coordinates', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  const destination = page.getByText('Destination: Ember Watch', {
+    exact: false,
+  })
+  await expect(destination).toBeVisible()
+  for (const next of ['Attack', 'Espionage', 'Transport']) {
+    let release!: () => void
+    let held = false
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    state.hold = async (route) => {
+      if (route.request().postDataJSON().type === 'Galaxy') {
+        held = true
+        await gate
+      }
+    }
+    await mission(page).selectOption(next)
+    await expect.poll(() => held).toBe(true)
+    await expect(destination).toBeVisible()
+    const refreshed = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/world') &&
+        response.request().postDataJSON().type === 'Galaxy',
+    )
+    release()
+    await refreshed
+    await expect(destination).toBeVisible()
+  }
+  state.hold = null
+  await page.getByLabel('Position', { exact: true }).fill('3')
+  await expect(destination).toHaveCount(0)
+  await page.getByLabel('Position', { exact: true }).fill('1')
+  await expect(destination).toBeVisible()
+  await page.getByLabel('System', { exact: true }).fill('2')
+  await expect(destination).toHaveCount(0)
+  await expect(
+    page.getByText('Destination: Other Planet', { exact: false }),
+  ).toBeVisible()
+})
+
+test('cleared ship and cargo amounts display zero and submit as zero even before blur', async ({
+  page,
+}) => {
+  await setup(page)
+  const cargoFields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
+    page.getByLabel(name, { exact: true }),
+  )
+  const unusedShip = page.getByLabel('Light Fighter · 0 available')
+  for (const field of [...cargoFields, unusedShip]) {
+    await field.fill('')
+    await field.blur()
+    await expect(field).toHaveValue('0')
+  }
+  for (const field of [unusedShip, ...cargoFields]) {
+    await field.fill('')
+    const request = page.waitForRequest(
+      (request) =>
+        request.url().endsWith('/world') &&
+        request.postDataJSON().type === 'FleetQuote',
+    )
+    // Submitting with the keyboard need not blur the current empty input.
+    await field.press('Enter')
+    const intent = (await request).postDataJSON().intent
+    expect(intent.cargo).toEqual({ metal: '0', crystal: '0', deuterium: '0' })
+    expect(intent.ships).toEqual([
+      { owner: binding.player, ship_type: 'SmallCargo', count: '1' },
+    ])
+    await expect(
+      page.getByRole('region', { name: 'Fleet quote' }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Edit mission' }).click()
+  }
+})
+
+test('pasting coordinates into any destination field fills all three and preserves validation', async ({
+  page,
+}) => {
+  await setup(page)
+  const fields = ['Galaxy', 'System', 'Position']
+  for (const [index, field] of fields.entries()) {
+    const system = String(370 + index)
+    const input = page.getByLabel(field, { exact: true })
+    const paste = async (text: string) =>
+      input.evaluate((element, value) => {
+        const clipboardData = new DataTransfer()
+        clipboardData.setData('text/plain', value)
+        return element.dispatchEvent(
+          new ClipboardEvent('paste', {
+            clipboardData,
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+      }, text)
+    expect(await paste(` \n [ 1 : ${system} : 10 ] \t`)).toBe(false)
+    await expect(page.getByLabel('Galaxy', { exact: true })).toHaveValue('1')
+    await expect(page.getByLabel('System', { exact: true })).toHaveValue(system)
+    await expect(page.getByLabel('Position', { exact: true })).toHaveValue('10')
+    await expect(review(page)).toBeEnabled()
+    // Unrecognized text retains the browser's ordinary paste behavior.
+    expect(await paste('12')).toBe(true)
+    expect(await paste('1:2:3:4')).toBe(true)
+    expect(await paste('[1:500:16]')).toBe(false)
+    await expect(page.getByLabel('System', { exact: true })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    await expect(page.getByLabel('Position', { exact: true })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    await expect(review(page)).toBeDisabled()
+  }
+})
 
 test('coordinate errors appear beside entry before review, including pasted emoji and ranges', async ({
   page,
@@ -178,7 +446,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/dispatch-validation-${width}.png`,
       fullPage: true,
     })
@@ -232,9 +500,11 @@ test('protection is explained before review, rechecked at review, and launch rac
       .getByRole('status')
       .filter({ hasText: 'Beginner protection prevents' }),
   ).toBeVisible()
-  expect(state.quotes).toBe(0)
+  // Timing now requests read-only quotes before the explicit review step.
+  expect(state.launches).toBe(0)
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 900 })
-  await page.screenshot({
+  await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-protection-mobile.png',
     fullPage: true,
   })
@@ -250,7 +520,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
   await page.getByRole('button', { name: /^Send / }).click()
   await expect(
-    page.getByRole('region', { name: 'Dispatch receipt' }),
+    page.getByRole('complementary', { name: 'Action needs attention' }),
   ).toContainText('Fleet not sent: Beginner protection prevents')
   expect(state.launches).toBe(1)
   await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
@@ -352,3 +622,76 @@ test('late eligibility and quote failures cannot overwrite an edited destination
   ).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
 })
+
+for (const width of [320, 390, 1280]) {
+  test(`dispatch destination stays in four compact boxes at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await setup(page)
+    const group = page.getByRole('group', {
+      name: 'Mission and destination',
+      exact: true,
+    })
+    await expect(
+      page.getByRole('region', { name: 'Flight timing' }).locator('time'),
+    ).toBeVisible()
+    await expect(
+      page.getByText('Destination: Ember Watch', { exact: false }),
+    ).toBeVisible()
+    // Take each row's geometry in one frame so asynchronous content above it
+    // cannot move the page between measurements of its individual controls.
+    const boxes = await group.locator('input, select').evaluateAll((elements) =>
+      elements.slice(0, 4).map((element) => {
+        const { y, width, height } = element.getBoundingClientRect()
+        return { y, width, height }
+      }),
+    )
+    expect(boxes).toHaveLength(4)
+    const first = boxes[0]!
+    for (const box of boxes) {
+      expect(box!.y).toBe(first.y)
+      expect(box!.height).toBe(44)
+      expect(box!.width).toBeLessThanOrEqual(150)
+    }
+    // The compact inputs now include a live flight timing summary below Speed.
+    expect((await group.boundingBox())!.height).toBeLessThan(230)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width)
+    await diagnosticScreenshot(page, {
+      path: `test-results/dispatch-compact-${width}.png`,
+    })
+    const cargo = page.getByRole('group', { name: 'Cargo', exact: true })
+    const cargoBoxes = await cargo
+      .locator('input, button')
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const { y, height } = element.getBoundingClientRect()
+          return { y, height }
+        }),
+      )
+    expect(cargoBoxes).toHaveLength(4)
+    for (const box of cargoBoxes) {
+      expect(box!.y).toBe(cargoBoxes[0]!.y)
+      expect(box!.height).toBe(44)
+    }
+    expect((await cargo.boundingBox())!.height).toBeLessThanOrEqual(75)
+    const colors = await cargo
+      .locator('svg[data-resource]')
+      .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).color))
+    expect(new Set(colors).size).toBe(3)
+    await cargo.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-cargo-${width}.png` })
+    await mission(page).selectOption('Attack')
+    await expect(
+      page.getByText('Beginner protection can prevent attacks', {
+        exact: false,
+      }),
+    ).toBeVisible()
+    const position = (await page
+      .getByLabel('Position', { exact: true })
+      .boundingBox())!
+    expect(position.y).toBe((await mission(page).boundingBox())!.y)
+  })
+}

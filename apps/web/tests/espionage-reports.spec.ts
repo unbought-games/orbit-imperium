@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect } from './fixtures/test'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import { shellFixture, binding, body, id } from './fixtures/game'
 
@@ -125,7 +126,7 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         ),
       ).toBe(true)
       await page.evaluate(() => document.fonts.ready)
-      await buildings.screenshot({
+      await diagnosticScreenshot(buildings, {
         path: `test-results/espionage-${variant}-${width}.png`,
       })
     }

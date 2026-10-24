@@ -21,10 +21,12 @@ import { ActionStatus } from '../ui/action-status'
 import { bodyName, coordinates } from '../ui/format'
 import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
-import { pageTitles } from './navigation-model'
+import { buildPages, fleetPages, pageTitles } from './navigation-model'
 import { Popover } from '../ui/popover'
 import { WifiOff } from 'lucide-react'
+import { usePinnedHeader } from './use-pinned-header'
 export function GameShell() {
+  const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
   const navigate = useNavigate()
   const [dispatchDraft, setDispatchDraft] = useState<
@@ -116,17 +118,13 @@ export function GameShell() {
       ),
     })
   }
-  const hasFeatureHeading =
+  const hideRouteHeading =
     available &&
     (page === 'overview' ||
-      (view.protocol === 2 && ['fleets', 'dispatch'].includes(page)) ||
+      buildPages.includes(page) ||
+      fleetPages.includes(page) ||
       page === 'settings' ||
-      (view.protocol !== 2 &&
-        ['resources', 'facilities', 'research', 'shipyard', 'defense'].includes(
-          page,
-        )) ||
-      (view.protocol === 4 &&
-        ['fleets', 'dispatch', 'galaxy', 'reports'].includes(page)))
+      (view.protocol === 4 && page === 'reports'))
   const title = !available
     ? 'Destination unavailable'
     : page === 'overview'
@@ -148,9 +146,9 @@ export function GameShell() {
     </Popover>
   )
   return (
-    <div className={styles['game-shell']}>
+    <div className={styles['game-shell']} ref={pinned.shell}>
       <div className={styles['shell-columns']}>
-        <div className={styles.header}>
+        <div className={styles.header} ref={pinned.header}>
           <header className={styles.identity}>
             <Brand
               className={styles.brand}
@@ -224,7 +222,7 @@ export function GameShell() {
           <main id="main" tabIndex={-1} className={styles['work-area']}>
             <div
               className={
-                hasFeatureHeading ? styles.routeHeading : styles['page-heading']
+                hideRouteHeading ? styles.routeHeading : styles['page-heading']
               }
             >
               <Heading level={1} tabIndex={-1} ref={heading}>

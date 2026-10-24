@@ -39,7 +39,7 @@ pub(super) async fn stream<S: GameStore + IdentityStore + UpdateStore + Send + S
     }
     let session = authenticate(&s, &headers, false).await?;
     let Query(query) = query.map_err(|_| ServiceError::Malformed)?;
-    let principal = v4::principal(&session, UniverseId(id))?;
+    let principal = bound_api::principal(&session, UniverseId(id))?;
     let binding = Binding {
         account: principal.account,
         player: principal.player,
@@ -95,7 +95,7 @@ async fn deliver<S: GameStore + IdentityStore + UpdateStore + Send + Sync + 'sta
         let Ok(session) = authenticate(&s, &headers, false).await else {
             return;
         };
-        if !v4::principal(&session, binding.universe)
+        if !bound_api::principal(&session, binding.universe)
             .is_ok_and(|p| p.account == binding.account && p.player == binding.player)
         {
             return;

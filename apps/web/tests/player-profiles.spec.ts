@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect } from './fixtures/test'
 import type { components } from '../src/contracts'
 import {
   shellFixture,
@@ -112,7 +113,7 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/public-supporters-${width}.png`,
       fullPage: true,
     })
@@ -180,7 +181,7 @@ test('espionage and combat observations use current public identities without ch
     origin: { galaxy: 1, system: 1, position: 1 },
     target: { galaxy: 1, system: 1, position: 2 },
   }
-  await page.route(`**/reports/${id(80)}`, (route) => {
+  await page.route(`**/api/**/reports/${id(80)}`, (route) => {
     const context = route.request().postDataJSON()
     return route.fulfill({
       json: {

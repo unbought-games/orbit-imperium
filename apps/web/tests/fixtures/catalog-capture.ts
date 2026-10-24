@@ -1,3 +1,4 @@
+import { diagnosticScreenshot } from './diagnostic-screenshot'
 import { expect, type Page } from '@playwright/test'
 
 /** Visit the catalog and decode its art before a full-page evidence capture. */
@@ -27,8 +28,8 @@ export async function captureCatalog(page: Page, path: string) {
     .evaluateAll((images) =>
       Promise.all(images.map((image) => (image as HTMLImageElement).decode())),
     )
-  await page.screenshot({ path: path.replace('.png', '-catalog-viewport.png') })
-  await page.screenshot({ path, fullPage: true })
+  await diagnosticScreenshot(page, { path: path.replace('.png', '-catalog-viewport.png') })
+  await diagnosticScreenshot(page, { path, fullPage: true })
   await page.evaluate(
     ({ x, y }) => window.scrollTo({ left: x, top: y, behavior: 'instant' }),
     scroll,

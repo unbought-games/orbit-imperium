@@ -76,11 +76,16 @@
   font-size: var(--font-size-lg);
   font-weight: 650;
 }
-.repository {
+.repository,
+.discord {
   font-size: var(--font-size-sm);
 }
-.repository svg {
+.repository svg,
+.discord svg {
   flex-shrink: 0;
+}
+.discord svg {
+  color: #5865f2;
 }
 .error {
   margin: 0;

@@ -1,11 +1,12 @@
-import {test,expect} from '@playwright/test';
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import {test,expect} from './fixtures/test';
 
 test('new player signs up, builds, refreshes and signs back in on mobile',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await page.getByRole('link',{name:'Create an account',exact:true}).click();
  await expect(page.getByRole('button',{name:'Create account',exact:true})).toBeVisible();
- await page.screenshot({path:'target/signup-form-mobile.png',fullPage:true});
+ await diagnosticScreenshot(page, {path:'target/signup-form-mobile.png',fullPage:true});
  await page.getByLabel('Account',{exact:true}).fill('  NewPlayer  ');
  await page.getByLabel('Password',{exact:true}).fill('simple-password');
  await page.route('**/api/v1/registration?bootstrap=true',async route=>{const response=await route.fetch();const payload=await response.json();expect(response.status()).toBe(201);expect(payload.result.game.status).toBe('ready');payload.result.game={status:'unavailable',code:'Unavailable'};await route.fulfill({response,json:payload})});
@@ -48,5 +49,5 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Menu',exact:true})).toBeVisible();
  expect((await(await page.request.get('/api/v1/session')).json()).account).toBe(session.account);
- await page.screenshot({path:'target/signup-mobile.png',fullPage:true});
+ await diagnosticScreenshot(page, {path:'target/signup-mobile.png',fullPage:true});
 });

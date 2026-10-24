@@ -1,5 +1,4 @@
 import type { CatalogSelection } from '../shell/use-catalog-selection'
-import { TaskHeader } from '../ui/task-header'
 import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { canFundFleet } from '../client-model/resources'
 import { pendingBody } from '../client-model/game-projection'
@@ -45,8 +44,6 @@ export function Operations({
   const countdown = useCountdown(view.sampled_at)
   return (
     <>
-      {page === 'fleets' && <TaskHeader title="Fleets" />}
-      {page === 'dispatch' && <TaskHeader title="Dispatch fleet" />}
       {['overview', 'resources'].includes(page) && (
         <Economy
           view={view}

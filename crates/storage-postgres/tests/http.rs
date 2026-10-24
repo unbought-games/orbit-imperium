@@ -348,3 +348,6 @@ async fn real_http_origin_csrf_cookie_and_privacy() {
         "normal pending reads and durable admission do not produce service failures"
     );
 }
+
+#[path = "http/versioned.rs"]
+mod versioned;

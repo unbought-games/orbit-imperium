@@ -38,6 +38,7 @@ export const bodyPages: Page[] = [
   'fleets',
   'galaxy',
   'dispatch',
+  'reports',
 ]
 export function validateBodySearch(search: Record<string, unknown>): {
   body?: string

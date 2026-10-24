@@ -1,4 +1,5 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { shellFixture, binding, body, id, resources } from './fixtures/game'
 
@@ -79,7 +80,7 @@ for (const viewport of [
       page.getByRole('link', { name: 'Dispatch a fleet' }),
       page.getByText('Arrival in', { exact: true }),
     ])
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/density-fleets-${viewport.width}.png`,
     })
     await page
@@ -99,7 +100,7 @@ for (const viewport of [
       .locator('details')
       .filter({ has: page.locator('summary', { hasText: 'Flight path' }) })
     await expect(path).not.toHaveAttribute('open')
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/density-mission-${viewport.width}.png`,
     })
     await recall.click()
@@ -176,7 +177,29 @@ for (const viewport of [
     await expect(
       page.getByRole('heading', { name: 'Dispatches from the frontier.' }),
     ).toHaveCount(0)
-    await page.screenshot({
+    const back = page.getByRole('link', { name: 'Back to reports' })
+    await expect(back).toHaveText('')
+    await expect(back.locator('svg.lucide-arrow-left')).toBeVisible()
+    const remove = page.getByRole('button', { name: 'Delete report' })
+    await expect(remove).toHaveText('')
+    await expect(remove.locator('svg.lucide-trash-2')).toBeVisible()
+    const timestamp = page.getByRole('button', { name: 'Report time details' })
+    await expect(timestamp).toHaveText('1 hour ago')
+    await timestamp.click()
+    const fullTime = page.getByRole('dialog', { name: 'Report time', exact: true })
+    await expect(fullTime.locator('time')).toHaveAttribute('datetime', new Date(header.observed_at).toISOString())
+    await page.keyboard.press('Escape')
+    await expect(fullTime).toHaveCount(0)
+    await timestamp.hover()
+    await expect(fullTime).toBeVisible()
+    await page.keyboard.press('Escape')
+    const harvest = (await page.getByRole('button', { name: 'Prepare harvest' }).boundingBox())!
+    const outcome = (await page.getByRole('region', { name: 'Report observation' }).locator('header').boundingBox())!
+    if (viewport.width < 768) {
+      expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
+      expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
+    } else expect(harvest.y).toBeLessThan(outcome.y)
+    await diagnosticScreenshot(page, {
       path: `test-results/density-combat-${viewport.width}.png`,
     })
     await page.getByRole('button', { name: 'Prepare harvest' }).click()
@@ -189,7 +212,7 @@ for (const viewport of [
     await page.getByRole('link', { name: 'Back to reports' }).click()
     await firstViewport(page, [
       page.getByRole('link', { name: 'Combat', exact: true }),
-      page.getByRole('checkbox', { name: 'Show deleted reports' }),
+      page.getByRole('button', { name: 'Delete report' }),
     ])
   })
 
@@ -221,7 +244,7 @@ for (const viewport of [
     await expect(page.getByLabel('Planet energy')).toHaveCount(0)
     await expect(page.locator('main details')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Resources', level: 2 })).toHaveCount(0)
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/density-resources-${viewport.width}.png`,
     })
   })
@@ -295,14 +318,14 @@ for (const width of [1280, 390]) {
       .click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/dispatch`)
     await expect(
-      page.getByRole('heading', { name: 'Dispatch fleet', exact: true }),
+      page.getByRole('heading', { name: 'Send a transport', exact: true }),
     ).toBeVisible()
     await expect(
       page.getByRole('combobox', { name: 'Selected body' }),
     ).toHaveValue(body.id)
   })
 
-  test(`legacy fleet and dispatch headers stay compact at ${width}px`, async ({
+  test(`legacy fleet and dispatch tabs replace page titles at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 })
@@ -325,21 +348,13 @@ for (const width of [1280, 390]) {
         level: 2,
         exact: true,
       })
-      await expect(heading).toBeInViewport({ ratio: 1 })
-      // Keep the task's styled title, without a second large shell heading.
-      await expect(heading).toHaveCSS('margin', '0px')
-      await expect(heading).toHaveCSS('font-size', '24px')
-      for (const [header, maxHeight] of [
-        [heading.locator('..'), 64],
-        [page.locator('main h1').locator('..'), 1],
-      ] as const) {
-        await expect
-          .poll(async () => {
-            const box = await header.boundingBox()
-            return box?.height ?? Number.POSITIVE_INFINITY
-          })
-          .toBeLessThanOrEqual(maxHeight)
-      }
+      await expect(heading).toHaveCount(0)
+      await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toBeVisible()
+      // Preserve the accessible route heading without taking up visual space.
+      await expect.poll(async () => {
+        const box = await page.locator('main h1').locator('..').boundingBox()
+        return box?.height ?? Number.POSITIVE_INFINITY
+      }).toBeLessThanOrEqual(1)
       await expect(
         page.getByRole('combobox', { name: 'Destination', exact: true }),
       ).toHaveValue(id(6))
@@ -349,9 +364,43 @@ for (const width of [1280, 390]) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBeLessThanOrEqual(width)
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         path: `test-results/legacy-${route}-header-${width}.png`,
       })
+    }
+  })
+}
+
+for (const width of [390, 1280]) {
+  test(`tabbed pages omit repeated titles and preserve route focus at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await shellFixture(page, { protocol: 4 })
+    for (const [route, title, navigation] of [
+      ['resources', 'Resources', 'Build'],
+      ['facilities', 'Facilities', 'Build'],
+      ['research', 'Research', 'Build'],
+      ['shipyard', 'Shipyard', 'Build'],
+      ['defense', 'Defense', 'Build'],
+      ['fleets', 'Fleets', 'Fleet'],
+      ['galaxy', 'Galaxy', 'Fleet'],
+      ['dispatch', 'Dispatch', 'Fleet'],
+    ]) {
+      await page.goto(`/u/andromeda/b/${body.id}/${route}`)
+      const tabs = page.getByRole('navigation', { name: `${navigation} navigation` })
+      await expect(tabs).toBeVisible()
+      await expect(tabs.getByRole('link', { name: title, exact: true })).toHaveAttribute('aria-current', 'page')
+      await expect(page.locator('main h1')).toHaveText(title)
+      await expect(page.locator('main h1')).toBeFocused()
+      await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
+      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(0)
+      if (route === 'fleets') {
+        await expect(page.getByRole('link', { name: 'Dispatch a fleet' })).toBeVisible()
+        await expect(page.getByText(/Fleet slots:/)).toBeVisible()
+      }
+      if (route === 'dispatch') {
+        await expect(page.getByText(/Origin .*Fleet slots:/)).toBeVisible()
+        await expect(page.getByRole('group', { name: 'Mission and destination' })).toBeVisible()
+      }
     }
   })
 }

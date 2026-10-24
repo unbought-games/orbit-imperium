@@ -141,6 +141,15 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
   assert.notEqual(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'failure' }), 0)
 })
 
+test('fixture browser failure diagnostics are downloadable without capturing successful tests', () => {
+  const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
+  const upload = browser.steps.find((step) => step.uses?.startsWith('actions/upload-artifact@'))
+  assert.equal(upload.if, 'failure()')
+  assert.equal(upload.with.path, 'test-results/browser-ui/')
+  assert.equal(upload.with['retention-days'], 7)
+  assert.equal(upload.with['if-no-files-found'], 'ignore')
+})
+
 test('routine CI and continuous image publication have no custom execution deadlines', () => {
   for (const { file, workflow } of workflows.filter(({ file }) =>
     ['ci.yml', 'release-image.yml'].includes(file),

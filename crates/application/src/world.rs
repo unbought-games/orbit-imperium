@@ -127,6 +127,8 @@ pub enum WorldQueryKind {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportHeader4 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<serde_json::Value>,
     pub id: ReportId,
     pub kind: String,
     pub observed_at: i64,

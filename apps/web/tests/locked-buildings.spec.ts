@@ -1,5 +1,6 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { readFileSync } from 'node:fs'
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
 
@@ -70,7 +71,7 @@ for (const width of [1440, 390, 320]) {
           ),
         ).toBe(true)
         if (id === 'NaniteFactory')
-          await pane.screenshot({
+          await diagnosticScreenshot(pane, {
             path: `test-results/locked-unavailable-${width}.png`,
             animations: 'disabled',
           })
@@ -199,7 +200,7 @@ for (const width of [1440, 390, 320]) {
           ),
         ).toBe(true)
         if (destination === 'facilities')
-          await pane.screenshot({
+          await diagnosticScreenshot(pane, {
             path: `test-results/locked-requirements-${width}.png`,
             animations: 'disabled',
           })

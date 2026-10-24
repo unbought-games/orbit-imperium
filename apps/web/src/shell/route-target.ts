@@ -119,10 +119,14 @@ export function routeTarget(
     case 'reports':
       return item
         ? linkOptions({
-            to: '/u/$universe/reports/$item',
-            params: { universe, item },
-            search,
+            to: '/u/$universe/b/$body/reports/$item',
+            params: { ...planetParams(), item },
+            search: {},
           })
-        : linkOptions({ to: '/u/$universe/reports', params, search })
+        : linkOptions({
+            to: '/u/$universe/b/$body/reports',
+            params: planetParams(),
+            search: {},
+          })
   }
 }

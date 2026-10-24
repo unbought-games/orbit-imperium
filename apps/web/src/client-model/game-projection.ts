@@ -11,6 +11,7 @@ import {
   type Quote,
 } from './commands'
 import type { GameState } from './game-store'
+import { rawResourceRates } from './production-rates'
 import { canAfford, resourceNames } from './resources'
 
 type S = components['schemas']
@@ -601,20 +602,6 @@ function parentRefund(
   return paid ? { ...paid, refund: true } : null
 }
 
-function rates(view: BoundView, body: BoundView['bodies'][number]) {
-  if ('production' in body) return body.production
-  if (view.protocol === 2) return null
-  const rate = view.progression.production.find(
-    (entry) => entry.body === body.id,
-  )
-  return rate
-    ? {
-        ...rate.gross_per_hour,
-        deuterium: `${rate.net_deuterium_per_hour.sign === 'Negative' ? '-' : ''}${rate.net_deuterium_per_hour.magnitude}`,
-      }
-    : null
-}
-
 function advance(
   amounts: S['Resources'],
   capacity: S['Resources'],
@@ -670,7 +657,7 @@ export function projectGameView(state: GameState): BoundView | null {
         attempt.envelope.command.body === body.id
       )
         horizon = Math.min(horizon, intent.submittedAt)
-    const rate = rates(view, body)
+    const rate = rawResourceRates(view, body)
     let cursor = view.as_of_ms
     for (const { attempt, intent } of active.sort(
       (a, b) => a.intent.submittedAt - b.intent.submittedAt,
