@@ -632,15 +632,21 @@ for (const width of [320, 390, 1280]) {
       name: 'Mission and destination',
       exact: true,
     })
-    const controls = [
-      mission(page),
-      ...['Galaxy', 'System', 'Position'].map((name) =>
-        page.getByLabel(name, { exact: true }),
-      ),
-    ]
-    const boxes = await Promise.all(
-      controls.map((control) => control.boundingBox()),
+    await expect(
+      page.getByRole('region', { name: 'Flight timing' }).locator('time'),
+    ).toBeVisible()
+    await expect(
+      page.getByText('Destination: Ember Watch', { exact: false }),
+    ).toBeVisible()
+    // Take each row's geometry in one frame so asynchronous content above it
+    // cannot move the page between measurements of its individual controls.
+    const boxes = await group.locator('input, select').evaluateAll((elements) =>
+      elements.slice(0, 4).map((element) => {
+        const { y, width, height } = element.getBoundingClientRect()
+        return { y, width, height }
+      }),
     )
+    expect(boxes).toHaveLength(4)
     const first = boxes[0]!
     for (const box of boxes) {
       expect(box!.y).toBe(first.y)
@@ -656,20 +662,19 @@ for (const width of [320, 390, 1280]) {
       path: `test-results/dispatch-compact-${width}.png`,
     })
     const cargo = page.getByRole('group', { name: 'Cargo', exact: true })
-    const cargoBoxes = await Promise.all(
-      ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-        page.getByLabel(name, { exact: true }).boundingBox(),
-      ),
-    )
+    const cargoBoxes = await cargo
+      .locator('input, button')
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const { y, height } = element.getBoundingClientRect()
+          return { y, height }
+        }),
+      )
+    expect(cargoBoxes).toHaveLength(4)
     for (const box of cargoBoxes) {
       expect(box!.y).toBe(cargoBoxes[0]!.y)
       expect(box!.height).toBe(44)
     }
-    const addAll = (await cargo
-      .getByRole('button', { name: 'Add all', exact: true })
-      .boundingBox())!
-    expect(addAll.y).toBe(cargoBoxes[0]!.y)
-    expect(addAll.height).toBe(44)
     expect((await cargo.boundingBox())!.height).toBeLessThanOrEqual(75)
     const colors = await cargo
       .locator('svg[data-resource]')
