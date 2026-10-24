@@ -227,7 +227,7 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
-          {!page.items.length && !loading && error === null && (
+          {!page.items.length && error === null && (
             <EmptyState
               icon={FileText}
               eyebrow="Mission archive"

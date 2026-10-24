@@ -143,6 +143,7 @@ export function MissionFleets({
       {!fleets.length && !launches.length && (
         <EmptyState
           icon={Rocket}
+          variant="compact"
           title={item ? 'Fleet unavailable.' : 'No active fleets.'}
           description={
             item
