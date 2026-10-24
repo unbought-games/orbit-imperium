@@ -127,7 +127,9 @@ async function reportsFixture(page: Page) {
       },
     })
   })
-  await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  // Start on the canonical inbox so its redirect cannot remount the report
+  // controls between focusing a button and submitting a command.
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
   await expect(
     page.getByRole('button', { name: 'Load more reports' }),
@@ -260,30 +262,40 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
   expect(fixture.submitted()).toBe(2)
 })
 
-test('pagination cannot suppress reconciliation during a pending deletion', async ({
-  page,
-}) => {
-  const fixture = await reportsFixture(page)
-  let release!: () => void
-  fixture.pause(
-    new Promise<void>((resolve) => {
-      release = resolve
-    }),
-  )
-  const row = page.locator('main article').first()
-  await row.getByRole('button', { name: 'Delete report' }).focus()
-  await page.keyboard.press('Enter')
-  await expect(page.locator('main article')).toHaveCount(0)
-  await expect(
-    page.getByRole('button', { name: 'Load more reports' }),
-  ).toBeDisabled()
-  release()
-  await expect(row.getByLabel('Unread', { exact: true })).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Load more reports' }),
-  ).toHaveCount(0)
-  expect(fixture.headers[0].hidden).toBe(true)
-})
+for (const activation of ['click', 'Enter'] as const) {
+  test(`pagination cannot suppress reconciliation during a pending deletion via ${activation}`, async ({
+    page,
+  }) => {
+    const fixture = await reportsFixture(page)
+    let release!: () => void
+    fixture.pause(
+      new Promise<void>((resolve) => {
+        release = resolve
+      }),
+    )
+    const row = page.locator('main article').first()
+    const remove = row.getByRole('button', { name: 'Delete report' })
+    try {
+      if (activation === 'click') await remove.click()
+      else await remove.press('Enter')
+      // An empty list can also occur during navigation. Confirm the command is
+      // actually held before asserting the optimistic UI and pagination lock.
+      await expect.poll(fixture.submitted).toBe(1)
+      expect(fixture.headers[0].hidden).toBe(false)
+      await expect(page.locator('main article')).toHaveCount(0)
+      await expect(
+        page.getByRole('button', { name: 'Load more reports' }),
+      ).toBeDisabled()
+    } finally {
+      release()
+    }
+    await expect(row.getByLabel('Unread', { exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Load more reports' }),
+    ).toHaveCount(0)
+    expect(fixture.headers[0].hidden).toBe(true)
+  })
+}
 
 
 test('opening a report marks it read after loading, clears the inbox badge and does not resubmit after refresh', async ({ page }) => {
