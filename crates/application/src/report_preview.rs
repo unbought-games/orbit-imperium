@@ -30,26 +30,26 @@ pub fn report_preview(payload: &Value) -> Value {
             preview.insert((*key).to_owned(), value.clone());
         }
     }
-    if payload["kind"] == "Combat" {
-        if let Some(participants) = payload["participants"].as_array() {
-            preview.insert(
-                "participants".into(),
-                Value::Array(
-                    participants
-                        .iter()
-                        .map(|participant| {
-                            let mut identity = Map::new();
-                            for key in ["owner", "side"] {
-                                if let Some(value) = participant.get(key) {
-                                    identity.insert(key.into(), value.clone());
-                                }
+    if payload["kind"] == "Combat"
+        && let Some(participants) = payload["participants"].as_array()
+    {
+        preview.insert(
+            "participants".into(),
+            Value::Array(
+                participants
+                    .iter()
+                    .map(|participant| {
+                        let mut identity = Map::new();
+                        for key in ["owner", "side"] {
+                            if let Some(value) = participant.get(key) {
+                                identity.insert(key.into(), value.clone());
                             }
-                            Value::Object(identity)
-                        })
-                        .collect(),
-                ),
-            );
-        }
+                        }
+                        Value::Object(identity)
+                    })
+                    .collect(),
+            ),
+        );
     }
     Value::Object(preview)
 }

@@ -180,7 +180,7 @@ test('espionage and combat observations use current public identities without ch
     origin: { galaxy: 1, system: 1, position: 1 },
     target: { galaxy: 1, system: 1, position: 2 },
   }
-  await page.route(`**/reports/${id(80)}`, (route) => {
+  await page.route(`**/api/**/reports/${id(80)}`, (route) => {
     const context = route.request().postDataJSON()
     return route.fulfill({
       json: {
