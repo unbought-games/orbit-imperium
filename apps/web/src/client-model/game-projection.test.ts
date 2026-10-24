@@ -309,7 +309,10 @@ describe('one live game projection', () => {
         ['3000', '3000', '2500'],
       ]) {
         const s = state()
-        s.view = { ...snapshot(), protocol }
+        s.view =
+          protocol === 4
+            ? snapshot()
+            : { ...snapshot(), protocol, capabilities: [] }
         s.view.bodies[0].amounts = {
           metal: amount,
           crystal: amount,
@@ -328,7 +331,10 @@ describe('one live game projection', () => {
     'keeps protocol %i stocks unchanged when production is missing',
     (protocol) => {
       const s = state()
-      s.view = { ...snapshot(), protocol }
+      s.view =
+        protocol === 4
+          ? snapshot()
+          : { ...snapshot(), protocol, capabilities: [] }
       s.view.progression.production = []
       s.now = 1100
       expect(projectGameView(s)?.bodies[0].amounts).toEqual(
@@ -361,6 +367,13 @@ describe('one live game projection', () => {
       bodies: [
         {
           ...modern.bodies[0],
+          inventories: [],
+          levels: {
+            MetalMine: 1,
+            CrystalMine: 1,
+            DeuteriumSynthesizer: 1,
+            SolarPlant: 1,
+          },
           production: { metal: '3600000', crystal: '0', deuterium: '1800000' },
         },
       ],
