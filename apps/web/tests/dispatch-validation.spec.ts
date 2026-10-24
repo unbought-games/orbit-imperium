@@ -34,7 +34,7 @@ async function setup(page: Page) {
   const state = {
     blocker: null as S['GameError4'] | null,
     quoteError: null as S['GameError4'] | null,
-    launchError: 'BeginnerProtected' as S['GameError4'],
+    launchError: 'BeginnerProtected' as S['GameError4'] | null,
     resolves: 0,
     quotes: 0,
     launches: 0,
@@ -131,8 +131,13 @@ async function setup(page: Page) {
         command_id: pair.gameplay.command_id,
         admitted_at: Date.now(),
         executed_at: Date.now(),
-        status: 'Rejected',
-        code: state.launchError,
+        ...(state.launchError
+          ? { status: 'Rejected', code: state.launchError }
+          : {
+              status: 'Committed',
+              result_ids: [id(80)],
+              minimum_viewer_revision: '1',
+            }),
       },
     })
   })
@@ -150,6 +155,60 @@ const review = (page: Page) =>
   page.getByRole('button', { name: 'Review fleet', exact: true })
 const mission = (page: Page) =>
   page.getByRole('combobox', { name: 'Mission', exact: true })
+
+test('successful dispatch resets ship and cargo quantities after preserving edits through review', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  state.launchError = null
+  const ship = page.getByLabel('Small Cargo · 2 available')
+  const cargo = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
+    page.getByLabel(name, { exact: true }),
+  )
+  for (const field of cargo) await field.fill('42')
+  await review(page).click()
+  await page.getByRole('button', { name: 'Edit mission' }).click()
+  await expect(ship).toHaveValue('1')
+  for (const field of cargo) await expect(field).toHaveValue('42')
+  await review(page).click()
+  await page.getByRole('button', { name: /^Send / }).click()
+  await expect(ship).toHaveValue('0')
+  await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue('0')
+  for (const field of cargo) await expect(field).toHaveValue('0')
+  await expect(page.getByRole('region', { name: 'Flight timing' })).toHaveText(
+    'Select ships to see flight times.',
+  )
+  expect(state.launches).toBe(1)
+})
+
+test('a delayed successful launch does not erase edits for the next fleet', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  state.launchError = null
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/commands', async (route) => {
+    await gate
+    await route.fallback()
+  })
+  await review(page).click()
+  await page.getByRole('button', { name: /^Send / }).click()
+  const ship = page.getByLabel(/Small Cargo · \d+ available/)
+  await ship.fill('2')
+  await page.getByLabel('Metal', { exact: true }).fill('42')
+  const response = page.waitForResponse('**/commands')
+  release()
+  await response
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Launch Fleet:' }),
+  ).toContainText('Action confirmed.')
+  await expect(ship).toHaveValue('2')
+  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
+  expect(state.launches).toBe(1)
+})
 
 test('flight timing updates with speed and selected ships without opening review or sending fleets', async ({
   page,
@@ -516,6 +575,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   // The observation is advisory: a newer valid quote can supersede a stale blocker.
   state.quoteError = null
+  await page.getByLabel('Metal', { exact: true }).fill('42')
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
   await page.getByRole('button', { name: /^Send / }).click()
@@ -524,6 +584,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   ).toContainText('Fleet not sent: Beginner protection prevents')
   expect(state.launches).toBe(1)
   await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
 })
 
 test('fresh destination ownership is checked even when it was not in the owned-planet view', async ({
