@@ -1,0 +1,175 @@
+.screen {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-block: 0.5rem 1rem;
+}
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--champagne-light);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+}
+.summary p {
+  margin-block: 0.6rem 0;
+}
+.myRank {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+.myRank strong {
+  font: 400 2rem var(--font-editorial);
+  color: var(--champagne-light);
+}
+.toolbar {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-block: 1rem;
+  border-block: 1px solid var(--border-accent);
+}
+.search {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.timestamp {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.table {
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+.caption {
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  padding-block: 0.75rem;
+}
+.table th,
+.table td {
+  padding: 0.75rem 0.4rem;
+  border-bottom: 1px solid #cbb68d35;
+  text-align: left;
+}
+.table th {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.table th:first-child {
+  width: 4rem;
+}
+.table th:last-child {
+  width: 8rem;
+  text-align: right;
+}
+.table .points {
+  text-align: right;
+}
+.table tr[data-self] {
+  background: #cbb68d12;
+}
+.rank {
+  color: var(--champagne-light);
+}
+.player {
+  max-width: 100%;
+  text-align: left;
+  padding: 0.4rem 0;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.you {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--champagne-light);
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+.explanation {
+  margin-top: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.explanation summary {
+  cursor: pointer;
+  padding-block: 0.75rem;
+}
+.dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  padding: 24px;
+  background: var(--surface-page);
+  border: 1px solid var(--border-accent);
+  color: var(--text);
+  box-shadow: 0 24px 100px #000b;
+  overflow-wrap: anywhere;
+}
+.dialog::backdrop {
+  background: var(--surface-backdrop);
+  backdrop-filter: blur(4px);
+}
+.dialog h2 {
+  margin-top: 0;
+  font: 400 1.6rem/1.2 var(--font-editorial);
+}
+.dialog p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+.stats dt {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.stats dd {
+  margin: 0.5rem 0 0;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 480px) {
+  .points {
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+  .table th:first-child {
+    width: 3rem;
+  }
+  .table th:last-child {
+    width: 6.75rem;
+  }
+  .table th,
+  .table td {
+    padding-inline: 0.25rem;
+  }
+}

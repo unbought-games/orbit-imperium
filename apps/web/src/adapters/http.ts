@@ -131,6 +131,17 @@ export function gamePort(
   const base = (u: string, protocol = protocols.get(u) ?? 2) =>
     `/api/v${protocol}/universes/${u}`
   return {
+    async rankings(context) {
+      return validate(
+        'Rankings',
+        await request(
+          `${base(context.binding.universe)}/rankings`,
+          'POST',
+          context,
+          csrf,
+        ),
+      )
+    },
     async world(context, query) {
       return validate(
         'BoundWorld4',

@@ -82,6 +82,10 @@ pub(crate) async fn public_destinations(
     Ok(destinations)
 }
 impl GameStore for PgStore {
+    async fn ranking_facts(&self, binding: Binding) -> Result<RankingFacts, StoreError> {
+        self.read_rankings(binding).await
+    }
+
     async fn public_fleet_destinations(
         &self,
         binding: Binding,

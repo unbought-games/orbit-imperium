@@ -103,6 +103,13 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send;
 }
 pub trait GameStore: Send + Sync {
+    fn ranking_facts(
+        &self,
+        _binding: Binding,
+    ) -> impl std::future::Future<Output = Result<RankingFacts, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+
     /// Current public labels for body IDs already exposed by the viewer's fleets.
     fn public_fleet_destinations(
         &self,
