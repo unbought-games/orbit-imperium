@@ -1766,6 +1766,11 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     sent++
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
+  // Receipt reads share the simulated outage. The default fixture's 404 would
+  // correctly trigger redelivery of the saved command during reconciliation.
+  await page.route('**/commands/*?epoch=*', (route) =>
+    route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
+  )
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   await page.getByLabel('Position', { exact: true }).fill('2')
@@ -1811,6 +1816,16 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     page.getByRole('complementary', { name: 'Departure context' }),
   ).toContainText('Fleet slots: 1 / 5')
   const recovery = page.getByLabel('Action needs attention')
+  // Exercise recovery explicitly so this assertion does not depend on whether
+  // the background receipt poll runs before the layout checks finish.
+  const receiptResponse = page.waitForResponse((response) =>
+    response.url().includes('/commands/') && response.request().method() === 'GET',
+  )
+  await recovery.getByRole('button', {
+    name: 'Resolve saved command',
+    exact: true,
+  }).click()
+  expect((await receiptResponse).status()).toBe(503)
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 })
     await page.evaluate(() => window.scrollTo(0, 0))
