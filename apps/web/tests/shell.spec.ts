@@ -2209,7 +2209,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           return start(...args)
         }
       })
-      const purchases = await shellFixture(page, { protocol: 4 })
+      // Navigation stays motionless; the intentional hostile-fleet signal has
+      // its own coverage, so keep this fixture free of incoming threats.
+      const purchases = await shellFixture(page, {
+        protocol: 4,
+        missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+      })
       const assertStill = async () => {
         expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
         expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
