@@ -20,7 +20,9 @@ export type WorldQuery = Schemas['WorldQueryKind4']
 export type BoundWorld = Schemas['BoundWorld4']
 export type BoundReports = Schemas['BoundReports4']
 export type BoundReport = Schemas['BoundReport4']
+export type Rankings = Schemas['Rankings']
 export interface GamePort {
+  rankings?(context: QueryContext): Promise<Rankings>
   world?(context: QueryContext, query: WorldQuery): Promise<BoundWorld>
   reports?(
     context: QueryContext,

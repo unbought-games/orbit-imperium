@@ -194,3 +194,18 @@ pub(super) async fn presence<S: GameStore + IdentityStore>(
     }
     Ok((StatusCode::ACCEPTED, no_store_json(r)).into_response())
 }
+
+pub(super) async fn rankings<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(c): ApiJson<QueryContext>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, c.binding)?;
+    Ok(no_store_json(
+        s.game.rankings(principal(&session, u)?, c).await?,
+    ))
+}

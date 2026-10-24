@@ -42,7 +42,7 @@ On desktop and tablet, the planet selector and resource strip share one 64px min
 
 The shared live view derives balances and pending work from the confirmed snapshot, elapsed time, and submitted command inputs. While an optimistic action awaits its receipt, a higher-revision snapshot is held back if it could already contain that action. Pending indicators therefore describe estimated work against the last confirmed snapshot; they do not assert server completion. Existing receipt polling resolves the ambiguity before the next snapshot is adopted, preventing both temporary payment rollbacks and duplicate deductions.
 
-Unavailable implemented destinations are native disabled buttons; future Empire, Alliance, Highscore, and Messages destinations are omitted from active navigation. Do not add purchase, lifeform, population, or premium-currency controls. Artwork and generation prompts live in `public/art`.
+Unavailable implemented destinations are native disabled buttons; future Alliance and Messages destinations are omitted from active navigation. Do not add purchase, lifeform, population, or premium-currency controls. Artwork and generation prompts live in `public/art`.
 
 The isolated shell browser tests intercept only the HTTP boundary and validate real route, popover, and responsive behavior. With the dev server running, use `ORBIT_TEST_BASE_URL=http://127.0.0.1:5173 npx playwright test shell.spec.ts`. They do not replace the database-backed progression and mission journeys.
 
@@ -101,3 +101,9 @@ Use `ConfirmationButton` for construction/research cancellation everywhere and f
 In Vite development, `/detail-playground` compares thirteen scenarios, including a new planet with every building at level zero, in actual 1280×900 and 390×844 iframe viewports. It renders the real detail components with an isolated in-memory Coordinator/GamePort, no backend requests or persisted accounts. Filter by category/viewport and reset to iterate. The entry is guarded by `import.meta.env.DEV` and is excluded from production bundles. Its fixtures are design examples, not another game-rules implementation.
 
 Use the shared `formatDuration` formatter for elapsed spans, forecasts, quoted durations and countdowns. It shows at most two adjacent units: seconds for short minute spans, minutes for short hour spans, hours for short day spans, then a single rounded larger unit. This is presentation only; server timestamps and monotonic deadline arithmetic retain their precision.
+
+## High Scores
+
+High Scores is a universe-level protocol-4 screen in Menu → Community. It reads one committed snapshot on entry and explicit refresh; search, 50-row pages and Around me derive from that observation and preserve global tied ranks. The current user's sampled rank can differ from their live overview score. Player details are read-only identity, rank, points and scoring guidance. Alliance and bio fields are omitted until supported by authoritative data.
+
+Use existing public names and supporter identities, with bounded profile requests for visible players. Keep the sampled time visible, retain the previous result on refresh failure, and isolate transient ranking failures from gameplay connection state. The native detail dialog restores focus on close and Escape. Browser fixtures cover mobile widths, long names, large scores, navigation, errors and empty states.

@@ -593,6 +593,28 @@ export class Coordinator {
       inspect()
     })
   }
+  async rankings() {
+    const pending = this.captureRequest()
+    if (!pending || !this.port.rankings || this.protocol !== 4) return null
+    try {
+      const result = validate<import('./commands').Rankings>(
+        'Rankings',
+        await this.port.rankings(pending.context),
+      )
+      if (!this.responseMatches(pending, result)) return null
+      if (
+        new Set(result.players.map((p) => p.player)).size !==
+        result.players.length
+      )
+        throw new Error('Duplicate ranking player')
+      return result
+    } catch (error) {
+      const f = failure(error)
+      if (f.code === 'EpochChanged' || [401, 403, 404].includes(f.status ?? 0))
+        await this.problem(error, pending.generation, pending.context.binding)
+      throw error
+    }
+  }
   async world(query: import('./commands').WorldQuery) {
     if (!this.port.world || this.protocol !== 4) return null
     const pending = this.captureRequest()
