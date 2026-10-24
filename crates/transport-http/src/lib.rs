@@ -1,5 +1,6 @@
 mod bootstrap;
 mod bootstrap_html;
+mod bound_api;
 mod oidc;
 mod oidc_enrollment;
 mod password_work;
