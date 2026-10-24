@@ -109,10 +109,15 @@ jobs:
         run: git diff --exit-code -- Cargo.lock package-lock.json
 
   browser:
-    name: Fixture browser tests
+    name: Fixture browser tests (${{ matrix.shard }}/${{ strategy.job-total }})
     needs: scope
     if: needs.scope.outputs.ui == 'true'
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -136,12 +141,14 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run fixture browser tests
+        env:
+          UI_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
         run: make test-ui
       - name: Save browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}
+          name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: test-results/browser-ui/
           if-no-files-found: ignore
           retention-days: 7
