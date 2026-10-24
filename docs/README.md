@@ -4,11 +4,12 @@ Orbit Imperium is a browser-based space strategy game with an authoritative Rust
 
 ## Getting started
 
-- [Project README](../README.md): prerequisites, local setup, builds, and tests.
+- [Project README](../README.md): playing, community, beta status, and self-hosting quickstart.
+- [Development and self-hosting](development.md): prerequisites, local setup, builds, and tests.
 - [Signup and production setup](operations/signup.md): admission, homeworld placement, and deployment configuration.
 - [Universe configuration](operations/universe-configuration.md): explicit world creation, admission policy, upgrades, and rollback boundaries.
 - [Unbought Accounts integration](operations/unbought-accounts.md): official OIDC authentication and local authentication for self-hosting.
-- [Historical development fixture setup](operations/mvp-v1-local-setup.md): isolated test-support worlds and manual checks; use the project README for normal startup.
+- [Historical development fixture setup](operations/mvp-v1-local-setup.md): isolated test-support worlds and manual checks; use the development guide for normal startup.
 
 ## Architecture and engineering
 
@@ -28,4 +29,4 @@ Orbit Imperium is a browser-based space strategy game with an authoritative Rust
 - [Trusted image releases](operations/image-releases.md): CI gating, private ECR publication, source and notice inspection, and digest records.
 - [Historical debris upgrade](runbooks/debris-reference-upgrade.md): legacy replay compatibility; the current release uses the fresh-database cutover.
 
-Routine checks and explicitly requested acceptance suites are separate. Follow the test commands and limits in the project README and Makefile. Deployment templates and example commands do not establish that hosting is provisioned or that production capacity has been verified.
+Routine checks and explicitly requested acceptance suites are separate. Follow the test commands and limits in the [development guide](development.md#testing) and Makefile. Deployment templates and example commands do not establish that hosting is provisioned or that production capacity has been verified.

@@ -55,7 +55,7 @@ target/universe-final/release/orbit universe create \
 
 After creating a world while processes are running, restart **every worker**, including combined processes, before routing signup traffic to it. Workers discover worlds only at startup. Readiness does not prove that every newly created world has a worker. API and combined roles bind signup with `ORBIT_UNIVERSE_ID`; with exactly one world they can infer it. With multiple worlds the binding is required and must name an existing world. A binding never creates a world or restricts other authorized game routes. Worker-only roles process all supported worlds and need no signup binding.
 
-For local development, `make dev-setup UNIVERSE=UUID` explicitly starts PostgreSQL, builds the server, initializes schema and creates that world once. Then use `make dev` for ordinary starts/restarts. The default localhost database configuration is in [README](../../README.md#running-locally).
+For local development, `make dev-setup UNIVERSE=UUID` explicitly starts PostgreSQL, builds the server, initializes schema and creates that world once. Then use `make dev` for ordinary starts/restarts. The default localhost database configuration is in [development guide](../development.md#running-locally).
 
 ## Live policy edits
 
