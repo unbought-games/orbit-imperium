@@ -156,6 +156,29 @@ pub struct ChangeSet {
     pub affected_viewers: std::collections::BTreeSet<PlayerId>,
 }
 impl ChangeSet {
+    /// Starts an empty change bound to the execution input, rules, and loaded facts.
+    pub(crate) fn new(state: &GameState, input: &OrderedInput, rules: &Ruleset) -> Self {
+        Self {
+            world: None,
+            production_settings: vec![],
+            research_operations: vec![],
+            manufacturing_batches: vec![],
+            progression_reservations: vec![],
+            fleets: vec![],
+            inventories: vec![],
+            research: vec![],
+            reports: vec![],
+            input: input.id,
+            profile_hash: rules.hash.clone(),
+            expected_facts_hash: hash(state),
+            expected_collection_revisions: state.collection_revisions.clone(),
+            bodies: vec![],
+            constructions: vec![],
+            events: vec![],
+            cancelled_events: vec![],
+            affected_viewers: std::collections::BTreeSet::new(),
+        }
+    }
     pub fn apply_to(&self, state: &mut GameState) -> Result<(), InvariantError> {
         if hash(state) != self.expected_facts_hash
             || state.profile_hash != self.profile_hash

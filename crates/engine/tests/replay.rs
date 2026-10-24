@@ -219,6 +219,21 @@ fn historical_capacity_journals_preserve_recorded_outcomes_and_current_gameplay(
             panic!("fixture must apply");
         };
         assert!(changes.progression_reservations.is_empty());
+        // A serialized change must retain its fact fence across a restart.
+        let changes: ChangeSet =
+            serde_json::from_slice(&serde_json::to_vec(&changes).unwrap()).unwrap();
+        let mut stale = facts.clone();
+        stale.bodies.values_mut().next().unwrap().revision += 1;
+        let before = stale.clone();
+        assert!(changes.apply_to(&mut stale).is_err());
+        assert_eq!(stale, before);
+        let mut stale = facts.clone();
+        stale
+            .collection_revisions
+            .insert("concurrent-write".into(), 1);
+        let before = stale.clone();
+        assert!(changes.apply_to(&mut stale).is_err());
+        assert_eq!(stale, before);
         let mut restarted = facts;
         changes.apply_to(&mut restarted).unwrap();
         // The recorded reservation copy may change only when applying the old outcome.
