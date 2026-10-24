@@ -5,7 +5,7 @@ import { pendingBody } from '../client-model/game-projection'
 import styles from './operations.module.css'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
 import { Button } from '../ui/button'
-import { Field, Form, FormGrid, Input, Select } from '../ui/form'
+import { Field, Form, FormGrid, NumberInput, Select } from '../ui/form'
 import { Section } from '../ui/section'
 import { Panel } from '../ui/panel'
 import { Caption, Heading, Text } from '../ui/typography'
@@ -297,9 +297,8 @@ function Transport({
           </Field>
           <Field>
             Small Cargo count
-            <Input
+            <NumberInput
               name="count"
-              inputMode="numeric"
               pattern="[0-9]+"
               defaultValue={availableCargo}
               required
@@ -318,9 +317,8 @@ function Transport({
           {['metal', 'crystal', 'deuterium'].map((name) => (
             <Field key={name}>
               Cargo {name}
-              <Input
+              <NumberInput
                 name={name}
-                inputMode="numeric"
                 pattern="[0-9]+"
                 defaultValue="0"
                 required
