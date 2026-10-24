@@ -1689,7 +1689,7 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
   })
 })
 
-test('dispatch fences changed drafts and retains an uncertain departure receipt', async ({
+test('dispatch fences changed drafts and keeps uncertain launch recovery in action notices', async ({
   page,
 }) => {
   await shellFixture(page, {
@@ -1795,10 +1795,10 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     .getByRole('button', { name: 'Send 1 Small Cargo', exact: true })
     .click()
   await expect(
-    page.getByRole('region', { name: 'Dispatch receipt' }),
+    page.getByRole('complementary', { name: 'Action needs attention' }),
   ).toContainText('Response uncertain. Your action is saved.')
   await expect(
-    page.getByRole('button', { name: 'Resolve saved departure', exact: true }),
+    page.getByRole('button', { name: 'Resolve saved command', exact: true }),
   ).toBeVisible()
   await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue('1')
   await expect(
