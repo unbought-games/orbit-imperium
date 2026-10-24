@@ -187,6 +187,212 @@ const upgrade: Command = {
   expected_terms_hash: 'hash',
 }
 
+describe.each(['building', 'research'] as const)(
+  '%s progress precedence',
+  (domain) => {
+    function fixture() {
+      const s = state()
+      const view = s.view as S['BoundView4']
+      view.progress!.command_references = true
+      const proposal = quote()
+      const command: Command =
+        domain === 'building'
+          ? upgrade
+          : {
+              type: 'StartResearch',
+              host: 'body',
+              research: 'EnergyTechnology',
+              expected_terms_hash: 'hash',
+            }
+      if (domain === 'research') {
+        proposal.request = {
+          type: 'Research',
+          host: 'body',
+          research: 'EnergyTechnology',
+        }
+        proposal.terms = {
+          type: 'Research',
+          profile_hash: 'profile',
+          host: 'body',
+          research: 'EnergyTechnology',
+          source_level: 0,
+          target_level: 1,
+          paid: { metal: '100', crystal: '200', deuterium: '300' },
+          duration_ms: 5000,
+          formula: 'ResearchClassic',
+          labs: [],
+          effective_lab: '1',
+          required_energy: '0',
+        }
+      }
+      const parent = intent(s, command, proposal)
+      const progress = () =>
+        domain === 'building'
+          ? buildingProgress(s, 'body')
+          : researchProgress(s)
+      const cancelType =
+        domain === 'building' ? 'CancelConstruction' : 'CancelResearch'
+      function confirm() {
+        const common = {
+          id: 'work',
+          target_level: 3,
+          due_at: 20000,
+          paid: { metal: '400', crystal: '500', deuterium: '600' },
+        }
+        if (domain === 'building')
+          view.constructions = [
+            { ...common, body: 'body', building: 'MetalMine' },
+          ]
+        else
+          view.progression.research_operation = {
+            ...common,
+            host: 'body',
+            research: 'EnergyTechnology',
+            source_level: 2,
+            started_at: 1000,
+            labs: [],
+            effective_lab: '1',
+            can_cancel: true,
+          }
+      }
+      function cancel(operation: string) {
+        const attempt: Attempt = {
+          ...parent,
+          envelope: {
+            ...parent.envelope,
+            command_id: 'cancel',
+            command: { type: cancelType, operation },
+          },
+          status: 'submitting',
+          receipt: null,
+        }
+        const key = attemptKey(view.binding, 'cancel')
+        s.attempts.set(key, attempt)
+        s.intents.set(key, { submittedAt: 1000, baseRevision: '1' })
+        return attempt
+      }
+      return { s, view, parent, progress, confirm, cancel, cancelType }
+    }
+
+    it('keeps accepted pending work confirming and lets cancellation override uncertain work', () => {
+      const { parent, view, progress, cancel } = fixture()
+      expect(progress()).toMatchObject({
+        status: 'Confirming',
+        operationId: null,
+        canCancel: false,
+      })
+      parent.status = 'pending'
+      parent.receipt = {
+        protocol: 4,
+        binding: view.binding,
+        command_id: 'command',
+        status: 'Pending',
+        admitted_at: 2000,
+        executed_at: null,
+      }
+      expect(progress()).toMatchObject({
+        status: 'Confirming',
+        operationId: 'command',
+        canCancel: true,
+        dueAt: 7000,
+        secondsRemaining: 6,
+      })
+      parent.status = 'uncertain'
+      expect(progress()?.status).toBe('Awaiting confirmation')
+      const cancellation = cancel('command')
+      expect(progress()).toMatchObject({
+        status: 'Cancelling',
+        canCancel: false,
+      })
+      cancellation.status = 'uncertain'
+      expect(progress()?.status).toBe('Cancelling')
+      cancellation.status = 'rejected'
+      expect(progress()).toMatchObject({
+        status: 'Awaiting confirmation',
+        canCancel: true,
+      })
+    })
+
+    it('prefers confirmed facts and only shows matching active cancellation attempts', () => {
+      const { s, view, parent, progress, confirm, cancel, cancelType } =
+        fixture()
+      parent.status = 'uncertain'
+      confirm()
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        operationId: 'work',
+        targetLevel: 3,
+        dueAt: 20000,
+        paid: { metal: '400', crystal: '500', deuterium: '600' },
+      })
+      const cancellation = cancel('another-work')
+      expect(progress()?.status).toBe('In progress')
+      cancellation.envelope.command = {
+        type: domain === 'building' ? 'CancelResearch' : 'CancelConstruction',
+        operation: 'work',
+      }
+      expect(progress()?.status).toBe('In progress')
+      cancellation.envelope.command = { type: cancelType, operation: 'work' }
+      expect(progress()).toMatchObject({
+        status: 'Cancelling',
+        canCancel: false,
+      })
+      cancellation.reconciled = true
+      expect(progress()?.status).toBe('In progress')
+      cancellation.reconciled = false
+      cancellation.status = 'committed'
+      cancellation.receipt = {
+        protocol: 4,
+        binding: view.binding,
+        command_id: 'cancel',
+        status: 'Committed',
+        admitted_at: 1000,
+        executed_at: 1000,
+        minimum_viewer_revision: '2',
+        result_ids: [],
+      }
+      expect(progress()?.status).toBe('Cancelling')
+      view.viewer_revision = '2'
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        canCancel: true,
+      })
+      // An elapsed countdown cannot complete authoritative work locally.
+      s.now += 30000
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        countdown: 'Awaiting confirmation',
+        secondsRemaining: null,
+      })
+    })
+
+    it('keeps eligibility separate from the displayed cancellation status', () => {
+      const { s, view, progress, confirm } = fixture()
+      confirm()
+      s.attempts.clear()
+      s.intents.clear()
+      if (view.progression.research_operation) {
+        view.progression.research_operation.can_cancel = false
+        expect(progress()).toMatchObject({
+          status: 'In progress',
+          canCancel: false,
+        })
+        view.progression.research_operation.can_cancel = true
+      }
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        canCancel: true,
+      })
+      intent(s, upgrade)
+      s.intents.clear() // A restored command on this body blocks another mutation.
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        canCancel: false,
+      })
+    })
+  },
+)
+
 describe('building tile progress', () => {
   it('derives the target and countdown from confirmed work without completing it locally', () => {
     const s = state()
