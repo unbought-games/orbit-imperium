@@ -1,10 +1,7 @@
 import type { GameState } from './game-store'
-import {
-  activeAttempt,
-  pendingConstruction,
-  pendingCommand,
-} from './game-projection'
+import { pendingConstruction, pendingCommand } from './game-projection'
 import { remaining, formatRemaining } from './clock'
+import { pendingCancellation, progressStatus } from './progress-status'
 
 /** Presentation derived from the session's confirmed work, submitted intents, and clock. */
 export function buildingProgress(state: GameState, body: string) {
@@ -16,12 +13,7 @@ export function buildingProgress(state: GameState, body: string) {
   const work = confirmed ?? optimistic
   if (!work) return null
   const operation = confirmed?.id ?? optimistic?.operationId
-  const cancelling = [...state.attempts.values()].some(
-    (attempt) =>
-      activeAttempt(attempt, view) &&
-      attempt.envelope.command.type === 'CancelConstruction' &&
-      attempt.envelope.command.operation === operation,
-  )
+  const cancelling = pendingCancellation(state, 'CancelConstruction', operation)
   const seconds = remaining(
     work.due_at,
     view.sampled_at,
@@ -45,12 +37,10 @@ export function buildingProgress(state: GameState, body: string) {
     countdown,
     secondsRemaining: seconds,
     dueAt: work.due_at,
-    status: cancelling
-      ? 'Cancelling'
-      : confirmed
-        ? 'In progress'
-        : optimistic?.status === 'uncertain'
-          ? 'Awaiting confirmation'
-          : 'Confirming',
+    status: progressStatus({
+      cancelling,
+      confirmed: !!confirmed,
+      pendingStatus: optimistic?.status,
+    }),
   }
 }
