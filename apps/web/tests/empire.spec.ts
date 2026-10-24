@@ -308,7 +308,7 @@ test('desktop and phone command views keep all information readable without hori
 })
 
 for (const longContent of [false, true]) {
-  test(`fleet movements fit their scroll area with ${longContent ? 'long names and manifests' : 'a single outbound flight'}`, async ({
+  test(`fleet movements stay visible and fit the page with ${longContent ? 'long names and manifests' : 'a single outbound flight'}`, async ({
     page,
   }) => {
     const now = new Date('2026-10-23T12:00:00Z')
@@ -339,10 +339,6 @@ for (const longContent of [false, true]) {
     const scrollArea = list.locator('..')
     for (const width of [1778, 1024, 768, 430, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 })
-      const toggle = board.getByRole('button', {
-        name: /^Show .* fleet movements$/,
-      })
-      if (await toggle.isVisible()) await toggle.click()
       await expect(list).toBeVisible()
       expect(
         await scrollArea.evaluate((el) => el.scrollWidth - el.clientWidth),
@@ -411,7 +407,7 @@ test('one quiet planet, unavailable fleets and missing art remain usable', async
   await expect(page.getByText('No research in progress.')).toBeVisible()
 })
 
-test('a large empire keeps every network target reachable and phone movements expandable', async ({
+test('a large empire keeps every network target reachable and phone movements visible', async ({
   page,
 }) => {
   const options = empireFixture()
@@ -439,8 +435,7 @@ test('a large empire keeps every network target reachable and phone movements ex
     name: 'Fleet movements',
     exact: true,
   })
-  await expect(board.getByRole('list')).toBeHidden()
-  await board.getByRole('button', { name: 'Show 4 fleet movements' }).click()
+  await expect(board.getByRole('list')).toBeVisible()
   await expect(board.getByRole('listitem')).toHaveCount(4)
   await expect(board.getByText('Ship composition unknown')).toBeVisible()
   expect(
@@ -449,3 +444,65 @@ test('a large empire keeps every network target reachable and phone movements ex
     ),
   ).toBe(true)
 })
+
+for (const width of [320, 390, 1280]) {
+  test(`all fleet movements are visible by default with peaceful and combat tints at ${width}px`, async ({ page }) => {
+    const now = new Date('2026-10-24T12:00:00Z')
+    await page.clock.install({ time: now })
+    await page.setViewportSize({ width, height: 844 })
+    const options = empireFixture(now.getTime())
+    const missions: S['Mission4'][] = [
+      'Transport', 'Deploy', 'Colonize', 'Harvest', 'Attack', 'Espionage',
+    ]
+    options.missions.fleets = missions.flatMap((mission, index) =>
+      (['Outbound', 'Returning'] as const).map((leg, legIndex) => ({
+        ...options.missions.fleets[0],
+        id: id(200 + index * 2 + legIndex),
+        intent: { ...options.missions.fleets[0].intent, mission },
+        leg,
+        due_at: now.getTime() + 175000 + (index * 2 + legIndex) * 180000,
+      })),
+    )
+    await shellFixture(page, { ...options, sampledAt: now.getTime() })
+    const board = page.getByRole('region', { name: 'Fleet movements', exact: true })
+    await expect(board.getByRole('listitem')).toHaveCount(13)
+    await expect(board.getByRole('button', { name: /movements/ })).toHaveCount(0)
+    await expect(board).toContainText('1 incoming attack detected')
+    const appearance = async (mission: string, leg: string) => {
+      const row = board.getByRole('listitem').filter({
+        has: page.getByRole('link', { name: `View ${mission} ${leg} fleet`, exact: true }),
+      })
+      await expect(row).toBeVisible()
+      return row.evaluate((el) => ({
+        border: getComputedStyle(el).borderLeftColor,
+        background: getComputedStyle(el).backgroundColor,
+        title: getComputedStyle(el.querySelector('strong')!).color,
+      }))
+    }
+    const peaceful = await appearance('Transport', 'outbound')
+    const combat = await appearance('Attack', 'incoming')
+    expect(peaceful.border).not.toBe(combat.border)
+    expect(peaceful.background).not.toBe(combat.background)
+    expect(peaceful.title).not.toBe(combat.title)
+    for (const mission of missions) {
+      for (const leg of ['outbound', 'returning']) {
+        expect(await appearance(mission, leg)).toEqual(
+          mission === 'Attack' || mission === 'Espionage' ? combat : peaceful,
+        )
+      }
+    }
+    // Every row participates in page scrolling, with no clipped inner panel.
+    expect(await board.getByRole('list').evaluate((el) => {
+      const list = el.getBoundingClientRect()
+      const panel = el.closest('section')!.getBoundingClientRect()
+      return list.top >= panel.top && list.bottom <= panel.bottom
+    })).toBe(true)
+    const last = board.getByRole('link', { name: 'View Espionage returning fleet' })
+    await last.scrollIntoViewIfNeeded()
+    await expect(last).toBeInViewport({ ratio: 1 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 390) {
+      await diagnosticScreenshot(board, { path: 'test-results/fleet-movements-mission-tints-390.png' })
+    }
+  })
+}

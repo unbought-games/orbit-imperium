@@ -385,48 +385,46 @@
   background: var(--danger);
   box-shadow: 0 0 10px #ffb4a444;
 }
-.fleetScroll {
-  max-height: 350px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #3b5668 transparent;
-}
 .flightList {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 8px 0;
+  display: grid;
+  gap: 6px;
 }
 .flightList > li {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--hud-border);
+  padding: 10px 8px;
+  border-left: 3px solid var(--flight-color);
+  background: color-mix(in srgb, var(--flight-color) 6%, transparent);
+}
+.peacefulFlight {
+  --flight-color: #a5d9ca;
+}
+.combatFlight {
+  --flight-color: var(--danger);
 }
 .flightIcon {
-  color: var(--ice);
-  border: 1px solid var(--hud-border);
-  padding: 7px;
+  color: var(--flight-color);
+  padding: 3px 0;
   display: flex;
   flex-shrink: 0;
-}
-.hostileFlight .flightIcon {
-  color: var(--danger);
-  border-color: #ffb4a455;
-  background: #ffb4a40a;
 }
 .flightCopy {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.flightCopy > div {
+.flightHeading {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 8px;
 }
 .flightCopy strong {
+  color: var(--flight-color);
   font:
     500 0.8125rem system-ui,
     sans-serif;
@@ -443,7 +441,7 @@
   font:
     0.625rem/1.7 ui-monospace,
     monospace;
-  margin-top: 5px;
+  margin-top: 2px;
 }
 .flightCopy small {
   display: block;
@@ -457,7 +455,8 @@
   font:
     0.75rem ui-monospace,
     monospace;
-  margin-top: 8px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 .flightLink {
   display: grid;
@@ -951,12 +950,6 @@
     margin-top: 0;
     padding: 12px 0;
   }
-  .fleetScroll {
-    max-height: 260px;
-  }
-  .flightList > li {
-    padding: 14px 0;
-  }
   .quietSpace {
     padding: 20px 0;
     gap: 8px;
@@ -1095,35 +1088,6 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-}
-.mobileFleetToggle {
-  display: none;
-}
-@media (max-width: 767px) {
-  .fleetBoard[data-expanded='false'] .fleetBody {
-    display: none;
-  }
-  .mobileFleetToggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    min-height: 44px;
-    background: transparent;
-    color: var(--ice);
-    border: 0;
-    font:
-      0.75rem system-ui,
-      sans-serif;
-    padding: 8px 0;
-    cursor: pointer;
-  }
-  .mobileFleetToggle:focus-visible {
-    outline: var(--focus-ring);
-  }
-  .fleetBoard .boardLink {
-    border-top: 1px solid var(--hud-border);
-  }
 }
 @media (max-width: 767px) {
   .strength {
