@@ -1,5 +1,5 @@
+import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
-import { Button } from '../ui/button'
 import { PlanetRename } from './planet-rename'
 import type { Coordinator } from '../client-model/coordinator'
 import { PlayerName } from './player-name'
@@ -14,7 +14,7 @@ import {
   Radar,
   ShieldAlert,
 } from 'lucide-react'
-import { useId, useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import type { BoundView } from '../client-model/commands'
 import { resourceNames } from '../client-model/resources'
 import { useCountdown } from '../client-model/use-clock'
@@ -89,7 +89,11 @@ function FlightList({
       {flights.map((flight) => (
         <li
           key={flight.key}
-          className={flight.hostile ? styles.hostileFlight : ''}
+          className={
+            flight.mission === 'Attack' || flight.mission === 'Espionage'
+              ? styles.combatFlight
+              : styles.peacefulFlight
+          }
         >
           <span className={styles.flightIcon}>
             {flight.hostile ? (
@@ -101,9 +105,15 @@ function FlightList({
             )}
           </span>
           <div className={styles.flightCopy}>
-            <div>
+            <div className={styles.flightHeading}>
               <strong>{flight.mission}</strong>
               <span className={styles.leg}>{flight.leg}</span>
+              <time
+                dateTime={new Date(flight.due).toISOString()}
+                title={new Date(flight.due).toLocaleString()}
+              >
+                {countdown(flight.due)}
+              </time>
             </div>
             {flight.sender && (
               <small>
@@ -116,12 +126,6 @@ function FlightList({
             )}
             <span className={styles.route}>{flight.route}</span>
             <small>{flight.ships || 'No ships reported'}</small>
-            <time
-              dateTime={new Date(flight.due).toISOString()}
-              title={new Date(flight.due).toLocaleString()}
-            >
-              {countdown(flight.due)}
-            </time>
           </div>
           {available && (
             <Link
@@ -247,19 +251,13 @@ function FleetBoard({
   body: Body
   flights: EmpireFlight[]
 }) {
-  const [expanded, setExpanded] = useState(false)
-  const panelId = useId()
   const threats = flights.filter((f) => f.hostile).length
   const fleetAvailable = resolveDestination(
     { universe: view.binding.universe, body: body.id, page: 'fleets' },
     view,
   ).available
   return (
-    <section
-      data-expanded={expanded}
-      className={styles.fleetBoard}
-      aria-label="Fleet movements"
-    >
+    <section className={styles.fleetBoard} aria-label="Fleet movements">
       <div className={styles.panelHeading}>
         <div>
           <p className={styles.eyebrow}>Traffic control</p>
@@ -277,32 +275,17 @@ function FleetBoard({
             ? `${threats} incoming attack${threats === 1 ? '' : 's'} detected`
             : 'No incoming attacks detected'}
       </div>
-      <Button
-        variant="secondary"
-        type="button"
-        className={styles.mobileFleetToggle}
-        aria-expanded={expanded}
-        aria-controls={panelId}
-        onClick={() => setExpanded((value) => !value)}
-      >
-        {expanded ? 'Hide movements' : `Show ${flights.length} fleet movements`}{' '}
-        <span aria-hidden="true">{expanded ? '−' : '+'}</span>
-      </Button>
-      <div className={styles.fleetBody} id={panelId}>
+      <div className={styles.fleetBody}>
         {flights.length ? (
-          <div className={styles.fleetScroll}>
-            <FlightList flights={flights} view={view} body={body.id} />
-          </div>
+          <FlightList flights={flights} view={view} body={body.id} />
         ) : (
-          <div className={styles.quietSpace}>
-            <Radar size={56} strokeWidth={0.7} />
-            <strong>The lanes are quiet.</strong>
-            <p>
-              No visible fleet movements.
-              <br />
-              Your next move starts here.
-            </p>
-          </div>
+          <EmptyState
+            icon={Radar}
+            variant="compact"
+            headingLevel={3}
+            title="The lanes are quiet."
+            description="No visible fleet movements. Your next move starts here."
+          />
         )}
       </div>
       <Destination
@@ -459,7 +442,12 @@ function PlanetDossier({
             body={body.id}
           />
         ) : (
-          <p className={styles.empty}>No visible fleets in transit.</p>
+          <EmptyState
+            icon={Radar}
+            variant="compact"
+            headingLevel={3}
+            title="No visible fleets in transit."
+          />
         )}
       </details>
       <details className={styles.inventory}>
@@ -480,7 +468,13 @@ function PlanetDossier({
               ))}
             </dl>
           ) : (
-            <p className={styles.empty}>No units stationed here.</p>
+            <EmptyState
+              icon={Orbit}
+              variant="compact"
+              headingLevel={3}
+              title="No units stationed here."
+              description="Ships and defenses stationed at this world will appear here."
+            />
           )}
         </section>
       </details>

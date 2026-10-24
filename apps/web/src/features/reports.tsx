@@ -1,7 +1,9 @@
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
 import { Button, ButtonLink } from '../ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ArrowRight, FileText } from 'lucide-react'
+import { EmptyState } from '../ui/empty-state'
+import { resolveDestination } from '../shell/routes'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
 import { ReportListRow } from './report-list-row'
@@ -225,7 +227,30 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
-          {!page.items.length && <Text>No reports yet.</Text>}
+          {!page.items.length && error === null && (
+            <EmptyState
+              icon={FileText}
+              eyebrow="Mission archive"
+              title="No reports to show."
+              description="Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold."
+              actions={
+                model.view &&
+                resolveDestination(
+                  {
+                    universe: model.view.binding.universe,
+                    body: origin,
+                    page: 'galaxy',
+                  },
+                  model.view,
+                ).available && (
+                  <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
+                    Explore the galaxy{' '}
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </ButtonLink>
+                )
+              }
+            />
+          )}
           {page.items.map((r) => (
             <ReportListRow
               key={r.id}

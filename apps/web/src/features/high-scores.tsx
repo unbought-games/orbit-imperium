@@ -1,6 +1,7 @@
+import { EmptyState } from '../ui/empty-state'
 import { useEffect, useLayoutEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Trophy } from 'lucide-react'
+import { Search, Trophy } from 'lucide-react'
 import { bindingKey } from '../client-model/commands'
 import type { Coordinator } from '../client-model/coordinator'
 import { rankingPageSize, type RankingPlayer } from '../client-model/rankings'
@@ -36,6 +37,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
       : null,
   )
   const opener = useRef<HTMLButtonElement | null>(null)
+  const search = useRef<HTMLInputElement | null>(null)
   const ownPlayer = useRef<HTMLButtonElement | null>(null)
   const table = useRef<HTMLTableElement | null>(null)
   useEffect(() => {
@@ -78,6 +80,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
         <Field className={styles.search}>
           <span>Find a player</span>
           <Input
+            ref={search}
             type="search"
             value={ranking.search}
             placeholder="Search player names"
@@ -172,11 +175,34 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
             </tbody>
           </table>
           {!count && (
-            <p role="status">
-              {ranking.search.trim()
-                ? `No players match “${ranking.search.trim()}”.`
-                : 'No players are ranked yet.'}
-            </p>
+            <EmptyState
+              role="status"
+              variant="compact"
+              icon={ranking.search.trim() ? Search : Trophy}
+              title={
+                ranking.search.trim()
+                  ? `No players match “${ranking.search.trim()}”.`
+                  : 'No players are ranked yet.'
+              }
+              description={
+                ranking.search.trim()
+                  ? 'Try another name or clear your search to see all players.'
+                  : 'Rankings will appear as players establish their empires.'
+              }
+              actions={
+                ranking.search.trim() ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      ranking.filter('')
+                      search.current?.focus()
+                    }}
+                  >
+                    Clear search
+                  </Button>
+                ) : undefined
+              }
+            />
           )}
           <nav className={styles.pagination} aria-label="Ranking pages">
             <Button

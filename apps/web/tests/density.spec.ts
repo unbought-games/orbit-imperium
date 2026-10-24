@@ -276,10 +276,6 @@ for (const width of [1280, 390]) {
       name: 'Fleet movements',
       exact: true,
     })
-    if (width < 768)
-      await movements
-        .getByRole('button', { name: 'Show 2 fleet movements' })
-        .click()
     await movements
       .getByRole('link', { name: 'View Transport outbound fleet' })
       .first()

@@ -75,6 +75,7 @@ export function TechnologyDetails({
     manufacture ? proposal : null,
     quantity,
     onInspect,
+    () => onQuantity('0'),
   )
   const display = manufacture ? order.preview : proposal
   const terms = display?.terms
