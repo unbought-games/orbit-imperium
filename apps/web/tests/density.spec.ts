@@ -139,7 +139,13 @@ for (const viewport of [
       outcome: 'AttackerVictory',
       mission: 'Attack',
       return_at: now + 180000,
-      participants: [],
+      participants: [{
+        owner: binding.player,
+        origin: { Fleet: id(30) },
+        side: 'Attacker',
+        units: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '12' }],
+        technology: [0, 0, 0],
+      }],
       rounds: [],
       survivors: [],
       gross_losses: [],
@@ -170,7 +176,7 @@ for (const viewport of [
     })
     await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
     await firstViewport(page, [
-      page.getByRole('heading', { name: 'Attacker Victory' }),
+      page.getByRole('heading', { name: 'Victory', exact: true }),
       page.getByRole('button', { name: 'Prepare harvest' }),
       page.getByRole('link', { name: 'Back to reports' }),
     ])
@@ -194,9 +200,18 @@ for (const viewport of [
     await expect(fullTime).toBeVisible()
     await page.keyboard.press('Escape')
     const harvest = (await page.getByRole('button', { name: 'Prepare harvest' }).boundingBox())!
-    const outcome = (await page.getByRole('region', { name: 'Report observation' }).locator('header').boundingBox())!
+    const outcome = (await page.getByRole('region', { name: 'Report observation' }).locator(':scope > header').boundingBox())!
     expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
     expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
+    await expect(page.getByRole('heading', { name: 'Loot', exact: true })).toBeVisible()
+    const resourceSection = (await page.getByRole('heading', { name: 'Loot', exact: true }).locator('../..').boundingBox())!
+    expect(resourceSection.y - harvest.y - harvest.height).toBeGreaterThanOrEqual(16)
+    if (viewport.width > 850) {
+      const loot = (await page.getByRole('heading', { name: 'Loot', exact: true }).locator('..').boundingBox())!
+      const debris = (await page.getByRole('heading', { name: 'Debris created', exact: true }).locator('..').boundingBox())!
+      expect(debris.y).toBe(loot.y)
+      expect(debris.x - loot.x - loot.width).toBeGreaterThanOrEqual(64)
+    }
     await diagnosticScreenshot(page, {
       path: `test-results/density-combat-${viewport.width}.png`,
     })

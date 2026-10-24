@@ -219,7 +219,7 @@ export function CombatReport({
           </p>
         )}
       </header>
-      {actions}
+      {actions && <div className={styles.actions}>{actions}</div>}
       <div className={styles.resources}>
         {report.resources.map((group) => (
           <div className={styles.resourceGroup} key={group.key}>
