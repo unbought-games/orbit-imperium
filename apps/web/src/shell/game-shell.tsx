@@ -25,9 +25,11 @@ import { buildPages, fleetPages, pageTitles } from './navigation-model'
 import { Popover } from '../ui/popover'
 import { WifiOff } from 'lucide-react'
 import { usePinnedHeader } from './use-pinned-header'
+import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
 export function GameShell() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
+  const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
   const [dispatchDraft, setDispatchDraft] = useState<
     (DispatchDraft & { origin: string }) | null
@@ -193,10 +195,15 @@ export function GameShell() {
           >
             {(navigation) => (
               <div
-                className={styles.worldBar}
+                className={`${styles.worldBar} ${incomingHostile ? styles.hostile : ''}`}
                 role="group"
                 aria-label="Planet and resources"
               >
+                <span className={styles.hostileStatus} role="status">
+                  {incomingHostile
+                    ? 'Incoming hostile fleet: attack or espionage detected.'
+                    : ''}
+                </span>
                 <div className={styles['mobile-context']}>
                   <BodySelector
                     bodies={view.bodies}

@@ -59,6 +59,9 @@
 .mobile-context {
   display: contents;
 }
+.hostileStatus {
+  display: none;
+}
 .masthead {
   grid-area: resources;
   min-width: 0;
@@ -160,6 +163,33 @@
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
   }
+  .worldBar.hostile {
+    border-bottom-color: #71323b;
+  }
+  .worldBar.hostile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      rgb(220 48 60 / 28%),
+      rgb(220 48 60 / 14%) 50%,
+      rgb(220 48 60 / 28%)
+    );
+    /* Deliberate threat signal: override the global ban on UI animations. */
+    animation: hostile-pulse 3.2s ease-in-out infinite !important;
+  }
+  .hostileStatus {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   .mobile-context {
     display: contents;
   }
@@ -173,6 +203,21 @@
   .page-heading h1,
   .routeHeading h1 {
     scroll-margin-top: calc(54px + env(safe-area-inset-top));
+  }
+}
+@keyframes hostile-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .worldBar.hostile::after {
+    animation: none !important;
+    opacity: 0.7;
   }
 }
 @media (min-width: 768px) {
