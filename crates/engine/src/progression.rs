@@ -575,28 +575,6 @@ pub(crate) fn progression_quote(
         progression: Some(t),
     })
 }
-fn empty(s: &GameState, i: &OrderedInput, r: &Ruleset) -> ChangeSet {
-    ChangeSet {
-        world: None,
-        production_settings: vec![],
-        research_operations: vec![],
-        manufacturing_batches: vec![],
-        progression_reservations: vec![],
-        fleets: vec![],
-        inventories: vec![],
-        research: vec![],
-        reports: vec![],
-        input: i.id,
-        profile_hash: r.hash.clone(),
-        expected_facts_hash: hash(s),
-        expected_collection_revisions: s.collection_revisions.clone(),
-        bodies: vec![],
-        constructions: vec![],
-        events: vec![],
-        cancelled_events: vec![],
-        affected_viewers: BTreeSet::new(),
-    }
-}
 fn owned<'a>(
     s: &'a GameState,
     id: BodyId,
@@ -683,7 +661,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
     if matches!(i.payload, Input::Command(_)) && !matches!(i.actor, Actor::Player(_)) {
         return Err(invariant("command requires player"));
     }
-    let mut c = empty(s, i, r);
+    let mut c = ChangeSet::new(s, i, r);
     match &i.payload {
         Input::Command(Command::SetProduction {
             body,
