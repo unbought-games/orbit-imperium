@@ -1,0 +1,31 @@
+.feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #57788a;
+  border-radius: 8px;
+  background: #12232d;
+  color: #c6dce8;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.feedback > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.feedback p {
+  margin: 2px 0 0;
+}
+.feedback[data-state='committed'] {
+  border-color: #487c67;
+  background: #142a24;
+  color: #bce8d3;
+}
+.feedback[data-state='uncertain'],
+.feedback[data-state='rejected'] {
+  border-color: #ab8253;
+  background: #211c17;
+  color: #ffe2bd;
+}

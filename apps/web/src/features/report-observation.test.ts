@@ -51,6 +51,38 @@ it('keeps exact integer probability context alongside floored percentages', () =
   ).toContain('Counterespionage: 5% (53584 parts per million)')
 })
 
+it('renders only observed building levels under catalog group headings', () => {
+  const text = render({
+    kind: 'Espionage',
+    buildings: {
+      visibility: 'Known',
+      value: { ResearchLab: 2, MetalMine: null, LegacyBuilding: 0 },
+    },
+  })
+  expect(text).toContain(
+    'BuildingsResource buildingsMetal MineLevel UnknownFacility buildingsResearch LabLevel 2Other buildingsLegacy BuildingLevel 0',
+  )
+  expect(text).not.toContain('Crystal Mine')
+})
+
+it('keeps hidden buildings distinct from an observed empty section', () => {
+  const hidden = render({
+    kind: 'Espionage',
+    buildings: { visibility: 'Unknown', value: { MetalMine: 30 } },
+  })
+  expect(hidden).toContain(
+    'BuildingsUnknown — this observation did not reveal this section.',
+  )
+  expect(hidden).not.toContain('Resource buildings')
+  expect(hidden).not.toContain('Metal Mine')
+  expect(
+    render({
+      kind: 'Espionage',
+      buildings: { visibility: 'Known', value: {} },
+    }),
+  ).toContain('BuildingsKnown empty')
+})
+
 it('leads a contact-lost report with the known fleet loss without inventing the defender result', () => {
   const text = render({
     kind: 'ContactLost',

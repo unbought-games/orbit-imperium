@@ -234,6 +234,9 @@ for (const width of [390, 1440]) {
         item,
         quantity: '2',
       })
+    const result = pane.getByRole('group', { name: 'Latest action result' })
+    await expect(result).toContainText('Last submitted: 2 × Cruiser')
+    await expect(result).toContainText('Order confirmed')
   })
 }
 
