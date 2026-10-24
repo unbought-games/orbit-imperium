@@ -233,7 +233,7 @@ pub(crate) fn spy_encounter(
     )?;
     let detection =
         detect_counterespionage(arriving, defending, observer_tech, target_tech, &mut rng)?;
-    let observation = json!({"kind":"Espionage","target":{"body":id,"coordinates":target.coordinates,"owner":expected_owner,"kind":target.kind},"observed_at":i.at,"resources":known(true,wire_resources(stock)),"fleet":known(score>=2,local(true)),"defenses":known(score>=3,local(false)),"buildings":known(score>=5,json!(target.levels)),"research":known(score>=7,json!(s.research[&expected_owner].levels)),"activity":activity,"counterespionage":{"probability_ppm":detection.probability_ppm,"detected":detection.detected}});
+    let observation = json!({"kind":"Espionage","target":{"body":id,"name":target.name,"coordinates":target.coordinates,"owner":expected_owner,"kind":target.kind},"observed_at":i.at,"resources":known(true,wire_resources(stock)),"fleet":known(score>=2,local(true)),"defenses":known(score>=3,local(false)),"buildings":known(score>=5,json!(target.levels)),"research":known(score>=7,json!(s.research[&expected_owner].levels)),"activity":activity,"counterespionage":{"probability_ppm":detection.probability_ppm,"detected":detection.detected}});
     crate::missions::mission_report(
         w,
         i,

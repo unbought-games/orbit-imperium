@@ -3,7 +3,7 @@ import { Link } from '../ui/link'
 import { Button, ButtonLink } from '../ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { Section } from '../ui/section'
-import { Text } from '../ui/typography'
+import { Heading, Text } from '../ui/typography'
 import { ReportListRow } from './report-list-row'
 import { TaskHeader } from '../ui/task-header'
 import styles from './reports.module.css'
@@ -113,17 +113,22 @@ export function Reports({
             >
               <ArrowLeft size={18} aria-hidden="true" />
             </ButtonLink>
-            <Popover
-              label="Report time"
-              className={styles.timestamp}
-              trigger={reportAge(detail.header.observed_at, now)}
-            >
-              <time
-                dateTime={new Date(detail.header.observed_at).toISOString()}
+            <div className={styles.detailHeading}>
+              <Heading level={2} className={styles.detailTitle}>
+                {label(detail.header.kind)}
+              </Heading>
+              <Popover
+                label="Report time"
+                className={styles.timestamp}
+                trigger={reportAge(detail.header.observed_at, now)}
               >
-                {exactTime(detail.header.observed_at)}
-              </time>
-            </Popover>
+                <time
+                  dateTime={new Date(detail.header.observed_at).toISOString()}
+                >
+                  {exactTime(detail.header.observed_at)}
+                </time>
+              </Popover>
+            </div>
             <div className={styles.controls}>
               <ReportVisibilityButton
                 model={model}
@@ -132,46 +137,39 @@ export function Reports({
                 compact
                 disabled={false}
               />
-              {detail.payload.kind === 'Espionage' &&
-                model.view?.capabilities.some(
-                  (c) => c.capability === 'Attack' && c.enabled,
-                ) && (
-                  <Button
-                    onClick={() => {
-                      if (detail.payload.kind === 'Espionage')
-                        onDraft({
-                          coordinates: detail.payload.target.coordinates,
-                          mission: 'Attack',
-                          target: {
-                            type: 'Body',
-                            id: detail.payload.target.body,
-                            expected_owner: detail.payload.target.owner,
-                            expected_kind: detail.payload.target.kind,
-                          },
-                          observedAt: detail.header.observed_at,
-                        })
-                    }}
-                  >
-                    Prepare attack
-                  </Button>
-                )}
-              {harvestAction && (
-                <div className={styles.desktopHarvest}>{harvestAction}</div>
-              )}
             </div>
           </div>
-          {detail.payload.kind !== 'Combat' &&
-            detail.payload.kind !== 'ContactLost' && (
-              <TaskHeader title={label(detail.header.kind)} />
-            )}
           <ReportObservation
             payload={detail.payload}
             viewer={model.binding?.player}
             playerNames={detail.player_names}
-            combatActions={
-              harvestAction && (
-                <div className={styles.mobileHarvest}>{harvestAction}</div>
-              )
+            combatActions={harvestAction}
+            targetActions={
+              <>
+                {detail.payload.kind === 'Espionage' &&
+                  model.view?.capabilities.some(
+                    (c) => c.capability === 'Attack' && c.enabled,
+                  ) && (
+                    <Button
+                      onClick={() => {
+                        if (detail.payload.kind === 'Espionage')
+                          onDraft({
+                            coordinates: detail.payload.target.coordinates,
+                            mission: 'Attack',
+                            target: {
+                              type: 'Body',
+                              id: detail.payload.target.body,
+                              expected_owner: detail.payload.target.owner,
+                              expected_kind: detail.payload.target.kind,
+                            },
+                            observedAt: detail.header.observed_at,
+                          })
+                      }}
+                    >
+                      Attack
+                    </Button>
+                  )}
+              </>
             }
           />
 

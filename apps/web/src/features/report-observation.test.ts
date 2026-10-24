@@ -80,7 +80,7 @@ it('keeps hidden buildings distinct from an observed empty section', () => {
       kind: 'Espionage',
       buildings: { visibility: 'Known', value: {} },
     }),
-  ).toContain('BuildingsKnown empty')
+  ).toContain('BuildingsNo buildings')
 })
 
 it('leads a contact-lost report with the known fleet loss without inventing the defender result', () => {
@@ -139,3 +139,95 @@ it('uses public names consistently across combat rounds and espionage with safe 
     ).toContain('Vega &lt;Commander&gt;')
   }
 })
+
+it('places historical target identity first and activity and detection after all intelligence', () => {
+  const markup = renderToStaticMarkup(
+    createElement(ReportObservation, {
+      playerNames: { player: 'Commander Vega' },
+      targetActions: createElement('button', null, 'Attack'),
+      payload: {
+        kind: 'Espionage',
+        target: {
+          body: 'target',
+          owner: 'player',
+          kind: 'Planet',
+          name: 'Nova Roma',
+          coordinates: { galaxy: 1, system: 1, position: 11 },
+        },
+        resources: {
+          visibility: 'Known',
+          value: {
+            metal: '18763000000',
+            crystal: '10441000000',
+            deuterium: '560000000',
+          },
+        },
+        activity: { type: 'Minutes', minutes: 20 },
+        counterespionage: { probability_ppm: 0, detected: false },
+      },
+    }),
+  )
+  const text = markup.replace(/<[^>]+>/g, '')
+  expect(text).toContain('Commander Vega')
+  expect(text).toContain('Nova Roma · [1:1:11]')
+  expect(markup).toContain('/planet-11-96.webp')
+  expect(text.indexOf('Attack')).toBeLessThan(text.indexOf('Resources'))
+  expect(text.indexOf('Research')).toBeLessThan(
+    text.indexOf('Activity before contact: 20 minutes'),
+  )
+  expect(text.indexOf('Research')).toBeLessThan(
+    text.indexOf('Counterespionage: 0%'),
+  )
+  expect(markup.match(/<svg[^>]+data-resource=/g)).toHaveLength(3)
+  expect(text).toContain('18,76310,441560')
+})
+
+it.each(['Delivered', 'Returned', 'Deployed', 'Colonized', 'ContactLost'])(
+  'uses resource symbols in %s report details',
+  (kind) => {
+    const resources = {
+      metal: '1000000',
+      crystal: '2000000',
+      deuterium: '3000000',
+    }
+    const markup = renderToStaticMarkup(
+      createElement(ReportObservation, {
+        payload: {
+          kind,
+          cargo: resources,
+          resources,
+          own_cargo_loss: resources,
+        },
+      }),
+    )
+    for (const resource of ['metal', 'crystal', 'deuterium']) {
+      expect(markup).toContain(`data-resource="${resource}"`)
+      expect(markup).toContain(`color:var(--resource-${resource})`)
+    }
+  },
+)
+
+it.each([
+  ['fleet', [], 'No stationed ships'],
+  ['defenses', [], 'No defenses'],
+  ['buildings', {}, 'No buildings'],
+  ['research', {}, 'No research'],
+])(
+  'describes an empty %s section plainly without confusing it with unrevealed intelligence',
+  (section, value, message) => {
+    const revealed = render({
+      kind: 'Espionage',
+      [section as string]: { visibility: 'Known', value },
+    })
+    expect(revealed).toContain(message)
+    expect(revealed).not.toContain('Known empty')
+    const hidden = render({
+      kind: 'Espionage',
+      [section as string]: { visibility: 'Unknown' },
+    })
+    expect(hidden).not.toContain(message)
+    expect(hidden).toContain(
+      'Unknown — this observation did not reveal this section.',
+    )
+  },
+)

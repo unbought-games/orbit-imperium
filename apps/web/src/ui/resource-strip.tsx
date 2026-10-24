@@ -1,4 +1,4 @@
-import { NumberValue, ResourceNumber } from './number-value'
+import { NumberValue, ResourceQuantity } from './number-value'
 import styles from './resource-strip.module.css'
 import type { BoundView } from '../client-model/commands'
 import { ResourceAmount } from './resource-amount'
@@ -29,13 +29,13 @@ export function ResourceStrip({
             <p>
               Available{' '}
               <strong>
-                <ResourceNumber value={value} />
+                <ResourceQuantity resource={name} value={value} />
               </strong>
             </p>
             <p>
               Capacity{' '}
               <strong>
-                <ResourceNumber value={body.capacity[name]} />
+                <ResourceQuantity resource={name} value={body.capacity[name]} />
               </strong>
             </p>
             <p>
@@ -44,7 +44,8 @@ export function ResourceStrip({
                 {rates ? (
                   <>
                     {BigInt(rates[name]) > 0n ? '+' : ''}
-                    <ResourceNumber value={rates[name]} /> / hour
+                    <ResourceQuantity resource={name} value={rates[name]} /> /
+                    hour
                   </>
                 ) : (
                   'Flow unavailable'
@@ -71,12 +72,14 @@ export function ResourceStrip({
         <p>
           Balance{' '}
           <strong>
-            <ResourceNumber value={balance.toString()} />
+            <ResourceQuantity resource="energy" value={balance.toString()} />
           </strong>
         </p>
         <p>
-          <ResourceNumber value={body.energy.supply} /> supplied /{' '}
-          <ResourceNumber value={body.energy.demand} /> demanded
+          <ResourceQuantity resource="energy" value={body.energy.supply} />{' '}
+          supplied /{' '}
+          <ResourceQuantity resource="energy" value={body.energy.demand} />{' '}
+          demanded
         </p>
         <p>
           {balance < 0n ? 'Energy shortfall' : 'Energy balance'} ·{' '}

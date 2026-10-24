@@ -8,6 +8,7 @@ import { Popover } from '../../ui/popover'
 import {
   ResourceShortfall,
   ResourceNumber,
+  ResourceQuantity,
   NumberValue,
 } from '../../ui/number-value'
 import { Link } from '../../ui/link'
@@ -104,10 +105,10 @@ export function StorageInsight({
       aria-label={`${label(storage.resource)} storage forecast`}
     >
       <div>
-        <span>
+        <DetailResourceValue resource={storage.resource}>
           <ResourceNumber value={storage.amount} /> /{' '}
           <ResourceNumber value={storage.capacity} /> stored
-        </span>
+        </DetailResourceValue>
         <strong>
           {storage.state === 'full' ? (
             'Storage full'
@@ -130,7 +131,9 @@ export function StorageInsight({
           {storage.resource === 'deuterium'
             ? 'Planet total (net of fuel)'
             : 'Planet total (incl. base)'}
-          : <ResourceNumber value={storage.rate} /> / h
+          :{' '}
+          <ResourceQuantity resource={storage.resource} value={storage.rate} />{' '}
+          / h
         </small>
       )}
     </div>
@@ -221,20 +224,28 @@ function EnergyDetails({
       trigger={children}
     >
       <p>
-        Current balance: <SignedEnergy value={energy.current} />
+        Current balance:{' '}
+        <DetailResourceValue resource="energy">
+          <SignedEnergy value={energy.current} />
+        </DetailResourceValue>
       </p>
       <p>
         After construction:{' '}
         {energy.after === null ? (
           'Estimate unavailable'
         ) : (
-          <SignedEnergy value={energy.after} />
+          <DetailResourceValue resource="energy">
+            <SignedEnergy value={energy.after} />
+          </DetailResourceValue>
         )}
       </p>
       {change !== null && change !== 0n && (
         <p>
           {change > 0n ? 'Additional demand' : 'Demand saved'}:{' '}
-          <ResourceNumber value={change < 0n ? -change : change} />
+          <ResourceQuantity
+            resource="energy"
+            value={change < 0n ? -change : change}
+          />
         </p>
       )}
       {energy.afterUtilization !== null && (
@@ -298,8 +309,11 @@ export function DecisionCosts({
             >
               {missing.map(({ resource, amount }) => (
                 <p key={resource}>
-                  {label(resource)}: <ResourceShortfall value={amount} /> more
-                  needed.
+                  {label(resource)}:{' '}
+                  <DetailResourceValue resource={resource}>
+                    <ResourceShortfall value={amount} />
+                  </DetailResourceValue>{' '}
+                  more needed.
                 </p>
               ))}
               <p>

@@ -267,3 +267,33 @@ fn detected_probe_loss_keeps_espionage_and_combat_reports() {
     );
     validate_asset_lineage(&s).unwrap();
 }
+
+#[test]
+fn espionage_preserves_the_observed_planet_name() {
+    let (mut s, r, p, b, t) = raid_fixture();
+    s.bodies.get_mut(&t).unwrap().name = Some("Nova Roma".into());
+    let request = probe_intent(&s, p, b, t);
+    let arrival = launch_raid(&mut s, &r, p, b, request, 1000, 5100);
+    clear_units(&mut s, t);
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        arrival.at,
+        5101,
+        Input::Event(arrival.event),
+    );
+    apply(&mut s, result);
+    s.bodies.get_mut(&t).unwrap().name = Some("Renamed later".into());
+    let report = s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .reports
+        .values()
+        .find(|r| r.kind == "Espionage")
+        .unwrap();
+    assert_eq!(report.payloads[&p]["target"]["name"], "Nova Roma");
+}

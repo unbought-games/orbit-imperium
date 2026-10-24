@@ -1,5 +1,5 @@
 import type { CatalogSelection } from '../shell/use-catalog-selection'
-import { NumberValue, ResourceNumber } from '../ui/number-value'
+import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { canAfford } from '../client-model/resources'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
 import { ConfirmationButton } from '../ui/confirmation-button'
@@ -281,9 +281,16 @@ export function Economy({
             Upgrade to level {proposal.quote.target_level}
           </Heading>
           <Text>
-            <ResourceNumber value={proposal.quote.cost.metal} /> metal ·{' '}
-            <ResourceNumber value={proposal.quote.cost.crystal} /> crystal ·{' '}
-            <NumberValue value={proposal.quote.duration} divisor={1000} />{' '}
+            <ResourceQuantity
+              resource="metal"
+              value={proposal.quote.cost.metal}
+            />{' '}
+            ·{' '}
+            <ResourceQuantity
+              resource="crystal"
+              value={proposal.quote.cost.crystal}
+            />{' '}
+            · <NumberValue value={proposal.quote.duration} divisor={1000} />{' '}
             seconds
           </Text>
           <QuoteAction

@@ -1,5 +1,11 @@
+import { ResourceValue } from '../ui/resource-value'
 import type { CatalogSelection } from '../shell/use-catalog-selection'
-import { NumberValue, ResourceNumber } from '../ui/number-value'
+import {
+  NumberValue,
+  ResourceNumber,
+  ResourceQuantity,
+  ResourceSummary,
+} from '../ui/number-value'
 import { canFundFleet } from '../client-model/resources'
 import { pendingBody } from '../client-model/game-projection'
 import styles from './operations.module.css'
@@ -100,10 +106,13 @@ export function Operations({
                       </time>
                     </Text>
                     <Text className={styles.payload}>
-                      On board: <ResourceNumber value={f.payload.metal} /> M ·{' '}
-                      <ResourceNumber value={f.payload.crystal} /> C ·{' '}
-                      <ResourceNumber value={f.payload.deuterium} /> D. Paid
-                      fuel: <ResourceNumber value={f.paid_fuel} /> D.
+                      On board: <ResourceSummary value={f.payload} />. Paid
+                      fuel:{' '}
+                      <ResourceQuantity
+                        resource={'deuterium'}
+                        value={f.paid_fuel}
+                      />
+                      .
                     </Text>
                   </div>
                   {f.status === 'Outbound' && (
@@ -139,9 +148,7 @@ export function Operations({
                       {coordinates(view, r.target)}
                     </Text>
                     <Text>
-                      <ResourceNumber value={r.cargo.metal} /> metal ·{' '}
-                      <ResourceNumber value={r.cargo.crystal} /> crystal ·{' '}
-                      <ResourceNumber value={r.cargo.deuterium} /> deuterium
+                      <ResourceSummary value={r.cargo} />
                     </Text>
                     <Caption>{new Date(r.at).toLocaleString()}</Caption>
                   </Panel>
@@ -314,9 +321,9 @@ function Transport({
               ))}
             </Select>
           </Field>
-          {['metal', 'crystal', 'deuterium'].map((name) => (
+          {(['metal', 'crystal', 'deuterium'] as const).map((name) => (
             <Field key={name}>
-              Cargo {name}
+              <ResourceValue resource={name}>Cargo {name}</ResourceValue>
               <NumberInput
                 name={name}
                 pattern="[0-9]+"
@@ -341,15 +348,17 @@ function Transport({
           <Heading level={3}>Confirm transport</Heading>
           <Text>
             <NumberValue value={proposal.quote.duration} divisor={1000} />{' '}
-            seconds each way · <ResourceNumber value={proposal.quote.fuel} />{' '}
+            seconds each way ·{' '}
+            <ResourceQuantity
+              resource={'deuterium'}
+              value={proposal.quote.fuel}
+            />{' '}
             deuterium fuel ·{' '}
             <ResourceNumber value={proposal.quote.maximum_payload} /> maximum
             payload
           </Text>
           <Text>
-            Payload: <ResourceNumber value={proposal.request.cargo.metal} /> M ·{' '}
-            <ResourceNumber value={proposal.request.cargo.crystal} /> C ·{' '}
-            <ResourceNumber value={proposal.request.cargo.deuterium} /> D
+            Payload: <ResourceSummary value={proposal.request.cargo} />
           </Text>
           <QuoteAction
             disabled={

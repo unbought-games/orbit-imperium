@@ -1,4 +1,9 @@
-import { ResourceShortfall, ResourceNumber } from './number-value'
+import { ResourceValue } from './resource-value'
+import {
+  ResourceShortfall,
+  ResourceNumber,
+  ResourceQuantity,
+} from './number-value'
 import type { components } from '../contracts'
 import { ResourceMark } from './resource-mark'
 import { Popover } from './popover'
@@ -50,26 +55,36 @@ export function ResourceCosts({
                   }
                 >
                   <p>
-                    Required <ResourceNumber value={cost[name]} />
+                    Required{' '}
+                    <ResourceQuantity resource={name} value={cost[name]} />
                   </p>
                   <p>
-                    Available <ResourceNumber value={available[name]} />
+                    Available{' '}
+                    <ResourceQuantity resource={name} value={available[name]} />
                   </p>
                   <p>
                     {shortfall ? (
                       <>
-                        Shortfall <ResourceShortfall value={shortfall} />
+                        Shortfall{' '}
+                        <ResourceValue resource={name}>
+                          <ResourceShortfall value={shortfall} />
+                        </ResourceValue>
                       </>
                     ) : (
                       <>
-                        After spending <ResourceNumber value={after} />
+                        After spending{' '}
+                        <ResourceQuantity resource={name} value={after} />
                       </>
                     )}
                   </p>
                 </Popover>
                 {showShortfalls && shortfall && (
                   <small className={styles.shortfall}>
-                    Need <ResourceShortfall value={shortfall} /> more
+                    Need{' '}
+                    <ResourceValue resource={name}>
+                      <ResourceShortfall value={shortfall} />
+                    </ResourceValue>{' '}
+                    more
                   </small>
                 )}
               </div>
@@ -132,20 +147,25 @@ export function ResourceCosts({
                     <p>
                       Required{' '}
                       <strong>
-                        <ResourceNumber value={cost[name]} />
+                        <ResourceQuantity resource={name} value={cost[name]} />
                       </strong>
                     </p>
                     <p>
                       Available{' '}
                       <strong>
-                        <ResourceNumber value={available[name]} />
+                        <ResourceQuantity
+                          resource={name}
+                          value={available[name]}
+                        />
                       </strong>
                     </p>
                     {shortfall && (
                       <p>
                         Shortfall{' '}
                         <strong>
-                          <ResourceShortfall value={shortfall} />
+                          <ResourceValue resource={name}>
+                            <ResourceShortfall value={shortfall} />
+                          </ResourceValue>
                         </strong>
                       </p>
                     )}
@@ -156,7 +176,7 @@ export function ResourceCosts({
                     Available
                   </span>
                   <span className={styles.number}>
-                    <ResourceNumber value={available[name]} />
+                    <ResourceQuantity resource={name} value={available[name]} />
                   </span>
                 </td>
                 <td className={shortfall ? styles.shortfall : undefined}>
@@ -167,13 +187,15 @@ export function ResourceCosts({
                     <>
                       Need{' '}
                       <span className={styles.number}>
-                        <ResourceShortfall value={shortfall} />
+                        <ResourceValue resource={name}>
+                          <ResourceShortfall value={shortfall} />
+                        </ResourceValue>
                       </span>{' '}
                       more
                     </>
                   ) : (
                     <span className={styles.number}>
-                      <ResourceNumber value={after} />
+                      <ResourceQuantity resource={name} value={after} />
                     </span>
                   )}
                 </td>

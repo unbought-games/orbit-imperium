@@ -2,7 +2,11 @@ import { CoordinateLink } from './coordinate-link'
 import { PlayerName } from './player-name'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { useUniverseName } from '../shell/session-context'
-import { NumberValue, ResourceNumber } from '../ui/number-value'
+import {
+  NumberValue,
+  ResourceNumber,
+  ResourceQuantity,
+} from '../ui/number-value'
 import { useState } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
@@ -217,7 +221,10 @@ export function MissionFleets({
                   <div key={key}>
                     <dt>{key}</dt>
                     <dd>
-                      <ResourceNumber value={fleet.cargo[key]} />
+                      <ResourceQuantity
+                        resource={key}
+                        value={fleet.cargo[key]}
+                      />
                     </dd>
                   </div>
                 ))}
@@ -226,7 +233,11 @@ export function MissionFleets({
                 <span>
                   Fuel spent{' '}
                   <strong>
-                    <ResourceNumber value={fleet.paid_fuel} /> deuterium
+                    <ResourceQuantity
+                      resource={'deuterium'}
+                      value={fleet.paid_fuel}
+                    />{' '}
+                    deuterium
                   </strong>
                 </span>
                 <span>

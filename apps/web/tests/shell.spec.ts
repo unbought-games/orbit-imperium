@@ -1588,7 +1588,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   })
   await page.getByRole('link', { name: 'Espionage', exact: true }).click()
   const report = page.getByRole('region', { name: 'Report observation' })
-  await expect(report).toContainText('Known empty')
+  await expect(report).toContainText('No stationed ships')
   await expect(report).toContainText(
     'Unknown — this observation did not reveal this section.',
   )
@@ -1611,7 +1611,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await expect(unreadAlert).toHaveCount(0)
   await expect.poll(() => header.read).toBe(true)
   await page
-    .getByRole('button', { name: 'Prepare attack', exact: true })
+    .getByRole('button', { name: 'Attack', exact: true })
     .click()
   await expect(page.getByLabel('System', { exact: true })).toHaveValue('372')
   await expect(page.getByLabel('Position', { exact: true })).toHaveValue('10')
@@ -1643,7 +1643,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await page.getByRole('button', { name: 'Retry reports', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Report observation' }),
-  ).toContainText('Known empty')
+  ).toContainText('No stationed ships')
 })
 
 test('secondary pages retain empty, unavailable and settings states at phone width', async ({
@@ -1782,7 +1782,8 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('Destination [1:1:3]')
   await expect(quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
-  await expect(quote).toContainText('6 deuterium fuel')
+  await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
+  await expect(quote).toContainText('fuel')
   expect(quoteRequests).toBe(1)
   expect(sent).toBe(0)
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -1867,7 +1868,8 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     await expect(resolve).toBeInViewport()
   }
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
-  await expect(quote).toContainText('6 deuterium fuel')
+  await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
+  await expect(quote).toContainText('fuel')
   await expect(
     quote.getByRole('button', { name: 'Send 1 Small Cargo', exact: true }),
   ).toBeDisabled()

@@ -177,7 +177,7 @@ export function combatReportModel(
     .map(({ key, title }) => ({
       key,
       title,
-      values: ['metal', 'crystal', 'deuterium'].map((resource) => ({
+      values: (['metal', 'crystal', 'deuterium'] as const).map((resource) => ({
         resource,
         value: combatInteger(record(payload[key])[resource]),
       })),

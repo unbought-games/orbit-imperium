@@ -3,7 +3,7 @@ import { CoordinateLink } from './coordinate-link'
 import { PlayerName } from './player-name'
 import type { PlayerNames } from './player-label'
 import { Heading } from '../ui/typography'
-import { NumberValue } from '../ui/number-value'
+import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import {
   combatInteger,
   combatReportModel,
@@ -223,7 +223,7 @@ export function CombatReport({
                 <div key={resource}>
                   <dt>{resource}</dt>
                   <dd>
-                    <Amount value={value} divisor={1000000} />
+                    <ResourceQuantity resource={resource} value={value} />
                   </dd>
                 </div>
               ))}

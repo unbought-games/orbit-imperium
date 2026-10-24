@@ -45,6 +45,9 @@ export function ResourceAmount({
             <span className={styles.art} aria-hidden="true" />
           )}
           <span className={styles.amount}>
+            {variant === 'cost' && (
+              <ResourceMark resource={resource} width={18} height={18} />
+            )}
             <strong>
               {variant === 'stock' ? (
                 <span className={styles.compactAmount}>

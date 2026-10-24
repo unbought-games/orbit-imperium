@@ -22,7 +22,7 @@ import { useGameSession } from '../shell/session-context'
 import { routeTarget } from '../shell/route-target'
 import { resolveDestination, type Page } from '../shell/routes'
 import { Link } from '../ui/link'
-import { ResourceNumber } from '../ui/number-value'
+import { ResourceNumber, ResourceQuantity } from '../ui/number-value'
 import { ResourceMark } from '../ui/resource-mark'
 import { bodyName, coordinates, label } from '../ui/format'
 import { currentResourceRates } from '../ui/resource-rates'
@@ -389,13 +389,10 @@ function PlanetDossier({
               { '--resource-color': `var(--resource-${name})` } as CSSProperties
             }
           >
-            <dt>
-              <ResourceMark resource={name} width={13} height={13} />
-              {label(name)}
-            </dt>
+            <dt>{label(name)}</dt>
             <dd>
               <strong>
-                <ResourceNumber value={body.amounts[name]} />
+                <ResourceQuantity resource={name} value={body.amounts[name]} />
               </strong>
               <meter
                 min={0}
@@ -406,14 +403,15 @@ function PlanetDossier({
               <span>
                 {rates ? (
                   <>
-                    <ResourceNumber value={rates[name]} /> /h
+                    <ResourceQuantity resource={name} value={rates[name]} /> /h
                   </>
                 ) : (
                   'Rate unavailable'
                 )}
               </span>
               <small>
-                Cap <ResourceNumber value={body.capacity[name]} />
+                Cap{' '}
+                <ResourceQuantity resource={name} value={body.capacity[name]} />
               </small>
               {BigInt(body.amounts[name]) >= BigInt(body.capacity[name]) && (
                 <b className={styles.storageFull}>Storage full</b>

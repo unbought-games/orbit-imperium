@@ -195,10 +195,8 @@ for (const viewport of [
     await page.keyboard.press('Escape')
     const harvest = (await page.getByRole('button', { name: 'Prepare harvest' }).boundingBox())!
     const outcome = (await page.getByRole('region', { name: 'Report observation' }).locator('header').boundingBox())!
-    if (viewport.width < 768) {
-      expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
-      expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
-    } else expect(harvest.y).toBeLessThan(outcome.y)
+    expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
+    expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
     await diagnosticScreenshot(page, {
       path: `test-results/density-combat-${viewport.width}.png`,
     })

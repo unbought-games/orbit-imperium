@@ -1,7 +1,7 @@
 import {
   DurationValue,
   ResourceSummary,
-  ResourceNumber,
+  ResourceQuantity,
   NumberValue,
 } from '../../ui/number-value'
 import { progressionCommand } from './options'
@@ -219,10 +219,16 @@ export function TechnologyDetails({
                   BigInt(material.required_energy) > 0n && (
                     <>
                       <DetailRow label="Required energy">
-                        <ResourceNumber value={material.required_energy} />
+                        <ResourceQuantity
+                          resource="energy"
+                          value={material.required_energy}
+                        />
                       </DetailRow>
                       <DetailRow label="Available energy">
-                        <ResourceNumber value={body.energy.supply} />
+                        <ResourceQuantity
+                          resource="energy"
+                          value={body.energy.supply}
+                        />
                       </DetailRow>
                     </>
                   )}

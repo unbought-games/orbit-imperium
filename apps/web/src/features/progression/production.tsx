@@ -1,4 +1,4 @@
-import { NumberValue, ResourceNumber } from '../../ui/number-value'
+import { NumberValue, ResourceQuantity } from '../../ui/number-value'
 import { Button } from '../../ui/button'
 import { Select } from '../../ui/form'
 import { Section } from '../../ui/section'
@@ -36,7 +36,10 @@ export function Production({
           <div key={name}>
             <span>{name}</span>
             <strong>
-              <ResourceNumber value={production.gross_per_hour[name]} />
+              <ResourceQuantity
+                resource={name}
+                value={production.gross_per_hour[name]}
+              />
             </strong>
             <small>/ hour</small>
           </div>
@@ -51,7 +54,8 @@ export function Production({
                 : undefined
             }
           >
-            <ResourceNumber
+            <ResourceQuantity
+              resource="energy"
               value={(
                 BigInt(production.energy_supply) -
                 BigInt(production.energy_demand)
@@ -59,8 +63,16 @@ export function Production({
             />
           </strong>
           <small>
-            <ResourceNumber value={production.energy_supply} /> supplied /{' '}
-            <ResourceNumber value={production.energy_demand} /> demanded
+            <ResourceQuantity
+              resource="energy"
+              value={production.energy_supply}
+            />{' '}
+            supplied /{' '}
+            <ResourceQuantity
+              resource="energy"
+              value={production.energy_demand}
+            />{' '}
+            demanded
           </small>
         </div>
       </div>
@@ -136,9 +148,13 @@ export function Production({
         )}
         <p>
           Deuterium fuel:{' '}
-          <ResourceNumber value={production.fuel_deuterium_per_hour} /> / hour ·
-          Net deuterium:{' '}
-          <ResourceNumber
+          <ResourceQuantity
+            resource="deuterium"
+            value={production.fuel_deuterium_per_hour}
+          />{' '}
+          / hour · Net deuterium:{' '}
+          <ResourceQuantity
+            resource="deuterium"
             value={
               BigInt(production.net_deuterium_per_hour.magnitude) *
               (production.net_deuterium_per_hour.sign === 'Negative' ? -1n : 1n)

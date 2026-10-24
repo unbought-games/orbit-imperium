@@ -5545,6 +5545,8 @@ export interface components {
                 owner: string;
                 /** @constant */
                 kind: "Planet";
+                /** @description Planet name at the time of observation. Older reports may omit it. */
+                name?: string | null;
             };
             observed_at: number;
             resources: {
@@ -5960,6 +5962,8 @@ export interface components {
                 owner: string;
                 /** @constant */
                 kind: "Planet";
+                /** @description Planet name at the time of observation. Older reports may omit it. */
+                name?: string | null;
             };
             resources?: {
                 /** @constant */

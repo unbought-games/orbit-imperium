@@ -54,3 +54,14 @@ assert.equal(battleRound(roundCounts), false, 'rounds require recorded fire');
 assert.equal(battleRound({ ...roundCounts, fire: [{ ...attributedFire, shots: '-1' }] }), false);
 assert.equal(battleRound({ ...roundCounts, fire: [{ ...attributedFire, side: 'Unknown' }] }), false);
 console.log('Combat rounds accept historical totals or attributed fire, never both.');
+
+const espionage = ajv.compile({ components: schema.components, $ref: '#/components/schemas/EspionagePayload4' });
+const reportPreview = ajv.compile({ components: schema.components, $ref: '#/components/schemas/ReportPreview4' });
+const observed = JSON.parse(readFileSync('contracts/fixtures/espionage-expanded.json', 'utf8'));
+for (const name of ['Nova Roma', null, undefined]) {
+ const target = { ...observed.target, name };
+ if (name === undefined) delete target.name;
+ assert.ok(espionage({ ...observed, target }), 'named, unnamed and historical report targets remain valid');
+ assert.ok(reportPreview({ kind: 'Espionage', target }), 'report previews accept the recorded planet name');
+}
+console.log('Espionage target names are compatible with historical reports and previews.');

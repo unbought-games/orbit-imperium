@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { ResourceValue } from '../../ui/resource-value'
 import { formatDuration } from '../../client-model/duration'
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import { CatalogItemLink } from '../../ui/catalog-item-link'
@@ -8,6 +10,30 @@ import { AlertTriangle } from 'lucide-react'
 import styles from './quote-review.module.css'
 import type { ProgressionProps } from './shared'
 import { blockerExplanation } from './detail-insights'
+
+function BlockerValue({
+  blocker,
+  children,
+}: {
+  blocker: BoundProgressionOptions['blockers'][number]
+  children: ReactNode
+}) {
+  const resource =
+    blocker.unit === 'MicroEnergy'
+      ? 'energy'
+      : blocker.resource === 'Metal'
+        ? 'metal'
+        : blocker.resource === 'Crystal'
+          ? 'crystal'
+          : blocker.resource === 'Deuterium'
+            ? 'deuterium'
+            : null
+  return resource ? (
+    <ResourceValue resource={resource}>{children}</ResourceValue>
+  ) : (
+    <>{children}</>
+  )
+}
 
 export function ProgressionBlockers({
   proposal,
@@ -71,9 +97,11 @@ export function ProgressionBlockers({
               b.unit === 'MicroResource' ? (
                 <>
                   Need{' '}
-                  <ResourceShortfall
-                    value={(BigInt(b.required) - BigInt(b.actual)).toString()}
-                  />{' '}
+                  <BlockerValue blocker={b}>
+                    <ResourceShortfall
+                      value={(BigInt(b.required) - BigInt(b.actual)).toString()}
+                    />
+                  </BlockerValue>{' '}
                   more {b.resource?.toLowerCase()}
                 </>
               ) : (
@@ -105,24 +133,28 @@ export function ProgressionBlockers({
                 <>
                   {' '}
                   — requires{' '}
-                  <NumberValue
-                    value={b.required}
-                    divisor={
-                      b.unit === 'MicroResource' || b.unit === 'MicroEnergy'
-                        ? 1000000
-                        : 1
-                    }
-                  />
-                  {b.resource ? ' ' + b.resource.toLowerCase() : ''}; current{' '}
-                  {b.actual !== null ? (
+                  <BlockerValue blocker={b}>
                     <NumberValue
-                      value={b.actual}
+                      value={b.required}
                       divisor={
                         b.unit === 'MicroResource' || b.unit === 'MicroEnergy'
                           ? 1000000
                           : 1
                       }
                     />
+                  </BlockerValue>
+                  {b.resource ? ' ' + b.resource.toLowerCase() : ''}; current{' '}
+                  {b.actual !== null ? (
+                    <BlockerValue blocker={b}>
+                      <NumberValue
+                        value={b.actual}
+                        divisor={
+                          b.unit === 'MicroResource' || b.unit === 'MicroEnergy'
+                            ? 1000000
+                            : 1
+                        }
+                      />
+                    </BlockerValue>
                   ) : (
                     'Unknown'
                   )}

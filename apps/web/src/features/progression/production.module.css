@@ -33,7 +33,7 @@
 .totals > div:last-child {
   border-right: 0;
 }
-.totals span {
+.totals > div > span {
   display: block;
   color: var(--text-muted);
   font-size: 0.875rem;
