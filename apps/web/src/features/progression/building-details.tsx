@@ -32,6 +32,7 @@ import {
   DecisionCosts,
 } from './detail-metrics'
 import styles from './detail-layout.module.css'
+import { ProgressionActionFeedback } from './action-feedback'
 
 export function BuildingDetails({
   building,
@@ -284,6 +285,11 @@ export function BuildingDetails({
           )}
         </DetailSection>
       )}
+      <ProgressionActionFeedback
+        model={model}
+        body={body.id}
+        item={{ kind: 'Building', id: building.id }}
+      />
     </DetailLayout>
   )
 }

@@ -13,12 +13,18 @@ export function visibleAction(a: Attempt): boolean {
   )
 }
 export function actionLabel(command: Command): string {
+  if (command.type === 'StartManufacture')
+    return `${command.quantity} × ${label(command.item.id)}`
   if (command.type === 'World' && command.action.type === 'SetReportHidden')
     return command.action.hidden ? 'Delete report' : 'Restore report'
   return label(command.type === 'World' ? command.action.type : command.type)
 }
 export function actionMessage(a: Attempt): string {
   const command = a.envelope.command
+  if (command.type === 'StartManufacture' && a.status === 'committed')
+    return a.reconciled
+      ? 'Order confirmed. Costs shown are for a new order.'
+      : 'Order confirmed; awaiting updated resources and queue.'
   if (
     a.status === 'rejected' &&
     a.receipt?.status === 'Rejected' &&
