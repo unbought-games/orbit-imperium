@@ -135,7 +135,6 @@ mod tests {
             std::fs::write(root.join("index.html"), INDEX).unwrap();
             std::fs::write(root.join("assets/app.js"), "console.log('orbit');").unwrap();
             std::fs::write(root.join("assets/app.css"), "body { color: white; }").unwrap();
-            std::fs::write(root.join("source.tar.gz"), "source archive").unwrap();
             std::fs::write(root.join("LICENSE.txt"), "project license").unwrap();
             std::fs::write(root.join("third-party.txt"), "dependency notices").unwrap();
             Self(root)
@@ -323,7 +322,6 @@ mod tests {
         for (path, content, content_type) in [
             ("/assets/app.js", "console.log('orbit');", "text/javascript"),
             ("/assets/app.css", "body { color: white; }", "text/css"),
-            ("/source.tar.gz", "source archive", "application/gzip"),
             ("/LICENSE.txt", "project license", "text/plain"),
             ("/third-party.txt", "dependency notices", "text/plain"),
         ] {
@@ -381,8 +379,6 @@ mod tests {
             (Method::GET, "/assets/app.js"),
             (Method::HEAD, "/"),
             (Method::HEAD, "/assets/app.css"),
-            (Method::GET, "/source.tar.gz"),
-            (Method::HEAD, "/source.tar.gz"),
             (Method::GET, "/LICENSE.txt"),
             (Method::GET, "/third-party.txt"),
         ] {

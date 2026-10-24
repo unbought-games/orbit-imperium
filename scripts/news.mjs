@@ -32,7 +32,7 @@ export function buildNews(root=process.cwd()) {
   }
   const output=join(root,'apps/web/public/updates')
   rmSync(output,{recursive:true,force:true});mkdirSync(output,{recursive:true})
-  const page=(title,body)=>`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} · Orbit Imperium</title><meta name="description" content="Release notes and changes included in this Orbit Imperium build."><link rel="stylesheet" href="/updates/style.css"><link rel="icon" href="/brand-mark.svg"></head><body><header><a href="/">← Return to Orbit Imperium</a><a href="/updates/index.html">All updates</a></header><main>${body}</main><footer>Notes included in this server's build. Availability depends on its operator. <a href="/source.tar.gz">Download this build's source</a>.</footer></body></html>`
+  const page=(title,body)=>`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} · Orbit Imperium</title><meta name="description" content="Release notes and changes included in this Orbit Imperium build."><link rel="stylesheet" href="/updates/style.css"><link rel="icon" href="/brand-mark.svg"></head><body><header><a href="/">← Return to Orbit Imperium</a><a href="/updates/index.html">All updates</a></header><main>${body}</main><footer>Notes included in this server's build. Availability depends on its operator. <a href="https://github.com/unbought-games/orbit-imperium">View on GitHub</a>.</footer></body></html>`
   const ids=new Set()
   for (const note of notes) {
     if(ids.has(note.id))throw new Error(`Duplicate note ${note.id}`);ids.add(note.id)

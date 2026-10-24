@@ -63,11 +63,9 @@ immutability. Retention must preserve deployed and compatible rollback digests.
 One `linux/amd64` image is built with the existing Dockerfile. Its OCI revision
 label contains the full commit SHA. Before publication, artifact inspection uses
 `docker create` and `docker cp` without starting the application or a database.
-It verifies `/app/web/source.tar.gz`, matching `LICENSE.txt`, web dependency
-`third-party.txt` and `rust-notices.txt`; selected archive files must match the
-checkout byte for byte. The archive rejects Git history, secrets, build output
-and excluded internal research directories. License and attribution contents
-remain unchanged.
+It verifies `/app/web/LICENSE.txt` matches the checkout and checks web dependency
+`third-party.txt` and `rust-notices.txt`. Source is available in the GitHub
+repository at the revision recorded in the image label.
 
 This inspection is a packaging check, not the full production-container or
 full-system acceptance suites. Those remain in `Explicit tests`, triggered only

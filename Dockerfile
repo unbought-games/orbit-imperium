@@ -3,19 +3,14 @@ WORKDIR /build
 COPY package.json package-lock.json ./
 COPY vendor vendor
 RUN npm ci
-# Package source and build both halves from this same snapshot. Never omit the
-# backend, build scripts or lockfiles from the source offered to players.
-COPY .config .config
-COPY .github .github
+# Build the frontend and backend from the same snapshot.
 COPY apps apps
 COPY contracts contracts
 COPY crates crates
-COPY deploy deploy
 COPY docs docs
-COPY fixtures fixtures
 COPY rules rules
 COPY scripts scripts
-COPY .dockerignore .env.example .gitignore .node-version .prettierignore .prettierrc.json AGENTS.md CHANGELOG.md Cargo.lock Cargo.toml Dockerfile LICENSE Makefile README.md compose.yaml eslint.config.js playwright.config.ts rust-toolchain.toml ./
+COPY Cargo.lock Cargo.toml LICENSE rust-toolchain.toml ./
 RUN npm run build
 
 FROM rust:1.99.0-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6 AS rust
@@ -36,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 WORKDIR /app
 COPY --from=rust /build/target/release/orbit /usr/local/bin/orbit
 COPY --from=web /build/apps/web/dist /app/web
+COPY --from=web /build/LICENSE /app/web/LICENSE.txt
 COPY --from=rust /tmp/rust-notices.txt /app/web/rust-notices.txt
 USER orbit
 ENV ORBIT_BIND=0.0.0.0:8080 ORBIT_ASSETS=/app/web

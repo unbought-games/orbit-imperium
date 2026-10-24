@@ -6,52 +6,12 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export function verifyReleaseFiles(directory, root) {
-  for (const name of [
-    'source.tar.gz',
-    'LICENSE.txt',
-    'third-party.txt',
-    'rust-notices.txt',
-  ])
+  for (const name of ['LICENSE.txt', 'third-party.txt', 'rust-notices.txt'])
     assert.ok(statSync(join(directory, name)).size > 0, `Missing/empty ${name}`)
   assert.deepEqual(
     readFileSync(join(directory, 'LICENSE.txt')),
     readFileSync(join(root, 'LICENSE')),
   )
-  const archive = join(directory, 'source.tar.gz')
-  const names = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' })
-    .trim()
-    .split('\n')
-  for (const name of [
-    'LICENSE',
-    'Cargo.lock',
-    'package-lock.json',
-    'Dockerfile',
-    'scripts/package-source.mjs',
-    'crates/server/src/main.rs',
-    'apps/web/src/main.tsx',
-  ]) {
-    assert.ok(names.includes(`./${name}`), `Source archive missing ${name}`)
-    assert.deepEqual(
-      execFileSync('tar', ['-xOzf', archive, `./${name}`]),
-      readFileSync(join(root, name)),
-      `Source differs: ${name}`,
-    )
-  }
-  for (const name of names) {
-    assert.ok(
-      name.startsWith('./') && !name.split('/').includes('..'),
-      `Unsafe source path: ${name}`,
-    )
-    assert.doesNotMatch(
-      name,
-      /(^|\/)(\.git|\.secrets|\.superpowers|node_modules|target|dist)(\/|$)/,
-    )
-    assert.doesNotMatch(
-      name,
-      /^\.\/docs\/(specs|game|plans|verification|superpowers)\//,
-    )
-    assert.doesNotMatch(name, /(^|\/)\.env(?!\.example$)|\.(pem|key|p12|pfx)$/i)
-  }
   assert.match(
     readFileSync(join(directory, 'third-party.txt'), 'utf8'),
     /react/i,
@@ -60,7 +20,6 @@ export function verifyReleaseFiles(directory, root) {
     readFileSync(join(directory, 'rust-notices.txt'), 'utf8'),
     /MIT|Apache/,
   )
-  return names.length
 }
 
 export function inspectReleaseImage(image, sha, root = process.cwd()) {
@@ -83,7 +42,6 @@ export function inspectReleaseImage(image, sha, root = process.cwd()) {
       encoding: 'utf8',
     }).trim()
     for (const name of [
-      'source.tar.gz',
       'LICENSE.txt',
       'third-party.txt',
       'rust-notices.txt',
@@ -93,8 +51,9 @@ export function inspectReleaseImage(image, sha, root = process.cwd()) {
         `${container}:/app/web/${name}`,
         join(directory, name),
       ])
+    verifyReleaseFiles(directory, root)
     console.log(
-      `Release image verified: ${verifyReleaseFiles(directory, root)} source files, license, web and Rust notices; runtime API/worker selection`,
+      'Release image verified: license, web and Rust notices; runtime API/worker selection',
     )
   } finally {
     try {
