@@ -356,3 +356,18 @@ unexpected edit, and the updated variant is restored in the working tree.
 Logs, source snapshots, assertion inventories, JSON results and generated
 evidence are retained in `/tmp/orbit-perf-first-pass/`. Each runner shut down
 its Vite/browser processes; no database or Docker project was created.
+
+## PR integration
+
+Preparing the PR required merging main at
+`46310a352bad22e594114077fbace123d01c2d2a` to resolve conflicts in the density,
+galaxy, report-deletion and shell tests. Main's new assertions and report
+navigation behavior are retained, including Reports as a fifth independent
+planet-routing case. The newly added report-glance spec uses the same failure
+fixture and optional diagnostic helper. The integrated suite contains 389
+fixture-browser cases in 24 files; 37 spec files use the failure fixture and
+121 named capture calls are opt-in.
+
+The benchmark tables above describe their recorded pre-integration snapshots.
+They are not measurements of the integrated PR revision; its validation and CI
+results are tracked separately on the PR.

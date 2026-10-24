@@ -1,10 +1,7 @@
 import type { GameState } from './game-store'
-import {
-  activeAttempt,
-  pendingProgression,
-  pendingCommand,
-} from './game-projection'
+import { pendingProgression, pendingCommand } from './game-projection'
 import { remaining, formatRemaining } from './clock'
+import { pendingCancellation, progressStatus } from './progress-status'
 
 /** Research work is derived from confirmed operations or the submitted quote. */
 export function researchProgress(state: GameState) {
@@ -18,12 +15,7 @@ export function researchProgress(state: GameState) {
   const work = confirmed ?? terms
   if (!work) return null
   const operationId = confirmed?.id ?? optimistic?.operationId ?? null
-  const cancelling = [...state.attempts.values()].some(
-    (attempt) =>
-      activeAttempt(attempt, view) &&
-      attempt.envelope.command.type === 'CancelResearch' &&
-      attempt.envelope.command.operation === operationId,
-  )
+  const cancelling = pendingCancellation(state, 'CancelResearch', operationId)
   const dueAt =
     confirmed?.due_at ?? optimistic!.submittedAt + terms!.duration_ms
   const seconds = remaining(dueAt, view.sampled_at, state.receivedAt, state.now)
@@ -42,12 +34,10 @@ export function researchProgress(state: GameState) {
         operation: operationId,
       }),
     countdown: formatRemaining(seconds),
-    status: cancelling
-      ? 'Cancelling'
-      : confirmed
-        ? 'In progress'
-        : optimistic?.status === 'uncertain'
-          ? 'Awaiting confirmation'
-          : 'Confirming',
+    status: progressStatus({
+      cancelling,
+      confirmed: !!confirmed,
+      pendingStatus: optimistic?.status,
+    }),
   }
 }

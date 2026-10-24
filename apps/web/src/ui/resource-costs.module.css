@@ -192,15 +192,6 @@
 .compactMaterial svg {
   flex-shrink: 0;
 }
-.compact [data-resource='metal'] svg {
-  color: var(--resource-metal);
-}
-.compact [data-resource='crystal'] svg {
-  color: var(--resource-crystal);
-}
-.compact [data-resource='deuterium'] svg {
-  color: var(--resource-deuterium);
-}
 .compact small {
   display: block;
 }

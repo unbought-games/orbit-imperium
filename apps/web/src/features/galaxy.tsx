@@ -1,7 +1,6 @@
 import { useProfileSource } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
-import { ChevronLeft, ChevronRight, RefreshCw, Orbit } from 'lucide-react'
-import { Link } from '../ui/link'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Select, Field } from '../ui/form'
 import styles from './galaxy.module.css'
@@ -11,12 +10,11 @@ import { galaxyTarget } from '../shell/galaxy-location'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
-import { routeTarget } from '../shell/route-target'
 import { GalaxyPosition } from './galaxy-position'
-import { GalaxyAtlas } from './galaxy-atlas'
-import { TaskHeader } from '../ui/task-header'
-import { exactTime } from './mission-presentation'
 import { colonizationStatus } from '../client-model/colonization'
+import { currentServerTime } from '../client-model/game-projection'
+import { galaxyFlights, pendingProbe } from '../client-model/galaxy-fleets'
+import { useGalaxyEspionage } from './use-galaxy-espionage'
 type System = components['schemas']['GalaxySystem4']
 export function Galaxy({
   model,
@@ -32,6 +30,7 @@ export function Galaxy({
     mission: DispatchDraft['mission'],
   ) => void
 }) {
+  const espionage = useGalaxyEspionage(model, origin)
   const home = model.view?.bodies.find((b) => b.id === origin)?.coordinates
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
@@ -53,20 +52,29 @@ export function Galaxy({
     error: string
     loading: boolean
   }>({ data: null, error: '', loading: true })
-  const [refresh, setRefresh] = useState(0)
+  const [retry, setRetry] = useState(0)
   useEffect(() => {
     if (!valid) return
     let current = true
-    setResult({ data: null, error: '', loading: true })
+    // Fleet revisions refresh the current system in place. Only navigation
+    // discards its rows, so open actions and keyboard focus survive updates.
+    setResult((previous) => ({
+      data:
+        previous.data?.galaxy === galaxy && previous.data.system === system
+          ? previous.data
+          : null,
+      error: '',
+      loading: true,
+    }))
     void model
       .world({ type: 'Galaxy', galaxy, system })
       .then((v) => {
         if (current)
-          setResult(
+          setResult((previous) =>
             v && 'positions' in v
               ? { data: v, error: '', loading: false }
               : {
-                  data: null,
+                  ...previous,
                   error: 'Galaxy unavailable. Try again after reconnecting.',
                   loading: false,
                 },
@@ -74,16 +82,16 @@ export function Galaxy({
       })
       .catch(() => {
         if (current)
-          setResult({
-            data: null,
+          setResult((previous) => ({
+            ...previous,
             error: 'Galaxy unavailable. Try again after reconnecting.',
             loading: false,
-          })
+          }))
       })
     return () => {
       current = false
     }
-  }, [model, galaxy, system, valid, model.view?.viewer_revision, refresh])
+  }, [model, galaxy, system, valid, model.view?.viewer_revision, retry])
   // A response for a previous system must never supply actionable rows.
   const data =
     valid && result.data?.galaxy === galaxy && result.data.system === system
@@ -108,11 +116,9 @@ export function Galaxy({
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
-      <TaskHeader title="Galaxy" />
-      <div className={styles.toolbar}>
-        <Orbit size={20} aria-hidden="true" />
-        <Field>
-          Galaxy
+      <div className={styles.toolbar} role="group" aria-label="Galaxy controls">
+        <Field className={styles.coordinateField}>
+          <span>Galaxy</span>
           <Select
             value={galaxy}
             onChange={(e) => browse(Number(e.target.value), system)}
@@ -132,9 +138,10 @@ export function Galaxy({
         >
           <ChevronLeft size={18} />
         </Button>
-        <Field>
-          Solar system
+        <Field className={styles.coordinateField}>
+          <span>System</span>
           <Select
+            aria-label="Solar system"
             value={system}
             onChange={(e) => browse(galaxy, Number(e.target.value))}
           >
@@ -156,44 +163,22 @@ export function Galaxy({
         >
           <ChevronRight size={18} />
         </Button>
-        <Button
-          variant="secondary"
-          aria-label="Refresh galaxy"
-          onClick={() => setRefresh((n) => n + 1)}
-        >
-          <RefreshCw size={14} />
-          Refresh
-        </Button>
-        <span className={styles.slots}>
-          {model.view?.protocol === 4
-            ? `${model.view.missions.fleets.length} / ${model.view.missions.fleet_slots} fleet slots`
-            : ''}
-        </span>
-      </div>
-      <div className={styles.status}>
-        <span>
-          Galaxy {galaxy} · System {system}
-        </span>
-        <span>Browsing is free · Activity can be caused by fleets</span>
       </div>
       {!valid && (
         <p role="alert">These coordinates are outside this universe.</p>
       )}
       {valid && result.error && (
-        <p role="alert" className={styles.error}>
-          {result.error}
-        </p>
+        <div className={styles.error}>
+          <p role="alert">{result.error}</p>
+          <Button variant="secondary" onClick={() => setRetry((n) => n + 1)}>
+            Retry loading galaxy
+          </Button>
+        </div>
       )}
-      {valid && result.loading && (
+      {valid && result.loading && !data && (
         <p role="status" className={styles.loading}>
           Loading system…
         </p>
-      )}
-      {data && (
-        <details className={styles.map}>
-          <summary>System map</summary>
-          <GalaxyAtlas system={data} />
-        </details>
       )}
       {data && (
         <section className={styles.positions} aria-label="Galaxy positions">
@@ -243,22 +228,35 @@ export function Galaxy({
                     position.coordinates.position,
                   )}
                   onDraft={onDraft}
+                  flights={galaxyFlights(espionage.state, position)}
+                  now={currentServerTime(espionage.state)}
+                  espionage={
+                    position.body
+                      ? {
+                          send: () => void espionage.send(position.body!),
+                          busy:
+                            espionage.sending === position.body.id ||
+                            pendingProbe(
+                              espionage.state,
+                              origin,
+                              position.body.id,
+                            ),
+                          reason: espionage.sending
+                            ? 'Sending a probe…'
+                            : espionage.reason,
+                          error:
+                            espionage.error?.target === position.body.id
+                              ? espionage.error.message
+                              : null,
+                        }
+                      : undefined
+                  }
                 />
               </li>
             ))}
           </ul>
         </section>
       )}
-      <footer>
-        <span>
-          {data
-            ? `Observed ${exactTime(data.observed_at)}`
-            : 'No system observation available'}
-        </span>
-        <Link {...routeTarget(universe, 'dispatch', origin)}>
-          Enter a destination manually
-        </Link>
-      </footer>
     </section>
   )
 }

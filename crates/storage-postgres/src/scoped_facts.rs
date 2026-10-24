@@ -91,6 +91,7 @@ pub(crate) async fn select_query(
     tx: &mut Tx<'_>,
     b: Binding,
     query: &WorldQueryKind,
+    rules: &Ruleset,
 ) -> Result<Selection, StoreError> {
     if let WorldQueryKind::FleetQuote { intent } = query {
         return select(
@@ -110,8 +111,11 @@ pub(crate) async fn select_query(
     selected.owners.insert(b.player);
     match query {
         WorldQueryKind::Galaxy { galaxy, system } => {
-            let rules = crate::facts::rules(tx, b.universe).await?;
-            let dimensions = rules.artifact.universe.ok_or(StoreError::CorruptData)?;
+            let dimensions = rules
+                .artifact
+                .universe
+                .as_ref()
+                .ok_or(StoreError::CorruptData)?;
             if dimensions.contains(Coordinates {
                 galaxy: *galaxy,
                 system: *system,
@@ -148,6 +152,18 @@ pub(crate) async fn load_execution(
     input: &OrderedInput,
     scopes: &BTreeSet<ScopeKey>,
 ) -> Result<ClaimSnapshot, StoreError> {
+    let rules = crate::facts::rules(tx, input.universe).await?;
+    let state = load_execution_with_rules(tx, input, scopes, &rules).await?;
+    Ok(ClaimSnapshot { state, rules })
+}
+
+/// Reuse rules validated from this transaction's universe snapshot.
+pub(crate) async fn load_execution_with_rules(
+    tx: &mut Tx<'_>,
+    input: &OrderedInput,
+    scopes: &BTreeSet<ScopeKey>,
+    rules: &Ruleset,
+) -> Result<GameState, StoreError> {
     let mut selected = Selection::default();
     for scope in scopes {
         match scope {
@@ -159,29 +175,28 @@ pub(crate) async fn load_execution(
             }
         }
     }
-    let rules = crate::facts::rules(tx, input.universe).await?;
     if !rules.world() {
         let state = crate::facts::load(
             tx,
             input.universe,
             input.epoch,
-            rules.hash.clone(),
+            rules,
             input.actor,
             &input.payload,
             Some(input.id),
         )
         .await?;
-        return Ok(ClaimSnapshot { state, rules });
+        return Ok(state);
     }
     let state = crate::world::load_selected(
         tx,
         input.universe,
         input.epoch,
-        rules.hash.clone(),
+        rules,
         &input.payload,
         Some(input.id),
         selected,
     )
     .await?;
-    Ok(ClaimSnapshot { state, rules })
+    Ok(state)
 }

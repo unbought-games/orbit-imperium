@@ -328,21 +328,3 @@ for (const [kind, payload, linkName] of [
     await expect(page.locator('a a, button a, a button')).toHaveCount(0)
   })
 }
-
-test('system map navigation updates the highlighted position and supports Back', async ({
-  page,
-}) => {
-  await setup(page)
-  await page.goto(path('galaxy?galaxy=1&system=5&position=12'))
-  await assertLocation(page, 5, 12)
-  await page.getByText('System map', { exact: true }).click()
-  await page
-    .getByRole('link', {
-      name: 'View position 3 · Empty [1:5:3] in galaxy',
-      exact: true,
-    })
-    .click()
-  await assertLocation(page, 5, 3)
-  await page.goBack()
-  await assertLocation(page, 5, 12)
-})

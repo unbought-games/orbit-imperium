@@ -4,7 +4,72 @@ import {
   coordinateErrors,
   destinationError,
   dispatchFailure,
+  dispatchQuantity,
+  parsePastedCoordinates,
 } from './dispatch-validation'
+
+it.each([undefined, '', ' ', '\t\n', '0'])(
+  'treats empty dispatch quantity %j as zero',
+  (value) => {
+    expect(dispatchQuantity(value)).toBe('0')
+  },
+)
+it.each(['1', '9007199254740993'])(
+  'preserves exact dispatch quantity %s',
+  (value) => {
+    expect(dispatchQuantity(value)).toBe(value)
+  },
+)
+it.each(['-1', '1.5', '1e2', 'no', '01'])(
+  'still rejects invalid dispatch quantity %s',
+  (value) => {
+    expect(() => dispatchQuantity(value)).toThrow(
+      'Enter whole nonnegative cargo and ship counts.',
+    )
+  },
+)
+
+it.each([
+  '1:372:10',
+  ' [ 1 : 372 : 10 ] \n',
+  '\t[1:372:10]\u00a0',
+  '(1:372:10)',
+  '1, 372, 10',
+  '1 / 372 / 10',
+  '1\t372\n10',
+  '[01:0372:010]',
+])('parses copied coordinates %j', (text) => {
+  expect(parsePastedCoordinates(text)).toEqual({
+    galaxy: '1',
+    system: '372',
+    position: '10',
+  })
+})
+it.each([
+  '10',
+  ' 10 ',
+  '',
+  '[1:2]',
+  '1:2:3:4',
+  '1.5:2:3',
+  '-1:2:3',
+  'planet 1:2:3',
+  '1:2:3 ships',
+  '1e1:2:3',
+])('leaves ordinary or malformed paste %j alone', (text) => {
+  expect(parsePastedCoordinates(text)).toBeNull()
+})
+it('leaves coordinate range checks to the existing validation without rounding', () => {
+  const parsed = parsePastedCoordinates('[0:9007199254740993:16]')!
+  expect(parsed).toEqual({
+    galaxy: '0',
+    system: '9007199254740993',
+    position: '16',
+  })
+  expect(Object.values(coordinateErrors(parsed, settings)).every(Boolean)).toBe(
+    true,
+  )
+})
 const settings = {
   galaxies: 2,
   systems_per_galaxy: 499,

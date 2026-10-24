@@ -34,10 +34,10 @@
   color: #f1e3c9;
 }
 .win .result {
-  color: #a8dfbe;
+  color: #91c9ac;
 }
 .loss .result {
-  color: #f0b09e;
+  color: #e39885;
 }
 .explanation {
   font-size: 1rem;
@@ -325,4 +325,8 @@
   .roundForce {
     padding: 0.8rem;
   }
+}
+
+.neutral .result {
+  color: #cbb68d;
 }

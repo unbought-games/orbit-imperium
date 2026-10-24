@@ -494,28 +494,6 @@ fn terminal_return(
     }
     Ok(())
 }
-fn empty(s: &GameState, i: &OrderedInput, r: &Ruleset) -> ChangeSet {
-    ChangeSet {
-        world: None,
-        production_settings: vec![],
-        research_operations: vec![],
-        manufacturing_batches: vec![],
-        progression_reservations: vec![],
-        fleets: vec![],
-        inventories: vec![],
-        research: vec![],
-        reports: vec![],
-        input: i.id,
-        profile_hash: r.hash.clone(),
-        expected_facts_hash: hash(s),
-        expected_collection_revisions: s.collection_revisions.clone(),
-        bodies: vec![],
-        constructions: vec![],
-        events: vec![],
-        cancelled_events: vec![],
-        affected_viewers: BTreeSet::new(),
-    }
-}
 pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fault> {
     if i.schema_version != 4
         || i.protocol != 4
@@ -536,7 +514,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
     let facts = world_facts(s)?;
     validate_asset_lineage(s)?;
     let mut w = facts.records.clone();
-    let mut c = empty(s, i, r);
+    let mut c = ChangeSet::new(s, i, r);
     let mut audits = vec![];
     if let Input::Command(command) = &i.payload {
         let Actor::Player(owner) = i.actor else {

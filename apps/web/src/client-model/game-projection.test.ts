@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { galaxyFlights, pendingProbe, probeAvailability } from './galaxy-fleets'
+import { sendGalaxyProbe } from './send-galaxy-probe'
 import type { components } from '../contracts'
 import type { Attempt, BoundProgressionOptions, Command } from './commands'
 import { attemptKey } from './commands'
@@ -185,6 +187,212 @@ const upgrade: Command = {
   expected_terms_hash: 'hash',
 }
 
+describe.each(['building', 'research'] as const)(
+  '%s progress precedence',
+  (domain) => {
+    function fixture() {
+      const s = state()
+      const view = s.view as S['BoundView4']
+      view.progress!.command_references = true
+      const proposal = quote()
+      const command: Command =
+        domain === 'building'
+          ? upgrade
+          : {
+              type: 'StartResearch',
+              host: 'body',
+              research: 'EnergyTechnology',
+              expected_terms_hash: 'hash',
+            }
+      if (domain === 'research') {
+        proposal.request = {
+          type: 'Research',
+          host: 'body',
+          research: 'EnergyTechnology',
+        }
+        proposal.terms = {
+          type: 'Research',
+          profile_hash: 'profile',
+          host: 'body',
+          research: 'EnergyTechnology',
+          source_level: 0,
+          target_level: 1,
+          paid: { metal: '100', crystal: '200', deuterium: '300' },
+          duration_ms: 5000,
+          formula: 'ResearchClassic',
+          labs: [],
+          effective_lab: '1',
+          required_energy: '0',
+        }
+      }
+      const parent = intent(s, command, proposal)
+      const progress = () =>
+        domain === 'building'
+          ? buildingProgress(s, 'body')
+          : researchProgress(s)
+      const cancelType: 'CancelConstruction' | 'CancelResearch' =
+        domain === 'building' ? 'CancelConstruction' : 'CancelResearch'
+      function confirm() {
+        const common = {
+          id: 'work',
+          target_level: 3,
+          due_at: 20000,
+          paid: { metal: '400', crystal: '500', deuterium: '600' },
+        }
+        if (domain === 'building')
+          view.constructions = [
+            { ...common, body: 'body', building: 'MetalMine' },
+          ]
+        else
+          view.progression.research_operation = {
+            ...common,
+            host: 'body',
+            research: 'EnergyTechnology',
+            source_level: 2,
+            started_at: 1000,
+            labs: [],
+            effective_lab: '1',
+            can_cancel: true,
+          }
+      }
+      function cancel(operation: string) {
+        const attempt: Attempt = {
+          ...parent,
+          envelope: {
+            ...parent.envelope,
+            command_id: 'cancel',
+            command: { type: cancelType, operation },
+          },
+          status: 'submitting',
+          receipt: null,
+        }
+        const key = attemptKey(view.binding, 'cancel')
+        s.attempts.set(key, attempt)
+        s.intents.set(key, { submittedAt: 1000, baseRevision: '1' })
+        return attempt
+      }
+      return { s, view, parent, progress, confirm, cancel, cancelType }
+    }
+
+    it('keeps accepted pending work confirming and lets cancellation override uncertain work', () => {
+      const { parent, view, progress, cancel } = fixture()
+      expect(progress()).toMatchObject({
+        status: 'Confirming',
+        operationId: null,
+        canCancel: false,
+      })
+      parent.status = 'pending'
+      parent.receipt = {
+        protocol: 4,
+        binding: view.binding,
+        command_id: 'command',
+        status: 'Pending',
+        admitted_at: 2000,
+        executed_at: null,
+      }
+      expect(progress()).toMatchObject({
+        status: 'Confirming',
+        operationId: 'command',
+        canCancel: true,
+        dueAt: 7000,
+        secondsRemaining: 6,
+      })
+      parent.status = 'uncertain'
+      expect(progress()?.status).toBe('Awaiting confirmation')
+      const cancellation = cancel('command')
+      expect(progress()).toMatchObject({
+        status: 'Cancelling',
+        canCancel: false,
+      })
+      cancellation.status = 'uncertain'
+      expect(progress()?.status).toBe('Cancelling')
+      cancellation.status = 'rejected'
+      expect(progress()).toMatchObject({
+        status: 'Awaiting confirmation',
+        canCancel: true,
+      })
+    })
+
+    it('prefers confirmed facts and only shows matching active cancellation attempts', () => {
+      const { s, view, parent, progress, confirm, cancel, cancelType } =
+        fixture()
+      parent.status = 'uncertain'
+      confirm()
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        operationId: 'work',
+        targetLevel: 3,
+        dueAt: 20000,
+        paid: { metal: '400', crystal: '500', deuterium: '600' },
+      })
+      const cancellation = cancel('another-work')
+      expect(progress()?.status).toBe('In progress')
+      cancellation.envelope.command = {
+        type: domain === 'building' ? 'CancelResearch' : 'CancelConstruction',
+        operation: 'work',
+      }
+      expect(progress()?.status).toBe('In progress')
+      cancellation.envelope.command = { type: cancelType, operation: 'work' }
+      expect(progress()).toMatchObject({
+        status: 'Cancelling',
+        canCancel: false,
+      })
+      cancellation.reconciled = true
+      expect(progress()?.status).toBe('In progress')
+      cancellation.reconciled = false
+      cancellation.status = 'committed'
+      cancellation.receipt = {
+        protocol: 4,
+        binding: view.binding,
+        command_id: 'cancel',
+        status: 'Committed',
+        admitted_at: 1000,
+        executed_at: 1000,
+        minimum_viewer_revision: '2',
+        result_ids: [],
+      }
+      expect(progress()?.status).toBe('Cancelling')
+      view.viewer_revision = '2'
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        canCancel: true,
+      })
+      // An elapsed countdown cannot complete authoritative work locally.
+      s.now += 30000
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        countdown: 'Awaiting confirmation',
+        secondsRemaining: null,
+      })
+    })
+
+    it('keeps eligibility separate from the displayed cancellation status', () => {
+      const { s, view, progress, confirm } = fixture()
+      confirm()
+      s.attempts.clear()
+      s.intents.clear()
+      if (view.progression.research_operation) {
+        view.progression.research_operation.can_cancel = false
+        expect(progress()).toMatchObject({
+          status: 'In progress',
+          canCancel: false,
+        })
+        view.progression.research_operation.can_cancel = true
+      }
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        canCancel: true,
+      })
+      intent(s, upgrade)
+      s.intents.clear() // A restored command on this body blocks another mutation.
+      expect(progress()).toMatchObject({
+        status: 'In progress',
+        canCancel: false,
+      })
+    })
+  },
+)
+
 describe('building tile progress', () => {
   it('derives the target and countdown from confirmed work without completing it locally', () => {
     const s = state()
@@ -296,6 +504,91 @@ describe('one live game projection', () => {
       metal: '3000',
       crystal: '1250',
       deuterium: '750',
+    })
+  })
+  it.each([3, 4] as const)(
+    'integrates protocol %i signed rates at empty, full and overfull storage',
+    (protocol) => {
+      for (const [amount, metal, deuterium] of [
+        ['0', '1000', '0'],
+        ['2000', '2000', '1500'],
+        ['3000', '3000', '2500'],
+      ]) {
+        const s = state()
+        s.view =
+          protocol === 4
+            ? snapshot()
+            : { ...snapshot(), protocol, capabilities: [] }
+        s.view.bodies[0].amounts = {
+          metal: amount,
+          crystal: amount,
+          deuterium: amount,
+        }
+        s.now = 1100
+        expect(projectGameView(s)?.bodies[0].amounts).toEqual({
+          metal,
+          crystal: amount === '0' ? '500' : amount,
+          deuterium,
+        })
+      }
+    },
+  )
+  it.each([3, 4] as const)(
+    'keeps protocol %i stocks unchanged when production is missing',
+    (protocol) => {
+      const s = state()
+      s.view =
+        protocol === 4
+          ? snapshot()
+          : { ...snapshot(), protocol, capabilities: [] }
+      s.view.progression.production = []
+      s.now = 1100
+      expect(projectGameView(s)?.bodies[0].amounts).toEqual(
+        s.view.bodies[0].amounts,
+      )
+    },
+  )
+  it('integrates legacy body production without progression data', () => {
+    const s = state()
+    const modern = snapshot()
+    s.view = {
+      protocol: 2,
+      binding: modern.binding,
+      request_id: modern.request_id,
+      viewer_revision: modern.viewer_revision,
+      sampled_at: modern.sampled_at,
+      as_of_ms: modern.as_of_ms,
+      progress: modern.progress,
+      speed: modern.speed,
+      profile_hash: modern.profile_hash,
+      research: [],
+      catalog: [],
+      capabilities: [],
+      constructions: [],
+      fleets: [],
+      reports: [],
+      destinations: [],
+      reports_truncated: false,
+      destinations_truncated: false,
+      bodies: [
+        {
+          ...modern.bodies[0],
+          inventories: [],
+          levels: {
+            MetalMine: 1,
+            CrystalMine: 1,
+            DeuteriumSynthesizer: 1,
+            SolarPlant: 1,
+          },
+          production: { metal: '3600000', crystal: '0', deuterium: '1800000' },
+        },
+      ],
+    }
+    s.now = 1100
+    expect(projectGameView(s)?.bodies[0].amounts).toEqual({
+      metal: '2000',
+      crystal: '1000',
+      deuterium: '1500',
     })
   })
   it('reserves quote payment immediately and exposes an estimated queue without fabricating operation IDs', () => {
@@ -893,4 +1186,226 @@ it('derives due work from confirmed state and the anchored server clock', () => 
   expect(nextWorkDelay(store.getState())).toBe(-500)
   view.constructions = []
   expect(nextWorkDelay(store.getState())).toBe(Infinity)
+})
+
+describe('galaxy fleet actions', () => {
+  const at: S['GalaxyPosition4'] = {
+    coordinates: { galaxy: 1, system: 1, position: 2 },
+    debris: null,
+    body: {
+      id: 'target',
+      owner: 'enemy',
+      kind: 'Planet',
+      activity: { type: 'None' },
+      inactivity: 'Active',
+      vacation: false,
+      attack_blocker: null,
+      espionage_eligible: true,
+    },
+  }
+  const spyIntent: S['FleetIntent4'] = {
+    origin: 'body',
+    destination: {
+      type: 'Body',
+      id: 'target',
+      expected_kind: 'Planet',
+      expected_owner: 'enemy',
+    },
+    mission: 'Espionage',
+    ships: [{ owner: 'p', ship_type: 'EspionageProbe', count: '1' }],
+    cargo: { metal: '0', crystal: '0', deuterium: '0' },
+    speed_percent: 100,
+  }
+  const terms: S['FleetTerms4'] = {
+    intent: spyIntent,
+    profile_hash: 'profile',
+    terms_hash: 'spy-quote',
+    distance: 1000,
+    speeds: [],
+    duration_ms: 30000,
+    fuel: '75',
+    capacity: '1000',
+    maximum_payload: '925',
+    slot_limit: '3',
+  }
+  function spyState() {
+    const s = state()
+    s.ready = true
+    s.binding = s.view!.binding
+    const v = s.view as S['BoundView4']
+    v.capabilities = [
+      { capability: 'Espionage', enabled: true, reason: 'Available' },
+    ]
+    v.bodies[0].inventories.push({
+      item: { kind: 'Ship', id: 'EspionageProbe' },
+      count: '2',
+    })
+    v.missions.fleet_slots = '3'
+    return s
+  }
+  const command = {
+    type: 'World',
+    action: {
+      type: 'LaunchFleet',
+      intent: spyIntent,
+      expected_terms_hash: terms.terms_hash,
+    },
+  } as const
+  const fleet: S['OwnMission4'] = {
+    id: 'fleet',
+    intent: spyIntent,
+    origin: { galaxy: 1, system: 1, position: 1 },
+    destination: at.coordinates,
+    leg: 'Outbound',
+    ships: [{ ship_type: 'EspionageProbe', count: '1' }],
+    cargo: spyIntent.cargo,
+    due_at: 31000,
+    launched_at: 1000,
+    duration_ms: 30000,
+    paid_fuel: '75',
+    can_recall: true,
+  }
+
+  it('marks confirmed outbound fleets at their destination and return legs only at home', () => {
+    const s = spyState(),
+      v = s.view as S['BoundView4']
+    v.missions.fleets = [structuredClone(fleet)]
+    expect(galaxyFlights(s, at)).toEqual([
+      { id: 'fleet', mission: 'Espionage', phase: 'en route', dueAt: 31000 },
+    ])
+    expect(
+      galaxyFlights(s, { ...at, body: { ...at.body!, id: 'replacement' } }),
+    ).toEqual([])
+    v.missions.fleets[0].leg = 'Returning'
+    v.missions.fleets[0].due_at = 61000
+    expect(galaxyFlights(s, at)).toEqual([])
+    expect(
+      galaxyFlights(s, { ...at, body: { ...at.body!, id: 'body' } }),
+    ).toEqual([
+      { id: 'fleet', mission: 'Espionage', phase: 'returning', dueAt: 61000 },
+    ])
+    v.missions.fleets = []
+    expect(galaxyFlights(s, at)).toEqual([])
+  })
+
+  it('derives uncertain departures and probe reservations, then removes rejected or reconciled overlays', () => {
+    const s = spyState()
+    const attempt = intent(s, command, terms)
+    attempt.status = 'uncertain'
+    expect(pendingProbe(s, 'body', 'target')).toBe(true)
+    expect(galaxyFlights(s, at)).toEqual([
+      {
+        id: 'command',
+        mission: 'Espionage',
+        phase: 'departure pending',
+        dueAt: null,
+      },
+    ])
+    expect(probeAvailability(s, 'body')).toBeNull()
+    s.view!.bodies[0].inventories.at(-1)!.count = '1'
+    expect(probeAvailability(s, 'body')).toContain('No espionage probes')
+    attempt.status = 'rejected'
+    expect(galaxyFlights(s, at)).toEqual([])
+    expect(pendingProbe(s, 'body', 'target')).toBe(false)
+    expect(probeAvailability(s, 'body')).toBeNull()
+    attempt.status = 'committed'
+    attempt.reconciled = true
+    ;(s.view as S['BoundView4']).missions.fleets = [fleet]
+    expect(galaxyFlights(s, at)).toHaveLength(1)
+  })
+
+  it('matches colonization and debris destinations by complete coordinates', () => {
+    const s = spyState(),
+      v = s.view as S['BoundView4']
+    for (const destination of [
+      {
+        type: 'EmptyPosition',
+        coordinates: at.coordinates,
+        slot_revision: '1',
+      },
+      { type: 'Debris', coordinates: at.coordinates, field_identity: 'debris' },
+    ] as S['MissionDestination4'][]) {
+      v.missions.fleets = [{ ...fleet, intent: { ...spyIntent, destination } }]
+      expect(galaxyFlights(s, at)).toHaveLength(1)
+      expect(
+        galaxyFlights(s, {
+          ...at,
+          coordinates: { ...at.coordinates, system: 2 },
+        }),
+      ).toEqual([])
+    }
+  })
+
+  it('sends one probe at full speed with no cargo using the server quote and durable command path', async () => {
+    const store = createGameStore()
+    store.setState(spyState())
+    const model = {
+      store,
+      world: vi.fn(async () => terms),
+      send: vi.fn(async () => 'command'),
+    }
+    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    expect(model.world).toHaveBeenCalledExactlyOnceWith({
+      type: 'FleetQuote',
+      intent: spyIntent,
+    })
+    expect(model.send).toHaveBeenCalledExactlyOnceWith(command, terms)
+  })
+
+  it('does not send after navigation or a binding change while quoting', async () => {
+    const store = createGameStore()
+    store.setState(spyState())
+    let current = true
+    const model = {
+      store,
+      world: vi.fn(async () => {
+        current = false
+        return terms
+      }),
+      send: vi.fn(async () => 'command'),
+    }
+    await sendGalaxyProbe(model, 'body', at.body!, () => current)
+    expect(model.send).not.toHaveBeenCalled()
+    current = true
+    model.world.mockImplementation(async () => {
+      store.setState({
+        binding: { ...store.getState().binding!, epoch: 'new' },
+      })
+      return terms
+    })
+    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    expect(model.send).not.toHaveBeenCalled()
+  })
+
+  it('blocks absent probes, full slots, duplicate pending probes and failed quotes without sending', async () => {
+    const store = createGameStore()
+    const s = spyState()
+    store.setState(s)
+    const model = {
+      store,
+      world: vi.fn(async () => terms),
+      send: vi.fn(async () => 'command'),
+    }
+    s.view!.bodies[0].inventories.at(-1)!.count = '0'
+    await expect(
+      sendGalaxyProbe(model, 'body', at.body!, () => true),
+    ).rejects.toThrow('No espionage probes')
+    expect(model.world).not.toHaveBeenCalled()
+    s.view!.bodies[0].inventories.at(-1)!.count = '2'
+    ;(s.view as S['BoundView4']).missions.fleet_slots = '0'
+    await expect(
+      sendGalaxyProbe(model, 'body', at.body!, () => true),
+    ).rejects.toThrow('All fleet slots')
+    ;(s.view as S['BoundView4']).missions.fleet_slots = '3'
+    intent(s, command, terms)
+    store.setState(s)
+    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    expect(model.world).not.toHaveBeenCalled()
+    store.setState(spyState())
+    model.world.mockRejectedValue(new Error('InsufficientResources'))
+    await expect(
+      sendGalaxyProbe(model, 'body', at.body!, () => true),
+    ).rejects.toThrow('not enough resources')
+    expect(model.send).not.toHaveBeenCalled()
+  })
 })

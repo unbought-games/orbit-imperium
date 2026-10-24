@@ -17,6 +17,7 @@ async function reports(page: Page, payload: () => unknown, status = () => 200) {
     } })
   })
 }
+const canonicalReportUrl = `/u/andromeda/b/${body.id}/reports/${id(62)}`
 const reportUrl = `/u/andromeda/reports/${id(62)}?body=${body.id}`
 
 test('expanded espionage survives direct navigation, reload and historical observations on mobile', async ({ page }) => {
@@ -27,6 +28,7 @@ test('expanded espionage survives direct navigation, reload and historical obser
     ...observation, research: { visibility: 'Unknown' },
   } : observation)
   await page.goto(reportUrl)
+  await expect(page).toHaveURL(canonicalReportUrl)
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('Astrophysics')
   await expect(report).toContainText('Impulse Drive')
@@ -54,7 +56,8 @@ test('incompatible report data offers an explicit reload instead of blaming perm
   await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
   let fixed = false
   await reports(page, () => fixed ? observation : { ...observation, research: { visibility: 'Known', value: { ...observation.research.value, FutureResearch: 0 } } })
-  await page.goto(reportUrl)
+  // Enter the final route: a delayed alias remount could recover before the button click.
+  await page.goto(canonicalReportUrl)
   await expect(page.getByRole('alert')).toContainText('data this version cannot read')
   await expect(page.getByRole('button', { name: 'Retry reports' })).toHaveCount(0)
   fixed = true
@@ -66,9 +69,13 @@ test('transient report failures can still retry without reloading', async ({ pag
   await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
   let status = 503
   await reports(page, () => observation, () => status)
-  await page.goto(reportUrl)
+  // Enter the final route: a delayed alias remount could recover before the button click.
+  await page.goto(canonicalReportUrl)
   await expect(page.getByRole('alert')).toContainText('Unable to load reports')
+  let navigations = 0
+  page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations++ })
   status = 200
   await page.getByRole('button', { name: 'Retry reports' }).click()
   await expect(page.getByRole('region', { name: 'Report observation' })).toContainText('Astrophysics')
+  expect(navigations).toBe(0)
 })

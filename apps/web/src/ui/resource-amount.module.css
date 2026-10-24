@@ -101,14 +101,6 @@
   width: 24px;
   height: 24px;
   flex-shrink: 0;
-  color: var(--accent);
-}
-.crystal .symbol,
-.energy .symbol {
-  color: var(--ice);
-}
-.deuterium .symbol {
-  color: var(--resource-deuterium);
 }
 .stock.warning,
 .stock.warning strong {

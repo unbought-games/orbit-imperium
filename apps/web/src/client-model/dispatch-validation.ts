@@ -3,6 +3,28 @@ import { positionAstrophysics } from './colonization'
 type S = components['schemas']
 export type CoordinateField = 'galaxy' | 'system' | 'position'
 
+export function dispatchQuantity(value: string | undefined): string {
+  if (value === undefined || value.trim() === '') return '0'
+  if (!/^(0|[1-9][0-9]*)$/.test(value))
+    throw Error('Enter whole nonnegative cargo and ship counts.')
+  return value
+}
+
+export function parsePastedCoordinates(
+  text: string,
+): Record<CoordinateField, string> | null {
+  const trimmed = text.replace(/^[\s[\]()]+|[\s[\]()]+$/g, '')
+  const match = trimmed.match(
+    /^(\d+)(?:\s*[:,/]\s*|\s+)(\d+)(?:\s*[:,/]\s*|\s+)(\d+)$/,
+  )
+  if (!match) return null
+  // Keep strings intact for range validation, including values beyond safe integers.
+  const [galaxy, system, position] = match
+    .slice(1)
+    .map((value) => value.replace(/^0+(?=\d)/, ''))
+  return { galaxy, system, position }
+}
+
 export function coordinateErrors(
   values: Record<CoordinateField, string>,
   settings: Pick<

@@ -1,6 +1,5 @@
 use crate::numeric::add;
 use crate::*;
-use std::collections::BTreeSet;
 #[derive(Debug)]
 pub(crate) enum Fault {
     Game(GameError),
@@ -107,26 +106,7 @@ fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fa
     if i.phase != expected_phase {
         return Err(invariant("invalid input phase"));
     }
-    let mut change = ChangeSet {
-        world: None,
-        production_settings: vec![],
-        research_operations: vec![],
-        manufacturing_batches: vec![],
-        progression_reservations: vec![],
-        fleets: vec![],
-        inventories: vec![],
-        research: vec![],
-        reports: vec![],
-        input: i.id,
-        profile_hash: r.hash.clone(),
-        expected_facts_hash: hash(s),
-        expected_collection_revisions: s.collection_revisions.clone(),
-        bodies: vec![],
-        constructions: vec![],
-        events: vec![],
-        cancelled_events: vec![],
-        affected_viewers: BTreeSet::new(),
-    };
+    let mut change = ChangeSet::new(s, i, r);
     match &i.payload {
         Input::Command(
             Command::World { .. }

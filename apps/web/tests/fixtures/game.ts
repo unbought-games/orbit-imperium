@@ -297,6 +297,12 @@ export async function installGameFixture(
           minimum_viewer_revision: options.viewerRevision?.() ?? '1',
         },
       })
+    if (url.pathname.endsWith('/commands') && context?.gameplay?.command?.action?.type === 'MarkReportRead')
+      return route.fulfill({ json: {
+        protocol: 4, binding, command_id: context.gameplay.command_id,
+        admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed',
+        result_ids: [], minimum_viewer_revision: options.viewerRevision?.() ?? '1',
+      } })
     if (url.pathname.endsWith('/commands')) purchases++
     return route.fulfill({ status: 404, json: { code: 'NotFound' } })
   })

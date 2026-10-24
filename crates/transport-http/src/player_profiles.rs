@@ -211,8 +211,8 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
 ) -> Result<Response, Problem> {
     let session = authenticate(&s, &h, true).await?;
     let universe = UniverseId(id);
-    v4::path_binding(universe, q.context.binding)?;
-    let principal = v4::principal(&session, universe)?;
+    bound_api::path_binding(universe, q.context.binding)?;
+    let principal = bound_api::principal(&session, universe)?;
     let binding = q.context.binding;
     let request_id = q.context.request_id;
     let players = s.game.visible_profile_players(principal, q).await?;
@@ -249,7 +249,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             })
             .collect()
     };
-    Ok(v4::response(PlayerProfiles {
+    Ok(bound_api::no_store_json(PlayerProfiles {
         binding,
         request_id,
         players,

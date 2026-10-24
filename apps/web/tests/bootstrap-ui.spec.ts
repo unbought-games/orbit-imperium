@@ -883,7 +883,7 @@ for (const mode of ['local', 'oidc']) {
   })
 }
 
-test('homepage centers policies and highlights news and the GitHub repository', async ({ page }) => {
+test('homepage centers policies and highlights news, GitHub, and Discord', async ({ page }) => {
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
     version: 1, signup_enabled: true, result: { status: 'anonymous' },
   } }))
@@ -903,14 +903,21 @@ test('homepage centers policies and highlights news and the GitHub repository', 
     const community = page.getByRole('navigation', { name: 'News and community' })
     const news = community.getByRole('link', { name: 'What’s New', exact: true })
     const repository = community.getByRole('link', { name: 'View on GitHub', exact: true })
+    const discord = community.getByRole('link', { name: 'Join our Discord', exact: true })
     await expect(news).toHaveAttribute('href', '/updates/index.html')
     await expect(repository).toHaveAttribute('href', 'https://github.com/unbought-games/orbit-imperium')
     await expect(repository.locator('svg')).toBeVisible()
+    await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
+    await expect(discord).toBeVisible()
+    await expect(discord.locator('svg')).toBeVisible()
+    await expect(discord.locator('svg')).toHaveCSS('color', 'rgb(88, 101, 242)')
     const statementBounds = (await page.getByText('Every advantage is earned.', { exact: true }).boundingBox())!
     const newsBounds = (await news.boundingBox())!
     const repositoryBounds = (await repository.boundingBox())!
+    const discordBounds = (await discord.boundingBox())!
     expect(newsBounds.y).toBeGreaterThanOrEqual(statementBounds.y + statementBounds.height)
     expect(repositoryBounds.y).toBeGreaterThanOrEqual(newsBounds.y + newsBounds.height)
+    expect(discordBounds.y).toBeGreaterThanOrEqual(repositoryBounds.y + repositoryBounds.height)
     expect(await news.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
       .toBeGreaterThan(await policies.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

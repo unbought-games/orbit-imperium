@@ -21,11 +21,12 @@ async fn records<T: serde::de::DeserializeOwned>(
     .map(decode)
     .collect()
 }
+/// `rules` must be validated for `u` by `facts::rules` in this transaction.
 pub(crate) async fn load(
     tx: &mut Tx<'_>,
     u: UniverseId,
     epoch: Epoch,
-    profile_hash: Hash,
+    rules: &Ruleset,
     input: &Input,
     input_id: Option<InputId>,
 ) -> Result<GameState, StoreError> {
@@ -40,13 +41,14 @@ pub(crate) async fn load(
             .await
             .map_err(db_error)?;
     selected.owners.extend(owners.into_iter().map(PlayerId));
-    load_selected(tx, u, epoch, profile_hash, input, input_id, selected).await
+    load_selected(tx, u, epoch, rules, input, input_id, selected).await
 }
+/// Share the transaction's validated rules across every selected owner.
 pub(crate) async fn load_selected(
     tx: &mut Tx<'_>,
     u: UniverseId,
     epoch: Epoch,
-    profile_hash: Hash,
+    rules: &Ruleset,
     input: &Input,
     input_id: Option<InputId>,
     selected: crate::scoped_facts::Selection,
@@ -59,7 +61,6 @@ pub(crate) async fn load_selected(
             .fetch_all(&mut **tx)
             .await
             .map_err(db_error)?;
-    let rules = crate::facts::rules(tx, u).await?;
     let capacity = rules
         .artifact
         .universe
@@ -76,7 +77,7 @@ pub(crate) async fn load_selected(
             tx,
             u,
             epoch,
-            profile_hash.clone(),
+            rules,
             Actor::Player(PlayerId(*owner)),
             input,
             input_id,
@@ -123,7 +124,7 @@ pub(crate) async fn load_selected(
         reports: BTreeMap::new(),
         universe: u,
         epoch,
-        profile_hash,
+        profile_hash: rules.hash.clone(),
         bodies: BTreeMap::new(),
         players: BTreeMap::new(),
         inventories: Vec::new(),
@@ -499,7 +500,7 @@ pub(crate) async fn viewer_snapshot(
         tx,
         universe,
         epoch,
-        rules.hash.clone(),
+        &rules,
         &Input::Command(Command::RecallFleet {
             fleet: FleetId::default(),
         }),
@@ -841,7 +842,7 @@ impl PgStore {
             return Err(StoreError::UnsupportedProtocol);
         }
         let selected = if let Some(query) = query {
-            crate::scoped_facts::select_query(&mut tx, b, query).await?
+            crate::scoped_facts::select_query(&mut tx, b, query, &rules).await?
         } else {
             crate::scoped_facts::Selection {
                 owners: BTreeSet::from([b.player]),
@@ -853,7 +854,7 @@ impl PgStore {
             &mut tx,
             b.universe,
             b.epoch,
-            rules.hash.clone(),
+            &rules,
             &Input::Command(Command::RecallFleet {
                 fleet: FleetId::default(),
             }),
@@ -908,7 +909,7 @@ impl PgStore {
         } else {
             (head, None, None)
         };
-        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
         let has_more = rows.len() > q.limit as usize;
         let items = rows
             .iter()
@@ -960,7 +961,7 @@ impl PgStore {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
         let at = crate::snapshots::safe_time(&mut tx, b.universe, b.player).await?;
-        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
+        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;
         let detail = ReportDetail4 {
             player_names: Default::default(),
@@ -985,7 +986,12 @@ impl PgStore {
     }
 }
 fn header(row: &sqlx::postgres::PgRow) -> Result<ReportHeader4, StoreError> {
+    let payload: serde_json::Value = row.try_get("preview_payload").map_err(db_error)?;
+    if !payload.is_object() {
+        return Err(StoreError::CorruptData);
+    }
     Ok(ReportHeader4 {
+        preview: Some(orbit_application::report_preview(&payload)),
         id: ReportId(row.try_get("id").map_err(db_error)?),
         kind: row.try_get("kind").map_err(db_error)?,
         observed_at: row.try_get("at_ms").map_err(db_error)?,

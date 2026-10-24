@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react'
 import styles from './task-header.module.css'
 
-/** A single compact title and the controls needed for the current task. */
+/** Task controls, with a title when navigation does not already name the page. */
 export function TaskHeader({
   title,
   children,
 }: {
-  title: string
+  title?: string
   children?: ReactNode
 }) {
   return (
     <header className={styles.header}>
-      <h2>{title}</h2>
+      {title && <h2>{title}</h2>}
       {children}
     </header>
   )

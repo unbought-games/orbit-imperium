@@ -13,7 +13,6 @@ import {
   Orbit,
   Radar,
   ShieldAlert,
-  Zap,
 } from 'lucide-react'
 import { useId, useState, type CSSProperties } from 'react'
 import type { BoundView } from '../client-model/commands'
@@ -425,7 +424,8 @@ function PlanetDossier({
       </dl>
       <div className={styles.energyLine}>
         <span className={energy < 0n ? styles.warning : ''}>
-          <Zap size={13} /> <ResourceNumber value={energy} /> energy
+          <ResourceMark resource="energy" width={13} height={13} />{' '}
+          <ResourceNumber value={energy} /> energy
         </span>
         <span>
           {research

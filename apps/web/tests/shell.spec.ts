@@ -1576,7 +1576,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   ).toHaveCount(0)
   await expect(
     page.getByRole('checkbox', { name: 'Show deleted reports' }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await diagnosticScreenshot(page, {
     path: 'test-results/reports-list-desktop.png',
     fullPage: true,
@@ -1607,10 +1607,9 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     })
   }
   const unreadAlert = page.getByRole('button', { name: 'Menu', exact: true }).getByRole('status', { name: 'Unread reports' })
-  await expect(unreadAlert).toBeVisible()
-  await page.getByRole('button', { name: 'Mark read', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Mark read', exact: true })).toHaveCount(0)
   await expect(unreadAlert).toHaveCount(0)
-  await expect(page.locator('main')).toContainText('· Read')
+  await expect.poll(() => header.read).toBe(true)
   await page
     .getByRole('button', { name: 'Prepare attack', exact: true })
     .click()
@@ -1696,7 +1695,7 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
   })
 })
 
-test('dispatch fences changed drafts and retains an uncertain departure receipt', async ({
+test('dispatch fences changed drafts and keeps uncertain launch recovery in action notices', async ({
   page,
 }) => {
   await shellFixture(page, {
@@ -1802,10 +1801,10 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     .getByRole('button', { name: 'Send 1 Small Cargo', exact: true })
     .click()
   await expect(
-    page.getByRole('region', { name: 'Dispatch receipt' }),
+    page.getByRole('complementary', { name: 'Action needs attention' }),
   ).toContainText('Response uncertain. Your action is saved.')
   await expect(
-    page.getByRole('button', { name: 'Resolve saved departure', exact: true }),
+    page.getByRole('button', { name: 'Resolve saved command', exact: true }),
   ).toBeVisible()
   await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue('1')
   await expect(
@@ -1820,7 +1819,7 @@ test('dispatch fences changed drafts and retains an uncertain departure receipt'
     ).toBe('static')
     const noticeBox = await recovery.boundingBox()
     const intro = await page
-      .getByRole('heading', { name: 'Dispatch fleet', exact: true })
+      .getByText(/Origin .*Fleet slots:/)
       .boundingBox()
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [
@@ -2381,7 +2380,7 @@ for (const width of [768, 1024, 1440, 1800]) {
 }
 
 test.describe('planet-scoped gameplay routes retain context and redirect old query URLs', () => {
-  for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch']]) {
+  for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch'], ['reports', 'Reports']]) {
     test(path, async ({ page }) => {
       const purchases = await installGameFixture(page, { protocol: 4 })
       await page.goto(`/u/andromeda/${path}?body=${body.id}`)

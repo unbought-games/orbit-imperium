@@ -350,7 +350,7 @@ async fn report_pagination_and_privacy(fixture: &RuntimeFixture) -> (Binding, sq
             rules_hash: Ruleset::mvp_fleets().unwrap().hash,
             payloads: std::collections::BTreeMap::from([(
                 b.player,
-                serde_json::json!({"kind":"Harvested","captured":"immutable"}),
+                serde_json::json!({"kind":"Harvested","captured":"immutable","cargo":{"metal":"123000000","crystal":"0","deuterium":"0"}}),
             )]),
         };
         sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) VALUES($1,$2,$3,'Harvested',1000,$4)").bind(u.0).bind(id.0).bind(report.event.0).bind(sqlx::types::Json(report)).execute(&pool).await.unwrap();
@@ -375,6 +375,18 @@ async fn report_pagination_and_privacy(fixture: &RuntimeFixture) -> (Binding, sq
         .facts
         .data;
     assert_eq!(first.items.len(), 100);
+    assert_eq!(
+        first.items[0].preview,
+        Some(
+            serde_json::json!({"kind":"Harvested","cargo":{"metal":"123000000","crystal":"0","deuterium":"0"}})
+        )
+    );
+    let detail = restored
+        .report4(p, context(), first.items[0].id)
+        .await
+        .unwrap();
+    assert_eq!(detail.data.header.preview, first.items[0].preview);
+    assert_eq!(detail.data.payload["captured"], "immutable");
     assert!(first.has_more);
     assert_eq!(first.items[0].id, ReportId(Uuid::from_u128(10101)));
     let mut next = query.clone();

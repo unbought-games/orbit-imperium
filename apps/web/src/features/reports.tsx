@@ -1,27 +1,25 @@
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
-import { Button } from '../ui/button'
-import { Input } from '../ui/form'
-import { Field } from '../ui/form'
+import { Button, ButtonLink } from '../ui/button'
+import { ArrowLeft } from 'lucide-react'
 import { Section } from '../ui/section'
 import { Text } from '../ui/typography'
-import { Panel } from '../ui/panel'
+import { ReportListRow } from './report-list-row'
 import { TaskHeader } from '../ui/task-header'
 import styles from './reports.module.css'
-import { useEffect, useState } from 'react'
-import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
 import { ReportObservation } from './report-observation'
 import { reportFailure } from './report-failure'
 import { ReportVisibilityButton } from './report-visibility-button'
-import { pendingReportVisibility } from './report-visibility'
+import { useReports } from './use-reports'
 import type { DispatchDraft } from './missions'
 import { label } from '../ui/format'
 import { useStore } from 'zustand'
 import { currentServerTime } from '../client-model/game-projection'
-import { exactTime, observationAge } from './mission-presentation'
-type S = components['schemas']
+import { Popover } from '../ui/popover'
+import { reportAge } from './report-preview'
+import { exactTime } from './mission-presentation'
 export function Reports({
   model,
   universe,
@@ -36,18 +34,17 @@ export function Reports({
   onDraft: (draft: DispatchDraft) => void
 }) {
   const now = useStore(model.store, currentServerTime)
-  const changingVisibility = useStore(
-    model.store,
-    (state) => !!pendingReportVisibility(state.attempts.values()),
-  )
-  const [page, setPage] = useState<S['ReportsPage4'] | null>(null),
-    [detail, setDetail] = useState<S['ReportDetail4'] | null>(null),
-    [error, setError] = useState<unknown>(null),
-    [includeHidden, setIncludeHidden] = useState(false),
-    [refresh, setRefresh] = useState(0),
-    [olderPages, setOlderPages] = useState(false),
-    [loading, setLoading] = useState(false),
-    [loadingMore, setLoadingMore] = useState(false)
+  const {
+    page,
+    detail,
+    error,
+    loading,
+    loadingMore,
+    changingVisibility,
+    more,
+    retry,
+    invalidate,
+  } = useReports(model, item)
   useProfileSource(
     detail && detail.header.id === item
       ? { type: 'Report', report: detail.header.id }
@@ -55,82 +52,36 @@ export function Reports({
     model.view?.viewer_revision,
   )
   const failure = reportFailure(error)
-  useEffect(() => {
-    if (!item) setDetail(null)
-    if (!item && page && olderPages) return
-    let live = true
-    setLoading(true)
-    setError(null)
-    if (detail?.header.id !== item) setDetail(null)
-    const load = item
-      ? model.reportDetail(item)
-      : model.reportPage(null, includeHidden)
-    void load
-      .then((v) => {
-        if (!live) return
-        setLoading(false)
-        if (!v) {
-          setError('Unable to confirm this report response. Try again.')
-          return
+  const combat = detail?.payload.kind === 'Combat' ? detail.payload : null
+  const harvestAction =
+    combat &&
+    (BigInt(combat.debris.metal) > 0n || BigInt(combat.debris.crystal) > 0n) ? (
+      <Button
+        onClick={() =>
+          onDraft({
+            coordinates: combat.target,
+            mission: 'Harvest',
+            observedAt: detail!.header.observed_at,
+          })
         }
-        if ('header' in v) {
-          setDetail(v)
-          setPage((old) =>
-            old
-              ? {
-                  ...old,
-                  items: old.items
-                    .map((row) => (row.id === v.header.id ? v.header : row))
-                    .filter((row) => includeHidden || !row.hidden),
-                }
-              : old,
-          )
-        } else {
-          setPage(v)
-        }
-      })
-      .catch((error: unknown) => {
-        if (live) {
-          setLoading(false)
-          setError(error)
-        }
-      })
-    return () => {
-      live = false
-      // A cancelled detail request cannot leave a retained paginated inbox busy.
-      setLoading(false)
-    }
-  }, [model, item, model.view?.viewer_revision, includeHidden, refresh])
-  async function more() {
-    setError(null)
-    setOlderPages(true)
-    setLoadingMore(true)
-    try {
-      const next = await model.reportPage(
-        page?.next_cursor ?? null,
-        includeHidden,
-      )
-      if (next)
-        setPage((old) => ({
-          ...next,
-          items: [...(old?.items ?? []), ...next.items],
-        }))
-    } catch (error) {
-      setError(error)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
+      >
+        Prepare harvest
+      </Button>
+    ) : null
   return (
     <Section className={styles.screen}>
       {!item && <TaskHeader title="Reports" />}
       {item && !detail && (
-        <Link
+        <ButtonLink
+          variant="secondary"
+          size="icon-small"
+          aria-label="Back to reports"
+          title="Back to reports"
           onClick={() => void model.recordPresence('AccountVisit', null)}
           {...routeTarget(universe, 'reports', origin)}
         >
-          Back to reports
-        </Link>
+          <ArrowLeft size={18} aria-hidden="true" />
+        </ButtonLink>
       )}
       {error !== null && (
         <>
@@ -143,8 +94,7 @@ export function Reports({
                 window.location.reload()
                 return
               }
-              setOlderPages(false)
-              setRefresh((n) => n + 1)
+              retry()
             }}
           >
             {failure.reload ? 'Reload app' : 'Retry reports'}
@@ -154,43 +104,35 @@ export function Reports({
       {detail ? (
         <>
           <div className={styles.detailToolbar}>
-            <Link
+            <ButtonLink
+              variant="secondary"
+              size="icon-small"
+              aria-label="Back to reports"
+              title="Back to reports"
               onClick={() => void model.recordPresence('AccountVisit', null)}
               {...routeTarget(universe, 'reports', origin)}
             >
-              Back to reports
-            </Link>
-            <Text className={styles.timestamp}>
+              <ArrowLeft size={18} aria-hidden="true" />
+            </ButtonLink>
+            <Popover
+              label="Report time"
+              className={styles.timestamp}
+              trigger={reportAge(detail.header.observed_at, now)}
+            >
               <time
                 dateTime={new Date(detail.header.observed_at).toISOString()}
               >
                 {exactTime(detail.header.observed_at)}
-              </time>{' '}
-              · {observationAge(detail.header.observed_at, now)} ·{' '}
-              {detail.header.read ? 'Read' : 'Unread'}
-              {detail.header.hidden ? ' · Deleted' : ''}
-            </Text>
+              </time>
+            </Popover>
             <div className={styles.controls}>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  void model.send({
-                    type: 'World',
-                    action: {
-                      type: 'MarkReportRead',
-                      report: detail.header.id,
-                    },
-                  })
-                }
-              >
-                Mark read
-              </Button>
               <ReportVisibilityButton
                 model={model}
                 report={detail.header.id}
                 hidden={detail.header.hidden}
+                compact
                 disabled={loading}
-                onRequest={() => setOlderPages(false)}
+                onRequest={invalidate}
               />
               {detail.payload.kind === 'Espionage' &&
                 model.view?.capabilities.some(
@@ -215,47 +157,26 @@ export function Reports({
                     Prepare attack
                   </Button>
                 )}
-              {detail.payload.kind === 'Combat' &&
-                (BigInt(detail.payload.debris.metal) > 0n ||
-                  BigInt(detail.payload.debris.crystal) > 0n) && (
-                  <>
-                    <Button
-                      onClick={() => {
-                        if (detail.payload.kind === 'Combat')
-                          onDraft({
-                            coordinates: detail.payload.target,
-                            mission: 'Harvest',
-                            observedAt: detail.header.observed_at,
-                          })
-                      }}
-                    >
-                      Prepare harvest
-                    </Button>
-                  </>
-                )}
+              {harvestAction && (
+                <div className={styles.desktopHarvest}>{harvestAction}</div>
+              )}
             </div>
           </div>
           {detail.payload.kind !== 'Combat' &&
             detail.payload.kind !== 'ContactLost' && (
               <TaskHeader title={label(detail.header.kind)} />
             )}
-          <Text className={styles.removalHelp}>
-            Deleting removes a report only from your list. You can restore it
-            from Show deleted reports.
-          </Text>
           <ReportObservation
             payload={detail.payload}
             viewer={model.binding?.player}
             playerNames={detail.player_names}
+            combatActions={
+              harvestAction && (
+                <div className={styles.mobileHarvest}>{harvestAction}</div>
+              )
+            }
           />
-          {detail.payload.kind === 'Combat' && (
-            <details className={styles.context}>
-              <summary>About harvesting</summary>
-              <Text>
-                Debris may already have been collected by another fleet.
-              </Text>
-            </details>
-          )}
+
           {detail.payload.kind === 'Colonized' && (
             <div className={styles.controls}>
               <Link
@@ -308,70 +229,18 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
-          <div className={styles.controls}>
-            <Field className={styles.filter}>
-              <Input
-                type="checkbox"
-                className={styles.checkbox}
-                disabled={loading || loadingMore || changingVisibility}
-                checked={includeHidden}
-                onChange={(e) => {
-                  setIncludeHidden(e.target.checked)
-                  setOlderPages(false)
-                  setPage(null)
-                }}
-              />{' '}
-              Show deleted reports
-            </Field>
-            <Button
-              disabled={loading || loadingMore || changingVisibility}
-              onClick={() => {
-                setPage(null)
-                setOlderPages(false)
-                setRefresh((n) => n + 1)
-              }}
-            >
-              Refresh reports
-            </Button>
-          </div>
-          <Text className={styles.removalHelp}>
-            Deleted reports leave your list and unread indicator. Show deleted
-            reports to restore them.
-          </Text>
           {!page.items.length && <Text>No reports yet.</Text>}
           {page.items.map((r) => (
-            <Panel
-              as="article"
-              className={styles.reportRow}
+            <ReportListRow
               key={r.id}
-              aria-label={`${label(r.kind)} report ${exactTime(r.observed_at)}`}
-            >
-              <div className={styles.rowHeading}>
-                <Link
-                  onClick={() =>
-                    void model.recordPresence('AccountVisit', null)
-                  }
-                  {...routeTarget(universe, 'reports', origin, r.id)}
-                >
-                  {label(r.kind)}
-                </Link>
-                <ReportVisibilityButton
-                  model={model}
-                  report={r.id}
-                  hidden={r.hidden}
-                  disabled={loading || loadingMore || changingVisibility}
-                  onRequest={() => setOlderPages(false)}
-                />
-              </div>
-              <Text>
-                <time dateTime={new Date(r.observed_at).toISOString()}>
-                  {exactTime(r.observed_at)}
-                </time>{' '}
-                · {observationAge(r.observed_at, now)} ·{' '}
-                {r.read ? 'Read' : 'Unread'}
-                {r.hidden ? ' · Deleted' : ''}
-              </Text>
-            </Panel>
+              report={r}
+              model={model}
+              universe={universe}
+              origin={origin}
+              now={now}
+              disabled={loading || loadingMore || changingVisibility}
+              onRequest={invalidate}
+            />
           ))}
           {page.has_more && (
             <Button

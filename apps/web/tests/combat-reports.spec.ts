@@ -241,7 +241,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
     await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
     const report = page.getByRole('region', { name: 'Report observation' })
     await expect(report.getByRole('heading', { level: 2 })).toHaveText(
-      size === 'defender' ? 'You lost' : 'You won',
+      size === 'defender' ? '✕ Defeat' : '✓ Victory',
     )
     await expect(page.getByText('Dispatches from the frontier.')).toHaveCount(0)
     await expect(

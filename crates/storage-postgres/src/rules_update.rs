@@ -101,7 +101,7 @@ async fn load_states(
     });
     if rules.world() {
         return Ok(vec![
-            crate::world::load(tx, u, epoch, rules.hash.clone(), &input, None).await?,
+            crate::world::load(tx, u, epoch, rules, &input, None).await?,
         ]);
     }
     let mut states = vec![];
@@ -111,7 +111,7 @@ async fn load_states(
                 tx,
                 u,
                 epoch,
-                rules.hash.clone(),
+                rules,
                 Actor::Player(PlayerId(player)),
                 &input,
                 None,

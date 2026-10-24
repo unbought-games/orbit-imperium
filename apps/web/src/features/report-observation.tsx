@@ -141,10 +141,12 @@ export function ReportObservation({
   payload,
   viewer,
   playerNames,
+  combatActions,
 }: {
   payload: RecordValue
   viewer?: string
   playerNames?: PlayerNames
+  combatActions?: ReactNode
 }) {
   const kind = payload.kind
   if (kind === 'Colonized' || kind === 'ColonizationFailed') {
@@ -282,6 +284,7 @@ export function ReportObservation({
         payload={payload}
         viewer={viewer}
         playerNames={playerNames}
+        actions={combatActions}
       />
     )
 

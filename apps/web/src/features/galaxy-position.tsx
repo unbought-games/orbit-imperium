@@ -7,6 +7,7 @@ import {
   Recycle,
   ChevronDown,
   Shield,
+  Navigation,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { components } from '../contracts'
@@ -17,6 +18,8 @@ import { BodyIllustration } from './body-illustration'
 import type { colonizationStatus } from '../client-model/colonization'
 import { dispatchFailure } from '../client-model/dispatch-validation'
 import { classes } from '../ui/classes'
+import { arrivalCountdown } from './mission-presentation'
+import type { GalaxyFlight } from '../client-model/galaxy-fleets'
 
 const protectionExplanation =
   'Beginner protection blocks attacks and espionage between you and this player because of the difference in empire strength.'
@@ -30,6 +33,9 @@ export function GalaxyPosition({
   colony,
   origin,
   onDraft,
+  flights = [],
+  now,
+  espionage,
 }: {
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
@@ -42,6 +48,14 @@ export function GalaxyPosition({
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
   ) => void
+  flights?: GalaxyFlight[]
+  now?: number
+  espionage?: {
+    send: () => void
+    busy: boolean
+    reason: string | null
+    error: string | null
+  }
 }) {
   const { body, debris, coordinates } = position
   const owned = body?.owner === player
@@ -55,7 +69,7 @@ export function GalaxyPosition({
         : undefined
   const target = `[${coordinates.galaxy}:${coordinates.system}:${coordinates.position}]`
   const canTarget = !!body && body.id !== origin
-  const actionable = canTarget || !!debris || (!body && colony.enabled)
+  const actionable = canTarget || !!debris || !body
   const content = (
     <>
       <span className={styles.planetCell}>
@@ -63,19 +77,24 @@ export function GalaxyPosition({
           <BodyIllustration
             body={{ ...body, coordinates }}
             className={styles.planet}
-            sizes="(max-width: 599px) 64px, 96px"
+            sizes="(max-width: 599px) 36px, 48px"
           />
         )}
         <span className={styles.planetInfo}>
-          <strong>
-            {body
-              ? (body.name ?? (owned ? 'Your planet' : body.kind))
-              : 'Empty position'}
-          </strong>
-          <span className={styles.coordinates}>{target}</span>
+          <span className={styles.planetTitle}>
+            <span className={styles.coordinates}>{target}</span>{' '}
+            <strong>
+              {body
+                ? (body.name ?? (owned ? 'Your planet' : body.kind))
+                : 'Empty position'}
+            </strong>
+          </span>
           {body && (
-            <>
-              <span className={owned ? styles.yourPlayer : styles.player}>
+            <span className={styles.playerStatus}>
+              <span
+                className={owned ? styles.yourPlayer : styles.player}
+                title={owned ? 'You' : playerLabel(body.owner, playerNames)}
+              >
                 {playerIdentity ??
                   (owned ? 'You' : playerLabel(body.owner, playerNames))}
               </span>
@@ -87,26 +106,48 @@ export function GalaxyPosition({
                     : 'Inactive · 28 days'}
                 {body.vacation ? ' · Vacation' : ''}
               </small>
-              {protectedTarget && (
-                <span className={styles.protectionBadge}>
-                  <Shield size={14} aria-hidden="true" />
-                  Beginner protection
-                </span>
-              )}
               {body.activity.type !== 'None' && (
                 <small
+                  title={
+                    body.activity.type === 'Recent'
+                      ? 'Activity within the last 15 minutes'
+                      : `${body.activity.minutes} minutes since activity`
+                  }
                   className={
                     body.activity.type === 'Recent' ? styles.recent : undefined
                   }
                 >
                   {body.activity.type === 'Minutes'
-                    ? `${body.activity.minutes}m activity`
+                    ? `${body.activity.minutes}m`
                     : body.activity.type === 'Recent'
-                      ? '● Recent activity'
+                      ? '● <15m'
                       : ''}
                 </small>
               )}
-            </>
+            </span>
+          )}
+          {protectedTarget && (
+            <span className={styles.protectionBadge}>
+              <Shield size={14} aria-hidden="true" />
+              Beginner protection
+            </span>
+          )}
+          {flights.length > 0 && (
+            <span
+              className={styles.flights}
+              role="status"
+              aria-label={`Your fleets to ${target}`}
+            >
+              {flights.map((flight) => (
+                <span key={flight.id}>
+                  <Navigation size={13} aria-hidden="true" />
+                  {flight.mission} {flight.phase}
+                  {flight.dueAt !== null && now !== undefined && (
+                    <> · {arrivalCountdown(flight.dueAt, now)}</>
+                  )}
+                </span>
+              ))}
+            </span>
           )}
         </span>
       </span>
@@ -121,9 +162,9 @@ export function GalaxyPosition({
               <ResourceNumber value={debris.crystal} /> <small>crystal</small>
             </span>
           </>
-        ) : (
+        ) : body ? (
           <small>No debris</small>
-        )}
+        ) : null}
         {actionable && (
           <ChevronDown className={styles.expand} size={16} aria-hidden="true" />
         )}
@@ -135,7 +176,13 @@ export function GalaxyPosition({
   )
   if (!actionable)
     return (
-      <div className={`${styles.positionCard} ${owned ? styles.owned : ''}`}>
+      <div
+        className={classes(
+          styles.positionCard,
+          owned && styles.owned,
+          !body && !debris && styles.empty,
+        )}
+      >
         <div className={styles.positionSummary}>{content}</div>
       </div>
     )
@@ -143,6 +190,8 @@ export function GalaxyPosition({
     <details
       className={classes(
         styles.positionCard,
+        owned && styles.owned,
+        !body && !debris && styles.empty,
         protectedTarget && styles.protected,
       )}
       name="galaxy-position"
@@ -187,29 +236,41 @@ export function GalaxyPosition({
                   Attack
                 </Button>
                 <Button
-                  disabled={protectedTarget || !body.espionage_eligible}
+                  disabled={
+                    protectedTarget ||
+                    !body.espionage_eligible ||
+                    !!espionage?.reason ||
+                    espionage?.busy
+                  }
                   title={
                     protectedTarget
                       ? protectionExplanation
                       : body.espionage_eligible
-                        ? undefined
+                        ? (espionage?.reason ?? 'Send one espionage probe')
                         : 'Espionage unavailable'
                   }
-                  onClick={() => onDraft(coordinates, 'Espionage')}
+                  onClick={() =>
+                    espionage
+                      ? espionage.send()
+                      : onDraft(coordinates, 'Espionage')
+                  }
                 >
                   <Eye size={16} aria-hidden="true" />
-                  Espionage
+                  {espionage?.busy ? 'Sending probe…' : 'Espionage'}
                 </Button>
               </>
             )}
           </>
         )}
-        {!body && colony.enabled && (
+        {espionage?.error && <p role="alert">{espionage.error}</p>}
+        {!owned &&
+          body?.espionage_eligible &&
+          espionage?.reason &&
+          !espionage.busy &&
+          !espionage.error && <p role="status">{espionage.reason}</p>}
+        {!body && (
           <>
-            <Button
-              disabled={!!colony.reason}
-              onClick={() => onDraft(coordinates, 'Colonize')}
-            >
+            <Button onClick={() => onDraft(coordinates, 'Colonize')}>
               Colonize
             </Button>
             <p>

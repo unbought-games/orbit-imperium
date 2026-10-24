@@ -19,6 +19,7 @@ import {
   type GameUpdate,
   type GameUpdatesPort,
   type QuoteRequest,
+  type QueryContext,
   attemptKey,
   canonical,
   sameBinding,
@@ -40,6 +41,13 @@ import {
   type SubmittedIntent,
   type SubmittedQuote,
 } from './game-projection'
+// Transport identity and session identity travel together; endpoint-specific
+// ordering (latest quote/view versus concurrent reads) stays with the caller.
+type CapturedRequest = {
+  context: QueryContext
+  generation: number
+}
+type BoundResponse = Pick<QueryContext, 'binding' | 'request_id'>
 type Failure = { status?: number; code?: string; retryAfterMs?: number }
 const failure = (e: unknown): Failure => (e && typeof e === 'object' ? e : {})
 export class Coordinator {
@@ -172,6 +180,24 @@ export class Coordinator {
   private current(g: number, b: Binding) {
     return (
       g === this.generation && !!this.binding && sameBinding(b, this.binding)
+    )
+  }
+  private captureRequest(): CapturedRequest | null {
+    const binding = this.binding
+    if (!binding || !this.ready) return null
+    return {
+      context: { binding, request_id: this.platform.newId() },
+      generation: this.generation,
+    }
+  }
+  private requestIsCurrent(request: CapturedRequest) {
+    return this.current(request.generation, request.context.binding)
+  }
+  private responseMatches(request: CapturedRequest, response: BoundResponse) {
+    return (
+      this.requestIsCurrent(request) &&
+      response.request_id === request.context.request_id &&
+      sameBinding(response.binding, request.context.binding)
     )
   }
   private persist(a: Attempt) {
@@ -430,22 +456,20 @@ export class Coordinator {
   }
   private async refreshOnce(minimumViewerRevision?: string) {
     if (this.platform.monotonicNowMs() < this.retryAt) return
-    const b = this.binding,
-      g = this.generation,
-      q = ++this.viewGeneration
-    if (!b || !this.ready) return
-    const request_id = this.platform.newId()
+    const q = ++this.viewGeneration
+    const request = this.captureRequest()
+    if (!request) return
+    const { context, generation: g } = request
+    const b = context.binding
     try {
       const next = validate<BoundView>(
         'GameView',
-        await this.port.view({ binding: b, request_id }, minimumViewerRevision),
+        await this.port.view(context, minimumViewerRevision),
       )
       if (
-        !this.current(g, b) ||
+        !this.responseMatches(request, next) ||
         q !== this.viewGeneration ||
-        next.request_id !== request_id ||
-        next.protocol !== this.protocol ||
-        !sameBinding(next.binding, b)
+        next.protocol !== this.protocol
       )
         return
       if (
@@ -477,51 +501,44 @@ export class Coordinator {
     }
   }
   async quote(request: QuoteRequest): Promise<BoundQuote | null> {
-    const b = this.binding,
-      g = this.generation,
-      q = ++this.quoteGeneration
-    if (!b || !this.ready) return null
-    const request_id = this.platform.newId(),
-      captured = structuredClone(request)
+    const q = ++this.quoteGeneration
+    const pending = this.captureRequest()
+    if (!pending) return null
+    const captured = structuredClone(request)
     try {
       const result = validate<BoundQuote>(
         'GameQuote',
-        await this.port.quote({ binding: b, request_id }, captured),
+        await this.port.quote(pending.context, captured),
       )
       if (
-        !this.current(g, b) ||
+        !this.responseMatches(pending, result) ||
         q !== this.quoteGeneration ||
-        result.request_id !== request_id ||
-        !sameBinding(result.binding, b) ||
         canonical(result.request) !== canonical(captured)
       )
         return null
       return result
     } catch (e) {
-      if (!this.current(g, b) || q !== this.quoteGeneration) return null
+      if (!this.requestIsCurrent(pending) || q !== this.quoteGeneration)
+        return null
       // Missing/inaccessible quote subjects and rule failures do not revoke membership.
       if (![400, 404, 422].includes(failure(e).status ?? 0))
-        await this.problem(e, g, b)
+        await this.problem(e, pending.generation, pending.context.binding)
       throw e
     }
   }
   async options(
     request: QuoteRequest,
   ): Promise<import('./commands').BoundProgressionOptions | null> {
-    const b = this.binding,
-      g = this.generation
-    if (!b || !this.ready || !this.port.progressionOptions || this.protocol < 3)
-      return null
-    const request_id = this.platform.newId(),
-      captured = structuredClone(request)
+    if (!this.port.progressionOptions || this.protocol < 3) return null
+    const pending = this.captureRequest()
+    if (!pending) return null
+    const captured = structuredClone(request)
     const result = validate<import('./commands').BoundProgressionOptions>(
       'GameProgressionOptions',
-      await this.port.progressionOptions({ binding: b, request_id }, captured),
+      await this.port.progressionOptions(pending.context, captured),
     )
     if (
-      !this.current(g, b) ||
-      result.request_id !== request_id ||
-      !sameBinding(result.binding, b) ||
+      !this.responseMatches(pending, result) ||
       canonical(result.request) !== canonical(captured)
     )
       return null
@@ -571,25 +588,20 @@ export class Coordinator {
     })
   }
   async world(query: import('./commands').WorldQuery) {
-    const b = this.binding,
-      g = this.generation
-    if (!b || !this.ready || !this.port.world || this.protocol !== 4)
-      return null
-    const request_id = this.platform.newId(),
-      captured = structuredClone(query)
+    if (!this.port.world || this.protocol !== 4) return null
+    const pending = this.captureRequest()
+    if (!pending) return null
+    const { context, generation: g } = pending
+    const b = context.binding
+    const captured = structuredClone(query)
     for (let attempt = 0; attempt < 3; attempt++) {
       const previous = this.view
       try {
         const result = validate<import('./commands').BoundWorld>(
           'BoundWorld4',
-          await this.port.world({ binding: b, request_id }, captured),
+          await this.port.world(context, captured),
         )
-        if (
-          !this.current(g, b) ||
-          !sameBinding(result.binding, b) ||
-          result.request_id !== request_id
-        )
-          return null
+        if (!this.responseMatches(pending, result)) return null
         if (captured.type === 'FleetQuote') {
           if (!('intent' in result.data)) return null
           const normalize = (
@@ -629,40 +641,24 @@ export class Coordinator {
     return null
   }
   async reportPage(cursor: string | null = null, includeHidden = false) {
-    const b = this.binding,
-      g = this.generation
-    if (!b || !this.ready || !this.port.reports || this.protocol !== 4)
-      return null
-    const request_id = this.platform.newId()
+    if (!this.port.reports || this.protocol !== 4) return null
+    const pending = this.captureRequest()
+    if (!pending) return null
     const result = validate<import('./commands').BoundReports>(
       'BoundReports4',
-      await this.port.reports(
-        { binding: b, request_id },
-        cursor,
-        includeHidden,
-      ),
+      await this.port.reports(pending.context, cursor, includeHidden),
     )
-    return this.current(g, b) &&
-      sameBinding(result.binding, b) &&
-      result.request_id === request_id
-      ? result.data
-      : null
+    return this.responseMatches(pending, result) ? result.data : null
   }
   async reportDetail(id: string) {
-    const b = this.binding,
-      g = this.generation
-    if (!b || !this.ready || !this.port.report || this.protocol !== 4)
-      return null
-    const request_id = this.platform.newId()
+    if (!this.port.report || this.protocol !== 4) return null
+    const pending = this.captureRequest()
+    if (!pending) return null
     const result = validate<import('./commands').BoundReport>(
       'BoundReport4',
-      await this.port.report({ binding: b, request_id }, id),
+      await this.port.report(pending.context, id),
     )
-    return this.current(g, b) &&
-      sameBinding(result.binding, b) &&
-      result.request_id === request_id
-      ? result.data
-      : null
+    return this.responseMatches(pending, result) ? result.data : null
   }
   async send(command: Command, quote?: SubmittedQuote) {
     const b = this.binding,

@@ -170,7 +170,7 @@ export function Navigation({
   )
   return (
     <>
-      <div className={styles.topBar}>
+      <div className={styles.topBar} data-sticky-navigation>
         {children(primaryNavigation)}
         {selected === 'Build' && (
           <nav

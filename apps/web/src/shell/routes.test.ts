@@ -61,7 +61,7 @@ it('validates retained-world fleet/report detail IDs', () => {
   ).toBe(false)
   expect(
     resolveDestination(
-      { universe: 'u', page: 'reports', item: 'foreign' },
+      { universe: 'u', page: 'reports', body: 'a', item: 'foreign' },
       legacy,
     ).available,
   ).toBe(false)
@@ -119,6 +119,7 @@ it('enables real fleet routes only for the world profile and keeps report detail
       {
         universe: 'u',
         page: 'reports',
+        body: 'a',
         item: '00000000-0000-4000-8000-000000000001',
       },
       world,
@@ -126,7 +127,7 @@ it('enables real fleet routes only for the world profile and keeps report detail
   ).toBe(true)
   expect(
     resolveDestination(
-      { universe: 'u', page: 'reports', item: 'invalid' },
+      { universe: 'u', page: 'reports', body: 'a', item: 'invalid' },
       world,
     ).available,
   ).toBe(false)

@@ -10,6 +10,8 @@ import { ButtonLink } from '../ui/button'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
 import { Button } from '../ui/button'
 import { Input } from '../ui/form'
+import { ResourceMark } from '../ui/resource-mark'
+import { resourceNames } from '../client-model/resources'
 import { Select } from '../ui/form'
 import { Field } from '../ui/form'
 import { Form } from '../ui/form'
@@ -19,7 +21,7 @@ import { Heading } from '../ui/typography'
 import styles from './missions.module.css'
 import { exactTime, shipManifest } from './mission-presentation'
 import { TaskHeader } from '../ui/task-header'
-import { DispatchReceipt } from './dispatch-receipt'
+import { DispatchTiming } from './dispatch-timing'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
@@ -67,12 +69,14 @@ export function Dispatch({
     setSystem,
     position,
     setPosition,
+    pasteCoordinates,
     speed,
     setSpeed,
     ships,
     setShips,
     cargo,
     setCargo,
+    addAllCargo,
     quote,
     setQuote,
     error,
@@ -85,10 +89,12 @@ export function Dispatch({
     clear,
     review,
     targetName,
+    timing,
+    timingMessage,
   } = useDispatch({ model, view, body, draft })
   return (
     <Section className={styles.screen}>
-      <TaskHeader title={quote ? 'Dispatch review' : 'Dispatch fleet'}>
+      <TaskHeader>
         <span>
           Origin {bodyName(body)}{' '}
           <CoordinateLink at={body.coordinates} label="origin" /> · Fleet slots:{' '}
@@ -134,8 +140,10 @@ export function Dispatch({
             void review()
           }}
         >
-          <fieldset className={styles.fieldset}>
-            <legend>Mission and destination</legend>
+          <fieldset
+            className={styles.destinationFields}
+            aria-label="Mission and destination"
+          >
             <Field>
               Mission
               <Select
@@ -155,37 +163,24 @@ export function Dispatch({
                     'Deploy',
                   ] as const
                 )
-                  .filter((m) =>
-                    view.capabilities.some(
-                      (c) => c.capability === m && c.enabled,
-                    ),
+                  .filter(
+                    (m) =>
+                      m === mission ||
+                      view.capabilities.some(
+                        (c) => c.capability === m && c.enabled,
+                      ),
                   )
                   .map((m) => (
                     <option key={m}>{m}</option>
                   ))}
               </Select>
             </Field>
-            {mission === 'Attack' && !targetProblem && !attackWarning && (
-              <Text className={styles.destinationNotice}>
-                Beginner protection can prevent attacks between players of
-                different strengths. Eligibility is checked again at review and
-                departure.
-              </Text>
-            )}
-            {(targetProblem || attackWarning) && (
-              <Text
-                className={styles.destinationNotice}
-                tone="danger"
-                role="status"
-              >
-                {targetProblem || attackWarning}
-              </Text>
-            )}
             <Field>
               <span id={`${validationId}-galaxy-label`}>Galaxy</span>
               <Input
                 inputMode="numeric"
                 aria-labelledby={`${validationId}-galaxy-label`}
+                onPaste={pasteCoordinates}
                 aria-invalid={!!coordinateProblems.galaxy}
                 aria-describedby={`${validationId}-galaxy`}
                 value={galaxy}
@@ -207,6 +202,7 @@ export function Dispatch({
               <Input
                 inputMode="numeric"
                 aria-labelledby={`${validationId}-system-label`}
+                onPaste={pasteCoordinates}
                 aria-invalid={!!coordinateProblems.system}
                 aria-describedby={`${validationId}-system`}
                 value={system}
@@ -228,6 +224,7 @@ export function Dispatch({
               <Input
                 inputMode="numeric"
                 aria-labelledby={`${validationId}-position-label`}
+                onPaste={pasteCoordinates}
                 aria-invalid={!!coordinateProblems.position}
                 aria-describedby={`${validationId}-position`}
                 value={position}
@@ -247,6 +244,7 @@ export function Dispatch({
             <Field>
               Speed
               <Select
+                aria-label="Speed"
                 value={speed}
                 onChange={(e) => {
                   setSpeed(Number(e.target.value))
@@ -260,6 +258,23 @@ export function Dispatch({
                 ))}
               </Select>
             </Field>
+            <DispatchTiming terms={timing} now={now} message={timingMessage} />
+            {mission === 'Attack' && !targetProblem && !attackWarning && (
+              <Text className={styles.destinationNotice}>
+                Beginner protection can prevent attacks between players of
+                different strengths. Eligibility is checked again at review and
+                departure.
+              </Text>
+            )}
+            {(targetProblem || attackWarning) && (
+              <Text
+                className={styles.destinationNotice}
+                tone="danger"
+                role="status"
+              >
+                {targetProblem || attackWarning}
+              </Text>
+            )}
           </fieldset>
           <fieldset className={styles.fieldset}>
             <legend>Ships</legend>
@@ -272,6 +287,11 @@ export function Dispatch({
                   <Input
                     inputMode="numeric"
                     value={ships[k] ?? '0'}
+                    placeholder="0"
+                    onBlur={(e) => {
+                      if (!e.target.value.trim())
+                        setShips({ ...ships, [k]: '0' })
+                    }}
                     onChange={(e) => {
                       setShips({ ...ships, [k]: e.target.value })
                       clear()
@@ -290,23 +310,46 @@ export function Dispatch({
               )
             })}
           </fieldset>
-          <fieldset className={styles.fieldset}>
-            <legend>Cargo</legend>
-            {['Metal', 'Crystal', 'Deuterium'].map((k, i) => (
-              <Field key={k}>
-                {k}
-                <Input
-                  inputMode="numeric"
-                  value={cargo[i]}
-                  onChange={(e) => {
-                    setCargo(
-                      cargo.map((n, j) => (i === j ? e.target.value : n)),
-                    )
-                    clear()
-                  }}
-                />
-              </Field>
-            ))}
+          <fieldset className={styles.cargoFields} aria-label="Cargo">
+            <div className={styles.cargoHeader}>
+              <span>Cargo</span>
+            </div>
+            <div className={styles.cargoInputs}>
+              {resourceNames.map((resource, i) => (
+                <Field
+                  key={resource}
+                  title={resource[0].toUpperCase() + resource.slice(1)}
+                >
+                  <ResourceMark resource={resource} />
+                  <Input
+                    aria-label={resource[0].toUpperCase() + resource.slice(1)}
+                    inputMode="numeric"
+                    value={cargo[i]}
+                    placeholder="0"
+                    onBlur={(e) => {
+                      if (!e.target.value.trim())
+                        setCargo(cargo.map((n, j) => (i === j ? '0' : n)))
+                    }}
+                    onChange={(e) => {
+                      setCargo(
+                        cargo.map((n, j) => (i === j ? e.target.value : n)),
+                      )
+                      clear()
+                    }}
+                  />
+                </Field>
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                size="small"
+                disabled={busy || !coordinatesValid || !!targetProblem}
+                title="Fill available cargo space, reserving deuterium for fuel"
+                onClick={() => void addAllCargo()}
+              >
+                Add all
+              </Button>
+            </div>
           </fieldset>
           {error && (
             <Text tone="danger" role="alert">
@@ -338,7 +381,6 @@ export function Dispatch({
           </ButtonLink>
         </aside>
       </div>
-      <DispatchReceipt model={model} origin={body.id} />
       {quote && (
         <QuotePanel
           as="section"
@@ -419,23 +461,6 @@ export function Dispatch({
           </QuoteAction>
         </QuotePanel>
       )}
-      <details className={styles.rules}>
-        <summary>Mission rules</summary>
-        <Text>
-          {mission === 'Deploy'
-            ? 'Successful deployment ends at the destination; the ships stay there.'
-            : 'Returning ships use their committed one-way travel duration after contact.'}{' '}
-          Returning fleets occupy a slot.
-        </Text>
-        <Text>
-          {view.capabilities.some((c) => c.capability === 'Attack' && c.enabled)
-            ? 'Attack victories can plunder resources into surviving cargo space.'
-            : 'Attack is unavailable in this universe.'}{' '}
-          {colony.enabled
-            ? 'Colonize an empty position or deploy ships to another owned planet.'
-            : 'Colonization and deployment are unavailable.'}
-        </Text>
-      </details>
     </Section>
   )
 }

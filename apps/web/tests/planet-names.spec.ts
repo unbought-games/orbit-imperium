@@ -133,7 +133,7 @@ for (const width of [1280, 390]) {
       page.getByRole('button', { name: /Rename planet/ }),
     ).toHaveCount(0)
     publicName = 'W'.repeat(40)
-    await page.getByRole('button', { name: 'Refresh galaxy' }).click()
+    await page.reload()
     await expect(page.getByText(publicName, { exact: true })).toBeVisible()
     expect(
       await page.evaluate(
