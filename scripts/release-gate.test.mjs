@@ -74,6 +74,10 @@ test('rejects forks, other branches/events/workflows, unrelated revisions, rerun
       x.run.event = 'workflow_dispatch'
     },
     (x) => {
+      x.run.event = 'merge_group'
+      x.event.workflow_run.event = 'merge_group'
+    },
+    (x) => {
       x.run.head_branch = 'feature'
     },
     (x) => {
@@ -213,7 +217,7 @@ test('release workflow keeps PRs and explicit suites outside the privileged publ
   )
   assert.equal(
     ci.concurrency.group,
-    "${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}",
+    "${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}",
   )
   for (const job of Object.values(ci.jobs))
     assert.equal(job.permissions?.['id-token'], undefined)
