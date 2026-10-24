@@ -324,6 +324,10 @@ test('incoming fleets and report details use the supplied public name without an
   })
   await shellFixture(page, { protocol: 4, playerNames })
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await page
+    .getByRole('navigation', { name: 'Fleet navigation' })
+    .getByRole('link', { name: 'Fleets', exact: true })
+    .click()
   await expect(
     page.getByRole('region', { name: 'Incoming fleets' }),
   ).toContainText('Attack · Commander Vega')

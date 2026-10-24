@@ -451,11 +451,16 @@ test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   await page.setViewportSize({ width: 390, height: 844 })
   await shellFixture(page, { protocol: 4 })
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
   const nav = page.getByRole('navigation', { name: 'Fleet navigation' })
+  await expect(
+    nav.getByRole('link', { name: 'Galaxy', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
   await expect(nav.getByRole('link')).toHaveText([
-    'Fleets',
     'Galaxy',
     'Dispatch',
+    'Fleets',
   ])
   await expect(
     nav.getByRole('link', { name: 'Galaxy', exact: true }),
@@ -468,6 +473,12 @@ test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   expect(submenu.y).toBe(resources.y + resources.height)
   expect(submenu.x).toBe(0)
   expect(submenu.width).toBe(390)
+  for (const [title, path] of [['Dispatch', 'dispatch'], ['Fleets', 'fleets']]) {
+    await nav.getByRole('link', { name: title, exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
+    await expect(page.locator('main h1')).toHaveText(title)
+    await expect(nav.getByRole('link', { name: title, exact: true })).toHaveAttribute('aria-current', 'page')
+  }
 })
 
 test('mobile planet box is one tap target with full native planet and moon labels', async ({
@@ -1268,7 +1279,7 @@ test('navigation keeps shell identity mounted through rapid route changes', asyn
     .click()
   await expect(page.locator('main h1')).toHaveText('Shipyard')
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
-  await expect(page.locator('main h1')).toHaveText('Fleets')
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
   let release!: () => void
   const gate = new Promise<void>((resolve) => {
     release = resolve
@@ -1321,6 +1332,11 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await expect(page.getByLabel('Selected body')).toHaveValue(body.id)
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
+  await page
+    .getByRole('navigation', { name: 'Fleet navigation' })
+    .getByRole('link', { name: 'Fleets', exact: true })
+    .click()
   await expect(page.locator('main h1')).toHaveText('Fleets')
   await expect(
     page.getByRole('heading', { name: 'Incoming fleets' }),
