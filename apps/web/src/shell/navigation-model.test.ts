@@ -10,7 +10,12 @@ it('keeps the same four anchor meanings across every implemented route', () => {
   for (const page of buildPages) expect(navigationAnchor(page)).toBe('Build')
   for (const page of ['fleets', 'galaxy', 'dispatch'] as const)
     expect(navigationAnchor(page)).toBe('Fleet')
-  for (const page of ['reports', 'settings', 'resource-settings'] as const)
+  for (const page of [
+    'reports',
+    'settings',
+    'resource-settings',
+    'high-scores',
+  ] as const)
     expect(navigationAnchor(page)).toBe('Menu')
   expect(buildPages[0]).toBe('resources')
 })
@@ -41,6 +46,7 @@ it('places every real destination exactly once in the grouped menu', () => {
       'galaxy',
       'reports',
       'settings',
+      'high-scores',
     ].sort(),
   )
 })

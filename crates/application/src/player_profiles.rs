@@ -14,6 +14,7 @@ pub struct PlayerIdentity {
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum ProfileSource {
     SelfAccount,
+    Rankings { players: Vec<PlayerId> },
     Galaxy { galaxy: u32, system: u32 },
     Incoming,
     Report { report: orbit_engine::ReportId },
@@ -47,6 +48,17 @@ impl<S: GameStore> GameService<S> {
         }
         match q.source {
             ProfileSource::SelfAccount => {}
+            ProfileSource::Rankings { players: requested } => {
+                if requested.len() > 50 {
+                    return Err(ServiceError::Malformed);
+                }
+                players.extend(
+                    self.store
+                        .public_player_names(q.context.binding, requested)
+                        .await?
+                        .into_keys(),
+                );
+            }
             ProfileSource::Galaxy { galaxy, system } => {
                 let view = self
                     .world_query(
