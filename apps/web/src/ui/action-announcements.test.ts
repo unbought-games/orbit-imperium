@@ -59,3 +59,30 @@ it('uses player-facing delete and restore labels for report preferences', () => 
       }),
     ).toBe(hidden ? 'Delete report' : 'Restore report')
 })
+
+it('keeps optimistic report actions quiet except for failure and uncertainty', () => {
+  for (const status of [
+    'submitting',
+    'pending',
+    'committed',
+    'rejected',
+    'uncertain',
+  ] as const) {
+    const report = {
+      envelope: {
+        command_id: 'report-command',
+        command: {
+          type: 'World',
+          action: { type: 'SetReportHidden', report: 'report', hidden: true },
+        },
+      },
+      status,
+      reconciled: false,
+      receipt: null,
+    } as Attempt
+    const message = changedAnnouncements(new Map(), [report]).message
+    if (status === 'rejected' || status === 'uncertain')
+      expect(message).toContain('Delete report:')
+    else expect(message).toBe('')
+  }
+})

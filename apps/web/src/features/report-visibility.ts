@@ -11,7 +11,7 @@ export function pendingReportVisibility(
       command.action.type === 'SetReportHidden' &&
       (report === undefined || command.action.report === report) &&
       attempt.status !== 'rejected' &&
-      !(attempt.status === 'committed' && attempt.reconciled)
+      attempt.status !== 'committed'
     )
   })
 }

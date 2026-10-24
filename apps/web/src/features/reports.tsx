@@ -43,7 +43,6 @@ export function Reports({
     changingVisibility,
     more,
     retry,
-    invalidate,
   } = useReports(model, item)
   useProfileSource(
     detail && detail.header.id === item
@@ -131,8 +130,7 @@ export function Reports({
                 report={detail.header.id}
                 hidden={detail.header.hidden}
                 compact
-                disabled={loading}
-                onRequest={invalidate}
+                disabled={false}
               />
               {detail.payload.kind === 'Espionage' &&
                 model.view?.capabilities.some(
@@ -238,8 +236,7 @@ export function Reports({
               universe={universe}
               origin={origin}
               now={now}
-              disabled={loading || loadingMore || changingVisibility}
-              onRequest={invalidate}
+              disabled={loadingMore}
             />
           ))}
           {page.has_more && (

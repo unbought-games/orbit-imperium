@@ -18,7 +18,6 @@ export function ReportListRow({
   origin,
   now,
   disabled,
-  onRequest,
 }: {
   report: components['schemas']['ReportHeader4']
   model: Coordinator
@@ -26,7 +25,6 @@ export function ReportListRow({
   origin: string
   now: number
   disabled: boolean
-  onRequest: () => void
 }) {
   const preview = reportPreview(report.preview, model.binding?.player)
   const outcome = reportListTitle(report, model.binding?.player)
@@ -110,7 +108,6 @@ export function ReportListRow({
         report={report.id}
         hidden={report.hidden}
         disabled={disabled}
-        onRequest={onRequest}
         compact
       />
     </Panel>

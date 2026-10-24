@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   emptyReports,
   mergeReportPages,
-  reconcileReportHeader,
   reportsReducer,
   type ReportsPage,
   type ReportsRequest,
 } from './reports-state'
+import {
+  mergeReportHeaders,
+  projectedReportHeader,
+} from '../client-model/report-state'
 import { reportRequestScope } from './use-reports'
 import { createGameStore } from '../client-model/game-store'
 import { readyFixture } from '../test-support/bootstrap'
@@ -34,38 +37,44 @@ const request = (
   cursor: kind === 'more' ? 'next' : null,
 })
 
-it('merges overlapping pages once while keeping reconciled headers and next-page metadata', () => {
-  const first = page(['a', 'b'])
-  first.items[1] = header('b', true)
-  const next = page(['b', 'c', 'c', 'hidden'], null)
-  next.items[3].hidden = true
-  next.as_of_ms = 200
-  const merged = mergeReportPages(first, next)
-  expect(merged).toEqual({
-    ...next,
-    items: [header('a'), header('b', true), header('c')],
-  })
-  expect(first.items).toHaveLength(2)
-  expect(next.items).toHaveLength(4)
+const storedPage = (ids: string[], cursor: string | null = 'next') => ({
+  ...page(ids, cursor),
+  items: ids,
 })
 
-it('reconciles read/hidden headers without inserting reports outside the loaded inbox', () => {
-  const first = page(['a', 'b'])
-  expect(reconcileReportHeader(first, header('b', true))?.items[1].read).toBe(
-    true,
+it('merges overlapping page IDs once while keeping next-page metadata', () => {
+  const first = storedPage(['a', 'b'])
+  const next = page(['b', 'c', 'c'], null)
+  next.as_of_ms = 200
+  expect(mergeReportPages(first, next)).toEqual({
+    ...next,
+    items: ['a', 'b', 'c'],
+  })
+  expect(first.items).toHaveLength(2)
+  expect(next.items).toHaveLength(3)
+})
+
+it('reconciles read/hidden headers in the store without changing loaded page IDs', () => {
+  const first = storedPage(['a', 'b'])
+  let headers = mergeReportHeaders(new Map(), [header('a'), header('b')], '1')
+  headers = mergeReportHeaders(
+    headers,
+    [header('b', true), header('c', true)],
+    '2',
   )
-  expect(reconcileReportHeader(first, header('b', true, true))?.items).toEqual([
-    header('a'),
-  ])
-  expect(reconcileReportHeader(first, header('c', true))).toEqual(first)
-  expect(reconcileReportHeader(null, header('a'))).toBeNull()
+  expect(projectedReportHeader(headers, [], 'b')?.read).toBe(true)
+  headers = mergeReportHeaders(headers, [header('b', true, true)], '3')
+  expect(
+    first.items.filter((id) => !projectedReportHeader(headers, [], id)?.hidden),
+  ).toEqual(['a'])
+  expect(first.items).toEqual(['a', 'b'])
 })
 
 for (const kind of ['initial', 'detail', 'more'] as const) {
   describe(`late ${kind} responses`, () => {
     const old = request(1, kind)
     const started = reportsReducer(
-      { ...emptyReports, page: page(['a']) },
+      { ...emptyReports, page: storedPage(['a']) },
       { type: 'start', request: old },
     )
     for (const action of [
@@ -103,7 +112,7 @@ for (const kind of ['initial', 'detail', 'more'] as const) {
 it('retains successful pagination through navigation, but not failed pagination or invalidation', () => {
   const more = request(2, 'more')
   const started = reportsReducer(
-    { ...emptyReports, page: page(['a']) },
+    { ...emptyReports, page: storedPage(['a']) },
     { type: 'start', request: more },
   )
   expect(started.retainPages).toBe(false)
@@ -113,7 +122,7 @@ it('retains successful pagination through navigation, but not failed pagination 
     error: 'offline',
   })
   expect(failed).toMatchObject({
-    page: page(['a']),
+    page: storedPage(['a']),
     retainPages: false,
     request: null,
     error: 'offline',
@@ -126,7 +135,7 @@ it('retains successful pagination through navigation, but not failed pagination 
   expect(loaded.retainPages).toBe(true)
   const opened = reportsReducer(loaded, { type: 'navigate', item: 'b' })
   const returned = reportsReducer(opened, { type: 'navigate', item: null })
-  expect(returned.page?.items.map((r) => r.id)).toEqual(['a', 'b'])
+  expect(returned.page?.items).toEqual(['a', 'b'])
   expect(returned.retainPages).toBe(true)
   expect(returned.request).toBeNull()
   expect(reportsReducer(returned, { type: 'invalidate' }).retainPages).toBe(

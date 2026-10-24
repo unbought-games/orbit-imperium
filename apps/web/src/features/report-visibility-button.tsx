@@ -10,14 +10,12 @@ export function ReportVisibilityButton({
   report,
   hidden,
   disabled,
-  onRequest,
   compact = false,
 }: {
   model: Coordinator
   report: string
   hidden: boolean
   disabled: boolean
-  onRequest: () => void
   compact?: boolean
 }) {
   const visibility = useReportVisibility(model, report)
@@ -34,7 +32,6 @@ export function ReportVisibilityButton({
             : 'Remove from your reports; you can restore it later'
         }
         onClick={() => {
-          onRequest()
           void visibility.change(!hidden)
         }}
       >

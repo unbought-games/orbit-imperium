@@ -177,9 +177,9 @@ for (const width of [1440, 390]) {
     await rows.last().getByRole('button', { name: 'Delete report' }).click()
     await expect(
       rows.last().getByRole('button', { name: 'Delete report' }),
-    ).toBeDisabled()
-    await expect(rows.last()).toContainText('Submitting action.')
-    await expect(rows).toHaveCount(2)
+    ).toBeEnabled()
+    await expect(rows).toHaveCount(1)
+    await expect(page.getByText('Submitting action.', { exact: true })).toHaveCount(0)
     release()
     await expect(rows).toHaveCount(1)
     await expect(unread).toHaveCount(0)
@@ -233,13 +233,17 @@ for (const width of [1440, 390]) {
   })
 }
 
-test('failed and uncertain deletion preserve the report and offer durable recovery', async ({
+test('failed and uncertain deletion roll back and offer durable recovery', async ({
   page,
 }) => {
   const fixture = await reportsFixture(page)
   const row = page.locator('main article').first()
+  let release!: () => void
+  fixture.pause(new Promise<void>((resolve) => { release = resolve }))
   fixture.setMode('rejected')
   await row.getByRole('button', { name: 'Delete report' }).click()
+  await expect(row).toHaveCount(0)
+  release()
   await expect(row).toContainText('Action rejected: Not Found')
   await expect(row.getByRole('button', { name: 'Delete report' })).toBeEnabled()
   expect(fixture.headers[0].hidden).toBe(false)
@@ -269,7 +273,7 @@ test('pagination cannot suppress reconciliation during a pending deletion', asyn
   const row = page.locator('main article').first()
   await row.getByRole('button', { name: 'Delete report' }).focus()
   await page.keyboard.press('Enter')
-  await expect(row).toContainText('Submitting action.')
+  await expect(page.locator('main article')).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: 'Load more reports' }),
   ).toBeDisabled()
@@ -403,7 +407,7 @@ for (const change of ['navigate', 'revise', 'rebind', 'visibility', 'retry'] as 
     expect(result.requestsAfterDoubleClick).toBe(2)
     expect(result.after).toEqual(result.before)
     expect(result.after.loadingMore).toBe(false)
-    expect(result.after.ids).toEqual(change === 'rebind' ? [] : ['a'])
+    expect(result.after.ids).toEqual(change === 'rebind' || change === 'visibility' ? [] : ['a'])
     expect(result.requests[1]).toEqual({ item: null, cursor: 'cursor' })
     expect(result.requests[2]).toEqual({ item: change === 'navigate' ? 'b' : null, cursor: null })
   })
@@ -499,7 +503,79 @@ test('report hook loads uncached reports while a visibility command is unresolve
     await h.close()
     return { inbox, requestsAfterMore, detail }
   })
-  expect(result.inbox).toMatchObject({ ids: ['a'], error: null, loading: false })
+  expect(result.inbox).toMatchObject({ ids: [], error: null, loading: false })
   expect(result.requestsAfterMore).toBe(2)
   expect(result.detail).toMatchObject({ detail: 'a', error: null, loading: false })
+})
+
+test('independent deletes are optimistic and each failure rolls back only its report', async ({
+  page,
+}) => {
+  const fixture = await reportsFixture(page)
+  await page.getByRole('button', { name: 'Load more reports' }).click()
+  const rows = page.locator('main article')
+  let release!: () => void
+  fixture.pause(
+    new Promise<void>((resolve) => {
+      release = resolve
+    }),
+  )
+  fixture.setMode('rejected')
+  await rows.first().getByRole('button', { name: 'Delete report' }).click()
+  await expect(rows).toHaveCount(1)
+  await rows.first().getByRole('button', { name: 'Delete report' }).click()
+  await expect(rows).toHaveCount(0)
+  await expect.poll(fixture.submitted).toBe(2)
+  release()
+  await expect(rows).toHaveCount(2)
+  await expect(rows.first()).toContainText('Action rejected')
+  await expect(rows.last()).toContainText('Action rejected')
+})
+
+test('a successful HTTP response confirms deletion before the game view refreshes', async ({
+  page,
+}) => {
+  const fixture = await reportsFixture(page)
+  await page
+    .locator('main article')
+    .first()
+    .getByRole('link', { name: 'Espionage', exact: true })
+    .click()
+  await expect(
+    page.getByRole('region', { name: 'Report observation' }),
+  ).toBeVisible()
+  let release!: () => void
+  const pause = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/overview', async (route) => {
+    await pause
+    await route.fallback()
+  })
+  const row = page.getByRole('main')
+  try {
+    await row.getByRole('button', { name: 'Delete report' }).click()
+    await expect(
+      row.getByRole('button', { name: 'Restore report' }),
+    ).toBeEnabled()
+    await expect(row.getByRole('button', { name: 'Restore report' })).toHaveAttribute('title', 'Restore to your reports')
+    await expect(
+      page.getByText('Action committed; awaiting updated view.', {
+        exact: true,
+      }),
+    ).toHaveCount(0)
+    expect(fixture.headers[0].hidden).toBe(true)
+    await row.getByRole('button', { name: 'Restore report' }).click()
+    await expect(
+      row.getByRole('button', { name: 'Delete report' }),
+    ).toBeEnabled()
+    expect(fixture.headers[0].hidden).toBe(false)
+    await row.getByRole('button', { name: 'Delete report' }).click()
+    await expect(
+      row.getByRole('button', { name: 'Restore report' }),
+    ).toBeEnabled()
+    expect(fixture.headers[0].hidden).toBe(true)
+  } finally {
+    release()
+  }
 })

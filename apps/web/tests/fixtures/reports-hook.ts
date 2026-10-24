@@ -2,6 +2,7 @@
 // of the router's choice to preserve or remount a screen.
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
+import { mergeReportHeaders } from '../../src/client-model/report-state'
 import { createGameStore } from '../../src/client-model/game-store'
 import { readyFixture } from '../../src/test-support/bootstrap'
 import { useReports } from '../../src/features/use-reports'
@@ -69,7 +70,17 @@ export async function reportsHarness() {
       }),
     retry: async () => act(async () => result.retry()),
     resolve: async (index: number, data: ReportsPage | ReportDetail | null) =>
-      act(async () => calls[index].resolve(data)),
+      act(async () => {
+        if (data)
+          store.setState((s) => ({
+            reportHeaders: mergeReportHeaders(
+              s.reportHeaders,
+              'header' in data ? [data.header] : data.items,
+              s.view!.viewer_revision,
+            ),
+          }))
+        calls[index].resolve(data)
+      }),
     reject: async (index: number) =>
       act(async () => calls[index].reject('old failure')),
     revise: async () =>

@@ -1173,3 +1173,95 @@ it('reconciles unread report alerts from live invalidations and reconnect snapsh
   model.invalidate()
   expect(model.store.getState().view).toBeNull()
 })
+
+it.each(['none', 'remove', 'write'])(
+  'does not resurrect report failures after pruning a successful retry (storage failure: %s)',
+  async (failureMode) => {
+    const { readyFixture } = await import('../test-support/bootstrap')
+    const { mergeReportHeaders } = await import('./report-state')
+    const { session, snapshot } = readyFixture(4)
+    const { c, port, storage, saved } = setup()
+    await c.initialize(session, snapshot)
+    const report = id(700),
+      other = id(701)
+    c.store.setState({
+      reportHeaders: mergeReportHeaders(
+        new Map(),
+        [report, other].map((id) => ({
+          id,
+          hidden: false,
+          read: true,
+          observed_at: 1000,
+          kind: 'Espionage',
+        })),
+        '1',
+      ),
+    })
+    let reject = true
+    const put = storage.put
+    storage.put = async (attempt) => {
+      if (failureMode === 'write' && attempt.status === 'rejected')
+        throw Error('status write failed')
+      await put(attempt)
+    }
+    port.submit = async (envelope) =>
+      ({
+        protocol: 4,
+        binding: snapshot.candidate.binding,
+        command_id: envelope.command_id,
+        admitted_at: 1000,
+        executed_at: 1000,
+        ...(reject
+          ? { status: 'Rejected', code: 'NotFound' }
+          : {
+              status: 'Committed',
+              result_ids: [],
+              minimum_viewer_revision: '2',
+            }),
+      }) as BoundReceipt
+    port.view = async (context) => ({
+      ...snapshot.view,
+      request_id: context.request_id,
+      viewer_revision: '2',
+    })
+    const change = (report: string, hidden = true) =>
+      c.send({
+        type: 'World',
+        action: { type: 'SetReportHidden', report, hidden },
+      })
+    const failure = await change(report)
+    const otherFailure = await change(other)
+    const unrelated = await change(id(702))
+    const remove = storage.remove
+    storage.remove = async (binding, id) => {
+      if (failureMode === 'remove' && id === failure)
+        throw Error('storage unavailable')
+      await remove(binding, id)
+    }
+    reject = false
+    const retry = await change(report)
+    for (let i = 0; i < 10; i++) await change(other, i % 2 === 0)
+    if (failureMode === 'remove') {
+      expect(saved.has(failure!)).toBe(true)
+      expect(
+        [...c.ledger.values()].some((a) => a.envelope.command_id === retry),
+      ).toBe(true)
+      storage.remove = remove
+      await c.refresh()
+    }
+    expect(saved.has(failure!)).toBe(false)
+    expect(saved.has(retry!)).toBe(false)
+    expect(saved.has(otherFailure!)).toBe(false)
+    expect(saved.has(unrelated!)).toBe(true)
+    expect(
+      [...c.ledger.values()]
+        .filter((a) => a.status === 'rejected')
+        .map((a) => a.envelope.command_id),
+    ).toEqual([unrelated])
+    reject = true
+    storage.put = put
+    const latestFailure = await change(report, false)
+    await c.refresh()
+    expect(saved.has(latestFailure!)).toBe(true)
+  },
+)

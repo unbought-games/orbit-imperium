@@ -5,12 +5,14 @@ import type {
   BoundSettings,
   BoundView,
 } from './commands'
+import type { ReportHeaders } from './report-state'
 import type { SubmittedIntent } from './game-projection'
 
 export type GameState = {
   binding: Binding | null
   view: BoundView | null
   settings: BoundSettings | null
+  reportHeaders: ReportHeaders
   attempts: AttemptLedger
   intents: Map<string, SubmittedIntent>
   receivedAt: number
@@ -28,6 +30,7 @@ export function createGameStore() {
     binding: null,
     view: null,
     settings: null,
+    reportHeaders: new Map(),
     attempts: new Map(),
     intents: new Map(),
     receivedAt: 0,

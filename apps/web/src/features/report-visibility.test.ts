@@ -14,15 +14,13 @@ it('blocks both delete and restore while the same report has an unresolved prefe
       status: 'pending',
       reconciled: false,
     } as Attempt
-    for (const status of [
-      'submitting',
-      'pending',
-      'uncertain',
-      'committed',
-    ] as const)
+    for (const status of ['submitting', 'pending', 'uncertain'] as const)
       expect(
         pendingReportVisibility([{ ...attempt, status }], 'report'),
       ).toBeDefined()
+    expect(
+      pendingReportVisibility([{ ...attempt, status: 'committed' }], 'report'),
+    ).toBeUndefined()
     expect(pendingReportVisibility([attempt])).toBe(attempt)
     expect(pendingReportVisibility([attempt], 'other')).toBeUndefined()
     expect(

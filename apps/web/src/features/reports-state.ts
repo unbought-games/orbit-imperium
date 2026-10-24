@@ -1,4 +1,8 @@
 import type { components } from '../contracts'
+import type {
+  ReportPage as StoredPage,
+  ReportDetail as StoredDetail,
+} from '../client-model/report-state'
 
 type S = components['schemas']
 export type ReportsPage = S['ReportsPage4']
@@ -10,8 +14,8 @@ export type ReportsRequest = {
   cursor: string | null
 }
 export type ReportsState = {
-  page: ReportsPage | null
-  detail: ReportDetail | null
+  page: StoredPage | null
+  detail: StoredDetail | null
   error: unknown
   retainPages: boolean
   request: ReportsRequest | null
@@ -24,25 +28,17 @@ export const emptyReports: ReportsState = {
   request: null,
 }
 
-// Keep reconciled headers when adjacent pages overlap; append each new ID once.
-export function mergeReportPages(old: ReportsPage | null, next: ReportsPage) {
-  const rows = new Map(old?.items.map((row) => [row.id, row]))
-  for (const row of next.items) if (!rows.has(row.id)) rows.set(row.id, row)
-  return { ...next, items: [...rows.values()].filter((row) => !row.hidden) }
-}
-
-export function reconcileReportHeader(
-  page: ReportsPage | null,
-  header: ReportDetail['header'],
-): ReportsPage | null {
-  return page
-    ? {
-        ...page,
-        items: page.items
-          .map((row) => (row.id === header.id ? header : row))
-          .filter((row) => !row.hidden),
-      }
-    : null
+// The store owns headers; pagination retains only stable report IDs.
+export function mergeReportPages(
+  old: StoredPage | null,
+  next: ReportsPage,
+): StoredPage {
+  return {
+    ...next,
+    items: [
+      ...new Set([...(old?.items ?? []), ...next.items.map((row) => row.id)]),
+    ],
+  }
 }
 
 type ReportsAction =
@@ -64,7 +60,7 @@ export function reportsReducer(
     case 'navigate':
       return {
         ...state,
-        detail: state.detail?.header.id === action.item ? state.detail : null,
+        detail: state.detail?.report === action.item ? state.detail : null,
         request: null,
         error: null,
       }
@@ -81,8 +77,11 @@ export function reportsReducer(
         return {
           ...state,
           request: null,
-          detail: action.detail,
-          page: reconcileReportHeader(state.page, action.detail.header),
+          detail: {
+            payload: action.detail.payload,
+            player_names: action.detail.player_names,
+            report: action.detail.header.id,
+          },
         }
       return {
         ...state,
@@ -92,7 +91,7 @@ export function reportsReducer(
             ? mergeReportPages(state.page, action.page)
             : {
                 ...action.page,
-                items: action.page.items.filter((r) => !r.hidden),
+                items: action.page.items.map((r) => r.id),
               },
         retainPages: action.request.kind === 'more',
       }

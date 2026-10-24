@@ -2,6 +2,7 @@ import { useLayoutEffect, useReducer, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { bindingKey } from '../client-model/commands'
+import { projectedReportHeader } from '../client-model/report-state'
 import type { GameState } from '../client-model/game-store'
 import { pendingReportVisibility } from './report-visibility'
 import {
@@ -25,6 +26,8 @@ type ReportsSource = Pick<
 >
 
 export function useReports(model: ReportsSource, item: string | null) {
+  const headers = useStore(model.store, (s) => s.reportHeaders)
+  const attempts = useStore(model.store, (s) => s.attempts)
   const scope = useStore(model.store, reportRequestScope)
   const binding = useStore(
     model.store,
@@ -107,7 +110,6 @@ export function useReports(model: ReportsSource, item: string | null) {
       owner.current.model !== model || owner.current.binding !== binding
     owner.current = { model, binding }
     dispatch(rebound ? { type: 'reset' } : { type: 'navigate', item })
-    if (changingVisibility) dispatch({ type: 'invalidate' })
     // A pending preference blocks pagination, not access to an uncached inbox
     // or detail (including recovery after an uncertain command).
     const retainInbox =
@@ -123,9 +125,21 @@ export function useReports(model: ReportsSource, item: string | null) {
     // Only request context changes trigger loading, not request completions.
   }, [model, binding, item, scope, refresh, changingVisibility])
 
+  const detailHeader =
+    state.detail &&
+    projectedReportHeader(headers, attempts.values(), state.detail.report)
   return {
-    page: state.page,
-    detail: state.detail,
+    page: state.page && {
+      ...state.page,
+      items: state.page.items.flatMap((id) => {
+        const header = projectedReportHeader(headers, attempts.values(), id)
+        return header && !header.hidden ? [header] : []
+      }),
+    },
+    detail:
+      state.detail && detailHeader
+        ? { ...state.detail, header: detailHeader }
+        : null,
     error: state.error,
     loading: !!state.request && state.request.kind !== 'more',
     loadingMore: state.request?.kind === 'more',

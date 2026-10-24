@@ -26,6 +26,11 @@ import {
   terminal,
 } from './commands'
 import { validate } from './schema'
+import {
+  acceptReportVisibility,
+  mergeReportHeaders,
+  supersededReportFailures,
+} from './report-state'
 import { startGameDelivery, type DeliveryController } from './delivery'
 import { createGameStore, type GameState } from './game-store'
 import {
@@ -224,6 +229,7 @@ export class Coordinator {
       binding: null,
       view: null,
       settings: null,
+      reportHeaders: new Map(),
       attempts: new Map(),
       intents: new Map(),
     })
@@ -648,7 +654,15 @@ export class Coordinator {
       'BoundReports4',
       await this.port.reports(pending.context, cursor, includeHidden),
     )
-    return this.responseMatches(pending, result) ? result.data : null
+    if (!this.responseMatches(pending, result)) return null
+    this.store.setState({
+      reportHeaders: mergeReportHeaders(
+        this.store.getState().reportHeaders,
+        result.data.items,
+        result.viewer_revision,
+      ),
+    })
+    return result.data
   }
   async reportDetail(id: string) {
     if (!this.port.report || this.protocol !== 4) return null
@@ -658,7 +672,16 @@ export class Coordinator {
       'BoundReport4',
       await this.port.report(pending.context, id),
     )
-    return this.responseMatches(pending, result) ? result.data : null
+    if (!this.responseMatches(pending, result)) return null
+    const { header } = result.data
+    this.store.setState({
+      reportHeaders: mergeReportHeaders(
+        this.store.getState().reportHeaders,
+        [header],
+        result.viewer_revision,
+      ),
+    })
+    return result.data
   }
   async send(command: Command, quote?: SubmittedQuote) {
     const b = this.binding,
@@ -800,6 +823,8 @@ export class Coordinator {
     const key = attemptKey(b, r.command_id),
       current = this.attempts.get(key)
     if (!current || terminal(current)) return
+    const previousHeaders = this.store.getState().reportHeaders
+    const reportHeaders = acceptReportVisibility(previousHeaders, current, r)
     const next = validate<Attempt>('GameAttempt', {
       ...current,
       receipt: r,
@@ -809,12 +834,16 @@ export class Coordinator {
           : r.status === 'Committed'
             ? 'committed'
             : 'rejected',
-      reconciled: r.status === 'Rejected',
+      reconciled: r.status === 'Rejected' || reportHeaders !== previousHeaders,
     })
-    this.saveAttempt(key, next)
+    this.store.setState({
+      attempts: new Map(this.attempts).set(key, next),
+      reportHeaders,
+    })
     await this.persist(next)
     if (r.status === 'Pending') this.delivery?.pending()
     if (r.status === 'Committed') {
+      if (next.reconciled) await this.pruneSuccesses()
       this.requestMinimum(r.minimum_viewer_revision)
       if (!this.refreshWork && !this.recoveryWork) await this.refresh()
     }
@@ -954,6 +983,22 @@ export class Coordinator {
     if (this.current(generation, view.binding)) await this.pruneSuccesses()
   }
   private async pruneSuccesses() {
+    for (const [key, attempt] of supersededReportFailures(this.attempts)) {
+      try {
+        // A failed status write must still allow removal of its older record.
+        await this.writes.get(key)?.catch(() => {})
+        await this.storage.remove(
+          attempt.envelope.binding,
+          attempt.envelope.command_id,
+        )
+      } catch {
+        // Retain the confirming success until the older failure is durably
+        // removed, so it cannot become the latest feedback after pruning.
+        return
+      }
+      if (this.attempts.get(key) === attempt) this.removeAttempt(key)
+      this.writes.delete(key)
+    }
     const successes = [...this.attempts].filter(
       ([, attempt]) => attempt.status === 'committed' && attempt.reconciled,
     )
