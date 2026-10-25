@@ -19,3 +19,5 @@ Noticeboard source Markdown is bounded to 100 posts, five pinned posts, 120 titl
 The schema stores role definitions and assignments, Markdown, membership/application facts and bounded audit; member counts, effective permissions, activity labels and scores are derived. Public ranking enrichment uses the ranking subsystem's authoritative asset observation.
 
 Validation: 19 engine policy tests, two application projection tests and six real PostgreSQL/HTTP tests pass. Focused native suites are `make _db-alliances` and the alliance engine/application test filters. Exact source digest, timings, intermediate compilation issues and cleanup are recorded in `docs/plans/alliance-backend-handoff.md`.
+
+Final integrated validation, exact implementation revision, failures and cleanup are recorded in [Alliance validation](../verification/alliances.md).
