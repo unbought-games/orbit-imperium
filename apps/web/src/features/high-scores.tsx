@@ -4,7 +4,11 @@ import { createPortal } from 'react-dom'
 import { Search, Trophy } from 'lucide-react'
 import { bindingKey } from '../client-model/commands'
 import type { Coordinator } from '../client-model/coordinator'
-import { rankingPageSize, type RankingPlayer } from '../client-model/rankings'
+import {
+  rankingPageSize,
+  rankMovement,
+  type RankingPlayer,
+} from '../client-model/rankings'
 import { useGameSession } from '../shell/session-context'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Button } from '../ui/button'
@@ -14,6 +18,11 @@ import { useRankings } from './use-rankings'
 import styles from './high-scores.module.css'
 
 const number = (value: string | number) => BigInt(value).toLocaleString()
+const baselineTime = (at: number) =>
+  new Date(at).toLocaleString(undefined, {
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  })
 const scoring =
   'One point for every 1,000 resources invested in completed buildings, research, ships, and defenses. Ships in flight still count. Stockpiles, cargo, fuel, and unfinished work do not. Lost or consumed assets reduce your score.'
 
@@ -73,6 +82,13 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
           <p className={styles.myRank}>
             Your rank <strong>#{number(ranking.me.rank)}</strong>
             <span>{number(ranking.me.points)} points</span>
+            <span className={styles.myChange}>
+              Change{' '}
+              <RankMovement
+                row={ranking.me}
+                baselineAt={ranking.data?.baseline_at}
+              />
+            </span>
           </p>
         )}
       </div>
@@ -120,6 +136,21 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
           · {number(ranking.data.players.length)} players. Refresh to update.
         </p>
       )}
+      {ranking.data && (
+        <p className={styles.timestamp}>
+          {ranking.data.baseline_at != null ? (
+            <>
+              Rank change since yesterday’s first snapshot (UTC day):{' '}
+              <time dateTime={new Date(ranking.data.baseline_at).toISOString()}>
+                {baselineTime(ranking.data.baseline_at)}
+              </time>
+              . Positive means up the rankings.
+            </>
+          ) : (
+            'Rank changes unavailable: no snapshot from yesterday (UTC day). Daily history begins when someone opens High Scores.'
+          )}
+        </p>
+      )}
       {ranking.data?.processing_pending && (
         <p role="status">
           The universe is processing queued activity. These scores include
@@ -141,7 +172,9 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
             </caption>
             <thead>
               <tr>
-                <th scope="col">Rank</th>
+                <th scope="col">
+                  Rank <span className={styles.changeHeading}>Change</span>
+                </th>
                 <th scope="col">Player</th>
                 <th scope="col">Points</th>
               </tr>
@@ -152,7 +185,13 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                   key={row.player}
                   data-self={row.player === player || undefined}
                 >
-                  <td className={styles.rank}>{number(row.rank)}</td>
+                  <td className={styles.rank}>
+                    {number(row.rank)}
+                    <RankMovement
+                      row={row}
+                      baselineAt={ranking.data?.baseline_at}
+                    />
+                  </td>
                   <td>
                     <Button
                       variant="ghost"
@@ -232,12 +271,18 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
         <p>{scoring}</p>
         <p>
           Equal whole points share a rank. For example: 1, 1, 3. Search results
-          keep their universe rank.
+          keep their universe rank and movement. Change compares shared ranks,
+          including ties, with yesterday’s first observed snapshot (UTC day).
+          New means the player was absent from that snapshot; 0 means unchanged.
+          No observation yesterday means no comparison today. Daily snapshots
+          record committed updates and may include activity still waiting to
+          process.
         </p>
       </details>
       {ranking.selected && (
         <RankingDetails
           row={ranking.selected}
+          baselineAt={ranking.data?.baseline_at}
           onClose={() => {
             ranking.select(null)
             const target = opener.current?.isConnected
@@ -251,11 +296,34 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
   )
 }
 
+function RankMovement({
+  row,
+  baselineAt,
+}: {
+  row: RankingPlayer
+  baselineAt?: number | null
+}) {
+  const movement = rankMovement(row, baselineAt)
+  return (
+    <span
+      className={styles.movement}
+      data-direction={movement.direction}
+      role="img"
+      aria-label={movement.label}
+      title={movement.label}
+    >
+      {movement.text}
+    </span>
+  )
+}
+
 function RankingDetails({
   row,
+  baselineAt,
   onClose,
 }: {
   row: RankingPlayer
+  baselineAt?: number | null
   onClose: () => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -291,6 +359,15 @@ function RankingDetails({
           <dd>{number(row.points)}</dd>
         </div>
       </dl>
+      <p>
+        Rank change: <RankMovement row={row} baselineAt={baselineAt} />
+      </p>
+      {baselineAt != null && (
+        <p>
+          Compared with yesterday’s first snapshot (UTC day),{' '}
+          {baselineTime(baselineAt)}.
+        </p>
+      )}
       <p>From the ranking snapshot currently displayed.</p>
       <p>{scoring}</p>
       <Button variant="secondary" onClick={() => dialog.current?.close()}>

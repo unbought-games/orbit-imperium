@@ -19,6 +19,15 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
         let sampled_at = now(&mut tx).await?;
+        let day = sampled_at.div_euclid(86_400_000);
+        let baseline: Option<serde_json::Value> = sqlx::query_scalar(
+            "SELECT observation FROM ranking_observations WHERE universe=$1 AND epoch=$2 AND day=$3",
+        ).bind(b.universe.0).bind(b.epoch.0).bind(day - 1)
+            .fetch_optional(&mut *tx).await.map_err(db_error)?;
+        let recorded: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM ranking_observations WHERE universe=$1 AND epoch=$2 AND day=$3)",
+        ).bind(b.universe.0).bind(b.epoch.0).bind(day)
+            .fetch_one(&mut *tx).await.map_err(db_error)?;
         // Do not claim queued completions are reflected, or expose their times,
         // owners, inventory, or the universe's private revision.
         let processing_pending: bool = sqlx::query_scalar(
@@ -40,8 +49,30 @@ impl PgStore {
                 .collect::<Result<_, _>>()?,
             sampled_at,
             processing_pending,
+            baseline: baseline.map(decode::<RankingObservation>).transpose()?,
         };
         tx.commit().await.map_err(db_error)?;
+        if !recorded {
+            // Separate from the read-only game snapshot: record the exact source
+            // observation, with a unique daily key arbitrating concurrent readers.
+            let observation = RankingObservation {
+                sampled_at,
+                players: result.names.keys().copied().collect(),
+                lots: result.lots.clone(),
+            };
+            let mut history = self.begin_tx(self.read_pool()?).await?;
+            sqlx::query("INSERT INTO ranking_observations(universe,epoch,day,observation) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
+                .bind(b.universe.0).bind(b.epoch.0).bind(day)
+                .bind(serde_json::to_value(observation).map_err(|_| StoreError::CorruptData)?)
+                .execute(&mut *history).await.map_err(db_error)?;
+            sqlx::query("DELETE FROM ranking_observations WHERE universe=$1 AND day<$2")
+                .bind(b.universe.0)
+                .bind(day - 1)
+                .execute(&mut *history)
+                .await
+                .map_err(db_error)?;
+            history.commit().await.map_err(db_error)?;
+        }
         Ok(result)
     }
 }

@@ -48,6 +48,7 @@ export async function installGameFixture(
   page: Page,
   options: {
     universeName?: string
+    dimensions?: { galaxies: number; systems_per_galaxy: number }
     catalog?: components['schemas']['CatalogEntry3'][]
     research?: components['schemas']['Research3'][]
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
@@ -152,6 +153,7 @@ export async function installGameFixture(
       galaxies: 1,
       systems_per_galaxy: 499,
       positions_per_system: 15,
+      ...options.dimensions,
     }
 
     const view = {

@@ -15,9 +15,37 @@ async function setup(page: Page) {
   }
   await shellFixture(page, {
     protocol: 4,
-    bodies: [body, colony],
-    extraCapabilities: ['Attack', 'Espionage', 'Harvest', 'Deploy', 'Reports'],
+    bodies: [
+      {
+        ...body,
+        name: 'Aster Haven',
+        inventories: [
+          ...body.inventories,
+          ...(['EspionageProbe', 'Recycler', 'ColonyShip'] as const).map(
+            (id) => ({ item: { kind: 'Ship' as const, id }, count: '1' }),
+          ),
+        ],
+      },
+      { ...colony, name: 'Haven Colony' },
+    ],
+    playerNames: { [binding.player]: 'Commander' },
+    research: [{ research: 'Astrophysics', level: 8 }],
+    extraCapabilities: [
+      'Attack',
+      'Espionage',
+      'Harvest',
+      'Deploy',
+      'Reports',
+      'Colonize',
+    ],
     catalog: [
+      ...(['EspionageProbe', 'Recycler', 'ColonyShip'] as const).map((id) => ({
+        key: { kind: 'Ship' as const, id },
+        requirements: [],
+        enabled: true,
+        mobile: true,
+        body_kinds: ['Planet' as const],
+      })),
       {
         key: { kind: 'Ship', id: 'SmallCargo' },
         requirements: [],
@@ -39,6 +67,8 @@ async function setup(page: Page) {
     quoteError: null as S['GameError4'] | null,
     launchError: 'BeginnerProtected' as S['GameError4'] | null,
     destination: null as S['MissionDestination4'] | null,
+    observationAvailable: true,
+    duration: 100000,
     resolves: 0,
     quotes: 0,
     launches: 0,
@@ -54,6 +84,7 @@ async function setup(page: Page) {
         galaxy: query.galaxy,
         system: query.system,
         observed_at: 1000,
+        player_names: { [id(30)]: 'Stargazer' },
         positions: Array.from({ length: 15 }, (_, i) => ({
           coordinates: {
             galaxy: query.galaxy,
@@ -61,7 +92,7 @@ async function setup(page: Page) {
             position: i + 1,
           },
           body:
-            i === 0
+            i === 0 && state.observationAvailable
               ? {
                   id: id(20),
                   kind: 'Planet',
@@ -88,12 +119,18 @@ async function setup(page: Page) {
               coordinates: query.selection.coordinates,
               field_identity: id(40),
             }
-          : {
-              type: 'Body',
-              id: own ? colony.id : id(20),
-              expected_kind: 'Planet',
-              expected_owner: own ? binding.player : id(30),
-            })
+          : query.selection.type === 'EmptyPositionAt'
+            ? {
+                type: 'EmptyPosition',
+                coordinates: query.selection.coordinates,
+                slot_revision: '1',
+              }
+            : {
+                type: 'Body',
+                id: own ? colony.id : id(20),
+                expected_kind: 'Planet',
+                expected_owner: own ? binding.player : id(30),
+              })
     } else {
       state.quotes++
       if (state.quoteError)
@@ -106,7 +143,7 @@ async function setup(page: Page) {
         profile_hash: 'a'.repeat(64),
         distance: 1000,
         speeds: [],
-        duration_ms: (100000 * 100) / query.intent.speed_percent,
+        duration_ms: (state.duration * 100) / query.intent.speed_percent,
         fuel: '1000000',
         capacity: '5000000000',
         maximum_payload: '4999000000',
@@ -233,7 +270,11 @@ for (const historical of [true, false]) {
         await page.getByRole('button', { name: 'Edit mission' }).click()
     }
     const launch = page.waitForRequest('**/commands')
-    await page.getByRole('button', { name: /^Send / }).click()
+    await page
+      .getByRole('button', {
+        name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+      })
+      .click()
     expect((await launch).postDataJSON().gameplay.command).toMatchObject({
       type: 'World',
       action: {
@@ -329,7 +370,11 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
   await expect(ship).toHaveValue('1')
   for (const field of cargo) await expect(field).toHaveValue('42')
   await review(page).click()
-  await page.getByRole('button', { name: /^Send / }).click()
+  await page
+    .getByRole('button', {
+      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    })
+    .click()
   await expect(ship).toHaveValue('0')
   await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue('0')
   for (const field of cargo) await expect(field).toHaveValue('0')
@@ -367,7 +412,11 @@ test('editing a new draft clears the previous launch receipt', async ({
   const state = await setup(page)
   state.launchError = null
   await review(page).click()
-  await page.getByRole('button', { name: /^Send / }).click()
+  await page
+    .getByRole('button', {
+      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    })
+    .click()
   await expect(dispatchResult(page)).toContainText('Fleet sent.')
   await page.getByLabel('Small Cargo · 2 available').fill('2')
   await expect(dispatchResult(page)).toHaveCount(0)
@@ -412,7 +461,11 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
     })
     await review(page).click()
     try {
-      await page.getByRole('button', { name: /^Send / }).click()
+      await page
+        .getByRole('button', {
+          name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+        })
+        .click()
       await expect(dispatchResult(page)).toContainText('Sending fleet order…')
       await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
       await expect.poll(() => launches).toBe(1)
@@ -475,7 +528,11 @@ test('a delayed successful launch does not erase edits for the next fleet', asyn
     await route.fallback()
   })
   await review(page).click()
-  await page.getByRole('button', { name: /^Send / }).click()
+  await page
+    .getByRole('button', {
+      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    })
+    .click()
   await expect(dispatchResult(page)).toContainText('Sending fleet order…')
   const ship = page.getByLabel(/Small Cargo · \d+ available/)
   await ship.fill('2')
@@ -756,6 +813,9 @@ test('pasting coordinates fills the unified field and preserves validation', asy
 test('coordinate errors appear beside entry before review, including pasted emoji and ranges', async ({
   page,
 }) => {
+  const now = new Date('2026-10-25T12:00:00Z')
+  await page.clock.install({ time: now })
+  await page.clock.pauseAt(now)
   const state = await setup(page)
   const position = page.getByLabel('Destination coordinates', { exact: true })
   for (const value of [
@@ -775,9 +835,13 @@ test('coordinate errors appear beside entry before review, including pasted emoj
       /position number from 1 to 15/,
     )
     await expect(review(page)).toBeDisabled()
+    // Invalid coordinates must not request timing even after its debounce fires.
+    await page.clock.runFor(1000)
+    expect(state.resolves).toBe(0)
+    expect(state.quotes).toBe(0)
   }
-  await setDestination(page, { position: '1' })
-  await setDestination(page, { system: '500' })
+  // Keep this edit invalid throughout; a temporary valid position can resolve.
+  await setDestination(page, { position: '1', system: '500' })
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveAccessibleDescription(/Enter a system number from 1 to 499./)
@@ -786,6 +850,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveAccessibleDescription(/Enter a galaxy number from 1 to 1./)
   await setDestination(page, { position: '🏎️' })
+  await page.clock.runFor(1000)
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     expect(
@@ -805,6 +870,9 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   await setDestination(page, { position: '15' })
   await expect(review(page)).toBeEnabled()
   await expect(position).toHaveAttribute('aria-invalid', 'false')
+  await page.clock.runFor(1000)
+  await expect.poll(() => state.resolves).toBe(1)
+  await expect.poll(() => state.quotes).toBe(1)
 })
 
 test('own-planet attack is actionable, while transport to another owned planet and own-position harvest stay available', async ({
@@ -862,7 +930,11 @@ test('protection is explained before review, rechecked at review, and launch rac
   await page.getByLabel('Metal', { exact: true }).fill('42')
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-  await page.getByRole('button', { name: /^Send / }).click()
+  await page
+    .getByRole('button', {
+      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    })
+    .click()
   await expect(
     page.getByRole('complementary', { name: 'Action needs attention' }),
   ).toContainText('Fleet not sent: Beginner protection prevents')
@@ -1035,3 +1107,152 @@ for (const width of [320, 390, 1280]) {
     await expect(coordinate).toBeVisible()
   })
 }
+
+for (const kind of [
+  'Attack',
+  'Transport',
+  'Deploy',
+  'Espionage',
+  'Harvest',
+  'Colonize',
+] as const) {
+  test(`review clearly identifies ${kind}, its route and conditional return`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 1000 })
+    const state = await setup(page)
+    state.duration = 1172000
+    const requiredShip = {
+      Espionage: 'Espionage Probe',
+      Harvest: 'Recycler',
+      Colonize: 'Colony Ship',
+    }[kind as 'Espionage' | 'Harvest' | 'Colonize']
+    if (requiredShip) {
+      await page.getByLabel('Small Cargo · 2 available').fill('0')
+      await page.getByLabel(`${requiredShip} · 1 available`).fill('1')
+    }
+    await mission(page).selectOption(kind)
+    if (kind === 'Deploy') await setDestination(page, { position: '2' })
+    if (kind === 'Colonize') await setDestination(page, { position: '6' })
+    if (['Attack', 'Transport', 'Espionage'].includes(kind))
+      await expect(
+        page.getByText('Destination: Ember Watch', { exact: false }),
+      ).toBeVisible()
+    await review(page).click()
+    const quote = page.getByRole('region', { name: 'Fleet quote' })
+    await expect(quote).toBeFocused()
+    const heading = quote.getByRole('heading', { level: 2 })
+    expect(
+      await heading.evaluate((element) => {
+        const box = element.getBoundingClientRect()
+        const hit = document.elementFromPoint(
+          box.x + box.width / 2,
+          box.y + box.height / 2,
+        )
+        return element === hit || element.contains(hit)
+      }),
+    ).toBe(true)
+    await expect(quote.getByRole('heading', { level: 2 })).toHaveText(
+      `Review dispatch: ${kind}`,
+    )
+    await expect(quote).toContainText('Commander')
+    await expect(quote).toContainText('19m 32s')
+    await expect(quote).toContainText('Payload capacity 4,999 after fuel')
+    await expect(quote.getByText('Fleet slots:', { exact: false })).toHaveCount(
+      1,
+    )
+    await expect(page.getByText(/^Origin .*Fleet slots:/)).toHaveCount(0)
+    const action = quote.getByRole('button', {
+      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    })
+    await expect(action).toBeEnabled()
+    if (kind === 'Deploy') {
+      await expect(quote).toContainText('No scheduled return')
+      await expect(quote.locator('time')).toHaveCount(1)
+    } else {
+      await expect(quote.locator('time')).toHaveCount(2)
+      const times = await quote
+        .locator('time')
+        .evaluateAll((elements) =>
+          elements.map((e) => Date.parse(e.getAttribute('datetime')!)),
+        )
+      expect(times[1] - times[0]).toBe(1172000)
+    }
+    if (kind === 'Colonize') {
+      await expect(quote).toContainText('Empty position')
+      await expect(quote).toContainText('Return if needed')
+      await expect(quote).toContainText('no return leg')
+    }
+    if (kind === 'Harvest') {
+      await expect(quote).toContainText('Debris field')
+      await expect(
+        quote.getByRole('link', { name: /View destination/ }),
+      ).toHaveAttribute('href', /target=debris/)
+    }
+    if (kind === 'Attack' || kind === 'Espionage')
+      await expect(quote).toContainText('Return if surviving')
+    if (['Attack', 'Transport', 'Espionage'].includes(kind)) {
+      await expect(quote).toContainText('Ember Watch')
+      await expect(quote).toContainText('Stargazer')
+    }
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 1000 })
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width)
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, {
+        path: `test-results/dispatch-review-${kind}-${width}.png`,
+        fullPage: true,
+      })
+    }
+    // Keyboard editing preserves the draft and returns focus to review.
+    await quote.getByRole('button', { name: 'Edit mission' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(review(page)).toBeFocused()
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(
+      requiredShip ? '0' : '1',
+    )
+    expect(state.launches).toBe(0)
+  })
+}
+
+test('review retains honest unknown identities and keyboard coordinate actions', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  state.observationAvailable = false
+  await mission(page).selectOption('Attack')
+  await setDestination(page, { system: '2' })
+  await review(page).click()
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  await expect(quote).toContainText('Unknown planet')
+  await expect(quote).not.toContainText('Ember Watch')
+  const actions = quote.getByRole('button', {
+    name: 'Location actions for [1:2:1]',
+  })
+  await actions.focus()
+  await page.keyboard.press('Enter')
+  await expect(
+    page.getByRole('menuitem', { name: 'Copy coordinates', exact: true }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(actions).toBeFocused()
+})
+
+test('historical review tucks observation context into accessible flight details', async ({
+  page,
+}) => {
+  await setup(page)
+  await prepareHistoricalDraft(page)
+  await review(page).click()
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  const context = quote.getByText('Prepared from an observation at', {
+    exact: false,
+  })
+  await expect(context).toBeHidden()
+  await quote.locator('summary').focus()
+  await page.keyboard.press('Enter')
+  await expect(context).toBeVisible()
+  await expect(context).toContainText('historical information')
+})

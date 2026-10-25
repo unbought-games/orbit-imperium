@@ -279,7 +279,11 @@ test('production controls show satellite quantity and submit group throttling', 
   await expect(row).toContainText('2')
   await expect(row).toContainText('60')
   await expect(row).toContainText('30')
-  await row.getByRole('combobox').selectOption('50')
+  const slider = row.getByRole('slider')
+  await slider.focus()
+  await slider.press('Home')
+  for (let i = 0; i < 5; i++) await slider.press('ArrowRight')
+  await expect(slider).toHaveValue('50')
   await expect
     .poll(() => sent)
     .toMatchObject({

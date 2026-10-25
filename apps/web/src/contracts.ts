@@ -4012,6 +4012,169 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/universes/{universe}/combat-simulation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SimulationQuery"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SimulationResponse"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/reports/{report}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["manageReportShare"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/shared-reports/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["readSharedReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4108,6 +4271,8 @@ export interface components {
             target_level: number;
             due_at: number;
             paid: components["schemas"]["Resources"];
+            /** @description Recorded server start time. Older servers may omit this field. */
+            started_at?: number;
         };
         QuoteRequest: {
             /** @constant */
@@ -4566,6 +4731,8 @@ export interface components {
             target_level: number;
             due_at: number;
             paid: components["schemas"]["Resources"];
+            /** @description Recorded server start time. Older servers may omit this field. */
+            started_at?: number;
         };
         ShipRequest3: {
             /** Format: uuid */
@@ -5182,6 +5349,12 @@ export interface components {
             body: string;
             /** @description 1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected. */
             name: string;
+        } | {
+            /** @constant */
+            type: "SetReportStarred";
+            /** Format: uuid */
+            report: string;
+            starred: boolean;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -5497,6 +5670,11 @@ export interface components {
             read: boolean;
             hidden: boolean;
             preview?: components["schemas"]["ReportPreview4"];
+            starred?: boolean;
+            /** @description Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable. */
+            fleet_investment?: string | null;
+            /** @description Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable. */
+            defense_investment?: string | null;
         };
         ReportsPage4: {
             items: components["schemas"]["ReportHeader4"][];
@@ -6078,6 +6256,7 @@ export interface components {
             username: string;
             rank: number;
             points: components["schemas"]["Decimal"];
+            previous_rank?: number | null;
         };
         Rankings: {
             binding: components["schemas"]["Binding"];
@@ -6086,10 +6265,12 @@ export interface components {
             sampled_at: number;
             processing_pending: boolean;
             players: components["schemas"]["RankingPlayer"][];
+            baseline_at?: number | null;
         };
         ShipStatistics3: {
             propulsion: components["schemas"]["ShipPropulsionStatistics3"] | null;
             combat: components["schemas"]["ShipCombatStatistics3"] | null;
+            cost?: string[];
         };
         ShipPropulsionStatistics3: {
             cargo_capacity: string;
@@ -6097,11 +6278,13 @@ export interface components {
             fuel_consumption: string;
             drive: components["schemas"]["ResearchId3"];
             impulse_upgrade: components["schemas"]["ShipImpulseStatistics3"] | null;
+            drive_coefficient?: string[];
         };
         ShipImpulseStatistics3: {
             minimum_level: number;
             base_speed: string;
             fuel_consumption: string;
+            drive_coefficient?: string[];
         };
         /** @description Base combat statistics without research bonuses, in 1/100,000 points. */
         ShipCombatStatistics3: {
@@ -6110,6 +6293,7 @@ export interface components {
             hull_ticks: string;
             rapid_fire_against: components["schemas"]["ShipRapidFireStatistics3"][];
             rapid_fire_from: components["schemas"]["ShipRapidFireStatistics3"][];
+            technology_bonus?: string[];
         };
         ShipRapidFireStatistics3: {
             unit: components["schemas"]["ItemKey3"];
@@ -6132,6 +6316,76 @@ export interface components {
             combat: components["schemas"]["ShipCombatStatistics3"] | null;
             storage_capacities: string[] | null;
         };
+        SimulationUnit: {
+            item: components["schemas"]["ItemKey3"];
+            count: number;
+        };
+        SimulationSide: {
+            technology: number[];
+            units: components["schemas"]["SimulationUnit"][];
+        };
+        SimulationInputs: {
+            attacker: components["schemas"]["SimulationSide"];
+            defender: components["schemas"]["SimulationSide"];
+        };
+        SimulationQuery: {
+            context: components["schemas"]["QueryContext"];
+            inputs: components["schemas"]["SimulationInputs"];
+        };
+        SimulationSample: {
+            /** @enum {unknown} */
+            outcome: "AttackerVictory" | "DefenderVictory" | "MutualDestruction" | "Draw";
+            rounds: number;
+            attacker: components["schemas"]["SimulationUnit"][];
+            defender: components["schemas"]["SimulationUnit"][];
+        };
+        SimulationResponse: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            profile_hash: string;
+            samples: components["schemas"]["SimulationSample"][];
+        };
+        ReportShareOptions: {
+            include_identity: boolean;
+            include_coordinates: boolean;
+        };
+        ReportShareStatus: {
+            /** Format: uuid */
+            token: string | null;
+            options: components["schemas"]["ReportShareOptions"] | null;
+        };
+        ReportShareAction: {
+            /** @constant */
+            type: "Status";
+        } | {
+            /** @constant */
+            type: "Create";
+            options: components["schemas"]["ReportShareOptions"];
+        } | {
+            /** @constant */
+            type: "Revoke";
+        };
+        ReportShareRequest: {
+            context: components["schemas"]["QueryContext"];
+            action: components["schemas"]["ReportShareAction"];
+        };
+        SharedReport: {
+            /** Format: uuid */
+            report: string;
+            observed_at: number;
+            options: components["schemas"]["ReportShareOptions"];
+            player_names: {
+                [key: string]: string;
+            };
+            /** @description Redacted recipient observation: internal identifiers replaced with report-local labels, return timings omitted, names and coordinates only by explicit opt-in. Unknown espionage sections contain no value. */
+            payload: {
+                /** @enum {unknown} */
+                kind: "Combat" | "ContactLost" | "Espionage";
+            } & {
+                [key: string]: unknown;
+            };
+        };
     };
     responses: never;
     parameters: never;
@@ -6140,4 +6394,153 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    manageReportShare: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": string;
+            };
+            path: {
+                universe: string;
+                report: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportShareRequest"];
+            };
+        };
+        responses: {
+            /** @description Current recipient sharing status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportShareStatus"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+        };
+    };
+    readSharedReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public unlisted report, no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedReport"];
+                };
+            };
+            /** @description Unavailable, deleted, or revoked report */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+}

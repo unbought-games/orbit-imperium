@@ -4,6 +4,7 @@ import {
   acceptReportVisibility,
   mergeReportHeaders,
   projectedReportHeader,
+  supersededReportFailures,
 } from './report-state'
 
 const header = {
@@ -105,4 +106,45 @@ it('rolls back an optimistic restore to the last confirmed deletion', () => {
     projectedReportHeader(deleted, [attempt('rejected', false)], 'report')
       ?.hidden,
   ).toBe(true)
+})
+
+it('projects stars optimistically, rolls back rejected stars and persists confirmed protection across stale responses', () => {
+  const star = attempt('submitting')
+  star.envelope.command = {
+    type: 'World',
+    action: { type: 'SetReportStarred', report: 'report', starred: true },
+  }
+  expect(projectedReportHeader(headers, [star], 'report')?.starred).toBe(true)
+  expect(
+    projectedReportHeader(headers, [{ ...star, status: 'rejected' }], 'report')
+      ?.starred,
+  ).toBeUndefined()
+  const committed = acceptReportVisibility(headers, star, receipt)
+  expect(
+    projectedReportHeader(
+      mergeReportHeaders(committed, [header], '1'),
+      [],
+      'report',
+    )?.starred,
+  ).toBe(true)
+  expect(committed.get('report')?.header.hidden).toBe(false)
+})
+
+it('a confirmed star clears only earlier star failures, leaving deletion failures visible', () => {
+  const star = attempt('rejected')
+  star.envelope.command = {
+    type: 'World',
+    action: { type: 'SetReportStarred', report: 'report', starred: true },
+  }
+  const ledger = new Map([
+    ['hide-failure', attempt('rejected')],
+    ['star-failure', star],
+    [
+      'star-success',
+      { ...star, status: 'committed' as const, reconciled: true },
+    ],
+  ])
+  expect(supersededReportFailures(ledger).map(([id]) => id)).toEqual([
+    'star-failure',
+  ])
 })

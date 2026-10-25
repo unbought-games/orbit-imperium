@@ -154,6 +154,19 @@ impl IdentityStore for GatedStore {
 
 // The router requires both ports, but authentication must never call GameStore.
 impl GameStore for GatedStore {
+    async fn shared_report(&self, token: uuid::Uuid) -> Result<SharedReport, StoreError> {
+        if !token.is_nil() {
+            return Err(StoreError::NotFound);
+        }
+        Ok(SharedReport {
+            report: ReportId(token),
+            observed_at: 1000,
+            options: Default::default(),
+            player_names: Default::default(),
+            payload: serde_json::json!({"kind":"ContactLost"}),
+        })
+    }
+
     async fn admit(
         &self,
         _: Actor,
@@ -766,6 +779,95 @@ async fn activity_renewal_requires_origin_csrf_and_cookie_and_only_sets_cookie_o
             assert!(cookie.ends_with("; Secure"));
         } else {
             assert!(!response.headers().contains_key(header::SET_COOKIE));
+        }
+    }
+}
+
+#[tokio::test]
+async fn public_reports_need_no_session_but_sharing_management_requires_auth_origin_and_csrf() {
+    let (entered, _started) = mpsc::unbounded_channel();
+    let store = GatedStore {
+        hold_policy: false,
+        oidc_status: Arc::default(),
+        memberships: Arc::default(),
+        entered,
+        login: Arc::new(StdMutex::new(None)),
+        signup: Arc::new(StdMutex::new(None)),
+        policy: Arc::new(StdMutex::new(Ok(None))),
+    };
+    let app = router(
+        store,
+        HttpConfig {
+            origin: "https://game.test".into(),
+            secure_cookies: true,
+            assets: "absent".into(),
+            login_per_minute: 100,
+            signup: None,
+            signup_per_minute: 100,
+            legacy_signup_enabled: false,
+            trusted_fly_proxies: vec![],
+            wake: None,
+            observer: None,
+        },
+    );
+    let public = "/api/v4/shared-reports/00000000-0000-0000-0000-000000000000";
+    let response = app
+        .clone()
+        .oneshot(Request::get(public).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+    assert_eq!(
+        response.headers()["x-robots-tag"],
+        "noindex, nofollow, noarchive"
+    );
+    assert_eq!(response.headers()["referrer-policy"], "no-referrer");
+    let unavailable = app
+        .clone()
+        .oneshot(
+            Request::get("/api/v4/shared-reports/00000000-0000-4000-8000-000000000001")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unavailable.status(), StatusCode::NOT_FOUND);
+    let path = "/api/v4/universes/00000000-0000-0000-0000-000000000000/reports/00000000-0000-0000-0000-000000000000/share";
+    for action in ["Status", "Create", "Revoke"] {
+        for (cookie, origin, csrf, expected) in [
+            (false, "https://game.test", "csrf", StatusCode::UNAUTHORIZED),
+            (true, "https://game.test", "wrong", StatusCode::FORBIDDEN),
+            (true, "https://evil.test", "csrf", StatusCode::FORBIDDEN),
+        ] {
+            let b = Binding {
+                account: AccountId::default(),
+                player: PlayerId::default(),
+                universe: UniverseId::default(),
+                epoch: Epoch::default(),
+            };
+            let action = if action == "Create" {
+                serde_json::json!({"type":action,"options":{"include_identity":false,"include_coordinates":false}})
+            } else {
+                serde_json::json!({"type":action})
+            };
+            let body = serde_json::json!({"context":{"binding":b,"request_id":uuid::Uuid::nil()},"action":action});
+            let mut request = Request::post(path)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::ORIGIN, origin)
+                .header("x-csrf-token", csrf);
+            if cookie {
+                request =
+                    request.header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)));
+            }
+            assert_eq!(
+                app.clone()
+                    .oneshot(request.body(Body::from(body.to_string())).unwrap())
+                    .await
+                    .unwrap()
+                    .status(),
+                expected
+            );
         }
     }
 }

@@ -1,9 +1,9 @@
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { shellFixture, binding, id, body } from './fixtures/game'
+import { installGameFixture, binding, id, body } from './fixtures/game'
 
 test('High Scores keeps one snapshot through search and paging, finds me, and opens accessible details', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   const players = Array.from({ length: 123 }, (_, i) => ({
     player: i === 80 ? binding.player : id(1000 + i),
     username: i === 80 ? 'My Commander' : i === 0 ? 'A very long commander name across the distant stars' : `Pilot ${i}`,
@@ -26,8 +26,8 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(page.getByRole('heading', { name: 'High Scores', exact: true })).toBeVisible()
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   await expect(table.getByRole('row')).toHaveCount(51)
-  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('1')
-  await expect(table.getByRole('row').nth(2).getByRole('cell').first()).toHaveText('1')
+  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('1—')
+  await expect(table.getByRole('row').nth(2).getByRole('cell').first()).toHaveText('1—')
   for (const width of [1440, 768, 390, 360, 320]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -48,7 +48,7 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(table).not.toContainText('Pilot 49')
   await page.getByRole('searchbox', { name: 'Find a player' }).fill('pILot 122')
   await expect(table.getByRole('row')).toHaveCount(2)
-  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('123')
+  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('123—')
   await page.getByRole('button', { name: 'Around me', exact: true }).click()
   await expect(page.getByRole('searchbox', { name: 'Find a player' })).toHaveValue('')
   await expect(table.locator('tr[data-self]')).toContainText('My Commander')
@@ -74,7 +74,7 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
 })
 
 test('High Scores has a retryable initial error and honest empty result', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   let failed = true
   await page.route('**/rankings', route => failed
     ? route.fulfill({ status: 503, json: { code: 'Unavailable' } })
@@ -88,7 +88,7 @@ test('High Scores has a retryable initial error and honest empty result', async 
 })
 
 test('a refresh removing the selected player closes details, restores useful focus, and does not reopen them later', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   const players = [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }]
   let visible = true, requests = 0
   let release!: () => void
@@ -116,7 +116,7 @@ test('a refresh removing the selected player closes details, restores useful foc
 })
 
 test('browser navigation away from player details leaves the destination usable', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }] } }))
   await page.goto(`/u/andromeda/overview?body=${body.id}`)
   await page.getByRole('button', { name: 'Menu', exact: true }).click()
@@ -128,4 +128,43 @@ test('browser navigation away from player details leaves the destination usable'
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Menu', exact: true }).click()
   await expect(page.getByRole('link', { name: 'High Scores', exact: true })).toBeVisible()
+})
+
+test('rank movement is accessible, stable through filters and paging, and refreshes with its baseline', async ({ page }) => {
+  await installGameFixture(page, { protocol: 4 })
+  let baseline: number | null = 1792800000000
+  const players = Array.from({ length: 55 }, (_, i) => ({
+    player: i === 54 ? binding.player : id(5000 + i), username: `Mover ${i}`, points: `${100 - i}`, rank: i + 1,
+    previous_rank: i === 0 ? 3 : i === 1 ? 1 : i === 2 ? null : i + 1,
+  }))
+  await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1792886400000, baseline_at: baseline, processing_pending: false, players } }))
+  await page.goto('/u/andromeda/high-scores')
+  const table = page.getByRole('table')
+  await expect(page.getByText('Rank change since yesterday’s first snapshot', { exact: false })).toBeVisible()
+  await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText('+2')
+  await expect(table.getByLabel('Down 1 place since the baseline')).toHaveText('−1')
+  await expect(table.getByLabel('New to the rankings since the baseline')).toHaveText('New')
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/rank-movement-${width}.png` })
+  }
+  await page.getByRole('searchbox').fill('Mover 0')
+  await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText('+2')
+  await table.getByRole('button', { name: 'Mover 0', exact: true }).click()
+  await expect(page.getByRole('dialog').getByLabel('Up 2 places since the baseline')).toHaveText('+2')
+  await page.keyboard.press('Escape')
+  await expect(table.getByRole('button', { name: 'Mover 0', exact: true })).toBeFocused()
+  await page.getByRole('button', { name: 'Top players' }).click()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await expect(table.getByLabel('Rank unchanged since the baseline')).toHaveCount(5)
+  await page.getByRole('button', { name: 'Around me' }).click()
+  await expect(table.locator('tr[data-self]').getByLabel('Rank unchanged since the baseline')).toHaveText('0')
+  players[54].rank = 50
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(table.locator('tr[data-self]').getByLabel('Up 5 places since the baseline')).toHaveText('+5')
+  baseline = null
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(table.locator('tr[data-self]').getByLabel('Rank change unavailable: no snapshot from yesterday')).toHaveText('—')
+  await expect(page.getByText('Rank changes unavailable:', { exact: false })).toBeVisible()
 })

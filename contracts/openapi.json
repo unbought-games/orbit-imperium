@@ -4332,6 +4332,330 @@
         },
         "description": "Read a complete universe total-score ranking from one committed snapshot. Search and pagination retain that response until explicit refresh. Does not advance gameplay."
       }
+    },
+    "/api/v4/universes/{universe}/combat-simulation": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationQuery"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v4/universes/{universe}/reports/{report}/share": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "report",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current recipient sharing status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportShareStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportShareRequest"
+              }
+            }
+          }
+        },
+        "operationId": "manageReportShare"
+      }
+    },
+    "/api/v4/shared-reports/{token}": {
+      "get": {
+        "operationId": "readSharedReport",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public unlisted report, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unavailable, deleted, or revoked report"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4715,6 +5039,12 @@
           },
           "paid": {
             "$ref": "#/components/schemas/Resources"
+          },
+          "started_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Recorded server start time. Older servers may omit this field."
           }
         },
         "required": [
@@ -6616,6 +6946,12 @@
           },
           "paid": {
             "$ref": "#/components/schemas/Resources"
+          },
+          "started_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Recorded server start time. Older servers may omit this field."
           }
         },
         "required": [
@@ -9333,6 +9669,27 @@
               "name"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "SetReportStarred"
+              },
+              "report": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "starred": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "report",
+              "starred"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -10692,6 +11049,25 @@
           },
           "preview": {
             "$ref": "#/components/schemas/ReportPreview4"
+          },
+          "starred": {
+            "type": "boolean"
+          },
+          "fleet_investment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+$",
+            "description": "Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable."
+          },
+          "defense_investment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+$",
+            "description": "Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable."
           }
         },
         "required": [
@@ -13196,6 +13572,14 @@
           },
           "points": {
             "$ref": "#/components/schemas/Decimal"
+          },
+          "previous_rank": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 4294967295
           }
         }
       },
@@ -13230,6 +13614,14 @@
             "items": {
               "$ref": "#/components/schemas/RankingPlayer"
             }
+          },
+          "baseline_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 8640000000000000
           }
         }
       },
@@ -13255,6 +13647,15 @@
                 "type": "null"
               }
             ]
+          },
+          "cost": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 3,
+            "maxItems": 3
           }
         },
         "required": [
@@ -13290,6 +13691,15 @@
                 "type": "null"
               }
             ]
+          },
+          "drive_coefficient": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [
@@ -13315,6 +13725,15 @@
           "fuel_consumption": {
             "type": "string",
             "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "drive_coefficient": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [
@@ -13350,6 +13769,15 @@
             "items": {
               "$ref": "#/components/schemas/ShipRapidFireStatistics3"
             }
+          },
+          "technology_bonus": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [
@@ -13485,6 +13913,299 @@
           "bonuses",
           "combat",
           "storage_capacities"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationUnit": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemKey3"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000
+          }
+        },
+        "required": [
+          "item",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationSide": {
+        "type": "object",
+        "properties": {
+          "technology": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationUnit"
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "technology",
+          "units"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationInputs": {
+        "type": "object",
+        "properties": {
+          "attacker": {
+            "$ref": "#/components/schemas/SimulationSide"
+          },
+          "defender": {
+            "$ref": "#/components/schemas/SimulationSide"
+          }
+        },
+        "required": [
+          "attacker",
+          "defender"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationQuery": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/SimulationInputs"
+          }
+        },
+        "required": [
+          "context",
+          "inputs"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationSample": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "enum": [
+              "AttackerVictory",
+              "DefenderVictory",
+              "MutualDestruction",
+              "Draw"
+            ]
+          },
+          "rounds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "attacker": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationUnit"
+            }
+          },
+          "defender": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationUnit"
+            }
+          }
+        },
+        "required": [
+          "outcome",
+          "rounds",
+          "attacker",
+          "defender"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationResponse": {
+        "type": "object",
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profile_hash": {
+            "type": "string"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationSample"
+            },
+            "minItems": 10,
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "binding",
+          "request_id",
+          "profile_hash",
+          "samples"
+        ],
+        "additionalProperties": false
+      },
+      "ReportShareOptions": {
+        "type": "object",
+        "properties": {
+          "include_identity": {
+            "type": "boolean"
+          },
+          "include_coordinates": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "include_identity",
+          "include_coordinates"
+        ],
+        "additionalProperties": false
+      },
+      "ReportShareStatus": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "options": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReportShareOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "token",
+          "options"
+        ],
+        "additionalProperties": false
+      },
+      "ReportShareAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "Status"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "Create"
+              },
+              "options": {
+                "$ref": "#/components/schemas/ReportShareOptions"
+              }
+            },
+            "required": [
+              "type",
+              "options"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "Revoke"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ReportShareRequest": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ReportShareAction"
+          }
+        },
+        "required": [
+          "context",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "SharedReport": {
+        "type": "object",
+        "properties": {
+          "report": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "observed_at": {
+            "type": "integer"
+          },
+          "options": {
+            "$ref": "#/components/schemas/ReportShareOptions"
+          },
+          "player_names": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "Combat",
+                  "ContactLost",
+                  "Espionage"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true,
+            "description": "Redacted recipient observation: internal identifiers replaced with report-local labels, return timings omitted, names and coordinates only by explicit opt-in. Unknown espionage sections contain no value."
+          }
+        },
+        "required": [
+          "report",
+          "observed_at",
+          "options",
+          "player_names",
+          "payload"
         ],
         "additionalProperties": false
       }

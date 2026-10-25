@@ -88,17 +88,35 @@
 .table th:nth-child(2) {
   width: 10%;
 }
-.table th:last-child {
-  width: 110px;
-}
 .table tbody th {
   font-weight: 400;
   color: var(--text);
 }
-.table select {
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 36rem;
+}
+.slider input {
+  min-width: 0;
+  width: 100%;
   min-height: 44px;
-  padding: 8px;
-  font-size: 0.9375rem;
+  margin: 0;
+  accent-color: var(--ice);
+  cursor: pointer;
+}
+.slider input:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.percentage {
+  min-width: 5ch;
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ice);
 }
 .save {
   display: flex;
@@ -135,7 +153,7 @@
   }
   .table tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 70px 95px;
+    grid-template-columns: minmax(0, 1fr) auto;
     padding-block: 12px;
     border-bottom: 1px solid var(--border);
   }
@@ -154,10 +172,6 @@
   .table td:nth-child(3) {
     grid-row: 2;
     grid-column: 1 / -1;
-  }
-  .table td:last-child {
-    grid-row: 1;
-    grid-column: 3;
   }
   .save {
     align-items: stretch;

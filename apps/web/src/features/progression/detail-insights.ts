@@ -207,23 +207,65 @@ function minePlanetOutput(
   }
 }
 
+export type AffordabilityBlocker = {
+  resource: Resource
+  reason: 'capacity' | 'unknown' | 'no-production' | 'draining'
+  capacity: string
+}
+
+/** Reasons are derived from the same live balances and costs as affordability. */
+export function affordabilityForecast(
+  view: ProgressionProps['view'],
+  body: S['BodyV3'],
+  cost: S['Resources'],
+) {
+  const rates = rawResourceRates(view, body)
+  const blockers: AffordabilityBlocker[] = []
+  let wait = 0
+  for (const resource of ['metal', 'crystal', 'deuterium'] as const) {
+    const missing = BigInt(cost[resource]) - BigInt(body.amounts[resource])
+    // Delivered resources can legitimately exceed storage capacity.
+    if (missing <= 0n) continue
+    const capacity = body.capacity[resource]
+    const rate = rates ? BigInt(rates[resource]) : null
+    const ms = rate === null ? null : durationFor(missing, rate)
+    const reason =
+      BigInt(cost[resource]) > BigInt(capacity)
+        ? 'capacity'
+        : rate === null
+          ? 'unknown'
+          : rate < 0n
+            ? 'draining'
+            : rate === 0n
+              ? 'no-production'
+              : ms === null
+                ? 'unknown'
+                : null
+    if (reason) blockers.push({ resource, reason, capacity })
+    else wait = Math.max(wait, ms!)
+  }
+  return { wait: blockers.length ? null : wait, blockers }
+}
+
 export function affordabilityTime(
   view: ProgressionProps['view'],
   body: S['BodyV3'],
   cost: S['Resources'],
 ) {
-  const rates = currentResourceRates(view, body)
-  let wait = 0
-  for (const resource of ['metal', 'crystal', 'deuterium'] as const) {
-    const missing = BigInt(cost[resource]) - BigInt(body.amounts[resource])
-    if (missing <= 0n) continue
-    if (!rates || BigInt(cost[resource]) > BigInt(body.capacity[resource]))
-      return null
-    const ms = durationFor(missing, BigInt(rates[resource]))
-    if (ms === null) return null
-    wait = Math.max(wait, ms)
-  }
-  return wait
+  return affordabilityForecast(view, body, cost).wait
+}
+
+export function affordabilitySummary(
+  forecast: ReturnType<typeof affordabilityForecast>,
+) {
+  if (forecast.blockers.some((blocker) => blocker.reason === 'capacity'))
+    return 'Cost exceeds storage capacity'
+  if (forecast.blockers.some((blocker) => blocker.reason === 'unknown'))
+    return 'Timing unavailable'
+  if (forecast.blockers.some((blocker) => blocker.reason === 'draining'))
+    return 'Net production is negative'
+  if (forecast.blockers.length) return 'No production'
+  return null
 }
 
 export function blockerExplanation(

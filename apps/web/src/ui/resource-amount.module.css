@@ -7,6 +7,7 @@
   background: none;
   cursor: pointer;
   text-align: center;
+  text-decoration: none;
   font-variant-numeric: tabular-nums;
 }
 .art {

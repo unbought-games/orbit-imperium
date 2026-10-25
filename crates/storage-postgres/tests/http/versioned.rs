@@ -267,6 +267,71 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
             }
         }
 
+        if protocol == 4 {
+            let simulation = json!({
+                "context": {"binding": binding, "request_id": request_id},
+                "inputs": {
+                    "attacker": {"technology": [2, 3, 4], "units": [{"item": {"kind": "Ship", "id": "LightFighter"}, "count": 5}]},
+                    "defender": {"technology": [0, 0, 0], "units": []}
+                }
+            });
+            for (variant, status) in [
+                ("valid", 200),
+                ("anonymous", 401),
+                ("csrf", 403),
+                ("player", 404),
+                ("epoch", 409),
+                ("large", 400),
+                ("unknown", 400),
+                ("target", 400),
+            ] {
+                let mut query = simulation.clone();
+                match variant {
+                    "player" | "epoch" => {
+                        query["context"]["binding"][variant] = json!(Uuid::new_v4())
+                    }
+                    "large" => query["inputs"]["attacker"]["units"][0]["count"] = json!(2001),
+                    "unknown" => query["inputs"]["defender"]["technology"][0] = Value::Null,
+                    "target" => query["target"] = json!(Uuid::new_v4()),
+                    _ => {}
+                }
+                let mut request = Request::post(format!("{base}/combat-simulation"))
+                    .header("content-type", "application/json")
+                    .header("origin", "https://game.test")
+                    .header(
+                        "x-csrf-token",
+                        if variant == "csrf" {
+                            "wrong"
+                        } else {
+                            &auth.session.csrf
+                        },
+                    );
+                if variant != "anonymous" {
+                    request = request.header("cookie", &cookie);
+                }
+                let result = private_json(
+                    app.clone()
+                        .oneshot(request.body(Body::from(query.to_string())).unwrap())
+                        .await
+                        .unwrap(),
+                    status,
+                )
+                .await;
+                if variant == "valid" {
+                    assert_eq!(result["binding"], candidate["binding"]);
+                    assert_eq!(result["request_id"], request_id.to_string());
+                    let samples = result["samples"].as_array().unwrap();
+                    assert_eq!(samples.len(), 10);
+                    for sample in samples {
+                        assert_eq!(sample["outcome"], "AttackerVictory");
+                        assert_eq!(sample["attacker"][0]["count"], 5);
+                        assert_eq!(sample["defender"], json!([]));
+                    }
+                    assert!(result.get("target").is_none());
+                }
+            }
+        }
+
         // Accepted commands and receipts retain JSON privacy and wake the worker only on admission.
         assert!(
             tokio::time::timeout(std::time::Duration::ZERO, wake.notified())

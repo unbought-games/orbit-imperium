@@ -573,6 +573,7 @@ pub(crate) fn progression_projection(
                 body: x.body,
                 building: x.building,
                 target_level: x.target_level,
+                started_at: x.started_at,
                 due_at: x.due_at,
                 paid: x.paid.into(),
             })

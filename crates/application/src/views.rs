@@ -230,6 +230,7 @@ impl<S: GameStore> GameService<S> {
                     body: c.body,
                     building: c.building,
                     target_level: c.target_level,
+                    started_at: c.started_at,
                     due_at: c.due_at,
                     paid: c.paid.into(),
                 })
@@ -240,6 +241,7 @@ impl<S: GameStore> GameService<S> {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConstructionDto {
+    pub started_at: i64,
     pub id: String,
     pub body: BodyId,
     pub building: Building,

@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { NumberValue, ResourceQuantity } from './number-value'
 import styles from './resource-strip.module.css'
 import type { BoundView } from '../client-model/commands'
@@ -6,9 +7,11 @@ import { currentResourceRates } from './resource-rates'
 export function ResourceStrip({
   view,
   body,
+  energyLink,
 }: {
   view: BoundView
   body: BoundView['bodies'][number]
+  energyLink?: ComponentProps<typeof ResourceAmount>['link']
 }) {
   const rates = currentResourceRates(view, body)
   const balance = BigInt(body.energy.supply) - BigInt(body.energy.demand)
@@ -65,6 +68,7 @@ export function ResourceStrip({
       })}
       <ResourceAmount
         resource="energy"
+        link={energyLink}
         amount={balance.toString()}
         variant="stock"
         warning={balance < 0n}

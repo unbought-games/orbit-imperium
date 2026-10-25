@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import type { BoundView } from '../client-model/commands'
@@ -20,6 +20,11 @@ export function usePlanetRename(
   const submitted = [...state.attempts.values()].find(
     (a) => a.envelope.command_id === commandId,
   )
+  const saved = submitted?.status === 'committed' && submitted.reconciled
+  useEffect(() => {
+    // Retire the edit before the coordinator prunes its successful command.
+    if (saved) setDraft(null)
+  }, [saved])
   const error = draft === null ? '' : planetNameError(draft)
   const status = pending
     ? actionMessage(pending)
@@ -29,6 +34,7 @@ export function usePlanetRename(
         ? 'Planet renamed.'
         : ''
   return {
+    saved,
     draft,
     setDraft,
     error,

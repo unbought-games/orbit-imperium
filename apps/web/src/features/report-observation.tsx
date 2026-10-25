@@ -162,12 +162,14 @@ export function ReportObservation({
   playerNames,
   combatActions,
   targetActions,
+  shared = false,
 }: {
   payload: RecordValue
   viewer?: string
   playerNames?: PlayerNames
   combatActions?: ReactNode
   targetActions?: ReactNode
+  shared?: boolean
 }) {
   const kind = payload.kind
   if (kind === 'Colonized' || kind === 'ColonizationFailed') {
@@ -249,6 +251,7 @@ export function ReportObservation({
                 <PlayerName player={text(target.owner)} names={playerNames} />
                 <span className={styles.targetDetails}>
                   <BodyIdentity
+                    coordinatesHidden={shared && !target.coordinates}
                     name={target.name}
                     kind={target.kind === 'Moon' ? 'Moon' : 'Planet'}
                     at={target.coordinates}
@@ -320,7 +323,12 @@ export function ReportObservation({
       <section aria-label="Report observation" className={combatStyles.report}>
         <header className={`${combatStyles.outcome} ${combatStyles.loss}`}>
           <p className={combatStyles.kicker}>
-            Combat report · <BodyIdentity at={payload.target} label="target" />
+            Combat report ·{' '}
+            <BodyIdentity
+              at={payload.target}
+              label="target"
+              coordinatesHidden={shared && !payload.target}
+            />
           </p>
           <Heading level={2} className={combatStyles.result}>
             Your fleet was destroyed
@@ -346,6 +354,7 @@ export function ReportObservation({
         viewer={viewer}
         playerNames={playerNames}
         actions={combatActions}
+        shared={shared}
       />
     )
 
