@@ -292,3 +292,18 @@ summary.positionSummary:focus-visible {
   min-height: 20px;
   min-width: 0;
 }
+
+/* Empty slots stay one compact row even with wider fallback fonts. Keep the
+   address/actions intact; the secondary label may ellipsize on narrow screens. */
+.empty .planetTitle {
+  flex-wrap: nowrap;
+}
+.empty .planetTitle > [data-coordinate] {
+  flex-shrink: 0;
+}
+.empty .planetTitle > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

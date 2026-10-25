@@ -90,7 +90,7 @@ export function GalaxyPosition({
               known={{ owner: body?.owner, empty: !body, debris: !!debris }}
               className={styles.coordinates}
             />{' '}
-            <strong>
+            <strong title={!body ? 'Empty position' : undefined}>
               {body
                 ? (body.name ?? (owned ? 'Your planet' : body.kind))
                 : 'Empty position'}
