@@ -145,3 +145,146 @@ it('drops private drafts when a fresh response revokes authority', async () => {
     'ViewMembers',
   ])
 })
+
+function memberView(): components['schemas']['AllianceView'] {
+  return {
+    ...view,
+    alliance: {
+      summary: {
+        id: 'alliance',
+        universe: 'u',
+        tag: 'TAG',
+        name: 'Alliance',
+        member_count: 1,
+        recruitment: 'Open',
+      },
+      revision: 1,
+      leader: 'leader',
+      public_text: '',
+      permissions: ['ViewMembers', 'ManageRoles', 'AssignRoles'],
+      grantable_permissions: ['ViewMembers'],
+    },
+  }
+}
+it('recovers an expired board cursor and manual refresh starts at the newest page', async () => {
+  const current = memberView()
+  const read = vi.fn().mockResolvedValue(current)
+  const controller = new AlliancesController({
+    read,
+    command: vi.fn(),
+    newId: () => 'id',
+  })
+  await controller.refresh()
+  read.mockRejectedValueOnce({ status: 409 }).mockResolvedValue(current)
+  await controller.refresh({
+    type: 'Detail',
+    alliance: 'alliance',
+    post_before: 'expired',
+  })
+  expect(read).toHaveBeenLastCalledWith({
+    type: 'Detail',
+    alliance: 'alliance',
+    post_before: null,
+  })
+  expect(controller.store.getState().view?.alliance).toEqual(current.alliance)
+  expect(controller.store.getState().error).toBe('')
+  await controller.refresh({
+    type: 'Detail',
+    alliance: 'alliance',
+    post_before: 'valid-page',
+  })
+  await controller.refresh()
+  expect(read).toHaveBeenLastCalledWith({
+    type: 'Detail',
+    alliance: 'alliance',
+    post_before: null,
+  })
+})
+it('role mutations retain unrelated drafts unless the refreshed authority is reduced', async () => {
+  const current = memberView()
+  const read = vi.fn().mockResolvedValue(current),
+    onAccessLost = vi.fn()
+  const controller = new AlliancesController({
+    read,
+    command: vi.fn().mockResolvedValue({
+      command_id: 'id',
+      alliance: 'alliance',
+      revision: 2,
+    }),
+    newId: () => 'id',
+    onAccessLost,
+  })
+  await controller.refresh()
+  for (const action of [
+    {
+      type: 'SaveRole' as const,
+      alliance: 'alliance',
+      role: null,
+      name: 'Recruiter',
+      permissions: [],
+      grantable_permissions: [],
+    },
+    {
+      type: 'AssignRoles' as const,
+      alliance: 'alliance',
+      player: 'another',
+      roles: [],
+    },
+    { type: 'DeleteRole' as const, alliance: 'alliance', role: 'role' },
+  ])
+    expect(await controller.run(action)).toBe(true)
+  expect(onAccessLost).not.toHaveBeenCalled()
+  read.mockResolvedValue({
+    ...current,
+    alliance: {
+      ...current.alliance!,
+      permissions: ['ViewMembers'],
+      grantable_permissions: [],
+    },
+  })
+  expect(
+    await controller.run({
+      type: 'AssignRoles',
+      alliance: 'alliance',
+      player: 'p',
+      roles: [],
+    }),
+  ).toBe(true)
+  expect(onAccessLost).toHaveBeenCalledOnce()
+})
+it.each([false, true])(
+  'command NotFound rechecks membership before clearing drafts (revoked=%s)',
+  async (revoked) => {
+    const current = memberView()
+    const read = vi.fn().mockResolvedValue(current),
+      onAccessLost = vi.fn()
+    const controller = new AlliancesController({
+      read,
+      command: vi.fn().mockRejectedValue(
+        Object.assign(new Error('Target no longer available'), {
+          status: 404,
+        }),
+      ),
+      newId: () => 'id',
+      onAccessLost,
+    })
+    await controller.refresh()
+    read.mockResolvedValue(revoked ? view : current)
+    expect(
+      await controller.run({
+        type: 'Reject',
+        alliance: 'alliance',
+        application: 'gone',
+      }),
+    ).toBe(false)
+    expect(read).toHaveBeenCalledTimes(revoked ? 3 : 2)
+    expect(controller.store.getState().view?.alliance).toEqual(
+      revoked ? null : current.alliance,
+    )
+    expect(controller.store.getState().error).toContain(
+      'Target no longer available',
+    )
+    expect(onAccessLost).toHaveBeenCalledTimes(revoked ? 1 : 0)
+    expect(controller.store.getState().pending).toBeNull()
+  },
+)

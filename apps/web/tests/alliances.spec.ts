@@ -278,3 +278,45 @@ test('a delegated manager can dismiss a locked member role editor without submit
   await expect(page.getByRole('button', { name: 'Assign roles to Nova', exact: true })).toBeVisible()
   expect(f.commands).toEqual([])
 })
+
+test('expired noticeboard cursors recover to fresh notices and Refresh remains usable', async ({ page }) => {
+  const detail = own(); detail.next_post_before = id(851)
+  await fixture(page, detail)
+  const queries: S['AllianceQuery'][] = []
+  await page.route('**/alliances/query', route => {
+    const { context, query } = route.request().postDataJSON() as S['AllianceQueryRequest']
+    queries.push(query)
+    if (query.type === 'Detail' && query.post_before) {
+      detail.revision++
+      detail.posts![0].title = 'Fresh standing orders'
+      detail.next_post_before = null
+      return route.fulfill({ status:409, json:{code:'Conflict'} })
+    }
+    return route.fulfill({json:{...context,sampled_at:1700000000000,directory:[],directory_count:0,alliance:detail,applications:[]}})
+  })
+  await page.goto('/u/andromeda/alliance')
+  await page.getByRole('button', { name:'Older notices', exact:true }).click()
+  await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
+  await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
+  await page.getByRole('button',{name:'Refresh alliance',exact:true}).click()
+  await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
+  expect(queries.filter(q=>q.type==='Detail' && q.post_before)).toHaveLength(1)
+  expect(queries.at(-1)).toEqual({type:'Detail',alliance,post_before:null})
+})
+
+test('saving an unrelated role retains an edited notice draft', async ({page})=>{
+  await fixture(page,own())
+  await page.goto('/u/andromeda/alliance')
+  await page.getByText('Write a notice',{exact:true}).click()
+  await page.getByRole('textbox',{name:'Notice title',exact:true}).fill('Unpublished orders')
+  await page.getByRole('textbox',{name:'Notice body',exact:true}).fill('Keep this draft while assigning duties.')
+  await page.getByRole('button',{name:'Roles',exact:true}).click()
+  await page.getByText('Create a custom role',{exact:true}).click()
+  await page.getByRole('textbox',{name:'Role name',exact:true}).fill('Observer')
+  await page.getByRole('button',{name:'Create role',exact:true}).click()
+  await expect(page.getByText('Observer',{exact:true})).toBeVisible()
+  await page.getByRole('button',{name:'Board',exact:true}).click()
+  await page.getByText('Write a notice',{exact:true}).click()
+  await expect(page.getByRole('textbox',{name:'Notice title',exact:true})).toHaveValue('Unpublished orders')
+  await expect(page.getByRole('textbox',{name:'Notice body',exact:true})).toHaveValue('Keep this draft while assigning duties.')
+})

@@ -41,6 +41,14 @@ function errorMessage(error: unknown) {
     ? error.message
     : 'Alliance request failed. Try again.'
 }
+function statusCode(error: unknown): number {
+  return typeof error === 'object' && error !== null && 'status' in error
+    ? Number(error.status)
+    : 0
+}
+function newestPage(query: S['AllianceQuery']): S['AllianceQuery'] {
+  return query.type === 'Detail' ? { ...query, post_before: null } : query
+}
 function accessLost(error: unknown) {
   return (
     typeof error === 'object' &&
@@ -92,10 +100,18 @@ export class AlliancesController {
       notice: '',
     })
   }
-  async refresh(query = this.query) {
+  refresh(query?: S['AllianceQuery']) {
+    return this.load(
+      query ?? newestPage(this.query),
+      this.store.getState().view?.alliance,
+    )
+  }
+  private async load(
+    query: S['AllianceQuery'],
+    previous?: AllianceDetail | null,
+  ): Promise<boolean> {
     this.query = query
     const generation = ++this.generation
-    const previous = this.store.getState().view?.alliance
     this.store.setState({
       loading: true,
       view: null,
@@ -103,15 +119,33 @@ export class AlliancesController {
       error: '',
     })
     try {
-      const response = await this.ports.read(query)
-      if (generation !== this.generation) return
+      let response: S['AllianceView'] | null
+      let recoveredCursor = false
+      try {
+        response = await this.ports.read(query)
+      } catch (error) {
+        if (generation !== this.generation) return false
+        if (
+          query.type !== 'Detail' ||
+          !query.post_before ||
+          statusCode(error) !== 409
+        )
+          throw error
+        // A board revision invalidates old page cursors. Recover once from a
+        // fresh first page, never keep replaying the invalid cursor.
+        query = newestPage(query)
+        this.query = query
+        response = await this.ports.read(query)
+        recoveredCursor = true
+      }
+      if (generation !== this.generation) return false
       if (!response)
         throw new Error('Alliance access unavailable. Refresh your session.')
       const view =
         query.type === 'Directory'
           ? await this.ports.read({ type: 'Mine' })
           : response
-      if (generation !== this.generation) return
+      if (generation !== this.generation) return false
       if (!view)
         throw new Error('Alliance access unavailable. Refresh your session.')
       if (
@@ -137,25 +171,33 @@ export class AlliancesController {
                 offset: 0,
               })
             : null
-      if (generation !== this.generation) return
+      if (generation !== this.generation) return false
       const directory = directoryResponse
         ? {
             directory: directoryResponse.directory,
             directory_count: directoryResponse.directory_count,
           }
         : null
-      this.store.setState({ view, directory, loading: false })
+      this.store.setState({
+        view,
+        directory,
+        loading: false,
+        ...(recoveredCursor
+          ? { notice: 'The noticeboard changed. Showing the newest notices.' }
+          : {}),
+      })
+      return true
     } catch (error) {
-      if (generation === this.generation && accessLost(error))
-        this.ports.onAccessLost?.()
-      if (generation === this.generation)
-        this.store.setState({
-          view: null,
-          directory: null,
-          loading: false,
-          error: errorMessage(error),
-          ...(accessLost(error) ? { pending: null } : {}),
-        })
+      if (generation !== this.generation) return false
+      if (accessLost(error)) this.ports.onAccessLost?.()
+      this.store.setState({
+        view: null,
+        directory: null,
+        loading: false,
+        error: errorMessage(error),
+        ...(accessLost(error) ? { pending: null } : {}),
+      })
+      return false
     }
   }
   async run(action: AllianceAction): Promise<boolean> {
@@ -175,7 +217,7 @@ export class AlliancesController {
     return this.retry()
   }
   async retry(): Promise<boolean> {
-    const { pending, busy } = this.store.getState()
+    const { pending, busy, view: previousView } = this.store.getState()
     if (!pending || busy) return false
     const generation = ++this.generation
     this.store.setState({ busy: true, error: '', notice: '' })
@@ -184,16 +226,7 @@ export class AlliancesController {
       if (generation !== this.generation) return false
       if (!result)
         throw new Error('Command status unknown. Retry to confirm the result.')
-      if (
-        [
-          'Leave',
-          'Disband',
-          'Transfer',
-          'AssignRoles',
-          'SaveRole',
-          'DeleteRole',
-        ].includes(pending.action.type)
-      )
+      if (['Leave', 'Disband', 'Transfer'].includes(pending.action.type))
         this.ports.onAccessLost?.()
       this.store.setState({
         busy: false,
@@ -202,22 +235,33 @@ export class AlliancesController {
         directory: null,
         notice: 'Alliance updated.',
       })
-      await this.refresh({ type: 'Mine' })
+      await this.load({ type: 'Mine' }, previousView?.alliance)
       return true
     } catch (error) {
       if (generation !== this.generation) return false
-      if (accessLost(error)) this.ports.onAccessLost?.()
-      const status =
-        typeof error === 'object' && error && 'status' in error
-          ? Number(error.status)
-          : 0
+      const status = statusCode(error)
       const rejected =
         status >= 400 && status < 500 && status !== 408 && status !== 429
+      const message = `${errorMessage(error)}${status === 409 ? ' Refresh the alliance and submit again.' : ''}`
+      if (status === 403 || status === 404) {
+        // Missing targets and ordinary permission denials do not establish that
+        // membership was lost. Hide the old view and recheck the actor's access.
+        this.store.setState({
+          busy: false,
+          pending: null,
+          view: null,
+          directory: null,
+        })
+        if (await this.load({ type: 'Mine' }, previousView?.alliance))
+          this.store.setState({ error: message })
+        return false
+      }
+      if (accessLost(error)) this.ports.onAccessLost?.()
       this.store.setState({
         busy: false,
-        error: `${errorMessage(error)}${status === 409 ? ' Refresh the alliance and submit again.' : ''}`,
+        error: message,
         ...(rejected ? { pending: null } : {}),
-        ...(accessLost(error) ? { view: null } : {}),
+        ...(accessLost(error) ? { view: null, directory: null } : {}),
       })
       return false
     }
