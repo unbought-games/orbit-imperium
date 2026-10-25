@@ -10,7 +10,7 @@ import type { components } from '../../contracts'
 import { CatalogImage } from '../../ui/image-catalog'
 import { label } from '../../ui/format'
 import { Requirements } from '../../ui/requirements'
-import { ShipStatistics } from './ship-statistics'
+import { TechnicalData } from './technical-data'
 import { catalogContent } from './catalog-content'
 import type { ProgressionProps } from './shared'
 import styles from './technology-dialog.module.css'
@@ -209,7 +209,12 @@ export function TechnologyDialog({
           <>
             <h3>{label(entry.key.id)}</h3>
             <p>{catalogContent(entry.key).description}</p>
-            <ShipStatistics entry={entry} />
+            <TechnicalData
+              key={`${entry.key.kind}:${entry.key.id}`}
+              entry={entry}
+              view={props.view}
+              body={props.body}
+            />
             <p>
               {entry.enabled
                 ? 'Available in this universe'

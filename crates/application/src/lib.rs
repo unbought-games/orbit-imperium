@@ -1,6 +1,7 @@
 mod location;
 pub use location::*;
 mod catalog_view;
+mod technical_data;
 pub use catalog_view::*;
 mod rankings;
 pub use rankings::*;

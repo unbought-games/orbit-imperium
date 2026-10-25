@@ -59,6 +59,9 @@ fn target(
         }
     }
 }
+/// The supported replacement profile uses this coefficient in both flight and presentation.
+pub const IMPULSE_UPGRADE_COEFFICIENT: [i64; 2] = [1, 5];
+
 /// Derive the active propulsion profile from completed research at quotation/launch.
 /// Disabling further research does not remove bonuses already earned. Retained
 /// artifacts without an upgrade continue using their original combustion terms.
@@ -76,7 +79,7 @@ pub fn ship_propulsion(
     let (base, coefficient, fuel, completed) = match &rule.impulse_drive {
         Some(upgrade) if level(ResearchId::ImpulseDrive)? >= upgrade.minimum_level => (
             upgrade.base_speed,
-            [1, 5],
+            IMPULSE_UPGRADE_COEFFICIENT,
             upgrade.fuel,
             level(ResearchId::ImpulseDrive)?,
         ),

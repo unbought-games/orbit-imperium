@@ -447,3 +447,28 @@
     display: none;
   }
 }
+
+.technical {
+  border-top: 1px solid var(--border);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.technical > summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 12px;
+  color: var(--link);
+  font-size: 0.875rem;
+}
+.technical > summary:focus-visible {
+  outline: 2px solid var(--ice);
+  outline-offset: 2px;
+}
+.technical h3 {
+  margin: 16px 0 8px;
+  font-size: 0.8125rem;
+  color: var(--champagne-light);
+}
+.technical .row dd {
+  max-width: 100%;
+}
