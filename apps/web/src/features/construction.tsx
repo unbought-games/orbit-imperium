@@ -2,7 +2,7 @@ import type { CatalogSelection } from '../shell/use-catalog-selection'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { canAfford } from '../client-model/resources'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
-import { ConfirmationButton } from '../ui/confirmation-button'
+import { WorkCancellationButton } from './work-cancellation-button'
 import { ResourceSummary } from '../ui/number-value'
 import { Button, ButtonLinkAnchor } from '../ui/button'
 import { Heading, Text } from '../ui/typography'
@@ -321,7 +321,10 @@ export function Economy({
             {active.building.replace(/([a-z])([A-Z])/g, '$1 $2')} → level{' '}
             {active.target_level} · {countdown(active.due_at)}
           </Text>
-          <ConfirmationButton
+          <WorkCancellationButton
+            model={actions.model}
+            operationId={active.id}
+            kind="CancelConstruction"
             key={active.id}
             disabled={busy}
             dialogTitle="Cancel construction?"
@@ -338,7 +341,7 @@ export function Economy({
             }
           >
             Cancel construction · full refund
-          </ConfirmationButton>
+          </WorkCancellationButton>
         </QuotePanel>
       )}
       {error && (

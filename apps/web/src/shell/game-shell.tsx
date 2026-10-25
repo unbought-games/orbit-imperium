@@ -60,6 +60,7 @@ export function GameShell() {
   const body = view.bodies.find((b) => b.id === route.body)
   const { page, available } = route
   const heading = useRef<HTMLHeadingElement>(null)
+  const previousPathname = useRef(location.pathname)
   // Default context is recorded once; later view changes must not silently select another planet.
   useEffect(() => {
     if (
@@ -93,6 +94,14 @@ export function GameShell() {
   ])
   useLayoutEffect(() => {
     document.title = `${available ? pageTitles[page] : 'Unavailable'} · ${universeName} · Orbit Imperium`
+    // Browsing systems is an in-place interaction: keep the input/arrow focused.
+    const browsingGalaxy =
+      page === 'galaxy' &&
+      available &&
+      previousPathname.current === location.pathname &&
+      document.activeElement?.closest('[data-galaxy-navigation]')
+    previousPathname.current = location.pathname
+    if (browsingGalaxy) return
     heading.current?.focus()
     const frame = requestAnimationFrame(() => {
       // Scroll restoration can run after the commit. Never steal focus back

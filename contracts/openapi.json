@@ -4852,6 +4852,12 @@
           },
           "paid": {
             "$ref": "#/components/schemas/Resources"
+          },
+          "started_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Recorded server start time. Older servers may omit this field."
           }
         },
         "required": [
@@ -6753,6 +6759,12 @@
           },
           "paid": {
             "$ref": "#/components/schemas/Resources"
+          },
+          "started_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Recorded server start time. Older servers may omit this field."
           }
         },
         "required": [
@@ -13317,6 +13329,14 @@
           },
           "points": {
             "$ref": "#/components/schemas/Decimal"
+          },
+          "previous_rank": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 4294967295
           }
         }
       },
@@ -13351,6 +13371,14 @@
             "items": {
               "$ref": "#/components/schemas/RankingPlayer"
             }
+          },
+          "baseline_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 8640000000000000
           }
         }
       },
@@ -13376,6 +13404,15 @@
                 "type": "null"
               }
             ]
+          },
+          "cost": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 3,
+            "maxItems": 3
           }
         },
         "required": [
@@ -13411,6 +13448,15 @@
                 "type": "null"
               }
             ]
+          },
+          "drive_coefficient": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [
@@ -13436,6 +13482,15 @@
           "fuel_consumption": {
             "type": "string",
             "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "drive_coefficient": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [
@@ -13471,6 +13526,15 @@
             "items": {
               "$ref": "#/components/schemas/ShipRapidFireStatistics3"
             }
+          },
+          "technology_bonus": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [

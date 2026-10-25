@@ -4239,6 +4239,8 @@ export interface components {
             target_level: number;
             due_at: number;
             paid: components["schemas"]["Resources"];
+            /** @description Recorded server start time. Older servers may omit this field. */
+            started_at?: number;
         };
         QuoteRequest: {
             /** @constant */
@@ -4697,6 +4699,8 @@ export interface components {
             target_level: number;
             due_at: number;
             paid: components["schemas"]["Resources"];
+            /** @description Recorded server start time. Older servers may omit this field. */
+            started_at?: number;
         };
         ShipRequest3: {
             /** Format: uuid */
@@ -6205,6 +6209,7 @@ export interface components {
             username: string;
             rank: number;
             points: components["schemas"]["Decimal"];
+            previous_rank?: number | null;
         };
         Rankings: {
             binding: components["schemas"]["Binding"];
@@ -6213,10 +6218,12 @@ export interface components {
             sampled_at: number;
             processing_pending: boolean;
             players: components["schemas"]["RankingPlayer"][];
+            baseline_at?: number | null;
         };
         ShipStatistics3: {
             propulsion: components["schemas"]["ShipPropulsionStatistics3"] | null;
             combat: components["schemas"]["ShipCombatStatistics3"] | null;
+            cost?: string[];
         };
         ShipPropulsionStatistics3: {
             cargo_capacity: string;
@@ -6224,11 +6231,13 @@ export interface components {
             fuel_consumption: string;
             drive: components["schemas"]["ResearchId3"];
             impulse_upgrade: components["schemas"]["ShipImpulseStatistics3"] | null;
+            drive_coefficient?: string[];
         };
         ShipImpulseStatistics3: {
             minimum_level: number;
             base_speed: string;
             fuel_consumption: string;
+            drive_coefficient?: string[];
         };
         /** @description Base combat statistics without research bonuses, in 1/100,000 points. */
         ShipCombatStatistics3: {
@@ -6237,6 +6246,7 @@ export interface components {
             hull_ticks: string;
             rapid_fire_against: components["schemas"]["ShipRapidFireStatistics3"][];
             rapid_fire_from: components["schemas"]["ShipRapidFireStatistics3"][];
+            technology_bonus?: string[];
         };
         ShipRapidFireStatistics3: {
             unit: components["schemas"]["ItemKey3"];

@@ -164,7 +164,7 @@ for (const width of [1280, 390, 320]) {
     await assertLocation(page, 2, 4)
     await page.getByRole('button', { name: 'Next system', exact: true }).click()
     await expect(
-      page.getByRole('combobox', { name: 'Solar system' }),
+      page.getByRole('textbox', { name: 'Solar system' }),
     ).toHaveValue('3')
     await expect(page.locator('li[aria-current="location"]')).toHaveCount(0)
     await page.goBack()
