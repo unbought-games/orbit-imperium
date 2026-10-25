@@ -102,7 +102,8 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
         .getByRole('region', { name: 'Galaxy positions' })
         .getByRole('listitem'),
     ).toHaveCount(15)
-    await page.getByLabel('Solar system').selectOption('5')
+    await page.getByLabel('Solar system').fill('5')
+    await page.getByLabel('Solar system').press('Enter')
     await expect(
       page
         .getByRole('region', { name: 'Galaxy positions' })
@@ -112,7 +113,8 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
     await expect(
       page.getByRole('button', { name: 'Next system' }),
     ).toBeDisabled()
-    await page.getByLabel('Solar system').selectOption('1')
+    await page.getByLabel('Solar system').fill('1')
+    await page.getByLabel('Solar system').press('Enter')
     await expect(
       page
         .getByRole('region', { name: 'Galaxy positions' })
