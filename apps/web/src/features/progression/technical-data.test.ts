@@ -58,7 +58,7 @@ describe('technical data', () => {
       ship('LightFighter', 2),
       { ...ship('Deathstar', 12), enabled: false },
       { ...ship('SolarSatellite', 3), body_kinds: ['Moon'] as ['Moon'] },
-      { ...entry, key: { kind: 'Research', id: 'UnknownFutureResearch' } },
+      { ...entry, key: { kind: 'Research', id: 'EnergyTechnology' } },
     ]
     expect(
       technicalUnlocks(entry, entries, 'Planet').map((x) => [
@@ -122,7 +122,13 @@ describe('technical data', () => {
     expect(disabled).toContain('Unavailable in this universe')
     expect(disabled).not.toContain('Hidden fact')
     expect(
-      render({ ...entry, key: { kind: 'Research', id: 'FutureResearch' } }),
+      render({
+        ...entry,
+        key: {
+          kind: 'Research',
+          id: 'FutureResearch',
+        } as unknown as S['CatalogEntry3']['key'],
+      }),
     ).toContain('Technical data is unavailable')
   })
   it('selects current and next storage from server values with accessible resource names', () => {
