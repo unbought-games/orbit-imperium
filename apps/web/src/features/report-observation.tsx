@@ -16,6 +16,7 @@ import { label } from '../ui/format'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
 import { groupReportBuildings } from './report-buildings'
+import { groupReportResearch } from './report-research'
 import type { ObservedLevel } from './report-buildings'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
@@ -94,17 +95,22 @@ function Levels({
     <Text>{emptyLabel}</Text>
   )
 }
-function Buildings({ value }: { value: unknown }) {
-  const groups = groupReportBuildings(record(value))
+function GroupedLevels({
+  groups,
+  emptyLabel,
+}: {
+  groups: { title: string; rows: ObservedLevel[] }[]
+  emptyLabel: string
+}) {
   return groups.length ? (
     groups.map(({ title, rows }) => (
       <div key={title}>
         <h4>{title}</h4>
-        <Levels rows={rows} emptyLabel="No buildings" />
+        <Levels rows={rows} emptyLabel={emptyLabel} />
       </div>
     ))
   ) : (
-    <Text>No buildings</Text>
+    <Text>{emptyLabel}</Text>
   )
 }
 function KnownSection({
@@ -264,11 +270,19 @@ export function ReportObservation({
           {(v) => <Units value={v} emptyLabel="No defenses" />}
         </KnownSection>
         <KnownSection title="Buildings" value={payload.buildings}>
-          {(v) => <Buildings value={v} />}
+          {(v) => (
+            <GroupedLevels
+              groups={groupReportBuildings(record(v))}
+              emptyLabel="No buildings"
+            />
+          )}
         </KnownSection>
         <KnownSection title="Research" value={payload.research}>
           {(v) => (
-            <Levels rows={Object.entries(record(v))} emptyLabel="No research" />
+            <GroupedLevels
+              groups={groupReportResearch(record(v))}
+              emptyLabel="No research"
+            />
           )}
         </KnownSection>
         <footer className={styles.footnotes}>
