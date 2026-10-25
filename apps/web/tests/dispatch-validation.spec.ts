@@ -1,6 +1,7 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
+import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
 type S = components['schemas']
 
@@ -155,6 +156,8 @@ const review = (page: Page) =>
   page.getByRole('button', { name: 'Review fleet', exact: true })
 const mission = (page: Page) =>
   page.getByRole('combobox', { name: 'Mission', exact: true })
+const dispatchResult = (page: Page) =>
+  page.getByRole('group', { name: 'Fleet dispatch result', exact: true })
 
 test('successful dispatch resets ship and cargo quantities after preserving edits through review', async ({
   page,
@@ -179,7 +182,129 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
     'Select ships to see flight times.',
   )
   expect(state.launches).toBe(1)
+  await expect(dispatchResult(page)).toContainText('Transport to [1:1:1]')
+  await expect(dispatchResult(page)).toContainText('Fleet sent.')
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await review(page).scrollIntoViewIfNeeded()
+    await expect(dispatchResult(page)).toBeInViewport()
+    const [resultBox, buttonBox] = await Promise.all([
+      dispatchResult(page).boundingBox(),
+      review(page).boundingBox(),
+    ])
+    expect(buttonBox!.y - (resultBox!.y + resultBox!.height)).toBeLessThan(32)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width)
+    await diagnosticScreenshot(page, {
+      path: `test-results/dispatch-success-${width}.png`,
+    })
+  }
+  await selectBody(page, id(6))
+  await expect(dispatchResult(page)).toHaveCount(0)
+  await selectBody(page, body.id)
+  await expect(dispatchResult(page)).toHaveCount(0)
 })
+
+test('editing a new draft clears the previous launch receipt', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  state.launchError = null
+  await review(page).click()
+  await page.getByRole('button', { name: /^Send / }).click()
+  await expect(dispatchResult(page)).toContainText('Fleet sent.')
+  await page.getByLabel('Small Cargo · 2 available').fill('2')
+  await expect(dispatchResult(page)).toHaveCount(0)
+  await review(page).click()
+  await expect(dispatchResult(page)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Edit mission' }).click()
+  await expect(dispatchResult(page)).toHaveCount(0)
+})
+
+for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
+  test(`dispatch shows submitting then ${outcome} without false success`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await setup(page)
+    let commandId = ''
+    let launches = 0
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const receipt = () => ({
+      protocol: 4,
+      binding,
+      command_id: commandId,
+      admitted_at: Date.now(),
+      executed_at: outcome === 'Pending' ? null : Date.now(),
+      status: outcome,
+      ...(outcome === 'Rejected' ? { code: 'BeginnerProtected' } : {}),
+    })
+    await page.route('**/commands/*?epoch=*', (route) =>
+      outcome === 'uncertain'
+        ? route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+        : route.fulfill({ json: receipt() }),
+    )
+    await page.route('**/commands', async (route) => {
+      launches++
+      commandId = route.request().postDataJSON().gameplay.command_id
+      await gate
+      if (outcome === 'uncertain') return route.abort('failed')
+      await route.fulfill({ json: receipt() })
+    })
+    await review(page).click()
+    try {
+      await page.getByRole('button', { name: /^Send / }).click()
+      await expect(dispatchResult(page)).toContainText('Sending fleet order…')
+      await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
+      await expect.poll(() => launches).toBe(1)
+    } finally {
+      release()
+    }
+    await expect(dispatchResult(page)).toContainText(
+      outcome === 'Pending'
+        ? 'Order accepted. Waiting for launch confirmation…'
+        : outcome === 'Rejected'
+          ? 'Fleet not sent: Beginner protection prevents'
+          : 'Launch outcome unknown. Resolve the saved order before sending again.',
+    )
+    await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
+    await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
+      '1',
+    )
+    await review(page).scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, {
+      path: `test-results/dispatch-${outcome}.png`,
+    })
+    if (outcome === 'uncertain') {
+      await page.route('**/commands/*?epoch=*', (route) =>
+        route.fulfill({
+          json: {
+            protocol: 4,
+            binding,
+            command_id: commandId,
+            admitted_at: Date.now(),
+            executed_at: Date.now(),
+            status: 'Committed',
+            result_ids: [id(80)],
+            minimum_viewer_revision: '1',
+          },
+        }),
+      )
+      await dispatchResult(page)
+        .getByRole('button', { name: 'Resolve fleet order' })
+        .click()
+      await expect(dispatchResult(page)).toContainText('Fleet sent.')
+      await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(
+        '0',
+      )
+    }
+    expect(launches).toBe(1)
+  })
+}
 
 test('a delayed successful launch does not erase edits for the next fleet', async ({
   page,
@@ -196,6 +321,7 @@ test('a delayed successful launch does not erase edits for the next fleet', asyn
   })
   await review(page).click()
   await page.getByRole('button', { name: /^Send / }).click()
+  await expect(dispatchResult(page)).toContainText('Sending fleet order…')
   const ship = page.getByLabel(/Small Cargo · \d+ available/)
   await ship.fill('2')
   await page.getByLabel('Metal', { exact: true }).fill('42')
@@ -207,6 +333,7 @@ test('a delayed successful launch does not erase edits for the next fleet', asyn
   ).toContainText('Action confirmed.')
   await expect(ship).toHaveValue('2')
   await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
+  await expect(dispatchResult(page)).toHaveCount(0)
   expect(state.launches).toBe(1)
 })
 
