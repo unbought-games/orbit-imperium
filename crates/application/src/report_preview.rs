@@ -115,3 +115,64 @@ mod tests {
         assert_eq!(report_preview(&legacy), legacy);
     }
 }
+
+/// Derive a comparable resource investment from authorized historical observations.
+/// Unknown sections and unsupported units remain unknown, including on old reports.
+pub fn report_investment(
+    payload: &Value,
+    section: &str,
+    rules: &orbit_engine::Ruleset,
+) -> Option<String> {
+    if payload["kind"] != "Espionage" || payload[section]["visibility"] != "Known" {
+        return None;
+    }
+    let units = payload[section]["value"].as_array()?;
+    let costs = &rules.artifact.progression.as_ref()?.unit_costs;
+    let mut total = 0i128;
+    for unit in units {
+        let item: orbit_engine::ManufacturedItem =
+            serde_json::from_value(unit["item"].clone()).ok()?;
+        let count = unit["count"].as_str()?.parse::<i64>().ok()?;
+        if count < 0 {
+            return None;
+        }
+        let cost = costs.iter().find(|cost| cost.item == item)?;
+        let value: i128 = cost.cost.values().into_iter().map(i128::from).sum();
+        total = total.checked_add(value.checked_mul(i128::from(count))?)?;
+    }
+    Some(total.checked_mul(1_000_000)?.to_string())
+}
+
+#[cfg(test)]
+mod investment_tests {
+    use super::*;
+    use orbit_engine::*;
+    use serde_json::json;
+    #[test]
+    fn investment_uses_active_costs_and_preserves_unknown_and_known_empty() {
+        let mut rules = Ruleset::mvp_fleets().unwrap();
+        let item = rules.artifact.progression.as_ref().unwrap().unit_costs[0].item;
+        rules.artifact.progression.as_mut().unwrap().unit_costs[0].cost = Resources::all(7);
+        let payload = json!({"kind":"Espionage","fleet":{"visibility":"Known","value":[{"item":item,"count":"9007199254740993"}]},"defenses":{"visibility":"Known","value":[]}});
+        assert_eq!(
+            report_investment(&payload, "fleet", &rules),
+            Some((9007199254740993i128 * 21 * 1_000_000).to_string())
+        );
+        assert_eq!(
+            report_investment(&payload, "defenses", &rules),
+            Some("0".into())
+        );
+        assert_eq!(
+            report_investment(
+                &json!({"kind":"Espionage","fleet":{"visibility":"Unknown"}}),
+                "fleet",
+                &rules
+            ),
+            None
+        );
+        assert_eq!(
+            report_investment(&json!({"kind":"Combat"}), "fleet", &rules),
+            None
+        );
+    }
+}

@@ -40,7 +40,8 @@ export function acceptReportVisibility(
   const command = attempt.envelope.command
   if (
     command.type !== 'World' ||
-    command.action.type !== 'SetReportHidden' ||
+    (command.action.type !== 'SetReportHidden' &&
+      command.action.type !== 'SetReportStarred') ||
     receipt.status !== 'Committed'
   )
     return headers
@@ -48,7 +49,14 @@ export function acceptReportVisibility(
   return previous
     ? mergeReportHeaders(
         headers,
-        [{ ...previous.header, hidden: command.action.hidden }],
+        [
+          {
+            ...previous.header,
+            ...(command.action.type === 'SetReportHidden'
+              ? { hidden: command.action.hidden }
+              : { starred: command.action.starred }),
+          },
+        ],
         receipt.minimum_viewer_revision,
       )
     : headers
@@ -62,11 +70,13 @@ export function projectedReportHeader(
   const source = headers.get(report)
   if (!source) return
   let hidden = source.header.hidden
+  let starred = source.header.starred
   for (const attempt of attempts) {
     const command = attempt.envelope.command
     if (
       command.type !== 'World' ||
-      command.action.type !== 'SetReportHidden' ||
+      (command.action.type !== 'SetReportHidden' &&
+        command.action.type !== 'SetReportStarred') ||
       command.action.report !== report
     )
       continue
@@ -76,12 +86,15 @@ export function projectedReportHeader(
       (attempt.receipt?.status === 'Committed' &&
         BigInt(attempt.receipt.minimum_viewer_revision) >
           BigInt(source.revision))
-    )
-      hidden = command.action.hidden
+    ) {
+      if (command.action.type === 'SetReportHidden')
+        hidden = command.action.hidden
+      else starred = command.action.starred
+    }
   }
-  return hidden === source.header.hidden
+  return hidden === source.header.hidden && starred === source.header.starred
     ? source.header
-    : { ...source.header, hidden }
+    : { ...source.header, hidden, starred }
 }
 
 // Keep later failures and unresolved commands. Only a confirmed preference
@@ -92,10 +105,15 @@ export function supersededReportFailures(
   const confirmed = new Set<string>()
   return [...attempts].reverse().filter(([, attempt]) => {
     const command = attempt.envelope.command
-    if (command.type !== 'World' || command.action.type !== 'SetReportHidden')
+    if (
+      command.type !== 'World' ||
+      (command.action.type !== 'SetReportHidden' &&
+        command.action.type !== 'SetReportStarred')
+    )
       return false
+    const preference = `${command.action.type}:${command.action.report}`
     if (attempt.status === 'committed' && attempt.reconciled)
-      confirmed.add(command.action.report)
-    return attempt.status === 'rejected' && confirmed.has(command.action.report)
+      confirmed.add(preference)
+    return attempt.status === 'rejected' && confirmed.has(preference)
   })
 }

@@ -141,6 +141,10 @@ pub enum WorldAction {
     MarkReportRead {
         report: ReportId,
     },
+    SetReportStarred {
+        report: ReportId,
+        starred: bool,
+    },
     SetReportHidden {
         report: ReportId,
         hidden: bool,
@@ -162,6 +166,8 @@ pub struct RecipientReportState {
     pub recipient: PlayerId,
     pub read: bool,
     pub hidden: bool,
+    #[serde(default)]
+    pub starred: bool,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {

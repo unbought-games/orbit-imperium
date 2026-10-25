@@ -25,7 +25,12 @@ type ReportsSource = Pick<
   'store' | 'reportPage' | 'reportDetail' | 'send'
 >
 
-export function useReports(model: ReportsSource, item: string | null) {
+export function useReports(
+  model: ReportsSource,
+  item: string | null,
+  all = false,
+  holdInbox = false,
+) {
   const headers = useStore(model.store, (s) => s.reportHeaders)
   const attempts = useStore(model.store, (s) => s.attempts)
   const scope = useStore(model.store, reportRequestScope)
@@ -116,14 +121,40 @@ export function useReports(model: ReportsSource, item: string | null) {
       !rebound &&
       !item &&
       state.page &&
-      (state.retainPages || changingVisibility)
+      ((state.retainPages && !all) || changingVisibility || holdInbox)
     if (!retainInbox) void load(item ? 'detail' : 'initial')
     return () => {
       active.current = null
     }
+    // A bulk cleanup retains IDs through intermediate receipts; its completion
+    // releases the hold and reloads the complete inbox once.
     // Cached pages are intentionally retained across view revisions/navigation.
     // Only request context changes trigger loading, not request completions.
-  }, [model, binding, item, scope, refresh, changingVisibility])
+  }, [model, binding, item, scope, refresh, changingVisibility, all, holdInbox])
+
+  useLayoutEffect(() => {
+    if (
+      all &&
+      !holdInbox &&
+      !item &&
+      !active.current &&
+      !state.request &&
+      !state.error &&
+      !changingVisibility &&
+      state.page?.has_more &&
+      state.page.next_cursor
+    ) {
+      void load('more', state.page.next_cursor)
+    }
+  }, [
+    all,
+    holdInbox,
+    item,
+    state.page,
+    state.request,
+    state.error,
+    changingVisibility,
+  ])
 
   const detailHeader =
     state.detail &&

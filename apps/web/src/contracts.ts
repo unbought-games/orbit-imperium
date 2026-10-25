@@ -5345,6 +5345,12 @@ export interface components {
             body: string;
             /** @description 1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected. */
             name: string;
+        } | {
+            /** @constant */
+            type: "SetReportStarred";
+            /** Format: uuid */
+            report: string;
+            starred: boolean;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -5660,6 +5666,11 @@ export interface components {
             read: boolean;
             hidden: boolean;
             preview?: components["schemas"]["ReportPreview4"];
+            starred?: boolean;
+            /** @description Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable. */
+            fleet_investment?: string | null;
+            /** @description Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable. */
+            defense_investment?: string | null;
         };
         ReportsPage4: {
             items: components["schemas"]["ReportHeader4"][];

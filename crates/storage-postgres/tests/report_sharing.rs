@@ -160,8 +160,50 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
         .token
         .unwrap();
     assert_ne!(new_token, token);
-    // Use the actual deletion command: restoring a report must not revive old links.
-    for hidden in [true, false] {
+    // Stars protect the report and its shared link. Once unstarred, deletion
+    // revokes the link; restoring the report must not revive it.
+    for (action, rejected, link_present) in [
+        (
+            WorldAction::SetReportStarred {
+                report: id,
+                starred: true,
+            },
+            false,
+            true,
+        ),
+        (
+            WorldAction::SetReportHidden {
+                report: id,
+                hidden: true,
+            },
+            true,
+            true,
+        ),
+        (
+            WorldAction::SetReportStarred {
+                report: id,
+                starred: false,
+            },
+            false,
+            true,
+        ),
+        (
+            WorldAction::SetReportHidden {
+                report: id,
+                hidden: true,
+            },
+            false,
+            false,
+        ),
+        (
+            WorldAction::SetReportHidden {
+                report: id,
+                hidden: false,
+            },
+            false,
+            false,
+        ),
+    ] {
         let command_id = CommandId(Uuid::new_v4());
         let envelope = |id, action| CommandEnvelopeV4 {
             protocol: 4,
@@ -170,10 +212,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
             command: CommandDto3::Progression(Command::World { action }),
         };
         let pair = ForegroundAction {
-            gameplay: envelope(
-                command_id,
-                WorldAction::SetReportHidden { report: id, hidden },
-            ),
+            gameplay: envelope(command_id, action),
             presence: envelope(
                 CommandId(Uuid::new_v4()),
                 WorldAction::RecordForegroundPresence {
@@ -187,17 +226,29 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
         for _ in 0..8 {
             game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
         }
-        assert!(matches!(
-            game.bound_receipt(principal(a), a, command_id)
-                .await
-                .unwrap()
-                .status,
-            ReceiptStatus::Committed { .. }
-        ));
-        assert!(matches!(
-            game.shared_report(new_token).await,
-            Err(ServiceError::NotFound)
-        ));
+        let receipt = game
+            .bound_receipt(principal(a), a, command_id)
+            .await
+            .unwrap();
+        if rejected {
+            assert_eq!(
+                receipt.status,
+                ReceiptStatus::Rejected {
+                    code: GameError::InvalidInput
+                }
+            );
+        } else {
+            assert!(matches!(receipt.status, ReceiptStatus::Committed { .. }));
+        }
+        if link_present {
+            assert!(game.shared_report(new_token).await.is_ok());
+        } else {
+            assert!(matches!(
+                game.shared_report(new_token).await,
+                Err(ServiceError::NotFound)
+            ));
+        }
+        assert!(game.shared_report(other_token).await.is_ok());
     }
     sqlx::query("DELETE FROM mission_report_recipients WHERE report=$1 AND recipient=$2")
         .bind(id.0)
