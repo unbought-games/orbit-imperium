@@ -3,6 +3,8 @@ import { readyFixture, id } from '../../test-support/bootstrap'
 import type { components } from '../../contracts'
 import {
   affordabilityTime,
+  affordabilityForecast,
+  affordabilitySummary,
   blockerExplanation,
   buildingInsights,
   energySources,
@@ -208,6 +210,75 @@ describe('detail decision estimates', () => {
         deuterium: '0',
       }),
     ).toBe(0)
+  })
+  it('distinguishes costs below, equal to, and above capacity', () => {
+    const { view, body } = fixture()
+    for (const amount of [999, 1000, 1001]) {
+      const result = affordabilityForecast(view, body, {
+        metal: micro(amount),
+        crystal: '0',
+        deuterium: '0',
+      })
+      expect(result.blockers).toEqual(
+        amount > 1000
+          ? [{ resource: 'metal', reason: 'capacity', capacity: micro(1000) }]
+          : [],
+      )
+      expect(result.wait === null).toBe(amount > 1000)
+    }
+  })
+  it('reports all constrained resources even without production metadata, then derives updates', () => {
+    const { view, body } = fixture()
+    const cost = {
+      metal: micro(32000),
+      crystal: micro(64000),
+      deuterium: micro(9600),
+    }
+    view.progression.production = []
+    const forecast = () => affordabilityForecast(view, body, cost)
+    expect(forecast().blockers.map((b) => b.resource)).toEqual([
+      'metal',
+      'crystal',
+      'deuterium',
+    ])
+    expect(affordabilitySummary(forecast())).toBe(
+      'Cost exceeds storage capacity',
+    )
+    body.capacity = { ...cost }
+    expect(forecast().blockers.every((b) => b.reason === 'unknown')).toBe(true)
+    expect(affordabilitySummary(forecast())).toBe('Timing unavailable')
+    body.amounts = { ...cost }
+    body.capacity.metal = '0'
+    expect(forecast()).toEqual({ wait: 0, blockers: [] })
+    cost.metal = micro(64000)
+    expect(forecast().blockers).toEqual([
+      { resource: 'metal', capacity: '0', reason: 'capacity' },
+    ])
+  })
+  it('distinguishes idle, draining, full, and unknown production on the selected planet', () => {
+    const { view, body, production } = fixture()
+    const cost = { metal: micro(600), crystal: '0', deuterium: micro(11) }
+    production.gross_per_hour.metal = '0'
+    expect(
+      affordabilityForecast(view, body, cost).blockers.map((b) => b.reason),
+    ).toEqual(['no-production', 'draining'])
+    body.amounts.deuterium = '0'
+    expect(affordabilityForecast(view, body, cost).blockers[1].reason).toBe(
+      'draining',
+    )
+    body.amounts.metal = body.capacity.metal
+    cost.metal = micro(1001)
+    expect(affordabilityForecast(view, body, cost).blockers[0].reason).toBe(
+      'capacity',
+    )
+    const other = {
+      ...body,
+      id: id(999),
+      capacity: { ...body.capacity, metal: micro(2000) },
+    }
+    expect(
+      affordabilityForecast(view, other, cost).blockers.map((b) => b.reason),
+    ).toEqual(['unknown', 'unknown'])
   })
   it('keeps very large balances exact and rejects unrepresentable time intervals', () => {
     const { view, body, production } = fixture()

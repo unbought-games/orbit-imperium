@@ -1,0 +1,72 @@
+.dialog {
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 20px;
+  color: var(--text);
+  background: var(--surface-page);
+  border: 1px solid var(--border-accent);
+  box-shadow: 0 24px 100px #000b;
+}
+.dialog::backdrop {
+  background: var(--surface-backdrop);
+  backdrop-filter: blur(4px);
+}
+.dialogHeader {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dialogHeader h2 {
+  flex: 1;
+  margin: 0;
+  font: 400 1.6rem/1.2 var(--font-editorial);
+  color: var(--champagne-light);
+}
+.settings {
+  display: grid;
+  gap: 0.9rem;
+}
+.settings h3 {
+  margin: 0;
+}
+.settings label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.settings input[type='checkbox'] {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.settings .link {
+  display: grid;
+}
+.link input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.6rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.publicPage {
+  width: min(72rem, 100%);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  display: grid;
+  gap: 1.25rem;
+  overflow-wrap: anywhere;
+}
+.brand {
+  color: inherit;
+  font-weight: 700;
+}

@@ -1,3 +1,7 @@
+mod simulation;
+pub use simulation::*;
+mod report_sharing;
+pub use report_sharing::*;
 mod location;
 pub use location::*;
 mod catalog_view;
@@ -5,7 +9,7 @@ mod technical_data;
 pub use catalog_view::*;
 mod rankings;
 pub use rankings::*;
-mod report_preview;
+pub mod report_preview;
 pub use orbit_engine::{
     AccountId, Actor, BodyId, CommandId, Epoch, PlayerId, UniverseId, WorkerId,
 };

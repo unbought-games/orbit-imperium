@@ -1,3 +1,10 @@
+import { useReportCleanup } from './use-report-cleanup'
+import { useState } from 'react'
+import { ReportStarButton } from './report-star-button'
+import { ReportTriageControls, defaultTriage } from './report-triage-controls'
+import { triageReports } from './report-triage'
+import { ReportSimulation } from './combat-simulation'
+import { ReportShareControl } from './report-share-control'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
 import { Button, ButtonLink } from '../ui/button'
@@ -35,6 +42,10 @@ export function Reports({
   item: string | null
   onDraft: (draft: DispatchDraft) => void
 }) {
+  const [triage, setTriage] = useState(false)
+  const [options, setOptions] = useState(defaultTriage)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const cleanup = useReportCleanup(model, () => setSelected(new Set()))
   const now = useStore(model.store, currentServerTime)
   const {
     page,
@@ -45,7 +56,17 @@ export function Reports({
     changingVisibility,
     more,
     retry,
-  } = useReports(model, item)
+  } = useReports(model, item, triage, cleanup.submitting)
+  const visible = triageReports(
+    page?.items ?? [],
+    options.sort,
+    options.ascending,
+    options.filter,
+    options.knownOnly,
+  )
+  const complete =
+    !!page && !page.has_more && !loading && !loadingMore && error === null
+
   useProfileSource(
     detail && detail.header.id === item
       ? { type: 'Report', report: detail.header.id }
@@ -132,6 +153,19 @@ export function Reports({
               </Popover>
             </div>
             <div className={styles.controls}>
+              <ReportStarButton model={model} report={detail.header.id} />
+              {detail.payload.kind === 'Espionage' && (
+                <ReportSimulation
+                  key={detail.header.id}
+                  model={model}
+                  report={detail.payload}
+                />
+              )}
+              {['Combat', 'ContactLost', 'Espionage'].includes(
+                detail.payload.kind,
+              ) && (
+                <ReportShareControl model={model} report={detail.header.id} />
+              )}
               <ReportVisibilityButton
                 model={model}
                 report={detail.header.id}
@@ -227,31 +261,90 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
-          {!page.items.length && error === null && (
+          <Button
+            variant="secondary"
+            aria-expanded={triage}
+            disabled={cleanup.submitting}
+            onClick={() => {
+              setTriage(!triage)
+              setOptions(defaultTriage)
+              setSelected(new Set())
+            }}
+          >
+            Sort, filter & clean up
+          </Button>
+          {triage && (
+            <>
+              {!complete && error === null && (
+                <Text role="status">
+                  Loading the complete inbox before sorting and cleanup…
+                </Text>
+              )}
+              <ReportTriageControls
+                cleanup={cleanup}
+                reports={page.items}
+                visible={visible}
+                options={options}
+                change={(next) => {
+                  setOptions(next)
+                  setSelected(new Set())
+                }}
+                selected={selected}
+                select={setSelected}
+                disabled={!complete || changingVisibility}
+                now={now}
+              />
+              {complete && (
+                <Text role="status">
+                  {visible.length} of {page.items.length} reports match.
+                </Text>
+              )}
+            </>
+          )}
+          {!visible.length && error === null && (!triage || complete) && (
             <EmptyState
               icon={FileText}
               eyebrow="Mission archive"
-              title="No reports to show."
-              description="Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold."
+              title={
+                page.items.length
+                  ? 'No reports match these filters.'
+                  : 'No reports to show.'
+              }
+              description={
+                page.items.length
+                  ? 'Try a different report filter or include unknown observations.'
+                  : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
+              }
               actions={
-                model.view &&
-                resolveDestination(
-                  {
-                    universe: model.view.binding.universe,
-                    body: origin,
-                    page: 'galaxy',
-                  },
-                  model.view,
-                ).available && (
-                  <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
-                    Explore the galaxy{' '}
-                    <ArrowRight size={16} aria-hidden="true" />
-                  </ButtonLink>
+                page.items.length ? (
+                  <Button
+                    onClick={() => {
+                      setOptions(defaultTriage)
+                      setSelected(new Set())
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                ) : (
+                  model.view &&
+                  resolveDestination(
+                    {
+                      universe: model.view.binding.universe,
+                      body: origin,
+                      page: 'galaxy',
+                    },
+                    model.view,
+                  ).available && (
+                    <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
+                      Explore the galaxy{' '}
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </ButtonLink>
+                  )
                 )
               }
             />
           )}
-          {page.items.map((r) => (
+          {visible.map((r) => (
             <ReportListRow
               key={r.id}
               report={r}
@@ -260,10 +353,25 @@ export function Reports({
               universe={universe}
               origin={origin}
               now={now}
-              disabled={loadingMore}
+              sort={triage ? options.sort : undefined}
+              selected={selected.has(r.id)}
+              onSelect={
+                triage
+                  ? (checked) =>
+                      setSelected((ids) => {
+                        const next = new Set(ids)
+                        if (checked) next.add(r.id)
+                        else next.delete(r.id)
+                        return next
+                      })
+                  : undefined
+              }
+              disabled={
+                loadingMore || (triage && !complete) || cleanup.submitting
+              }
             />
           ))}
-          {page.has_more && (
+          {page.has_more && !triage && (
             <Button
               disabled={loading || loadingMore || changingVisibility}
               onClick={() => void more()}

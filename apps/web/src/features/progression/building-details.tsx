@@ -16,7 +16,7 @@ import { buildingProgress } from '../../client-model/building-progress'
 import { currentServerTime } from '../../client-model/game-projection'
 import { buildingUnavailableReason } from './building-availability'
 import { ConstructionDetails } from './construction-details'
-import { buildingInsights, affordabilityTime } from './detail-insights'
+import { buildingInsights, affordabilityForecast } from './detail-insights'
 import {
   DetailLayout,
   DetailIntroduction,
@@ -72,7 +72,7 @@ export function BuildingDetails({
     !!command &&
     !proposal?.blockers.length &&
     !pending(model, command)
-  const wait = terms ? affordabilityTime(view, body, terms.paid) : null
+  const forecast = terms ? affordabilityForecast(view, body, terms.paid) : null
   const now = currentServerTime(state)
   const submit = () => {
     if (canBuild && command) void model.send(command, proposal ?? undefined)
@@ -171,7 +171,7 @@ export function BuildingDetails({
                   }
                   cost={terms.paid}
                   available={body.amounts}
-                  wait={wait}
+                  forecast={forecast!}
                 />
                 {insight.benefit && (
                   <DetailRow label={benefitLabel(insight.benefit)}>
@@ -230,7 +230,7 @@ export function BuildingDetails({
               view={view}
               body={body}
               now={now}
-              resourceWait={wait}
+              resourceWait={forecast?.wait ?? null}
               resourcesInCosts={!!terms && !unavailable}
             />
           )}

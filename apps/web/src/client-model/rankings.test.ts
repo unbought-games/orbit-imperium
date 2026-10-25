@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import {
   aroundPlayer,
+  rankMovement,
   rankingWindow,
   RankingsController,
   type RankingPlayer,
@@ -76,4 +77,37 @@ it('retains the previous snapshot on refresh failure and accepts only the latest
   pending[4](snapshot(4000))
   await abandoned
   expect(controller.store.getState().data?.sampled_at).toBe(3000)
+})
+
+it('labels movement with signs and text, distinguishes new players and absent history', () => {
+  const row = { ...players[2], rank: 3 }
+  expect(rankMovement({ ...row, previous_rank: 5 }, 0)).toMatchObject({
+    text: '+2',
+    label: 'Up 2 places since the baseline',
+    direction: 'up',
+  })
+  expect(rankMovement({ ...row, previous_rank: 2 }, 0)).toMatchObject({
+    text: '−1',
+    label: 'Down 1 place since the baseline',
+    direction: 'down',
+  })
+  expect(rankMovement({ ...row, previous_rank: 3 }, 0)).toMatchObject({
+    text: '0',
+    direction: 'same',
+  })
+  expect(rankMovement(row, 0)).toMatchObject({ text: 'New', direction: 'new' })
+  expect(rankMovement(row, null)).toMatchObject({
+    text: '—',
+    direction: 'unknown',
+  })
+  expect(rankMovement({ ...row, previous_rank: 5 })).toMatchObject({
+    direction: 'unknown',
+  })
+  const observed = players.map((p) => ({ ...p, previous_rank: p.rank + 3 }))
+  expect(
+    rankMovement(rankingWindow(observed, 'Étoile', 0).rows[0], 0).text,
+  ).toBe('+3')
+  expect(rankMovement(rankingWindow(observed, '', 80).rows[0], 0).text).toBe(
+    '+3',
+  )
 })

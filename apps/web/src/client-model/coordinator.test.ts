@@ -1265,3 +1265,35 @@ it.each(['none', 'remove', 'write'])(
     expect(saved.has(latestFailure!)).toBe(true)
   },
 )
+
+it('discards simulation responses from a changed identity, request or rules profile', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { session, snapshot } = readyFixture(4)
+  for (const mismatch of ['request', 'binding', 'rules', 'session'] as const) {
+    const { c, port } = setup()
+    await c.initialize(session, snapshot)
+    port.simulate = async (context) => {
+      if (mismatch === 'session') await c.initialize(session, snapshot)
+      return {
+        binding:
+          mismatch === 'binding'
+            ? { ...context.binding, player: id(999) }
+            : context.binding,
+        request_id: mismatch === 'request' ? id(999) : context.request_id,
+        profile_hash: (mismatch === 'rules' ? 'b' : 'a').repeat(64),
+        samples: Array.from({ length: 10 }, () => ({
+          outcome: 'AttackerVictory' as const,
+          rounds: 0,
+          attacker: [],
+          defender: [],
+        })),
+      }
+    }
+    await expect(
+      c.simulate({
+        attacker: { technology: [0, 0, 0], units: [] },
+        defender: { technology: [0, 0, 0], units: [] },
+      }),
+    ).rejects.toThrow('universe changed')
+  }
+})

@@ -1,5 +1,5 @@
 import { ResourceNumber } from './number-value'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { ResourceMark } from './resource-mark'
 import { Popover } from './popover'
 import { classes } from './classes'
@@ -13,17 +13,20 @@ export function ResourceAmount({
   variant = 'cost',
   warning = false,
   children,
+  link,
 }: {
   resource: 'metal' | 'crystal' | 'deuterium' | 'energy'
   amount: string
   variant?: 'cost' | 'stock'
   warning?: boolean
   children: ReactNode
+  link?: ComponentProps<typeof Popover>['link']
 }) {
   const title = resource[0].toUpperCase() + resource.slice(1)
   return (
     <Popover
       label={title}
+      link={link}
       className={classes(
         styles.resource,
         styles[variant],

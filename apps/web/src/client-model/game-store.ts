@@ -1,3 +1,4 @@
+import type { components } from '../contracts'
 import { createStore } from 'zustand/vanilla'
 import type {
   AttemptLedger,
@@ -12,6 +13,7 @@ export type GameState = {
   binding: Binding | null
   view: BoundView | null
   settings: BoundSettings | null
+  reportShares?: Record<string, components['schemas']['ReportShareStatus']>
   reportHeaders: ReportHeaders
   attempts: AttemptLedger
   intents: Map<string, SubmittedIntent>

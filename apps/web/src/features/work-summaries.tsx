@@ -16,7 +16,7 @@ import { buildingProgress } from '../client-model/building-progress'
 import { catalogPage } from '../shell/catalog-routes'
 import { researchProgress } from '../client-model/research-progress'
 import { elapsedProgress } from './overview-progress'
-import { ConfirmationButton } from '../ui/confirmation-button'
+import { WorkCancellationButton } from './work-cancellation-button'
 import { ResourceSummary } from '../ui/number-value'
 import {
   manufacturingQueue,
@@ -290,7 +290,10 @@ export function WorkSummaries({
                 )}
                 <div className={styles.actions}>
                   {work && session && cancelType && (
-                    <ConfirmationButton
+                    <WorkCancellationButton
+                      model={session.model}
+                      operationId={work.operationId}
+                      kind={cancelType}
                       key={work.operationId ?? 'pending'}
                       dialogTitle={
                         cancelType === 'CancelConstruction'
@@ -321,7 +324,7 @@ export function WorkSummaries({
                       }}
                     >
                       {work.status === 'Cancelling' ? 'Cancelling…' : 'Cancel'}
-                    </ConfirmationButton>
+                    </WorkCancellationButton>
                   )}
                   {showLink &&
                     (enabled ? (

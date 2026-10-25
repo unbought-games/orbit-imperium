@@ -643,11 +643,20 @@ test('shipyard and defense show every batch in the same ordered queue', async ({
   })
 })
 
-for (const kind of ['construction', 'research'] as const) {
-  test(`overview cancels active ${kind} and prevents duplicate cancellation`, async ({
+for (const [kind, elapsed] of [
+  ['construction', 0],
+  ['construction', 60_000],
+  ['research', 0],
+  ['research', 60_000],
+] as const) {
+  test(`overview cancels active ${kind} after ${elapsed}ms and prevents duplicate cancellation`, async ({
     page,
   }) => {
+    const serverNow = Date.now()
+    await page.clock.install({ time: serverNow - 60_000 })
+    await page.clock.pauseAt(serverNow)
     const options: NonNullable<Parameters<typeof shellFixture>[1]> = {
+      sampledAt: serverNow,
       constructions:
         kind === 'construction'
           ? [
@@ -656,7 +665,8 @@ for (const kind of ['construction', 'research'] as const) {
                 body: body.id,
                 building: 'ResearchLab',
                 target_level: 1,
-                due_at: Date.now() + 76000,
+                started_at: serverNow - elapsed,
+                due_at: serverNow + 76000,
                 paid: resources,
               },
             ]
@@ -670,8 +680,8 @@ for (const kind of ['construction', 'research'] as const) {
               source_level: 0,
               target_level: 1,
               paid: resources,
-              started_at: Date.now(),
-              due_at: Date.now() + 76000,
+              started_at: serverNow - elapsed,
+              due_at: serverNow + 76000,
               labs: [],
               effective_lab: '1',
               can_cancel: true,
@@ -713,7 +723,10 @@ for (const kind of ['construction', 'research'] as const) {
       exact: true,
     })
     await cancel.click()
-    await confirmCancellation(page)
+    if (elapsed >= 30_000) {
+      await expect(page.getByRole('dialog')).toContainText('1 minute of work will be lost.')
+      await confirmCancellation(page)
+    } else await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(cancel).toBeDisabled()
     await expect(cancel).toHaveText('Cancelling…')
     await expect(summary).toContainText(
@@ -877,7 +890,8 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
         nodes
           .filter((n) => {
             const r = n.getBoundingClientRect()
-            const minimum = innerWidth < 1024 ? 44 : 24
+            // Ghost controls are intentionally compact; other touch targets stay 44px.
+            const minimum = n.matches('[data-button-variant="ghost"]') || innerWidth >= 1024 ? 24 : 44
             return (
               r.width > 0 &&
               r.height > 0 &&
@@ -1568,13 +1582,15 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     activity: { type: 'None' },
     counterespionage: { probability_ppm: 0, detected: false },
   }
+  let reportDetailRequests = 0
   let reportMode: 'populated' | 'empty' | 'failed' = 'populated'
   await page.route('**/api/**/reports**', async (route) => {
+    const detail = new URL(route.request().url()).pathname.endsWith(header.id)
+    if (detail) reportDetailRequests++
     if (reportMode === 'failed')
       return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     const request = route.request().postDataJSON()
     const context = request.context ?? request
-    const detail = new URL(route.request().url()).pathname.endsWith(header.id)
     await route.fulfill({
       json: {
         protocol: 4,
@@ -1594,7 +1610,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
       },
     })
   })
-  await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(
     page.getByRole('link', { name: 'Espionage', exact: true }),
   ).toBeVisible()
@@ -1650,14 +1666,17 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     fullPage: true,
   })
   reportMode = 'empty'
-  await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(page.getByText('No reports to show.', { exact: true })).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/reports-empty-phone.png',
     fullPage: true,
   })
+  // Legacy URLs remount the report during canonicalization. Keep this retry
+  // scenario on the final route so a redirect cannot consume its recovery.
+  reportDetailRequests = 0
   reportMode = 'failed'
-  await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
   await expect(
     page.getByRole('button', { name: 'Retry reports', exact: true }),
   ).toBeVisible()
@@ -1668,11 +1687,13 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     path: 'test-results/reports-unavailable-phone.png',
     fullPage: true,
   })
+  expect(reportDetailRequests).toBe(1)
   reportMode = 'populated'
   await page.getByRole('button', { name: 'Retry reports', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Report observation' }),
   ).toContainText('No stationed ships')
+  expect(reportDetailRequests).toBe(2)
 })
 
 test('secondary pages retain empty, unavailable and settings states at phone width', async ({
@@ -1809,7 +1830,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
-  await expect(quote).toContainText('Destination [1:1:3]')
+  await expect(quote).toContainText('Unknown planet')
   await expect(quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
   await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
   await expect(quote).toContainText('fuel')
@@ -1833,7 +1854,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(quote).toBeVisible()
   await quote
-    .getByRole('button', { name: 'Send 1 Small Cargo', exact: true })
+    .getByRole('button', { name: 'Transport to Unknown planet [1:1:3]', exact: true })
     .click()
   await expect(
     page.getByRole('complementary', { name: 'Action needs attention' }),
@@ -1898,7 +1919,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
   await expect(quote).toContainText('fuel')
   await expect(
-    quote.getByRole('button', { name: 'Send 1 Small Cargo', exact: true }),
+    quote.getByRole('button', { name: 'Transport to Unknown planet [1:1:3]', exact: true }),
   ).toBeDisabled()
   expect(sent).toBe(1)
 

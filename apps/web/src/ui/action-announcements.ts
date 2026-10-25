@@ -7,7 +7,11 @@ import { label } from './format'
 // Keep actual rejections visible, including presence failures.
 export function visibleAction(a: Attempt): boolean {
   const command = a.envelope.command
-  if (command.type === 'World' && command.action.type === 'SetReportHidden')
+  if (
+    command.type === 'World' &&
+    (command.action.type === 'SetReportHidden' ||
+      command.action.type === 'SetReportStarred')
+  )
     return a.status === 'uncertain' || a.status === 'rejected'
   return (
     command.type !== 'World' ||
@@ -16,6 +20,8 @@ export function visibleAction(a: Attempt): boolean {
   )
 }
 export function actionLabel(command: Command): string {
+  if (command.type === 'World' && command.action.type === 'SetReportStarred')
+    return command.action.starred ? 'Star report' : 'Unstar report'
   if (command.type === 'StartManufacture')
     return `${command.quantity} × ${label(command.item.id)}`
   if (command.type === 'World' && command.action.type === 'SetReportHidden')

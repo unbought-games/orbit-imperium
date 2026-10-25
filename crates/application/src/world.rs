@@ -134,6 +134,10 @@ pub struct ReportHeader4 {
     pub observed_at: i64,
     pub read: bool,
     pub hidden: bool,
+    #[serde(default)]
+    pub starred: bool,
+    pub fleet_investment: Option<String>,
+    pub defense_investment: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportDetail4 {

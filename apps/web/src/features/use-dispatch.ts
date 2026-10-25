@@ -207,8 +207,8 @@ export function useDispatch({
     : null
   useEffect(() => {
     if (quote) {
-      quoteRef.current?.focus()
-      quoteRef.current?.scrollIntoView({ block: 'nearest' })
+      quoteRef.current?.focus({ preventScroll: true })
+      quoteRef.current?.scrollIntoView({ block: 'start' })
     } else if (wasReviewing.current) {
       reviewButtonRef.current?.focus()
     }
@@ -370,6 +370,8 @@ export function useDispatch({
     }
   }
   return {
+    target,
+    playerNames: { ...observation?.player_names, ...view.player_names },
     submittedAttempt,
     submittedCoordinates: submitted?.coordinates,
     timing: timing?.terms,

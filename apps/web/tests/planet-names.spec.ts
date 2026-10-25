@@ -39,6 +39,20 @@ for (const width of [1280, 390]) {
     const rename = page.getByRole('button', {
       name: 'Rename planet [1:371:12]',
     })
+    const nameRow = rename.locator('..')
+    await expect(
+      nameRow.getByRole('heading', { name: 'Planet', exact: true }),
+    ).toBeVisible()
+    await expect(rename).toHaveText('')
+    await diagnosticScreenshot(
+      page.getByRole('article', {
+        name: 'Planet [1:371:12] dossier',
+        exact: true,
+      }),
+      {
+        path: `test-results/planet-rename-idle-${width}.png`,
+      },
+    )
     await rename.click()
     const form = page.getByRole('form', { name: 'Rename planet [1:371:12]' })
     const input = form.getByRole('textbox', { name: 'Planet name' })
@@ -52,6 +66,15 @@ for (const width of [1280, 390]) {
     expect(submitted).toHaveLength(0)
     await rename.click()
     await input.fill('  Terra 世界 🪐  ')
+    await diagnosticScreenshot(
+      page.getByRole('article', {
+        name: 'Planet [1:371:12] dossier',
+        exact: true,
+      }),
+      {
+        path: `test-results/planet-rename-editing-${width}.png`,
+      },
+    )
     await input.press('Enter')
     await expect(
       page.getByRole('heading', { name: 'Terra 世界 🪐', exact: true }),
@@ -66,7 +89,16 @@ for (const width of [1280, 390]) {
       page.getByRole('status').filter({ hasText: /^Planet renamed\.$/ }),
     ).toBeVisible()
     expect(submitted).toHaveLength(1)
+    await expect(form).toHaveCount(0)
+    await expect(rename).toBeFocused()
+    await rename.click()
+    await input.fill('Discard this edit')
     await form.getByRole('button', { name: 'Cancel' }).click()
+    await expect(rename).toBeFocused()
+    await expect(
+      page.getByRole('heading', { name: 'Terra 世界 🪐', exact: true }),
+    ).toBeVisible()
+    expect(submitted).toHaveLength(1)
     await page.reload()
     await expect(
       page.getByRole('heading', { name: 'Terra 世界 🪐', exact: true }),
@@ -171,6 +203,13 @@ test('a rejected rename preserves the draft and leaves the confirmed name unchan
   await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
     'New Terra',
   )
+  await expect(
+    page.getByRole('article', {
+      name: 'Terra [1:371:12] dossier',
+      exact: true,
+    }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(
     page.getByRole('heading', { name: 'Terra', exact: true }),
   ).toBeVisible()
@@ -284,11 +323,74 @@ test('the fallback label is a valid explicit name for an unnamed planet', async 
     page.getByRole('status').filter({ hasText: /^Planet renamed\.$/ }),
   ).toBeVisible()
   expect(planet.name).toBe('Planet')
-  await expect(save).toBeDisabled()
+  await expect(save).toHaveCount(0)
   await page.reload()
   await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
   await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
     'Planet',
   )
   await expect(save).toBeDisabled()
+})
+
+test('completed rename stays closed after its command leaves recent history', async ({
+  page,
+}) => {
+  const home = { ...body, name: 'Terra' }
+  const colony = {
+    ...body,
+    id: id(70),
+    name: 'Colony',
+    coordinates: { galaxy: 1, system: 371, position: 8 },
+  }
+  const planets = [home, colony]
+  let revision = 1
+  await shellFixture(page, {
+    protocol: 4,
+    bodies: planets,
+    viewerRevision: () => String(revision),
+  })
+  await page.route('**/commands', async (route) => {
+    const pair = route.request().postDataJSON()
+    const action = pair.gameplay.command.action
+    expect(action.type).toBe('RenamePlanet')
+    planets.find((planet) => planet.id === action.body)!.name = action.name
+    revision++
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        command_id: pair.gameplay.command_id,
+        admitted_at: Date.now(),
+        executed_at: Date.now(),
+        status: 'Committed',
+        result_ids: [],
+        minimum_viewer_revision: String(revision),
+      },
+    })
+  })
+  await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
+  await page.getByRole('textbox', { name: 'Planet name' }).fill('New Terra')
+  await page.getByRole('button', { name: 'Save name' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'New Terra', exact: true }),
+  ).toBeVisible()
+
+  // Only eight successful commands are retained by the coordinator.
+  for (let index = 0; index < 8; index++) {
+    await page.getByRole('button', { name: 'Rename planet [1:371:8]' }).click()
+    const form = page.getByRole('form', { name: 'Rename planet [1:371:8]' })
+    await form
+      .getByRole('textbox', { name: 'Planet name' })
+      .fill(`Colony ${index}`)
+    await form.getByRole('button', { name: 'Save name' }).click()
+    await expect(
+      page.getByRole('heading', { name: `Colony ${index}`, exact: true }),
+    ).toBeVisible()
+  }
+  await expect(
+    page.getByRole('heading', { name: 'New Terra', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveCount(
+    0,
+  )
 })
