@@ -17,6 +17,7 @@ export function ConfirmationButton({
   confirmLabel,
   cancelLabel = 'Keep it',
   onConfirm,
+  requiresConfirmation = () => true,
   children,
   disabled,
   ...props
@@ -25,6 +26,7 @@ export function ConfirmationButton({
   review: ReactNode
   confirmLabel: string
   cancelLabel?: string
+  requiresConfirmation?: () => boolean
   onConfirm: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -46,7 +48,10 @@ export function ConfirmationButton({
         type="button"
         disabled={disabled}
         ref={opener}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (requiresConfirmation()) setOpen(true)
+          else onConfirm()
+        }}
       >
         {children}
       </Button>

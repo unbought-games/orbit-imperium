@@ -1,3 +1,4 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { expect, test, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
@@ -349,3 +350,56 @@ test('rejected cancellation keeps construction active and every upgrade blocked'
     fixture.optionsGate.resolve()
   }
 })
+
+for (const kind of ['construction', 'research'] as const) {
+  for (const elapsed of [29_999, 30_000, 30_001, 29 * 3_600_000]) {
+    test(`${kind} cancellation uses server elapsed ${elapsed}ms`, async ({ page }) => {
+      await page.clock.install({ time: now })
+      await page.clock.pauseAt(now)
+      const paid = { metal: '76000000', crystal: '38000000', deuterium: '0' }
+      const timing = { id: id(10), started_at: now - elapsed, due_at: now + 3_600_000, paid }
+      const constructions: S['Construction3'][] = kind === 'construction' ? [{ ...timing, body: body.id, building: 'MetalMine', target_level: 2 }] : []
+      const researchOperation: S['ResearchOperationDto'] | null = kind === 'research' ? { ...timing, host: body.id, research: 'EnergyTechnology', source_level: 1, target_level: 2, labs: [], effective_lab: '1', can_cancel: true } : null
+      await page.setViewportSize({ width: elapsed === 30_000 ? 390 : 1440, height: 900 })
+      await shellFixture(page, { protocol: 4, sampledAt: now, constructions, researchOperation, catalog: [
+        { key: { kind: 'Building', id: 'MetalMine' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] },
+        { key: { kind: 'Research', id: 'EnergyTechnology' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] },
+      ] })
+      const sent: unknown[] = []
+      await page.route('**/commands', route => {
+        const envelope = route.request().postDataJSON().gameplay
+        sent.push(envelope.command)
+        return route.fulfill({ json: { protocol: 4, binding, command_id: envelope.command_id, admitted_at: now, executed_at: now, status: 'Rejected', code: 'OperationNotActive' } })
+      })
+      await page.goto(`/u/andromeda/b/${body.id}/${kind === 'construction' ? 'resources/metal-mine' : 'research/energy-technology'}`)
+      const cancel = page.getByRole('button', { name: `Cancel ${kind}`, exact: true })
+      await cancel.focus()
+      await page.keyboard.press('Enter')
+      const dialog = page.getByRole('dialog', { name: `Cancel ${kind}?`, exact: true })
+      if (elapsed >= 30_000) {
+        await expect(dialog).toBeVisible()
+        await expect(dialog).toContainText(elapsed === 29 * 3_600_000 ? '29 hours of work will be lost.' : '30 seconds of work will be lost.')
+        await expect(dialog.getByRole('button', { name: `Keep ${kind}` })).toBeFocused()
+        expect(sent).toHaveLength(0)
+        expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+        await diagnosticScreenshot(page, { path: `test-results/cancellation-${kind}-${elapsed}.png` })
+        await page.keyboard.press('Escape')
+        await expect(cancel).toBeFocused()
+        await cancel.click()
+        await dialog.getByRole('button', { name: 'Confirm cancellation' }).click()
+      } else await expect(dialog).toHaveCount(0)
+      await expect.poll(() => sent.length).toBe(1)
+      expect(sent[0]).toEqual({ type: kind === 'construction' ? 'CancelConstruction' : 'CancelResearch', operation: id(10) })
+      // Rejection leaves authoritative work intact and permits a deliberate retry.
+      await expect(cancel).toBeEnabled()
+      await expect(page.getByRole('region', { name: `Active ${kind}`, exact: true })).toBeVisible()
+      if (elapsed === 29_999) {
+        // Cross the boundary between render ticks; the click must re-read time.
+        await page.clock.runFor(1)
+        await cancel.click()
+        await expect(dialog).toContainText('30 seconds of work will be lost.')
+        expect(sent).toHaveLength(1)
+      }
+    })
+  }
+}

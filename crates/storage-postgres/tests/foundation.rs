@@ -116,6 +116,10 @@ async fn bound_foundation_identity_inventory_races_and_windows() {
     let after = service.bound_view(p, context()).await.unwrap();
     assert_eq!(after.view.bodies[0].amounts.metal, "910000000");
     assert_eq!(after.view.constructions.len(), 1);
+    assert_eq!(
+        after.view.constructions[0].started_at,
+        after.view.sampled_at
+    );
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
     let stored: String = sqlx::query_scalar("SELECT intent_hash FROM commands WHERE command_id=$1")
         .bind(e.command_id.0)

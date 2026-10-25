@@ -1,6 +1,5 @@
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { confirmCancellation } from './fixtures/confirmation'
 import {foreground} from './fixtures/navigation'
 import {test,expect} from './fixtures/test'
 import {execFileSync} from 'node:child_process'
@@ -45,7 +44,7 @@ test('two bodies retain independent pending actions through keyboard switching a
  await page.goForward();await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', source)
  const second=(await overview(page.request)).bodies[1].id;await page.goto(`/u/${new URL(page.url()).pathname.split('/')[2]}/?body=${second}`);await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', second);await expect(page).toHaveURL(new RegExp(`/b/${second}/overview$`))
  await page.getByRole('button',{name:'Cancel construction · full refund',exact:true}).click()
-  await confirmCancellation(page)
+  await expect(page.getByRole('dialog', { name: 'Cancel construction?', exact: true })).toHaveCount(0)
  await expect.poll(async()=>(await saved()).filter(a=>a.envelope.command.type==='CancelConstruction'&&a.status==='committed'&&a.reconciled).length).toBe(1)
  await expect.poll(async()=>(await overview(page.request)).constructions.map((work:{body:string})=>work.body)).toEqual([source,body].filter(id=>id!==second))
  await expect(page.getByRole('heading',{name:'Construction in progress',exact:true})).toHaveCount(0)
