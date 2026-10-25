@@ -180,19 +180,22 @@ export function CombatReport({
   viewer,
   playerNames,
   actions,
+  shared = false,
 }: {
   payload: Observation
   viewer?: string
   playerNames?: PlayerNames
   actions?: ReactNode
+  shared?: boolean
 }) {
-  const report = combatReportModel(payload, viewer, playerNames)
+  const report = combatReportModel(payload, viewer, playerNames, shared)
   return (
     <section aria-label="Report observation" className={styles.report}>
       <header className={`${styles.outcome} ${styles[report.tone]}`}>
         <p className={styles.kicker}>
           Combat report ·{' '}
           <BodyIdentity
+            coordinatesHidden={shared && !payload.target}
             name={payload.target_name}
             kind={payload.target_kind}
             at={payload.target}

@@ -1,5 +1,6 @@
 mod colonization;
 mod rankings;
+mod report_sharing;
 use orbit_application::StoreError;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 mod enrollment;

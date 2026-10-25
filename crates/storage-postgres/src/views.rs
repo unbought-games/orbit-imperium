@@ -236,6 +236,17 @@ impl GameStore for PgStore {
     ) -> Result<ReadSnapshot<(ReportsPage4, i64)>, StoreError> {
         self.report_page(q).await
     }
+    async fn report_share(
+        &self,
+        binding: Binding,
+        report: ReportId,
+        action: ReportShareAction,
+    ) -> Result<ReportShareStatus, StoreError> {
+        self.manage_report_share(binding, report, action).await
+    }
+    async fn shared_report(&self, token: uuid::Uuid) -> Result<SharedReport, StoreError> {
+        self.read_shared_report(token).await
+    }
     async fn world_report(
         &self,
         b: Binding,

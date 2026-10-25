@@ -174,6 +174,20 @@ pub trait GameStore: Send + Sync {
     {
         async { Err(StoreError::Unavailable) }
     }
+    fn report_share(
+        &self,
+        _binding: Binding,
+        _report: orbit_engine::ReportId,
+        _action: ReportShareAction,
+    ) -> impl std::future::Future<Output = Result<ReportShareStatus, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+    fn shared_report(
+        &self,
+        _token: uuid::Uuid,
+    ) -> impl std::future::Future<Output = Result<SharedReport, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
     fn world_report(
         &self,
         _b: Binding,

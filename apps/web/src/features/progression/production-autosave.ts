@@ -60,6 +60,7 @@ export class ProductionAutosave {
     error: null,
   }))
   private scheduled = false
+  private debounce: ReturnType<typeof setTimeout> | undefined
   private readonly binding: string
   private readonly unsubscribe: () => void
 
@@ -75,6 +76,20 @@ export class ProductionAutosave {
     if (!confirmedProduction(this.model, this.body)?.editable.includes(key))
       return
     this.store.setState(({ edits }) => ({ edits: { ...edits, [key]: value } }))
+    this.schedule()
+  }
+
+  // Edits live in the session queue immediately, including when navigation
+  // unmounts the control before this trailing save runs.
+  changeDeferred = (key: keyof Settings, value: Settings[typeof key]) => {
+    clearTimeout(this.debounce)
+    this.debounce = setTimeout(this.flush, 300)
+    this.change(key, value)
+  }
+
+  flush = () => {
+    clearTimeout(this.debounce)
+    this.debounce = undefined
     this.schedule()
   }
 
@@ -99,6 +114,8 @@ export class ProductionAutosave {
   private advance() {
     const game = this.model.store.getState()
     if (canonical(game.binding) !== this.binding) {
+      clearTimeout(this.debounce)
+      this.debounce = undefined
       this.unsubscribe()
       this.store.setState({ edits: {}, flight: null, error: null })
       return
@@ -130,7 +147,7 @@ export class ProductionAutosave {
         if (edits[key] === flight.edits[key]) delete edits[key]
       this.store.setState({ edits, flight: null })
     }
-    if (error || !game.ready) return
+    if (error || !game.ready || this.debounce !== undefined) return
     // Include restored/uncertain commands and committed receipts whose snapshot
     // has not arrived. Never send a second settings command against an old base.
     if (

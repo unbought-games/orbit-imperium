@@ -21,6 +21,12 @@ async function start() {
     root.render(<DetailPlayground />)
     return
   }
+  const shared = /^\/reports\/shared\/([^/]+)\/?$/i.exec(location.pathname)
+  if (shared) {
+    const { SharedReportPage } = await import('./features/shared-report-page')
+    root.render(<SharedReportPage token={shared[1]} />)
+    return
+  }
   root.render(<ConnectionScreen />)
   void startAnalytics()
   const initialRuntime = await loadInitialRuntime(browserDependencies())

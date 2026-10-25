@@ -21,7 +21,7 @@ export class HttpError extends Error {
     super(code)
   }
 }
-async function request(
+export async function request(
   path: string,
   method = 'GET',
   body?: unknown,

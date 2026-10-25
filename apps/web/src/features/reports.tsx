@@ -1,4 +1,5 @@
 import { ReportSimulation } from './combat-simulation'
+import { ReportShareControl } from './report-share-control'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
 import { Button, ButtonLink } from '../ui/button'
@@ -139,6 +140,11 @@ export function Reports({
                   model={model}
                   report={detail.payload}
                 />
+              )}
+              {['Combat', 'ContactLost', 'Espionage'].includes(
+                detail.payload.kind,
+              ) && (
+                <ReportShareControl model={model} report={detail.header.id} />
               )}
               <ReportVisibilityButton
                 model={model}

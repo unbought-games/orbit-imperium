@@ -1,7 +1,7 @@
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
-import { openProductionSettings } from './fixtures/production-settings'
+import { moveProductionSlider, openProductionSettings } from './fixtures/production-settings'
 import { captureCatalog } from './fixtures/catalog-capture'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, shellFixture, body, binding, refreshGame } from './fixtures/game'
@@ -345,7 +345,7 @@ test('resource settings keep production rules and fuel figures without repeated 
   await setup(page)
   await openProductionSettings(page)
   const settings = page.getByRole('region', { name: 'Production controls' })
-  await expect(settings.getByRole('combobox')).toHaveCount(4)
+  await expect(settings.getByRole('slider')).toHaveCount(4)
   await settings.getByText('Production rules and unavailable sources', { exact: true }).click()
   await expect(settings.getByText('Unavailable: Fusion Reactor, Solar Satellite.')).toBeVisible()
   await expect(settings).toContainText('Deuterium fuel: 0 / hour')
@@ -560,10 +560,10 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
     .filter({ has: page.getByText('Energy balance', { exact: true }) })
     .first()
   const confirmedTotals = await totals.innerText()
-  await page.getByLabel('metal mine production').selectOption('50')
+  await moveProductionSlider(page, 'metal mine production', '50')
   await expect.poll(() => sent.length).toBe(1)
-  await page.getByLabel('metal mine production').selectOption('100')
-  await page.getByLabel('solar plant production').selectOption('60')
+  await moveProductionSlider(page, 'metal mine production', '100')
+  await moveProductionSlider(page, 'solar plant production', '60')
   await expect(panel.getByRole('status')).toContainText(
     'Saving production changes',
   )
@@ -633,7 +633,7 @@ test('production rejection retains edits and retry preserves unrelated server ch
   const settings = page.getByRole('region', { name: 'Production controls' })
   await expect(settings).toBeVisible()
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
-  await page.getByLabel('metal mine production').selectOption('50')
+  await moveProductionSlider(page, 'metal mine production', '50')
   const panel = page.getByRole('region', { name: 'Production controls' })
   await expect(panel.getByRole('alert')).toContainText('rejected')
   await expect(page.getByLabel('metal mine production')).toHaveValue('50')
@@ -711,7 +711,7 @@ for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
     })
     if (restoredCommand === 'production') {
       await openProductionSettings(page)
-      await page.getByLabel('metal mine production').selectOption('50')
+      await moveProductionSlider(page, 'metal mine production', '50')
     } else {
       await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
       await page.getByRole('button', { name: 'Confirm upgrade', exact: true }).click()
@@ -751,7 +751,7 @@ for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
       .first()
     const confirmedTotals = await totals.innerText()
     const desired = restoredCommand === 'production' ? '100' : '50'
-    await metal.selectOption(desired)
+    await moveProductionSlider(page, 'metal mine production', desired)
     await expect(metal).toHaveValue(desired)
     await expect(panel.getByRole('status')).toContainText(
       'Saving production changes',
@@ -1090,7 +1090,7 @@ test('stockpiles, energy, and signed hourly rates round down to whole units', as
   ).toContainText('Net production -4 / hour')
   await page.keyboard.press('Escape')
   await expect(
-    strip.getByRole('button', { name: 'Energy details' }).locator('strong'),
+    strip.getByRole('link', { name: 'Energy — resource settings' }).locator('strong'),
   ).toHaveText('26')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
@@ -1729,6 +1729,7 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
   await selectBody(page, colony.id)
   await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resource-settings$`))
   await expect(page.getByLabel('metal mine production')).toHaveValue('30')
+  await expect(page.getByRole('link', { name: 'Energy — resource settings' })).toHaveAttribute('href', `/u/andromeda/b/${colony.id}/resource-settings`)
   await selectBody(page, body.id)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
 })
@@ -1736,6 +1737,7 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
 for (const protocol of [2, 3, 4] as const) {
   test(`resource settings is unavailable without production data on protocol ${protocol}`, async ({ page }) => {
     await shellFixture(page, { protocol })
+    await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
     await page.getByRole('button', { name: 'Menu', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Navigation' }).getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()
     await page.goto(`/u/andromeda/b/${body.id}/resource-settings`)
@@ -1743,3 +1745,78 @@ for (const protocol of [2, 3, 4] as const) {
     await expect(page.getByRole('region', { name: 'Production controls' })).toHaveCount(0)
   })
 }
+
+test('production sliders support mouse, keyboard bounds and final saves', async ({ page }) => {
+  const { sent } = await setup(page)
+  await page.getByRole('link', { name: 'Energy — resource settings' }).click()
+  const metal = page.getByRole('slider', { name: 'metal mine production' })
+  await expect(metal).toHaveAttribute('step', '10')
+  await metal.focus()
+  await metal.press('Home')
+  await expect(metal).toHaveValue('0')
+  await expect(metal).toHaveAttribute('aria-valuetext', '0%')
+  await expect.poll(() => sent.length).toBe(1)
+  await metal.press('ArrowLeft')
+  await expect(metal).toHaveValue('0')
+  await metal.press('End')
+  await expect(metal).toHaveValue('100')
+  await expect.poll(() => sent.length).toBe(2)
+  await metal.press('ArrowRight')
+  await expect(metal).toHaveValue('100')
+  await expect(page.getByRole('region', { name: 'Production controls' }).getByRole('status')).toHaveText('All changes saved automatically.')
+  const bounds = (await metal.boundingBox())!
+  await page.mouse.move(bounds.x + bounds.width - 8, bounds.y + bounds.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, { steps: 5 })
+  await page.mouse.up()
+  await expect(metal).toHaveValue('50')
+  await expect.poll(() => sent.length).toBe(3)
+  expect(sent[2].command).toMatchObject({ type: 'SetProduction', settings: { metal_mine: 50 } })
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    for (const percentage of await page.getByRole('region', { name: 'Production controls' }).locator('input + span').all()) {
+      expect(await percentage.evaluate((element) => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        // React renders the number and percent sign as separate text nodes.
+        return new Set(Array.from(range.getClientRects(), (rect) => rect.top)).size
+      })).toBe(1)
+    }
+    await diagnosticScreenshot(page, { path: `test-results/energy-controls-${width}.png`, fullPage: true })
+  }
+})
+
+test('energy links retain details and native modifier and keyboard navigation', async ({ page, context }) => {
+  await setup(page)
+  const link = page.getByRole('link', { name: 'Energy — resource settings' })
+  const href = await link.getAttribute('href')
+  expect(href).toContain(`/b/${body.id}/resource-settings`)
+  await link.focus()
+  await expect(page.getByRole('tooltip', { name: 'Energy', exact: true })).toContainText('supplied')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('tooltip', { name: 'Energy', exact: true })).toHaveCount(0)
+  const original = page.url()
+  const [tab] = await Promise.all([context.waitForEvent('page'), link.click({ modifiers: ['ControlOrMeta'] })])
+  await expect(page).toHaveURL(original)
+  await tab.close()
+  await link.focus()
+  await link.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`${body.id}/resource-settings$`))
+  await expect(page.getByRole('slider', { name: 'metal mine production' })).toBeVisible()
+})
+
+test('touch taps navigate to energy settings and set a production slider', async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, viewport: { width: 390, height: 844 } })
+  const page = await context.newPage()
+  const { sent } = await setup(page)
+  await page.getByRole('link', { name: 'Energy — resource settings' }).tap()
+  const metal = page.getByRole('slider', { name: 'metal mine production' })
+  await metal.scrollIntoViewIfNeeded()
+  const bounds = (await metal.boundingBox())!
+  await page.touchscreen.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+  await expect(metal).toHaveValue('50')
+  await expect.poll(() => sent.length).toBe(1)
+  expect(sent[0].command).toMatchObject({ type: 'SetProduction', settings: { metal_mine: 50 } })
+  await context.close()
+})
