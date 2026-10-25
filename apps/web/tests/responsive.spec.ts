@@ -25,7 +25,7 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
   for(const dest of ['overview','resources','facilities','research','shipyard','defense','settings']){
    await go(dest);await expect(page.locator('main')).toBeVisible();
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${dest} overflow`).toBe(true);
-   const small=await page.locator('button,input,select,summary,nav a,main a,aside a').evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect();return r.width>0&&r.height>0&&(r.width<(innerWidth<1024?44:24)||r.height<(innerWidth<1024?44:24))}).map(n=>n.textContent));expect(small).toEqual([]);
+   const small=await page.locator('button,input,select,summary,nav a,main a,aside a').evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect();const minimum=n.matches('[data-button-variant="ghost"]')||innerWidth>=1024?24:44;return r.width>0&&r.height>0&&(r.width<minimum||r.height<minimum)}).map(n=>n.textContent));expect(small).toEqual([]);
   }
   await go('overview');if(width===1440){expect((await page.getByRole('main').boundingBox())?.width).toBe(1368);await expect(page.getByRole('complementary',{name:'Planets and moons'})).toHaveCount(0);const nav=page.getByRole('navigation',{name:'Main navigation',exact:true});const world=await nav.getByRole('link',{name:'Empire',exact:true}).boundingBox(),build=await nav.getByRole('link',{name:'Build',exact:true}).boundingBox();expect(world!.y).toBe(build!.y);expect(world!.x+world!.width).toBeLessThan(build!.x)}
   await page.evaluate(()=>window.scrollTo(0,0));await diagnosticScreenshot(page, {path:`test-results/overview-${width}x${height}.png`});

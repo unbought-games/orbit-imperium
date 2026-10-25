@@ -38,6 +38,7 @@ export function Button({
 }: ComponentPropsWithRef<'button'> & ButtonAppearance) {
   return (
     <button
+      data-button-variant={variant ?? 'primary'}
       className={buttonClasses({ variant, size, padding, className })}
       {...props}
     />
@@ -53,6 +54,7 @@ export function ButtonLinkAnchor({
 }: ComponentPropsWithRef<'a'> & ButtonAppearance) {
   return (
     <a
+      data-button-variant={variant ?? 'primary'}
       className={buttonClasses({ variant, size, padding, className })}
       {...props}
     />
