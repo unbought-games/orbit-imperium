@@ -813,6 +813,9 @@ test('pasting coordinates fills the unified field and preserves validation', asy
 test('coordinate errors appear beside entry before review, including pasted emoji and ranges', async ({
   page,
 }) => {
+  const now = new Date('2026-10-25T12:00:00Z')
+  await page.clock.install({ time: now })
+  await page.clock.pauseAt(now)
   const state = await setup(page)
   const position = page.getByLabel('Destination coordinates', { exact: true })
   for (const value of [
@@ -832,9 +835,13 @@ test('coordinate errors appear beside entry before review, including pasted emoj
       /position number from 1 to 15/,
     )
     await expect(review(page)).toBeDisabled()
+    // Invalid coordinates must not request timing even after its debounce fires.
+    await page.clock.runFor(1000)
+    expect(state.resolves).toBe(0)
+    expect(state.quotes).toBe(0)
   }
-  await setDestination(page, { position: '1' })
-  await setDestination(page, { system: '500' })
+  // Keep this edit invalid throughout; a temporary valid position can resolve.
+  await setDestination(page, { position: '1', system: '500' })
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveAccessibleDescription(/Enter a system number from 1 to 499./)
@@ -843,6 +850,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveAccessibleDescription(/Enter a galaxy number from 1 to 1./)
   await setDestination(page, { position: '🏎️' })
+  await page.clock.runFor(1000)
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     expect(
@@ -862,6 +870,9 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   await setDestination(page, { position: '15' })
   await expect(review(page)).toBeEnabled()
   await expect(position).toHaveAttribute('aria-invalid', 'false')
+  await page.clock.runFor(1000)
+  await expect.poll(() => state.resolves).toBe(1)
+  await expect.poll(() => state.quotes).toBe(1)
 })
 
 test('own-planet attack is actionable, while transport to another owned planet and own-position harvest stay available', async ({

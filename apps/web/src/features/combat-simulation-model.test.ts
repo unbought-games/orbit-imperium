@@ -39,6 +39,31 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
   },
 ]
 const attacking = { 'attacker:Ship:LightFighter': '10' }
+it.each([true, false])(
+  'prefills retained Gauss Cannons only on the defending side (enabled=%s)',
+  (enabled) => {
+    const item = { kind: 'Defense', id: 'GaussCannon' } as const
+    const observed: Espionage = {
+      ...report,
+      defenses: { visibility: 'Known', value: [{ item, count: '7' }] },
+    }
+    const fields = simulationFields(
+      observed,
+      [...catalog, { ...catalog[1], key: item, enabled }],
+      [],
+    )
+    expect(
+      fields.find((f) => f.key === 'defender:Defense:GaussCannon')?.value,
+    ).toBe('7')
+    expect(fields.some((f) => f.key === 'attacker:Defense:GaussCannon')).toBe(
+      false,
+    )
+    expect(unsupportedReportUnits(observed, fields)).toEqual([])
+    expect(
+      simulationInputs(fields, attacking).inputs?.defender.units,
+    ).toContainEqual({ item, count: 7 })
+  },
+)
 describe('report combat prefill', () => {
   it('maps visible forces and combat technology without disclosing unrelated facts', () => {
     const fields = simulationFields(

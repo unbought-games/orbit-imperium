@@ -1,0 +1,15 @@
+{
+  "requirements": [
+    { "type": "BodyBuilding", "building": "Shipyard", "level": 6 },
+    { "type": "PlayerResearch", "research": "EnergyTechnology", "level": 6 },
+    { "type": "PlayerResearch", "research": "WeaponsTechnology", "level": 3 },
+    { "type": "PlayerResearch", "research": "ShieldingTechnology", "level": 1 }
+  ],
+  "cost": { "metal": 20000, "crystal": 15000, "deuterium": 2000 },
+  "combat": {
+    "item": { "kind": "Defense", "id": "GaussCannon" },
+    "cost": [20000, 15000, 2000],
+    "attack_hundredths": 110000,
+    "shield_hundredths": 20000
+  }
+}
