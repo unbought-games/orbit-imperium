@@ -40,7 +40,8 @@ export function CoordinateInput({
           id={id}
           ref={input}
           type="text"
-          inputMode="text"
+          inputMode="numeric"
+          data-coordinate-input=""
           autoComplete="off"
           spellCheck={false}
           value={value}

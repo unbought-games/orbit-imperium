@@ -54,7 +54,7 @@ for (const interaction of ['click', 'tap'] as const) {
           )
         }
 
-        const inputs = page.locator('input[inputmode="numeric"]')
+        const inputs = page.locator('input[inputmode="numeric"]:not([data-coordinate-input])')
         await expect(inputs).toHaveCount(
           screen === 'dispatch' ? 4 : screen === 'transport' ? 4 : 1,
         )
@@ -104,4 +104,17 @@ test('coordinates are one tab stop with colon and space advancement', async ({
   await input.press('Backspace')
   await input.pressSequentially('9')
   await expect(input).toHaveValue('1:45:9')
+})
+
+test('coordinate input offers a numeric keyboard and a touch separator control', async ({ page }) => {
+  await shellFixture(page, { protocol: 4 })
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  await expect(input).toHaveAttribute('inputmode', 'numeric')
+  await input.fill('1')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('45')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('8')
+  await expect(input).toHaveValue('1:45:8')
 })
