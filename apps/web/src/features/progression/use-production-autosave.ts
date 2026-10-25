@@ -17,7 +17,8 @@ export function useProductionAutosave(model: Coordinator, body: string) {
   )
   return {
     settings: productionControlSettings(game, body, edits),
-    change: autosave.change,
+    change: autosave.changeDeferred,
+    flush: autosave.flush,
     retry: autosave.retry,
     error,
     status: pending.some((attempt) => attempt.status === 'uncertain')

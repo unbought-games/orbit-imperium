@@ -7,7 +7,11 @@ import {
 } from '@tanstack/react-router'
 import { useGameSession } from './session-context'
 import { ScreenContext } from './screen-context'
-import { bodyPages, resolveNamedDestination } from './routes'
+import {
+  bodyPages,
+  resolveDestination,
+  resolveNamedDestination,
+} from './routes'
 import { validateGalaxySearch } from './galaxy-location'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
@@ -224,7 +228,33 @@ export function GameShell() {
                 </div>
                 {navigation}
                 <div className={styles.masthead}>
-                  {body ? <ResourceStrip view={view} body={body} /> : <span />}
+                  {body ? (
+                    <ResourceStrip
+                      view={view}
+                      body={body}
+                      energyLink={
+                        resolveDestination(
+                          {
+                            universe: view.binding.universe,
+                            page: 'resource-settings',
+                            body: body.id,
+                          },
+                          view,
+                        ).available ? (
+                          <Link
+                            {...routeTarget(
+                              universeName,
+                              'resource-settings',
+                              body.id,
+                            )}
+                            aria-label="Energy — resource settings"
+                          />
+                        ) : undefined
+                      }
+                    />
+                  ) : (
+                    <span />
+                  )}
                 </div>
               </div>
             )}
