@@ -1260,20 +1260,25 @@ async fn beginner_protection_multiplier_is_saved_per_universe_and_can_be_reset()
 
 #[tokio::test]
 async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_restart() {
-    cannon_activation_preserves_paid_work(DefenseId::IonCannon).await;
+    defense_activation_preserves_paid_work(DefenseId::IonCannon).await;
 }
 
 #[tokio::test]
 async fn gauss_cannon_activation_preserves_paid_work_and_retained_defenses_across_restart() {
-    cannon_activation_preserves_paid_work(DefenseId::GaussCannon).await;
+    defense_activation_preserves_paid_work(DefenseId::GaussCannon).await;
 }
 
-async fn cannon_activation_preserves_paid_work(defense: DefenseId) {
+#[tokio::test]
+async fn heavy_laser_activation_preserves_paid_work_and_retained_defenses_across_restart() {
+    defense_activation_preserves_paid_work(DefenseId::HeavyLaser).await;
+}
+
+async fn defense_activation_preserves_paid_work(defense: DefenseId) {
     let (store, pool, universe, binding) = setup().await;
     let (_, _, other, _) = setup().await;
     let service = RulesService::new(store.clone());
     let other_rules = store.load_rules(other).await.unwrap();
-    if defense == DefenseId::IonCannon {
+    if matches!(defense, DefenseId::IonCannon | DefenseId::HeavyLaser) {
         let mut prerequisites = service.export(universe).await.unwrap();
         let fixture: RulesArtifact =
             serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-slice-9.json")).unwrap();
@@ -1327,6 +1332,26 @@ async fn cannon_activation_preserves_paid_work(defense: DefenseId) {
                 AssetLocation::Player,
                 1400,
                 4,
+            ),
+        ],
+        DefenseId::HeavyLaser => vec![
+            (
+                CatalogKey::Building(Building::Shipyard),
+                AssetLocation::Body(body),
+                700,
+                4,
+            ),
+            (
+                CatalogKey::Research(ResearchId::LaserTechnology),
+                AssetLocation::Player,
+                300,
+                6,
+            ),
+            (
+                CatalogKey::Research(ResearchId::EnergyTechnology),
+                AssetLocation::Player,
+                1200,
+                3,
             ),
         ],
         DefenseId::GaussCannon => vec![
@@ -1488,6 +1513,9 @@ async fn cannon_activation_preserves_paid_work(defense: DefenseId) {
     let mut document = service.export(universe).await.unwrap();
     let content: serde_json::Value = serde_json::from_slice(match defense {
         DefenseId::IonCannon => include_bytes!("../../../rules/content/ion-cannon.json").as_slice(),
+        DefenseId::HeavyLaser => {
+            include_bytes!("../../../rules/content/heavy-laser.json").as_slice()
+        }
         DefenseId::GaussCannon => {
             include_bytes!("../../../rules/content/gauss-cannon.json").as_slice()
         }

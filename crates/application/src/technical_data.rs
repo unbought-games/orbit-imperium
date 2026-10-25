@@ -230,6 +230,19 @@ mod tests {
         assert_eq!(before, serde_json::to_value(&r.artifact).unwrap());
     }
     #[test]
+    fn heavy_laser_projects_base_stats_from_active_rules() {
+        let r =
+            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-heavy-laser.json")).unwrap();
+        let defense = data(&r, CatalogKey::Defense(DefenseId::HeavyLaser))
+            .combat
+            .unwrap();
+        assert_eq!(defense.attack_ticks, "25000000");
+        assert_eq!(defense.shield_ticks, "10000000");
+        assert_eq!(defense.hull_ticks, "80000000");
+        assert!(defense.rapid_fire_against.is_empty());
+        assert!(defense.rapid_fire_from.is_empty());
+    }
+    #[test]
     fn custom_drive_and_combat_bonuses_match_engine_calculations() {
         let mut r = rules();
         let ship = r.artifact.ships.get_mut(&ShipType::SmallCargo).unwrap();
