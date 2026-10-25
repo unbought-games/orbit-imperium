@@ -31,7 +31,7 @@
   --link-hover: var(--ice-light);
   --danger: #ffb4a4;
   --warning: #e6b96c;
-  --resource-metal: #91a7bf;
+  --resource-metal: var(--champagne);
   --resource-crystal: var(--ice);
   --resource-deuterium: #83c4b0;
   --planet-shadow: #081220;
