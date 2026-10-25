@@ -44,10 +44,11 @@ test('activation also supports the original world profile and reproduces the com
 })
 
  test('ship patches add satellite rapid fire regardless of activation order', async () => {
+  const {prepareLargeCargoRules} = await import('./prepare-large-cargo-rules.mjs')
   const {prepareHeavyFighterRules} = await import('./prepare-heavy-fighter-rules.mjs')
   const {prepareCruiserRules} = await import('./prepare-cruiser-rules.mjs')
   const {prepareColonizationRules} = await import('./prepare-colonization-rules.mjs')
-  for (const [id,prepare] of [['HeavyFighter',prepareHeavyFighterRules],['Cruiser',prepareCruiserRules],['ColonyShip',prepareColonizationRules]]) {
+  for (const [id,prepare] of [['LargeCargo',prepareLargeCargoRules],['HeavyFighter',prepareHeavyFighterRules],['Cruiser',prepareCruiserRules],['ColonyShip',prepareColonizationRules]]) {
     const before=exported()
     before.artifact.catalog.find((e)=>e.key.id===id).enabled=false
     delete before.artifact.ships[id]

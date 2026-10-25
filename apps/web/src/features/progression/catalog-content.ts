@@ -30,6 +30,8 @@ const content: Record<string, string> = {
     'Establishes a planet at an eligible empty position. Requires Shipyard 4 and Impulse Drive 3. Success consumes one ship and deposits cargo; escorts and extra Colony Ships return. Uses impulse propulsion with 7,500 cargo capacity shared with mission fuel.',
   SmallCargo:
     'Transports resources between planets. Cargo capacity is shared by resources and mission fuel.',
+  LargeCargo:
+    'A bulk transport powered by combustion engines for moving large resource shipments between planets. Cargo capacity is shared by resources and mission fuel.',
   LightFighter: 'A small combat ship for attacking and defending planets.',
   HeavyFighter:
     'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
