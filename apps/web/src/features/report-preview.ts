@@ -30,6 +30,7 @@ export function reportPreview(
 ): {
   location: string
   coordinates?: S['Coordinates']
+  targetKind?: 'moon'
   facts: ReportFact[]
 } {
   if (!preview) return { location: '', facts: [] }
@@ -121,6 +122,9 @@ export function reportPreview(
       ? [identity, coordinates({ coordinates: at })].filter(Boolean).join(' · ')
       : identity,
     coordinates: at,
+    ...(preview.kind === 'Combat' && preview.target_kind === 'Moon'
+      ? { targetKind: 'moon' as const }
+      : {}),
     facts,
   }
 }

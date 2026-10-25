@@ -54,7 +54,10 @@ export function CoordinateInput({
           onKeyDown={(event) => {
             if (
               (event.key === ':' || event.key === ' ') &&
-              !event.nativeEvent.isComposing
+              !event.nativeEvent.isComposing &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              !event.altKey
             ) {
               event.preventDefault()
               next()

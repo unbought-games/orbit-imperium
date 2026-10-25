@@ -20,10 +20,10 @@ export function coordinateMissions(
   const missions: LocationMission[] =
     kind === 'debris'
       ? ['Harvest']
-      : known?.empty
-        ? ['Colonize']
-        : owner === view.binding.player
-          ? ['Transport', 'Deploy']
+      : owner === view.binding.player
+        ? ['Transport', 'Deploy']
+        : known?.empty && kind === 'planet'
+          ? ['Colonize']
           : ['Attack', 'Espionage', 'Transport']
   if (known?.debris && kind !== 'debris') missions.push('Harvest')
   return missions.filter((m) =>

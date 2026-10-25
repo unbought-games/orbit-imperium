@@ -64,7 +64,10 @@ export function ReportListRow({
             <CoordinateLink
               at={preview.coordinates}
               origin={origin}
-              target={report.kind === 'Harvested' ? 'debris' : 'planet'}
+              target={
+                preview.targetKind ??
+                (report.kind === 'Harvested' ? 'debris' : 'planet')
+              }
               className={styles.location}
             >
               {preview.location}

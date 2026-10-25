@@ -74,11 +74,11 @@
   white-space: nowrap;
 }
 .targetSection {
-  padding-bottom: 8px;
+  padding-bottom: 4px;
   border-bottom: 1px solid #cbb68d30;
 }
 .observation .targetHeading {
-  margin: 0 0 4px;
+  margin: 0 0 3px;
   font: 600 0.6875rem / 1.25 var(--font-body, sans-serif);
   color: var(--text-muted);
   letter-spacing: 0.06em;

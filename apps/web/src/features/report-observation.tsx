@@ -246,7 +246,6 @@ export function ReportObservation({
                     name={target.name}
                     kind={target.kind === 'Moon' ? 'Moon' : 'Planet'}
                     at={target.coordinates}
-                    target={target.kind === 'Moon' ? 'moon' : 'planet'}
                     label="target"
                   />
                 </span>

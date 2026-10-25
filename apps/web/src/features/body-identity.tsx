@@ -18,7 +18,12 @@ export function BodyIdentity({
   return (
     <span className={styles.identity}>
       {identity && <>{identity} · </>}
-      <CoordinateLink at={at} label={label} className={styles.coordinates} />
+      <CoordinateLink
+        at={at}
+        target={kind === 'Moon' ? 'moon' : 'planet'}
+        label={label}
+        className={styles.coordinates}
+      />
     </span>
   )
 }
