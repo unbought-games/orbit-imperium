@@ -49,7 +49,7 @@ const content: Record<string, string> = {
   LaserTechnology:
     'Unlocks concentrated energy weapons, including Light Lasers at level 3. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
   IonTechnology:
-    'An unlock technology requiring Research Lab 4, Energy Technology 4 and Laser Technology 5. Unlocks Ion Cannons at level 4 with Shipyard 4 when enabled in this universe. Ion level 2 is required for Cruisers and level 5 for Plasma Technology; each also has other prerequisites and must be enabled in this universe. Ion provides no direct combat bonus or demolition discount. Levels above 5 have no further specified unlocks.',
+    'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Higher levels currently offer no further unlocks. Ion research does not improve combat stats or reduce demolition costs.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',
