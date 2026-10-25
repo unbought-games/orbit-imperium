@@ -643,11 +643,20 @@ test('shipyard and defense show every batch in the same ordered queue', async ({
   })
 })
 
-for (const kind of ['construction', 'research'] as const) {
-  test(`overview cancels active ${kind} and prevents duplicate cancellation`, async ({
+for (const [kind, elapsed] of [
+  ['construction', 0],
+  ['construction', 60_000],
+  ['research', 0],
+  ['research', 60_000],
+] as const) {
+  test(`overview cancels active ${kind} after ${elapsed}ms and prevents duplicate cancellation`, async ({
     page,
   }) => {
+    const serverNow = Date.now()
+    await page.clock.install({ time: serverNow - 60_000 })
+    await page.clock.pauseAt(serverNow)
     const options: NonNullable<Parameters<typeof shellFixture>[1]> = {
+      sampledAt: serverNow,
       constructions:
         kind === 'construction'
           ? [
@@ -656,7 +665,8 @@ for (const kind of ['construction', 'research'] as const) {
                 body: body.id,
                 building: 'ResearchLab',
                 target_level: 1,
-                due_at: Date.now() + 76000,
+                started_at: serverNow - elapsed,
+                due_at: serverNow + 76000,
                 paid: resources,
               },
             ]
@@ -670,8 +680,8 @@ for (const kind of ['construction', 'research'] as const) {
               source_level: 0,
               target_level: 1,
               paid: resources,
-              started_at: Date.now(),
-              due_at: Date.now() + 76000,
+              started_at: serverNow - elapsed,
+              due_at: serverNow + 76000,
               labs: [],
               effective_lab: '1',
               can_cancel: true,
@@ -713,7 +723,10 @@ for (const kind of ['construction', 'research'] as const) {
       exact: true,
     })
     await cancel.click()
-    await confirmCancellation(page)
+    if (elapsed >= 30_000) {
+      await expect(page.getByRole('dialog')).toContainText('1 minute of work will be lost.')
+      await confirmCancellation(page)
+    } else await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(cancel).toBeDisabled()
     await expect(cancel).toHaveText('Cancelling…')
     await expect(summary).toContainText(

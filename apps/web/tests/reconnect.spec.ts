@@ -1,4 +1,3 @@
-import { confirmCancellation } from './fixtures/confirmation'
 import {foreground,signOut} from './fixtures/navigation'
 import {test,expect} from './fixtures/test'
 import {execFileSync} from 'node:child_process'
@@ -26,7 +25,7 @@ test('lost POST acknowledgement survives refresh with one durable identity',asyn
  await expect(attention).toHaveCount(0);expect(ids).toHaveLength(1);expect(new Set(ids).size).toBe(1)
  const confirmed=await overview(page.request);expect(confirmed.constructions).toHaveLength(1);expect(confirmed.constructions[0].building).toBe('CrystalMine')
  await page.unroute('**/commands');await page.getByRole('button',{name:'Cancel construction · full refund',exact:true}).click()
-  await confirmCancellation(page);await expect(construction).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: 'Cancel construction?', exact: true })).toHaveCount(0);await expect(construction).toHaveCount(0)
  await expect.poll(async()=>(await overview(page.request)).constructions.length).toBe(0)
 })
 test('malformed responses preserve the last validated private view',async({page})=>{

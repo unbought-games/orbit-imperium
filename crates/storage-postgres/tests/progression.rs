@@ -420,6 +420,7 @@ async fn concurrent_spend_deadline_ordering_and_restart_preserve_state() {
         let (_, receipt) = j.command(cmd).await;
         assert!(matches!(receipt.status, ReceiptStatus::Committed { .. }));
         let view = j.view().await;
+        assert_eq!(view.constructions[0].started_at, j.at);
         let due = view.constructions[0].due_at;
         assert_eq!(view.bodies[0].capacity.metal, expected_before);
         j.time(due - 1).await;

@@ -244,6 +244,7 @@ export async function createDetailPreview(
         building: sceneId === 'mine-active' ? 'MetalMine' : 'RoboticsFactory',
         target_level: sceneId === 'mine-active' ? 5 : 4,
         paid: resources(303, 75),
+        started_at: now - 60000,
         due_at: now + 74000,
       },
     ]
@@ -255,7 +256,7 @@ export async function createDetailPreview(
       source_level: 2,
       target_level: 3,
       paid: resources(1600, 0, 2400),
-      started_at: now - 16000,
+      started_at: now - 60000,
       due_at: now + 164000,
       labs: [],
       effective_lab: '2',

@@ -1,6 +1,6 @@
 import type { Coordinator } from '../../client-model/coordinator'
 import type { buildingProgress } from '../../client-model/building-progress'
-import { ConfirmationButton } from '../../ui/confirmation-button'
+import { WorkCancellationButton } from '../work-cancellation-button'
 import { label } from '../../ui/format'
 import { ActiveWorkDetails, RefundAmounts } from './active-work-details'
 import { DetailRow } from './detail-layout'
@@ -25,7 +25,10 @@ export function ConstructionDetails({
       status={work.status}
       paid={work.paid}
     >
-      <ConfirmationButton
+      <WorkCancellationButton
+        model={model}
+        operationId={work.operationId}
+        kind="CancelConstruction"
         key={work.operationId ?? 'pending'}
         variant="secondary"
         className={styles.cancelWork}
@@ -36,7 +39,7 @@ export function ConstructionDetails({
           <>
             <p>
               Cancel {verb.toLowerCase()} {label(work.building)} to level{' '}
-              {work.targetLevel}? Progress on this level will be lost.
+              {work.targetLevel}?
             </p>
             <dl className={styles.compare}>
               <DetailRow label="Full refund">
@@ -55,7 +58,7 @@ export function ConstructionDetails({
         }}
       >
         Cancel construction
-      </ConfirmationButton>
+      </WorkCancellationButton>
     </ActiveWorkDetails>
   )
 }

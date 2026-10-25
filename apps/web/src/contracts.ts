@@ -4108,6 +4108,8 @@ export interface components {
             target_level: number;
             due_at: number;
             paid: components["schemas"]["Resources"];
+            /** @description Recorded server start time. Older servers may omit this field. */
+            started_at?: number;
         };
         QuoteRequest: {
             /** @constant */
@@ -4566,6 +4568,8 @@ export interface components {
             target_level: number;
             due_at: number;
             paid: components["schemas"]["Resources"];
+            /** @description Recorded server start time. Older servers may omit this field. */
+            started_at?: number;
         };
         ShipRequest3: {
             /** Format: uuid */
