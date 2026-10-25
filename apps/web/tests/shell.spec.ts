@@ -1,5 +1,6 @@
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { navigate } from './fixtures/navigation'
 import { confirmCancellation } from './fixtures/confirmation'
 import { test, expect } from './fixtures/test'
 import {
@@ -445,6 +446,20 @@ for (const width of [768, 1440, 1920]) {
   })
 }
 
+for (const protocol of [3, 4] as const) {
+  test(`Fleets navigation helper opens the fleet list with protocol ${protocol}`, async ({ page }) => {
+    await shellFixture(page, { protocol, extraCapabilities: ['Transport'] })
+    await navigate(page, 'Fleets')
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(page.locator('main h1')).toHaveText('Fleets')
+    await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${protocol === 4 ? 'galaxy' : 'fleets'}`)
+    await navigate(page, 'Fleets')
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(page.locator('main h1')).toHaveText('Fleets')
+  })
+}
+
 test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   page,
 }) => {
@@ -452,11 +467,16 @@ test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   await page.setViewportSize({ width: 390, height: 844 })
   await shellFixture(page, { protocol: 4 })
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
   const nav = page.getByRole('navigation', { name: 'Fleet navigation' })
+  await expect(
+    nav.getByRole('link', { name: 'Galaxy', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
   await expect(nav.getByRole('link')).toHaveText([
-    'Fleets',
     'Galaxy',
     'Dispatch',
+    'Fleets',
   ])
   await expect(
     nav.getByRole('link', { name: 'Galaxy', exact: true }),
@@ -469,6 +489,12 @@ test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   expect(submenu.y).toBe(resources.y + resources.height)
   expect(submenu.x).toBe(0)
   expect(submenu.width).toBe(390)
+  for (const [title, path] of [['Dispatch', 'dispatch'], ['Fleets', 'fleets']]) {
+    await nav.getByRole('link', { name: title, exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
+    await expect(page.locator('main h1')).toHaveText(title)
+    await expect(nav.getByRole('link', { name: title, exact: true })).toHaveAttribute('aria-current', 'page')
+  }
 })
 
 test('mobile planet box is one tap target with rich planet and moon labels', async ({
@@ -1264,7 +1290,7 @@ test('navigation keeps shell identity mounted through rapid route changes', asyn
     .click()
   await expect(page.locator('main h1')).toHaveText('Shipyard')
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
-  await expect(page.locator('main h1')).toHaveText('Fleets')
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
   let release!: () => void
   const gate = new Promise<void>((resolve) => {
     release = resolve
@@ -1317,6 +1343,11 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
+  await page
+    .getByRole('navigation', { name: 'Fleet navigation' })
+    .getByRole('link', { name: 'Fleets', exact: true })
+    .click()
   await expect(page.locator('main h1')).toHaveText('Fleets')
   await expect(
     page.getByRole('heading', { name: 'Incoming fleets' }),
