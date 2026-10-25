@@ -4333,6 +4333,143 @@
         "description": "Read a complete universe total-score ranking from one committed snapshot. Search and pagination retain that response until explicit refresh. Does not advance gameplay."
       }
     },
+    "/api/v4/universes/{universe}/combat-simulation": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationQuery"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v4/universes/{universe}/reports/{report}/share": {
       "post": {
         "parameters": [
@@ -13760,6 +13897,150 @@
           "bonuses",
           "combat",
           "storage_capacities"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationUnit": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemKey3"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000
+          }
+        },
+        "required": [
+          "item",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationSide": {
+        "type": "object",
+        "properties": {
+          "technology": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationUnit"
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "technology",
+          "units"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationInputs": {
+        "type": "object",
+        "properties": {
+          "attacker": {
+            "$ref": "#/components/schemas/SimulationSide"
+          },
+          "defender": {
+            "$ref": "#/components/schemas/SimulationSide"
+          }
+        },
+        "required": [
+          "attacker",
+          "defender"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationQuery": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/SimulationInputs"
+          }
+        },
+        "required": [
+          "context",
+          "inputs"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationSample": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "enum": [
+              "AttackerVictory",
+              "DefenderVictory",
+              "MutualDestruction",
+              "Draw"
+            ]
+          },
+          "rounds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "attacker": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationUnit"
+            }
+          },
+          "defender": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationUnit"
+            }
+          }
+        },
+        "required": [
+          "outcome",
+          "rounds",
+          "attacker",
+          "defender"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationResponse": {
+        "type": "object",
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profile_hash": {
+            "type": "string"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimulationSample"
+            },
+            "minItems": 10,
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "binding",
+          "request_id",
+          "profile_hash",
+          "samples"
         ],
         "additionalProperties": false
       },
