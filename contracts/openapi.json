@@ -6539,6 +6539,9 @@
           },
           "mobile": {
             "type": "boolean"
+          },
+          "ship_statistics": {
+            "$ref": "#/components/schemas/ShipStatistics3"
           }
         },
         "required": [
@@ -13169,6 +13172,152 @@
             }
           }
         }
+      },
+      "ShipStatistics3": {
+        "type": "object",
+        "properties": {
+          "propulsion": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShipPropulsionStatistics3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "combat": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShipCombatStatistics3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "propulsion",
+          "combat"
+        ],
+        "additionalProperties": false
+      },
+      "ShipPropulsionStatistics3": {
+        "type": "object",
+        "properties": {
+          "cargo_capacity": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "base_speed": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "fuel_consumption": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "drive": {
+            "$ref": "#/components/schemas/ResearchId3"
+          },
+          "impulse_upgrade": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShipImpulseStatistics3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cargo_capacity",
+          "base_speed",
+          "fuel_consumption",
+          "drive",
+          "impulse_upgrade"
+        ],
+        "additionalProperties": false
+      },
+      "ShipImpulseStatistics3": {
+        "type": "object",
+        "properties": {
+          "minimum_level": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "base_speed": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "fuel_consumption": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          }
+        },
+        "required": [
+          "minimum_level",
+          "base_speed",
+          "fuel_consumption"
+        ],
+        "additionalProperties": false
+      },
+      "ShipCombatStatistics3": {
+        "type": "object",
+        "properties": {
+          "attack_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "shield_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "hull_ticks": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "rapid_fire_against": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipRapidFireStatistics3"
+            }
+          },
+          "rapid_fire_from": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipRapidFireStatistics3"
+            }
+          }
+        },
+        "required": [
+          "attack_ticks",
+          "shield_ticks",
+          "hull_ticks",
+          "rapid_fire_against",
+          "rapid_fire_from"
+        ],
+        "additionalProperties": false,
+        "description": "Base combat statistics without research bonuses, in 1/100,000 points."
+      },
+      "ShipRapidFireStatistics3": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "$ref": "#/components/schemas/ItemKey3"
+          },
+          "factor": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        },
+        "required": [
+          "unit",
+          "factor"
+        ],
+        "additionalProperties": false
       }
     }
   }

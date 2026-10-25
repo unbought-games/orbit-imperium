@@ -1,3 +1,5 @@
+mod catalog_view;
+pub use catalog_view::*;
 mod rankings;
 pub use rankings::*;
 mod report_preview;
