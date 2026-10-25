@@ -5,13 +5,12 @@ import { deleteReportSelection } from './report-cleanup'
 type Header = components['schemas']['ReportHeader4']
 export function useReportCleanup(
   model: Coordinator,
-  disabled: boolean,
   clearSelection: () => void,
 ) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   async function remove(rows: Header[]) {
-    if (disabled || submitting) return
+    if (submitting) return
     setSubmitting(true)
     setError('')
     try {

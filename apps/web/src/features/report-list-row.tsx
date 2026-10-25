@@ -167,7 +167,11 @@ export function ReportListRow({
         {reportAge(report.observed_at, now)}
       </time>
       <div className={styles.rowActions}>
-        <ReportStarButton model={model} report={report.id} />
+        <ReportStarButton
+          model={model}
+          report={report.id}
+          disabled={disabled}
+        />
         <ReportVisibilityButton
           model={model}
           report={report.id}

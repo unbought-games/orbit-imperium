@@ -613,6 +613,7 @@ for (const width of [1280, 390]) {
     fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
     await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
     await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeDisabled()
+    await expect(page.getByRole('article').first().getByRole('button', { name: 'Star report', exact: true })).toBeDisabled()
     await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(1)
     release()
     await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
@@ -653,4 +654,18 @@ test('triage selection follows filters and rejected bulk cleanup restores report
   await expect(page.getByRole('article')).toHaveCount(2)
   await expect(page.getByText(/Action rejected/).first()).toBeVisible()
   expect(fixture.headers.every(r => !r.hidden)).toBe(true)
+})
+
+
+test('bulk cleanup holds the inbox through intermediate receipts and reloads once at completion', async ({ page }) => {
+  const fixture = await reportsFixture(page)
+  await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
+  await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
+  const before = fixture.pageRequests.length
+  await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+  await page.getByRole('button', { name: 'Delete selected (2)' }).click()
+  await expect(page.getByRole('article')).toHaveCount(0)
+  await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
+  await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
+  expect(fixture.pageRequests.slice(before)).toEqual([null])
 })

@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useReportCleanup } from './use-report-cleanup'
+import type { useReportCleanup } from './use-report-cleanup'
 import type { components } from '../contracts'
-import type { Coordinator } from '../client-model/coordinator'
 import { Button } from '../ui/button'
 import { Field, Input, Select } from '../ui/form'
 import {
@@ -26,7 +25,7 @@ export const defaultTriage: TriageOptions = {
   knownOnly: false,
 }
 export function ReportTriageControls({
-  model,
+  cleanup,
   reports,
   visible,
   options,
@@ -36,7 +35,7 @@ export function ReportTriageControls({
   disabled,
   now,
 }: {
-  model: Coordinator
+  cleanup: ReturnType<typeof useReportCleanup>
   reports: Header[]
   visible: Header[]
   options: TriageOptions
@@ -47,9 +46,7 @@ export function ReportTriageControls({
   now: number
 }) {
   const [hours, setHours] = useState('24')
-  const { submitting, error, remove } = useReportCleanup(model, disabled, () =>
-    select(new Set()),
-  )
+  const { submitting, error, remove } = cleanup
   const eligible = visible.filter((r) => !r.starred)
   const chosen = eligible.filter((r) => selected.has(r.id))
   const old = olderUnstarred(reports, hours, now)

@@ -8,9 +8,11 @@ import { pendingReportVisibility } from './report-visibility'
 export function ReportStarButton({
   model,
   report,
+  disabled = false,
 }: {
   model: Coordinator
   report: string
+  disabled?: boolean
 }) {
   const state = useStore(model.store)
   const starred = !!projectedReportHeader(
@@ -30,6 +32,7 @@ export function ReportStarButton({
           : 'Star to protect from deletion'
       }
       disabled={
+        disabled ||
         !state.ready ||
         !!pendingReportVisibility(state.attempts.values(), report)
       }

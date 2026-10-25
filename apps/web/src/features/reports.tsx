@@ -1,3 +1,4 @@
+import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
 import { ReportStarButton } from './report-star-button'
 import { ReportTriageControls, defaultTriage } from './report-triage-controls'
@@ -42,6 +43,7 @@ export function Reports({
   const [triage, setTriage] = useState(false)
   const [options, setOptions] = useState(defaultTriage)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const cleanup = useReportCleanup(model, () => setSelected(new Set()))
   const now = useStore(model.store, currentServerTime)
   const {
     page,
@@ -52,7 +54,7 @@ export function Reports({
     changingVisibility,
     more,
     retry,
-  } = useReports(model, item, triage)
+  } = useReports(model, item, triage, cleanup.submitting)
   const visible = triageReports(
     page?.items ?? [],
     options.sort,
@@ -248,6 +250,7 @@ export function Reports({
           <Button
             variant="secondary"
             aria-expanded={triage}
+            disabled={cleanup.submitting}
             onClick={() => {
               setTriage(!triage)
               setOptions(defaultTriage)
@@ -264,7 +267,7 @@ export function Reports({
                 </Text>
               )}
               <ReportTriageControls
-                model={model}
+                cleanup={cleanup}
                 reports={page.items}
                 visible={visible}
                 options={options}
@@ -349,7 +352,9 @@ export function Reports({
                       })
                   : undefined
               }
-              disabled={loadingMore || (triage && !complete)}
+              disabled={
+                loadingMore || (triage && !complete) || cleanup.submitting
+              }
             />
           ))}
           {page.has_more && !triage && (
