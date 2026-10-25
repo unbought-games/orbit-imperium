@@ -1,5 +1,6 @@
 import type { components } from '../../contracts'
 import type { BoundProgressionOptions } from '../../client-model/commands'
+import { rawResourceRates } from '../../client-model/production-rates'
 import { currentResourceRates } from '../../ui/resource-rates'
 import { formatRemaining } from '../../client-model/clock'
 import { label } from '../../ui/format'
@@ -108,6 +109,25 @@ export function buildingInsights(
     (BigInt(value) * percent * power) / (100n * million)
   const resource = buildingResource[id]
   const storage = resource ? storageProjection(view, body, resource) : null
+  const rawRate = resource ? rawResourceRates(view, body)?.[resource] : null
+  // Preserve base income (and net deuterium fuel use) from the server's rate.
+  // Only replace this mine's contribution, using the projected planet-wide power.
+  const planetOutput =
+    isOutput &&
+    production &&
+    benefit &&
+    resource &&
+    rawRate != null &&
+    afterUtilization !== null
+      ? minePlanetOutput(
+          body,
+          resource,
+          BigInt(rawRate),
+          scaledOutput(benefit.current, utilization),
+          scaledOutput(benefit.target, afterUtilization),
+          scaledOutput(benefit.target, million),
+        )
+      : null
   return {
     storage,
     energy: {
@@ -115,6 +135,10 @@ export function buildingInsights(
       after:
         afterDemand === null ? null : (afterSupply - afterDemand).toString(),
       change: consumptionChange?.toString() ?? null,
+      balanceChange:
+        afterDemand === null
+          ? null
+          : (supplyChange - (afterDemand - demand)).toString(),
       utilization: utilization.toString(),
       afterUtilization: afterUtilization?.toString() ?? null,
       constructionBlocked:
@@ -130,30 +154,26 @@ export function buildingInsights(
     benefit: benefit
       ? {
           kind: benefit.kind,
-          fullPowerTarget:
-            isOutput && production && afterUtilization !== null
-              ? ((BigInt(benefit.target) * percent) / 100n).toString()
-              : null,
+          planetTotal: planetOutput !== null,
+          fullPowerTarget: planetOutput?.fullPowerTarget ?? null,
           current:
-            isOutput && storage?.state === 'full'
-              ? '0'
-              : isOutput && production && afterUtilization !== null
-                ? scaledOutput(benefit.current, utilization).toString()
-                : benefit.kind === 'Energy' && production
-                  ? ((BigInt(benefit.current) * percent) / 100n).toString()
-                  : benefit.current,
+            planetOutput?.current ??
+            (benefit.kind === 'Energy' && production
+              ? ((BigInt(benefit.current) * percent) / 100n).toString()
+              : benefit.current),
           target:
-            isOutput && production && afterUtilization !== null
-              ? scaledOutput(benefit.target, afterUtilization).toString()
-              : benefit.kind === 'Energy' && production
-                ? ((BigInt(benefit.target) * percent) / 100n).toString()
-                : benefit.target,
+            planetOutput?.target ??
+            (benefit.kind === 'Energy' && production
+              ? ((BigInt(benefit.target) * percent) / 100n).toString()
+              : benefit.target),
           qualifier: isOutput
-            ? production && afterUtilization !== null
+            ? planetOutput
               ? storage?.state === 'full'
-                ? 'Estimate at saved settings, when storage has room'
-                : null
-              : 'Potential at 100% output and full power'
+                ? 'Storage is full; production resumes when storage has room'
+                : resource === 'deuterium'
+                  ? 'Planet total at saved settings, net of fuel use'
+                  : 'Planet total at saved settings, including base production'
+              : 'Mine potential at 100% output and full power; planet estimate unavailable'
             : benefit.kind === 'Energy'
               ? production
                 ? 'At saved production settings'
@@ -161,6 +181,29 @@ export function buildingInsights(
               : null,
         }
       : null,
+  }
+}
+
+/** Compare rates at the same current stock levels, not speculative completion balances. */
+function minePlanetOutput(
+  body: S['BodyV3'],
+  resource: Resource,
+  currentRate: bigint,
+  currentMine: bigint,
+  targetMine: bigint,
+  fullPowerMine: bigint,
+) {
+  const otherProduction = currentRate - currentMine
+  const constrained = (rate: bigint) =>
+    (rate > 0n &&
+      BigInt(body.amounts[resource]) >= BigInt(body.capacity[resource])) ||
+    (rate < 0n && BigInt(body.amounts[resource]) === 0n)
+      ? '0'
+      : rate.toString()
+  return {
+    current: constrained(currentRate),
+    target: constrained(otherProduction + targetMine),
+    fullPowerTarget: constrained(otherProduction + fullPowerMine),
   }
 }
 

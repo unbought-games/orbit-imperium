@@ -56,7 +56,7 @@ function fixture() {
       },
       editable: ['metal_mine'],
       gross_per_hour: {
-        metal: micro(100),
+        metal: micro(650),
         crystal: micro(50),
         deuterium: micro(20),
       },
@@ -98,7 +98,7 @@ describe('detail decision estimates', () => {
     expect(storageProjection(view, body, 'metal')).toMatchObject({
       percent: 50,
       state: 'filling',
-      milliseconds: 18000000,
+      milliseconds: 2769231,
     })
     expect(storageProjection(view, body, 'deuterium')).toMatchObject({
       state: 'idle',
@@ -122,16 +122,21 @@ describe('detail decision estimates', () => {
     const { view, body, proposal } = fixture()
     const before = structuredClone(view)
     const result = buildingInsights(view, body, 'MetalMine', proposal)
-    expect(result.benefit?.qualifier).toBeNull()
+    expect(result.benefit?.qualifier).toBe(
+      'Planet total at saved settings, including base production',
+    )
     expect(result.energy).toMatchObject({
       current: '0',
       after: micro(-10),
       change: micro(10),
+      balanceChange: micro(-10),
       afterUtilization: '909090',
     })
     expect(result.benefit).toMatchObject({
-      current: micro(500),
-      target: '636363000',
+      current: micro(650),
+      target: '786363000',
+      fullPowerTarget: micro(850),
+      planetTotal: true,
     })
     expect(view).toEqual(before)
   })
@@ -168,7 +173,8 @@ describe('detail decision estimates', () => {
     ).toMatchObject({
       current: micro(1000),
       target: micro(1400),
-      qualifier: 'Potential at 100% output and full power',
+      qualifier:
+        'Mine potential at 100% output and full power; planet estimate unavailable',
     })
     expect(buildingInsights(view, body, 'MetalMine', null).benefit).toBeNull()
   })
@@ -303,8 +309,9 @@ it('shows stopped mine output at full storage and labels the target condition', 
     buildingInsights(view, body, 'MetalMine', proposal).benefit,
   ).toMatchObject({
     current: '0',
-    target: '636363000',
-    qualifier: 'Estimate at saved settings, when storage has room',
+    target: '0',
+    fullPowerTarget: '0',
+    qualifier: 'Storage is full; production resumes when storage has room',
   })
 })
 
@@ -316,7 +323,8 @@ it('keeps both nominal outputs consistent when the energy estimate is missing', 
   ).toMatchObject({
     current: micro(1000),
     target: micro(1400),
-    qualifier: 'Potential at 100% output and full power',
+    qualifier:
+      'Mine potential at 100% output and full power; planet estimate unavailable',
   })
 })
 
@@ -383,6 +391,7 @@ it('does not use an unrelated planet lab timer to explain a local lock', () => {
 
 it('distinguishes a level-zero mine from its powered first-level potential', () => {
   const { view, body, proposal, production } = fixture()
+  production.gross_per_hour.metal = micro(30)
   production.energy_supply = '0'
   production.energy_demand = '0'
   production.settings.metal_mine = 100
@@ -398,5 +407,107 @@ it('distinguishes a level-zero mine from its powered first-level potential', () 
   }
   expect(
     buildingInsights(view, body, 'MetalMine', proposal).benefit,
-  ).toMatchObject({ current: '0', target: '0', fullPowerTarget: micro(33) })
+  ).toMatchObject({
+    current: micro(30),
+    target: micro(30),
+    fullPowerTarget: micro(63),
+  })
+})
+
+it('includes the active universe base income in both planet totals', () => {
+  const { view, body, proposal, production } = fixture()
+  body.capacity.metal = micro(10000)
+  production.settings.metal_mine = 100
+  production.energy_supply = micro(300)
+  production.gross_per_hour.metal = micro(1028)
+  proposal.building_benefit = {
+    kind: 'MetalPerHour',
+    current: micro(878),
+    target: micro(1207),
+  }
+  expect(
+    buildingInsights(view, body, 'MetalMine', proposal).benefit,
+  ).toMatchObject({
+    current: micro(1028),
+    target: micro(1357),
+    fullPowerTarget: micro(1357),
+    planetTotal: true,
+  })
+})
+
+it('keeps base income when throttled off, unpowered, or demolishing the last mine', () => {
+  const { view, body, proposal, production } = fixture()
+  production.settings.metal_mine = 0
+  production.gross_per_hour.metal = micro(150)
+  expect(
+    buildingInsights(view, body, 'MetalMine', proposal).benefit,
+  ).toMatchObject({
+    current: micro(150),
+    target: micro(150),
+  })
+  production.settings.metal_mine = 100
+  production.energy_supply = '0'
+  production.utilization = '0'
+  expect(
+    buildingInsights(view, body, 'MetalMine', proposal).benefit,
+  ).toMatchObject({
+    current: micro(150),
+    target: micro(150),
+    fullPowerTarget: micro(1550),
+  })
+  production.energy_supply = micro(100)
+  production.utilization = micro(1)
+  production.gross_per_hour.metal = micro(1150)
+  proposal.building_benefit!.target = '0'
+  proposal.building_energy!.target_consumption = '0'
+  expect(
+    buildingInsights(view, body, 'MetalMine', proposal).benefit,
+  ).toMatchObject({
+    current: micro(1150),
+    target: micro(150),
+  })
+  expect(
+    buildingInsights(view, body, 'MetalMine', proposal).energy.balanceChange,
+  ).toBe(micro(40))
+})
+
+it('preserves net fuel use and applies both full and empty storage limits to deuterium', () => {
+  const { view, body, proposal, production } = fixture()
+  proposal.building_benefit = {
+    kind: 'DeuteriumPerHour',
+    current: micro(20),
+    target: micro(40),
+  }
+  production.energy_supply = micro(200)
+  const insight = () =>
+    buildingInsights(view, body, 'DeuteriumSynthesizer', proposal).benefit
+  expect(insight()).toMatchObject({
+    current: micro(-5),
+    target: micro(15),
+    planetTotal: true,
+  })
+  body.amounts.deuterium = '0'
+  expect(insight()).toMatchObject({ current: '0', target: micro(15) })
+  body.amounts.deuterium = body.capacity.deuterium
+  expect(insight()).toMatchObject({ current: micro(-5), target: '0' })
+})
+
+it('preserves crystal base income and computes the new efficiency during an existing deficit', () => {
+  const { view, body, proposal, production } = fixture()
+  production.energy_supply = micro(50)
+  production.utilization = micro(0.5)
+  production.settings.crystal_mine = 50
+  production.gross_per_hour.crystal = micro(75)
+  proposal.building_benefit = {
+    kind: 'CrystalPerHour',
+    current: micro(200),
+    target: micro(400),
+  }
+  expect(
+    buildingInsights(view, body, 'CrystalMine', proposal).benefit,
+  ).toMatchObject({
+    current: micro(75),
+    target: '115909000',
+    fullPowerTarget: micro(225),
+  })
 })

@@ -22,7 +22,7 @@ import { DetailRow } from './detail-layout'
 import styles from './detail-layout.module.css'
 
 type Insight = ReturnType<typeof buildingInsights>
-export const benefitLabels = {
+const benefitLabels = {
   MetalPerHour: 'Mine output',
   CrystalPerHour: 'Mine output',
   DeuteriumPerHour: 'Mine output',
@@ -31,17 +31,27 @@ export const benefitLabels = {
   CrystalCapacity: 'Crystal capacity',
   DeuteriumCapacity: 'Deuterium capacity',
 } as const
+export function benefitLabel(insight: NonNullable<Insight['benefit']>) {
+  return insight.planetTotal
+    ? 'Planet output'
+    : insight.kind.endsWith('PerHour')
+      ? 'Mine potential'
+      : benefitLabels[insight.kind]
+}
 export function BenefitValue({
   insight,
   target = false,
   potential = false,
+  change = false,
 }: {
   insight: NonNullable<Insight['benefit']>
   target?: boolean
   potential?: boolean
+  change?: boolean
 }) {
   return (
     <DetailResourceValue
+      title={insight.qualifier ?? undefined}
       resource={
         insight.kind.startsWith('Metal')
           ? 'metal'
@@ -52,13 +62,16 @@ export function BenefitValue({
               : 'energy'
       }
     >
+      {change && BigInt(insight.target) > BigInt(insight.current) ? '+' : ''}
       <ResourceNumber
         value={
-          potential && insight.fullPowerTarget
-            ? insight.fullPowerTarget
-            : target
-              ? insight.target
-              : insight.current
+          change
+            ? BigInt(insight.target) - BigInt(insight.current)
+            : potential && insight.fullPowerTarget
+              ? insight.fullPowerTarget
+              : target
+                ? insight.target
+                : insight.current
         }
       />
       {insight.kind.endsWith('PerHour') ? ' / h' : ''}
@@ -68,12 +81,18 @@ export function BenefitValue({
 export function DetailResourceValue({
   resource,
   children,
+  title,
 }: {
   resource: 'metal' | 'crystal' | 'deuterium' | 'energy'
+  title?: string
   children: ReactNode
 }) {
   return (
-    <span className={styles.resourceValue} data-resource={resource}>
+    <span
+      className={styles.resourceValue}
+      data-resource={resource}
+      title={title}
+    >
       <ResourceMark
         resource={resource}
         width={18}
@@ -96,8 +115,10 @@ export function SignedEnergy({ value }: { value: string }) {
 }
 export function StorageInsight({
   storage,
+  showRate = true,
 }: {
   storage: NonNullable<Insight['storage']>
+  showRate?: boolean
 }) {
   return (
     <div
@@ -126,7 +147,7 @@ export function StorageInsight({
         max={100}
         aria-label={`${label(storage.resource)} storage used`}
       />
-      {storage.rate !== null && (
+      {showRate && storage.rate !== null && (
         <small>
           {storage.resource === 'deuterium'
             ? 'Planet total (net of fuel)'
@@ -159,9 +180,15 @@ export function EnergyComparison({
         <DetailRow label="Energy balance" warning={short}>
           <EnergyDetails energy={energy} view={view} body={body}>
             <DetailResourceValue resource="energy">
-              <SignedEnergy value={energy.current} />{' '}
+              {energy.balanceChange === null ? (
+                'Unknown change'
+              ) : (
+                <span title="Change">
+                  <SignedEnergy value={energy.balanceChange} />
+                </span>
+              )}{' '}
               <span aria-hidden="true">→</span>{' '}
-              <strong>
+              <strong title="New total">
                 {energy.after === null ? (
                   'Estimate unavailable'
                 ) : (

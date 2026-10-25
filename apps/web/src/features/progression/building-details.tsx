@@ -26,7 +26,7 @@ import {
 } from './detail-layout'
 import {
   BenefitValue,
-  benefitLabels,
+  benefitLabel,
   StorageInsight,
   EnergyComparison,
   DecisionCosts,
@@ -120,12 +120,17 @@ export function BuildingDetails({
           <div className={styles.stats}>
             <DetailStat label="Current level">Level {level}</DetailStat>
             {insight.benefit && (
-              <DetailStat label={benefitLabels[insight.benefit.kind]}>
+              <DetailStat label={benefitLabel(insight.benefit)}>
                 <BenefitValue insight={insight.benefit} />
               </DetailStat>
             )}
           </div>
-          {insight.storage && <StorageInsight storage={insight.storage} />}
+          {insight.storage && (
+            <StorageInsight
+              storage={insight.storage}
+              showRate={!insight.benefit?.planetTotal}
+            />
+          )}
         </DetailSection>
       )}
       {work ? (
@@ -155,31 +160,30 @@ export function BuildingDetails({
           {terms && !unavailable && (
             <>
               <dl className={styles.compare}>
+                <DecisionCosts
+                  title={
+                    action === 'Upgrade'
+                      ? firstBuild
+                        ? 'Build cost'
+                        : 'Upgrade cost'
+                      : 'Demolition cost'
+                  }
+                  cost={terms.paid}
+                  available={body.amounts}
+                  wait={wait}
+                />
                 {insight.benefit && (
-                  <DetailRow
-                    label={
-                      firstBuild && insight.benefit.kind.endsWith('PerHour')
-                        ? 'Production with power'
-                        : benefitLabels[insight.benefit.kind]
-                    }
-                  >
-                    {!firstBuild && (
-                      <>
-                        <BenefitValue insight={insight.benefit} />{' '}
-                        <span aria-hidden="true">→</span>{' '}
-                      </>
-                    )}
-                    <strong>
-                      <BenefitValue
-                        insight={insight.benefit}
-                        target
-                        potential={firstBuild}
-                      />
+                  <DetailRow label={benefitLabel(insight.benefit)}>
+                    <span title="Change">
+                      <BenefitValue insight={insight.benefit} change />
+                    </span>{' '}
+                    <span aria-hidden="true">→</span>{' '}
+                    <strong title="New total">
+                      <BenefitValue insight={insight.benefit} target />
                     </strong>
                   </DetailRow>
                 )}
-                {!firstBuild &&
-                  insight.benefit?.fullPowerTarget &&
+                {insight.benefit?.fullPowerTarget &&
                   BigInt(insight.benefit.fullPowerTarget) / 1000000n >
                     BigInt(insight.benefit.target) / 1000000n && (
                     <DetailRow label="With enough energy">
@@ -194,7 +198,7 @@ export function BuildingDetails({
                   insight.energy.constructionBlocked) && (
                   <EnergyComparison
                     energy={insight.energy}
-                    firstBuild={firstBuild}
+                    firstBuild={firstBuild && !insight.benefit?.planetTotal}
                     view={view}
                     body={body}
                   />
@@ -210,22 +214,13 @@ export function BuildingDetails({
                     />
                   </DetailRow>
                 )}
-                <DecisionCosts
-                  title={
-                    action === 'Upgrade'
-                      ? firstBuild
-                        ? 'Build cost'
-                        : 'Upgrade cost'
-                      : 'Demolition cost'
-                  }
-                  cost={terms.paid}
-                  available={body.amounts}
-                  wait={wait}
-                />
               </dl>
-              {!firstBuild && insight.benefit?.qualifier && (
-                <p className={styles.note}>{insight.benefit.qualifier}.</p>
-              )}
+              {insight.benefit?.qualifier &&
+                (!firstBuild ||
+                  !insight.benefit.planetTotal ||
+                  insight.storage?.state === 'full') && (
+                  <p className={styles.note}>{insight.benefit.qualifier}.</p>
+                )}
             </>
           )}
           {proposal && (
