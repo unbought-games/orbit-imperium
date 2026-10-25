@@ -59,3 +59,9 @@ All implementation threads then stopped editing. The full 533-test suite was rer
 PostgreSQL used only Compose project `orbit-alliances-1025`, dynamically allocated host port `55025`. Each native test script dropped its own database. A final query found no `orbit_test_%` databases, and `docker compose down --volumes` removed the project container/network/volume in 0.45 s. A subsequent project listing was empty. Browser runners clean their own Vite/Chromium processes.
 
 Validation used routine native server/client/tooling, PostgreSQL, migration, and fixture-browser layers. No full-system acceptance, production-container test, deployment, push, or pull request was performed. The feature and validation record are local commits on `feat/alliances`.
+
+## PR #143 main integration
+
+GitHub reported a real merge conflict after main advanced to `b28d79f3325bcd7d6b82266ed2d32c19c5c32b46` (Develop navigation, Heavy Laser, Large Cargo). Merge revision `73fc655` preserves both alliance fixture files and the new Large Cargo suite in the sole conflicted browser-test list. No feature scope was expanded.
+
+On that integrated revision, `make check` passed in 100.27 s: tooling, all 873 client tests, 389 workspace plus 32 bridge plus seven storage unit tests, strict Clippy, static/schema/architecture checks and the production build. The selected alliance, historical identity, High Scores, Large Cargo and shell fixture-browser suites passed all 112 cases in 91.13 s overall (1.5 minutes runner). Browser processes were cleaned by the native runner. No database resources were started for this integration-only check.
