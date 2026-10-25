@@ -25,6 +25,7 @@ import { Heading, Text } from '../ui/typography'
 import { routeTarget } from '../shell/route-target'
 import { TaskHeader } from '../ui/task-header'
 import { FleetInventory } from './fleet-inventory'
+import { FleetCargo } from './fleet-cargo'
 import { MissionTrajectory } from './mission-trajectory'
 import {
   missionLocation,
@@ -185,6 +186,7 @@ export function MissionFleets({
                 Your {fleet.intent.mission.toLowerCase()} · {fleet.leg}
               </Heading>
               <Text>{shipManifest(fleet.ships)}</Text>
+              <FleetCargo cargo={fleet.cargo} />
               <Text>
                 <CoordinateLink
                   at={fleet.origin}
@@ -245,19 +247,6 @@ export function MissionFleets({
           </div>
           {item && (
             <>
-              <dl className={styles.cargo}>
-                {(['metal', 'crystal', 'deuterium'] as const).map((key) => (
-                  <div key={key}>
-                    <dt>{key}</dt>
-                    <dd>
-                      <ResourceQuantity
-                        resource={key}
-                        value={fleet.cargo[key]}
-                      />
-                    </dd>
-                  </div>
-                ))}
-              </dl>
               <div className={styles.fuel}>
                 <span>
                   Fuel spent{' '}

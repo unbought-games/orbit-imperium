@@ -1,5 +1,6 @@
 import { isHostileMission } from '../client-model/hostile-fleets'
 import { missionLocation } from './mission-presentation'
+import type { components } from '../contracts'
 import type { BoundView } from '../client-model/commands'
 import { resourceNames } from '../client-model/resources'
 import { coordinates, label } from '../ui/format'
@@ -15,6 +16,7 @@ export type EmpireFlight = {
   route: string
   due: number
   ships: string
+  cargo?: components['schemas']['Resources']
   hostile: boolean
 }
 
@@ -46,6 +48,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
           route: `${location(from)} → ${location(to)}`,
           due: f.due_at,
           ships: shipSummary(f.ships),
+          cargo: f.payload,
           hostile: false,
         }
       })
@@ -68,6 +71,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
         : `${originLabel} → ${targetLabel}`,
       due: f.due_at,
       ships: shipSummary(f.ships),
+      cargo: f.cargo,
       hostile: false,
     }
   })

@@ -1,0 +1,9 @@
+.cargo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-block: 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
