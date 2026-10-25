@@ -212,15 +212,6 @@
       ],
       "fuel": 300,
       "capacity": 800
-    },
-    "LargeCargo": {
-      "base_speed": 7500,
-      "drive_coefficient": [
-        1,
-        10
-      ],
-      "fuel": 50,
-      "capacity": 25000
     }
   },
   "catalog": [
@@ -854,19 +845,8 @@
       "body_kinds": [
         "Planet"
       ],
-      "requirements": [
-        {
-          "type": "BodyBuilding",
-          "building": "Shipyard",
-          "level": 4
-        },
-        {
-          "type": "PlayerResearch",
-          "research": "CombustionDrive",
-          "level": 6
-        }
-      ],
-      "enabled": true,
+      "requirements": [],
+      "enabled": false,
       "mobile": true
     },
     {
@@ -1109,8 +1089,29 @@
       "body_kinds": [
         "Planet"
       ],
-      "requirements": [],
-      "enabled": false,
+      "requirements": [
+        {
+          "type": "BodyBuilding",
+          "building": "Shipyard",
+          "level": 6
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "EnergyTechnology",
+          "level": 6
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "WeaponsTechnology",
+          "level": 3
+        },
+        {
+          "type": "PlayerResearch",
+          "research": "ShieldingTechnology",
+          "level": 1
+        }
+      ],
+      "enabled": true,
       "mobile": false
     },
     {
@@ -1479,13 +1480,13 @@
       },
       {
         "item": {
-          "kind": "Ship",
-          "id": "LargeCargo"
+          "kind": "Defense",
+          "id": "GaussCannon"
         },
         "cost": {
-          "metal": 6000,
-          "crystal": 6000,
-          "deuterium": 0
+          "metal": 20000,
+          "crystal": 15000,
+          "deuterium": 2000
         }
       }
     ],
@@ -1667,16 +1668,16 @@
         },
         {
           "item": {
-            "kind": "Ship",
-            "id": "LargeCargo"
+            "kind": "Defense",
+            "id": "GaussCannon"
           },
           "cost": [
-            6000,
-            6000,
-            0
+            20000,
+            15000,
+            2000
           ],
-          "attack_hundredths": 500,
-          "shield_hundredths": 2500
+          "attack_hundredths": 110000,
+          "shield_hundredths": 20000
         }
       ],
       "rapid_fire": [
@@ -1772,17 +1773,6 @@
           "shooter": {
             "kind": "Ship",
             "id": "Cruiser"
-          },
-          "target": {
-            "kind": "Ship",
-            "id": "EspionageProbe"
-          },
-          "factor": 5
-        },
-        {
-          "shooter": {
-            "kind": "Ship",
-            "id": "LargeCargo"
           },
           "target": {
             "kind": "Ship",

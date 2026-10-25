@@ -3,7 +3,7 @@ const LARGE_CARGO: ManufacturedItem = ManufacturedItem::Ship(ShipType::LargeCarg
 
 fn setup() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     let (mut s, _, p, b, t) = raid_fixture();
-    let r = Ruleset::from_json(include_bytes!("../../../../rules/mvp-v1-slice-12.json")).unwrap();
+    let r = Ruleset::from_json(include_bytes!("../../../../rules/mvp-v1-slice-13.json")).unwrap();
     s.profile_hash = r.hash.clone();
     for research in s.research.values_mut() {
         for key in r.research_keys() {

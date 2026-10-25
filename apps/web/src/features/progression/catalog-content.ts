@@ -46,6 +46,8 @@ const content: Record<string, string> = {
     'A stationary laser battery that defends this planet against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
   IonCannon:
     'A stationary cannon with strong shields that defends this planet against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
+  GaussCannon:
+    'A stationary electromagnetic cannon with powerful attacks against enemy fleets. Requires Shipyard 6, Energy Technology 6, Weapons Technology 3 and Shielding Technology 1.',
   SmallShieldDome:
     'A planetary shield that supports the defense of this planet. Only one small shield dome can be stationed or queued here.',
   LaserTechnology:

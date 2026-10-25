@@ -4,6 +4,35 @@ import type { Rankings } from './commands'
 export type RankingPlayer = Rankings['players'][number]
 export const rankingPageSize = 50
 
+/** Positive movement means climbing toward rank one. Missing historical members
+ * are new; a missing universe baseline is not evidence of a new player. */
+export function rankMovement(row: RankingPlayer, baselineAt?: number | null) {
+  if (baselineAt == null)
+    return {
+      text: '—',
+      label: 'Rank change unavailable: no snapshot from yesterday',
+      direction: 'unknown',
+    }
+  if (row.previous_rank == null)
+    return {
+      text: 'New',
+      label: 'New to the rankings since the baseline',
+      direction: 'new',
+    }
+  const delta = row.previous_rank - row.rank
+  if (delta === 0)
+    return {
+      text: '0',
+      label: 'Rank unchanged since the baseline',
+      direction: 'same',
+    }
+  return {
+    text: `${delta > 0 ? '+' : '−'}${Math.abs(delta).toLocaleString()}`,
+    label: `${delta > 0 ? 'Up' : 'Down'} ${Math.abs(delta).toLocaleString()} ${Math.abs(delta) === 1 ? 'place' : 'places'} since the baseline`,
+    direction: delta > 0 ? 'up' : 'down',
+  }
+}
+
 export function rankingWindow(
   players: RankingPlayer[],
   search: string,

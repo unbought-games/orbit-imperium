@@ -1758,6 +1758,127 @@ async fn concurrent_report_preferences(
             );
         }
     }
+    for (binding, action, rejected) in [
+        (
+            a,
+            WorldAction::SetReportStarred {
+                report: ReportId(report),
+                starred: true,
+            },
+            false,
+        ),
+        (
+            a,
+            WorldAction::SetReportHidden {
+                report: ReportId(report),
+                hidden: true,
+            },
+            true,
+        ),
+        (
+            b,
+            WorldAction::SetReportStarred {
+                report: ReportId(report),
+                starred: false,
+            },
+            false,
+        ),
+    ] {
+        let command_id = CommandId(Uuid::new_v4());
+        let envelope = |id, action| CommandEnvelopeV4 {
+            protocol: 4,
+            binding,
+            command_id: id,
+            command: CommandDto3::Progression(Command::World { action }),
+        };
+        store
+            .admit_scoped(ForegroundAction {
+                presence: envelope(
+                    CommandId(Uuid::new_v4()),
+                    WorldAction::RecordForegroundPresence {
+                        body: None,
+                        cause: PresenceCause::GameplayGesture,
+                        paired_command_id: Some(command_id),
+                    },
+                ),
+                gameplay: envelope(command_id, action),
+            })
+            .await
+            .unwrap();
+        for _ in 0..2 {
+            game.step_scoped(a.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
+                .await
+                .unwrap();
+        }
+        let principal = Principal {
+            account: binding.account,
+            player: binding.player,
+            universe: binding.universe,
+        };
+        let receipt = game
+            .bound_receipt(principal, binding, command_id)
+            .await
+            .unwrap();
+        if rejected {
+            assert_eq!(
+                receipt.status,
+                ReceiptStatus::Rejected {
+                    code: GameError::InvalidInput
+                }
+            );
+        } else {
+            assert!(
+                matches!(receipt.status, ReceiptStatus::Committed { .. }),
+                "{receipt:?}"
+            );
+        }
+    }
+    let reopened = GameService::new(PgStore::connect(url).await.unwrap());
+    for binding in [a, b] {
+        let principal = Principal {
+            account: binding.account,
+            player: binding.player,
+            universe: binding.universe,
+        };
+        let detail = reopened
+            .report4(
+                principal,
+                QueryContext {
+                    binding,
+                    request_id: Uuid::new_v4(),
+                },
+                ReportId(report),
+            )
+            .await
+            .unwrap();
+        assert_eq!(detail.data.header.starred, binding == a);
+        assert_eq!(detail.data.header.hidden, binding == b);
+        let page = reopened
+            .reports4(
+                principal,
+                ReportsQuery4 {
+                    context: QueryContext {
+                        binding,
+                        request_id: Uuid::new_v4(),
+                    },
+                    cursor: None,
+                    kind: Some("Delivered".into()),
+                    limit: 100,
+                    include_hidden: true,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            page.data
+                .items
+                .iter()
+                .find(|r| r.id == ReportId(report))
+                .unwrap()
+                .starred,
+            binding == a
+        );
+    }
     sqlx::query("DROP TABLE orbit_test_fault")
         .execute(pool)
         .await

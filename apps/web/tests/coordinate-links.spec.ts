@@ -117,6 +117,32 @@ for (const width of [1280, 390, 320]) {
       })
       .first()
     await expect(target).toBeVisible()
+    const coordinate = target.locator('..')
+    const copy = coordinate.getByRole('button', {
+      name: 'Copy coordinates [1:5:12]',
+      exact: true,
+    })
+    const menu = coordinate.getByRole('button', {
+      name: 'Location actions for [1:5:12]',
+      exact: true,
+    })
+    const copyBox = (await copy.boundingBox())!
+    const menuBox = (await menu.boundingBox())!
+    const valueBox = (await target.boundingBox())!
+    expect(copyBox.width).toBe(24)
+    expect(copyBox.height).toBe(24)
+    expect(menuBox.width).toBe(24)
+    expect(menuBox.height).toBe(24)
+    expect(copyBox.x - valueBox.x - valueBox.width).toBeLessThanOrEqual(2)
+    expect(menuBox.x).toBe(copyBox.x + copyBox.width)
+    await menu.focus()
+    await page.keyboard.press('Enter')
+    await expect(
+      page.getByRole('menuitem', { name: 'Copy coordinates', exact: true }),
+    ).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeFocused()
+    await menu.blur()
     await diagnosticScreenshot(page, {
       path: `test-results/coordinate-mission-${width}.png`,
     })
@@ -138,7 +164,7 @@ for (const width of [1280, 390, 320]) {
     await assertLocation(page, 2, 4)
     await page.getByRole('button', { name: 'Next system', exact: true }).click()
     await expect(
-      page.getByRole('combobox', { name: 'Solar system' }),
+      page.getByRole('textbox', { name: 'Solar system' }),
     ).toHaveValue('3')
     await expect(page.locator('li[aria-current="location"]')).toHaveCount(0)
     await page.goBack()

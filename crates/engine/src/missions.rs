@@ -571,6 +571,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 Command::World {
                     action: WorldAction::MarkReportRead { .. }
                         | WorldAction::SetReportHidden { .. }
+                        | WorldAction::SetReportStarred { .. }
                 }
             ) {
                 if p.vacation
@@ -977,7 +978,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         }
         Input::Command(Command::World {
             action:
-                WorldAction::MarkReportRead { report } | WorldAction::SetReportHidden { report, .. },
+                WorldAction::MarkReportRead { report }
+                | WorldAction::SetReportHidden { report, .. }
+                | WorldAction::SetReportStarred { report, .. },
         }) => {
             let Actor::Player(owner) = i.actor else {
                 return Err(invariant("report actor"));
@@ -1001,13 +1004,22 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     recipient: owner,
                     read: false,
                     hidden: false,
+                    starred: false,
                 });
                 w.report_states.len() - 1
             };
             match &i.payload {
                 Input::Command(Command::World {
                     action: WorldAction::SetReportHidden { hidden, .. },
-                }) => w.report_states[idx].hidden = *hidden,
+                }) => {
+                    if *hidden && w.report_states[idx].starred {
+                        return Err(GameError::InvalidInput.into());
+                    }
+                    w.report_states[idx].hidden = *hidden;
+                }
+                Input::Command(Command::World {
+                    action: WorldAction::SetReportStarred { starred, .. },
+                }) => w.report_states[idx].starred = *starred,
                 _ => w.report_states[idx].read = true,
             };
             c.affected_viewers.insert(owner);

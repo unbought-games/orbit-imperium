@@ -21,7 +21,7 @@ export class HttpError extends Error {
     super(code)
   }
 }
-async function request(
+export async function request(
   path: string,
   method = 'GET',
   body?: unknown,
@@ -150,6 +150,18 @@ export function gamePort(
           'POST',
           { context, ...query },
           csrf,
+        ),
+      )
+    },
+    async simulate(context, inputs) {
+      return validate(
+        'SimulationResponse',
+        await request(
+          `${base(context.binding.universe)}/combat-simulation`,
+          'POST',
+          { context, inputs },
+          csrf,
+          60000,
         ),
       )
     },

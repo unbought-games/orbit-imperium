@@ -561,6 +561,6 @@ for (const width of [320, 390, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await diagnosticScreenshot(cards.nth(2), { path: `test-results/cargo-returning-attack-${width}.png` })
     await cards.nth(2).getByRole('link', { name: 'Mission details' }).click()
-    await verifyCargo(page.getByRole('article', { name: 'Attack fleet' }), 2)
+    await verifyCargo(page.getByRole('article', { name: 'Attack fleet', exact: true }), 2)
   })
 }

@@ -14,11 +14,15 @@ pub struct CatalogEntryView {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ShipStatistics {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<[String; 3]>,
     pub propulsion: Option<ShipPropulsionStatistics>,
     pub combat: Option<ShipCombatStatistics>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ShipPropulsionStatistics {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drive_coefficient: Option<[String; 2]>,
     pub cargo_capacity: String,
     pub base_speed: String,
     pub fuel_consumption: String,
@@ -27,12 +31,16 @@ pub struct ShipPropulsionStatistics {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ShipImpulseStatistics {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drive_coefficient: Option<[String; 2]>,
     pub minimum_level: u32,
     pub base_speed: String,
     pub fuel_consumption: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ShipCombatStatistics {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub technology_bonus: Option<[String; 2]>,
     /// Combat engine units: 100,000 ticks per displayed point.
     pub attack_ticks: String,
     pub shield_ticks: String,
@@ -59,12 +67,18 @@ pub fn catalog_view(rules: &Ruleset) -> Result<Vec<CatalogEntryView>, ServiceErr
                             .ships
                             .get(&ship)
                             .map(|rule| ShipPropulsionStatistics {
+                                drive_coefficient: Some(
+                                    rule.drive_coefficient.map(|n| n.to_string()),
+                                ),
                                 cargo_capacity: rule.capacity.to_string(),
                                 base_speed: rule.base_speed.to_string(),
                                 fuel_consumption: rule.fuel.to_string(),
                                 drive: rule.drive.unwrap_or(ResearchId::CombustionDrive),
                                 impulse_upgrade: rule.impulse_drive.as_ref().map(|upgrade| {
                                     ShipImpulseStatistics {
+                                        drive_coefficient: Some(
+                                            IMPULSE_UPGRADE_COEFFICIENT.map(|n| n.to_string()),
+                                        ),
                                         minimum_level: upgrade.minimum_level,
                                         base_speed: upgrade.base_speed.to_string(),
                                         fuel_consumption: upgrade.fuel.to_string(),
@@ -72,7 +86,20 @@ pub fn catalog_view(rules: &Ruleset) -> Result<Vec<CatalogEntryView>, ServiceErr
                                 }),
                             });
                     let combat = combat_statistics(rules, ManufacturedItem::Ship(ship))?;
-                    Some(ShipStatistics { propulsion, combat })
+                    Some(ShipStatistics {
+                        cost: rules
+                            .artifact
+                            .progression
+                            .as_ref()
+                            .and_then(|p| {
+                                p.unit_costs
+                                    .iter()
+                                    .find(|u| u.item == ManufacturedItem::Ship(ship))
+                            })
+                            .map(|u| u.cost.values().map(|n| n.to_string())),
+                        propulsion,
+                        combat,
+                    })
                 }
                 _ => None,
             };
@@ -116,6 +143,7 @@ pub(crate) fn combat_statistics(
             .collect()
     };
     Ok(Some(ShipCombatStatistics {
+        technology_bonus: Some(combat.technology_bonus.map(|n| n.to_string())),
         attack_ticks: attack.to_string(),
         shield_ticks: shield.to_string(),
         hull_ticks: hull.to_string(),
@@ -139,7 +167,7 @@ mod tests {
     #[test]
     fn large_cargo_presents_activated_stats_and_probe_rapid_fire() {
         let rules =
-            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-12.json")).unwrap();
+            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-13.json")).unwrap();
         let stats = ship(&rules, ShipType::LargeCargo);
         let propulsion = stats.propulsion.unwrap();
         assert_eq!(propulsion.cargo_capacity, "25000");
@@ -274,6 +302,35 @@ mod tests {
             ),
             ("1234000", "5678000", "80000000")
         );
+    }
+    #[test]
+    fn comparison_metadata_matches_active_engine_rules() {
+        let mut rules =
+            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-11.json")).unwrap();
+        rules
+            .artifact
+            .ships
+            .get_mut(&ShipType::SmallCargo)
+            .unwrap()
+            .drive_coefficient = [3, 20];
+        rules
+            .artifact
+            .world
+            .as_mut()
+            .unwrap()
+            .combat
+            .technology_bonus = [1, 5];
+        let stats = ship(&rules, ShipType::SmallCargo);
+        assert_eq!(stats.cost.unwrap(), ["2000", "2000", "0"]);
+        let p = stats.propulsion.unwrap();
+        assert_eq!(p.drive_coefficient.unwrap(), ["3", "20"]);
+        assert_eq!(
+            p.impulse_upgrade.unwrap().drive_coefficient.unwrap(),
+            IMPULSE_UPGRADE_COEFFICIENT.map(|n| n.to_string())
+        );
+        assert_eq!(stats.combat.unwrap().technology_bonus.unwrap(), ["1", "5"]);
+        rules.artifact.progression = None;
+        assert!(ship(&rules, ShipType::SmallCargo).cost.is_none());
     }
     #[test]
     fn historical_rules_preserve_missing_data_and_legacy_drive() {

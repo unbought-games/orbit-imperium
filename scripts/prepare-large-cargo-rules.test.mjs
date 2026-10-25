@@ -71,10 +71,10 @@ test('complete fixture preserves existing ships and defenses when adding Large C
     universe: 'fixture',
     base_revision: 0,
     speed: 10,
-    artifact: read('../rules/mvp-v1-slice-11.json'),
+    artifact: read('../rules/mvp-v1-slice-12.json'),
   }).artifact
-  after.id = 'mvp-v1-slice-12'
-  assert.deepEqual(after, read('../rules/mvp-v1-slice-12.json'))
+  after.id = 'mvp-v1-slice-13'
+  assert.deepEqual(after, read('../rules/mvp-v1-slice-13.json'))
 })
 
 test('Large Cargo patch requires an enabled, defined Shipyard', () => {

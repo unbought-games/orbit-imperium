@@ -87,7 +87,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   }
   let pair: {gameplay:{command_id:string};presence:{command_id:string}}|undefined
   await page.route('**/api/v4/universes/*/commands',async route=>{const data=route.request().postDataJSON();if(data.gameplay?.command.action?.type==='LaunchFleet'){await route.fetch();pair=data;await route.abort('failed')}else await route.continue()})
-  await page.getByRole('button',{name:/^Send /,exact:false}).focus();await page.keyboard.press('Enter')
+  await page.getByRole('button',{name:/^Attack with /,exact:false}).focus();await page.keyboard.press('Enter')
   await expect.poll(()=>!!pair).toBe(true);await page.unrouteAll({behavior:'wait'});await page.reload()
   await expect.poll(async()=>(await view())?.missions.fleets.length??-1).toBe(1)
   const stored=await page.evaluate(id=>Object.entries(sessionStorage).filter(([k])=>k.startsWith('orbit:attempts:v4:')).map(([,v])=>JSON.parse(v)).find(x=>x.envelope.command_id===id)?.envelope,pair!.gameplay.command_id)
@@ -125,7 +125,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   const returning=(await fresh()).missions.fleets[0];advance(returning.due_at);await expect.poll(async()=>(await view())?.missions.fleets.length??-1).toBe(0)
   await page.getByRole('button',{name:'Prepare harvest',exact:true}).click()
   await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Harvest');await ship('Recycler').fill('1')
-  await page.getByRole('button',{name:'Review fleet'}).click();await expect(page.getByRole('region',{name:'Fleet quote'})).toBeVisible();await page.getByRole('button',{name:/^Send /,exact:false}).click()
+  await page.getByRole('button',{name:'Review fleet'}).click();await expect(page.getByRole('region',{name:'Fleet quote'})).toBeVisible();await page.getByRole('button',{name:/^Harvest with /,exact:false}).click()
   await expect.poll(async()=>(await view())?.missions.fleets.length??-1).toBe(1)
   const collector=(await fresh()).missions.fleets[0];advance(collector.due_at);await expect.poll(async()=>(await view())?.missions.fleets[0]?.leg).toBe('Returning')
   const collected=(await fresh()).missions.fleets[0];expect(BigInt(collected.cargo.metal)+BigInt(collected.cargo.crystal)).toBeGreaterThan(0n);advance(collected.due_at);await expect.poll(async()=>(await view())?.missions.fleets.length??-1).toBe(0)

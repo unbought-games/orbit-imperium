@@ -1,6 +1,5 @@
 import { NumberValue, ResourceQuantity } from '../../ui/number-value'
 import { Button } from '../../ui/button'
-import { Select } from '../../ui/form'
 import { Section } from '../../ui/section'
 import { useProductionAutosave } from './use-production-autosave'
 import { label } from '../../ui/format'
@@ -95,27 +94,35 @@ export function Production({
                     {body.levels[building as keyof typeof body.levels] ?? '—'}
                   </td>
                   <td>
-                    <Select
-                      data-analytics="set_production"
-                      aria-label={`${label(key)} production`}
-                      value={
-                        autosave.settings?.[key] ?? production.settings[key]
-                      }
-                      onChange={(event) =>
-                        autosave.change(
-                          key,
-                          Number(
-                            event.target.value,
-                          ) as (typeof production.settings)[typeof key],
-                        )
-                      }
-                    >
-                      {Array.from({ length: 11 }, (_, i) => i * 10).map((n) => (
-                        <option key={n} value={n}>
-                          {n}%
-                        </option>
-                      ))}
-                    </Select>
+                    <div className={styles.slider}>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={10}
+                        aria-valuetext={`${autosave.settings?.[key] ?? production.settings[key]}%`}
+                        onPointerUp={autosave.flush}
+                        onPointerCancel={autosave.flush}
+                        onKeyUp={autosave.flush}
+                        onBlur={autosave.flush}
+                        data-analytics="set_production"
+                        aria-label={`${label(key)} production`}
+                        value={
+                          autosave.settings?.[key] ?? production.settings[key]
+                        }
+                        onChange={(event) =>
+                          autosave.change(
+                            key,
+                            Number(
+                              event.target.value,
+                            ) as (typeof production.settings)[typeof key],
+                          )
+                        }
+                      />
+                      <span aria-hidden="true" className={styles.percentage}>
+                        {autosave.settings?.[key] ?? production.settings[key]}%
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ))}

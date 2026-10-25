@@ -10,6 +10,7 @@ import { galaxyTarget, readCoordinates } from '../shell/galaxy-location'
 import { locationPath, type LocationKind } from '../shell/location-address'
 import { coordinates } from '../ui/format'
 import { Link } from '../ui/link'
+import { Button } from '../ui/button'
 import { copiedLocationAtom } from './coordinate-memory'
 import { coordinateMissions } from './coordinate-actions'
 import styles from './coordinate-link.module.css'
@@ -151,7 +152,10 @@ export function CoordinateLink({
           </span>
         )}
         <span className={styles.tools}>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            padding="compact"
             type="button"
             className={styles.control}
             onClick={() => void copy(false)}
@@ -163,9 +167,10 @@ export function CoordinateLink({
             ) : (
               <Copy size={14} />
             )}
-          </button>
+          </Button>
           <Menu.Root onOpenChange={() => setFeedback('')}>
             <Menu.Trigger
+              render={<Button variant="ghost" size="icon" padding="compact" />}
               className={styles.control}
               aria-label={`Location actions for ${text}`}
               title="Location actions"

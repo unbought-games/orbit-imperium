@@ -668,6 +668,23 @@ export class Coordinator {
     }
     return null
   }
+  async simulate(
+    inputs: import('../contracts').components['schemas']['SimulationInputs'],
+  ) {
+    if (!this.port.simulate || this.protocol !== 4)
+      throw new Error('Simulation is unavailable. Reload and try again.')
+    const pending = this.captureRequest()
+    if (!pending) throw new Error('Reconnect before simulating.')
+    const result = validate<
+      import('../contracts').components['schemas']['SimulationResponse']
+    >('SimulationResponse', await this.port.simulate(pending.context, inputs))
+    if (
+      !this.responseMatches(pending, result) ||
+      result.profile_hash !== this.view?.profile_hash
+    )
+      throw new Error('The universe changed. Run the simulation again.')
+    return result
+  }
   async reportPage(cursor: string | null = null, includeHidden = false) {
     if (!this.port.reports || this.protocol !== 4) return null
     const pending = this.captureRequest()

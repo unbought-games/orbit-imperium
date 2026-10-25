@@ -9,7 +9,8 @@ The owner selected fresh snapshots on entry and explicit refresh on 2026-10-24,
 superseding the historical G17 proposal for shared five-minute cuts. Each request
 reads membership, names and asset lots in one PostgreSQL repeatable-read, read-only
 transaction. It does not settle work, write totals, record presence, or use a
-background snapshot publisher. It exposes its sample time and whether due work
+background snapshot publisher. After reading, the first request of a UTC day
+records the source observation separately for historical rank comparisons. It exposes its sample time and whether due work
 was still pending. This is a snapshot of committed state, not a claim that the
 entire universe has settled through a particular logical deadline.
 
@@ -47,6 +48,37 @@ Validation lives in application ranking unit tests, the PostgreSQL `rankings`
 suite (including HTTP authorization), client selectors/controller tests, and
 `high-scores.spec.ts` browser fixtures. Run them through the existing Make/npm
 entry points described in the project README.
+
+## Daily rank movement
+
+Movement compares the current response with the previous UTC calendar day's
+first recorded observation. The exact timestamp is shown; this is deliberately
+not labeled as a rolling 24-hour change or a midnight cut. If nobody opened High
+Scores yesterday, or history has just started, movement is unavailable. New means
+a current member was absent from a valid baseline. Zero means the shared rank is
+unchanged, including ties. Positive values mean climbing toward rank one.
+
+`ranking_observations` stores historical source facts: the observed member IDs and
+asset lots, plus the observation timestamp. It never stores point totals, ranks,
+or deltas. `value_completed_assets` and the same competition-ranking function
+value and rank both observations on read. Former members remain in the historical
+roster when computing historical ranks, but only current members are returned.
+The private lot data never leaves the server. The public additions are
+`baseline_at` and each member's nullable `previous_rank`; optional contract fields
+allow an older server response to display an unavailable comparison.
+
+The game read remains repeatable-read and read-only. A separate short transaction
+inserts the daily observation with `ON CONFLICT DO NOTHING`; concurrent requests
+cannot replace the winning observation. History is scoped by universe and epoch.
+Each daily insertion prunes observations older than yesterday for that universe,
+so there is no unbounded daily archive or new background scheduler. Inactive
+universes keep their last observations until their next request. Recording does
+not settle gameplay, admit commands or update activity. Read/record failures use
+the existing refresh error behavior and retain the last complete client response.
+
+The browser derives signed movement from the response. Search, paging and Around
+me retain the global comparison. Table and detail indicators include accessible
+text, visible signs, and distinct labels for missing history and new players.
 
 ## Validation record — 2026-10-24
 

@@ -159,11 +159,11 @@ test('demolition presents target level, payment and duration before sending', as
 test('playground compares responsive real components and filters categories', async ({ page }) => {
   await page.goto('/detail-playground')
   await expect(page.getByRole('heading', { name: 'Every decision. One language.' })).toBeVisible()
-  await expect(page.locator('iframe')).toHaveCount(26)
+  await expect(page.locator('iframe')).toHaveCount(32)
   await page.getByRole('button', { name: 'Research', exact: true }).click()
-  await expect(page.locator('iframe')).toHaveCount(4)
+  await expect(page.locator('iframe')).toHaveCount(6)
   await page.getByLabel('Preview viewport').selectOption('Mobile')
-  await expect(page.locator('iframe')).toHaveCount(2)
+  await expect(page.locator('iframe')).toHaveCount(3)
 })
 
 
@@ -375,3 +375,37 @@ for (const width of [320, 390, 1440]) {
     await expect(energy).toContainText('+15 → +80')
   })
 }
+
+for (const width of [390, 1440]) {
+  for (const scene of ['mine-capacity', 'research-capacity', 'ship-capacity']) {
+    test(`${scene} explains storage blockers with keyboard access at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto(`/detail-playground?scene=${scene}`)
+      const trigger = page.getByRole('button', { name: 'Resource availability details', exact: true })
+      await expect(trigger).toContainText('Cost exceeds storage capacity')
+      await expect(trigger).not.toContainText('Timing unavailable')
+      await expect(page.getByRole('button', { name: scene === 'mine-capacity' ? 'Confirm upgrade' : scene === 'research-capacity' ? 'Confirm research' : 'Build', exact: true })).toBeDisabled()
+      await trigger.focus()
+      const details = page.getByRole('dialog', { name: 'Resource availability', exact: true })
+      await expect(details).toBeVisible()
+      await expect(details).toContainText('metal: cost exceeds storage capacity of 100')
+      await expect(details).toContainText('Upgrade Metal Storage or deliver the missing resources')
+      await expect(details.getByRole('img', { name: 'metal', exact: true }).last()).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await diagnosticScreenshot(page, { path: `test-results/${scene}-${width}.png` })
+      await page.keyboard.press('Escape')
+      await expect(details).toHaveCount(0)
+    })
+  }
+}
+
+test('manufacturing capacity explanation updates when quantity changes', async ({ page }) => {
+  await page.goto('/detail-playground?scene=ship-ready')
+  const quantity = page.getByRole('textbox', { name: 'Shipyard quantity', exact: true })
+  await quantity.fill('20')
+  await quantity.blur()
+  await expect(page.getByLabel('Missing resources')).toContainText('Cost exceeds storage capacity')
+  await quantity.fill('1')
+  await quantity.blur()
+  await expect(page.getByLabel('Missing resources')).toHaveCount(0)
+})

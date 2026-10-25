@@ -11,8 +11,8 @@ export async function menuDestination(page: Page, name: string) {
 
 export async function navigate(page: Page, name: string) {
   const title = name[0].toUpperCase() + name.slice(1)
-  const primary = ({ Overview: 'Empire', Empire: 'Empire', Resources: 'Build' } as Record<string, string>)[title]
-  const secondary = ['Galaxy', 'Dispatch', 'Fleets'].includes(title) ? 'Fleet navigation' : 'Build navigation'
+  const primary = ({ Overview: 'Empire', Empire: 'Empire', Resources: 'Develop' } as Record<string, string>)[title]
+  const secondary = ['Galaxy', 'Dispatch', 'Fleets'].includes(title) ? 'Fleet navigation' : 'Develop navigation'
   const direct = primary
     ? page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name: primary, exact: true })
     : page.getByRole('navigation', { name: secondary, exact: true }).getByRole('link', { name: title, exact: true })

@@ -8,7 +8,8 @@ export function pendingReportVisibility(
     const command = attempt.envelope.command
     return (
       command.type === 'World' &&
-      command.action.type === 'SetReportHidden' &&
+      (command.action.type === 'SetReportHidden' ||
+        command.action.type === 'SetReportStarred') &&
       (report === undefined || command.action.report === report) &&
       attempt.status !== 'rejected' &&
       attempt.status !== 'committed'

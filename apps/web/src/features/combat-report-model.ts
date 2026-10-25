@@ -127,6 +127,7 @@ export function combatReportModel(
   payload: Observation,
   viewer?: string,
   playerNames?: PlayerNames,
+  shared = false,
 ) {
   const participants = records(payload.participants)
   const own = participants.find((p) => p.owner === viewer)
@@ -167,7 +168,11 @@ export function combatReportModel(
       ({ key }) =>
         key in payload &&
         (key !== 'loot' ||
-          hasCombatLoot(payload.outcome, side, payload.loot)) &&
+          hasCombatLoot(
+            payload.outcome,
+            shared ? 'Attacker' : side,
+            payload.loot,
+          )) &&
         (key !== 'own_cargo_loss' ||
           Object.values(record(payload[key])).some(
             (v) => combatInteger(v) !== 0n,

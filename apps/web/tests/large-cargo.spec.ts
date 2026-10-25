@@ -7,7 +7,7 @@ type S = components['schemas']
 const item = { kind: 'Ship', id: 'LargeCargo' } as const
 const catalog = JSON.parse(
   readFileSync(
-    new URL('../../../rules/mvp-v1-slice-12.json', import.meta.url),
+    new URL('../../../rules/mvp-v1-slice-13.json', import.meta.url),
     'utf8',
   ),
 ).catalog as S['CatalogEntry3'][]
@@ -343,7 +343,7 @@ test('Large Cargos can be selected, quoted and launched in a transport fleet', a
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('2 Large Cargo')
-  await quote.getByRole('button', { name: /Send/ }).click()
+  await quote.getByRole('button', { name: /^Transport to / }).click()
   await expect
     .poll(() => sent)
     .toMatchObject({

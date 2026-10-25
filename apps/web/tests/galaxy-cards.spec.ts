@@ -219,11 +219,13 @@ test('galaxy cards preserve system navigation, eligibility, debris and mission d
   await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '4'))
   await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(cards).toHaveCount(15)
-  await page.getByLabel('Solar system').selectOption('499')
+  await page.getByLabel('Solar system').fill('499')
+  await page.getByLabel('Solar system').press('Enter')
   await expect(cards.first()).toContainText('[1:499:1]')
   await expect(page.getByRole('button', { name: 'Next system' })).toBeDisabled()
   fixture.setFailure(true)
-  await page.getByLabel('Solar system').selectOption('498')
+  await page.getByLabel('Solar system').fill('498')
+  await page.getByLabel('Solar system').press('Enter')
   await expect(page.getByRole('alert')).toContainText('Galaxy unavailable')
   await expect(cards).toHaveCount(0)
   await expect(
@@ -509,10 +511,11 @@ for (const width of [320, 390, 1280]) {
     const toolbarBox = (await toolbar.boundingBox())!
     expect((await positions.boundingBox())!.y - toolbarBox.y - toolbarBox.height).toBeLessThanOrEqual(1)
     const controls = [
-      toolbar.getByRole('combobox', { name: 'Galaxy', exact: true }),
+      toolbar.getByRole('textbox', { name: 'Galaxy', exact: true }),
       toolbar.getByRole('button', { name: 'Previous system' }),
-      toolbar.getByRole('combobox', { name: 'Solar system' }),
+      toolbar.getByRole('textbox', { name: 'Solar system' }),
       toolbar.getByRole('button', { name: 'Next system' }),
+      toolbar.getByRole('button', { name: 'Go', exact: true }),
     ]
     const boxes = []
     for (const control of controls) {
@@ -757,4 +760,105 @@ test('galaxy probe countdown ticks without reloading rows or fetching the system
   await expect(target.locator('details')).toHaveAttribute('open', '')
   await expect(page.getByText('Loading system…', { exact: true })).toHaveCount(0)
   expect(requests).toBe(0)
+})
+
+
+test('typed coordinates commit together, validate universe bounds, and follow history', async ({ page }) => {
+  const requests: string[] = []
+  page.on('request', request => {
+    if (request.url().endsWith('/world') && request.postDataJSON().type === 'Galaxy') {
+      const { galaxy, system } = request.postDataJSON()
+      requests.push(`${galaxy}:${system}`)
+    }
+  })
+  await setup(page, null, { dimensions: { galaxies: 3, systems_per_galaxy: 420 } })
+  const galaxy = page.getByRole('textbox', { name: 'Galaxy', exact: true })
+  const system = page.getByRole('textbox', { name: 'Solar system' })
+  const go = page.getByRole('button', { name: 'Go', exact: true })
+  await expect(page.getByRole('region', { name: 'Galaxy positions' })).toBeVisible()
+  await expect(galaxy).toHaveAttribute('inputmode', 'numeric')
+  await expect(system).toHaveAttribute('enterkeyhint', 'go')
+  for (const value of ['', '4', '42', '420']) {
+    await system.fill(value)
+    await expect(system).toHaveValue(value)
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
+  }
+  await galaxy.fill('3')
+  await system.press('Tab')
+  expect(requests).toEqual(['1:371'])
+  await go.click()
+  await expect(page).toHaveURL(/galaxy=3&system=420$/)
+  await expect(page.getByRole('button', { name: 'Next system' })).toBeDisabled()
+  await expect.poll(() => requests).toEqual(['1:371', '3:420'])
+  await system.fill('')
+  await system.press('Enter')
+  await expect(system).toBeFocused()
+  await expect(system).toHaveAttribute('aria-invalid', 'true')
+  await expect(page.getByRole('alert')).toHaveText('Enter a whole system number from 1 to 420.')
+  for (const value of ['0', '421', '-1', '1.5', '1e2', 'abc']) {
+    await system.fill(value)
+    await system.press('Enter')
+    await expect(system).toHaveValue(value)
+    await expect(system).toHaveAttribute('aria-invalid', 'true')
+  }
+  await galaxy.fill('4')
+  await go.click()
+  await expect(page.getByRole('alert')).toContainText('Enter a whole galaxy number from 1 to 3.')
+  expect(requests).toEqual(['1:371', '3:420'])
+  await galaxy.press('Escape')
+  await expect(galaxy).toHaveValue('3')
+  await expect(system).toHaveValue('420')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await system.fill('001')
+  await system.press('Enter')
+  await expect(system).toBeFocused()
+  await expect(system).toHaveValue('1')
+  await expect(page.getByRole('button', { name: 'Previous system' })).toBeDisabled()
+  await expect(page).toHaveURL(/galaxy=3&system=1$/)
+  await system.fill('99')
+  await page.goBack()
+  await expect(galaxy).toHaveValue('3')
+  await expect(system).toHaveValue('420')
+  await page.goBack()
+  await expect(galaxy).toHaveValue('1')
+  await expect(system).toHaveValue('371')
+  await page.goForward()
+  await expect(galaxy).toHaveValue('3')
+  await expect(system).toHaveValue('420')
+  // Arrow navigation uses the displayed system, discarding unfinished edits.
+  await system.fill('12')
+  await page.getByRole('button', { name: 'Previous system' }).click()
+  await expect(system).toHaveValue('419')
+  await expect(page).toHaveURL(/galaxy=3&system=419$/)
+})
+
+test('a delayed response never replaces a newer typed destination', async ({ page }) => {
+  await setup(page)
+  await expect(page.getByRole('region', { name: 'Galaxy positions' })).toBeVisible()
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let pending = false
+  await page.route('**/world', async route => {
+    const request = route.request().postDataJSON()
+    if (request.type === 'Galaxy' && request.system === 24) {
+      pending = true
+      await gate
+    }
+    await route.fallback()
+  })
+  const system = page.getByRole('textbox', { name: 'Solar system' })
+  await system.fill('24')
+  await system.press('Enter')
+  await expect.poll(() => pending).toBe(true)
+  await expect(page.getByRole('region', { name: 'Galaxy positions' })).toHaveCount(0)
+  await system.fill('25')
+  await system.press('Enter')
+  const rows = page.getByRole('region', { name: 'Galaxy positions' })
+  await expect(rows).toContainText('[1:25:1]')
+  const response = page.waitForResponse(response => response.url().endsWith('/world') && response.request().postDataJSON().system === 24)
+  release()
+  await response
+  await expect(rows).toContainText('[1:25:1]')
+  await expect(rows).not.toContainText('[1:24:1]')
+  await expect(system).toBeFocused()
 })

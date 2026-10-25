@@ -2,6 +2,8 @@ import styles from './reports.module.css'
 import { Trash2, RotateCcw } from 'lucide-react'
 import type { Coordinator } from '../client-model/coordinator'
 import { Button } from '../ui/button'
+import { useStore } from 'zustand'
+import { projectedReportHeader } from '../client-model/report-state'
 import { Text } from '../ui/typography'
 import { useReportVisibility } from './use-report-visibility'
 
@@ -19,17 +21,26 @@ export function ReportVisibilityButton({
   compact?: boolean
 }) {
   const visibility = useReportVisibility(model, report)
+  const starred = useStore(
+    model.store,
+    (s) =>
+      projectedReportHeader(s.reportHeaders, s.attempts.values(), report)
+        ?.starred,
+  )
+
   return (
     <div className={compact ? styles.compactVisibility : undefined}>
       <Button
         variant={compact ? 'ghost' : 'secondary'}
         size={compact ? 'icon' : undefined}
         aria-label={hidden ? 'Restore report' : 'Delete report'}
-        disabled={disabled || visibility.disabled}
+        disabled={disabled || visibility.disabled || (!hidden && !!starred)}
         title={
-          hidden
-            ? 'Restore to your reports'
-            : 'Remove from your reports; you can restore it later'
+          starred && !hidden
+            ? 'Unstar this report before deleting it'
+            : hidden
+              ? 'Restore to your reports'
+              : 'Remove from your reports; you can restore it later'
         }
         onClick={() => {
           void visibility.change(!hidden)
