@@ -7,11 +7,9 @@
   display: none;
 }
 .panel:focus {
+  /* Programmatic reading-order anchor, not an interactive control. Browsers
+     can match :focus-visible after reload; keep rings on the controls inside. */
   outline: none;
-}
-.panel:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: -3px;
 }
 .footer {
   display: flex;
