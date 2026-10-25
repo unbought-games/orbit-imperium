@@ -122,7 +122,8 @@ export function reportPreview(
       ? [identity, coordinates({ coordinates: at })].filter(Boolean).join(' · ')
       : identity,
     coordinates: at,
-    ...(preview.kind === 'Combat' && preview.target_kind === 'Moon'
+    ...((preview.kind === 'Combat' && preview.target_kind === 'Moon') ||
+    (preview.kind === 'Espionage' && preview.target?.kind === 'Moon')
       ? { targetKind: 'moon' as const }
       : {}),
     facts,

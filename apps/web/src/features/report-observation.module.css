@@ -127,3 +127,14 @@
   font-size: 0.75rem;
   margin: 4px 0;
 }
+
+@media (max-width: 400px) {
+  .targetDetails [data-body-identity] {
+    display: inline-flex;
+    flex-direction: column-reverse;
+    gap: 0;
+  }
+  .targetDetails [data-identity-separator] {
+    display: none;
+  }
+}

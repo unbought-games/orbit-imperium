@@ -119,3 +119,27 @@ it('uses historical body names and kinds consistently in combat and espionage pr
     '[2:3:4]',
   )
 })
+
+it('retains moon intent for both espionage and combat coordinate actions', () => {
+  const at = { galaxy: 1, system: 2, position: 3 }
+  expect(
+    reportPreview({
+      kind: 'Espionage',
+      target: { body: 'moon', owner: 'other', kind: 'Moon', coordinates: at },
+    }),
+  ).toMatchObject({ coordinates: at, targetKind: 'moon' })
+  expect(
+    reportPreview({ kind: 'Combat', target: at, target_kind: 'Moon' }),
+  ).toMatchObject({ coordinates: at, targetKind: 'moon' })
+  expect(
+    reportPreview({
+      kind: 'Espionage',
+      target: {
+        body: 'planet',
+        owner: 'other',
+        kind: 'Planet',
+        coordinates: at,
+      },
+    }).targetKind,
+  ).toBeUndefined()
+})
