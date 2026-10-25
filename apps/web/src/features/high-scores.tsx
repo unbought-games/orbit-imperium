@@ -82,10 +82,13 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
           <p className={styles.myRank}>
             Your rank <strong>#{number(ranking.me.rank)}</strong>
             <span>{number(ranking.me.points)} points</span>
-            <RankMovement
-              row={ranking.me}
-              baselineAt={ranking.data?.baseline_at}
-            />
+            <span className={styles.myChange}>
+              Change{' '}
+              <RankMovement
+                row={ranking.me}
+                baselineAt={ranking.data?.baseline_at}
+              />
+            </span>
           </p>
         )}
       </div>

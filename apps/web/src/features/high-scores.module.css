@@ -163,7 +163,7 @@
     white-space: nowrap;
   }
   .table th:first-child {
-    width: 3rem;
+    width: 3.5rem;
   }
   .table th:last-child {
     width: 6.75rem;
@@ -190,4 +190,14 @@
 }
 .movement[data-direction='down'] {
   color: var(--danger);
+}
+
+.changeHeading {
+  white-space: nowrap;
+}
+.myChange {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  color: var(--text-muted);
 }

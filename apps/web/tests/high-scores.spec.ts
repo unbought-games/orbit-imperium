@@ -1,9 +1,9 @@
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { shellFixture, binding, id, body } from './fixtures/game'
+import { installGameFixture, binding, id, body } from './fixtures/game'
 
 test('High Scores keeps one snapshot through search and paging, finds me, and opens accessible details', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   const players = Array.from({ length: 123 }, (_, i) => ({
     player: i === 80 ? binding.player : id(1000 + i),
     username: i === 80 ? 'My Commander' : i === 0 ? 'A very long commander name across the distant stars' : `Pilot ${i}`,
@@ -74,7 +74,7 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
 })
 
 test('High Scores has a retryable initial error and honest empty result', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   let failed = true
   await page.route('**/rankings', route => failed
     ? route.fulfill({ status: 503, json: { code: 'Unavailable' } })
@@ -88,7 +88,7 @@ test('High Scores has a retryable initial error and honest empty result', async 
 })
 
 test('a refresh removing the selected player closes details, restores useful focus, and does not reopen them later', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   const players = [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }]
   let visible = true, requests = 0
   let release!: () => void
@@ -116,7 +116,7 @@ test('a refresh removing the selected player closes details, restores useful foc
 })
 
 test('browser navigation away from player details leaves the destination usable', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }] } }))
   await page.goto(`/u/andromeda/overview?body=${body.id}`)
   await page.getByRole('button', { name: 'Menu', exact: true }).click()
@@ -131,7 +131,7 @@ test('browser navigation away from player details leaves the destination usable'
 })
 
 test('rank movement is accessible, stable through filters and paging, and refreshes with its baseline', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4 })
   let baseline: number | null = 1792800000000
   const players = Array.from({ length: 55 }, (_, i) => ({
     player: i === 54 ? binding.player : id(5000 + i), username: `Mover ${i}`, points: `${100 - i}`, rank: i + 1,
