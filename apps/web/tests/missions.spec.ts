@@ -188,7 +188,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
       original = body
     } else await route.continue()
   })
-  await page.getByRole('button', { name: /^Send /, exact: false }).focus()
+  await page.getByRole('button', { name: /^Transport to /, exact: false }).focus()
   await page.keyboard.press('Enter')
   await expect.poll(() => !!original).toBe(true)
   await page.unroute('**/api/v4/universes/*/commands')

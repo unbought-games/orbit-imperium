@@ -251,7 +251,7 @@ test('Heavy Fighters can be selected, quoted and launched in an attack fleet', a
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('2 Heavy Fighter')
-  await quote.getByRole('button', { name: /Send/ }).click()
+  await quote.getByRole('button', { name: /^Attack with / }).click()
   await expect
     .poll(() => sent)
     .toMatchObject({

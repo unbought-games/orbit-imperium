@@ -1817,7 +1817,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
-  await expect(quote).toContainText('Destination [1:1:3]')
+  await expect(quote).toContainText('Unknown planet')
   await expect(quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
   await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
   await expect(quote).toContainText('fuel')
@@ -1841,7 +1841,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(quote).toBeVisible()
   await quote
-    .getByRole('button', { name: 'Send 1 Small Cargo', exact: true })
+    .getByRole('button', { name: 'Transport to Unknown planet [1:1:3]', exact: true })
     .click()
   await expect(
     page.getByRole('complementary', { name: 'Action needs attention' }),
@@ -1906,7 +1906,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
   await expect(quote).toContainText('fuel')
   await expect(
-    quote.getByRole('button', { name: 'Send 1 Small Cargo', exact: true }),
+    quote.getByRole('button', { name: 'Transport to Unknown planet [1:1:3]', exact: true }),
   ).toBeDisabled()
   expect(sent).toBe(1)
 
