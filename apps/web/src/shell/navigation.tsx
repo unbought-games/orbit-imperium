@@ -144,7 +144,7 @@ export function Navigation({
   const primaryNavigation = (
     <nav className={styles.primary} aria-label="Main navigation">
       {destination('overview', 'Empire', Orbit, true)}
-      {destination('resources', 'Build', Blocks, true)}
+      {destination('resources', 'Develop', Blocks, true)}
       {destination(fleetLanding, 'Fleet', Radar, true)}
       <Button
         variant="ghost"
@@ -178,10 +178,10 @@ export function Navigation({
     <>
       <div className={styles.topBar} data-sticky-navigation>
         {children(primaryNavigation)}
-        {selected === 'Build' && (
+        {selected === 'Develop' && (
           <nav
             className={styles.secondary}
-            aria-label="Build navigation"
+            aria-label="Develop navigation"
             onFocus={revealFocusedDestination}
           >
             {buildPages.map((p) => destination(p))}

@@ -67,7 +67,7 @@ test('iOS installed app keeps scrolling, fixed navigation and menu taps after re
   })
   await shellFixture(page, { protocol: 4 })
   const dock = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-  await dock.getByRole('link', { name: 'Build', exact: true }).tap()
+  await dock.getByRole('link', { name: 'Develop', exact: true }).tap()
   for (const height of [844, 640, 844]) {
     await page.setViewportSize({ width: 390, height })
     for (const y of [0, 250, 100000]) {
@@ -151,7 +151,7 @@ test('mobile game navigation stays in the same document and app scope', async ({
   const origin = new URL(page.url()).origin
 
   for (const [destination, path] of [
-    ['Build', `/u/andromeda/b/${body.id}/resources`],
+    ['Develop', `/u/andromeda/b/${body.id}/resources`],
     ['Facilities', `/u/andromeda/b/${body.id}/facilities`],
     ['Fleet', `/u/andromeda/b/${body.id}/fleets`],
     ['Settings', '/u/andromeda/settings'],
@@ -164,7 +164,7 @@ test('mobile game navigation stays in the same document and app scope', async ({
         .getByRole('link', { name: destination, exact: true })
         .tap()
     } else {
-      const nav = page.getByRole('navigation', { name: destination === 'Facilities' ? 'Build navigation' : 'Main navigation', exact: true })
+      const nav = page.getByRole('navigation', { name: destination === 'Facilities' ? 'Develop navigation' : 'Main navigation', exact: true })
       await nav.getByRole('link', { name: destination, exact: true }).tap()
     }
     await expect(page).toHaveURL(

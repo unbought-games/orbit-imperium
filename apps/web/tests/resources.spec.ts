@@ -573,7 +573,7 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
   await diagnosticScreenshot(page, {
     path: 'test-results/production-autosave-pending-390.png',
   })
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   // A route change unmounts the controls while the user edits remain queued.
   await page.getByRole('link', { name: 'Facilities', exact: true }).click()
   await page.getByRole('link', { name: 'Resources', exact: true }).click()
@@ -834,7 +834,7 @@ test('resources fit compact and touch layouts in all three states', async ({
           .click()
       if (state === 'settings')
         await page
-          .getByRole('link', { name: 'Build', exact: true })
+          .getByRole('link', { name: 'Develop', exact: true })
           .click()
     }
   }
@@ -1368,7 +1368,7 @@ test('construction cancellation is reachable in the building queue and recovers 
       },
     })
   })
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Resources')
   const notice = page.getByRole('region', { name: 'Buildings', exact: true })
   await notice.scrollIntoViewIfNeeded()
@@ -1445,7 +1445,7 @@ test('active construction stays visible without covering current work at enlarge
       },
     ],
   })
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Resources')
   await page.addStyleTag({
     content:

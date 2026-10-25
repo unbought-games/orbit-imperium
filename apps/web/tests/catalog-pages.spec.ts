@@ -541,7 +541,7 @@ for (const width of [1440, 390, 320]) {
         const queue = page.getByRole('region', { name: tab === 'Research' ? 'Research' : 'Shipyard & defense', exact: true })
         await expect(queue).toBeVisible()
         const queueBounds = (await queue.boundingBox())!
-        const tabs = (await page.getByRole('navigation', { name: 'Build navigation' }).boundingBox())!
+        const tabs = (await page.getByRole('navigation', { name: 'Develop navigation' }).boundingBox())!
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeGreaterThanOrEqual(0)
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeLessThanOrEqual(20)
       }
