@@ -214,7 +214,7 @@ for (const width of [320, 390, 1440]) {
     await expect(pane).not.toContainText('Construction energy required')
     await expect(pane).not.toContainText('Extra operating energy')
     await expect(pane.locator('dl')).toContainText(
-      /Energy balance\+26\s*→\s*\+13/,
+      /Energy balance-14\s*→\s*\+13/,
     )
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
@@ -224,7 +224,7 @@ for (const width of [320, 390, 1440]) {
       .getByRole('button', { name: 'Demolish Crystal Mine', exact: true })
       .click()
     await expect(pane.locator('dl')).toContainText(
-      /Energy balance\+26\s*→\s*\+37/,
+      /Energy balance\+11\s*→\s*\+37/,
     )
     await expect(pane).not.toContainText('Operating energy saved')
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)
@@ -259,7 +259,7 @@ for (const width of [320, 390, 1440]) {
 }
 
 for (const width of [320, 390, 1440]) {
-  test(`storage details prioritize benefits and build action at ${width}px`, async ({
+  test(`storage details show cost before benefits and build action at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 })
@@ -292,11 +292,12 @@ for (const width of [320, 390, 1440]) {
     const targetBox = (await target.boundingBox())!
     const costBox = (await cost.boundingBox())!
     expect(costBox.y).toBeGreaterThanOrEqual(targetBox.y)
-    const benefitBox = (await target.locator('dl > div').first().boundingBox())!
+    await expect(target.locator('dl > div').first()).toContainText('Build cost')
+    const benefitBox = (await target.locator('dl > div').filter({ has: page.getByText('Metal capacity', { exact: true }) }).boundingBox())!
     const buttonBox = (await button.boundingBox())!
-    expect(emptyBox.y + emptyBox.height).toBeLessThan(benefitBox.y)
-    expect(benefitBox.y + benefitBox.height).toBeLessThanOrEqual(costBox.y)
-    expect(buttonBox.y).toBeGreaterThanOrEqual(costBox.y + costBox.height)
+    expect(emptyBox.y + emptyBox.height).toBeLessThan(costBox.y)
+    expect(costBox.y + costBox.height).toBeLessThanOrEqual(benefitBox.y)
+    expect(buttonBox.y).toBeGreaterThanOrEqual(benefitBox.y + benefitBox.height)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
