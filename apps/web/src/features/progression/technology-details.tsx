@@ -31,7 +31,7 @@ import {
   DetailRow,
 } from './detail-layout'
 import { DecisionCosts, EnergyAdvice } from './detail-metrics'
-import { affordabilityTime, nextLevelDependents } from './detail-insights'
+import { affordabilityForecast, nextLevelDependents } from './detail-insights'
 import styles from './detail-layout.module.css'
 import { ProgressionActionFeedback } from './action-feedback'
 
@@ -101,7 +101,9 @@ export function TechnologyDetails({
         !!command &&
         !proposal?.blockers.length &&
         !pending(model, command))
-  const wait = material ? affordabilityTime(view, body, material.paid) : null
+  const forecast = material
+    ? affordabilityForecast(view, body, material.paid)
+    : null
   const dependents =
     material?.type === 'Research'
       ? nextLevelDependents(
@@ -285,7 +287,7 @@ export function TechnologyDetails({
                   title={manufacture ? 'New order cost' : 'Research cost'}
                   cost={material.paid}
                   available={body.amounts}
-                  wait={wait}
+                  forecast={forecast!}
                 />
               </dl>
               {display?.blockers.some(
@@ -303,7 +305,7 @@ export function TechnologyDetails({
               view={view}
               body={body}
               now={now}
-              resourceWait={wait}
+              resourceWait={forecast?.wait ?? null}
               resourcesInCosts={!loading && !error && !!material}
             />
           )}

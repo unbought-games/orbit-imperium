@@ -91,6 +91,24 @@ export const scenes = [
     category: 'Ships & defenses',
     item: 'RocketLauncher',
   },
+  {
+    id: 'mine-capacity',
+    title: 'Metal Mine · storage limited',
+    category: 'Buildings',
+    item: 'MetalMine',
+  },
+  {
+    id: 'research-capacity',
+    title: 'Combustion Drive · storage limited',
+    category: 'Research',
+    item: 'CombustionDrive',
+  },
+  {
+    id: 'ship-capacity',
+    title: 'Small Cargo · storage limited',
+    category: 'Ships & defenses',
+    item: 'SmallCargo',
+  },
 ] as const
 export type SceneId = (typeof scenes)[number]['id']
 const scaled = (n: number) => String(n * 1000000)
@@ -161,6 +179,10 @@ export async function createDetailPreview(
     body.inventories = []
     body.fields_used = 0
     body.energy = { supply: '0', demand: '0', utilization: '1000000' }
+  }
+  if (sceneId.endsWith('-capacity')) {
+    body.amounts = resources(0, 0, 0)
+    body.capacity = resources(100, 50, 100)
   }
   if (sceneId === 'mine-short') body.amounts = resources(120, 20, 40)
   if (sceneId === 'storage-full') {
