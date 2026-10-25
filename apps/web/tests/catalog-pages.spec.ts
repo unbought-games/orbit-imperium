@@ -66,7 +66,7 @@ test('active research remains cancellable from its details after removing Curren
   await pane
     .getByRole('button', { name: 'Cancel research', exact: true })
     .click()
-  await confirmCancellation(page)
+  await expect(page.getByRole('dialog', { name: 'Cancel research?', exact: true })).toHaveCount(0)
   await expect
     .poll(() => sent)
     .toEqual({ type: 'CancelResearch', operation: operation.id })
