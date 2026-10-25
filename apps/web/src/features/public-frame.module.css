@@ -124,6 +124,16 @@
 .footerNote {
   color: var(--champagne);
 }
+.landing .footer a {
+  color: var(--link);
+}
+.landing .footer a:hover {
+  color: var(--link-hover);
+}
+.landing .footer a:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
 @media (max-width: 1100px) {
   .footer {
     grid-template-columns: 1fr;

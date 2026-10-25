@@ -11,9 +11,11 @@ const publicWorld = resolvePlanetArt(4)
 export function PublicFrame({
   children,
   variant = 'auth',
+  afterHero,
 }: {
   children: ReactNode
   variant?: 'landing' | 'auth' | 'recovery'
+  afterHero?: ReactNode
 }) {
   return (
     <main
@@ -82,6 +84,7 @@ export function PublicFrame({
           {children}
         </section>
       </div>
+      {afterHero}
       <footer className={styles.footer}>
         <span>Deep games. Clear decisions. Fair competition.</span>
         <PolicyLinks />
