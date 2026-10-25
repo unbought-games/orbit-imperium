@@ -1462,7 +1462,9 @@ test('catalog item links open natively in a new tab without changing the origina
 
 const ionCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-9.json', 'utf8')).catalog
 
-test('Ion Technology shows prerequisite progress, existing artwork, costs and submits research', async ({ page }) => {
+for (const width of [1440, 390]) {
+test(`Ion Technology shows readable field notes, prerequisite progress, costs and submits research at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
   const research: { research: S['ResearchId3']; level: number }[] = [
     { research: 'EnergyTechnology', level: 4 },
     { research: 'LaserTechnology', level: 4 },
@@ -1474,7 +1476,12 @@ test('Ion Technology shows prerequisite progress, existing artwork, costs and su
   await navigate(page, 'Research')
   await page.getByRole('link', { name: 'Research Ion Technology', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('Ion provides no direct combat bonus or demolition discount.')
+  const notes = pane.getByRole('figure', { name: 'Ion Technology illustration' }).locator('figcaption')
+  await expect(notes).toContainText('Cruisers at level 2 and Ion Cannons at level 4')
+  await expect(notes).toContainText('does not improve combat stats or reduce demolition costs')
+  await expect(notes).not.toContainText(/an unlock technology|when enabled|no further specified/i)
+  await notes.scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, { path: `test-results/ion-field-notes-${width}.png` })
   await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('Research Lab')
@@ -1497,6 +1504,7 @@ test('Ion Technology shows prerequisite progress, existing artwork, costs and su
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toMatchObject({ type: 'StartResearch', research: 'IonTechnology', host: body.id })
 })
+}
 
 for (const width of [1440, 390]) {
   test(`machined actions preserve native links, focus and tactile presses at ${width}px`, async ({ page }) => {
