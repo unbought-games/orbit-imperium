@@ -40,8 +40,8 @@ The public landing, sign-in, signup and recovery header uses
 `brand-orbit-by-unbought.svg`: a combined Orbit/studio lockup. It preserves the
 crest and the public header's serif name treatment, with the official outlined
 unbought games F3 logo directly beneath. Every letter is an SVG path; no font
-download is required. `EndorsedBrand` gives the game and studio separate 44px-high
-link targets; recovery keeps the game identity non-navigating. The in-game compact
+download is required. `EndorsedBrand` gives the game and studio separate 32px-high
+brand link targets; recovery keeps the game identity non-navigating. The in-game compact
 `Brand` component is unchanged.
 
 The canonical composition recipe, reference sources and PNG exports live in the

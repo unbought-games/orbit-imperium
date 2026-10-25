@@ -18,6 +18,21 @@ export function Home() {
   return (
     <PublicFrame
       variant="landing"
+      headerActions={
+        <nav
+          aria-label="Player account"
+          className={landingStyles.accountActions}
+        >
+          {runtime.signupEnabled && (
+            <Link to="/signup" className={landingStyles.headerSignup}>
+              Sign up
+            </Link>
+          )}
+          <ButtonLink to="/login" className={landingStyles.headerLogin}>
+            Log in
+          </ButtonLink>
+        </nav>
+      }
       afterHero={
         <HomeDetails signupEnabled={runtime.signupEnabled}>
           <nav aria-label="News and community" className={styles.community}>

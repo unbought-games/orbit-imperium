@@ -48,12 +48,13 @@ test('combined public branding keeps separate usable game and studio links', asy
     await expect(studio).toHaveAttribute('href', 'https://unbought.games/')
     const homeBox = (await home.boundingBox())!
     const studioBox = (await studio.boundingBox())!
-    expect(homeBox.height).toBeGreaterThanOrEqual(44)
-    expect(studioBox.height).toBeGreaterThanOrEqual(44)
+    expect(homeBox.height).toBeGreaterThanOrEqual(32)
+    expect(studioBox.height).toBeGreaterThanOrEqual(32)
     expect(studioBox.y).toBeGreaterThanOrEqual(homeBox.y + homeBox.height)
     expect(studioBox.x + studioBox.width).toBeLessThanOrEqual(width)
     if (width < 768)
-      expect((await header.boundingBox())!.height).toBeLessThanOrEqual(105)
+      expect((await header.boundingBox())!.height).toBeLessThanOrEqual(81)
+    expect((await logo.boundingBox())!.width).toBeLessThanOrEqual(260)
     await diagnosticScreenshot(header, {
       path: `test-results/endorsed-header-${width}.png`,
     })
@@ -76,6 +77,59 @@ test('combined public branding keeps separate usable game and studio links', asy
     page.getByRole('heading', { name: 'Studio destination' }),
   ).toBeVisible()
 })
+
+for (const signup of [true, false]) {
+  test(`landing header offers immediate account access with registration ${signup ? 'open' : 'closed'}`, async ({
+    page,
+  }) => {
+    await anonymous(page, signup)
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.goto('/')
+      const header = page.locator('header')
+      const account = header.getByRole('navigation', { name: 'Player account' })
+      const login = account.getByRole('link', { name: 'Log in', exact: true })
+      await expect(login).toBeInViewport()
+      await expect(login).toHaveAttribute('href', '/login')
+      const bounds = (await login.boundingBox())!
+      expect(bounds.height).toBeGreaterThanOrEqual(44)
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
+      const logo = (await header.locator('img').boundingBox())!
+      expect(logo.x + logo.width).toBeLessThanOrEqual(bounds.x)
+      expect((await header.boundingBox())!.height).toBeLessThanOrEqual(81)
+      if (signup) {
+        const register = account.getByRole('link', {
+          name: 'Sign up',
+          exact: true,
+        })
+        if (width >= 480) {
+          await expect(register).toBeVisible()
+          await register.click()
+          await expect(page).toHaveURL(/\/signup$/)
+          await expect(
+            page.getByRole('button', { name: 'Create account', exact: true }),
+          ).toBeVisible()
+          await page.goto('/')
+        } else {
+          await expect(register).toBeHidden()
+          await expect(
+            page.getByRole('link', { name: 'Create an account', exact: true }),
+          ).toBeVisible()
+        }
+      } else {
+        await expect(header.locator('a[href="/signup"]')).toHaveCount(0)
+      }
+      await diagnosticScreenshot(header, {
+        path: `test-results/compact-header-${width}-${signup}.png`,
+      })
+      await login.click()
+      await expect(page).toHaveURL(/\/login$/)
+      await expect(
+        page.getByRole('button', { name: 'Sign in', exact: true }),
+      ).toBeVisible()
+    }
+  })
+}
 
 for (const width of [320, 390, 768, 1440]) {
   test(`landing page shows genuine desktop and phone images without overflow at ${width}px`, async ({

@@ -3,6 +3,22 @@
   max-width: 1200px;
   margin-inline: auto;
 }
+.accountActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 20px;
+}
+.headerSignup,
+.headerLogin {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.headerLogin {
+  padding-inline: 20px;
+}
 .heroTitle {
   font-size: clamp(3rem, 5.6vw, 5.5rem);
   margin-top: 20px;
@@ -202,6 +218,12 @@
   }
 }
 @media (max-width: 479px) {
+  .headerSignup {
+    display: none;
+  }
+  .headerLogin {
+    padding-inline: 16px;
+  }
   .phones {
     grid-template-columns: 1fr;
     width: min(300px, 100%);

@@ -8,10 +8,12 @@
   padding: 0 var(--page-gutter);
 }
 .header {
-  min-height: 112px;
+  min-height: 80px;
   display: flex;
   align-items: center;
-  padding-block: var(--space-3);
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: var(--space-2);
   border-bottom: 1px solid var(--border-accent);
   position: relative;
   z-index: 1;
@@ -178,7 +180,8 @@
 }
 @media (max-width: 767px) {
   .header {
-    min-height: 104px;
+    min-height: 80px;
+    gap: 12px;
     padding-block: var(--space-2);
   }
   .composition {
