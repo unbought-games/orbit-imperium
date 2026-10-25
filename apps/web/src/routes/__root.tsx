@@ -4,5 +4,5 @@ import { InvalidRoute } from '../shell/invalid-route'
 export const Route = createRootRoute({
   component: App,
   errorComponent: InvalidRoute,
-  notFoundComponent: InvalidRoute,
+  notFoundComponent: () => <InvalidRoute />,
 })

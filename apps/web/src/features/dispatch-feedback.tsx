@@ -4,7 +4,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import type { components } from '../contracts'
 import { actionMessage } from '../ui/action-announcements'
 import { Button } from '../ui/button'
-import { coordinates } from '../ui/format'
+import { CoordinateLink } from './coordinate-link'
 import styles from './missions.module.css'
 
 export function DispatchFeedback({
@@ -58,7 +58,17 @@ export function DispatchFeedback({
       <div>
         <strong>
           {command.action.intent.mission} to{' '}
-          {coordinates({ coordinates: destination })}
+          <CoordinateLink
+            at={destination}
+            target={
+              command.action.intent.destination.type === 'Body' &&
+              command.action.intent.destination.expected_kind === 'Moon'
+                ? 'moon'
+                : command.action.intent.destination.type === 'Debris'
+                  ? 'debris'
+                  : 'planet'
+            }
+          />
         </strong>
         <p>{message}</p>
         {attempt.status === 'uncertain' && (

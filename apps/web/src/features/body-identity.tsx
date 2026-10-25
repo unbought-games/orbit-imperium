@@ -16,9 +16,19 @@ export function BodyIdentity({
 }) {
   const identity = bodyIdentityLabel(name, kind)
   return (
-    <span className={styles.identity}>
-      {identity && <>{identity} · </>}
-      <CoordinateLink at={at} label={label} className={styles.coordinates} />
+    <span className={styles.identity} data-body-identity="">
+      {identity && (
+        <span data-body-name="">
+          {identity}
+          <span data-identity-separator=""> · </span>
+        </span>
+      )}
+      <CoordinateLink
+        at={at}
+        target={kind === 'Moon' ? 'moon' : 'planet'}
+        label={label}
+        className={styles.coordinates}
+      />
     </span>
   )
 }

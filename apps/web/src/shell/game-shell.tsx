@@ -1,3 +1,4 @@
+import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
 import {
   Outlet,
   useMatches,
@@ -15,7 +16,7 @@ import { Link } from '../ui/link'
 import { Brand } from '../ui/brand'
 import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { ResourceStrip } from '../ui/resource-strip'
 import { ActionStatus } from '../ui/action-status'
 import { bodyName, coordinates } from '../ui/format'
@@ -31,9 +32,6 @@ export function GameShell() {
   const { commands, view, model, logout, universeName } = useGameSession()
   const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
-  const [dispatchDraft, setDispatchDraft] = useState<
-    (DispatchDraft & { origin: string }) | null
-  >(null)
   const location = useRouterState({ select: (state) => state.location })
   const matches = useMatches()
   const leaf = matches[matches.length - 1]
@@ -41,6 +39,7 @@ export function GameShell() {
     universe?: string
     body?: string
     item?: string
+    coordinates?: string
   }
   const search = leaf.search as { body?: string }
   const route = resolveNamedDestination(
@@ -65,6 +64,7 @@ export function GameShell() {
   useEffect(() => {
     if (
       available &&
+      !params.coordinates &&
       body &&
       ((!params.body && bodyPages.includes(page)) ||
         (!params.body && !search.body) ||
@@ -74,7 +74,9 @@ export function GameShell() {
         ...routeTarget(universeName, page, body.id, route.item ?? undefined),
         ...(page === 'galaxy'
           ? { search: validateGalaxySearch(leaf.search) }
-          : {}),
+          : page === 'dispatch'
+            ? { search: validateDispatchSearch(leaf.search) }
+            : {}),
         replace: true,
       })
     }
@@ -82,6 +84,7 @@ export function GameShell() {
     available,
     body?.id,
     params.body,
+    params.coordinates,
     search.body,
     page,
     route.item,
@@ -105,9 +108,17 @@ export function GameShell() {
       draft.origin && view.bodies.some((b) => b.id === draft.origin)
         ? draft.origin
         : body.id
-    setDispatchDraft({ ...draft, origin })
     void model.recordPresence('BodyVisit', origin)
-    void navigate(routeTarget(universeName, 'dispatch', origin))
+    void navigate({
+      ...routeTarget(universeName, 'dispatch', origin),
+      search: dispatchSearch(draft),
+      state: {
+        dispatchObservation: {
+          target: draft.target,
+          observedAt: draft.observedAt,
+        },
+      },
+    })
   }
   function selectBody(id: string) {
     void model.recordPresence('BodyVisit', id)
@@ -256,7 +267,6 @@ export function GameShell() {
                   logout,
                   route,
                   body,
-                  dispatchDraft,
                   prepareDispatch,
                 }}
               >

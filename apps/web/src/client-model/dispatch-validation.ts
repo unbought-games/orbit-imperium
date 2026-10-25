@@ -65,6 +65,7 @@ export function dispatchObservationError(
   if (
     observation?.target?.type !== 'Body' ||
     selection.type !== 'BodyAt' ||
+    selection.kind !== observation.target.expected_kind ||
     selection.coordinates.galaxy !== observation.coordinates.galaxy ||
     selection.coordinates.system !== observation.coordinates.system ||
     selection.coordinates.position !== observation.coordinates.position

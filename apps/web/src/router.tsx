@@ -1,3 +1,4 @@
+import type { DispatchDraft } from './features/missions'
 import { galaxyOwnsScroll } from './shell/galaxy-location'
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -14,6 +15,10 @@ export function createAppRouter(
   })
 }
 declare module '@tanstack/react-router' {
+  interface HistoryState {
+    dispatchObservation?: Pick<DispatchDraft, 'observedAt' | 'target'>
+  }
+
   interface Register {
     router: ReturnType<typeof createAppRouter>
   }

@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import { playerLabel, type PlayerNames } from './player-label'
 import { NumberValue } from '../ui/number-value'
 import { ResourceValue } from '../ui/resource-value'
@@ -59,6 +60,7 @@ export function GalaxyPosition({
   }
 }) {
   const { body, debris, coordinates } = position
+  const target = `[${coordinates.galaxy}:${coordinates.system}:${coordinates.position}]`
   const owned = body?.owner === player
   const protectedTarget = !owned && body?.attack_blocker === 'BeginnerProtected'
   const attackReason = protectedTarget
@@ -68,7 +70,6 @@ export function GalaxyPosition({
       : !canAttack
         ? 'Attack unavailable in this universe'
         : undefined
-  const target = `[${coordinates.galaxy}:${coordinates.system}:${coordinates.position}]`
   const canTarget = !!body && body.id !== origin
   const actionable = canTarget || !!debris || !body
   const content = (
@@ -83,8 +84,13 @@ export function GalaxyPosition({
         )}
         <span className={styles.planetInfo}>
           <span className={styles.planetTitle}>
-            <span className={styles.coordinates}>{target}</span>{' '}
-            <strong>
+            <CoordinateLink
+              at={coordinates}
+              target={body?.kind === 'Moon' ? 'moon' : 'planet'}
+              known={{ owner: body?.owner, empty: !body, debris: !!debris }}
+              className={styles.coordinates}
+            />{' '}
+            <strong title={!body ? 'Empty position' : undefined}>
               {body
                 ? (body.name ?? (owned ? 'Your planet' : body.kind))
                 : 'Empty position'}

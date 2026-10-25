@@ -1,3 +1,4 @@
+import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
@@ -212,7 +213,7 @@ for (const historical of [true, false]) {
     state.launchError = null
     if (historical) await prepareHistoricalDraft(page)
     await mission(page).selectOption('Deploy')
-    await page.getByLabel('Position', { exact: true }).fill('2')
+    await setDestination(page, { position: '2' })
     await page.getByLabel('Metal', { exact: true }).fill('42')
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 })
@@ -263,7 +264,7 @@ for (const change of ['identity', 'owner'] as const) {
     const state = await setup(page)
     await prepareHistoricalDraft(page)
     await mission(page).selectOption('Transport')
-    await page.getByLabel('Position', { exact: true }).fill('2')
+    await setDestination(page, { position: '2' })
     await review(page).click()
     await expect(
       page.getByRole('region', { name: 'Fleet quote' }),
@@ -275,7 +276,7 @@ for (const change of ['identity', 'owner'] as const) {
       expected_owner: change === 'owner' ? binding.player : id(30),
       expected_kind: 'Planet',
     }
-    await page.getByLabel('Position', { exact: true }).fill('1')
+    await setDestination(page, { position: '1' })
     await review(page).click()
     await expect(page.getByRole('alert')).toContainText(
       'The observed target has changed',
@@ -303,7 +304,7 @@ test('an edited historical deploy still reports authoritative quote rejection', 
   const state = await setup(page)
   await prepareHistoricalDraft(page)
   await mission(page).selectOption('Deploy')
-  await page.getByLabel('Position', { exact: true }).fill('2')
+  await setDestination(page, { position: '2' })
   state.quoteError = 'InvalidInput'
   await review(page).click()
   await expect(page.getByRole('alert')).toContainText(
@@ -662,11 +663,11 @@ test('mission changes keep the same destination visible during refresh but never
     await expect(destination).toBeVisible()
   }
   state.hold = null
-  await page.getByLabel('Position', { exact: true }).fill('3')
+  await setDestination(page, { position: '3' })
   await expect(destination).toHaveCount(0)
-  await page.getByLabel('Position', { exact: true }).fill('1')
+  await setDestination(page, { position: '1' })
   await expect(destination).toBeVisible()
-  await page.getByLabel('System', { exact: true }).fill('2')
+  await setDestination(page, { system: '2' })
   await expect(destination).toHaveCount(0)
   await expect(
     page.getByText('Destination: Other Planet', { exact: false }),
@@ -707,11 +708,11 @@ test('cleared ship and cargo amounts display zero and submit as zero even before
   }
 })
 
-test('pasting coordinates into any destination field fills all three and preserves validation', async ({
+test('pasting coordinates fills the unified field and preserves validation', async ({
   page,
 }) => {
   await setup(page)
-  const fields = ['Galaxy', 'System', 'Position']
+  const fields = ['Destination coordinates']
   for (const [index, field] of fields.entries()) {
     const system = String(370 + index)
     const input = page.getByLabel(field, { exact: true })
@@ -728,22 +729,26 @@ test('pasting coordinates into any destination field fills all three and preserv
         )
       }, text)
     expect(await paste(` \n [ 1 : ${system} : 10 ] \t`)).toBe(false)
-    await expect(page.getByLabel('Galaxy', { exact: true })).toHaveValue('1')
-    await expect(page.getByLabel('System', { exact: true })).toHaveValue(system)
-    await expect(page.getByLabel('Position', { exact: true })).toHaveValue('10')
+    await expect(
+      page.getByLabel('Destination coordinates', { exact: true }),
+    ).toHaveValue(coordinatePattern('galaxy', '1'))
+    await expect(
+      page.getByLabel('Destination coordinates', { exact: true }),
+    ).toHaveValue(coordinatePattern('system', system))
+    await expect(
+      page.getByLabel('Destination coordinates', { exact: true }),
+    ).toHaveValue(coordinatePattern('position', '10'))
     await expect(review(page)).toBeEnabled()
     // Unrecognized text retains the browser's ordinary paste behavior.
     expect(await paste('12')).toBe(true)
     expect(await paste('1:2:3:4')).toBe(true)
     expect(await paste('[1:500:16]')).toBe(false)
-    await expect(page.getByLabel('System', { exact: true })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    )
-    await expect(page.getByLabel('Position', { exact: true })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    )
+    await expect(
+      page.getByLabel('Destination coordinates', { exact: true }),
+    ).toHaveAttribute('aria-invalid', 'true')
+    await expect(
+      page.getByLabel('Destination coordinates', { exact: true }),
+    ).toHaveAttribute('aria-invalid', 'true')
     await expect(review(page)).toBeDisabled()
   }
 })
@@ -752,7 +757,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   page,
 }) => {
   const state = await setup(page)
-  const position = page.getByLabel('Position', { exact: true })
+  const position = page.getByLabel('Destination coordinates', { exact: true })
   for (const value of [
     '🏎️',
     '1🏎️',
@@ -764,23 +769,23 @@ test('coordinate errors appear beside entry before review, including pasted emoj
     '9007199254740993',
     '',
   ]) {
-    await position.fill(value)
+    await setDestination(page, { position: value })
     await expect(position).toHaveAttribute('aria-invalid', 'true')
     await expect(position).toHaveAccessibleDescription(
       /position number from 1 to 15/,
     )
     await expect(review(page)).toBeDisabled()
   }
-  await position.fill('1')
-  await page.getByLabel('System', { exact: true }).fill('500')
+  await setDestination(page, { position: '1' })
+  await setDestination(page, { system: '500' })
   await expect(
-    page.getByLabel('System', { exact: true }),
-  ).toHaveAccessibleDescription('Enter a system number from 1 to 499.')
-  await page.getByLabel('Galaxy', { exact: true }).fill('2')
+    page.getByLabel('Destination coordinates', { exact: true }),
+  ).toHaveAccessibleDescription(/Enter a system number from 1 to 499./)
+  await setDestination(page, { galaxy: '2' })
   await expect(
-    page.getByLabel('Galaxy', { exact: true }),
-  ).toHaveAccessibleDescription('Enter a galaxy number from 1 to 1.')
-  await position.fill('🏎️')
+    page.getByLabel('Destination coordinates', { exact: true }),
+  ).toHaveAccessibleDescription(/Enter a galaxy number from 1 to 1./)
+  await setDestination(page, { position: '🏎️' })
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     expect(
@@ -795,9 +800,9 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   }
   expect(state.resolves).toBe(0)
   expect(state.quotes).toBe(0)
-  await page.getByLabel('Galaxy', { exact: true }).fill('1')
-  await page.getByLabel('System', { exact: true }).fill('499')
-  await position.fill('15')
+  await setDestination(page, { galaxy: '1' })
+  await setDestination(page, { system: '499' })
+  await setDestination(page, { position: '15' })
   await expect(review(page)).toBeEnabled()
   await expect(position).toHaveAttribute('aria-invalid', 'false')
 })
@@ -806,7 +811,7 @@ test('own-planet attack is actionable, while transport to another owned planet a
   page,
 }) => {
   const state = await setup(page)
-  await page.getByLabel('Position', { exact: true }).fill('2')
+  await setDestination(page, { position: '2' })
   await mission(page).selectOption('Attack')
   await expect(
     page
@@ -820,12 +825,8 @@ test('own-planet attack is actionable, while transport to another owned planet a
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
   await page.getByRole('button', { name: 'Edit mission' }).click()
   await mission(page).selectOption('Harvest')
-  await page
-    .getByLabel('System', { exact: true })
-    .fill(String(body.coordinates.system))
-  await page
-    .getByLabel('Position', { exact: true })
-    .fill(String(body.coordinates.position))
+  await setDestination(page, { system: String(body.coordinates.system) })
+  await setDestination(page, { position: String(body.coordinates.position) })
   await expect(review(page)).toBeEnabled()
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
@@ -923,7 +924,7 @@ test('late eligibility and quote failures cannot overwrite an edited destination
   }
   await mission(page).selectOption('Attack')
   await expect.poll(() => held).toBe(true)
-  await page.getByLabel('System', { exact: true }).fill('2')
+  await setDestination(page, { system: '2' })
   const lateObservation = page.waitForResponse(
     (r) =>
       r.url().endsWith('/world') &&
@@ -952,7 +953,7 @@ test('late eligibility and quote failures cannot overwrite an edited destination
   }
   await review(page).click()
   await expect.poll(() => quoteHeld).toBe(true)
-  await page.getByLabel('Position', { exact: true }).fill('3')
+  await setDestination(page, { position: '3' })
   const response = page.waitForResponse(
     (r) =>
       r.url().endsWith('/world') &&
@@ -968,7 +969,7 @@ test('late eligibility and quote failures cannot overwrite an edited destination
 })
 
 for (const width of [320, 390, 1280]) {
-  test(`dispatch destination stays in four compact boxes at ${width}px`, async ({
+  test(`dispatch uses one full-width coordinate field at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -983,23 +984,19 @@ for (const width of [320, 390, 1280]) {
     await expect(
       page.getByText('Destination: Ember Watch', { exact: false }),
     ).toBeVisible()
-    // Take each row's geometry in one frame so asynchronous content above it
-    // cannot move the page between measurements of its individual controls.
-    const boxes = await group.locator('input, select').evaluateAll((elements) =>
-      elements.slice(0, 4).map((element) => {
-        const { y, width, height } = element.getBoundingClientRect()
-        return { y, width, height }
-      }),
-    )
-    expect(boxes).toHaveLength(4)
-    const first = boxes[0]!
-    for (const box of boxes) {
-      expect(box!.y).toBe(first.y)
-      expect(box!.height).toBe(44)
-      expect(box!.width).toBeLessThanOrEqual(150)
-    }
-    // The compact inputs now include a live flight timing summary below Speed.
-    expect((await group.boundingBox())!.height).toBeLessThan(230)
+    const coordinate = group.getByLabel('Destination coordinates', {
+      exact: true,
+    })
+    await expect(coordinate).toHaveCount(1)
+    const fieldBox = (await coordinate.boundingBox())!
+    expect(fieldBox.height).toBe(44)
+    expect(fieldBox.width).toBeGreaterThan(width < 400 ? 180 : 250)
+    const selectors = await group
+      .locator('select')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getBoundingClientRect().height),
+      )
+    expect(selectors).toEqual([44, 44, 44])
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width)
@@ -1035,9 +1032,6 @@ for (const width of [320, 390, 1280]) {
         exact: false,
       }),
     ).toBeVisible()
-    const position = (await page
-      .getByLabel('Position', { exact: true })
-      .boundingBox())!
-    expect(position.y).toBe((await mission(page).boundingBox())!.y)
+    await expect(coordinate).toBeVisible()
   })
 }

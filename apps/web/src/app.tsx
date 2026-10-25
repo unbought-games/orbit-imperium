@@ -1,3 +1,6 @@
+import { Provider } from 'jotai'
+import { InvalidRoute } from './shell/invalid-route'
+import { useLocation } from '@tanstack/react-router'
 import { runtimeNeedsRecovery } from './adapters/runtime'
 import { UniverseEnrollment } from './features/oidc'
 import { SkipLink } from './ui/skip-link'
@@ -10,6 +13,13 @@ import { useAppSession } from './client-model/use-app-session'
 import { AuthContext } from './shell/auth-context'
 import { PlayerProfilesProvider } from './shell/player-profiles-context'
 export function App() {
+  const sharedLocation = useLocation({
+    select: (location) =>
+      /\/location\//.test(location.pathname) ||
+      (location.pathname === '/login' &&
+        typeof location.search.redirect === 'string' &&
+        location.search.redirect.includes('/location/')),
+  })
   const session = useAppSession()
   const { runtime, busy, message, errorRef, commands, logout, retry } = session
   return (
@@ -33,16 +43,22 @@ export function App() {
             logout,
           }}
         >
-          <PlayerProfilesProvider
-            key={runtime.session.csrf}
-            csrf={runtime.session.csrf}
-          >
-            <Outlet />
-          </PlayerProfilesProvider>
+          <Provider>
+            <PlayerProfilesProvider
+              key={runtime.session.csrf}
+              csrf={runtime.session.csrf}
+            >
+              <Outlet />
+            </PlayerProfilesProvider>
+          </Provider>
         </SessionContext.Provider>
       ) : runtime.status === 'authenticated' &&
         runtime.game.status === 'no_membership' ? (
-        <UniverseEnrollment />
+        sharedLocation ? (
+          <InvalidRoute reason="You do not have access to this universe." />
+        ) : (
+          <UniverseEnrollment />
+        )
       ) : (
         <ConnectionScreen
           stale={commands.model?.stale}

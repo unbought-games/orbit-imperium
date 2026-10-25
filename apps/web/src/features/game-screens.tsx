@@ -1,3 +1,5 @@
+import { useSearch, useRouterState } from '@tanstack/react-router'
+import { draftFromSearch } from '../shell/dispatch-location'
 import {
   useCatalogSelection,
   type CatalogSelection,
@@ -68,16 +70,14 @@ export function ResourceSettingsScreen() {
 export function OperationsScreen({
   selection,
 }: { selection?: CatalogSelection } = {}) {
-  const {
-    view,
-    body,
-    route,
-    commands,
-    model,
-    dispatchDraft,
-    prepareDispatch,
-    universeName,
-  } = useGameScreen()
+  const { view, body, route, commands, model, prepareDispatch, universeName } =
+    useGameScreen()
+  const search = useSearch({ strict: false })
+  const urlDraft = draftFromSearch(search)
+  const observation = useRouterState({
+    select: (state) => state.location.state.dispatchObservation,
+  })
+  const prepared = urlDraft ? { ...urlDraft, ...observation } : null
   const settings = model.settings
   if (!body) return null
   if (view.protocol === 4) {
@@ -95,11 +95,11 @@ export function OperationsScreen({
     if (route.page === 'dispatch')
       return (
         <Dispatch
-          key={body.id}
+          key={`${body.id}:${JSON.stringify(search)}`}
           model={model}
           view={view}
           body={view.bodies.find((b) => b.id === body.id)!}
-          draft={dispatchDraft?.origin === body.id ? dispatchDraft : null}
+          draft={prepared}
         />
       )
     if (route.page === 'fleets')

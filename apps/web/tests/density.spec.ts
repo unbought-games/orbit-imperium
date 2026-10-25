@@ -1,3 +1,4 @@
+import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
@@ -219,8 +220,8 @@ for (const viewport of [
     await expect(
       page.getByRole('combobox', { name: 'Mission', exact: true }),
     ).toHaveValue('Harvest')
-    await expect(page.getByLabel('System', { exact: true })).toHaveValue('372')
-    await expect(page.getByLabel('Position', { exact: true })).toHaveValue('10')
+    await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '372'))
+    await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '10'))
     await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
     await page.getByRole('link', { name: 'Back to reports' }).click()
     await firstViewport(page, [

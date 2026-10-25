@@ -60,3 +60,17 @@ it('resolves the mission-specific destination', () => {
     kind: 'Planet',
   })
 })
+
+it('keeps moon targets distinct from planets at the same coordinates', () => {
+  expect(
+    dispatchSelection(
+      'Transport',
+      { galaxy: 1, system: 2, position: 3 },
+      'Moon',
+    ),
+  ).toEqual({
+    type: 'BodyAt',
+    coordinates: { galaxy: 1, system: 2, position: 3 },
+    kind: 'Moon',
+  })
+})

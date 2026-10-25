@@ -2,11 +2,14 @@ import { linkOptions } from '@tanstack/react-router'
 import type { components } from '../contracts'
 import { universeSlug } from '../client-model/universe-name'
 
+import type { LocationKind } from './location-address'
+
 type Coordinates = components['schemas']['Coordinates']
 export type GalaxySearch = {
   galaxy?: number
   system?: number
   position?: number
+  target?: LocationKind
 }
 const positiveInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value > 0
@@ -30,6 +33,11 @@ export function validateGalaxySearch(
     if (!positiveInteger(search[key]))
       throw new Error('This address contains invalid galaxy coordinates.')
     result[key] = search[key]
+  }
+  if (search.target !== undefined) {
+    if (!['planet', 'moon', 'debris'].includes(String(search.target)))
+      throw Error('Invalid target kind.')
+    result.target = search.target as LocationKind
   }
   return result
 }

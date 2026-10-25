@@ -10,9 +10,9 @@ use unbought_auth::{ProfileError, ProfileSnapshot, PublicProfile, PublicProfileC
 #[derive(Clone, Serialize)]
 pub struct PlayerDisplay {
     player: PlayerId,
-    username: String,
+    pub(super) username: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    supporter_tier: Option<u8>,
+    pub(super) supporter_tier: Option<u8>,
     observed_at: i64,
     expires_at: i64,
 }
@@ -163,7 +163,7 @@ impl AccountProfiles {
             cache: ProfileCache::default(),
         })
     }
-    async fn display(&self, identities: Vec<PlayerIdentity>) -> Vec<PlayerDisplay> {
+    pub(super) async fn display(&self, identities: Vec<PlayerIdentity>) -> Vec<PlayerDisplay> {
         let subjects: Vec<_> = identities
             .iter()
             .filter(|i| i.issuer.as_deref() == Some(&self.issuer))

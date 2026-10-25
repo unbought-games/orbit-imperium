@@ -10,7 +10,11 @@ it('shows the return location, exact ship manifest and whether cargo came home',
       ships: [{ ship_type: 'EspionageProbe', count: '1' }],
       cargo: { metal: '0', crystal: '0', deuterium: '0' },
     }),
-  ).toEqual({ location: '[1:1:5]', facts: ['1 Espionage Probe', 'No cargo'] })
+  ).toEqual({
+    coordinates: { galaxy: 1, system: 1, position: 5 },
+    location: '[1:1:5]',
+    facts: ['1 Espionage Probe', 'No cargo'],
+  })
 })
 it('distinguishes hidden espionage facts from known zero resources and empty defenses', () => {
   expect(
@@ -69,6 +73,7 @@ it('gives a neutral battle outcome and observed loot without inventing missing h
       loot: { metal: '0', crystal: '0', deuterium: '0' },
     }),
   ).toEqual({
+    coordinates: { galaxy: 2, system: 3, position: 4 },
     location: '[2:3:4]',
     facts: [],
   })
@@ -113,4 +118,28 @@ it('uses historical body names and kinds consistently in combat and espionage pr
   expect(reportPreview({ kind: 'ContactLost', target: at }).location).toBe(
     '[2:3:4]',
   )
+})
+
+it('retains moon intent for both espionage and combat coordinate actions', () => {
+  const at = { galaxy: 1, system: 2, position: 3 }
+  expect(
+    reportPreview({
+      kind: 'Espionage',
+      target: { body: 'moon', owner: 'other', kind: 'Moon', coordinates: at },
+    }),
+  ).toMatchObject({ coordinates: at, targetKind: 'moon' })
+  expect(
+    reportPreview({ kind: 'Combat', target: at, target_kind: 'Moon' }),
+  ).toMatchObject({ coordinates: at, targetKind: 'moon' })
+  expect(
+    reportPreview({
+      kind: 'Espionage',
+      target: {
+        body: 'planet',
+        owner: 'other',
+        kind: 'Planet',
+        coordinates: at,
+      },
+    }).targetKind,
+  ).toBeUndefined()
 })

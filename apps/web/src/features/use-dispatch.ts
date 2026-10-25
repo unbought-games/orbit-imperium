@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type ClipboardEvent } from 'react'
+import { coordinateFields } from '../ui/coordinate-input-model'
+import { coordinateText, type LocationKind } from '../shell/location-address'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -22,7 +24,6 @@ import {
   dispatchFailure,
   dispatchObservationError,
   dispatchQuantity,
-  parsePastedCoordinates,
 } from '../client-model/dispatch-validation'
 type S = components['schemas']
 export function useDispatch({
@@ -39,12 +40,16 @@ export function useDispatch({
   const [mission, setMission] = useState<DispatchDraft['mission']>(
       draft?.mission ?? 'Transport',
     ),
-    [galaxy, setGalaxy] = useState(
-      String(draft?.coordinates.galaxy ?? body.coordinates.galaxy),
+    [destinationText, setDestinationText] = useState(
+      draft
+        ? coordinateText(draft.coordinates)
+        : `${body.coordinates.galaxy}:1:1`,
     ),
-    [system, setSystem] = useState(String(draft?.coordinates.system ?? 1)),
-    [position, setPosition] = useState(
-      String(draft?.coordinates.position ?? 1),
+    [targetKind, setTargetKind] = useState<LocationKind>(
+      draft?.targetKind ??
+        (draft?.target?.type === 'Body' && draft.target.expected_kind === 'Moon'
+          ? 'moon'
+          : 'planet'),
     ),
     [speed, setSpeed] = useState(100),
     [ships, setShips] = useState<Record<string, string>>({}),
@@ -52,6 +57,7 @@ export function useDispatch({
     [quote, setQuote] = useState<S['FleetTerms4'] | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false)
+  const { galaxy, system, position } = coordinateFields(destinationText)
   const now = useStore(model.store, currentServerTime)
   const coordinateProblems = coordinateErrors(
     { galaxy, system, position },
@@ -95,13 +101,13 @@ export function useDispatch({
   const ownedTarget = coordinatesValid
     ? view.bodies.find(
         (candidate) =>
-          candidate.kind === 'Planet' &&
+          candidate.kind === (targetKind === 'moon' ? 'Moon' : 'Planet') &&
           candidate.coordinates.galaxy === Number(galaxy) &&
           candidate.coordinates.system === Number(system) &&
           candidate.coordinates.position === Number(position),
       )
     : undefined
-  const observedTarget =
+  const observedBody =
     coordinatesValid &&
     observation?.galaxy === Number(galaxy) &&
     observation.system === Number(system)
@@ -109,6 +115,8 @@ export function useDispatch({
           (candidate) => candidate.coordinates.position === Number(position),
         )?.body
       : undefined
+  const observedTarget =
+    observedBody?.kind.toLowerCase() === targetKind ? observedBody : undefined
   const target = ownedTarget
     ? {
         id: ownedTarget.id,
@@ -119,21 +127,25 @@ export function useDispatch({
     : observedTarget
   const colony = colonizationStatus(view, Number(position))
   const targetProblem =
-    mission === 'Colonize' && colony.reason
-      ? colony.reason
-      : target && mission !== 'Harvest'
-        ? destinationError(
-            mission,
-            {
-              type: 'Body',
-              id: target.id,
-              expected_owner: target.owner,
-              expected_kind: target.kind,
-            },
-            view.binding.player,
-            body.id,
-          )
-        : ''
+    targetKind === 'moon' && (mission === 'Colonize' || mission === 'Harvest')
+      ? 'Choose a planet position for colonization or debris for harvesting.'
+      : targetKind === 'debris' && mission !== 'Harvest'
+        ? 'Choose Harvest for a debris field.'
+        : mission === 'Colonize' && colony.reason
+          ? colony.reason
+          : target && mission !== 'Harvest'
+            ? destinationError(
+                mission,
+                {
+                  type: 'Body',
+                  id: target.id,
+                  expected_owner: target.owner,
+                  expected_kind: target.kind,
+                },
+                view.binding.player,
+                body.id,
+              )
+            : ''
   const attackWarning =
     mission === 'Attack' && observedTarget?.attack_blocker
       ? dispatchFailure(observedTarget.attack_blocker)
@@ -282,7 +294,11 @@ export function useDispatch({
         system: Number(system),
         position: Number(position),
       }
-      const selection = dispatchSelection(mission, coordinates)
+      const selection = dispatchSelection(
+        mission,
+        coordinates,
+        targetKind === 'moon' ? 'Moon' : 'Planet',
+      )
       const destination = await model
         .world({
           type: 'ResolveDestination',
@@ -353,17 +369,6 @@ export function useDispatch({
       if (requestGeneration === generation.current) setBusy(false)
     }
   }
-  function pasteCoordinates(event: ClipboardEvent<HTMLInputElement>) {
-    const parsed = parsePastedCoordinates(
-      event.clipboardData.getData('text/plain'),
-    )
-    if (!parsed) return
-    event.preventDefault()
-    setGalaxy(parsed.galaxy)
-    setSystem(parsed.system)
-    setPosition(parsed.position)
-    clear()
-  }
   return {
     submittedAttempt,
     submittedCoordinates: submitted?.coordinates,
@@ -375,7 +380,17 @@ export function useDispatch({
           ? 'Select ships to see flight times.'
           : timing?.error),
     addAllCargo: () => review(true),
-    pasteCoordinates,
+    destinationText,
+    setDestinationText,
+    targetKind,
+    setTargetKind,
+    destinationDescription: target
+      ? `${target.name ?? target.kind} · ${target.kind}`
+      : observation
+        ? targetKind === 'moon'
+          ? 'Moon not shown in the current observation. Review verifies the moon target.'
+          : 'Empty position'
+        : 'Looking up destination…',
     targetName:
       mission !== 'Harvest' && mission !== 'Colonize'
         ? target?.name
@@ -388,11 +403,8 @@ export function useDispatch({
     mission,
     setMission,
     galaxy,
-    setGalaxy,
     system,
-    setSystem,
     position,
-    setPosition,
     speed,
     setSpeed,
     ships,

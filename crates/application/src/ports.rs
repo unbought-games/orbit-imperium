@@ -103,6 +103,17 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send;
 }
 pub trait GameStore: Send + Sync {
+    /// Anonymous appearance lookup. This intentionally exposes only share-card identity.
+    fn location_appearance(
+        &self,
+        _universe_slug: &str,
+        _coordinates: LocationCoordinates,
+        _kind: LocationBodyKind,
+    ) -> impl std::future::Future<Output = Result<Option<LocationAppearance>, StoreError>> + Send
+    {
+        async { Err(StoreError::Unavailable) }
+    }
+
     fn ranking_facts(
         &self,
         _binding: Binding,

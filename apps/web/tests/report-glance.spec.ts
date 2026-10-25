@@ -111,7 +111,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
     await page.reload()
     await expect(rows.nth(2).locator('strong')).toHaveText(title)
     await expect(rows.nth(2).locator('strong')).toHaveCSS('color', color)
-    await expect(rows.nth(2).getByRole('link')).toHaveAccessibleName(title.slice(2))
+    await expect(rows.nth(2).getByRole('link', { name: title.slice(2), exact: true })).toHaveAccessibleName(title.slice(2))
     if (outcome === 'AttackerVictory' && side === 'Attacker') await expect(rows.nth(2)).toContainText('Loot:')
     else await expect(rows.nth(2)).not.toContainText('Loot:')
   }

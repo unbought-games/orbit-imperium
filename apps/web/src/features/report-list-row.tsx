@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
@@ -34,31 +35,45 @@ export function ReportListRow({
       className={styles.reportRow}
       aria-label={`${outcome.title} report ${exactTime(report.observed_at)}`}
     >
-      <Link
-        className={styles.reportLink}
-        aria-label={outcome.title}
-        onClick={() => void model.recordPresence('AccountVisit', null)}
-        {...routeTarget(universe, 'reports', origin, report.id)}
-      >
-        <span className={styles.rowHeading}>
-          <strong className={outcome.symbol ? styles[outcome.tone] : undefined}>
-            {outcome.symbol && (
-              <span aria-hidden="true">{outcome.symbol} </span>
+      <div className={styles.reportMain}>
+        <div className={styles.rowHeading}>
+          <Link
+            className={styles.reportLink}
+            aria-label={outcome.title}
+            onClick={() => void model.recordPresence('AccountVisit', null)}
+            {...routeTarget(universe, 'reports', origin, report.id)}
+          >
+            <strong
+              className={outcome.symbol ? styles[outcome.tone] : undefined}
+            >
+              {outcome.symbol && (
+                <span aria-hidden="true">{outcome.symbol} </span>
+              )}
+              {outcome.title}
+            </strong>
+            {!report.read && (
+              <span
+                className={styles.unread}
+                aria-label="Unread"
+                title="Unread"
+              />
             )}
-            {outcome.title}
-          </strong>
-          {preview.location && (
-            <span className={styles.location}>{preview.location}</span>
+            {report.hidden && <span>Deleted</span>}
+          </Link>
+          {preview.coordinates && (
+            <CoordinateLink
+              at={preview.coordinates}
+              origin={origin}
+              target={
+                preview.targetKind ??
+                (report.kind === 'Harvested' ? 'debris' : 'planet')
+              }
+              className={styles.location}
+            >
+              {preview.location}
+            </CoordinateLink>
           )}
-          {!report.read && (
-            <span
-              className={styles.unread}
-              aria-label="Unread"
-              title="Unread"
-            />
-          )}
-          {report.hidden && <span>Deleted</span>}
-        </span>
+        </div>
         {preview.facts.length > 0 && (
           <span className={styles.preview}>
             {preview.facts.map((fact, index) => (
@@ -94,7 +109,7 @@ export function ReportListRow({
             ))}
           </span>
         )}
-      </Link>
+      </div>
 
       <time
         className={styles.rowTime}

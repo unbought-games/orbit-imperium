@@ -320,3 +320,13 @@ it('does not bind a body observation to a deliberately selected debris or empty 
     ),
   ).toBe('')
 })
+
+it('does not carry planet evidence onto an explicitly selected co-located moon', () => {
+  expect(
+    dispatchObservationError(
+      observedBody,
+      { ...bodySelection, kind: 'Moon' },
+      { ...own, id: 'moon', expected_kind: 'Moon' },
+    ),
+  ).toBe('')
+})

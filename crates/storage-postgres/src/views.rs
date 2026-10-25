@@ -82,6 +82,51 @@ pub(crate) async fn public_destinations(
     Ok(destinations)
 }
 impl GameStore for PgStore {
+    async fn location_appearance(
+        &self,
+        slug: &str,
+        at: Coordinates,
+        kind: BodyKind,
+    ) -> Result<Option<LocationAppearance>, StoreError> {
+        let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
+        let universe = sqlx::query("SELECT u.id,u.name,r.profile FROM universes u JOIN rulesets r ON r.hash=u.profile_hash WHERE universe_name_key(u.name)=$1")
+            .bind(slug).fetch_optional(&mut *tx).await.map_err(db_error)?;
+        let Some(universe) = universe else {
+            return Ok(None);
+        };
+        let rules = crate::facts::decode_rules(universe.try_get("profile").map_err(db_error)?)?;
+        if !rules
+            .artifact
+            .universe
+            .as_ref()
+            .is_some_and(|u| u.contains(at))
+        {
+            return Ok(None);
+        }
+        let id = UniverseId(universe.try_get("id").map_err(db_error)?);
+        let row = sqlx::query("SELECT id,owner,name FROM bodies WHERE universe=$1 AND galaxy=$2 AND system=$3 AND position=$4 AND kind=$5")
+            .bind(id.0).bind(at.galaxy as i32).bind(at.system as i32).bind(at.position as i32)
+            .bind(match kind { BodyKind::Planet => "Planet", BodyKind::Moon => "Moon" })
+            .fetch_optional(&mut *tx).await.map_err(db_error)?;
+        let body = row
+            .map(|r| -> Result<LocationBody, StoreError> {
+                Ok(LocationBody {
+                    id: BodyId(r.try_get("id").map_err(db_error)?),
+                    owner: PlayerId(r.try_get("owner").map_err(db_error)?),
+                    kind,
+                    name: r.try_get("name").map_err(db_error)?,
+                })
+            })
+            .transpose()?;
+        tx.commit().await.map_err(db_error)?;
+        Ok(Some(LocationAppearance {
+            universe: id,
+            universe_name: universe.try_get("name").map_err(db_error)?,
+            coordinates: at,
+            body,
+        }))
+    }
+
     async fn ranking_facts(&self, binding: Binding) -> Result<RankingFacts, StoreError> {
         self.read_rankings(binding).await
     }

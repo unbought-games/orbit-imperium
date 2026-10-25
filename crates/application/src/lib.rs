@@ -1,3 +1,5 @@
+mod location;
+pub use location::*;
 mod catalog_view;
 pub use catalog_view::*;
 mod rankings;

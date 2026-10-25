@@ -346,3 +346,166 @@ for (const [kind, payload, linkName] of [
     await expect(page.locator('a a, button a, a button')).toHaveCount(0)
   })
 }
+
+test('copy, menus and explicit dispatch actions preserve origin and recent copy', async ({
+  page,
+}) => {
+  await setup(page)
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          ;(window as unknown as { copied: string }).copied = text
+        },
+      },
+    })
+  })
+  await page.goto(path(`fleets/${fleet.id}`))
+  await page
+    .getByRole('button', { name: 'Copy coordinates [1:5:12]', exact: true })
+    .first()
+    .click()
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { copied: string }).copied),
+    )
+    .toBe('[1:5:12]')
+  await page
+    .getByRole('button', { name: 'Location actions for [1:5:12]', exact: true })
+    .first()
+    .click()
+  await page
+    .getByRole('menuitem', { name: 'Copy location link', exact: true })
+    .click()
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { copied: string }).copied),
+    )
+    .toContain('/u/andromeda-prime/location/1:5:12')
+  await page
+    .getByRole('link', {
+      name: 'View destination [1:5:12] in galaxy',
+      exact: true,
+    })
+    .first()
+    .click({ button: 'right' })
+  await expect(
+    page.getByRole('menuitem', { name: 'Copy coordinates', exact: true }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page
+    .getByRole('button', { name: 'Location actions for [1:5:12]', exact: true })
+    .first()
+    .click()
+  await page
+    .getByRole('menuitem', { name: 'Prepare transport', exact: true })
+    .click()
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  await expect(input).toHaveValue('1:5:12')
+  await expect(
+    page.getByText('Recently copied in game:', { exact: false }),
+  ).toBeVisible()
+  await input.fill('1:3:4')
+  await expect(input).toHaveValue('1:3:4')
+  await page
+    .getByRole('button', { name: 'Use destination', exact: true })
+    .click()
+  await expect(input).toHaveValue('1:5:12')
+  await page.reload()
+  await expect(input).toHaveValue('1:5:12')
+})
+
+test('share URLs highlight deleted moon slots and preserve moon intent through reload and paste', async ({
+  page,
+}) => {
+  await setup(page)
+  await page.goto('/u/andromeda-prime/location/1:5:12?target=moon')
+  await expect(page).toHaveURL(
+    /galaxy\?galaxy=1&system=5&position=12&target=moon/,
+  )
+  await expect(page.locator('li[aria-current="location"]')).toHaveAttribute(
+    'id',
+    'position-12',
+  )
+  await expect(page.locator('li[aria-current="location"]')).toContainText(
+    'Empty position',
+  )
+  await page.goto(
+    '/u/andromeda-prime/location/1:5:12?target=moon&mission=transport',
+  )
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  await expect(input).toHaveValue('1:5:12')
+  await expect(page.getByLabel('Destination type')).toHaveValue('moon')
+  await page.reload()
+  await expect(page.getByLabel('Destination type')).toHaveValue('moon')
+  await input.evaluate((element) => {
+    const data = new DataTransfer()
+    data.setData(
+      'text/plain',
+      location.origin + '/u/andromeda-prime/location/1:7:3?target=moon',
+    )
+    element.dispatchEvent(
+      new ClipboardEvent('paste', {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+  })
+  await expect(input).toHaveValue('1:7:3')
+  await expect(page.getByLabel('Destination type')).toHaveValue('moon')
+  await input.evaluate((element) => {
+    const data = new DataTransfer()
+    data.setData(
+      'text/plain',
+      'https://other.test/u/andromeda-prime/location/1:2:3',
+    )
+    element.dispatchEvent(
+      new ClipboardEvent('paste', {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+  })
+  await expect(input).toHaveValue('1:7:3')
+  await expect(page.getByRole('alert')).toContainText(
+    'this server and universe',
+  )
+})
+
+test('shared locations show an access error without offering enrollment', async ({
+  page,
+}) => {
+  await setup(page)
+  await page.route('**/api/v1/bootstrap', (route) =>
+    route.fulfill({
+      json: {
+        version: 1,
+        signup_enabled: true,
+        result: {
+          status: 'authenticated',
+          session: {
+            account: binding.account,
+            csrf: 'test',
+            expires_at: 9999999999,
+            memberships: [],
+          },
+          game: { status: 'no_membership' },
+        },
+      },
+    }),
+  )
+  await page.goto('/u/andromeda-prime/location/1:5:12')
+  await expect(
+    page.getByRole('heading', { name: 'Destination unavailable', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('You do not have access to this universe.'),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: /join|enroll/i })).toHaveCount(
+    0,
+  )
+})

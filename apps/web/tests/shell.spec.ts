@@ -1,3 +1,4 @@
+import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { navigate } from './fixtures/navigation'
@@ -1641,8 +1642,8 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await page
     .getByRole('button', { name: 'Attack', exact: true })
     .click()
-  await expect(page.getByLabel('System', { exact: true })).toHaveValue('372')
-  await expect(page.getByLabel('Position', { exact: true })).toHaveValue('10')
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '372'))
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '10'))
   await expect(page.getByText(/Prepared from an observation/)).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/dispatch-draft-phone.png',
@@ -1801,9 +1802,9 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   )
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page.getByLabel('Small Cargo · 2 available').fill('1')
-  await page.getByLabel('Position', { exact: true }).fill('2')
+  await setDestination(page, { position: '2' })
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
-  await page.getByLabel('Position', { exact: true }).fill('3')
+  await setDestination(page, { position: '3' })
   release()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()

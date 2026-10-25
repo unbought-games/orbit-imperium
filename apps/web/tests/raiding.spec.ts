@@ -1,3 +1,4 @@
+import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {universeSlug} from '../src/client-model/universe-name'
 import { test, expect } from './fixtures/test'
@@ -53,7 +54,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   await page.getByRole('button',{name:'Attack',exact:true}).click()
   await expect(page.locator('main h1')).toHaveText('Dispatch')
   await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Attack')
-  await expect(page.getByLabel('Position',{exact:true})).toHaveValue(String(target.coordinates.position))
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', String(target.coordinates.position)))
   expect((await fresh()).missions.fleets).toHaveLength(0)
   const ship=(name:string)=>page.locator('fieldset label').filter({hasText:`${name} ·`}).locator('input')
   await ship('Light Fighter').fill('60');await ship('Small Cargo').fill('3')

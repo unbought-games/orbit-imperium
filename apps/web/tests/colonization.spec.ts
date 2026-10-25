@@ -1,3 +1,4 @@
+import { setDestination } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
@@ -118,7 +119,7 @@ test('occupied colony positions retain the actionable error through shared dispa
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect.poll(() => observed).toBe(1)
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
-  await page.getByLabel('Position', { exact: true }).fill('8')
+  await setDestination(page, { position: '8' })
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('This position is occupied. Choose an empty position.')
@@ -135,10 +136,10 @@ test('dispatch blocks a known locked colony position and enables an eligible pos
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
-  await page.getByLabel('Position', { exact: true }).fill('3')
+  await setDestination(page, { position: '3' })
   await expect(page.getByRole('status').filter({ hasText: 'Planets:' })).toContainText('Astrophysics level 4 is required for this position.')
   await expect(page.getByRole('button', { name: 'Review fleet', exact: true })).toBeDisabled()
-  await page.getByLabel('Position', { exact: true }).fill('4')
+  await setDestination(page, { position: '4' })
   await expect(page.getByRole('button', { name: 'Review fleet', exact: true })).toBeEnabled()
   expect(requests).not.toContain('ResolveDestination')
   expect(requests).not.toContain('FleetQuote')
@@ -165,7 +166,7 @@ test('authoritative colony quote rejection explains the position research requir
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect.poll(() => requests).toEqual(['Galaxy'])
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
-  await page.getByLabel('Position', { exact: true }).fill('3')
+  await setDestination(page, { position: '3' })
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Astrophysics level 4 is required for this position.')

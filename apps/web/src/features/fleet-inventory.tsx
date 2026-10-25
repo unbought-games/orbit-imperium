@@ -1,10 +1,11 @@
+import { CoordinateLink } from './coordinate-link'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { useUniverseName } from '../shell/session-context'
 import { routeTarget } from '../shell/route-target'
 import { ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
-import { bodyName, coordinates, label } from '../ui/format'
+import { bodyName, label } from '../ui/format'
 import { NumberValue } from '../ui/number-value'
 import { Heading, Text } from '../ui/typography'
 import { unitCounts } from './progression/unit-counts'
@@ -34,7 +35,11 @@ export function FleetInventory({
         <div>
           <Heading level={2}>Stationed ships</Heading>
           <Text>
-            {bodyName(body)} {coordinates(body)}
+            {bodyName(body)}{' '}
+            <CoordinateLink
+              at={body.coordinates}
+              target={body.kind === 'Moon' ? 'moon' : 'planet'}
+            />
           </Text>
         </div>
         <ButtonLink

@@ -3,7 +3,6 @@ import type { DispatchDraft } from '../features/missions'
 import type { Route } from './routes'
 import type { GameSession } from './session-context'
 export type GameScreenContext = GameSession & {
-  dispatchDraft: (DispatchDraft & { origin: string }) | null
   prepareDispatch: (draft: DispatchDraft) => void
   route: Route
   body: GameSession['view']['bodies'][number] | undefined
