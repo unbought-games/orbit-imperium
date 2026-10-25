@@ -22,6 +22,6 @@ Use stable entity identifiers and explicit lifecycle operations. Coordinates and
 
 ## Configuration and verification
 
-Keep rule values in validated, versioned artifacts. Existing operations retain their committed terms when content changes. Universe speed is fixed at creation; see [universe speed](architecture/server-speed.md) and [configuration operations](operations/universe-configuration.md).
+Keep rule values in validated, versioned artifacts. Existing operations retain their committed terms when content changes. Universe speed changes use an ordered activation that preserves paid terms; see [universe speed](architecture/server-speed.md) and [configuration operations](operations/universe-configuration.md).
 
 Test arithmetic boundaries, valid and rejected transitions, conservation, deterministic replay, authorization, concurrent spending, duplicate commands, and recovery. Use the cheapest test layer that proves the behavior. Follow the [project test policy](development.md#testing) and repository instructions for routine versus explicitly requested validation. Report observed results and remaining limitations accurately.

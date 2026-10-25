@@ -82,6 +82,7 @@ impl UniversePolicy {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+/// Context read-only to policy edits; speed changes use ordered rules activation.
 pub struct UniverseImmutable {
     pub speed: i32,
     pub galaxies: u32,
@@ -158,7 +159,7 @@ impl UniverseImmutable {
         ] {
             if changed {
                 return Err(format!(
-                    "immutable.{field} cannot change after universe creation"
+                    "immutable.{field} must match current rules; policy edits cannot change it"
                 ));
             }
         }

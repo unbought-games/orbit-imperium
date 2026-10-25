@@ -2,7 +2,7 @@
 
 Universes own their saved configuration in PostgreSQL. New production worlds default to **5× speed**, topology **1 galaxy × 100 systems × 15 positions**, open signup, no additional player ceiling, five signup attempts per minute and 60 gameplay commands per minute. Existing worlds keep their saved speed, identity, rules hashes, secrets and paid work.
 
-Speed is one integer from 1 through 100 and is fixed for a universe's lifetime. Galaxies (1–100), systems per galaxy (1–1000) and positions per system (exactly 15) are also creation-only. Signup availability, optional player ceiling, signup attempts and command admission limits support live policy edits. Capacity is derived as `galaxies × systems × 9`; only the optional ceiling is stored. Lowering the ceiling below the existing population prevents further admission without removing players.
+Speed is one integer from 1 through 100; change it with the ordered [rules activation workflow](rules-updates.md#changing-universe-speed). Galaxies (1–100), systems per galaxy (1–1000) and positions per system (exactly 15) are creation-only. Signup availability, optional player ceiling, signup attempts and command admission limits support live policy edits. Capacity is derived as `galaxies × systems × 9`; only the optional ceiling is stored. Lowering the ceiling below the existing population prevents further admission without removing players.
 
 ## Universe names and browser addresses
 
@@ -69,7 +69,7 @@ target/universe-final/release/orbit universe config diff --universe "$ORBIT_UNIV
 target/universe-final/release/orbit universe config apply --universe "$ORBIT_UNIVERSE_ID" --file universe.json
 ```
 
-The version-1 document includes `universe`, `base_revision`, immutable speed/topology context and all four policy fields: `signup_enabled`, `max_players`, `signup_per_minute`, `commands_per_minute`. Use `null` for `max_players` to restore geometric capacity. Its numeric ceiling must be 1 through geometric capacity; both rate limits must be integers 1–10000. Missing fields are errors, not resets. Changing immutable context or using another universe's file is rejected.
+The version-1 document includes `universe`, `base_revision`, speed/topology context that is read-only to policy edits and all four policy fields: `signup_enabled`, `max_players`, `signup_per_minute`, `commands_per_minute`. Use `null` for `max_players` to restore geometric capacity. Its numeric ceiling must be 1 through geometric capacity; both rate limits must be integers 1–10000. Missing fields are errors, not resets. Changing this context or using another universe's file is rejected. After a speed activation, re-export policy documents so their speed context matches the current rules. The version-1 `immutable` field name is retained for compatibility; speed changes belong to rules activation.
 
 A successful effective change advances revision once and records an audit entry. An unchanged retry returns `already_active`, even with an older base revision. A changed stale document conflicts: export again, reconcile the desired policy and review a fresh diff. Do not automatically retry a stale edit. Policy edits preserve gameplay hashes, queues and paid terms.
 

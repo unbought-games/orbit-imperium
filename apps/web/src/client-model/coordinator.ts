@@ -484,15 +484,41 @@ export class Coordinator {
           next.as_of_ms < this.view.as_of_ms)
       )
         return
+      let settings = this.settings
+      if (
+        !settings ||
+        settings.profile_hash !== next.profile_hash ||
+        settings.speed !== next.speed
+      ) {
+        const settingsRequest = this.captureRequest()
+        if (!settingsRequest) return
+        settings = validate<BoundSettings>(
+          'GameSettings',
+          await this.port.settings(settingsRequest.context),
+        )
+        if (
+          !this.responseMatches(settingsRequest, settings) ||
+          q !== this.viewGeneration
+        )
+          return
+        if (
+          settings.protocol !== next.protocol ||
+          settings.profile_hash !== next.profile_hash ||
+          settings.speed !== next.speed
+        )
+          throw Error('Settings changed during refresh')
+      }
       if (snapshotNeedsReceipt(this.store.getState(), next)) {
         await this.reconcilePending()
         if (
           !this.current(g, b) ||
+          q !== this.viewGeneration ||
           snapshotNeedsReceipt(this.store.getState(), next)
         )
           return
       }
-      this.view = next
+      const now = this.platform.monotonicNowMs()
+      this.store.setState({ view: next, settings, receivedAt: now, now })
       this.delivery?.pending()
       if (
         this.pendingMinimum !== undefined &&

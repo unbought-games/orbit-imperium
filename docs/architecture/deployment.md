@@ -40,7 +40,7 @@ Same-version durability remains part of the first end-to-end slice: refresh/reco
 
 Normal operation supports rolling deployments across N instances sharing PostgreSQL. Complete the rollout before using `orbit rules apply` to activate content; there is no capability registry. Deploying code or migrating the schema does not change the selected universe configuration. In scoped mode the update is a durable global ordering boundary; admission and committed reads continue while it waits. Legacy serial mode retains its idle-boundary compatibility behavior. Job/flight commitments are preserved. See [operator instructions](../operations/rules-updates.md).
 
-Speed remains fixed for a universe run under the selected policy. This rules-update command also preserves topology and protocol family; structural changes need their own implemented transition. Ordinary configuration/content updates do not require a reset.
+Speed can change at an ordered rules boundary while paid work retains its original terms. The rules-update command preserves topology and protocol family; structural changes need their own implemented transition. Ordinary configuration/content updates do not require a reset.
 
 ## Before competitive launch
 
