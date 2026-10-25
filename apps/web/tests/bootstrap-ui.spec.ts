@@ -911,7 +911,7 @@ test('homepage centers policies and highlights news, GitHub, and Discord', async
     await expect(discord).toBeVisible()
     await expect(discord.locator('svg')).toBeVisible()
     await expect(discord.locator('svg')).toHaveCSS('color', 'rgb(88, 101, 242)')
-    const statementBounds = (await page.getByText('Every advantage is earned.', { exact: true }).boundingBox())!
+    const statementBounds = (await page.getByText('Games worth playing. Victory worth earning.', { exact: true }).boundingBox())!
     const newsBounds = (await news.boundingBox())!
     const repositoryBounds = (await repository.boundingBox())!
     const discordBounds = (await discord.boundingBox())!

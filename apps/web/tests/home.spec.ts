@@ -60,7 +60,7 @@ test('combined public branding keeps separate usable game and studio links', asy
     await home.click()
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-      'Your foothold in the stars.',
+      'Victory isn’t for sale.',
     )
   }
   await page.route('https://unbought.games/', (route) =>
@@ -84,7 +84,18 @@ for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 844 })
     await anonymous(page)
     await page.goto('/')
-    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Victory isn’t for sale.',
+    )
+    const hero = page.locator('img[src^="/art/orbital-capital/"]')
+    await expect
+      .poll(() =>
+        hero.evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+        ),
+      )
+      .toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/hero-${width}.png` })
     await page.getByRole('link', { name: 'See it on mobile' }).focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/#mobile$/)

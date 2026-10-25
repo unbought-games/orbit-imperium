@@ -152,7 +152,7 @@ export function HomeDetails({
       <section className={styles.fairPlay} aria-labelledby="fair-play-title">
         <div>
           <p className={styles.eyebrow}>By unbought games</p>
-          <h2 id="fair-play-title">Victory isn’t for sale.</h2>
+          <h2 id="fair-play-title">Fair play</h2>
           <p>
             You can’t buy resources, faster queues, or stronger fleets. Your
             progress comes from playing. That commitment is part of why we’re

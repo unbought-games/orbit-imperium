@@ -1,10 +1,11 @@
 .frame {
+  --page-gutter: clamp(20px, 4vw, 72px);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   overflow: clip;
   background: var(--surface-page);
-  padding: 0 clamp(20px, 4vw, 72px);
+  padding: 0 var(--page-gutter);
 }
 .header {
   min-height: 112px;
@@ -73,6 +74,55 @@
   grid-column: 2;
   padding: 64px 0 64px clamp(24px, 4vw, 70px);
   width: 100%;
+}
+.landing .composition {
+  isolation: isolate;
+  width: calc(100% + 2 * var(--page-gutter));
+  max-width: none;
+  margin-inline: calc(-1 * var(--page-gutter));
+  grid-template-columns: 1fr 1fr;
+  min-height: 760px;
+}
+.capital {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--surface-page);
+}
+.capital img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 36% center;
+}
+.capital::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(0deg, var(--surface-page), transparent 18%),
+    linear-gradient(
+      90deg,
+      transparent 20%,
+      #07162033 35%,
+      #071620d9 54%,
+      #071620f5 75%,
+      var(--surface-page)
+    );
+}
+.landing .content {
+  padding: 64px var(--page-gutter) 40px clamp(24px, 4vw, 64px);
+  max-width: 720px;
+}
+.beta {
+  margin-top: 32px;
+}
+.beta > section {
+  font-size: var(--font-size-xs);
+  max-width: 50ch;
+  padding-block: 4px;
+  margin-bottom: 0;
 }
 .footer {
   display: grid;
@@ -161,22 +211,25 @@
     display: none;
   }
   .landing .content {
-    padding-top: 300px;
+    padding: 292px var(--page-gutter) 48px;
+    max-width: none;
   }
-  .landing .world {
-    width: calc(100% + 40px);
-    height: 300px;
-    inset: 0 -20px auto;
-    opacity: 1;
+  .landing .composition {
+    min-height: 0;
   }
-  .landing .planet {
-    width: 260px;
-    left: calc(50% - 130px);
-    mask-image: none;
+  .capital {
+    height: 340px;
   }
-  .landing .orbits {
-    width: 100%;
-    height: 300px;
+  .capital img {
+    object-position: 18% center;
+  }
+  .capital::after {
+    background: linear-gradient(
+      0deg,
+      var(--surface-page),
+      #07162033 30%,
+      transparent 58%
+    );
   }
 }
 @media (max-height: 560px) and (max-width: 767px) {

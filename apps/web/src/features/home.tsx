@@ -58,8 +58,12 @@ export function Home() {
       <Eyebrow className={styles.eyebrow}>
         Persistent multiplayer space strategy
       </Eyebrow>
-      <Heading level={1} className={styles.title}>
-        Your foothold in the stars.
+      <Heading
+        level={1}
+        className={`${styles.title} ${landingStyles.heroTitle}`}
+      >
+        Victory isn’t <br />
+        for sale.
       </Heading>
       <Text className={styles.introduction}>
         Develop your planets, research new technologies, and send fleets across
@@ -93,7 +97,9 @@ export function Home() {
           See it on mobile <span aria-hidden="true">↓</span>
         </a>
       </nav>
-      <p className={styles.statement}>Every advantage is earned.</p>
+      <p className={landingStyles.promise}>
+        Games worth playing. Victory worth earning.
+      </p>
     </PublicFrame>
   )
 }
