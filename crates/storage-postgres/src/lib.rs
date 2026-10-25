@@ -1,3 +1,5 @@
+mod alliance_identity;
+mod alliances;
 mod colonization;
 mod rankings;
 mod report_sharing;

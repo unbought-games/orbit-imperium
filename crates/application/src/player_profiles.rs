@@ -1,6 +1,19 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+
+pub type PublicPlayerAlliances = BTreeMap<PlayerId, AllianceIdentity>;
+
+/// A historical projection only includes actors actually revealed to the recipient.
+pub fn visible_report_alliances(
+    payload: &serde_json::Value,
+    alliances: &PublicPlayerAlliances,
+) -> PublicPlayerAlliances {
+    report_profile_players(payload)
+        .into_iter()
+        .filter_map(|p| alliances.get(&p).map(|a| (p, a.clone())))
+        .collect()
+}
 
 /// Internal account mapping. Provider subjects never go to game browsers.
 pub struct PlayerIdentity {
@@ -28,6 +41,19 @@ pub struct PlayerProfilesQuery {
 }
 
 impl<S: GameStore> GameService<S> {
+    pub async fn player_alliances(
+        &self,
+        p: Principal,
+        binding: Binding,
+        players: Vec<PlayerId>,
+    ) -> Result<PublicPlayerAlliances, ServiceError> {
+        Self::principal(p, binding)?;
+        self.store
+            .player_alliances(binding, players)
+            .await
+            .map_err(Into::into)
+    }
+
     /// Resolve visibility through the same membership and observation gates as
     /// gameplay. Callers cannot submit arbitrary player IDs or Accounts subjects.
     pub async fn visible_profile_players(
@@ -138,6 +164,35 @@ pub fn report_profile_players(payload: &serde_json::Value) -> BTreeSet<PlayerId>
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn report_affiliations_only_include_revealed_players() {
+        let a = PlayerId(uuid::Uuid::from_u128(1));
+        let b = PlayerId(uuid::Uuid::from_u128(2));
+        let alliance = AllianceIdentity {
+            id: uuid::Uuid::from_u128(3),
+            universe: UniverseId(uuid::Uuid::from_u128(4)),
+            tag: "OLD".into(),
+            name: "Historical alliance".into(),
+        };
+        let known = PublicPlayerAlliances::from([(a, alliance.clone()), (b, alliance)]);
+        let espionage = visible_report_alliances(
+            &json!({"kind":"Espionage","target":{"owner":a},"secret":{"owner":b}}),
+            &known,
+        );
+        assert_eq!(espionage.keys().copied().collect::<Vec<_>>(), vec![a]);
+        assert_eq!(espionage[&a].tag, "OLD");
+        assert!(
+            visible_report_alliances(&json!({"kind":"ContactLost","target":{"owner":b}}), &known)
+                .is_empty()
+        );
+        assert!(
+            visible_report_alliances(
+                &json!({"kind":"Espionage","target":{"owner":a}}),
+                &Default::default()
+            )
+            .is_empty()
+        );
+    }
     #[test]
     fn profiles_follow_only_recipient_visible_report_identities() {
         let a = uuid::Uuid::from_u128(1);

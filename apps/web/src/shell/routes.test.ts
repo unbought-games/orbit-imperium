@@ -165,3 +165,13 @@ it('requires production data for the selected planet to open resource settings',
     } as unknown as BoundView).available,
   ).toBe(false)
 })
+
+it('exposes alliances only in protocol four without requiring a planet', () => {
+  expect(
+    resolveDestination({ universe: 'u', page: 'alliance' }, view).available,
+  ).toBe(false)
+  const current = { ...view, protocol: 4, bodies: [] } as unknown as BoundView
+  expect(
+    resolveDestination({ universe: 'u', page: 'alliance' }, current),
+  ).toMatchObject({ available: true, page: 'alliance', body: null })
+})

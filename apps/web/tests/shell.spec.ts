@@ -782,7 +782,7 @@ test('compact shell exposes resource details and switches bodies without purchas
   ).toBeDisabled()
   await nav.getByRole('button', { name: 'Menu', exact: true }).click()
   const menu = page.getByRole('dialog', { name: 'Navigation' })
-  await expect(menu.getByRole('button', { name: 'Alliance' })).toHaveCount(0)
+  await expect(menu.getByRole('button', { name: 'Alliance', exact: true })).toBeDisabled()
   await expect(menu.getByRole('button', { name: 'Galaxy' })).toBeDisabled()
   await expect(
     menu.getByRole('link', { name: 'Resources', exact: true }),

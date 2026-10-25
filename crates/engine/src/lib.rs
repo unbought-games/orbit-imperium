@@ -87,3 +87,5 @@ mod building_energy;
 pub use building_energy::*;
 mod colonization;
 pub use colonization::*;
+
+pub mod alliances;

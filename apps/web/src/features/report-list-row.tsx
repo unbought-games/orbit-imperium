@@ -49,6 +49,7 @@ export function ReportListRow({
     report.preview,
     model.binding?.player,
     playerNames,
+    report.player_alliances,
   )
   const title = [outcome.title, identity].filter(Boolean).join(' · ')
   return (

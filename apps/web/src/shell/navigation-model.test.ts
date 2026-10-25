@@ -15,6 +15,7 @@ it('keeps the same four anchor meanings across every implemented route', () => {
     'settings',
     'resource-settings',
     'high-scores',
+    'alliance',
   ] as const)
     expect(navigationAnchor(page)).toBe('Menu')
   expect(buildPages[0]).toBe('resources')
@@ -47,6 +48,7 @@ it('places every real destination exactly once in the grouped menu', () => {
       'reports',
       'settings',
       'high-scores',
+      'alliance',
     ].sort(),
   )
 })

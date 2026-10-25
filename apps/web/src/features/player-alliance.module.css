@@ -1,0 +1,13 @@
+.tag {
+  color: var(--color-text-muted, #aebccd);
+  white-space: nowrap;
+  font-size: 0.85em;
+  text-decoration: none;
+}
+a.tag:hover {
+  text-decoration: underline;
+}
+a.tag:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}

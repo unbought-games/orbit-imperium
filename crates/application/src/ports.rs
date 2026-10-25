@@ -103,6 +103,26 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send;
 }
 pub trait GameStore: Send + Sync {
+    fn alliance_query(
+        &self,
+        _q: AllianceQueryRequest,
+    ) -> impl std::future::Future<Output = Result<AllianceView, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
+    fn alliance_command(
+        &self,
+        _q: AllianceCommandRequest,
+    ) -> impl std::future::Future<Output = Result<AllianceCommandResult, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
+    fn public_alliance(
+        &self,
+        _universe: UniverseId,
+        _alliance: uuid::Uuid,
+    ) -> impl std::future::Future<Output = Result<PublicAlliance, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
+
     /// Anonymous appearance lookup. This intentionally exposes only share-card identity.
     fn location_appearance(
         &self,
@@ -173,6 +193,13 @@ pub trait GameStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<ReadSnapshot<(ReportsPage4, i64)>, StoreError>> + Send
     {
         async { Err(StoreError::Unavailable) }
+    }
+    fn player_alliances(
+        &self,
+        _binding: Binding,
+        _players: Vec<PlayerId>,
+    ) -> impl std::future::Future<Output = Result<PublicPlayerAlliances, StoreError>> + Send {
+        async { Ok(Default::default()) }
     }
     fn report_share(
         &self,

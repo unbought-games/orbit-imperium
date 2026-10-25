@@ -68,14 +68,17 @@ impl PgStore {
         &self,
         token: uuid::Uuid,
     ) -> Result<SharedReport, StoreError> {
-        let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch WHERE s.token=$1 AND NOT p.hidden")
+        let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE s.token=$1 AND NOT p.hidden")
             .bind(token).fetch_optional(self.read_pool()?).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
-        project_shared_report(
+        project_shared_report_with_alliances(
             ReportId(row.try_get("report").map_err(db_error)?),
             row.try_get("at_ms").map_err(db_error)?,
             &row.try_get::<serde_json::Value, _>("payload")
                 .map_err(db_error)?,
             &row.try_get::<sqlx::types::Json<PublicPlayerNames>, _>("names_at_publication")
+                .map_err(db_error)?
+                .0,
+            &row.try_get::<sqlx::types::Json<PublicPlayerAlliances>, _>("alliance_identities")
                 .map_err(db_error)?
                 .0,
             row.try_get::<sqlx::types::Json<ReportShareOptions>, _>("options")

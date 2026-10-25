@@ -114,6 +114,8 @@ export function routeTarget(
         params: planetParams(),
         search: {},
       })
+    case 'alliance':
+      return linkOptions({ to: '/u/$universe/alliance', params, search })
     case 'high-scores':
       return linkOptions({ to: '/u/$universe/high-scores', params, search })
     case 'settings':

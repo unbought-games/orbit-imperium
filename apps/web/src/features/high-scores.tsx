@@ -8,12 +8,14 @@ import {
   rankingPageSize,
   rankMovement,
   type RankingPlayer,
+  type RankedRow,
 } from '../client-model/rankings'
 import { useGameSession } from '../shell/session-context'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Button } from '../ui/button'
 import { Field, Input } from '../ui/form'
 import { PlayerName } from './player-name'
+import { AllianceTag } from './player-alliance'
 import { useRankings } from './use-rankings'
 import styles from './high-scores.module.css'
 
@@ -39,9 +41,16 @@ export function HighScoresScreen() {
 
 function HighScores({ model, player }: { model: Coordinator; player: string }) {
   const ranking = useRankings(model, player)
-  const { rows, count, start } = ranking.window
+  const { rows } = ranking.window
+  const allianceMode = ranking.scope === 'alliances'
+  const { count, start } = allianceMode
+    ? ranking.allianceWindow
+    : ranking.window
+  const visibleCount = allianceMode
+    ? ranking.allianceWindow.rows.length
+    : rows.length
   useProfileSource(
-    ranking.data
+    ranking.data && !allianceMode
       ? { type: 'Rankings', players: rows.map((p) => p.player) }
       : null,
   )
@@ -65,12 +74,31 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
   const aroundMe = () => {
     ranking.aroundMe()
     requestAnimationFrame(() => {
-      ownPlayer.current?.focus({ preventScroll: true })
-      ownPlayer.current?.scrollIntoView({ block: 'center' })
+      const target = allianceMode
+        ? table.current?.querySelector<HTMLAnchorElement>('tr[data-self] a')
+        : ownPlayer.current
+      target?.focus({ preventScroll: true })
+      target?.scrollIntoView({ block: 'center' })
     })
   }
   return (
     <section className={styles.screen} aria-label="Universe rankings">
+      <div className={styles.scopes} role="group" aria-label="Ranking category">
+        <Button
+          variant="secondary"
+          aria-pressed={!allianceMode}
+          onClick={() => ranking.switchScope('players')}
+        >
+          Players
+        </Button>
+        <Button
+          variant="secondary"
+          aria-pressed={allianceMode}
+          onClick={() => ranking.switchScope('alliances')}
+        >
+          Alliances
+        </Button>
+      </div>
       <div className={styles.summary}>
         <div>
           <span className={styles.eyebrow}>
@@ -78,15 +106,16 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
           </span>
           <p>Build your empire. Find your place in the universe.</p>
         </div>
-        {ranking.me && (
+        {ranking.ownRow && (
           <p className={styles.myRank}>
-            Your rank <strong>#{number(ranking.me.rank)}</strong>
-            <span>{number(ranking.me.points)} points</span>
+            {allianceMode ? 'Your alliance rank' : 'Your rank'}{' '}
+            <strong>#{number(ranking.ownRow.rank)}</strong>
+            <span>{number(ranking.ownRow.points)} points</span>
             <span className={styles.myChange}>
               Change{' '}
               <RankMovement
-                row={ranking.me}
-                baselineAt={ranking.data?.baseline_at}
+                row={ranking.ownRow}
+                baselineAt={ranking.baselineAt}
               />
             </span>
           </p>
@@ -94,12 +123,16 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
       </div>
       <div className={styles.toolbar}>
         <Field className={styles.search}>
-          <span>Find a player</span>
+          <span>{allianceMode ? 'Find an alliance' : 'Find a player'}</span>
           <Input
             ref={search}
             type="search"
             value={ranking.search}
-            placeholder="Search player names"
+            placeholder={
+              allianceMode
+                ? 'Search alliance names or tags'
+                : 'Search player names'
+            }
             maxLength={200}
             onChange={(e) => ranking.filter(e.target.value)}
           />
@@ -109,10 +142,14 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
           onClick={ranking.top}
           disabled={!ranking.data}
         >
-          Top players
+          {allianceMode ? 'Top alliances' : 'Top players'}
         </Button>
-        <Button variant="secondary" onClick={aroundMe} disabled={!ranking.me}>
-          Around me
+        <Button
+          variant="secondary"
+          onClick={aroundMe}
+          disabled={!ranking.ownRow}
+        >
+          {allianceMode ? 'Around my alliance' : 'Around me'}
         </Button>
         <Button
           variant="secondary"
@@ -133,16 +170,16 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
           <time dateTime={new Date(ranking.data.sampled_at).toISOString()}>
             {new Date(ranking.data.sampled_at).toLocaleString()}
           </time>{' '}
-          · {number(ranking.data.players.length)} players. Refresh to update.
+          · {number(ranking.total)} {ranking.scope}. Refresh to update.
         </p>
       )}
       {ranking.data && (
         <p className={styles.timestamp}>
-          {ranking.data.baseline_at != null ? (
+          {ranking.baselineAt != null ? (
             <>
               Rank change since yesterday’s first snapshot (UTC day):{' '}
-              <time dateTime={new Date(ranking.data.baseline_at).toISOString()}>
-                {baselineTime(ranking.data.baseline_at)}
+              <time dateTime={new Date(ranking.baselineAt).toISOString()}>
+                {baselineTime(ranking.baselineAt)}
               </time>
               . Positive means up the rankings.
             </>
@@ -168,49 +205,107 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
         <>
           <table className={styles.table} ref={table} tabIndex={-1}>
             <caption className={styles.caption}>
-              Universe total-score rankings
+              {allianceMode
+                ? 'Universe alliance total-score rankings'
+                : 'Universe total-score rankings'}
             </caption>
             <thead>
               <tr>
                 <th scope="col">
                   Rank <span className={styles.changeHeading}>Change</span>
                 </th>
-                <th scope="col">Player</th>
-                <th scope="col">Points</th>
+                <th scope="col">{allianceMode ? 'Alliance' : 'Player'}</th>
+                <th scope="col">
+                  Points
+                  {allianceMode && (
+                    <span className={styles.changeHeading}>Average</span>
+                  )}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.player}
-                  data-self={row.player === player || undefined}
-                >
-                  <td className={styles.rank}>
-                    {number(row.rank)}
-                    <RankMovement
-                      row={row}
-                      baselineAt={ranking.data?.baseline_at}
-                    />
-                  </td>
-                  <td>
-                    <Button
-                      variant="ghost"
-                      className={styles.player}
-                      ref={row.player === player ? ownPlayer : undefined}
-                      onClick={(e) => {
-                        opener.current = e.currentTarget
-                        ranking.select(row.player)
-                      }}
+              {allianceMode
+                ? ranking.allianceWindow.rows.map((row) => (
+                    <tr
+                      key={row.alliance.id}
+                      data-self={
+                        row.alliance.id === ranking.myAlliance?.alliance.id ||
+                        undefined
+                      }
                     >
-                      <PlayerName player={row.player} fallback={row.username} />
-                    </Button>
-                    {row.player === player && (
-                      <span className={styles.you}>You</span>
-                    )}
-                  </td>
-                  <td className={styles.points}>{number(row.points)}</td>
-                </tr>
-              ))}
+                      <td className={styles.rank}>
+                        {number(row.rank)}
+                        <RankMovement
+                          row={row}
+                          baselineAt={ranking.baselineAt}
+                        />
+                      </td>
+                      <td>
+                        <a
+                          className={styles.allianceName}
+                          href={`/alliances/${encodeURIComponent(row.alliance.universe)}/${encodeURIComponent(row.alliance.id)}`}
+                        >
+                          [{row.alliance.tag}] {row.alliance.name}
+                        </a>
+                        <span className={styles.memberCount}>
+                          {number(row.member_count)}{' '}
+                          {row.member_count === 1 ? 'member' : 'members'}
+                        </span>
+                        {row.alliance.id ===
+                          ranking.myAlliance?.alliance.id && (
+                          <span className={styles.you}>Your alliance</span>
+                        )}
+                      </td>
+                      <td className={styles.points}>
+                        {number(row.points)}
+                        <span
+                          className={styles.average}
+                          aria-label={`Average ${number(row.average_points)} points per member`}
+                        >
+                          {number(row.average_points)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                : rows.map((row) => (
+                    <tr
+                      key={row.player}
+                      data-self={row.player === player || undefined}
+                    >
+                      <td className={styles.rank}>
+                        {number(row.rank)}
+                        <RankMovement
+                          row={row}
+                          baselineAt={ranking.baselineAt}
+                        />
+                      </td>
+                      <td>
+                        <Button
+                          variant="ghost"
+                          className={styles.player}
+                          ref={row.player === player ? ownPlayer : undefined}
+                          onClick={(e) => {
+                            opener.current = e.currentTarget
+                            ranking.select(row.player)
+                          }}
+                        >
+                          <PlayerName
+                            player={row.player}
+                            fallback={row.username}
+                            alliance={null}
+                            linkAlliance={false}
+                          />
+                        </Button>
+                        {row.alliance && (
+                          <AllianceTag alliance={row.alliance} />
+                        )}
+                        {row.player === player && (
+                          <span className={styles.you}>You</span>
+                        )}
+                      </td>
+                      <td className={styles.points}>{number(row.points)}</td>
+                    </tr>
+                  ))}
             </tbody>
           </table>
           {!count && (
@@ -220,12 +315,12 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
               icon={ranking.search.trim() ? Search : Trophy}
               title={
                 ranking.search.trim()
-                  ? `No players match “${ranking.search.trim()}”.`
-                  : 'No players are ranked yet.'
+                  ? `No ${ranking.scope} match “${ranking.search.trim()}”.`
+                  : `No ${ranking.scope} are ranked yet.`
               }
               description={
                 ranking.search.trim()
-                  ? 'Try another name or clear your search to see all players.'
+                  ? `Try another name or clear your search to see all ${ranking.scope}.`
                   : 'Rankings will appear as players establish their empires.'
               }
               actions={
@@ -253,12 +348,12 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
             </Button>
             <span role="status">
               {count
-                ? `${number(start + 1)}–${number(start + rows.length)} of ${number(count)}`
-                : '0 players'}
+                ? `${number(start + 1)}–${number(start + visibleCount)} of ${number(count)}`
+                : `0 ${ranking.scope}`}
             </span>
             <Button
               variant="secondary"
-              disabled={start + rows.length >= count}
+              disabled={start + visibleCount >= count}
               onClick={() => browse(start + rankingPageSize)}
             >
               Next
@@ -270,19 +365,25 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
         <summary>How scores work</summary>
         <p>{scoring}</p>
         <p>
+          Alliance points sum the exact asset values of current members before
+          rounding down. Average points use that exact total divided by member
+          count, then round down. Membership changes affect current totals;
+          yesterday’s ranks use yesterday’s memberships.
+        </p>
+        <p>
           Equal whole points share a rank. For example: 1, 1, 3. Search results
           keep their universe rank and movement. Change compares shared ranks,
           including ties, with yesterday’s first observed snapshot (UTC day).
-          New means the player was absent from that snapshot; 0 means unchanged.
-          No observation yesterday means no comparison today. Daily snapshots
-          record committed updates and may include activity still waiting to
-          process.
+          New means the player or alliance was absent from that snapshot; 0
+          means unchanged. No observation yesterday means no comparison today.
+          Daily snapshots record committed updates and may include activity
+          still waiting to process.
         </p>
       </details>
       {ranking.selected && (
         <RankingDetails
           row={ranking.selected}
-          baselineAt={ranking.data?.baseline_at}
+          baselineAt={ranking.baselineAt}
           onClose={() => {
             ranking.select(null)
             const target = opener.current?.isConnected
@@ -300,7 +401,7 @@ function RankMovement({
   row,
   baselineAt,
 }: {
-  row: RankingPlayer
+  row: RankedRow
   baselineAt?: number | null
 }) {
   const movement = rankMovement(row, baselineAt)
@@ -347,7 +448,11 @@ function RankingDetails({
       }}
     >
       <h2 id={title}>
-        <PlayerName player={row.player} fallback={row.username} />
+        <PlayerName
+          player={row.player}
+          fallback={row.username}
+          alliance={row.alliance ?? null}
+        />
       </h2>
       <dl className={styles.stats}>
         <div>

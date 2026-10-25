@@ -139,3 +139,6 @@ pub use runtime_status::*;
 
 mod universe_config;
 pub use universe_config::*;
+
+mod alliances;
+pub use alliances::*;

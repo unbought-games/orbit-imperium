@@ -21,6 +21,21 @@ async function start() {
     root.render(<DetailPlayground />)
     return
   }
+  const publicAlliance = /^\/alliances\/([^/]+)\/([^/]+)\/?$/i.exec(
+    location.pathname,
+  )
+  if (publicAlliance) {
+    const { PublicAlliancePage } = await import(
+      './features/alliances/public-page'
+    )
+    root.render(
+      <PublicAlliancePage
+        universe={publicAlliance[1]}
+        alliance={publicAlliance[2]}
+      />,
+    )
+    return
+  }
   const shared = /^\/reports\/shared\/([^/]+)\/?$/i.exec(location.pathname)
   if (shared) {
     const { SharedReportPage } = await import('./features/shared-report-page')
