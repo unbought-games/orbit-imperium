@@ -13239,6 +13239,15 @@
                 "type": "null"
               }
             ]
+          },
+          "cost": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 3,
+            "maxItems": 3
           }
         },
         "required": [
@@ -13274,6 +13283,15 @@
                 "type": "null"
               }
             ]
+          },
+          "drive_coefficient": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [
@@ -13299,6 +13317,15 @@
           "fuel_consumption": {
             "type": "string",
             "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "drive_coefficient": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [
@@ -13334,6 +13361,15 @@
             "items": {
               "$ref": "#/components/schemas/ShipRapidFireStatistics3"
             }
+          },
+          "technology_bonus": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "minItems": 2,
+            "maxItems": 2
           }
         },
         "required": [

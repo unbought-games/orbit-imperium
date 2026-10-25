@@ -6086,6 +6086,7 @@ export interface components {
         ShipStatistics3: {
             propulsion: components["schemas"]["ShipPropulsionStatistics3"] | null;
             combat: components["schemas"]["ShipCombatStatistics3"] | null;
+            cost?: string[];
         };
         ShipPropulsionStatistics3: {
             cargo_capacity: string;
@@ -6093,11 +6094,13 @@ export interface components {
             fuel_consumption: string;
             drive: components["schemas"]["ResearchId3"];
             impulse_upgrade: components["schemas"]["ShipImpulseStatistics3"] | null;
+            drive_coefficient?: string[];
         };
         ShipImpulseStatistics3: {
             minimum_level: number;
             base_speed: string;
             fuel_consumption: string;
+            drive_coefficient?: string[];
         };
         /** @description Base combat statistics without research bonuses, in 1/100,000 points. */
         ShipCombatStatistics3: {
@@ -6106,6 +6109,7 @@ export interface components {
             hull_ticks: string;
             rapid_fire_against: components["schemas"]["ShipRapidFireStatistics3"][];
             rapid_fire_from: components["schemas"]["ShipRapidFireStatistics3"][];
+            technology_bonus?: string[];
         };
         ShipRapidFireStatistics3: {
             unit: components["schemas"]["ItemKey3"];
