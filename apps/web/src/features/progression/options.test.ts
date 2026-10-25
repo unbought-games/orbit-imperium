@@ -173,6 +173,30 @@ it('derives exact manufacturing cost, duration and live affordability without mu
   expect(manufacturingPreview(source, current, '0')).toBeNull()
 })
 
+it.each([
+  ['179999999', true],
+  ['180000000', false],
+  ['180000001', false],
+])('uses exact manufacturing balances at %s micro metal', (metal, blocked) => {
+  const source = unitOptions()
+  const current = structuredClone(view)
+  current.bodies[0].amounts = { metal, crystal: '45000000', deuterium: '0' }
+  const preview = manufacturingPreview(source, current, '3')!
+  const validated = {
+    ...source,
+    request: preview.request,
+    terms: preview.terms,
+  }
+  expect(preview.blockers.length > 0).toBe(blocked)
+  expect(currentProgressionOptions(validated, current)?.blockers).toEqual(
+    preview.blockers,
+  )
+  expect(manufacturingPreview(source, current, '2')?.blockers).toEqual([])
+  expect(
+    manufacturingPreview(source, current, '4')?.blockers.length,
+  ).toBeGreaterThan(0)
+})
+
 it('blocks numeric overflow and shield dome capacity locally', () => {
   const source = unitOptions()
   expect(
