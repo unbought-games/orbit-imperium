@@ -350,7 +350,8 @@ pub fn resolve_battle(
             if n <= 0
                 || !keys.insert(item)
                 || (participant.side == BattleSide::Attacker
-                    && !matches!(item, ManufacturedItem::Ship(_)))
+                    && (!matches!(item, ManufacturedItem::Ship(_))
+                        || item == ManufacturedItem::Ship(ShipType::SolarSatellite)))
             {
                 return Err(bad("invalid combat stack"));
             }

@@ -206,6 +206,7 @@ fn starter_journey(lasers: bool) {
                 let rate = production_rates_with_settings(
                     &s.bodies[&b],
                     &s.production_settings[&b].settings,
+                    0,
                     r,
                 )
                 .unwrap();

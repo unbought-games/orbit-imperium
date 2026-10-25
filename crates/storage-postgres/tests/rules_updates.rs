@@ -1713,3 +1713,234 @@ async fn cruiser_activation_preserves_players_and_survives_restart_and_disable()
     destructive.artifact = before.artifact;
     assert!(service.diff(&destructive).await.is_err());
 }
+
+#[tokio::test]
+async fn satellites_settle_inventory_at_completions_and_rules_boundaries_in_both_runtimes() {
+    for scoped in [false, true] {
+        let (store, pool, universe, binding) = setup().await;
+        let service = RulesService::new(store.clone());
+        let mut doc = service.export(universe).await.unwrap();
+        let profile = doc.artifact.universe.clone();
+        doc.artifact =
+            serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-solar-satellite.json"))
+                .unwrap();
+        doc.artifact.universe = profile;
+        service.apply(&doc).await.unwrap();
+        let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+        let body = *snapshot.state.bodies.keys().next().unwrap();
+        // Deterministic completed industry fixture, with matching authoritative value lots.
+        for (building, cost) in [
+            (Building::Shipyard, 700),
+            (Building::MetalMine, 90),
+            (Building::CrystalMine, 72),
+        ] {
+            sqlx::query("UPDATE building_levels SET level=1 WHERE body=$1 AND building=$2")
+                .bind(body.0)
+                .bind(format!("{building:?}"))
+                .execute(&pool)
+                .await
+                .unwrap();
+            let id = OperationId(Uuid::new_v4());
+            let lot = AssetLot {
+                id,
+                owner: binding.player,
+                item: CatalogKey::Building(building),
+                level: Some(1),
+                location: AssetLocation::Body(body),
+                quantity: 1,
+                unit_value_micro: cost * SCALE,
+                rules_hash: snapshot.rules.hash.clone(),
+                source_operation: id,
+                acquired_at: 1000,
+                acquired_sequence: 0,
+            };
+            sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
+                .bind(universe.0)
+                .bind(id.to_string())
+                .bind(sqlx::types::Json(lot))
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        sqlx::query(
+            "UPDATE bodies SET max_temperature=40, amounts=$2, revision=revision+1 WHERE id=$1",
+        )
+        .bind(body.0)
+        .bind(sqlx::types::Json(Resources::from_values([
+            0,
+            5000 * SCALE,
+            1000 * SCALE,
+        ])))
+        .execute(&pool)
+        .await
+        .unwrap();
+        if scoped {
+            store.prepare_scoped_runtime(universe, 100).await.unwrap();
+            store.activate_scoped_runtime(universe).await.unwrap();
+        }
+        let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+        let item = ManufacturedItem::Ship(ShipType::SolarSatellite);
+        let q = inspect_progression(
+            &snapshot.state,
+            Actor::Player(binding.player),
+            &QuoteRequest::Manufacture {
+                body,
+                item,
+                quantity: 2,
+            },
+            1000,
+            &snapshot.rules,
+        )
+        .unwrap();
+        assert!(q.blockers.is_empty());
+        let id = CommandId(Uuid::new_v4());
+        store
+            .bound_admit4(ForegroundAction {
+                gameplay: CommandEnvelopeV4 {
+                    protocol: 4,
+                    binding,
+                    command_id: id,
+                    command: CommandDto3::Progression(Command::StartManufacture {
+                        body,
+                        item,
+                        quantity: 2,
+                        expected_terms_hash: q.terms_hash.unwrap(),
+                    }),
+                },
+                presence: CommandEnvelopeV4 {
+                    protocol: 4,
+                    binding,
+                    command_id: CommandId(Uuid::new_v4()),
+                    command: CommandDto3::Progression(Command::World {
+                        action: WorldAction::RecordForegroundPresence {
+                            body: Some(body),
+                            cause: PresenceCause::GameplayGesture,
+                            paired_command_id: Some(id),
+                        },
+                    }),
+                },
+            })
+            .await
+            .unwrap();
+        async fn drain(store: &PgStore, u: UniverseId, scoped: bool) {
+            let game = GameService::new(store.clone());
+            for _ in 0..20 {
+                let outcome = if scoped {
+                    game.step_scoped(u, WorkerId(Uuid::new_v4()), &InlineEngine)
+                        .await
+                        .unwrap()
+                } else {
+                    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap()
+                };
+                if matches!(outcome, StepOutcome::Idle) {
+                    return;
+                }
+            }
+            panic!("unbounded satellite work");
+        }
+        drain(&store, universe, scoped).await;
+        assert!(matches!(
+            store.bound_receipt(binding, id).await.unwrap().status,
+            ReceiptStatus::Committed { .. }
+        ));
+        let (paid, _) = store.bound_world(binding).await.unwrap().facts;
+        let batch = paid
+            .state
+            .manufacturing_batches
+            .values()
+            .find(|b| b.item == item)
+            .unwrap()
+            .clone();
+        store.set_test_time(batch.next_due_at).await.unwrap();
+        drain(&store, universe, scoped).await;
+        let (first, _) = store.bound_world(binding).await.unwrap().facts;
+        assert_eq!(
+            solar_satellite_count(&first.state, &first.state.bodies[&body], &first.rules).unwrap(),
+            1
+        );
+        assert_eq!(
+            first.state.bodies[&body].checkpoint.amounts.metal,
+            12 * SCALE
+        );
+        // Activate a new energy coefficient halfway to the next completion. This
+        // exercises old inventory-aware rates at the activation boundary.
+        store
+            .set_test_time(batch.next_due_at + 72_000)
+            .await
+            .unwrap();
+        let mut next = service.export(universe).await.unwrap();
+        next.artifact
+            .progression
+            .as_mut()
+            .unwrap()
+            .solar_satellite
+            .as_mut()
+            .unwrap()
+            .temperature_offset = 146;
+        next.artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == item.catalog_key())
+            .unwrap()
+            .enabled = false;
+        match service.apply(&next).await {
+            Ok(RulesApplyOutcome::Applied { .. }) => {}
+            Err(RulesUpdateError::Pending { .. }) if scoped => {
+                assert!(store.process_runtime_barrier(universe).await.unwrap());
+            }
+            other => panic!("unexpected satellite activation: {other:?}"),
+        }
+        let (boundary, _) = store.bound_world(binding).await.unwrap().facts;
+        assert_eq!(
+            boundary.state.bodies[&body].checkpoint.amounts.metal,
+            24_600_000
+        );
+        let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap();
+        restarted.set_test_time(batch.final_due_at).await.unwrap();
+        drain(&restarted, universe, scoped).await;
+        let (completed, _) = restarted.bound_world(binding).await.unwrap().facts;
+        assert_eq!(
+            completed.state.bodies[&body].checkpoint.amounts.metal,
+            37_200_000
+        );
+        assert_eq!(
+            solar_satellite_count(
+                &completed.state,
+                &completed.state.bodies[&body],
+                &completed.rules
+            )
+            .unwrap(),
+            2
+        );
+        validate_asset_lineage(&completed.state).unwrap();
+        let view = GameService::new(restarted)
+            .world_view(
+                Principal {
+                    account: binding.account,
+                    player: binding.player,
+                    universe,
+                },
+                QueryContext {
+                    binding,
+                    request_id: Uuid::new_v4(),
+                },
+            )
+            .await
+            .unwrap();
+        let production = view
+            .progression
+            .progression
+            .production
+            .iter()
+            .find(|p| p.body == body)
+            .unwrap();
+        assert_eq!(production.energy_supply, "62000000");
+        let output = production.solar_satellite.as_ref().unwrap();
+        assert_eq!(output.unit_energy, "31000000");
+        assert_eq!(output.energy_supply, "62000000");
+        assert!(production.editable.iter().any(|k| k == "solar_satellite"));
+        assert_eq!(production.gross_per_hour.metal, "630000000");
+    }
+}

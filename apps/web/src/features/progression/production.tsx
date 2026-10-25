@@ -80,8 +80,8 @@ export function Production({
         <table className={styles.table} aria-label="Production settings">
           <thead>
             <tr>
-              <th scope="col">Building</th>
-              <th scope="col">Level</th>
+              <th scope="col">Producer</th>
+              <th scope="col">Level / quantity</th>
               <th scope="col">Output</th>
             </tr>
           </thead>
@@ -92,7 +92,19 @@ export function Production({
                 <tr key={key}>
                   <th scope="row">{label(building)}</th>
                   <td>
-                    {body.levels[building as keyof typeof body.levels] ?? '—'}
+                    {building === 'SolarSatellite' ? (
+                      <NumberValue
+                        value={
+                          body.inventories.find(
+                            (x) =>
+                              x.item.kind === 'Ship' &&
+                              x.item.id === 'SolarSatellite',
+                          )?.count ?? '0'
+                        }
+                      />
+                    ) : (
+                      (body.levels[building as keyof typeof body.levels] ?? '—')
+                    )}
                   </td>
                   <td>
                     <Select
@@ -116,6 +128,24 @@ export function Production({
                         </option>
                       ))}
                     </Select>
+                    {key === 'solar_satellite' &&
+                      production.solar_satellite && (
+                        <span>
+                          {' '}
+                          ·{' '}
+                          <ResourceQuantity
+                            resource="energy"
+                            value={production.solar_satellite.energy_supply}
+                          />{' '}
+                          supplied
+                          {' · '}
+                          <ResourceQuantity
+                            resource="energy"
+                            value={production.solar_satellite.unit_energy}
+                          />{' '}
+                          per satellite at 100%
+                        </span>
+                      )}
                   </td>
                 </tr>
               ))}

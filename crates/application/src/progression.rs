@@ -176,7 +176,14 @@ pub struct SignedRate {
     pub magnitude: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SatelliteProductionDto {
+    pub unit_energy: String,
+    pub energy_supply: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProductionDto {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub solar_satellite: Option<SatelliteProductionDto>,
     pub body: BodyId,
     pub settings: ProductionSettings,
     pub settings_revision: String,
@@ -377,9 +384,11 @@ pub(crate) fn progression_projection(
     let mut production = vec![];
     for b in &projection.bodies {
         let settings = &s.production_settings[&b.id];
-        let energy = energy_with_settings(b, &settings.settings, &facts.rules)
+        let satellites = solar_satellite_count(s, b, &facts.rules)
             .map_err(|_| ServiceError::InvariantFailure)?;
-        let rate = production_rates_with_settings(b, &settings.settings, &facts.rules)
+        let energy = energy_with_settings(b, &settings.settings, satellites, &facts.rules)
+            .map_err(|_| ServiceError::InvariantFailure)?;
+        let rate = production_rates_with_settings(b, &settings.settings, satellites, &facts.rules)
             .map_err(|_| ServiceError::InvariantFailure)?;
         bodies.push(BodyV3 {
             colony: None,
@@ -415,7 +424,26 @@ pub(crate) fn progression_projection(
                 })
                 .collect(),
         });
+        let solar_satellite = solar_satellite_rule(&facts.rules)
+            .map(|_| {
+                Ok::<_, ServiceError>(SatelliteProductionDto {
+                    unit_energy: solar_satellite_unit_energy(b, &facts.rules)
+                        .map_err(|_| ServiceError::InvariantFailure)?
+                        .to_string(),
+                    energy_supply: solar_satellite_energy(
+                        b,
+                        &settings.settings,
+                        satellites,
+                        &facts.rules,
+                    )
+                    .map_err(|_| ServiceError::InvariantFailure)?
+                    .to_string(),
+                })
+            })
+            .transpose()?;
+        let satellite_editable = solar_satellite.is_some();
         production.push(ProductionDto {
+            solar_satellite,
             body: b.id,
             settings: settings.settings.clone(),
             settings_revision: settings.revision.to_string(),
@@ -426,6 +454,7 @@ pub(crate) fn progression_projection(
                 "solar_plant",
             ]
             .into_iter()
+            .chain(satellite_editable.then_some("solar_satellite"))
             .map(str::to_owned)
             .collect(),
             gross_per_hour: rate.into(),

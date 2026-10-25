@@ -129,10 +129,17 @@ async fn settle_and_initialize(
     delta: &RulesCatalogDelta,
     at: Timestamp,
 ) -> Result<(), StoreError> {
+    let satellite_counts = state
+        .bodies
+        .values()
+        .map(|body| solar_satellite_count(state, body, current).map(|count| (body.id, count)))
+        .collect::<Result<std::collections::BTreeMap<_, _>, _>>()
+        .map_err(|_| StoreError::CorruptData)?;
     for body in state.bodies.values_mut() {
         body.checkpoint = settle_rules_boundary(
             body,
             &state.production_settings[&body.id].settings,
+            satellite_counts[&body.id],
             at,
             current,
         )
@@ -157,6 +164,7 @@ async fn settle_and_initialize(
         settle_rules_boundary(
             body,
             &state.production_settings[&body.id].settings,
+            satellite_counts[&body.id],
             at,
             next,
         )

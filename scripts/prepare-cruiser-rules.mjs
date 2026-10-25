@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { addSatelliteRapidFire } from './prepare-solar-satellite-rules.mjs'
 import { pathToFileURL } from 'node:url'
 
 const content = JSON.parse(
@@ -72,6 +73,7 @@ export function prepareCruiserRules(document) {
         x.target.id === rule.target.id,
     )
   }
+  addSatelliteRapidFire(artifact, 'Cruiser')
   return next
 }
 

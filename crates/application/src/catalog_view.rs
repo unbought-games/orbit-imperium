@@ -271,3 +271,30 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[test]
+fn satellite_catalog_exposes_combat_and_energy_without_propulsion() {
+    let rules =
+        Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-solar-satellite.json")).unwrap();
+    let entry = catalog_view(&rules)
+        .unwrap()
+        .into_iter()
+        .find(|e| e.entry.key == CatalogKey::Ship(ShipType::SolarSatellite))
+        .unwrap();
+    assert!(!entry.entry.mobile);
+    let statistics = entry.ship_statistics.unwrap();
+    assert!(statistics.propulsion.is_none());
+    let combat = statistics.combat.unwrap();
+    assert_eq!(combat.hull_ticks, "20000000");
+    assert_eq!(combat.attack_ticks, "100000");
+    assert_eq!(combat.shield_ticks, "100000");
+    assert!(
+        entry
+            .technical_data
+            .unwrap()
+            .facts
+            .iter()
+            .any(|f| f.label == "Energy per satellite")
+    );
+}

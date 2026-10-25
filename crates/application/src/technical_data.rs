@@ -107,6 +107,11 @@ pub(crate) fn technical_data(
                 data.fact("Planet limit", "One completed or queued dome of this type per planet. Its shield protects itself, not other units.");
             }
         }
+        CatalogKey::Ship(ShipType::SolarSatellite) => {
+            let rule = solar_satellite_rule(rules).ok_or(ServiceError::InvariantFailure)?;
+            data.fact("Energy per satellite", format!("floor((planet maximum temperature + {}) / {}). Total energy is multiplied by completed satellite count and the production setting; economy speed does not multiply energy.", rule.temperature_offset, rule.temperature_divisor));
+            data.fact("Stationary ship", "Cannot fly or carry cargo. Uses no fuel or building fields. Defends the planet and can be destroyed; destroyed satellites do not recover.");
+        }
         _ => return Ok(None),
     }
     Ok(Some(data))

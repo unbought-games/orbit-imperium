@@ -24,8 +24,13 @@ fn output_factors(
     }
     Ok(output)
 }
-fn energy_ratios(output: &[Rational; 4], rules: &Ruleset) -> (Rational, Rational, Rational) {
-    let supply = output[3].clone() * integer(rules.artifact.energy_supply);
+fn energy_ratios(
+    output: &[Rational; 4],
+    satellite_energy: i64,
+    rules: &Ruleset,
+) -> (Rational, Rational, Rational) {
+    let supply = output[3].clone() * integer(rules.artifact.energy_supply)
+        + ratio(satellite_energy, SCALE).expect("positive resource scale");
     let demand = (0..3).fold(Rational::zero(), |sum, i| {
         sum + output[i].clone() * integer(rules.artifact.energy_demand[i])
     });
@@ -37,15 +42,20 @@ fn energy_ratios(output: &[Rational; 4], rules: &Ruleset) -> (Rational, Rational
     (supply, demand, utilization)
 }
 pub fn energy_stats(body: &Body, rules: &Ruleset) -> Result<EnergyStats, GameError> {
-    energy_with_settings(body, &ProductionSettings::default(), rules)
+    energy_with_settings(body, &ProductionSettings::default(), 0, rules)
 }
 pub fn energy_with_settings(
     body: &Body,
     settings: &ProductionSettings,
+    satellites: i64,
     rules: &Ruleset,
 ) -> Result<EnergyStats, GameError> {
     let output = output_factors(body, settings, rules)?;
-    let (supply, demand, utilization) = energy_ratios(&output, rules);
+    let (supply, demand, utilization) = energy_ratios(
+        &output,
+        solar_satellite_energy(body, settings, satellites, rules)?,
+        rules,
+    );
     Ok(EnergyStats {
         supply: floor(supply * integer(SCALE))?,
         demand: floor(demand * integer(SCALE))?,
@@ -53,16 +63,21 @@ pub fn energy_with_settings(
     })
 }
 pub fn production_rates(body: &Body, rules: &Ruleset) -> Result<Resources, GameError> {
-    production_rates_with_settings(body, &ProductionSettings::default(), rules)
+    production_rates_with_settings(body, &ProductionSettings::default(), 0, rules)
 }
 pub fn production_rates_with_settings(
     body: &Body,
     settings: &ProductionSettings,
+    satellites: i64,
     rules: &Ruleset,
 ) -> Result<Resources, GameError> {
     let r = &rules.artifact;
     let output = output_factors(body, settings, rules)?;
-    let (_, _, utilization) = energy_ratios(&output, rules);
+    let (_, _, utilization) = energy_ratios(
+        &output,
+        solar_satellite_energy(body, settings, satellites, rules)?,
+        rules,
+    );
     let mut rates = [0; 3];
     for i in 0..3 {
         rates[i] = floor(
