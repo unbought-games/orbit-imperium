@@ -1,6 +1,8 @@
 mod bootstrap;
 mod bootstrap_html;
 mod bound_api;
+mod location_card;
+mod location_preview;
 mod oidc;
 mod oidc_enrollment;
 mod password_work;
@@ -132,6 +134,14 @@ where
         password_work: Arc::new(Semaphore::new(2)),
     });
     Router::new()
+        .route(
+            "/u/{universe}/location/{coordinates}",
+            get(location_preview::page::<S>),
+        )
+        .route(
+            "/u/{universe}/location/{coordinates}/preview.png",
+            get(location_preview::image::<S>),
+        )
         .route(
             "/api/v1/universes/{id}/player-profiles",
             post(player_profiles::query::<S>),

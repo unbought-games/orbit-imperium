@@ -1,0 +1,50 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.control {
+  display: flex;
+  border: 1px solid #53606f;
+  background: #07101b;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.control:focus-within {
+  outline: 2px solid #9acfe6;
+  outline-offset: 2px;
+}
+.control input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #eef3f6;
+  padding: 10px;
+  font: inherit;
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+.control input::placeholder {
+  color: #85929f;
+}
+.control button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  background: transparent;
+  border: 0;
+  color: #bdcbd6;
+  cursor: pointer;
+}
+.field small {
+  font-size: 0.75rem;
+  color: #aab9c6;
+}
+.field [role='alert'] {
+  color: #ffb3a8;
+}

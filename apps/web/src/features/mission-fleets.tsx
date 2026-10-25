@@ -177,11 +177,31 @@ export function MissionFleets({
               </Heading>
               <Text>{shipManifest(fleet.ships)}</Text>
               <Text>
-                <CoordinateLink at={fleet.origin} label="origin">
+                <CoordinateLink
+                  at={fleet.origin}
+                  target={
+                    view.bodies.find((b) => b.id === fleet.intent.origin)
+                      ?.kind === 'Moon'
+                      ? 'moon'
+                      : 'planet'
+                  }
+                  label="origin"
+                >
                   {missionLocation(view, fleet.intent.origin, fleet.origin)}
                 </CoordinateLink>{' '}
                 {fleet.leg === 'Returning' ? '←' : '→'}{' '}
-                <CoordinateLink at={fleet.destination} label="destination">
+                <CoordinateLink
+                  at={fleet.destination}
+                  target={
+                    fleet.intent.destination.type === 'Body' &&
+                    fleet.intent.destination.expected_kind === 'Moon'
+                      ? 'moon'
+                      : fleet.intent.destination.type === 'Debris'
+                        ? 'debris'
+                        : 'planet'
+                  }
+                  label="destination"
+                >
                   {missionLocation(
                     view,
                     fleet.intent.destination.type === 'Body'

@@ -21,7 +21,7 @@
   --world-size: clamp(50px, 7vw, 86px);
   position: relative;
   height: clamp(230px, 32vw, 380px);
-  min-height: 18rem;
+  min-height: 21rem;
   margin: 0;
   isolation: isolate;
   overflow: hidden;
@@ -80,8 +80,8 @@
   justify-self: end;
   white-space: nowrap;
 }
-.routeOrigin > strong > span,
-.routeDestination > strong > span {
+.routeOrigin > strong > span:not([data-coordinate]),
+.routeDestination > strong > span:not([data-coordinate]) {
   display: block;
   max-width: min(36vw, 12rem);
   overflow: hidden;
@@ -347,11 +347,11 @@
 
 .destinationFields {
   display: grid;
-  grid-template-columns: minmax(112px, 1.8fr) repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: 8px;
   width: 100%;
-  max-width: 420px;
+  max-width: 600px;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -439,4 +439,10 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 0.75rem;
+}
+
+.destinationFields > div,
+.destinationFields > p,
+.destinationFields > label:first-child {
+  grid-column: 1 / -1;
 }

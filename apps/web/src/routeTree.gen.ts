@@ -26,6 +26,7 @@ import { Route as UUniverseResearchRouteImport } from './routes/u.$universe.rese
 import { Route as UUniverseSettingsRouteImport } from './routes/u.$universe.settings'
 import { Route as UUniverseFleetsIndexRouteImport } from './routes/u.$universe.fleets.index'
 import { Route as UUniverseFleetsItemRouteImport } from './routes/u.$universe.fleets.$item'
+import { Route as UUniverseLocationCoordinatesRouteImport } from './routes/u.$universe.location.$coordinates'
 import { Route as UUniverseReportsIndexRouteImport } from './routes/u.$universe.reports.index'
 import { Route as UUniverseReportsItemRouteImport } from './routes/u.$universe.reports.$item'
 import { Route as UUniverseBBodyDefenseRouteImport } from './routes/u.$universe.b.$body.defense'
@@ -134,6 +135,12 @@ const UUniverseFleetsItemRoute = UUniverseFleetsItemRouteImport.update({
   path: '/$item',
   getParentRoute: () => UUniverseFleetsRoute,
 } as any)
+const UUniverseLocationCoordinatesRoute =
+  UUniverseLocationCoordinatesRouteImport.update({
+    id: '/location/$coordinates',
+    path: '/location/$coordinates',
+    getParentRoute: () => UUniverseRoute,
+  } as any)
 const UUniverseReportsIndexRoute = UUniverseReportsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -273,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe/': typeof UUniverseIndexRoute
   '/u/$universe/fleets/$item': typeof UUniverseFleetsItemRoute
+  '/u/$universe/location/$coordinates': typeof UUniverseLocationCoordinatesRoute
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
@@ -311,6 +319,7 @@ export interface FileRoutesByTo {
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe': typeof UUniverseIndexRoute
   '/u/$universe/fleets/$item': typeof UUniverseFleetsItemRoute
+  '/u/$universe/location/$coordinates': typeof UUniverseLocationCoordinatesRoute
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports': typeof UUniverseReportsIndexRoute
@@ -351,6 +360,7 @@ export interface FileRoutesById {
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe/': typeof UUniverseIndexRoute
   '/u/$universe/fleets/$item': typeof UUniverseFleetsItemRoute
+  '/u/$universe/location/$coordinates': typeof UUniverseLocationCoordinatesRoute
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/u/$universe/settings'
     | '/u/$universe/'
     | '/u/$universe/fleets/$item'
+    | '/u/$universe/location/$coordinates'
     | '/u/$universe/reports/$item'
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
@@ -432,6 +443,7 @@ export interface FileRouteTypes {
     | '/u/$universe/settings'
     | '/u/$universe'
     | '/u/$universe/fleets/$item'
+    | '/u/$universe/location/$coordinates'
     | '/u/$universe/reports/$item'
     | '/u/$universe/fleets'
     | '/u/$universe/reports'
@@ -471,6 +483,7 @@ export interface FileRouteTypes {
     | '/u/$universe/settings'
     | '/u/$universe/'
     | '/u/$universe/fleets/$item'
+    | '/u/$universe/location/$coordinates'
     | '/u/$universe/reports/$item'
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
@@ -624,6 +637,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/u/$universe/fleets/$item'
       preLoaderRoute: typeof UUniverseFleetsItemRouteImport
       parentRoute: typeof UUniverseFleetsRoute
+    }
+    '/u/$universe/location/$coordinates': {
+      id: '/u/$universe/location/$coordinates'
+      path: '/location/$coordinates'
+      fullPath: '/u/$universe/location/$coordinates'
+      preLoaderRoute: typeof UUniverseLocationCoordinatesRouteImport
+      parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/reports/': {
       id: '/u/$universe/reports/'
@@ -917,6 +937,7 @@ interface UUniverseRouteChildren {
   UUniverseResearchRoute: typeof UUniverseResearchRoute
   UUniverseSettingsRoute: typeof UUniverseSettingsRoute
   UUniverseIndexRoute: typeof UUniverseIndexRoute
+  UUniverseLocationCoordinatesRoute: typeof UUniverseLocationCoordinatesRoute
   UUniverseBBodyDefenseRoute: typeof UUniverseBBodyDefenseRouteWithChildren
   UUniverseBBodyDispatchRoute: typeof UUniverseBBodyDispatchRoute
   UUniverseBBodyFacilitiesRoute: typeof UUniverseBBodyFacilitiesRouteWithChildren
@@ -941,6 +962,7 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseResearchRoute: UUniverseResearchRoute,
   UUniverseSettingsRoute: UUniverseSettingsRoute,
   UUniverseIndexRoute: UUniverseIndexRoute,
+  UUniverseLocationCoordinatesRoute: UUniverseLocationCoordinatesRoute,
   UUniverseBBodyDefenseRoute: UUniverseBBodyDefenseRouteWithChildren,
   UUniverseBBodyDispatchRoute: UUniverseBBodyDispatchRoute,
   UUniverseBBodyFacilitiesRoute: UUniverseBBodyFacilitiesRouteWithChildren,

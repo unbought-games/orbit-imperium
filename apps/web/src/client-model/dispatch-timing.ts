@@ -32,12 +32,13 @@ export function dispatchShips(
 export function dispatchSelection(
   mission: S['FleetIntent4']['mission'],
   coordinates: S['Coordinates'],
+  kind: 'Planet' | 'Moon' = 'Planet',
 ): S['DestinationSelection4'] {
   return mission === 'Harvest'
     ? { type: 'DebrisAt', coordinates }
     : mission === 'Colonize'
       ? { type: 'EmptyPositionAt', coordinates }
-      : { type: 'BodyAt', coordinates, kind: 'Planet' }
+      : { type: 'BodyAt', coordinates, kind }
 }
 export function flightSchedule(
   duration: number,

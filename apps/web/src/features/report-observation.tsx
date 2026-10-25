@@ -247,6 +247,7 @@ export function ReportObservation({
                   ·{' '}
                   <CoordinateLink
                     at={target.coordinates}
+                    target={target.kind === 'Moon' ? 'moon' : 'planet'}
                     label="target"
                     className={styles.targetCoordinates}
                   />

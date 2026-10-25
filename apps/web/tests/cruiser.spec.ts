@@ -1,3 +1,4 @@
+import { setDestination } from './fixtures/coordinates'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import { readFileSync } from 'node:fs'
@@ -293,7 +294,7 @@ test('Cruisers can be selected, quoted and launched in an attack fleet', async (
   await page
     .getByRole('combobox', { name: 'Mission', exact: true })
     .selectOption('Attack')
-  await page.getByLabel('Position', { exact: true }).fill('8')
+  await setDestination(page, { position: '8' })
   await page.getByRole('textbox', { name: 'Cruiser · 2 available' }).fill('2')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })

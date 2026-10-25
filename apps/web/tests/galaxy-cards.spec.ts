@@ -1,3 +1,4 @@
+import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import {
@@ -207,7 +208,7 @@ test('galaxy cards preserve system navigation, eligibility, debris and mission d
   await expect(
     page.getByRole('combobox', { name: 'Mission', exact: true }),
   ).toHaveValue('Harvest')
-  await expect(page.getByLabel('Position', { exact: true })).toHaveValue('4')
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '4'))
   await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(cards).toHaveCount(15)
   await page.getByLabel('Solar system').selectOption('499')
@@ -241,8 +242,8 @@ for (const mission of ['Transport', 'Attack']) {
     await expect(
       page.getByRole('combobox', { name: 'Mission', exact: true }),
     ).toHaveValue(mission)
-    await expect(page.getByLabel('System', { exact: true })).toHaveValue('371')
-    await expect(page.getByLabel('Position', { exact: true })).toHaveValue('2')
+    await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '371'))
+    await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '2'))
   })
 }
 
@@ -302,6 +303,12 @@ test('planet actions support keyboard opening and Escape focus restoration', asy
   const trigger = card.locator('summary')
   await trigger.focus()
   await page.keyboard.press('Enter')
+  await page.keyboard.press('Tab')
+  await expect(card.getByRole('link', { name: /View .*in galaxy/ })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(card.getByRole('button', { name: /Copy coordinates/ })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(card.getByRole('button', { name: /Location actions for/ })).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(
     card.getByRole('button', { name: 'Transport', exact: true }),
@@ -582,6 +589,12 @@ test('empty slots reveal an explicit Colonize action before opening a draft', as
     if (width === 1280) expect(actionBox.height).toBeLessThanOrEqual(53)
   }
   await page.keyboard.press('Tab')
+  await expect(slot.getByRole('link', { name: /View .*in galaxy/ })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(slot.getByRole('button', { name: /Copy coordinates/ })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(slot.getByRole('button', { name: /Location actions for/ })).toBeFocused()
+  await page.keyboard.press('Tab')
   await expect(colonize).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(summary).toBeFocused()
@@ -589,9 +602,9 @@ test('empty slots reveal an explicit Colonize action before opening a draft', as
   await summary.click()
   await colonize.click()
   await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toHaveValue('Colonize')
-  await expect(page.getByRole('textbox', { name: 'Galaxy', exact: true })).toHaveValue('1')
-  await expect(page.getByRole('textbox', { name: 'System', exact: true })).toHaveValue('371')
-  await expect(page.getByRole('textbox', { name: 'Position', exact: true })).toHaveValue('5')
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('galaxy', '1'))
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '371'))
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '5'))
   await expect(page.getByRole('status').filter({ hasText: 'Colonization is unavailable in this universe.' }).first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Review fleet', exact: true })).toBeDisabled()
 })

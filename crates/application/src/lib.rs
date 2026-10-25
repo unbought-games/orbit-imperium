@@ -1,3 +1,5 @@
+mod location;
+pub use location::*;
 mod rankings;
 pub use rankings::*;
 mod report_preview;

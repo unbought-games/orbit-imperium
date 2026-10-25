@@ -1,49 +1,199 @@
-import { useContext, type ReactNode } from 'react'
+import { universeSlug } from '../client-model/universe-name'
+import { useContext, useEffect, useState, type ReactNode } from 'react'
+import { useSetAtom } from 'jotai'
+import { Copy, Check, Ellipsis } from 'lucide-react'
+import { ContextMenu } from '@base-ui/react/context-menu'
+import { Menu } from '@base-ui/react/menu'
 import { ScreenContext } from '../shell/screen-context'
 import { SessionContext } from '../shell/session-context'
 import { galaxyTarget, readCoordinates } from '../shell/galaxy-location'
+import { locationPath, type LocationKind } from '../shell/location-address'
 import { coordinates } from '../ui/format'
 import { Link } from '../ui/link'
-
-/** Recorded coordinates remain navigable even when the historical entity is gone. */
+import { copiedLocationAtom } from './coordinate-memory'
+import { coordinateMissions } from './coordinate-actions'
+import styles from './coordinate-link.module.css'
+/** Coordinates identify a slot even after its former occupant has disappeared. */
 export function CoordinateLink({
   at,
   label,
   children,
   origin,
   className,
+  target = 'planet',
+  known,
 }: {
   at: unknown
   label?: string
   children?: ReactNode
   origin?: string
   className?: string
+  target?: LocationKind
+  known?: { owner?: string; empty?: boolean; debris?: boolean }
 }) {
   const screen = useContext(ScreenContext)
   const session = useContext(SessionContext)
   const context = screen ?? session
-  const body = origin ?? screen?.body?.id
+  const body = origin ?? screen?.body?.id ?? context?.view.bodies[0]?.id
   const location = readCoordinates(at)
-  const text =
-    children ??
-    (location ? coordinates({ coordinates: location }) : 'Unavailable')
-  if (
-    !location ||
-    !context ||
-    !body ||
-    !context.view.capabilities.some(
+  const remember = useSetAtom(copiedLocationAtom)
+  const [feedback, setFeedback] = useState('')
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(''), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+  const text = location ? coordinates({ coordinates: location }) : 'Unavailable'
+  if (!location)
+    return (
+      <span className={className}>
+        {children ?? <span className={styles.address}>{text}</span>}
+      </span>
+    )
+  const navigable =
+    context &&
+    body &&
+    context.view.capabilities.some(
       (c) => c.capability === 'Galaxy' && c.enabled,
     )
+  const path = context
+    ? locationPath(context.universeName, location, { target })
+    : ''
+  async function copy(link: boolean) {
+    try {
+      await navigator.clipboard.writeText(
+        link ? new URL(path, window.location.origin).href : text,
+      )
+      remember({ coordinates: location!, target })
+      setFeedback(link ? 'Location link copied.' : 'Coordinates copied.')
+    } catch {
+      setFeedback('Copy failed. Select the coordinates and copy them manually.')
+    }
+  }
+  const items = () => (
+    <>
+      {navigable && (
+        <Menu.LinkItem
+          closeOnClick
+          className={styles.item}
+          render={
+            <Link
+              {...galaxyTarget(context.universeName, body, {
+                ...location,
+                ...(target !== 'planet' ? { target } : {}),
+              })}
+            />
+          }
+        >
+          View in Galaxy
+        </Menu.LinkItem>
+      )}
+      <Menu.Item className={styles.item} onClick={() => void copy(false)}>
+        Copy coordinates
+      </Menu.Item>
+      {context && (
+        <Menu.Item className={styles.item} onClick={() => void copy(true)}>
+          Copy location link
+        </Menu.Item>
+      )}
+      {context &&
+        body &&
+        coordinateMissions(context.view, location, target, known).map(
+          (mission) => (
+            <Menu.LinkItem
+              key={mission}
+              className={styles.item}
+              closeOnClick
+              render={
+                <Link
+                  to="/u/$universe/b/$body/dispatch"
+                  state={{ dispatchObservation: undefined }}
+                  params={{
+                    universe: universeSlug(context.universeName),
+                    body,
+                  }}
+                  search={{
+                    ...location,
+                    target: mission === 'Harvest' ? 'debris' : target,
+                    mission,
+                  }}
+                />
+              }
+            >
+              Prepare {mission.toLowerCase()}
+            </Menu.LinkItem>
+          ),
+        )}
+    </>
   )
-    return className ? <span className={className}>{text}</span> : <>{text}</>
   return (
-    <Link
-      {...galaxyTarget(context.universeName, body, location)}
-      resetScroll={false}
-      className={className}
-      aria-label={`View ${label ? `${label} ` : ''}${coordinates({ coordinates: location })} in galaxy`}
-    >
-      {text}
-    </Link>
+    <ContextMenu.Root onOpenChange={() => setFeedback('')}>
+      <ContextMenu.Trigger
+        render={<span />}
+        data-coordinate=""
+        className={`${styles.coordinate} ${className ?? ''}`}
+      >
+        {navigable ? (
+          <Link
+            {...galaxyTarget(context.universeName, body, {
+              ...location,
+              ...(target !== 'planet' ? { target } : {}),
+            })}
+            resetScroll={false}
+            className={`${styles.value} ${className ?? ''}`}
+            aria-label={`View ${label ? `${label} ` : ''}${text} in galaxy`}
+          >
+            {children ?? <span className={styles.address}>{text}</span>}
+          </Link>
+        ) : (
+          <span className={styles.value}>
+            {children ?? <span className={styles.address}>{text}</span>}
+          </span>
+        )}
+        <span className={styles.tools}>
+          <button
+            type="button"
+            className={styles.control}
+            onClick={() => void copy(false)}
+            aria-label={`Copy coordinates ${text}`}
+            title={feedback || 'Copy coordinates'}
+          >
+            {feedback.startsWith('Coordinates copied') ? (
+              <Check size={14} />
+            ) : (
+              <Copy size={14} />
+            )}
+          </button>
+          <Menu.Root onOpenChange={() => setFeedback('')}>
+            <Menu.Trigger
+              className={styles.control}
+              aria-label={`Location actions for ${text}`}
+              title="Location actions"
+            >
+              <Ellipsis size={16} />
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner className={styles.positioner} sideOffset={4}>
+                <Menu.Popup className={styles.menu}>{items()}</Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        </span>
+        <span
+          role={feedback ? 'status' : undefined}
+          aria-live="polite"
+          className={feedback ? styles.feedback : styles.status}
+        >
+          {feedback}
+        </span>
+      </ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Positioner className={styles.positioner}>
+          <ContextMenu.Popup className={styles.menu}>
+            {items()}
+          </ContextMenu.Popup>
+        </ContextMenu.Positioner>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
   )
 }

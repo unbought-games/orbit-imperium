@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react'
 import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
 import { StatePanel } from '../ui/state-panel'
-export function InvalidRoute() {
+export function InvalidRoute({
+  reason = 'This address or its planet context is unavailable.',
+}: { reason?: string } = {}) {
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     document.title = 'Unavailable · Orbit Imperium'
@@ -14,7 +16,7 @@ export function InvalidRoute() {
         Destination unavailable
       </Heading>
       <StatePanel title="Choose an available destination">
-        <Text>This address or its planet context is unavailable.</Text>
+        <Text>{reason}</Text>
         <Link to="/">Open your universe overview</Link>
       </StatePanel>
     </main>

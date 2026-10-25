@@ -81,6 +81,7 @@ export function MissionTrajectory({
           )}
           <CoordinateLink
             at={origin}
+            target={originIdentity?.kind === 'Moon' ? 'moon' : 'planet'}
             label="origin"
             className={styles.routeCoordinate}
           />
@@ -118,6 +119,13 @@ export function MissionTrajectory({
             )}
             <CoordinateLink
               at={destination}
+              target={
+                destinationIdentity?.kind === 'Moon'
+                  ? 'moon'
+                  : destinationIdentity?.kind === 'Debris'
+                    ? 'debris'
+                    : 'planet'
+              }
               label="destination"
               className={styles.routeCoordinate}
             />

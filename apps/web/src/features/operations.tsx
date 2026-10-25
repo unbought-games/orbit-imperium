@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import { ResourceValue } from '../ui/resource-value'
 import type { CatalogSelection } from '../shell/use-catalog-selection'
 import {
@@ -98,8 +99,36 @@ export function Operations({
                       {f.ships.map((s) => `${s.count} Small Cargo`).join(', ')}
                     </Heading>
                     <Text>
-                      {coordinates(view, f.origin)} →{' '}
-                      {coordinates(view, f.target)} · {countdown(f.due_at)}
+                      <CoordinateLink
+                        at={
+                          view.destinations.find((d) => d.id === f.origin)
+                            ?.coordinates
+                        }
+                        target={
+                          view.destinations.find((d) => d.id === f.origin)
+                            ?.kind === 'Moon'
+                            ? 'moon'
+                            : 'planet'
+                        }
+                      >
+                        {coordinates(view, f.origin)}
+                      </CoordinateLink>{' '}
+                      →{' '}
+                      <CoordinateLink
+                        at={
+                          view.destinations.find((d) => d.id === f.target)
+                            ?.coordinates
+                        }
+                        target={
+                          view.destinations.find((d) => d.id === f.target)
+                            ?.kind === 'Moon'
+                            ? 'moon'
+                            : 'planet'
+                        }
+                      >
+                        {coordinates(view, f.target)}
+                      </CoordinateLink>{' '}
+                      · {countdown(f.due_at)}
                       <br />
                       <time dateTime={new Date(f.due_at).toISOString()}>
                         {exactTime(f.due_at)}
@@ -144,8 +173,35 @@ export function Operations({
                       {r.kind.replace(/([a-z])([A-Z])/g, '$1 $2')}
                     </Heading>
                     <Text>
-                      {coordinates(view, r.origin)} →{' '}
-                      {coordinates(view, r.target)}
+                      <CoordinateLink
+                        at={
+                          view.destinations.find((d) => d.id === r.origin)
+                            ?.coordinates
+                        }
+                        target={
+                          view.destinations.find((d) => d.id === r.origin)
+                            ?.kind === 'Moon'
+                            ? 'moon'
+                            : 'planet'
+                        }
+                      >
+                        {coordinates(view, r.origin)}
+                      </CoordinateLink>{' '}
+                      →{' '}
+                      <CoordinateLink
+                        at={
+                          view.destinations.find((d) => d.id === r.target)
+                            ?.coordinates
+                        }
+                        target={
+                          view.destinations.find((d) => d.id === r.target)
+                            ?.kind === 'Moon'
+                            ? 'moon'
+                            : 'planet'
+                        }
+                      >
+                        {coordinates(view, r.target)}
+                      </CoordinateLink>
                     </Text>
                     <Text>
                       <ResourceSummary value={r.cargo} />

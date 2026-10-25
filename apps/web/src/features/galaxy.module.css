@@ -287,3 +287,8 @@ summary.positionSummary:focus-visible {
   color: var(--link);
   font-weight: 600;
 }
+
+.coordinates a {
+  min-height: 20px;
+  min-width: 0;
+}

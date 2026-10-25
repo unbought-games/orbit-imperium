@@ -56,7 +56,7 @@ for (const interaction of ['click', 'tap'] as const) {
 
         const inputs = page.locator('input[inputmode="numeric"]')
         await expect(inputs).toHaveCount(
-          screen === 'dispatch' ? 7 : screen === 'transport' ? 4 : 1,
+          screen === 'dispatch' ? 4 : screen === 'transport' ? 4 : 1,
         )
         for (const input of await inputs.all()) {
           // Actual typing must replace both the initial value (including zero)
@@ -87,25 +87,21 @@ for (const interaction of ['click', 'tap'] as const) {
   })
 }
 
-test('tabbing into coordinates selects their values and typing stays editable', async ({
+test('coordinates are one tab stop with colon and space advancement', async ({
   page,
 }) => {
   await shellFixture(page, { protocol: 4 })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
-  const galaxy = page.getByLabel('Galaxy', { exact: true })
-  const system = page.getByLabel('System', { exact: true })
-  const position = page.getByLabel('Position', { exact: true })
-  await galaxy.click()
-  await page.keyboard.press('Tab')
-  await expectSelected(system)
-  await page.keyboard.type('45')
-  await expect(system).toHaveValue('45')
-  await page.keyboard.press('Tab')
-  await expectSelected(position)
-  await page.keyboard.type('5')
-  await expect(position).toHaveValue('5')
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  await input.fill('')
+  await input.pressSequentially('1:45 5')
+  await expect(input).toHaveValue('1:45:5')
+  await input.press('Tab')
+  await expect(page.getByLabel('Destination type')).toBeFocused()
   await page.keyboard.press('Shift+Tab')
-  await expectSelected(system)
-  await page.keyboard.type('9')
-  await expect(system).toHaveValue('9')
+  await expect(input).toBeFocused()
+  await input.press('ArrowRight')
+  await input.press('Backspace')
+  await input.pressSequentially('9')
+  await expect(input).toHaveValue('1:45:9')
 })

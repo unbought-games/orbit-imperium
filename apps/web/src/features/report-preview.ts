@@ -28,6 +28,7 @@ export function reportPreview(
   viewer?: string,
 ): {
   location: string
+  coordinates?: S['Coordinates']
   facts: ReportFact[]
 } {
   if (!preview) return { location: '', facts: [] }
@@ -111,7 +112,11 @@ export function reportPreview(
         facts.push(label(preview.reason))
       break
   }
-  return { location: at ? coordinates({ coordinates: at }) : '', facts }
+  return {
+    location: at ? coordinates({ coordinates: at }) : '',
+    coordinates: at,
+    facts,
+  }
 }
 
 export function reportAge(observedAt: number, now: number): string {

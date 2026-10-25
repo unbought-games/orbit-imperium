@@ -191,7 +191,11 @@ function CommandMap({
           <div className={styles.focusLabel}>
             <span>Command focus</span>
             <strong>
-              {bodyName(body)} <CoordinateLink at={body.coordinates} />
+              {bodyName(body)}{' '}
+              <CoordinateLink
+                at={body.coordinates}
+                target={body.kind === 'Moon' ? 'moon' : 'planet'}
+              />
             </strong>
             <small>
               {traffic.incoming.length} inbound / {traffic.outgoing.length}{' '}
@@ -353,7 +357,10 @@ function PlanetDossier({
           </span>
           <h3 className={styles.planetName}>{bodyName(body)}</h3>
           <span className={styles.planetCoordinates}>
-            <CoordinateLink at={body.coordinates} />
+            <CoordinateLink
+              at={body.coordinates}
+              target={body.kind === 'Moon' ? 'moon' : 'planet'}
+            />
           </span>
           <span className={styles.bodyFacts}>
             {body.fields_used}/{body.fields} fields · {body.fields_reserved}{' '}

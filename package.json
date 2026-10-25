@@ -23,6 +23,7 @@
     "release:prepare": "node scripts/prepare-release.mjs"
   },
   "dependencies": {
+    "@base-ui/react": "1.9.0",
     "@floating-ui/react": "0.27.20",
     "@tanstack/react-router": "1.170.44",
     "@unbought/analytics": "file:vendor/unbought-analytics-0.1.1.tgz",

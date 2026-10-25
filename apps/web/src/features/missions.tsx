@@ -1,5 +1,8 @@
 import { CoordinateLink } from './coordinate-link'
-import { useId } from 'react'
+import { useAtomValue } from 'jotai'
+import { copiedLocationAtom } from './coordinate-memory'
+import { CoordinateInput } from '../ui/coordinate-input'
+import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useUniverseName } from '../shell/session-context'
 import {
   NumberValue,
@@ -34,6 +37,7 @@ import { bodyName, label } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
   origin?: string
+  targetKind?: LocationKind
   coordinates: S['Coordinates']
   mission:
     | 'Transport'
@@ -58,7 +62,7 @@ export function Dispatch({
   draft: DispatchDraft | null
 }) {
   const universeName = useUniverseName()
-  const validationId = useId()
+  const recentlyCopied = useAtomValue(copiedLocationAtom)
   const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const {
     coordinateProblems,
@@ -69,12 +73,13 @@ export function Dispatch({
     colony,
     setMission,
     galaxy,
-    setGalaxy,
     system,
-    setSystem,
     position,
-    setPosition,
-    pasteCoordinates,
+    destinationText,
+    setDestinationText,
+    targetKind,
+    setTargetKind,
+    destinationDescription,
     speed,
     setSpeed,
     ships,
@@ -156,6 +161,12 @@ export function Dispatch({
                 value={mission}
                 onChange={(e) => {
                   setMission(e.target.value as DispatchDraft['mission'])
+                  if (e.target.value === 'Harvest') setTargetKind('debris')
+                  else if (
+                    targetKind === 'debris' ||
+                    e.target.value === 'Colonize'
+                  )
+                    setTargetKind('planet')
                   clear()
                 }}
               >
@@ -181,68 +192,37 @@ export function Dispatch({
                   ))}
               </Select>
             </Field>
+            <CoordinateInput
+              value={destinationText}
+              universe={universeName}
+              error={Object.values(coordinateProblems).find(Boolean)}
+              onChange={(text, kind) => {
+                setDestinationText(text)
+                if (kind) {
+                  setTargetKind(kind)
+                  if (kind === 'debris') setMission('Harvest')
+                  else if (mission === 'Harvest') setMission('Transport')
+                }
+                clear()
+              }}
+            />
             <Field>
-              <span id={`${validationId}-galaxy-label`}>Galaxy</span>
-              <NumberInput
-                aria-labelledby={`${validationId}-galaxy-label`}
-                onPaste={pasteCoordinates}
-                aria-invalid={!!coordinateProblems.galaxy}
-                aria-describedby={`${validationId}-galaxy`}
-                value={galaxy}
-                onChange={(e) => {
-                  setGalaxy(e.target.value)
+              Target
+              <Select
+                aria-label="Destination type"
+                value={targetKind}
+                onChange={(event) => {
+                  const kind = event.target.value as LocationKind
+                  setTargetKind(kind)
+                  if (kind === 'debris') setMission('Harvest')
+                  else if (mission === 'Harvest') setMission('Transport')
                   clear()
                 }}
-              />
-              <span
-                className={styles.fieldError}
-                id={`${validationId}-galaxy`}
-                role={coordinateProblems.galaxy ? 'alert' : undefined}
               >
-                {coordinateProblems.galaxy}
-              </span>
-            </Field>
-            <Field>
-              <span id={`${validationId}-system-label`}>System</span>
-              <NumberInput
-                aria-labelledby={`${validationId}-system-label`}
-                onPaste={pasteCoordinates}
-                aria-invalid={!!coordinateProblems.system}
-                aria-describedby={`${validationId}-system`}
-                value={system}
-                onChange={(e) => {
-                  setSystem(e.target.value)
-                  clear()
-                }}
-              />
-              <span
-                className={styles.fieldError}
-                id={`${validationId}-system`}
-                role={coordinateProblems.system ? 'alert' : undefined}
-              >
-                {coordinateProblems.system}
-              </span>
-            </Field>
-            <Field>
-              <span id={`${validationId}-position-label`}>Position</span>
-              <NumberInput
-                aria-labelledby={`${validationId}-position-label`}
-                onPaste={pasteCoordinates}
-                aria-invalid={!!coordinateProblems.position}
-                aria-describedby={`${validationId}-position`}
-                value={position}
-                onChange={(e) => {
-                  setPosition(e.target.value)
-                  clear()
-                }}
-              />
-              <span
-                className={styles.fieldError}
-                id={`${validationId}-position`}
-                role={coordinateProblems.position ? 'alert' : undefined}
-              >
-                {coordinateProblems.position}
-              </span>
+                <option value="planet">Planet</option>
+                <option value="moon">Moon</option>
+                <option value="debris">Debris field</option>
+              </Select>
             </Field>
             <Field>
               Speed
@@ -261,6 +241,34 @@ export function Dispatch({
                 ))}
               </Select>
             </Field>
+            {coordinatesValid && (
+              <Text role="status">
+                {targetKind === 'debris'
+                  ? 'Debris field'
+                  : destinationDescription}
+              </Text>
+            )}
+            {recentlyCopied && (
+              <Text>
+                Recently copied in game: [
+                {coordinateText(recentlyCopied.coordinates)}]{' '}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setDestinationText(
+                      coordinateText(recentlyCopied.coordinates),
+                    )
+                    setTargetKind(recentlyCopied.target)
+                    if (recentlyCopied.target === 'debris')
+                      setMission('Harvest')
+                    else if (mission === 'Harvest') setMission('Transport')
+                    clear()
+                  }}
+                >
+                  Use destination
+                </Button>
+              </Text>
+            )}
             <DispatchTiming terms={timing} now={now} message={timingMessage} />
             {mission === 'Attack' && !targetProblem && !attackWarning && (
               <Text className={styles.destinationNotice}>
