@@ -1,3 +1,4 @@
+import { ReportSimulation } from './combat-simulation'
 import { ReportShareControl } from './report-share-control'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
@@ -133,6 +134,13 @@ export function Reports({
               </Popover>
             </div>
             <div className={styles.controls}>
+              {detail.payload.kind === 'Espionage' && (
+                <ReportSimulation
+                  key={detail.header.id}
+                  model={model}
+                  report={detail.payload}
+                />
+              )}
               {['Combat', 'ContactLost', 'Espionage'].includes(
                 detail.payload.kind,
               ) && (

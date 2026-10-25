@@ -7,6 +7,7 @@ mod oidc;
 mod oidc_enrollment;
 mod password_work;
 mod player_profiles;
+mod simulation;
 pub use player_profiles::AccountProfiles;
 mod rate_limit;
 mod signup_config;
@@ -214,6 +215,10 @@ where
         .route("/api/v4/universes/{id}/presence", post(v4::presence::<S>))
         .route("/api/v4/universes/{id}/world", post(v4::query::<S>))
         .route("/api/v4/universes/{id}/rankings", post(v4::rankings::<S>))
+        .route(
+            "/api/v4/universes/{id}/combat-simulation",
+            post(simulation::simulate::<S>),
+        )
         .route(
             "/api/v4/shared-reports/{token}",
             get(v4::shared_report::<S>),
@@ -619,7 +624,7 @@ where
                 } else {
                     StatusCode::BAD_REQUEST
                 };
-                Err((status,[(header::CONTENT_TYPE,"application/problem+json")],Json(serde_json::json!({"type":"about:blank","status":status.as_u16(),"code":if status==StatusCode::PAYLOAD_TOO_LARGE{"BodyTooLarge"}else{"Malformed"}}))).into_response())
+                Err((status,[(header::CONTENT_TYPE,"application/problem+json"),(header::CACHE_CONTROL,"no-store")],Json(serde_json::json!({"type":"about:blank","status":status.as_u16(),"code":if status==StatusCode::PAYLOAD_TOO_LARGE{"BodyTooLarge"}else{"Malformed"}}))).into_response())
             }
         }
     }
