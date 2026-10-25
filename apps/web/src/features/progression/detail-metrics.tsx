@@ -16,7 +16,12 @@ import { label } from '../../ui/format'
 import { useUniverseName } from '../../shell/session-context'
 import { routeTarget } from '../../shell/route-target'
 import { catalogPage } from '../../shell/catalog-routes'
-import { buildingInsights, energySources } from './detail-insights'
+import {
+  affordabilityForecast,
+  affordabilitySummary,
+  buildingInsights,
+  energySources,
+} from './detail-insights'
 import type { ProgressionProps } from './shared'
 import { DetailRow } from './detail-layout'
 import styles from './detail-layout.module.css'
@@ -300,12 +305,12 @@ function EnergyDetails({
 export function DecisionCosts({
   cost,
   available,
-  wait,
+  forecast,
   title = 'Cost',
 }: {
   cost: components['schemas']['Resources']
   available: components['schemas']['Resources']
-  wait: number | null
+  forecast: ReturnType<typeof affordabilityForecast>
   title?: string
 }) {
   const missing = resourceShortfalls(cost, available)
@@ -327,9 +332,8 @@ export function DecisionCosts({
                     </DetailResourceValue>
                   ))}
                   <span className={styles.shortfallTime}>
-                    {wait === null
-                      ? 'Timing unavailable'
-                      : `Ready in ~${formatDuration(wait)}`}
+                    {affordabilitySummary(forecast) ??
+                      `Ready in ~${formatDuration(forecast.wait ?? 0)}`}
                   </span>
                 </>
               }
@@ -343,11 +347,41 @@ export function DecisionCosts({
                   more needed.
                 </p>
               ))}
-              <p>
-                {wait === null
-                  ? 'Current production cannot provide a reliable wait estimate. You may need more production, storage capacity, or delivered resources.'
-                  : `These resources should be available in about ${formatDuration(wait)} at current production, if nothing else is spent.`}
-              </p>
+              {forecast.blockers.map(({ resource, reason, capacity }) => (
+                <p key={resource}>
+                  {label(resource)}:{' '}
+                  {reason === 'capacity' ? (
+                    <>
+                      cost exceeds storage capacity of{' '}
+                      <DetailResourceValue resource={resource}>
+                        <ResourceNumber value={capacity} />
+                      </DetailResourceValue>
+                      . Upgrade{' '}
+                      {label(
+                        resource === 'deuterium'
+                          ? 'DeuteriumTank'
+                          : resource === 'metal'
+                            ? 'MetalStorage'
+                            : 'CrystalStorage',
+                      )}{' '}
+                      or deliver the missing resources.
+                    </>
+                  ) : reason === 'draining' ? (
+                    'Net production is negative. Increase production, reduce fuel consumption, or deliver resources.'
+                  ) : reason === 'no-production' ? (
+                    'No net production. Increase production or deliver resources.'
+                  ) : (
+                    'Current production cannot provide a reliable wait estimate.'
+                  )}
+                </p>
+              ))}
+              {forecast.wait !== null && (
+                <p>
+                  These resources should be available in about{' '}
+                  {formatDuration(forecast.wait)} at current production, if
+                  nothing else is spent.
+                </p>
+              )}
               <p>Other requirements still apply.</p>
             </Popover>
           </span>
