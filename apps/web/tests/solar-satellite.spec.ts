@@ -41,6 +41,37 @@ async function setup(
     },
     inventories: [{ item, count: '2' }],
   }
+  const production: S['ProductionDto'] = {
+    body: body.id,
+    settings: {
+      metal_mine: 100,
+      crystal_mine: 100,
+      deuterium_synthesizer: 100,
+      solar_plant: 100,
+      fusion_reactor: 100,
+      solar_satellite: 100,
+    },
+    settings_revision: '0',
+    editable: [
+      'metal_mine',
+      'crystal_mine',
+      'deuterium_synthesizer',
+      'solar_plant',
+      'solar_satellite',
+    ],
+    gross_per_hour: {
+      metal: '63000000',
+      crystal: '37000000',
+      deuterium: '0',
+    },
+    fuel_deuterium_per_hour: '0',
+    net_deuterium_per_hour: { sign: 'Nonnegative', magnitude: '0' },
+    energy_supply: '60000000',
+    energy_demand: '22000000',
+    utilization: '1000000',
+    fuel_utilization: '1000000',
+    solar_satellite: { unit_energy: '30000000', energy_supply: '60000000' },
+  }
   await shellFixture(page, {
     protocol: 4,
     bodies: [planet],
@@ -61,39 +92,9 @@ async function setup(
           }
         : e,
     ),
-    production: [
-      {
-        body: body.id,
-        settings: {
-          metal_mine: 100,
-          crystal_mine: 100,
-          deuterium_synthesizer: 100,
-          solar_plant: 100,
-          fusion_reactor: 100,
-          solar_satellite: 100,
-        },
-        settings_revision: '0',
-        editable: [
-          'metal_mine',
-          'crystal_mine',
-          'deuterium_synthesizer',
-          'solar_plant',
-          'solar_satellite',
-        ],
-        gross_per_hour: {
-          metal: '63000000',
-          crystal: '37000000',
-          deuterium: '0',
-        },
-        fuel_deuterium_per_hour: '0',
-        net_deuterium_per_hour: { sign: 'Nonnegative', magnitude: '0' },
-        energy_supply: '60000000',
-        energy_demand: '22000000',
-        utilization: '1000000',
-        fuel_utilization: '1000000',
-        solar_satellite: { unit_energy: '30000000', energy_supply: '60000000' },
-      },
-    ],
+    production: [production],
+    viewerRevision: () =>
+      (BigInt(production.settings_revision) + 1n).toString(),
     research: [
       { research: 'ArmourTechnology', level: 2 },
       { research: 'ImpulseDrive', level: 0 },
@@ -176,6 +177,7 @@ async function setup(
       },
     })
   })
+  return production
 }
 
 test('satellites require Shipyard 1 and show stationary statistics and local energy', async ({
@@ -250,11 +252,20 @@ test('satellites manufacture by quantity but never appear in fleet selection', a
 test('production controls show satellite quantity and submit group throttling', async ({
   page,
 }) => {
-  await setup(page)
+  const production = await setup(page)
   let sent: unknown = null
   await page.route('**/commands', async (route) => {
     const pair = route.request().postDataJSON()
     sent = pair.gameplay.command
+    production.settings = pair.gameplay.command.settings
+    production.settings_revision = (
+      BigInt(production.settings_revision) + 1n
+    ).toString()
+    production.solar_satellite!.energy_supply = (
+      (60_000_000n * BigInt(production.settings.solar_satellite)) /
+      100n
+    ).toString()
+    production.energy_supply = production.solar_satellite!.energy_supply
     await route.fulfill({
       json: {
         protocol: 4,
@@ -264,7 +275,9 @@ test('production controls show satellite quantity and submit group throttling', 
         executed_at: Date.now(),
         status: 'Committed',
         result_ids: [],
-        minimum_viewer_revision: '1',
+        minimum_viewer_revision: (
+          BigInt(production.settings_revision) + 1n
+        ).toString(),
       },
     })
   })
@@ -291,4 +304,8 @@ test('production controls show satellite quantity and submit group throttling', 
       body: body.id,
       settings: { solar_satellite: 50 },
     })
+  await expect.poll(() => production.settings.solar_satellite).toBe(50)
+  await page.reload()
+  await expect(row.getByRole('slider')).toHaveValue('50')
+  await expect(row).toContainText('30')
 })
