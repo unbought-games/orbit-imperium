@@ -1779,7 +1779,8 @@ test('production sliders support mouse, keyboard bounds and final saves', async 
       expect(await percentage.evaluate((element) => {
         const range = document.createRange()
         range.selectNodeContents(element)
-        return range.getClientRects().length
+        // React renders the number and percent sign as separate text nodes.
+        return new Set(Array.from(range.getClientRects(), (rect) => rect.top)).size
       })).toBe(1)
     }
     await diagnosticScreenshot(page, { path: `test-results/energy-controls-${width}.png`, fullPage: true })
