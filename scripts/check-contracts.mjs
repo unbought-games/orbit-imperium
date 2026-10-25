@@ -65,3 +65,15 @@ for (const name of ['Nova Roma', null, undefined]) {
  assert.ok(reportPreview({ kind: 'Espionage', target }), 'report previews accept the recorded planet name');
 }
 console.log('Espionage target names are compatible with historical reports and previews.');
+
+const combatPayload = ajv.compile({ components: schema.components, $ref: '#/components/schemas/CombatPayload4' });
+const battle = { kind: 'Combat', at: 1000, target: { galaxy: 1, system: 2, position: 3 }, outcome: 'Draw', participants: [], rounds: [], survivors: [], gross_losses: [], recovered: [], debris: { metal: '0', crystal: '0', deuterium: '0' }, loot: { metal: '0', crystal: '0', deuterium: '0' } };
+for (const identity of [{}, { target_name: null }, { target_name: 'Nova Roma', target_kind: 'Planet' }, { target_name: 'Luna', target_kind: 'Moon' }]) {
+ assert.ok(combatPayload({ ...battle, ...identity }), 'combat snapshots retain legacy compatibility');
+ assert.ok(reportPreview({ kind: 'Combat', target: battle.target, ...identity }));
+}
+assert.equal(combatPayload({ ...battle, target_name: 42 }), false);
+assert.equal(combatPayload({ ...battle, target_kind: 'Unknown' }), false);
+assert.equal(reportPreview({ kind: 'ContactLost', target: battle.target, target_name: 'Hidden' }), false);
+assert.ok(espionage({ ...observed, target: { ...observed.target, kind: 'Moon', name: 'Luna' } }));
+console.log('Combat body identity is optional for legacy payloads and absent from restricted previews.');

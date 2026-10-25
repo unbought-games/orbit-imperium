@@ -153,6 +153,10 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
       kind: 'Combat',
       at,
       target: { galaxy: 1, system: 372, position: 10 },
+      ...(size === 'legacy' ? {} : {
+        target_name: huge ? 'VeryLongUnbrokenPlanetNameForMobileWrapping' : 'Nova Roma',
+        target_kind: size === 'defender' ? 'Moon' : 'Planet',
+      }),
       outcome: 'AttackerVictory',
       mission: 'Attack',
       return_at: at + 5400000,
@@ -243,6 +247,10 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
     await expect(report.getByRole('heading', { level: 2 })).toHaveText(
       size === 'defender' ? '✕ Defeat' : '✓ Victory',
     )
+    const identity = report.locator('header').first().locator('p').first()
+    const targetName = size === 'legacy' ? '' : huge ? 'VeryLongUnbrokenPlanetNameForMobileWrapping · ' : size === 'defender' ? 'Nova Roma (Moon) · ' : 'Nova Roma · '
+    await expect(identity).toContainText(`${targetName}[1:372:10]`)
+    await expect(identity.getByRole('link', { name: 'View target [1:372:10] in galaxy' })).toHaveAttribute('href', /galaxy\?galaxy=1&system=372&position=10/)
     await expect(page.getByText('Dispatches from the frontier.')).toHaveCount(0)
     await expect(
       report.getByText('Your cargo lost', { exact: true }),
@@ -305,6 +313,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
         ),
       ).toBe(true)
       await expect(report.getByRole('heading', { level: 2 })).toBeVisible()
+      await expect(identity).toContainText(`${targetName}[1:372:10]`)
       await page.evaluate(() => window.scrollTo(0, 0))
       await diagnosticScreenshot(page, {
         path: `${output}/${size}-${width}.png`,

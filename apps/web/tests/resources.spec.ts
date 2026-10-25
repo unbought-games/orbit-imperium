@@ -407,7 +407,7 @@ test('resource cost images expose live details on hover and keyboard focus', asy
       size: parseFloat(getComputedStyle(element).fontSize),
       color: getComputedStyle(element).color,
     }))
-  expect(await metal.locator('svg').evaluate(element => getComputedStyle(element).color)).toBe('rgb(145, 167, 191)')
+  await expect(metal.locator('svg')).toHaveCSS('color', 'rgb(203, 182, 141)')
   expect(amountStyle.color).toBe('rgb(244, 234, 210)')
   await metal.hover()
   const details = page.getByRole('dialog', { name: 'Metal', exact: true })

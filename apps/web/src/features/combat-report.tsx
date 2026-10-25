@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CoordinateLink } from './coordinate-link'
+import { BodyIdentity } from './body-identity'
 import { PlayerName } from './player-name'
 import type { PlayerNames } from './player-label'
 import { Heading } from '../ui/typography'
@@ -192,9 +192,12 @@ export function CombatReport({
       <header className={`${styles.outcome} ${styles[report.tone]}`}>
         <p className={styles.kicker}>
           Combat report ·{' '}
-          <CoordinateLink at={payload.target} label="target">
-            {report.target}
-          </CoordinateLink>
+          <BodyIdentity
+            name={payload.target_name}
+            kind={payload.target_kind}
+            at={payload.target}
+            label="target"
+          />
           {report.side && ` · You were the ${report.side.toLowerCase()}`}
         </p>
         <Heading level={2} className={styles.result}>

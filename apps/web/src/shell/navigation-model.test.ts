@@ -8,7 +8,7 @@ import {
 it('keeps the same four anchor meanings across every implemented route', () => {
   expect(navigationAnchor('overview')).toBe('Empire')
   for (const page of buildPages) expect(navigationAnchor(page)).toBe('Build')
-  for (const page of ['fleets', 'galaxy', 'dispatch'] as const)
+  for (const page of ['galaxy', 'dispatch', 'fleets'] as const)
     expect(navigationAnchor(page)).toBe('Fleet')
   for (const page of [
     'reports',
@@ -19,12 +19,12 @@ it('keeps the same four anchor meanings across every implemented route', () => {
     expect(navigationAnchor(page)).toBe('Menu')
   expect(buildPages[0]).toBe('resources')
 })
-it('places Galaxy between Fleets and Dispatch in the Fleet submenu and grouped menu', () => {
-  expect(fleetPages).toEqual(['fleets', 'galaxy', 'dispatch'])
+it('orders Fleet destinations as Galaxy, Dispatch, Fleets in the submenu and grouped menu', () => {
+  expect(fleetPages).toEqual(['galaxy', 'dispatch', 'fleets'])
   expect(
     navigationGroups.find((group) => group.title === 'Fleet & intelligence')
       ?.pages,
-  ).toEqual(['fleets', 'galaxy', 'dispatch', 'reports'])
+  ).toEqual(['galaxy', 'dispatch', 'fleets', 'reports'])
   expect(
     navigationGroups.find((group) => group.title === 'Empire')?.pages,
   ).toEqual(['overview', 'resource-settings'])
