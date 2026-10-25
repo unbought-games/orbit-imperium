@@ -163,7 +163,7 @@
     white-space: nowrap;
   }
   .table th:first-child {
-    width: 3rem;
+    width: 3.5rem;
   }
   .table th:last-child {
     width: 6.75rem;
@@ -172,4 +172,32 @@
   .table td {
     padding-inline: 0.25rem;
   }
+}
+
+.changeHeading,
+.movement {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.movement {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.movement[data-direction='up'] {
+  color: var(--ice);
+}
+.movement[data-direction='down'] {
+  color: var(--danger);
+}
+
+.changeHeading {
+  white-space: nowrap;
+}
+.myChange {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  color: var(--text-muted);
 }
