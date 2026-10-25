@@ -515,8 +515,8 @@ for (const width of [1440, 390, 320]) {
       await expect(page.locator('main h1')).toHaveText(tab)
       // Work summaries can have their own headings; the repeated page header is gone.
       await expect(page.locator('main > header').getByRole('heading', { name: tab, exact: true })).toHaveCount(0)
-      await expect(page.locator('main details')).toHaveCount(0)
-      await expect(page.locator('main summary')).toHaveCount(0)
+      await expect(page.locator('main details')).toHaveCount(tab === 'Shipyard' ? 1 : 0)
+      await expect(page.locator('main summary')).toHaveText(tab === 'Shipyard' ? ['Compare ships'] : [])
       if (tab === 'Resources') {
         await expect(page.getByText(/Production, storage and energy/)).toHaveCount(0)
         await expect(page.getByRole('button', { name: 'Resource settings', exact: true })).toHaveCount(0)

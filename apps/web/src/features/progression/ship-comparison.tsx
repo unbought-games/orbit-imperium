@@ -32,7 +32,10 @@ export function ShipComparison({
   initialShipId?: string
 }) {
   const [ids, setIds] = useState<string[]>(() => [
-    ...new Set([initialShipId ?? 'LightFighter', 'HeavyFighter']),
+    ...new Set([
+      initialShipId ?? 'LightFighter',
+      initialShipId === 'HeavyFighter' ? 'LightFighter' : 'HeavyFighter',
+    ]),
   ])
   const [mode, setMode] = useState<StatMode>('current')
   const ships = catalog.filter((e) => e.enabled && e.key.kind === 'Ship')

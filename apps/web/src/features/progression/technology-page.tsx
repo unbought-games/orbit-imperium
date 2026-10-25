@@ -245,13 +245,6 @@ function TechnologyInspector({
   }
   return (
     <>
-      {selected.key.kind === 'Ship' && (
-        <ShipComparison
-          catalog={view.catalog}
-          research={view.research}
-          initialShipId={selected.key.id}
-        />
-      )}
       {selected.key.kind === 'Building' ? (
         <>
           <BuildingDetails
@@ -285,6 +278,13 @@ function TechnologyInspector({
           onQuantity={setQuantity}
           onInspect={() => inspect()}
           onTechnology={() => setTechnology(true)}
+        />
+      )}
+      {selected.key.kind === 'Ship' && (
+        <ShipComparison
+          catalog={view.catalog}
+          research={view.research}
+          initialShipId={selected.key.id}
         />
       )}
       {technology && (

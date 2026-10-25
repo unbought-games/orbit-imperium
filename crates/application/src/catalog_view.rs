@@ -282,7 +282,8 @@ mod tests {
     }
     #[test]
     fn comparison_metadata_matches_active_engine_rules() {
-        let mut rules = Ruleset::signup(UniverseProfile::signup(1, 100).unwrap()).unwrap();
+        let mut rules =
+            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-11.json")).unwrap();
         rules
             .artifact
             .ships
