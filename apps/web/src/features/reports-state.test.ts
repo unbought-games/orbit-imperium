@@ -49,6 +49,7 @@ it('merges overlapping page IDs once while keeping next-page metadata', () => {
   expect(mergeReportPages(first, next)).toEqual({
     ...next,
     items: ['a', 'b', 'c'],
+    player_names: {},
   })
   expect(first.items).toHaveLength(2)
   expect(next.items).toHaveLength(3)
@@ -160,4 +161,23 @@ it('request scope fences readiness, binding epoch and revision changes without d
   expect(reportRequestScope(store.getState())).not.toBe(scope)
   store.setState({ ready: true, binding: { ...binding, epoch: 'new' } })
   expect(reportRequestScope(store.getState())).not.toBe(scope)
+})
+
+it('retains names from earlier pages and accepts refreshed public names', () => {
+  const first = {
+    ...storedPage(['a']),
+    player_names: { one: 'Original', two: 'Earlier page' },
+  }
+  const next = {
+    ...page(['b'], null),
+    player_names: { one: 'Renamed', three: 'Next page' },
+  }
+  expect(mergeReportPages(first, next).player_names).toEqual({
+    one: 'Renamed',
+    two: 'Earlier page',
+    three: 'Next page',
+  })
+  expect(mergeReportPages(first, page(['b'], null)).player_names).toEqual(
+    first.player_names,
+  )
 })
