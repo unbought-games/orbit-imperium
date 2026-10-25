@@ -8,8 +8,8 @@ import {
 import {
   canSubmitQuote,
   manufacturingPending,
+  projectGameView,
 } from '../../client-model/game-projection'
-import { label } from '../../ui/format'
 import {
   currentProgressionOptions,
   progressionCommand,
@@ -97,22 +97,26 @@ export function useManufacturingOrder(
           'Cost or build time changed. Check the updated order and build again.',
         )
       }
-      const currentView = model.store.getState().view
+      const currentView = projectGameView(model.store.getState())
       const current =
         currentView && currentView.protocol !== 2
           ? currentProgressionOptions(validated, currentView)
           : null
+      // Eligibility is live presentation, not a durable result of this attempt.
+      // A concurrent spend or changed requirement is shown by the refreshed
+      // preview; keeping it as a local error would outlive its blocker.
+      if (current?.blockers.length) {
+        refresh()
+        return
+      }
       const command = progressionCommand(current)
       if (
         !current ||
         !command ||
-        current.blockers.length ||
         !canSubmitQuote(model.store.getState(), command, current)
       ) {
         throw new Error(
-          current?.blockers.length
-            ? `Unable to build: ${current.blockers.map((entry) => label(entry.code)).join(', ')}.`
-            : 'This order is no longer available. Check the updated order and try again.',
+          'This order is no longer available. Check the updated order and try again.',
         )
       }
       const id = await model.send(command, current)
