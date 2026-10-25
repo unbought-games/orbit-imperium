@@ -1562,7 +1562,9 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
       },
     })
   })
+  console.info('Report diagnostic: before reports list navigation')
   await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  console.info('Report diagnostic: after reports list navigation')
   await expect(
     page.getByRole('link', { name: 'Espionage', exact: true }),
   ).toBeVisible()
@@ -1583,7 +1585,9 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     path: 'test-results/reports-list-phone.png',
     fullPage: true,
   })
+  console.info('Report diagnostic: before open report')
   await page.getByRole('link', { name: 'Espionage', exact: true }).click()
+  console.info('Report diagnostic: after open report')
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('No stationed ships')
   await expect(report).toContainText(
@@ -1607,9 +1611,11 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await expect(page.getByRole('button', { name: 'Mark read', exact: true })).toHaveCount(0)
   await expect(unreadAlert).toHaveCount(0)
   await expect.poll(() => header.read).toBe(true)
+  console.info('Report diagnostic: before prepare attack')
   await page
     .getByRole('button', { name: 'Attack', exact: true })
     .click()
+  console.info('Report diagnostic: after prepare attack')
   await expect(page.getByLabel('System', { exact: true })).toHaveValue('372')
   await expect(page.getByLabel('Position', { exact: true })).toHaveValue('10')
   await expect(page.getByText(/Prepared from an observation/)).toBeVisible()
@@ -1618,14 +1624,18 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     fullPage: true,
   })
   reportMode = 'empty'
+  console.info('Report diagnostic: before reports list navigation')
   await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  console.info('Report diagnostic: after reports list navigation')
   await expect(page.getByText('No reports to show.', { exact: true })).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/reports-empty-phone.png',
     fullPage: true,
   })
   reportMode = 'failed'
+  console.info('Report diagnostic: before failed report navigation')
   await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
+  console.info('Report diagnostic: after failed report navigation')
   await expect(
     page.getByRole('button', { name: 'Retry reports', exact: true }),
   ).toBeVisible()
@@ -1637,7 +1647,9 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     fullPage: true,
   })
   reportMode = 'populated'
+  console.info('Report diagnostic: before retry report')
   await page.getByRole('button', { name: 'Retry reports', exact: true }).click()
+  console.info('Report diagnostic: after retry report')
   await expect(
     page.getByRole('region', { name: 'Report observation' }),
   ).toContainText('No stationed ships')
@@ -2638,6 +2650,7 @@ for (const width of [320, 390, 1440]) {
     await expect(
       page.getByRole('searchbox', { name: 'Search owned worlds' }),
     ).toHaveCount(0)
+    console.info('Selector diagnostic await trigger.click()')
     await trigger.click()
     const list = page.getByRole('listbox')
     const options = page.getByRole('option')
@@ -2670,6 +2683,7 @@ for (const width of [320, 390, 1440]) {
     await expect(list).toHaveCount(0)
     await expect(trigger).toBeFocused()
     await expect(trigger).toHaveAttribute('data-value', home.id)
+    console.info('Selector diagnostic await trigger.press("Enter")')
     await trigger.press('Enter')
     await expect(options.first()).toBeFocused()
     await page.keyboard.press('ArrowDown')
@@ -2677,18 +2691,24 @@ for (const width of [320, 390, 1440]) {
     await page.keyboard.press('Enter')
     await expect(trigger).toHaveAttribute('data-value', first.id)
     await expect(page).toHaveURL(new RegExp(`/b/${first.id}/overview$`))
+    console.info('Selector diagnostic await page.goBack()')
     await page.goBack()
     await expect(trigger).toHaveAttribute('data-value', home.id)
+    console.info('Selector diagnostic await trigger.press("Enter")')
     await trigger.press('Enter')
     await expect(options.first()).toBeFocused()
     await page.keyboard.press('n')
     await expect(options.nth(2)).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(trigger).toHaveAttribute('data-value', first.id)
+    console.info('Selector diagnostic await selectBody(page, later.id)')
     await selectBody(page, later.id)
+    console.info('Selector diagnostic await page.reload()')
     await page.reload()
     await expect(trigger).toHaveAttribute('data-value', later.id)
+    console.info('Selector diagnostic await trigger.click()')
     await trigger.click()
+    await expect(list).toBeVisible()
     await page.mouse.click(width - 10, 800)
     await expect(list).toHaveCount(0)
     await expect(trigger).toHaveAttribute('data-value', later.id)
