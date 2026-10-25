@@ -2,6 +2,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
+import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 type S = components['schemas']
 
 async function setup(page: Page) {
@@ -13,7 +14,7 @@ async function setup(page: Page) {
   await shellFixture(page, {
     protocol: 4,
     bodies: [body, colony],
-    extraCapabilities: ['Attack', 'Espionage', 'Harvest'],
+    extraCapabilities: ['Attack', 'Espionage', 'Harvest', 'Deploy', 'Reports'],
     catalog: [
       {
         key: { kind: 'Ship', id: 'SmallCargo' },
@@ -35,6 +36,7 @@ async function setup(page: Page) {
     blocker: null as S['GameError4'] | null,
     quoteError: null as S['GameError4'] | null,
     launchError: 'BeginnerProtected' as S['GameError4'] | null,
+    destination: null as S['MissionDestination4'] | null,
     resolves: 0,
     quotes: 0,
     launches: 0,
@@ -77,7 +79,8 @@ async function setup(page: Page) {
       state.resolves++
       const own = query.selection.coordinates.position === 2
       data =
-        query.selection.type === 'DebrisAt'
+        state.destination ??
+        (query.selection.type === 'DebrisAt'
           ? {
               type: 'Debris',
               coordinates: query.selection.coordinates,
@@ -88,7 +91,7 @@ async function setup(page: Page) {
               id: own ? colony.id : id(20),
               expected_kind: 'Planet',
               expected_owner: own ? binding.player : id(30),
-            }
+            })
     } else {
       state.quotes++
       if (state.quoteError)
@@ -155,6 +158,157 @@ const review = (page: Page) =>
   page.getByRole('button', { name: 'Review fleet', exact: true })
 const mission = (page: Page) =>
   page.getByRole('combobox', { name: 'Mission', exact: true })
+
+async function prepareHistoricalDraft(page: Page) {
+  const reportId = id(63)
+  await page.route(`**/api/**/reports/${reportId}`, async (route) => {
+    const request = route.request().postDataJSON()
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        request_id: request.request_id,
+        viewer_revision: '1',
+        sampled_at: Date.now(),
+        as_of_ms: Date.now(),
+        data: {
+          header: {
+            id: reportId,
+            kind: 'Espionage',
+            observed_at: 1000,
+            read: true,
+            hidden: false,
+          },
+          payload: {
+            ...reportObservation,
+            target: {
+              ...reportObservation.target,
+              body: id(20),
+              owner: id(30),
+              coordinates: { galaxy: 1, system: 1, position: 1 },
+            },
+          },
+        },
+      },
+    })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
+  await page.getByRole('button', { name: 'Attack', exact: true }).click()
+  await expect(mission(page)).toHaveValue('Attack')
+  await expect(
+    page.getByText('Prepared from an observation at', { exact: false }),
+  ).toBeVisible()
+  await page.getByLabel('Small Cargo · 2 available').fill('1')
+}
+
+for (const historical of [true, false]) {
+  test(`owned-colony deploy launches with ${historical ? 'an edited historical draft' : 'manual coordinates'}`, async ({
+    page,
+  }) => {
+    const state = await setup(page)
+    state.launchError = null
+    if (historical) await prepareHistoricalDraft(page)
+    await mission(page).selectOption('Deploy')
+    await page.getByLabel('Position', { exact: true }).fill('2')
+    await page.getByLabel('Metal', { exact: true }).fill('42')
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      await review(page).click()
+      const quote = page.getByRole('region', { name: 'Fleet quote' })
+      await expect(quote).toBeVisible()
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await diagnosticScreenshot(page, {
+        path: `test-results/deploy-${historical ? 'historical' : 'manual'}-${width}.png`,
+        fullPage: true,
+      })
+      if (width === 390)
+        await page.getByRole('button', { name: 'Edit mission' }).click()
+    }
+    const launch = page.waitForRequest('**/commands')
+    await page.getByRole('button', { name: /^Send / }).click()
+    expect((await launch).postDataJSON().gameplay.command).toMatchObject({
+      type: 'World',
+      action: {
+        type: 'LaunchFleet',
+        intent: {
+          mission: 'Deploy',
+          origin: body.id,
+          destination: {
+            type: 'Body',
+            id: id(6),
+            expected_owner: binding.player,
+            expected_kind: 'Planet',
+          },
+          cargo: { metal: '42000000', crystal: '0', deuterium: '0' },
+        },
+        expected_terms_hash: 'b'.repeat(64),
+      },
+    })
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('0')
+    expect(state.launches).toBe(1)
+  })
+}
+
+for (const change of ['identity', 'owner'] as const) {
+  test(`historical target ${change} changes still block review after editing away and back`, async ({
+    page,
+  }) => {
+    const state = await setup(page)
+    await prepareHistoricalDraft(page)
+    await mission(page).selectOption('Transport')
+    await page.getByLabel('Position', { exact: true }).fill('2')
+    await review(page).click()
+    await expect(
+      page.getByRole('region', { name: 'Fleet quote' }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Edit mission' }).click()
+    state.destination = {
+      type: 'Body',
+      id: change === 'identity' ? id(21) : id(20),
+      expected_owner: change === 'owner' ? binding.player : id(30),
+      expected_kind: 'Planet',
+    }
+    await page.getByLabel('Position', { exact: true }).fill('1')
+    await review(page).click()
+    await expect(page.getByRole('alert')).toContainText(
+      'The observed target has changed',
+    )
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
+      0,
+    )
+    expect(state.launches).toBe(0)
+  })
+}
+
+test('a historical body draft can switch to harvesting at the same coordinates', async ({
+  page,
+}) => {
+  await setup(page)
+  await prepareHistoricalDraft(page)
+  await mission(page).selectOption('Harvest')
+  await review(page).click()
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
+})
+
+test('an edited historical deploy still reports authoritative quote rejection', async ({
+  page,
+}) => {
+  const state = await setup(page)
+  await prepareHistoricalDraft(page)
+  await mission(page).selectOption('Deploy')
+  await page.getByLabel('Position', { exact: true }).fill('2')
+  state.quoteError = 'InvalidInput'
+  await review(page).click()
+  await expect(page.getByRole('alert')).toContainText(
+    'This mission is not valid.',
+  )
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+})
 
 test('successful dispatch resets ship and cargo quantities after preserving edits through review', async ({
   page,
@@ -248,7 +402,9 @@ test('flight timing updates with speed and selected ships without opening review
   await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   expect(state.launches).toBe(0)
-  await diagnosticScreenshot(page, { path: 'test-results/dispatch-flight-timing-390.png' })
+  await diagnosticScreenshot(page, {
+    path: 'test-results/dispatch-flight-timing-390.png',
+  })
 })
 
 test('late timing replies cannot replace a newer speed and failed estimates clear obsolete times', async ({
@@ -743,7 +899,9 @@ for (const width of [320, 390, 1280]) {
       .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).color))
     expect(new Set(colors).size).toBe(3)
     await cargo.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, { path: `test-results/dispatch-cargo-${width}.png` })
+    await diagnosticScreenshot(page, {
+      path: `test-results/dispatch-cargo-${width}.png`,
+    })
     await mission(page).selectOption('Attack')
     await expect(
       page.getByText('Beginner protection can prevent attacks', {
