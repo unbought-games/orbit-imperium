@@ -40,6 +40,7 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
     let Ok(path) = percent_encoding::percent_decode_str(request.uri().path()).decode_utf8() else {
         return StatusCode::NOT_FOUND.into_response();
     };
+    let shared_report = path.starts_with("/reports/shared/");
     let namespace = path.split('/').nth(1).unwrap_or_default();
     if matches!(namespace, "api" | "health") {
         return StatusCode::NOT_FOUND.into_response();
@@ -77,13 +78,21 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
                 Ok(t) => t,
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             };
-            let bootstrap = (assets.prepare)(request.headers().clone()).await;
+            let bootstrap = if shared_report {
+                Bootstrap {
+                    version: 1,
+                    signup_enabled: false,
+                    result: orbit_application::BootstrapResult::Anonymous,
+                }
+            } else {
+                (assets.prepare)(request.headers().clone()).await
+            };
             match render_bootstrap_html(&template, &bootstrap) {
                 Ok(html) => html,
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             }
         };
-        return (
+        let mut response = (
             [
                 (header::CONTENT_TYPE, "text/html"),
                 (header::CACHE_CONTROL, "private, no-store"),
@@ -92,6 +101,16 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
             Body::from(body),
         )
             .into_response();
+        if shared_report {
+            response.headers_mut().insert(
+                "x-robots-tag",
+                "noindex, nofollow, noarchive".parse().unwrap(),
+            );
+            response
+                .headers_mut()
+                .insert("referrer-policy", "no-referrer".parse().unwrap());
+        }
+        return response;
     }
     match assets.files.try_call(request).await {
         Ok(response) => response.into_response(),
@@ -113,6 +132,43 @@ mod tests {
     use tower::ServiceExt;
 
     const INDEX: &str = "<!doctype html><html><body>Orbit UI<script id=\"orbit-bootstrap\" type=\"application/json\"></script></body></html>";
+
+    #[tokio::test]
+    async fn shared_report_document_never_bootstraps_a_session_and_discourages_indexing() {
+        let assets = Assets::new();
+        let app = router_with(
+            assets.0.to_string_lossy().into_owned(),
+            Arc::new(|_| panic!("public report must not initialize the reader's game")),
+        );
+        let response = app
+            .oneshot(
+                Request::get("/reports/shared/00000000-0000-4000-8000-000000000001")
+                    .header(header::COOKIE, "orbit_session=private")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers()["x-robots-tag"],
+            "noindex, nofollow, noarchive"
+        );
+        assert_eq!(response.headers()["referrer-policy"], "no-referrer");
+        assert_eq!(
+            response.headers()[header::CACHE_CONTROL],
+            "private, no-store"
+        );
+        let body = String::from_utf8(
+            to_bytes(response.into_body(), 65536)
+                .await
+                .unwrap()
+                .to_vec(),
+        )
+        .unwrap();
+        assert!(body.contains("anonymous"));
+        assert!(!body.contains("private"));
+    }
 
     fn guest() -> Bootstrap {
         Bootstrap {

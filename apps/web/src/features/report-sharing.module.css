@@ -1,0 +1,53 @@
+.control {
+  width: 100%;
+}
+.settings {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+.settings h3 {
+  margin: 0;
+}
+.settings label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.settings input[type='checkbox'] {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.settings .link {
+  display: grid;
+}
+.link input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.6rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.publicPage {
+  width: min(72rem, 100%);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  display: grid;
+  gap: 1.25rem;
+  overflow-wrap: anywhere;
+}
+.brand {
+  color: inherit;
+  font-weight: 700;
+}

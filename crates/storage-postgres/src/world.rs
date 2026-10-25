@@ -655,6 +655,14 @@ pub(crate) async fn save(
             return Err(StoreError::CorruptData);
         }
         sqlx::query("UPDATE mission_report_recipients SET read=$3,hidden=$4 WHERE report=$1 AND recipient=$2").bind(state.report.0).bind(state.recipient.0).bind(state.read).bind(state.hidden).execute(&mut **tx).await.map_err(db_error)?;
+        if state.hidden {
+            sqlx::query("DELETE FROM mission_report_shares WHERE report=$1 AND recipient=$2")
+                .bind(state.report.0)
+                .bind(state.recipient.0)
+                .execute(&mut **tx)
+                .await
+                .map_err(db_error)?;
+        }
     }
     sqlx::query("INSERT INTO world_evidence(universe,input,deltas,audits) VALUES($1,$2,$3,$4)")
         .bind(u.0)
