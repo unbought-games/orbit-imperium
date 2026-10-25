@@ -256,3 +256,25 @@ test('departed notice authors use authorized current profile tags while roster m
   await expect(roster.getByRole('link', { name: 'Alliance Starlight Assembly [STAR]', exact: true })).toHaveCount(2)
   await expect(roster.getByRole('link', { name: 'Alliance Other Alliance [AWAY]', exact: true })).toHaveCount(0)
 })
+
+test('a delegated manager can dismiss a locked member role editor without submitting', async ({ page }) => {
+  const detail = own()
+  const leader = id(899)
+  detail.leader = leader
+  detail.permissions = ['ViewMembers', 'AssignRoles']
+  detail.grantable_permissions = ['ViewMembers']
+  detail.members!.push({ player: leader, username: 'Leader', joined_at: 1700000000000, roles: [baseRole.id] })
+  detail.roles!.push({ id: id(872), name: 'Intelligence', is_default: false, permissions: ['ViewMembers', 'ViewActivity'], grantable_permissions: [] })
+  detail.members!.find(m => m.player === member)!.roles.push(id(872))
+  const f = await fixture(page, detail)
+  await page.goto('/u/andromeda/alliance')
+  await page.getByRole('button', { name: 'Members', exact: true }).click()
+  await page.getByRole('button', { name: 'Assign roles to Nova', exact: true }).click()
+  await expect(page.getByText('This member holds a role above your delegated authority.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save member roles', exact: true })).toBeDisabled()
+  const cancel = page.getByRole('button', { name: 'Cancel role changes', exact: true })
+  await expect(cancel).toBeEnabled()
+  await cancel.click()
+  await expect(page.getByRole('button', { name: 'Assign roles to Nova', exact: true })).toBeVisible()
+  expect(f.commands).toEqual([])
+})

@@ -775,6 +775,8 @@ fn validates_unicode_lengths_ascii_tags_and_markdown_without_partial_mutation() 
         "<script>alert(1)</script>".into(),
         "![image](https://example.test/a)".into(),
         "[click](javascript:alert(1))".into(),
+        "[click](data:text/html,example)".into(),
+        "[reference]: file:///private".into(),
         "[x](JaVa\nScRiPt:alert(1))".into(),
         "bad\u{0}".into(),
     ] {
@@ -968,4 +970,44 @@ fn unchanged_profile_update_still_requires_administration_and_is_atomic() {
     let before = s.clone();
     assert_eq!(run(&mut s, 2, action), Err(AllianceError::Forbidden));
     assert_eq!(s, before);
+}
+
+#[test]
+fn ordinary_protocol_words_remain_valid_alliance_prose() {
+    let text = "Scouting data: compare our routes. Configuration file: keep a copy. JavaScript: discuss tools.";
+    let mut s = state();
+    run(
+        &mut s,
+        1,
+        AllianceAction::CreatePost {
+            alliance: id(10),
+            title: "Scouting notes".into(),
+            body: text.into(),
+        },
+    )
+    .unwrap();
+    assert_eq!(s.posts.last().unwrap().body, text);
+    run(
+        &mut s,
+        1,
+        AllianceAction::Update {
+            alliance: id(10),
+            name: "Test Alliance".into(),
+            tag: "TAG".into(),
+            public_text: text.into(),
+            recruitment: AllianceRecruitment::Application,
+        },
+    )
+    .unwrap();
+    assert_eq!(s.public_text, text);
+    run(
+        &mut s,
+        2,
+        AllianceAction::Apply {
+            alliance: id(10),
+            text: text.into(),
+        },
+    )
+    .unwrap();
+    assert_eq!(s.applications.last().unwrap().text, text);
 }

@@ -49,15 +49,23 @@ pub(super) fn markdown(value: &str, max: usize, field: &str) -> Result<(), Allia
             "raw HTML and images are not supported".into(),
         ));
     }
-    // Rendering independently enforces a safe URL allowlist.
+    // Only reject destination-shaped Markdown here, not ordinary prose such as
+    // "scouting data:". Rendering independently validates parsed link URLs.
     let compact: String = value
         .chars()
         .filter(|c| !c.is_whitespace())
         .flat_map(char::to_lowercase)
         .collect();
-    if ["javascript:", "vbscript:", "data:", "file:"]
-        .iter()
-        .any(|scheme| compact.contains(scheme))
+    if compact
+        .split("](")
+        .skip(1)
+        .chain(compact.split("]:").skip(1))
+        .any(|destination| {
+            let destination = destination.trim_start_matches('<');
+            ["javascript:", "vbscript:", "data:", "file:"]
+                .iter()
+                .any(|scheme| destination.starts_with(scheme))
+        })
     {
         return Err(AllianceError::InvalidInput("unsafe link protocol".into()));
     }
