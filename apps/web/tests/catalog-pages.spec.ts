@@ -2048,6 +2048,9 @@ for (const width of [390, 1280]) {
       await expect(modalData).not.toHaveAttribute('open', '')
       await modalData.locator('summary').click()
       await expect(modalData).toContainText(text)
+      if (route.startsWith('research')) {
+        await expect(dialog.getByRole('list', { name: 'Prerequisites', exact: true })).toHaveCount(1)
+      }
       await expect.poll(() => dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
       await dialog.getByRole('button', { name: 'Close technology', exact: true }).click()
     }

@@ -146,6 +146,34 @@ describe('technical data', () => {
     expect(html).toContain('Unavailable for this level')
     expect(html).not.toContain('108,642')
   })
+  it('distinguishes a known zero bonus from missing completed research', () => {
+    const candidate = {
+      ...entry,
+      technical_data: {
+        ...data,
+        bonuses: [
+          {
+            label: 'Attack',
+            fraction: ['1', '10'],
+            subject: null,
+            condition: null,
+          },
+        ],
+      },
+    }
+    const html = renderToStaticMarkup(
+      createElement(TechnicalData, {
+        entry: candidate,
+        body,
+        view: {
+          ...view,
+          research: [{ research: 'WeaponsTechnology', level: 0 }],
+        },
+      }),
+    )
+    expect(html).toContain('+10% of base')
+    expect(html).toContain('Level 0: +0% of base')
+  })
   it('does not label missing completed levels as zero', () => {
     const html = render({
       ...entry,

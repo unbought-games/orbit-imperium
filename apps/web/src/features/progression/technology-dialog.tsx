@@ -220,11 +220,6 @@ export function TechnologyDialog({
                 ? 'Available in this universe'
                 : 'Unavailable in this universe'}
             </p>
-            <Requirements
-              requirements={entry.requirements}
-              view={props.view}
-              body={props.body}
-            />
           </>
         )}
       </div>
