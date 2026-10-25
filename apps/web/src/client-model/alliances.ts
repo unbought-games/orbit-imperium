@@ -109,6 +109,7 @@ export class AlliancesController {
   private async load(
     query: S['AllianceQuery'],
     previous?: AllianceDetail | null,
+    successNotice = '',
   ): Promise<boolean> {
     this.query = query
     const generation = ++this.generation
@@ -117,6 +118,7 @@ export class AlliancesController {
       view: null,
       directory: null,
       error: '',
+      notice: '',
     })
     try {
       let response: S['AllianceView'] | null
@@ -182,9 +184,9 @@ export class AlliancesController {
         view,
         directory,
         loading: false,
-        ...(recoveredCursor
-          ? { notice: 'The noticeboard changed. Showing the newest notices.' }
-          : {}),
+        notice: recoveredCursor
+          ? 'The noticeboard changed. Showing the newest notices.'
+          : successNotice,
       })
       return true
     } catch (error) {
@@ -233,9 +235,12 @@ export class AlliancesController {
         pending: null,
         view: null,
         directory: null,
-        notice: 'Alliance updated.',
       })
-      await this.load({ type: 'Mine' }, previousView?.alliance)
+      await this.load(
+        { type: 'Mine' },
+        previousView?.alliance,
+        'Alliance updated.',
+      )
       return true
     } catch (error) {
       if (generation !== this.generation) return false

@@ -300,6 +300,7 @@ test('expired noticeboard cursors recover to fresh notices and Refresh remains u
   await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
   await page.getByRole('button',{name:'Refresh alliance',exact:true}).click()
   await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
+  await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toHaveCount(0)
   expect(queries.filter(q=>q.type==='Detail' && q.post_before)).toHaveLength(1)
   expect(queries.at(-1)).toEqual({type:'Detail',alliance,post_before:null})
 })

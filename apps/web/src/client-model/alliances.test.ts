@@ -73,6 +73,7 @@ it('retries uncertain commands with immutable identity and blocks double submiss
   })
   expect(await controller.run(action)).toBe(false)
   expect(await controller.retry()).toBe(true)
+  expect(controller.store.getState().notice).toBe('Alliance updated.')
   expect(command.mock.calls[1][0]).toEqual(command.mock.calls[0][0])
   expect(read).toHaveBeenCalledWith({ type: 'Mine' })
   expect(controller.store.getState().pending).toBeNull()
@@ -194,6 +195,7 @@ it('recovers an expired board cursor and manual refresh starts at the newest pag
     post_before: 'valid-page',
   })
   await controller.refresh()
+  expect(controller.store.getState().notice).toBe('')
   expect(read).toHaveBeenLastCalledWith({
     type: 'Detail',
     alliance: 'alliance',
