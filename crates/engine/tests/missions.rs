@@ -1060,6 +1060,7 @@ fn probe_attack_empty_victory_has_zero_loot_and_qualifies_but_inactive_does_not(
 #[test]
 fn total_first_round_loss_is_terminal_private_and_never_loots() {
     let (mut s, r, p, b, t) = raid_fixture();
+    s.bodies.get_mut(&t).unwrap().name = Some("Hidden defender name".into());
     let mut intent = intent(&s, p, b, t);
     intent.mission = Mission::Attack;
     let event = launch_raid(&mut s, &r, p, b, intent, 1000, 1200);
@@ -1097,6 +1098,8 @@ fn total_first_round_loss_is_terminal_private_and_never_loots() {
         "loot",
         "outcome",
         "return_at",
+        "target_name",
+        "target_kind",
     ] {
         assert!(observer.get(key).is_none(), "{key}");
     }
@@ -2564,3 +2567,46 @@ fn report_removal_is_recipient_scoped_reversible_and_preserves_evidence() {
 
 #[path = "missions/cruiser.rs"]
 mod cruiser;
+
+#[test]
+fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
+    for name in [Some("Nova Roma"), None] {
+        let (mut s, r, p, b, t) = raid_fixture();
+        s.bodies.get_mut(&t).unwrap().name = Some("Name at launch".into());
+        let mut request = intent(&s, p, b, t);
+        request.mission = Mission::Attack;
+        let arrival = launch_raid(&mut s, &r, p, b, request, 1000, 5200);
+        clear_units(&mut s, t);
+        s.bodies.get_mut(&t).unwrap().name = name.map(str::to_owned);
+        let result = run(
+            &mut s,
+            &r,
+            p,
+            b,
+            arrival.at,
+            5201,
+            Input::Event(arrival.event),
+        );
+        apply(&mut s, result);
+        s.bodies.get_mut(&t).unwrap().name = Some("Renamed later".into());
+        let report = s
+            .world
+            .as_ref()
+            .unwrap()
+            .records
+            .reports
+            .values()
+            .find(|r| r.kind == "Combat")
+            .unwrap();
+        for recipient in [p, s.bodies[&t].owner] {
+            let payload = &report.payloads[&recipient];
+            assert_eq!(payload["kind"], "Combat");
+            assert_eq!(payload["target_name"], serde_json::json!(name));
+            assert_eq!(payload["target_kind"], "Planet");
+            assert_eq!(
+                payload["target"],
+                serde_json::json!(s.bodies[&t].coordinates)
+            );
+        }
+    }
+}

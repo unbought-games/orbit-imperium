@@ -9,8 +9,8 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await shellFixture(page, { protocol: 4, sampledAt: now })
   const items: components['schemas']['ReportHeader4'][] = [
     { id: id(70), kind: 'Returned', observed_at: now - 120000, read: false, hidden: false, preview: { kind: 'Returned', origin_coordinates: { galaxy: 1, system: 1, position: 5 }, ships: [{ ship_type: 'EspionageProbe', count: '1' }], cargo: { metal: '0', crystal: '0', deuterium: '0' } } },
-    { id: id(71), kind: 'Espionage', observed_at: now - 134000, read: false, hidden: false, preview: { kind: 'Espionage', target: { body: id(80), owner: id(9), kind: 'Planet', coordinates: { galaxy: 1, system: 1, position: 3 } }, resources: { visibility: 'Known', value: { metal: '125000000000', crystal: '80000000000', deuterium: '12000000000' } }, fleet: { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '3' }] }, defenses: { visibility: 'Unknown' } } },
-    { id: id(72), kind: 'Combat', observed_at: now - 600000, read: true, hidden: false, preview: { kind: 'Combat', target: { galaxy: 1, system: 2, position: 7 }, outcome: 'AttackerVictory', participants: [{ owner: binding.player, side: 'Attacker' }], loot: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
+    { id: id(71), kind: 'Espionage', observed_at: now - 134000, read: false, hidden: false, preview: { kind: 'Espionage', target: { body: id(80), owner: id(9), kind: 'Planet', name: 'Nova Roma', coordinates: { galaxy: 1, system: 1, position: 3 } }, resources: { visibility: 'Known', value: { metal: '125000000000', crystal: '80000000000', deuterium: '12000000000' } }, fleet: { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '3' }] }, defenses: { visibility: 'Unknown' } } },
+    { id: id(72), kind: 'Combat', observed_at: now - 600000, read: true, hidden: false, preview: { kind: 'Combat', target_name: 'Luna', target_kind: 'Moon', target: { galaxy: 1, system: 2, position: 7 }, outcome: 'AttackerVictory', participants: [{ owner: binding.player, side: 'Attacker' }], loot: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
     { id: id(73), kind: 'Returned', observed_at: now - 900000, read: true, hidden: false, preview: { kind: 'Returned', origin_coordinates: { galaxy: 1, system: 1, position: 5 }, ships: [{ ship_type: 'LightFighter', count: '90' }, { ship_type: 'SmallCargo', count: '15' }], cargo: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
   ]
   await page.route('**/api/**/reports', async route => {
@@ -83,6 +83,8 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await expect(rows.first().getByRole('link', { name: 'Returned', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(70)}`)
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
+    await expect(rows.nth(1)).toContainText('Nova Roma · [1:1:3]')
+    await expect(rows.nth(2)).toContainText('Luna (Moon) · [1:2:7]')
     const heading = rows.first().locator('strong')
     expect((await heading.boundingBox())!.x).toBe((await rows.first().boundingBox())!.x)
     expect((await rows.first().boundingBox())!.height).toBeLessThanOrEqual(width >= 600 ? 72 : 96)

@@ -19,7 +19,15 @@ pub fn report_preview(payload: &Value) -> Value {
             "cargo",
             "ships",
         ],
-        Some("Combat") => &["target", "outcome", "loot", "debris", "mission"],
+        Some("Combat") => &[
+            "target",
+            "target_name",
+            "target_kind",
+            "outcome",
+            "loot",
+            "debris",
+            "mission",
+        ],
         Some("ContactLost") => &["target", "own_lost_ships", "own_cargo_loss"],
         Some("Colonized" | "ColonizationFailed") => &["destination_coordinates", "reason"],
         _ => &[],
@@ -93,5 +101,17 @@ mod tests {
             returned["origin_coordinates"]
         );
         assert!(preview.get("fleet").is_none());
+    }
+    #[test]
+    fn keeps_only_recipient_visible_historical_body_identity() {
+        let payload = json!({"kind":"Combat","target":{"galaxy":1,"system":2,"position":3},"target_name":"Nova Roma","target_kind":"Planet"});
+        assert_eq!(report_preview(&payload), payload);
+        let restricted = json!({"kind":"ContactLost","target":payload["target"],"target_name":"Hidden","target_kind":"Moon"});
+        assert_eq!(
+            report_preview(&restricted),
+            json!({"kind":"ContactLost","target":payload["target"]})
+        );
+        let legacy = json!({"kind":"Combat","target":payload["target"]});
+        assert_eq!(report_preview(&legacy), legacy);
     }
 }
