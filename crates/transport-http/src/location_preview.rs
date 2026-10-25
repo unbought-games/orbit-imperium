@@ -120,25 +120,14 @@ pub(super) async fn image<S: GameStore + IdentityStore + Send + Sync + 'static>(
     Path((universe, coordinates)): Path<(String, String)>,
     Query(options): Query<Options>,
 ) -> Response {
-    let Ok(permit) = RENDERS.clone().try_acquire_owned() else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            [(header::RETRY_AFTER, "2")],
-        )
-            .into_response();
-    };
-    let card = match load(&s, &universe, &coordinates, options).await {
-        Ok(c) => c,
-        Err(status) => return status.into_response(),
-    };
-    let assets = s.config.assets.clone();
-    match tokio::task::spawn_blocking(move || {
-        let _permit = permit;
-        card.render(&assets)
-    })
+    match image_bytes(
+        load(&s, &universe, &coordinates, options),
+        s.config.assets.clone(),
+        RENDERS.clone(),
+    )
     .await
     {
-        Ok(Ok(bytes)) => (
+        Ok(bytes) => (
             [
                 (header::CONTENT_TYPE, "image/png"),
                 (header::CACHE_CONTROL, "public, max-age=300"),
@@ -147,9 +136,33 @@ pub(super) async fn image<S: GameStore + IdentityStore + Send + Sync + 'static>(
             bytes,
         )
             .into_response(),
-        _ => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+        Err(StatusCode::SERVICE_UNAVAILABLE) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            [(header::RETRY_AFTER, "2")],
+        )
+            .into_response(),
+        Err(status) => status.into_response(),
     }
 }
+async fn image_bytes(
+    prepared: impl std::future::Future<Output = Result<Card, StatusCode>>,
+    assets: String,
+    renders: Arc<Semaphore>,
+) -> Result<Vec<u8>, StatusCode> {
+    // Database and remote identity waits must not consume the CPU render budget.
+    let card = prepared.await?;
+    let permit = renders
+        .try_acquire_owned()
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        card.render(&assets)
+    })
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,5 +179,70 @@ mod tests {
         ] {
             assert!(address(invalid).is_none(), "{invalid}");
         }
+    }
+    #[tokio::test]
+    async fn pending_appearance_reads_do_not_starve_other_preview_requests() {
+        let renders = Arc::new(Semaphore::new(2));
+        let started = Arc::new(tokio::sync::Barrier::new(3));
+        let mut release = Vec::new();
+        let mut tasks = Vec::new();
+        for _ in 0..2 {
+            let (sender, receiver) = tokio::sync::oneshot::channel();
+            release.push(sender);
+            let started = started.clone();
+            tasks.push(tokio::spawn(image_bytes(
+                async move {
+                    started.wait().await;
+                    receiver.await.unwrap();
+                    Err(StatusCode::NOT_FOUND)
+                },
+                String::new(),
+                renders.clone(),
+            )));
+        }
+        started.wait().await;
+        assert_eq!(renders.available_permits(), 2);
+        assert_eq!(
+            image_bytes(
+                async { Err(StatusCode::NOT_FOUND) },
+                String::new(),
+                renders.clone()
+            )
+            .await,
+            Err(StatusCode::NOT_FOUND)
+        );
+        for gate in release {
+            gate.send(()).unwrap();
+        }
+        for task in tasks {
+            assert_eq!(task.await.unwrap(), Err(StatusCode::NOT_FOUND));
+        }
+        assert_eq!(renders.available_permits(), 2);
+    }
+    #[tokio::test]
+    async fn ready_previews_still_respect_the_render_limit() {
+        let card = Card {
+            appearance: LocationAppearance {
+                universe: UniverseId(uuid::Uuid::nil()),
+                universe_name: "Test".into(),
+                coordinates: LocationCoordinates {
+                    galaxy: 1,
+                    system: 1,
+                    position: 1,
+                },
+                body: None,
+            },
+            target: Target::Planet,
+            owner: None,
+        };
+        assert_eq!(
+            image_bytes(
+                async { Ok(card) },
+                concat!(env!("CARGO_MANIFEST_DIR"), "/../../apps/web/public").into(),
+                Arc::new(Semaphore::new(0))
+            )
+            .await,
+            Err(StatusCode::SERVICE_UNAVAILABLE)
+        );
     }
 }
