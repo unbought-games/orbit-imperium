@@ -5544,9 +5544,9 @@ export interface components {
                 coordinates: components["schemas"]["Coordinates"];
                 /** Format: uuid */
                 owner: string;
-                /** @constant */
-                kind: "Planet";
-                /** @description Planet name at the time of observation. Older reports may omit it. */
+                /** @enum {string} */
+                kind: "Planet" | "Moon";
+                /** @description Body name at the time of observation. Older reports may omit it. */
                 name?: string | null;
             };
             observed_at: number;
@@ -5704,6 +5704,13 @@ export interface components {
             return_at?: number | null;
             /** @enum {unknown} */
             mission?: "Attack" | "Espionage";
+            /** @description Body name observed at combat time. Older reports may omit it. */
+            target_name?: string | null;
+            /**
+             * @description Body kind observed at combat time. Older reports may omit it.
+             * @enum {string}
+             */
+            target_kind?: "Planet" | "Moon";
         };
         ContactLostPayload4: {
             /** @constant */
@@ -5961,9 +5968,9 @@ export interface components {
                 coordinates: components["schemas"]["Coordinates"];
                 /** Format: uuid */
                 owner: string;
-                /** @constant */
-                kind: "Planet";
-                /** @description Planet name at the time of observation. Older reports may omit it. */
+                /** @enum {string} */
+                kind: "Planet" | "Moon";
+                /** @description Body name at the time of observation. Older reports may omit it. */
                 name?: string | null;
             };
             resources?: {
@@ -6035,6 +6042,13 @@ export interface components {
                 /** @enum {string} */
                 side: "Attacker" | "Defender";
             }[];
+            /** @description Body name observed at combat time. Older reports may omit it. */
+            target_name?: string | null;
+            /**
+             * @description Body kind observed at combat time. Older reports may omit it.
+             * @enum {string}
+             */
+            target_kind?: "Planet" | "Moon";
         } | {
             /** @constant */
             kind: "ContactLost";

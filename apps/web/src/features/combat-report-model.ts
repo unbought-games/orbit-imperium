@@ -155,7 +155,6 @@ export function combatReportModel(
       fire: records(round.fire).find((f) => identity(f) === identity(p)),
     })),
   }))
-  const target = record(payload.target)
   const resources = [
     {
       key: 'loot',
@@ -188,11 +187,6 @@ export function combatReportModel(
     forces,
     rounds,
     resources,
-    target: [target.galaxy, target.system, target.position].every(
-      (n) => typeof n === 'number',
-    )
-      ? `[${target.galaxy}:${target.system}:${target.position}]`
-      : 'Unknown location',
     returnAt: typeof payload.return_at === 'number' ? payload.return_at : null,
     noReturn: payload.return_at === null,
     espionage: payload.mission === 'Espionage',

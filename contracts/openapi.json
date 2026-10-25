@@ -10894,14 +10894,18 @@
                 "format": "uuid"
               },
               "kind": {
-                "const": "Planet"
+                "type": "string",
+                "enum": [
+                  "Planet",
+                  "Moon"
+                ]
               },
               "name": {
                 "type": [
                   "string",
                   "null"
                 ],
-                "description": "Planet name at the time of observation. Older reports may omit it."
+                "description": "Body name at the time of observation. Older reports may omit it."
               }
             },
             "required": [
@@ -11623,6 +11627,21 @@
               "Attack",
               "Espionage"
             ]
+          },
+          "target_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Body name observed at combat time. Older reports may omit it."
+          },
+          "target_kind": {
+            "type": "string",
+            "enum": [
+              "Planet",
+              "Moon"
+            ],
+            "description": "Body kind observed at combat time. Older reports may omit it."
           }
         },
         "required": [
@@ -12745,14 +12764,18 @@
                     "format": "uuid"
                   },
                   "kind": {
-                    "const": "Planet"
+                    "type": "string",
+                    "enum": [
+                      "Planet",
+                      "Moon"
+                    ]
                   },
                   "name": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "description": "Planet name at the time of observation. Older reports may omit it."
+                    "description": "Body name at the time of observation. Older reports may omit it."
                   }
                 },
                 "required": [
@@ -13042,6 +13065,21 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "target_name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Body name observed at combat time. Older reports may omit it."
+              },
+              "target_kind": {
+                "type": "string",
+                "enum": [
+                  "Planet",
+                  "Moon"
+                ],
+                "description": "Body kind observed at combat time. Older reports may omit it."
               }
             },
             "required": [
