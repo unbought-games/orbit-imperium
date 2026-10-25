@@ -540,7 +540,9 @@ for (const width of [1440, 390, 320]) {
         await expect(page.locator('main').getByText(/^Planet \[.*\]$/)).toHaveCount(0)
         const queue = page.getByRole('region', { name: tab === 'Research' ? 'Research' : 'Shipyard & defense', exact: true })
         await expect(queue).toBeVisible()
-        const queueBounds = (await queue.boundingBox())!
+        // Shipyard starts with its comparison control; other catalogs start with work.
+        const firstSection = tab === 'Shipyard' ? page.locator('main details') : queue
+        const queueBounds = (await firstSection.boundingBox())!
         const tabs = (await page.getByRole('navigation', { name: 'Build navigation' }).boundingBox())!
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeGreaterThanOrEqual(0)
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeLessThanOrEqual(20)
