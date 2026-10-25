@@ -153,6 +153,18 @@ export function gamePort(
         ),
       )
     },
+    async simulate(context, inputs) {
+      return validate(
+        'SimulationResponse',
+        await request(
+          `${base(context.binding.universe)}/combat-simulation`,
+          'POST',
+          { context, inputs },
+          csrf,
+          60000,
+        ),
+      )
+    },
     async reports(context, cursor, includeHidden = false) {
       return validate(
         'BoundReports4',

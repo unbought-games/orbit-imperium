@@ -1,0 +1,84 @@
+.dialog {
+  width: min(940px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface-page);
+}
+.dialog::backdrop {
+  background: var(--surface-backdrop);
+}
+.dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.dialog h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.content {
+  padding: 16px;
+}
+.content p {
+  color: var(--text-muted);
+}
+.sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.sides fieldset {
+  min-width: 0;
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+.sides legend {
+  font-size: 1.2rem;
+  color: var(--champagne-light);
+}
+.field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.field input {
+  width: 100%;
+  min-width: 0;
+}
+.field small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.outcomes strong {
+  display: block;
+  font-size: 1.4rem;
+  color: var(--text);
+}
+.survivors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.survivors dd {
+  margin: 4px 0;
+}
+@media (max-width: 620px) {
+  .sides {
+    grid-template-columns: 1fr;
+  }
+}

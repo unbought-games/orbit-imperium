@@ -22,6 +22,10 @@ export type BoundReports = Schemas['BoundReports4']
 export type BoundReport = Schemas['BoundReport4']
 export type Rankings = Schemas['Rankings']
 export interface GamePort {
+  simulate?(
+    context: QueryContext,
+    inputs: Schemas['SimulationInputs'],
+  ): Promise<Schemas['SimulationResponse']>
   rankings?(context: QueryContext): Promise<Rankings>
   world?(context: QueryContext, query: WorldQuery): Promise<BoundWorld>
   reports?(

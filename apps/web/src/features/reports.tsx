@@ -1,3 +1,4 @@
+import { ReportSimulation } from './combat-simulation'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
 import { Button, ButtonLink } from '../ui/button'
@@ -132,6 +133,13 @@ export function Reports({
               </Popover>
             </div>
             <div className={styles.controls}>
+              {detail.payload.kind === 'Espionage' && (
+                <ReportSimulation
+                  key={detail.header.id}
+                  model={model}
+                  report={detail.payload}
+                />
+              )}
               <ReportVisibilityButton
                 model={model}
                 report={detail.header.id}

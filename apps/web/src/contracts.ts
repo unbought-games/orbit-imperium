@@ -4012,6 +4012,137 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/universes/{universe}/combat-simulation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SimulationQuery"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SimulationResponse"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6127,6 +6258,36 @@ export interface components {
             bonuses: components["schemas"]["TechnicalBonus3"][];
             combat: components["schemas"]["ShipCombatStatistics3"] | null;
             storage_capacities: string[] | null;
+        };
+        SimulationUnit: {
+            item: components["schemas"]["ItemKey3"];
+            count: number;
+        };
+        SimulationSide: {
+            technology: number[];
+            units: components["schemas"]["SimulationUnit"][];
+        };
+        SimulationInputs: {
+            attacker: components["schemas"]["SimulationSide"];
+            defender: components["schemas"]["SimulationSide"];
+        };
+        SimulationQuery: {
+            context: components["schemas"]["QueryContext"];
+            inputs: components["schemas"]["SimulationInputs"];
+        };
+        SimulationSample: {
+            /** @enum {unknown} */
+            outcome: "AttackerVictory" | "DefenderVictory" | "MutualDestruction" | "Draw";
+            rounds: number;
+            attacker: components["schemas"]["SimulationUnit"][];
+            defender: components["schemas"]["SimulationUnit"][];
+        };
+        SimulationResponse: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            profile_hash: string;
+            samples: components["schemas"]["SimulationSample"][];
         };
     };
     responses: never;
