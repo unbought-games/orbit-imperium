@@ -66,7 +66,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  await page.getByRole('button',{name:'Review fleet',exact:true}).click()
  const quote=page.getByRole('region',{name:'Fleet quote'})
  await expect(quote).toContainText('2 Colony Ship')
- await quote.getByRole('button',{name:/Send/}).click()
+ await quote.getByRole('button',{name:/^Colonize with /}).click()
  await expect.poll(()=>launches).toBe(1)
  expect(sent).toMatchObject({type:'World',action:{type:'LaunchFleet',intent:{mission:'Colonize',destination:{type:'EmptyPosition',coordinates:{galaxy:1,system:371,position:4},slot_revision:'0'},cargo:{metal:'1000000000',crystal:'0',deuterium:'0'}},expected_terms_hash:'b'.repeat(64)}})
  await page.reload()

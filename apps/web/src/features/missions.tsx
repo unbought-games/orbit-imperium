@@ -4,18 +4,12 @@ import { copiedLocationAtom } from './coordinate-memory'
 import { CoordinateInput } from '../ui/coordinate-input'
 import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useUniverseName } from '../shell/session-context'
-import {
-  NumberValue,
-  ResourceNumber,
-  ResourceQuantity,
-  ResourceSummary,
-} from '../ui/number-value'
+import { DispatchReview } from './dispatch-review'
 import { useStore } from 'zustand'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { useDispatch } from './use-dispatch'
 import { canSubmitQuote } from '../client-model/game-projection'
 import { ButtonLink } from '../ui/button'
-import { QuotePanel, QuoteAction } from '../ui/quote-panel'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
@@ -27,7 +21,6 @@ import { Section } from '../ui/section'
 import { Text } from '../ui/typography'
 import { Heading } from '../ui/typography'
 import styles from './missions.module.css'
-import { exactTime, shipManifest } from './mission-presentation'
 import { TaskHeader } from '../ui/task-header'
 import { DispatchTiming } from './dispatch-timing'
 import { DispatchFeedback } from './dispatch-feedback'
@@ -101,6 +94,8 @@ export function Dispatch({
     clear,
     review,
     targetName,
+    target,
+    playerNames,
     timing,
     timingMessage,
     submittedAttempt,
@@ -108,44 +103,49 @@ export function Dispatch({
   } = useDispatch({ model, view, body, draft })
   return (
     <Section className={styles.screen}>
-      <TaskHeader>
-        <span>
-          Origin {bodyName(body)}{' '}
-          <CoordinateLink at={body.coordinates} label="origin" /> · Fleet slots:{' '}
-          {occupiedSlots} / {view.missions.fleet_slots}
-        </span>
-      </TaskHeader>
-      {targetName && (
-        <Text>
-          Destination: {targetName}{' '}
-          <CoordinateLink
-            at={{
-              galaxy: Number(galaxy),
-              system: Number(system),
-              position: Number(position),
-            }}
-            label="destination"
-          />
-        </Text>
-      )}
-      {mission === 'Colonize' && (
-        <Text role="status">
-          Planets: {colony.count} / {colony.capacity}.{' '}
-          {colony.reason ?? colony.warning} Requires at least one Colony Ship.
-        </Text>
-      )}
-      {mission === 'Deploy' && (
-        <Text>
-          Deployment transfers ships and cargo permanently to another owned
-          planet and credits half the paid fuel, rounded down.
-        </Text>
-      )}
-      {draft?.observedAt !== undefined && (
-        <Text>
-          Prepared from an observation at{' '}
-          {new Date(draft.observedAt).toLocaleString()}. This is historical
-          information; review requests a fresh destination and legal quote.
-        </Text>
+      {!quote && (
+        <>
+          <TaskHeader>
+            <span>
+              Origin {bodyName(body)}{' '}
+              <CoordinateLink at={body.coordinates} label="origin" /> · Fleet
+              slots: {occupiedSlots} / {view.missions.fleet_slots}
+            </span>
+          </TaskHeader>
+          {targetName && (
+            <Text>
+              Destination: {targetName}{' '}
+              <CoordinateLink
+                at={{
+                  galaxy: Number(galaxy),
+                  system: Number(system),
+                  position: Number(position),
+                }}
+                label="destination"
+              />
+            </Text>
+          )}
+          {mission === 'Colonize' && (
+            <Text role="status">
+              Planets: {colony.count} / {colony.capacity}.{' '}
+              {colony.reason ?? colony.warning} Requires at least one Colony
+              Ship.
+            </Text>
+          )}
+          {mission === 'Deploy' && (
+            <Text>
+              Deployment transfers ships and cargo permanently to another owned
+              planet and credits half the paid fuel, rounded down.
+            </Text>
+          )}
+          {draft?.observedAt !== undefined && (
+            <Text>
+              Prepared from an observation at{' '}
+              {new Date(draft.observedAt).toLocaleString()}. This is historical
+              information; review requests a fresh destination and legal quote.
+            </Text>
+          )}
+        </>
       )}
       <div className={styles.dispatchLayout} hidden={!!quote}>
         <Form
@@ -400,75 +400,31 @@ export function Dispatch({
         </aside>
       </div>
       {quote && (
-        <QuotePanel
-          as="section"
-          aria-label="Fleet quote"
-          tabIndex={-1}
-          ref={quoteRef}
-          className={styles.review}
-        >
-          <div className={styles.actions}>
-            <Heading level={2}>Review dispatch</Heading>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setQuote(null)}
-            >
-              Edit mission
-            </Button>
-          </div>
-          <Text>
-            Origin {bodyName(body)}{' '}
-            <CoordinateLink at={body.coordinates} label="origin" /> →
-            Destination{' '}
-            <CoordinateLink
-              at={{
-                galaxy: Number(galaxy),
-                system: Number(system),
-                position: Number(position),
-              }}
-              label="destination"
-            />
-          </Text>
-          <Text>
-            {quote.intent.ships
-              .map((stack) => `${stack.count} ${label(stack.ship_type)}`)
-              .join(' · ')}
-          </Text>
-          <Text>
-            Cargo: <ResourceSummary value={quote.intent.cargo} />
-          </Text>
-          <Text>
-            {quote.intent.mission} ·{' '}
-            <NumberValue value={quote.duration_ms} divisor={1000} /> seconds one
-            way · <ResourceQuantity resource={'deuterium'} value={quote.fuel} />{' '}
-            fuel
-          </Text>
-          <Text>
-            Estimated contact {exactTime(now + quote.duration_ms)} · Return if
-            needed {exactTime(now + 2 * quote.duration_ms)}. Estimates assume
-            departure now. Successful deployment and a colony with no remaining
-            ships have no return leg.
-          </Text>
-          <Text>
-            Payload capacity <ResourceNumber value={quote.capacity} /> · Maximum
-            with fuel <ResourceNumber value={quote.maximum_payload} /> · Slot
-            limit {quote.slot_limit}
-          </Text>
-          <Text>
-            Fuel is spent once; recall does not refund it. Probes carry fuel
-            only. Espionage can enter combat and never loots.
-          </Text>
-          <QuoteAction
-            disabled={
-              !command ||
-              !canSubmitQuote(model.store.getState(), command, quote)
-            }
-            onClick={() => void send()}
-          >
-            Send {shipManifest(quote.intent.ships)}
-          </QuoteAction>
-        </QuotePanel>
+        <DispatchReview
+          quote={quote}
+          body={body}
+          view={view}
+          target={target}
+          playerNames={playerNames}
+          coordinates={{
+            galaxy: Number(galaxy),
+            system: Number(system),
+            position: Number(position),
+          }}
+          occupiedSlots={occupiedSlots}
+          now={now}
+          observedAt={draft?.observedAt}
+          colonyWarning={
+            colony.reason ??
+            (colony.count >= colony.capacity ? colony.warning : undefined)
+          }
+          panelRef={quoteRef}
+          onEdit={() => setQuote(null)}
+          onSend={() => void send()}
+          disabled={
+            !command || !canSubmitQuote(model.store.getState(), command, quote)
+          }
+        />
       )}
     </Section>
   )

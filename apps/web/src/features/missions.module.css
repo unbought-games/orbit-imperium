@@ -290,6 +290,7 @@
   display: none;
 }
 .review {
+  scroll-margin-top: calc(var(--shell-header-height, 0px) + 16px);
   background: transparent;
   border: 0;
   border-top: 1px solid var(--accent);
@@ -433,4 +434,115 @@
 .destinationFields > p,
 .destinationFields > label:first-child {
   grid-column: 1 / -1;
+}
+
+.reviewHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.75rem;
+}
+.reviewHeading > span {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.reviewHeading strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+}
+.reviewHeading svg {
+  flex-shrink: 0;
+}
+.reviewHeading [data-mission='Attack'] {
+  color: #ff9999;
+}
+.reviewHeading [data-mission='Transport'],
+.reviewHeading [data-mission='Deploy'] {
+  color: #8cdbac;
+}
+.reviewHeading [data-mission='Espionage'] {
+  color: #92c8ff;
+}
+.reviewHeading [data-mission='Harvest'] {
+  color: #ffb16d;
+}
+.reviewHeading [data-mission='Colonize'] {
+  color: #f0d76b;
+}
+.reviewRoute {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  margin-block: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.reviewRoute > div {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.reviewRoute > div > span:last-child {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.reviewArrow {
+  color: var(--text-muted);
+}
+.reviewFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 2rem;
+  margin: 0 0 1rem;
+}
+.reviewWide {
+  grid-column: 1 / -1;
+}
+.reviewFacts dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+.reviewFacts dt > span {
+  display: inline-block;
+}
+.reviewFacts dd {
+  margin: 0;
+}
+.reviewFacts small {
+  color: var(--text-muted);
+  display: inline-block;
+}
+.reviewNote {
+  font-size: 0.875rem;
+  margin-block: 0.75rem;
+}
+.reviewDetails {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.reviewDetails summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 0.75rem;
+}
+@media (max-width: 479px) {
+  .reviewRoute {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  .reviewArrow {
+    transform: rotate(90deg);
+    width: 18px;
+    height: 18px;
+  }
+  .reviewFacts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
 }
