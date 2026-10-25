@@ -111,7 +111,9 @@
   outline-offset: 3px;
 }
 .percentage {
-  min-width: 4ch;
+  min-width: 5ch;
+  flex-shrink: 0;
+  white-space: nowrap;
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--ice);

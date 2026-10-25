@@ -1775,6 +1775,13 @@ test('production sliders support mouse, keyboard bounds and final saves', async 
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    for (const percentage of await page.getByRole('region', { name: 'Production controls' }).locator('input + span').all()) {
+      expect(await percentage.evaluate((element) => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return range.getClientRects().length
+      })).toBe(1)
+    }
     await diagnosticScreenshot(page, { path: `test-results/energy-controls-${width}.png`, fullPage: true })
   }
 })
