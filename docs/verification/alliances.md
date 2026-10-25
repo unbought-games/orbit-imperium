@@ -65,3 +65,12 @@ Validation used routine native server/client/tooling, PostgreSQL, migration, and
 GitHub reported a real merge conflict after main advanced to `b28d79f3325bcd7d6b82266ed2d32c19c5c32b46` (Develop navigation, Heavy Laser, Large Cargo). Merge revision `73fc655` preserves both alliance fixture files and the new Large Cargo suite in the sole conflicted browser-test list. No feature scope was expanded.
 
 On that integrated revision, `make check` passed in 100.27 s: tooling, all 873 client tests, 389 workspace plus 32 bridge plus seven storage unit tests, strict Clippy, static/schema/architecture checks and the production build. The selected alliance, historical identity, High Scores, Large Cargo and shell fixture-browser suites passed all 112 cases in 91.13 s overall (1.5 minutes runner). Browser processes were cleaned by the native runner. No database resources were started for this integration-only check.
+
+## PR #143 automated review repairs
+
+Implementation revision `6ec90ddc81ae8c44fd3d3f7a63b507dbaedceec6` addresses review threads `PRRT_kwDOVRgPYs6wFSfZ` and `PRRT_kwDOVRgPYs6wFSff` from head `4fc63c55d9a45d3d4e55d2ffeae9cb28b810c7c3`:
+
+- A member-role editor with an undelegatable existing role disabled Cancel along with its fields. Cancel now sits outside the authority-disabled fieldset while remaining disabled during an actual pending request. The new browser regression failed before the fix and now verifies dismissal without submitting a command; unauthorized role changes remain disabled.
+- Markdown source validation treated ordinary `data:`/`file:` prose as unsafe URLs. Source checks now target Markdown destination syntax; the renderer continues to enforce its parsed URL allowlist. A new domain regression failed before the fix and now proves ordinary protocol words survive unchanged in notices, public recruitment text and applications. Existing unsafe-link assertions remain, with additional data-URL and reference-link cases.
+
+After repair: all 20 alliance domain tests passed (0.028 s execution); all 10 alliance browser cases passed (13.83 s overall, 12.3 s runner); six Markdown/controller tests passed (0.89 s overall); `make _static` passed (8.05 s); production build passed (9.17 s); engine all-target strict Clippy passed (6.17 s). Native fixture runners cleaned their browser/server processes. No database resources were required for these pure-policy and editor changes. GitHub verifies the resulting pushed head separately; earlier CI results are not carried forward as validation of new code.
