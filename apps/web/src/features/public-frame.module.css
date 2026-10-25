@@ -7,37 +7,13 @@
   padding: 0 clamp(20px, 4vw, 72px);
 }
 .header {
-  min-height: 106px;
+  min-height: 112px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-6);
-  padding-block: var(--space-5);
+  padding-block: var(--space-3);
   border-bottom: 1px solid var(--border-accent);
   position: relative;
   z-index: 1;
-}
-.brand,
-.staticBrand {
-  --brand-mark-size: 46px;
-  --brand-gap: 18px;
-  font-size: 1.15rem;
-  font-family: var(--font-editorial, Georgia, serif);
-  letter-spacing: 0.2em;
-}
-.staticBrand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--brand-gap);
-}
-.endorsement {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--text-muted);
-  font-family: var(--font-editorial, Georgia, serif);
-  font-size: var(--font-size-sm);
-  letter-spacing: 0.07em;
 }
 .composition {
   position: relative;
@@ -152,20 +128,8 @@
 }
 @media (max-width: 767px) {
   .header {
-    min-height: 86px;
-    gap: 4px 16px;
-  }
-  .brand,
-  .staticBrand {
-    flex: 0 0 100%;
-    --brand-mark-size: 36px;
-    --brand-gap: 12px;
-    font-size: 0.94rem;
-    letter-spacing: 0.13em;
-  }
-  .endorsement {
-    margin-left: 48px;
-    font-size: 0.75rem;
+    min-height: 104px;
+    padding-block: var(--space-2);
   }
   .composition {
     display: block;

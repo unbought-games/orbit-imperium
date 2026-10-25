@@ -1,0 +1,34 @@
+.lockup {
+  position: relative;
+  width: min(360px, 100%);
+  height: 88px;
+}
+.art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+  pointer-events: none;
+}
+.home,
+.studio {
+  position: absolute;
+  border-radius: 3px;
+  touch-action: manipulation;
+}
+.home {
+  inset: 0 0 auto;
+  height: 44px;
+}
+.studio {
+  left: 22.5%;
+  right: 12%;
+  bottom: 0;
+  height: 44px;
+}
+.home:focus-visible,
+.studio:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}

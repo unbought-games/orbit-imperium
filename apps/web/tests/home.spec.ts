@@ -20,6 +20,63 @@ async function anonymous(page: import('@playwright/test').Page, signup = true) {
   )
 }
 
+test('combined public branding keeps separate usable game and studio links', async ({
+  page,
+}) => {
+  await anonymous(page)
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/signup')
+    const header = page.locator('header')
+    const logo = header.locator('img')
+    await expect(logo).toHaveAttribute('src', '/brand-orbit-by-unbought.svg')
+    await expect
+      .poll(() =>
+        logo.evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+        ),
+      )
+      .toBe(true)
+    const home = header.getByRole('link', {
+      name: 'Orbit Imperium',
+      exact: true,
+    })
+    const studio = header.getByRole('link', {
+      name: 'by unbought games',
+      exact: true,
+    })
+    await expect(studio).toHaveAttribute('href', 'https://unbought.games/')
+    const homeBox = (await home.boundingBox())!
+    const studioBox = (await studio.boundingBox())!
+    expect(homeBox.height).toBeGreaterThanOrEqual(44)
+    expect(studioBox.height).toBeGreaterThanOrEqual(44)
+    expect(studioBox.y).toBeGreaterThanOrEqual(homeBox.y + homeBox.height)
+    expect(studioBox.x + studioBox.width).toBeLessThanOrEqual(width)
+    if (width < 768)
+      expect((await header.boundingBox())!.height).toBeLessThanOrEqual(105)
+    await diagnosticScreenshot(header, {
+      path: `test-results/endorsed-header-${width}.png`,
+    })
+    await home.click()
+    await expect(page).toHaveURL(/\/$/)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Your foothold in the stars.',
+    )
+  }
+  await page.route('https://unbought.games/', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<h1>Studio destination</h1>',
+    }),
+  )
+  await page
+    .getByRole('link', { name: 'by unbought games', exact: true })
+    .click()
+  await expect(
+    page.getByRole('heading', { name: 'Studio destination' }),
+  ).toBeVisible()
+})
+
 for (const width of [320, 390, 768, 1440]) {
   test(`landing page shows genuine desktop and phone images without overflow at ${width}px`, async ({
     page,

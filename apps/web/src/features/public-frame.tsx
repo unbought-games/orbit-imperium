@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Brand, BrandLogo, BrandWordmark } from '../ui/brand'
+import { EndorsedBrand } from '../ui/endorsed-brand'
 import { atmosphereArt, resolvePlanetArt } from '../ui/artwork'
 import styles from './public-frame.module.css'
 import { BetaNotice } from '../ui/beta-notice'
@@ -24,17 +24,7 @@ export function PublicFrame({
       className={`${styles.frame} ${styles[variant]}`}
     >
       <header className={styles.header}>
-        {variant === 'recovery' ? (
-          <span className={styles.staticBrand}>
-            <BrandLogo alt="" />
-            <BrandWordmark />
-          </span>
-        ) : (
-          <Brand className={styles.brand} to="/" />
-        )}
-        <a className={styles.endorsement} href="https://unbought.games/">
-          by unbought games
-        </a>
+        <EndorsedBrand homeLink={variant !== 'recovery'} />
       </header>
       <div className={styles.composition}>
         <div className={styles.world} aria-hidden="true">
