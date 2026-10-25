@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Share2, X } from 'lucide-react'
 import type { Coordinator } from '../client-model/coordinator'
 import { useAuthSession } from '../shell/auth-context'
 import { Button } from '../ui/button'
@@ -15,26 +17,67 @@ export function ReportShareControl({
 }) {
   const { runtime } = useAuthSession()
   const [open, setOpen] = useState(false)
+  const dialog = useRef<HTMLDialogElement>(null)
+  const opener = useRef<HTMLButtonElement>(null)
+  const close = useRef<HTMLButtonElement>(null)
+  const titleId = useId()
+  useEffect(() => {
+    if (open) {
+      dialog.current?.showModal()
+      close.current?.focus()
+    }
+  }, [open])
   return (
-    <div className={styles.control}>
+    <>
       <Button
-        variant="secondary"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
+        ref={opener}
+        variant="ghost"
+        size="icon"
+        aria-label="Share report"
+        title="Share report"
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
       >
-        Share report
+        <Share2 size={16} aria-hidden="true" />
       </Button>
-      {open && runtime.status === 'authenticated' && (
-        <ShareSettings
-          key={report}
-          model={model}
-          report={report}
-          csrf={runtime.session.csrf}
-        />
-      )}
-    </div>
+      {open &&
+        runtime.status === 'authenticated' &&
+        createPortal(
+          <dialog
+            ref={dialog}
+            className={styles.dialog}
+            aria-labelledby={titleId}
+            onClose={() => {
+              setOpen(false)
+              if (opener.current?.isConnected)
+                opener.current.focus({ preventScroll: true })
+            }}
+          >
+            <div className={styles.dialogHeader}>
+              <h2 id={titleId}>Share an unlisted report</h2>
+              <Button
+                ref={close}
+                variant="ghost"
+                size="icon"
+                aria-label="Close sharing"
+                onClick={() => dialog.current?.close()}
+              >
+                <X size={18} aria-hidden="true" />
+              </Button>
+            </div>
+            <ShareSettings
+              key={report}
+              model={model}
+              report={report}
+              csrf={runtime.session.csrf}
+            />
+          </dialog>,
+          document.body,
+        )}
+    </>
   )
 }
+
 function ShareSettings({
   model,
   report,
@@ -61,7 +104,6 @@ function ShareSettings({
   }
   return (
     <section className={styles.settings} aria-label="Report sharing">
-      <h3>Share an unlisted report</h3>
       <Text>
         Anyone with the link can read and forward it without signing in. It
         includes the report time, battle numbers or revealed intelligence.

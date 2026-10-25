@@ -133,6 +133,11 @@ export function Reports({
               </Popover>
             </div>
             <div className={styles.controls}>
+              {['Combat', 'ContactLost', 'Espionage'].includes(
+                detail.payload.kind,
+              ) && (
+                <ReportShareControl model={model} report={detail.header.id} />
+              )}
               <ReportVisibilityButton
                 model={model}
                 report={detail.header.id}
@@ -142,9 +147,6 @@ export function Reports({
               />
             </div>
           </div>
-          {['Combat', 'ContactLost', 'Espionage'].includes(
-            detail.payload.kind,
-          ) && <ReportShareControl model={model} report={detail.header.id} />}
           <ReportObservation
             payload={detail.payload}
             viewer={model.binding?.player}

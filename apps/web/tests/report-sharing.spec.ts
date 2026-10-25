@@ -160,6 +160,9 @@ test('sharing requires explicit creation with private defaults and supports revo
     page.getByRole('button', { name: 'Create share link' }),
   ).toBeVisible()
   expect(actions).toEqual(['Status', 'Create', 'Revoke'])
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(trigger).toBeFocused()
 })
 
 test('public combat shows loot and keeps historical names without a profile session', async ({
@@ -232,9 +235,9 @@ test('included coordinates and names work without account navigation', async ({
   await expect(
     page.getByText('Historical player', { exact: true }),
   ).toBeVisible()
-  await expect(
-    page.getByText('Historical planet', { exact: true }),
-  ).toBeVisible()
+  await expect(page.locator('[data-body-name]')).toHaveText(
+    'Historical planet ·',
+  )
   await expect(page.getByText('[1:2:3]', { exact: true })).toBeVisible()
   await page
     .getByRole('button', { name: 'Location actions for [1:2:3]' })
