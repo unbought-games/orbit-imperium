@@ -7,7 +7,7 @@ export const buildPages: Page[] = [
   'shipyard',
   'defense',
 ]
-export const fleetPages: Page[] = ['fleets', 'galaxy', 'dispatch']
+export const fleetPages: Page[] = ['galaxy', 'dispatch', 'fleets']
 export const navigationGroups: { title: string; pages: Page[] }[] = [
   { title: 'Empire', pages: ['overview', 'resource-settings'] },
   { title: 'Build', pages: buildPages },

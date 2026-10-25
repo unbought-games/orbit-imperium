@@ -1,9 +1,12 @@
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
+import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { navigate } from './fixtures/navigation'
 import { confirmCancellation } from './fixtures/confirmation'
 import { test, expect } from './fixtures/test'
 import {
   installGameFixture,
+  refreshGame,
   shellFixture,
   playerProfilesFixture,
   id,
@@ -216,7 +219,7 @@ test('cold Defense navigation retains named universe and planet through preloadi
   const defense = nav.getByRole('link', { name: 'Defense', exact: true })
   await defense.focus()
   await expect.poll(() => loading).toBe(true)
-  await page.getByLabel('Selected body').selectOption(id(6))
+  await selectBody(page, id(6))
   await expect(defense).toHaveAttribute(
     'href',
     `/u/andromeda-prime/b/${id(6)}/defense`,
@@ -224,15 +227,15 @@ test('cold Defense navigation retains named universe and planet through preloadi
   await defense.click()
   release()
   await expect(page.locator('main h1')).toHaveText('Defense')
-  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
   await expect(page).toHaveURL(`/u/andromeda-prime/b/${id(6)}/defense`)
   await page.reload()
   await expect(page.locator('main h1')).toHaveText('Defense')
-  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
   await page.goto(`/u/andromeda-prime/research?body=${id(6)}`)
   await nav.getByRole('link', { name: 'Defense', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Defense')
-  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
   await page.goBack()
   await expect(page.locator('main h1')).toHaveText('Research')
   await page.goForward()
@@ -283,7 +286,7 @@ test('mobile resource stock uses icons and compact balances with capacity detail
     }
     expect((await ledger.boundingBox())!.height).toBe(44)
     expect((await ledger.locator('..').boundingBox())!.height).toBe(46)
-    const planet = await page.getByLabel('Selected body').boundingBox()
+    const planet = await page.getByRole('combobox', { name: 'Selected body' }).boundingBox()
     const stock = await ledger.boundingBox()
     await diagnosticScreenshot(page, {
       path: `test-results/mobile-planet-resources-${width}.png`,
@@ -359,8 +362,8 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
     initial!.height,
   )
   await page.keyboard.press('Escape')
-  await page.getByLabel('Selected body').selectOption(id(6))
-  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await selectBody(page, id(6))
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
   await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
   await page.evaluate(() => window.scrollTo(0, 250))
   await diagnosticScreenshot(page, { path: 'test-results/mobile-pinned-top-bar.png' })
@@ -444,6 +447,20 @@ for (const width of [768, 1440, 1920]) {
   })
 }
 
+for (const protocol of [3, 4] as const) {
+  test(`Fleets navigation helper opens the fleet list with protocol ${protocol}`, async ({ page }) => {
+    await shellFixture(page, { protocol, extraCapabilities: ['Transport'] })
+    await navigate(page, 'Fleets')
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(page.locator('main h1')).toHaveText('Fleets')
+    await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${protocol === 4 ? 'galaxy' : 'fleets'}`)
+    await navigate(page, 'Fleets')
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(page.locator('main h1')).toHaveText('Fleets')
+  })
+}
+
 test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   page,
 }) => {
@@ -451,11 +468,16 @@ test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   await page.setViewportSize({ width: 390, height: 844 })
   await shellFixture(page, { protocol: 4 })
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
   const nav = page.getByRole('navigation', { name: 'Fleet navigation' })
+  await expect(
+    nav.getByRole('link', { name: 'Galaxy', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
   await expect(nav.getByRole('link')).toHaveText([
-    'Fleets',
     'Galaxy',
     'Dispatch',
+    'Fleets',
   ])
   await expect(
     nav.getByRole('link', { name: 'Galaxy', exact: true }),
@@ -468,16 +490,22 @@ test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
   expect(submenu.y).toBe(resources.y + resources.height)
   expect(submenu.x).toBe(0)
   expect(submenu.width).toBe(390)
+  for (const [title, path] of [['Dispatch', 'dispatch'], ['Fleets', 'fleets']]) {
+    await nav.getByRole('link', { name: title, exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
+    await expect(page.locator('main h1')).toHaveText(title)
+    await expect(nav.getByRole('link', { name: title, exact: true })).toHaveAttribute('aria-current', 'page')
+  }
 })
 
-test('mobile planet box is one tap target with full native planet and moon labels', async ({
+test('mobile planet box is one tap target with rich planet and moon labels', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 844 })
   const purchases = await shellFixture(page, {
     bodies: [body, { ...body, id: id(6), kind: 'Moon' }],
   })
-  const selector = page.getByLabel('Selected body')
+  const selector = page.getByRole('combobox', { name: 'Selected body' })
   const box = await selector.boundingBox()
   expect(
     await page.evaluate(
@@ -488,14 +516,14 @@ test('mobile planet box is one tap target with full native planet and moon label
       },
     ),
   ).toBe('Selected body')
-  await expect(selector.locator('option:checked')).toHaveText(
+  await expect(selector).toHaveText(
     'Planet [1:371:12]',
   )
-  await selector.selectOption(id(6))
+  await selectBody(page, id(6))
   await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
-  await expect(selector.locator('option:checked')).toHaveText('Moon [1:371:12]')
+  await expect(selector).toHaveText('Moon [1:371:12]')
   await page.goBack()
-  await expect(selector).toHaveValue(body.id)
+  await expect(selector).toHaveAttribute('data-value', body.id)
   expect(purchases()).toBe(0)
 })
 
@@ -747,11 +775,11 @@ test('compact shell exposes resource details and switches bodies without purchas
     menu.getByRole('link', { name: 'Resources', exact: true }),
   ).toBeVisible()
   await page.keyboard.press('Escape')
-  await page.getByLabel('Selected body').selectOption(id(6))
+  await selectBody(page, id(6))
   await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
-  await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
   await page.goBack()
-  await expect(page.getByLabel('Selected body')).toHaveValue(id(5))
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(5))
   expect(purchases()).toBe(0)
 })
 
@@ -784,7 +812,7 @@ test('desktop uses a persistent horizontal ledger and no permanent rails', async
       ).trim(),
     ).toBe('6.6K')
   }
-  const selector = await page.getByLabel('Selected body').boundingBox()
+  const selector = await page.getByRole('combobox', { name: 'Selected body' }).boundingBox()
   const ledger = await page.getByLabel('Current resources').boundingBox()
   expect(
     Math.abs(
@@ -832,7 +860,7 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
       const content = await page.locator('main').boundingBox()
       expect(content!.y - ledger!.y - ledger!.height).toBeLessThanOrEqual(2)
       expect(
-        (await page.getByLabel('Selected body').boundingBox())!.y,
+        (await page.getByRole('combobox', { name: 'Selected body' }).boundingBox())!.y,
       ).toBeLessThan(24)
     } else {
       await expect(brand).toBeVisible()
@@ -844,7 +872,7 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
       ),
     ).toBe(true)
     const undersized = await page
-      .locator('button,input,select,summary,nav a,main a,aside a')
+      .locator('button,input:not([aria-hidden="true"]),select,summary,nav a,main a,aside a')
       .evaluateAll((nodes) =>
         nodes
           .filter((n) => {
@@ -973,7 +1001,7 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
   const metal = await page
     .getByRole('button', { name: 'Metal details' })
     .boundingBox()
-  const planet = await page.getByLabel('Selected body').boundingBox()
+  const planet = await page.getByRole('combobox', { name: 'Selected body' }).boundingBox()
   expect(planet!.x + planet!.width).toBeLessThanOrEqual(metal!.x)
   expect(
     Math.abs(planet!.y + planet!.height / 2 - metal!.y - metal!.height / 2),
@@ -1212,7 +1240,7 @@ test('navigation retains the ledger through cold art, rapid routes and reduced m
   expect(purchases()).toBe(0)
 })
 
-test('large world rosters search and retain funding context on player-wide routes', async ({
+test('large world rosters scroll and retain funding context on player-wide routes', async ({
   page,
 }) => {
   const bodies = Array.from({ length: 12 }, (_, index) => ({
@@ -1227,19 +1255,14 @@ test('large world rosters search and retain funding context on player-wide route
     .getByRole('link', { name: 'Research', exact: true })
     .click()
   await expect(page.locator('main h1')).toHaveText('Research')
-  await page.getByLabel('Search owned worlds').fill('1:9:4')
-  await page.getByLabel('Selected body').selectOption(id(28))
+  await selectBody(page, id(28))
   await expect(page).toHaveURL(new RegExp(`/b/${id(28)}/research$`))
-  await expect(page.getByLabel('Search owned worlds')).toHaveValue('')
+  await expect(page.getByRole('searchbox', { name: 'Search owned worlds' })).toHaveCount(0)
   await page.goBack()
-  await expect(page.getByLabel('Selected body')).toHaveValue(body.id)
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)
   await page.setViewportSize({ width: 320, height: 844 })
-  const search = page.getByLabel('Search owned worlds')
-  await search.fill('1:9:4')
-  expect((await search.boundingBox())!.width).toBeGreaterThan(280)
-  await page.getByLabel('Selected body').selectOption(id(28))
-  await expect(page.getByLabel('Selected body')).toHaveValue(id(28))
-  await expect(search).toHaveValue('')
+  await selectBody(page, id(28))
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(28))
   expect(purchases()).toBe(0)
 })
 
@@ -1268,7 +1291,7 @@ test('navigation keeps shell identity mounted through rapid route changes', asyn
     .click()
   await expect(page.locator('main h1')).toHaveText('Shipyard')
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
-  await expect(page.locator('main h1')).toHaveText('Fleets')
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
   let release!: () => void
   const gate = new Promise<void>((resolve) => {
     release = resolve
@@ -1319,8 +1342,13 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
     page.getByRole('alert').filter({ hasText: 'Connection interrupted' }),
   ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
-  await expect(page.getByLabel('Selected body')).toHaveValue(body.id)
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Galaxy')
+  await page
+    .getByRole('navigation', { name: 'Fleet navigation' })
+    .getByRole('link', { name: 'Fleets', exact: true })
+    .click()
   await expect(page.locator('main h1')).toHaveText('Fleets')
   await expect(
     page.getByRole('heading', { name: 'Incoming fleets' }),
@@ -1395,7 +1423,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await expect(
     page.getByRole('heading', { name: 'Mission details', exact: true }),
   ).toBeVisible()
-  await page.getByLabel('Selected body').selectOption(id(6))
+  await selectBody(page, id(6))
   await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets/${fleet.id}`)
   await page.reload()
   await expect(mission).toContainText('4 Small Cargo')
@@ -1623,7 +1651,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   })
   reportMode = 'empty'
   await page.goto(`/u/andromeda/reports?body=${body.id}`)
-  await expect(page.getByText('No reports yet.', { exact: true })).toBeVisible()
+  await expect(page.getByText('No reports to show.', { exact: true })).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/reports-empty-phone.png',
     fullPage: true,
@@ -1840,7 +1868,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
       .boundingBox()
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [
-      page.getByLabel('Selected body'),
+      page.getByRole('combobox', { name: 'Selected body' }),
       page.getByRole('button', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleet', exact: true }),
     ]) {
@@ -1947,12 +1975,11 @@ test('selected body context truncates on phones and retains full labels and acce
   for (const width of [1280, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     const text = page
-      .getByLabel('Selected body')
-      .locator('..')
-      .locator(':scope > span')
+      .getByRole('combobox', { name: 'Selected body' })
+      .getByText('Planet', { exact: true }).locator('..')
     await expect(text).toHaveText('Planet [1:499:15]')
     await expect(
-      page.getByLabel('Selected body').locator('option:checked'),
+      page.getByRole('combobox', { name: 'Selected body' }),
     ).toHaveText('Planet [1:499:15]')
     if (width < 768) {
       for (const part of await text.locator('span').all()) {
@@ -1981,9 +2008,8 @@ test('selected body context truncates on phones and retains full labels and acce
   }
   await page.addStyleTag({ content: 'html { font-size: 200% }' })
   const text = page
-    .getByLabel('Selected body')
-    .locator('..')
-    .locator(':scope > span')
+    .getByRole('combobox', { name: 'Selected body' })
+    .getByText('Planet', { exact: true }).locator('..')
   expect(
     await text.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,
@@ -2105,7 +2131,7 @@ test('failed world images settle without browser broken-image borders or lost co
       ),
     )
     .toBe(true)
-  await expect(page.getByLabel('Selected body')).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Selected body' })).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await page.getByRole('link', { name: 'Build', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Resources')
@@ -2209,7 +2235,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           return start(...args)
         }
       })
-      const purchases = await shellFixture(page, { protocol: 4 })
+      // Navigation stays motionless; the intentional hostile-fleet signal has
+      // its own coverage, so keep this fixture free of incoming threats.
+      const purchases = await shellFixture(page, {
+        protocol: 4,
+        missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+      })
       const assertStill = async () => {
         expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
         expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
@@ -2312,7 +2343,7 @@ for (const width of [768, 1024, 1440, 1800]) {
     await shellFixture(page, { protocol: 4 })
     const brand = page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
     const primary = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-    const planet = page.getByLabel('Selected body')
+    const planet = page.getByRole('combobox', { name: 'Selected body' })
     const resources = page.getByLabel('Current resources')
     const header = brand.locator('../..')
     await expect(page.getByLabel('Current universe')).toBeHidden()
@@ -2342,8 +2373,8 @@ for (const width of [768, 1024, 1440, 1800]) {
     await page.getByRole('button', { name: 'Metal details', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
-    await planet.selectOption(id(6))
-    await expect(planet).toHaveValue(id(6))
+    await selectBody(page, id(6))
+    await expect(planet).toHaveAttribute('data-value', id(6))
     await primary.getByRole('link', { name: 'Build', exact: true }).click()
     await expect(page.locator('main h1')).toHaveText('Resources')
     await page.mouse.move(width / 2, 300)
@@ -2352,7 +2383,7 @@ for (const width of [768, 1024, 1440, 1800]) {
 }
 
 for (const width of [768, 1024, 1440, 1800]) {
-  test(`desktop brand stays aligned above world search at ${width}px`, async ({ page }) => {
+  test(`desktop brand stays aligned with a large world roster at ${width}px`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width, height: 900 })
     const bodies = Array.from({ length: 9 }, (_, index) => ({
@@ -2363,18 +2394,16 @@ for (const width of [768, 1024, 1440, 1800]) {
     await shellFixture(page, { protocol: 4, bodies })
     const brand = page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
     const primary = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-    const planet = page.getByLabel('Selected body')
+    const planet = page.getByRole('combobox', { name: 'Selected body' })
     const resources = page.getByLabel('Current resources')
     const search = page.getByRole('searchbox', { name: 'Search owned worlds' })
-    await expect(search).toBeVisible()
+    await expect(search).toHaveCount(0)
     const assertAlignment = async () => {
       const brandBox = (await brand.boundingBox())!
       for (const locator of [planet, primary, resources]) {
         const box = (await locator.boundingBox())!
         expect(Math.abs(box.y + box.height / 2 - brandBox.y - brandBox.height / 2)).toBeLessThan(2)
       }
-      const row = (await primary.boundingBox())!
-      expect((await search.boundingBox())!.y).toBeGreaterThanOrEqual(row.y + row.height)
       expect((await brand.locator('../..').boundingBox())!.y).toBe(0)
     }
     await assertAlignment()
@@ -2384,13 +2413,11 @@ for (const width of [768, 1024, 1440, 1800]) {
     for (const scroll of [0, 300, 100000]) {
       await page.evaluate(y => window.scrollTo(0, y), scroll)
       await assertAlignment()
-      const searchBox = (await search.boundingBox())!
-      expect((await secondary.boundingBox())!.y).toBeGreaterThanOrEqual(searchBox.y + searchBox.height)
+      const row = (await primary.boundingBox())!
+      expect((await secondary.boundingBox())!.y).toBeGreaterThanOrEqual(row.y + row.height)
     }
-    await search.fill('1:371:9')
-    await planet.selectOption(bodies[8].id)
-    await expect(planet).toHaveValue(bodies[8].id)
-    await expect(search).toHaveValue('')
+    await selectBody(page, bodies[8].id)
+    await expect(planet).toHaveAttribute('data-value', bodies[8].id)
     await assertAlignment()
   })
 }
@@ -2402,10 +2429,10 @@ test.describe('planet-scoped gameplay routes retain context and redirect old que
       await page.goto(`/u/andromeda/${path}?body=${body.id}`)
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
       await expect(page.locator('main h1')).toHaveText(heading)
-      await page.getByLabel('Selected body').selectOption(id(6))
+      await selectBody(page, id(6))
       await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${path}`)
       await page.reload()
-      await expect(page.getByLabel('Selected body')).toHaveValue(id(6))
+      await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
       await expect(page.locator('main h1')).toHaveText(heading)
       await page.goto(`/u/andromeda/b/${id(99)}/${path}`)
       await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
@@ -2451,5 +2478,376 @@ for (const width of [320, 390, 1440]) {
       await expect(queue.getByRole('button', { name: /^Cancel / })).toBeEnabled()
       await diagnosticScreenshot(queue, { path: `test-results/compact-work-${path}-${width}.png` })
     }
+  })
+}
+
+test('empty reports wait for a successful response and offer planet-aware navigation at every size', async ({
+  page,
+}) => {
+  let revision = 1
+  let requests = 0
+  await installGameFixture(page, {
+    protocol: 4,
+    viewerRevision: () => String(revision),
+  })
+  let release!: () => void
+  let pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/api/**/reports', async (route) => {
+    requests++
+    await pending
+    const request = route.request().postDataJSON()
+    const context = request.context ?? request
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        request_id: context.request_id,
+        viewer_revision: String(revision),
+        sampled_at: Date.now(),
+        as_of_ms: Date.now(),
+        data: {
+          items: [],
+          has_more: false,
+          next_cursor: null,
+          as_of_ms: Date.now(),
+        },
+      },
+    })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
+  await expect(page.getByText('Loading report history…')).toBeVisible()
+  const empty = page.getByRole('region', { name: 'No reports to show.' })
+  await expect(empty).toHaveCount(0)
+  release()
+  await expect(empty).toBeVisible()
+  await expect(empty).toContainText(
+    'Fleet arrivals, espionage findings, and battle outcomes',
+  )
+  const explore = empty.getByRole('link', { name: 'Explore the galaxy' })
+  await expect(explore).toHaveAttribute(
+    'href',
+    `/u/andromeda/b/${body.id}/galaxy`,
+  )
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(explore).toBeInViewport()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await diagnosticScreenshot(page, {
+      path: `test-results/reports-empty-${width}.png`,
+      fullPage: true,
+    })
+  }
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%'
+  })
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = ''
+  })
+  const beforeRefresh = await empty.boundingBox()
+  const previousRequests = requests
+  pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  revision++
+  try {
+    await refreshGame(page)
+    await expect.poll(() => requests).toBeGreaterThan(previousRequests)
+    await expect(empty).toBeVisible()
+    expect(await empty.boundingBox()).toEqual(beforeRefresh)
+  } finally {
+    release()
+  }
+  await explore.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/galaxy$`))
+  await page.goBack()
+  await expect(empty).toBeVisible()
+})
+
+test('failed report requests do not claim the archive is empty', async ({
+  page,
+}) => {
+  await installGameFixture(page, { protocol: 4 })
+  await page.route('**/api/**/reports', (route) =>
+    route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
+  )
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
+  await expect(
+    page.getByRole('button', { name: 'Retry reports' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'No reports to show.' }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('link', { name: 'Explore the galaxy' }),
+  ).toHaveCount(0)
+})
+
+test('incoming attacks stay in the phone viewport when there are no outgoing fleets', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 667 })
+  await installGameFixture(page, {
+    protocol: 4,
+    missions: {
+      fleets: [],
+      incoming: [
+        {
+          sender: id(99),
+          origin: { galaxy: 1, system: 400, position: 9 },
+          target: body.id,
+          mission: 'Attack',
+          arrival_at: Date.now() + 95000,
+          ships: { visibility: 'Unknown' },
+        },
+      ],
+      score_value_micro: '0',
+      fleet_slots: '1',
+    },
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await expect(
+    page.getByRole('heading', { name: 'No active fleets.' }),
+  ).toBeVisible()
+  const incoming = page.getByRole('region', { name: 'Incoming fleets' })
+  const attack = incoming.getByRole('heading', { name: /Attack/ })
+  await expect(attack).toBeInViewport()
+  const dock = await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .boundingBox()
+  const arrival = await attack.boundingBox()
+  expect(arrival!.y + arrival!.height).toBeLessThan(dock!.y)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/fleet-empty-incoming-phone.png',
+  })
+})
+
+for (const width of [320, 390, 1440]) {
+  test(`rich planet selector shows acquisition order and supports keyboard and pointer at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const home = {
+      ...body,
+      name: 'Martialis',
+      coordinates: { galaxy: 1, system: 19, position: 6 },
+    }
+    const colony = (n: number, name: string, created_at: number) => ({
+      ...body,
+      id: id(n),
+      name,
+      coordinates: { galaxy: 1, system: 1, position: n - 5 },
+      colony: {
+        created_at,
+        diameter_km: 12000,
+        min_temperature: 0,
+        max_temperature: 40,
+        profile: 'oi-redesign-reconstructed-v1',
+      },
+    })
+    const first = colony(8, 'Nova Roma', 100)
+    const later = colony(9, 'A long planet name that wraps safely', 200)
+    const moon = { ...home, id: id(10), name: undefined, kind: 'Moon' as const }
+    const purchases = await shellFixture(page, {
+      protocol: 4,
+      bodies: [later, moon, first, home],
+    })
+    await page.goto(`/u/andromeda/b/${home.id}/overview`)
+    const trigger = page.getByRole('combobox', { name: 'Selected body' })
+    await expect(trigger).toContainText('Martialis')
+    await expect(trigger).toHaveAttribute('data-value', home.id)
+    await expect(
+      page.getByRole('searchbox', { name: 'Search owned worlds' }),
+    ).toHaveCount(0)
+    await trigger.click()
+    const list = page.getByRole('listbox')
+    const options = page.getByRole('option')
+    await expect(options).toHaveText([
+      'Martialis [1:19:6]',
+      'Moon [1:19:6]',
+      'Nova Roma [1:1:3]',
+      'A long planet name that wraps safely [1:1:4]',
+    ])
+    await expect(options.first()).toHaveAttribute('aria-selected', 'true')
+    await expect(options.first().locator('svg')).toHaveClass(/lucide-check/)
+    for (const option of await options.all()) {
+      await expect(option.locator('img')).toBeVisible()
+      await expect
+        .poll(() =>
+          option
+            .locator('img')
+            .evaluate((img: HTMLImageElement) => img.naturalWidth),
+        )
+        .toBeGreaterThan(0)
+    }
+    const box = (await list.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(width)
+    expect(box.y + box.height).toBeLessThanOrEqual(900)
+    await diagnosticScreenshot(page, {
+      path: `test-results/planet-select-${width}.png`,
+    })
+    await page.keyboard.press('Escape')
+    await expect(list).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+    await expect(trigger).toHaveAttribute('data-value', home.id)
+    await trigger.press('Enter')
+    await expect(options.first()).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Enter')
+    await expect(trigger).toHaveAttribute('data-value', first.id)
+    await expect(page).toHaveURL(new RegExp(`/b/${first.id}/overview$`))
+    await page.goBack()
+    await expect(trigger).toHaveAttribute('data-value', home.id)
+    await trigger.press('Enter')
+    await expect(options.first()).toBeFocused()
+    await page.keyboard.press('n')
+    await expect(options.nth(2)).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(trigger).toHaveAttribute('data-value', first.id)
+    await selectBody(page, later.id)
+    await page.reload()
+    await expect(trigger).toHaveAttribute('data-value', later.id)
+    await trigger.click()
+    // Opening mounts the popup and its outside-press listeners asynchronously.
+    // Wait for the selected option to receive focus before clicking outside.
+    await expect(options.last()).toBeFocused()
+    await page.mouse.click(width - 10, 800)
+    await expect(list).toHaveCount(0)
+    await expect(trigger).toHaveAttribute('data-value', later.id)
+    expect(purchases()).toBe(0)
+  })
+}
+
+test('rich planet selector scrolls a large roster and selects by touch in a short viewport', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 320, height: 480 },
+    isMobile: true,
+    hasTouch: true,
+  })
+  const page = await context.newPage()
+  try {
+    const bodies = Array.from({ length: 12 }, (_, index) => ({
+      ...body,
+      id: index === 0 ? body.id : id(20 + index),
+      name: `World ${index + 1}`,
+      coordinates: { galaxy: 1, system: 1, position: index + 1 },
+    }))
+    const purchases = await shellFixture(page, { bodies })
+    const trigger = page.getByRole('combobox', { name: 'Selected body' })
+    await trigger.tap()
+    const list = page.getByRole('listbox')
+    await expect(list).toBeVisible()
+    const box = (await list.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(320)
+    expect(box.y + box.height).toBeLessThanOrEqual(480)
+    expect(
+      await list.evaluate(
+        (element) => element.scrollHeight > element.clientHeight,
+      ),
+    ).toBe(true)
+    const last = page.getByRole('option', {
+      name: 'World 12 [1:1:12]',
+      exact: true,
+    })
+    await last.scrollIntoViewIfNeeded()
+    await last.tap()
+    await expect(trigger).toHaveAttribute('data-value', bodies[11].id)
+    await expect(list).toHaveCount(0)
+    expect(purchases()).toBe(0)
+  } finally {
+    await context.close()
+  }
+})
+
+for (const mission of ['Attack', 'Espionage'] as const) {
+  test(`mobile hostile fleet pulse follows incoming ${mission} across planets and clears on reconciliation`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    const missions = {
+      fleets: [],
+      incoming: [] as import('../src/contracts').components['schemas']['IncomingMission4'][],
+      score_value_micro: '0',
+      fleet_slots: '1',
+    }
+    let revision = 1
+    await shellFixture(page, { protocol: 4, missions, viewerRevision: () => String(revision) })
+    const bar = page.getByRole('group', { name: 'Planet and resources' })
+    const overlay = () => bar.evaluate(element => {
+      const style = getComputedStyle(element, '::after')
+      return { animation: style.animationName, duration: style.animationDuration, content: style.content, opacity: style.opacity }
+    })
+    const refresh = async () => {
+      revision++
+      await page.evaluate(() => window.dispatchEvent(new Event('online')))
+    }
+    expect((await overlay()).content).toBe('none')
+    missions.incoming.push({
+      sender: id(9), origin: { galaxy: 1, system: 372, position: 3 },
+      target: id(6), mission: 'Transport', arrival_at: Date.now() + 300000,
+      ships: { visibility: 'Unknown' },
+    })
+    await refresh()
+    expect((await overlay()).content).toBe('none')
+    missions.incoming.push({ ...missions.incoming[0], mission })
+    await refresh()
+    await expect(bar.getByRole('status')).toHaveText('Incoming hostile fleet: attack or espionage detected.')
+    await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(113, 50, 59)')
+    expect(await bar.evaluate(element => getComputedStyle(element, '::after').boxShadow)).toBe('none')
+    for (const width of [320, 390, 767]) {
+      await page.setViewportSize({ width, height: 844 })
+      expect((await overlay()).animation).toContain('hostile-pulse')
+      expect((await overlay()).duration).toBe('3.2s')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    await selectBody(page, id(6))
+    expect((await overlay()).animation).toContain('hostile-pulse')
+    await page.getByRole('button', { name: 'Metal details', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    expect((await overlay()).animation).toContain('hostile-pulse')
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect.poll(overlay).toMatchObject({ animation: 'none', opacity: '0.7' })
+    await page.setViewportSize({ width: 1024, height: 844 })
+    expect((await overlay()).content).toBe('none')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    // Seek only after testing normal CSS lifecycle: manual playback takes ownership
+    // of a CSS animation and can otherwise outlive changes to animation-name.
+    const pulseOpacity = await bar.evaluate(element => {
+      const animation = element.getAnimations({ subtree: true }).find(
+        animation => animation instanceof CSSAnimation && animation.animationName.includes('hostile-pulse'),
+      )!
+      animation.pause()
+      animation.currentTime = 0
+      const low = Number(getComputedStyle(element, '::after').opacity)
+      animation.currentTime = 1600
+      const high = Number(getComputedStyle(element, '::after').opacity)
+      animation.cancel()
+      return { low, high }
+    })
+    expect(pulseOpacity).toEqual({ low: 0.3, high: 1 })
+    missions.incoming.pop()
+    await refresh()
+    await expect(bar.getByRole('status')).toHaveText('')
+    await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(133, 115, 84)')
+    expect((await overlay()).content).toBe('none')
   })
 }

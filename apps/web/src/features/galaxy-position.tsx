@@ -1,6 +1,7 @@
 import { CoordinateLink } from './coordinate-link'
 import { playerLabel, type PlayerNames } from './player-label'
-import { ResourceQuantity } from '../ui/number-value'
+import { NumberValue } from '../ui/number-value'
+import { ResourceValue } from '../ui/resource-value'
 import {
   Truck,
   Crosshair,
@@ -161,11 +162,16 @@ export function GalaxyPosition({
         {debris ? (
           <>
             <strong>Debris field</strong>
+            {/* Galaxy debris is already in whole units, unlike report Resources. */}
             <span>
-              <ResourceQuantity resource="metal" value={debris.metal} />
+              <ResourceValue resource="metal">
+                <NumberValue value={debris.metal} />
+              </ResourceValue>
             </span>
             <span>
-              <ResourceQuantity resource="crystal" value={debris.crystal} />
+              <ResourceValue resource="crystal">
+                <NumberValue value={debris.crystal} />
+              </ResourceValue>
             </span>
           </>
         ) : body ? (

@@ -1,5 +1,7 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useStore } from 'zustand'
 import {
+  attemptKey,
   canonical,
   type BoundProgressionOptions,
 } from '../../client-model/commands'
@@ -25,6 +27,7 @@ export function useManufacturingOrder(
   source: BoundProgressionOptions | null,
   quantity: string,
   refresh: () => void,
+  onSuccess: () => void,
 ) {
   const preview = manufacturingPreview(source, view, quantity)
   const key = canonical([
@@ -34,6 +37,28 @@ export function useManufacturingOrder(
   ])
   const errorKey = canonical([view.binding, preview?.request])
   const generation = useRef(0)
+  const draftGeneration = useRef(0)
+  // The inspector is keyed by body and item. Quote refreshes must not
+  // invalidate this draft when the confirmed order updates the game view.
+  const draftKey = canonical([view.binding, quantity])
+  const [submitted, setSubmitted] = useState<{
+    key: string
+    generation: number
+  } | null>(null)
+  const submittedStatus = useStore(model.store, (state) =>
+    submitted ? state.attempts.get(submitted.key)?.status : undefined,
+  )
+  useLayoutEffect(() => {
+    draftGeneration.current += 1
+    return () => {
+      draftGeneration.current += 1
+    }
+  }, [draftKey])
+  useEffect(() => {
+    if (!submitted || submittedStatus !== 'committed') return
+    if (submitted.generation === draftGeneration.current) onSuccess()
+    setSubmitted(null)
+  }, [submitted, submittedStatus, onSuccess])
   const running = useRef(false)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<{
@@ -57,6 +82,7 @@ export function useManufacturingOrder(
   async function build() {
     if (!preview || !canBuild || running.current) return
     const started = generation.current
+    const submittedDraft = draftGeneration.current
     running.current = true
     setBusy(true)
     setFailure(null)
@@ -89,7 +115,12 @@ export function useManufacturingOrder(
             : 'This order is no longer available. Check the updated order and try again.',
         )
       }
-      await model.send(command, current)
+      const id = await model.send(command, current)
+      if (id && submittedDraft === draftGeneration.current)
+        setSubmitted({
+          key: attemptKey(view.binding, id),
+          generation: submittedDraft,
+        })
     } catch (error) {
       if (generation.current === started)
         setFailure({

@@ -1,4 +1,5 @@
 import { BodyIllustration } from './body-illustration'
+import { BodyIdentity } from './body-identity'
 import { readCoordinates } from '../shell/galaxy-location'
 import { CoordinateLink } from './coordinate-link'
 import type { PlayerNames } from './player-label'
@@ -241,15 +242,12 @@ export function ReportObservation({
               <div className={styles.targetInfo}>
                 <PlayerName player={text(target.owner)} names={playerNames} />
                 <span className={styles.targetDetails}>
-                  {typeof target.name === 'string' && target.name.trim()
-                    ? target.name
-                    : text(target.kind === 'Moon' ? 'Moon' : 'Planet')}{' '}
-                  ·{' '}
-                  <CoordinateLink
+                  <BodyIdentity
+                    name={target.name}
+                    kind={target.kind === 'Moon' ? 'Moon' : 'Planet'}
                     at={target.coordinates}
                     target={target.kind === 'Moon' ? 'moon' : 'planet'}
                     label="target"
-                    className={styles.targetCoordinates}
                   />
                 </span>
               </div>
@@ -309,8 +307,7 @@ export function ReportObservation({
       <section aria-label="Report observation" className={combatStyles.report}>
         <header className={`${combatStyles.outcome} ${combatStyles.loss}`}>
           <p className={combatStyles.kicker}>
-            Combat report ·{' '}
-            <CoordinateLink at={payload.target} label="target" />
+            Combat report · <BodyIdentity at={payload.target} label="target" />
           </p>
           <Heading level={2} className={combatStyles.result}>
             Your fleet was destroyed

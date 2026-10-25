@@ -1,4 +1,5 @@
 import { combatOutcome, hasCombatLoot } from './combat-report-model'
+import { bodyIdentityLabel } from './body-identity-label'
 import { formatDuration } from '../client-model/duration'
 import type { components } from '../contracts'
 import { coordinates, label } from '../ui/format'
@@ -34,9 +35,11 @@ export function reportPreview(
   if (!preview) return { location: '', facts: [] }
   const facts: ReportFact[] = []
   let at: S['Coordinates'] | undefined
+  let identity = ''
   switch (preview.kind) {
     case 'Espionage':
       at = preview.target?.coordinates
+      identity = bodyIdentityLabel(preview.target?.name, preview.target?.kind)
       facts.push(
         preview.resources?.visibility === 'Known'
           ? { resources: preview.resources.value }
@@ -67,6 +70,7 @@ export function reportPreview(
       break
     case 'Combat':
       at = preview.target
+      identity = bodyIdentityLabel(preview.target_name, preview.target_kind)
       if (
         preview.loot &&
         hasCombatLoot(
@@ -113,7 +117,9 @@ export function reportPreview(
       break
   }
   return {
-    location: at ? coordinates({ coordinates: at }) : '',
+    location: at
+      ? [identity, coordinates({ coordinates: at })].filter(Boolean).join(' · ')
+      : identity,
     coordinates: at,
     facts,
   }

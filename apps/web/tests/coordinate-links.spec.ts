@@ -1,3 +1,4 @@
+import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
@@ -91,7 +92,7 @@ async function assertLocation(page: Page, system: number, position: number) {
   )
   await expect(
     page.getByRole('combobox', { name: 'Selected body' }),
-  ).toHaveValue(body.id)
+  ).toHaveAttribute('data-value', body.id)
   const selected = page.locator('li[aria-current="location"]')
   await expect(selected).toHaveAttribute('id', `position-${position}`)
   await expect(selected).toContainText(
@@ -194,7 +195,7 @@ test('planet selector is one target while empire coordinates browse without chan
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     const selector = page.getByRole('combobox', { name: 'Selected body' })
-    const controls = selector.locator('../..')
+    const controls = selector
     await expect(controls.getByRole('link')).toHaveCount(0)
     for (const label of [
       controls.locator('img'),
@@ -210,13 +211,14 @@ test('planet selector is one target while empire coordinates browse without chan
         ),
       ).toBe(true)
       await page.mouse.click(point.x, point.y)
-      await expect(selector).toBeFocused()
+      await expect(page.getByRole('listbox')).toBeVisible()
       await page.keyboard.press('Escape')
+      await expect(selector).toBeFocused()
       await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
     }
-    await selector.selectOption(other.id)
+    await selectBody(page, other.id)
     await expect(page).toHaveURL(new RegExp(`/b/${other.id}/overview$`))
-    await selector.selectOption(body.id)
+    await selectBody(page, body.id)
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
   }
   const dossier = page.getByRole('article', {
@@ -228,9 +230,7 @@ test('planet selector is one target while empire coordinates browse without chan
     .click()
   await assertLocation(page, 2, 4)
   await page.goBack()
-  await page
-    .getByRole('combobox', { name: 'Selected body' })
-    .selectOption(other.id)
+  await selectBody(page, other.id)
   await expect(page).toHaveURL(new RegExp(`/b/${other.id}/overview$`))
 })
 

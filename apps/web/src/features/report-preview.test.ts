@@ -89,3 +89,33 @@ it('keeps list ages compact and handles clock skew', () => {
   expect(reportAge(1000, 60000)).toBe('Just now')
   expect(reportAge(1000, 135000)).toBe('2m ago')
 })
+
+it('uses historical body names and kinds consistently in combat and espionage previews', () => {
+  const at = { galaxy: 2, system: 3, position: 4 }
+  for (const kind of ['Planet', 'Moon'] as const) {
+    for (const name of ['Nova Roma', null, undefined, ' ']) {
+      const expected = name?.trim()
+        ? kind === 'Moon'
+          ? 'Nova Roma (Moon)'
+          : 'Nova Roma'
+        : kind
+      expect(
+        reportPreview({
+          kind: 'Combat',
+          target: at,
+          target_name: name,
+          target_kind: kind,
+        }).location,
+      ).toBe(`${expected} · [2:3:4]`)
+      expect(
+        reportPreview({
+          kind: 'Espionage',
+          target: { body: 'body', owner: 'owner', name, kind, coordinates: at },
+        }).location,
+      ).toBe(`${expected} · [2:3:4]`)
+    }
+  }
+  expect(reportPreview({ kind: 'ContactLost', target: at }).location).toBe(
+    '[2:3:4]',
+  )
+})

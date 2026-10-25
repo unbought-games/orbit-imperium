@@ -65,8 +65,9 @@ async function setup(
               i === 1 || i === 3
                 ? {
                     field_identity: id(40),
-                    metal: '450000000',
-                    crystal: '120000000',
+                    // Galaxy returns whole units, unlike report Resources.
+                    metal: '900',
+                    crystal: '1500',
                   }
                 : null,
           })),
@@ -198,7 +199,14 @@ test('galaxy cards preserve system navigation, eligibility, debris and mission d
   await expect(
     cards.nth(2).getByRole('button', { name: 'Espionage', exact: true }),
   ).toBeDisabled()
-  await expect(cards.nth(3)).toContainText('450')
+  for (const index of [1, 3]) {
+    await expect(cards.nth(index).getByTitle('Metal', { exact: true })).toHaveText(
+      '900',
+    )
+    await expect(cards.nth(index).getByTitle('Crystal', { exact: true })).toHaveText(
+      '1,500',
+    )
+  }
   await cards.nth(3).locator('summary').click()
   await cards
     .nth(3)
@@ -331,6 +339,10 @@ test('incoming fleets and report details use the supplied public name without an
   })
   await shellFixture(page, { protocol: 4, playerNames })
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await page
+    .getByRole('navigation', { name: 'Fleet navigation' })
+    .getByRole('link', { name: 'Fleets', exact: true })
+    .click()
   await expect(
     page.getByRole('region', { name: 'Incoming fleets' }),
   ).toContainText('Attack · Commander Vega')

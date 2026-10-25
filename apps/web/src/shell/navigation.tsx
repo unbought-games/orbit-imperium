@@ -135,11 +135,17 @@ export function Navigation({
       </Button>
     )
   }
+  const fleetLanding = resolveDestination(
+    { universe: view.binding.universe, page: 'galaxy', body },
+    view,
+  ).available
+    ? 'galaxy'
+    : 'fleets'
   const primaryNavigation = (
     <nav className={styles.primary} aria-label="Main navigation">
       {destination('overview', 'Empire', Orbit, true)}
       {destination('resources', 'Build', Blocks, true)}
-      {destination('fleets', 'Fleet', Radar, true)}
+      {destination(fleetLanding, 'Fleet', Radar, true)}
       <Button
         variant="ghost"
         type="button"

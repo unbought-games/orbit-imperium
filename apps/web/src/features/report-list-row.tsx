@@ -66,7 +66,9 @@ export function ReportListRow({
               origin={origin}
               target={report.kind === 'Harvested' ? 'debris' : 'planet'}
               className={styles.location}
-            />
+            >
+              {preview.location}
+            </CoordinateLink>
           )}
         </div>
         {preview.facts.length > 0 && (

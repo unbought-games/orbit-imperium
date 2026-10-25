@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CoordinateLink } from './coordinate-link'
+import { BodyIdentity } from './body-identity'
 import { PlayerName } from './player-name'
 import type { PlayerNames } from './player-label'
 import { Heading } from '../ui/typography'
@@ -67,7 +67,13 @@ function ForceTable({
                   <Amount value={row.recovered} />
                 </td>
               )}
-              <td className={styles.lossNumber}>
+              <td
+                className={
+                  (settled ? row.permanent : row.lost) === 0n
+                    ? undefined
+                    : styles.lossNumber
+                }
+              >
                 <Amount value={settled ? row.permanent : row.lost} />
               </td>
             </tr>
@@ -186,9 +192,12 @@ export function CombatReport({
       <header className={`${styles.outcome} ${styles[report.tone]}`}>
         <p className={styles.kicker}>
           Combat report ·{' '}
-          <CoordinateLink at={payload.target} label="target">
-            {report.target}
-          </CoordinateLink>
+          <BodyIdentity
+            name={payload.target_name}
+            kind={payload.target_kind}
+            at={payload.target}
+            label="target"
+          />
           {report.side && ` · You were the ${report.side.toLowerCase()}`}
         </p>
         <Heading level={2} className={styles.result}>
@@ -213,7 +222,7 @@ export function CombatReport({
           </p>
         )}
       </header>
-      {actions}
+      {actions && <div className={styles.actions}>{actions}</div>}
       <div className={styles.resources}>
         {report.resources.map((group) => (
           <div className={styles.resourceGroup} key={group.key}>

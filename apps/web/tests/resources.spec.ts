@@ -1,3 +1,4 @@
+import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { openProductionSettings } from './fixtures/production-settings'
@@ -406,7 +407,7 @@ test('resource cost images expose live details on hover and keyboard focus', asy
       size: parseFloat(getComputedStyle(element).fontSize),
       color: getComputedStyle(element).color,
     }))
-  expect(await metal.locator('svg').evaluate(element => getComputedStyle(element).color)).toBe('rgb(145, 167, 191)')
+  await expect(metal.locator('svg')).toHaveCSS('color', 'rgb(203, 182, 141)')
   expect(amountStyle.color).toBe('rgb(244, 234, 210)')
   await metal.hover()
   const details = page.getByRole('dialog', { name: 'Metal', exact: true })
@@ -1725,10 +1726,10 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
   await shellFixture(page, { protocol: 4, bodies: [body, colony], production: [homeProduction, colonyProduction] })
   await openProductionSettings(page)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
-  await page.getByLabel('Selected body', { exact: true }).selectOption(colony.id)
+  await selectBody(page, colony.id)
   await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resource-settings$`))
   await expect(page.getByLabel('metal mine production')).toHaveValue('30')
-  await page.getByLabel('Selected body', { exact: true }).selectOption(body.id)
+  await selectBody(page, body.id)
   await expect(page.getByLabel('metal mine production')).toHaveValue('100')
 })
 

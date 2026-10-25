@@ -1,0 +1,121 @@
+:where(.state) {
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+:where(.page) {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-6);
+  min-height: 400px;
+  padding: 48px var(--space-6);
+  border-block: 1px solid var(--border);
+  background: radial-gradient(
+    ellipse at 50% 20%,
+    var(--planet-glow),
+    transparent 65%
+  );
+  text-align: center;
+}
+.emblem {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 112px;
+  height: 112px;
+  position: relative;
+  color: var(--ice);
+  border: 1px solid color-mix(in srgb, var(--ice) 22%, transparent);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--planet-glow), transparent 70%);
+}
+.emblem::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1px solid color-mix(in srgb, var(--ice) 12%, transparent);
+  border-radius: 50%;
+}
+.emblem::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--champagne);
+  box-shadow: 0 0 12px var(--planet-glow);
+}
+.emblem svg {
+  width: 40px;
+  height: 40px;
+}
+.content {
+  min-width: 0;
+}
+.eyebrow {
+  margin: 0 0 var(--space-3);
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.title {
+  margin: 0;
+  color: var(--champagne-light);
+  font: normal var(--font-size-3xl) / 1.2 var(--font-editorial);
+}
+.description {
+  max-width: 46ch;
+  margin: var(--space-3) auto 0;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+:where(.compact) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-block: var(--space-5);
+}
+.compact .emblem {
+  width: 48px;
+  height: 48px;
+}
+.compact .emblem svg {
+  width: 24px;
+  height: 24px;
+}
+.compact .emblem::before,
+.compact .emblem::after {
+  display: none;
+}
+.compact .title {
+  font-size: var(--font-size-lg);
+}
+.compact .description {
+  max-width: none;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+.compact .actions {
+  justify-content: flex-start;
+  margin-top: var(--space-3);
+}
+@media (max-width: 599px) {
+  :where(.page) {
+    min-height: 380px;
+    padding: var(--space-8) var(--space-4);
+  }
+  .page .title {
+    font-size: var(--font-size-2xl);
+  }
+}

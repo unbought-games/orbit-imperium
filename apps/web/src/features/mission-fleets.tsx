@@ -1,3 +1,5 @@
+import { Radar, Rocket } from 'lucide-react'
+import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
 import { PlayerName } from './player-name'
 import { useProfileSource } from '../shell/player-profiles-context'
@@ -22,6 +24,7 @@ import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { routeTarget } from '../shell/route-target'
 import { TaskHeader } from '../ui/task-header'
+import { FleetInventory } from './fleet-inventory'
 import { MissionTrajectory } from './mission-trajectory'
 import {
   missionLocation,
@@ -139,16 +142,23 @@ export function MissionFleets({
         </div>
       </TaskHeader>
       {!fleets.length && !launches.length && (
-        <div className={styles.empty}>
-          <Heading level={3}>
-            {item ? 'Fleet unavailable.' : 'No active fleets.'}
-          </Heading>
-          <Text>
-            {item
+        <EmptyState
+          icon={Rocket}
+          variant="compact"
+          title={item ? 'Fleet unavailable.' : 'No active fleets.'}
+          description={
+            item
               ? 'This mission may have completed. Check reports for its outcome.'
-              : 'Prepare a mission from the ships stationed at your worlds.'}
-          </Text>
-        </div>
+              : 'Prepare a mission from the ships stationed at your worlds. Track its journey here from launch to return.'
+          }
+          actions={
+            item ? (
+              <ButtonLink {...routeTarget(universeName, 'reports', origin)}>
+                View reports
+              </ButtonLink>
+            ) : undefined
+          }
+        />
       )}
       {launches.map(({ attempt, fleetId, canRecall, recalling }) => (
         <article className={styles.fleet} key={attempt.envelope.command_id}>
@@ -301,7 +311,13 @@ export function MissionFleets({
         <section className={styles.incoming} aria-label="Incoming fleets">
           <Heading level={2}>Incoming fleets</Heading>
           {!view.missions.incoming.length && (
-            <Text>No visible incoming fleets.</Text>
+            <EmptyState
+              icon={Radar}
+              variant="compact"
+              headingLevel={3}
+              title="No visible incoming fleets."
+              description="Detected arrivals will appear here."
+            />
           )}
           {view.missions.incoming.map((fleet, index) => (
             <article className={styles.incomingRow} key={index}>
@@ -322,6 +338,7 @@ export function MissionFleets({
           ))}
         </section>
       )}
+      {!item && <FleetInventory model={model} origin={origin} />}
       <details className={styles.rules}>
         <summary>Fleet slots and protection</summary>
         <Text>Returning fleets occupy a slot.</Text>

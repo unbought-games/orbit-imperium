@@ -1,3 +1,4 @@
+import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { captureCatalog } from './fixtures/catalog-capture'
@@ -656,7 +657,8 @@ test('manufacturing updates totals locally and Build validates without dismissin
     .click()
   await page.getByLabel('Defenses quantity').fill('0')
 
-  await expect(page.getByRole('alert')).toContainText('positive whole quantity')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(pane).toContainText('Enter a quantity to see the total cost.')
   await expect(
     page.getByRole('button', { name: 'Build', exact: true }),
   ).toBeDisabled()
@@ -1309,7 +1311,7 @@ test('planet changes retain the item, reset edits, and link across prerequisites
   const { sent, inspections } = await setup(page, false, undefined, { bodies: [body, other], catalog: entries })
   await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
   await page.getByLabel('Shipyard quantity').fill('7')
-  await page.getByLabel('Selected body').selectOption(other.id)
+  await selectBody(page, other.id)
   await expect(page).toHaveURL(`/u/andromeda/b/${other.id}/shipyard/small-cargo`)
   await expect(page.getByLabel('Shipyard quantity')).toHaveValue('1')
   await expect.poll(() => inspections.some(r => r.type === 'Manufacture' && r.body === other.id)).toBe(true)
@@ -1362,7 +1364,7 @@ test(`Moon-only facilities from ${catalogSource} metadata are omitted on planets
   await page.goto(`/u/andromeda/b/${body.id}/facilities`)
   for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
     await expect(page.getByRole('link', { name: `Upgrade ${name}`, exact: true })).toHaveCount(0)
-  await page.getByLabel('Selected body').selectOption(moon.id)
+  await selectBody(page, moon.id)
   for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
     await expect(page.getByRole('link', { name: `Upgrade ${name}`, exact: true })).toBeVisible()
   expect(sent).toEqual([])
@@ -1661,6 +1663,11 @@ for (const width of [320, 390, 1440]) {
       await expect(result).toContainText(`Last submitted: 4 × ${itemName}`)
       await expect(result).toContainText('Order confirmed. Costs shown are for a new order.')
       await expect(page.getByRole('status').filter({ hasText: `4 × ${itemName}: Order confirmed.` })).toHaveCount(1)
+      await expect(page.getByLabel(quantityLabel)).toHaveValue('0')
+      await expect(page.getByRole('alert')).toHaveCount(0)
+      await expect(build).toBeDisabled()
+      // A new unaffordable order is independent of the confirmed order.
+      await page.getByLabel(quantityLabel).fill('4')
       await expect(page.getByLabel('Missing resources')).toBeVisible()
       await expect(page.getByText('New order cost', { exact: true })).toBeVisible()
       await expect(build).toBeDisabled()
@@ -1675,12 +1682,42 @@ for (const width of [320, 390, 1440]) {
       await build.click()
       await expect(result).toContainText(`Last submitted: 1 × ${itemName}`)
       await expect(result).toContainText('Order confirmed.')
+      await expect(page.getByLabel(quantityLabel)).toHaveValue('0')
+      await expect(build).toBeDisabled()
       expect(submitted).toBe(2)
       await page.getByRole('link', { name: /^Back to / }).click()
       await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
       await expect(result).toContainText(`Last submitted: 1 × ${itemName}`)
     })
   }
+}
+
+for (const edit of [false, true]) {
+  test(`delayed manufacturing success ${edit ? 'preserves the next quantity' : 'resets the submitted quantity'}`, async ({ page }) => {
+    await setup(page)
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    await page.route('**/commands', async route => {
+      await held
+      await route.fallback()
+    })
+    await navigate(page, 'Shipyard')
+    await page.getByRole('link', { name: 'Build Small Cargo', exact: true }).click()
+    const quantity = page.getByLabel('Shipyard quantity')
+    const result = page.getByRole('group', { name: 'Latest action result', exact: true })
+    await quantity.fill('4')
+    try {
+      await page.getByRole('button', { name: 'Build', exact: true }).click()
+      await expect(result).toContainText('Submitting action.')
+      await expect(quantity).toHaveValue('4')
+      if (edit) await quantity.fill('2')
+    } finally {
+      release()
+    }
+    await expect(result).toContainText('Order confirmed.')
+    await expect(result).toContainText('Last submitted: 4 × Small Cargo')
+    await expect(quantity).toHaveValue(edit ? '2' : '0')
+  })
 }
 
 for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain', 1440]] as const) {
@@ -1703,6 +1740,7 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
     })
     await navigate(page, 'Defense')
     await page.getByRole('link', { name: 'Build Rocket Launcher', exact: true }).click()
+    await page.getByLabel('Defenses quantity').fill('4')
     const build = page.getByRole('button', { name: 'Build', exact: true })
     const result = page.getByRole('group', { name: 'Latest action result', exact: true })
     await expect(build).toBeEnabled()
@@ -1713,6 +1751,7 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
       await expect(build).toHaveText('Confirming')
       expect((await build.boundingBox())!.height).toBe(initialHeight)
       await expect(result).not.toContainText('confirmed')
+      await expect(page.getByLabel('Defenses quantity')).toHaveValue('4')
       await expect(build).toBeDisabled()
       // The ledger updates before persistence and network delivery finish.
       await expect.poll(() => submitted).toBe(1)
@@ -1727,9 +1766,18 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
       ? 'Order accepted; awaiting the game result.'
       : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'Response uncertain. Your action is saved.')
     await expect(result).not.toContainText('confirmed')
+    await expect(page.getByLabel('Defenses quantity')).toHaveValue('4')
     if (outcome === 'Rejected') await expect(build).toBeEnabled()
     else await expect(build).toBeDisabled()
-    if (outcome === 'uncertain') await expect(result.getByRole('button', { name: 'Resolve saved command' })).toBeVisible()
+    if (outcome === 'uncertain') {
+      await page.route('**/commands/*?epoch=*', route => route.fulfill({ json: {
+        protocol: 3, binding, command_id: new URL(route.request().url()).pathname.split('/').at(-1),
+        admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1',
+      } }))
+      await result.getByRole('button', { name: 'Resolve saved command' }).click()
+      await expect(result).toContainText('Order confirmed.')
+      await expect(page.getByLabel('Defenses quantity')).toHaveValue('0')
+    }
     expect(submitted).toBe(1)
   })
 }

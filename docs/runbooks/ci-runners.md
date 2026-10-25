@@ -48,6 +48,32 @@ loading assertions run with or without it. See the
 [test performance audit](test-performance-audit.md) for measurements and the
 prioritized follow-up experiments.
 
+## Merge queue
+
+Changes to `main` go through GitHub's merge queue after PR checks pass. Add a
+ready PR with the GitHub **Merge when ready** control or `gh pr merge NUMBER`.
+Do not bypass the queue with an administrator merge. Branches do not need to be
+rebased or updated after every merge; resolve actual conflicts when necessary.
+
+CI handles `merge_group: checks_requested` and checks out GitHub's temporary
+integration commit. Test selection compares that commit with the group's
+`base_sha`, including changes from every preceding PR in the group. Queue,
+PR and main-push runs have separate concurrency groups. The same required
+`Build, lint and unit tests` gate covers each integration commit. Image
+publication still requires successful main-push CI, never queue CI.
+
+The repository queue uses squash merges, up to three concurrent integration
+builds, and requires every queued entry's checks to pass. It can merge up to
+five ready entries together, with a minimum of one so it does not wait to fill
+a batch. Its check-response window is six hours; this does not add a job or test
+execution deadline. Existing branch protections remain in force, with the
+up-to-date branch requirement disabled.
+
+GitHub removes failing or conflicting entries and rebuilds affected later
+combinations. Diagnose the removal reason in the PR timeline, fix the PR, and
+enqueue it again after its checks pass. Avoid jumping the queue, which rebuilds
+the combinations behind it.
+
 ## Public repository runner isolation
 
 The public repository has no registered self-hosted runners, verified on
