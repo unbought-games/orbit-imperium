@@ -29,6 +29,7 @@ export function usePlanetRename(
         ? 'Planet renamed.'
         : ''
   return {
+    saved: submitted?.status === 'committed' && submitted.reconciled,
     draft,
     setDraft,
     error,

@@ -338,7 +338,11 @@ function PlanetDossier({
             {body.kind}
             {selected && <b>Command focus</b>}
           </span>
-          <h3 className={styles.planetName}>{bodyName(body)}</h3>
+          {view.protocol === 4 && body.kind === 'Planet' ? (
+            <PlanetRename model={model} body={body} />
+          ) : (
+            <h3 className={styles.planetName}>{bodyName(body)}</h3>
+          )}
           <span className={styles.planetCoordinates}>
             <CoordinateLink
               at={body.coordinates}
@@ -368,9 +372,6 @@ function PlanetDossier({
           </span>
         </Destination>
       </header>
-      {view.protocol === 4 && body.kind === 'Planet' && (
-        <PlanetRename model={model} body={body} />
-      )}
       <dl className={styles.resources} aria-label="Planet resources">
         {resourceNames.map((name) => (
           <div

@@ -39,6 +39,20 @@ for (const width of [1280, 390]) {
     const rename = page.getByRole('button', {
       name: 'Rename planet [1:371:12]',
     })
+    const nameRow = rename.locator('..')
+    await expect(
+      nameRow.getByRole('heading', { name: 'Planet', exact: true }),
+    ).toBeVisible()
+    await expect(rename).toHaveText('')
+    await diagnosticScreenshot(
+      page.getByRole('article', {
+        name: 'Planet [1:371:12] dossier',
+        exact: true,
+      }),
+      {
+        path: `test-results/planet-rename-idle-${width}.png`,
+      },
+    )
     await rename.click()
     const form = page.getByRole('form', { name: 'Rename planet [1:371:12]' })
     const input = form.getByRole('textbox', { name: 'Planet name' })
@@ -52,6 +66,15 @@ for (const width of [1280, 390]) {
     expect(submitted).toHaveLength(0)
     await rename.click()
     await input.fill('  Terra 世界 🪐  ')
+    await diagnosticScreenshot(
+      page.getByRole('article', {
+        name: 'Planet [1:371:12] dossier',
+        exact: true,
+      }),
+      {
+        path: `test-results/planet-rename-editing-${width}.png`,
+      },
+    )
     await input.press('Enter')
     await expect(
       page.getByRole('heading', { name: 'Terra 世界 🪐', exact: true }),
@@ -66,7 +89,16 @@ for (const width of [1280, 390]) {
       page.getByRole('status').filter({ hasText: /^Planet renamed\.$/ }),
     ).toBeVisible()
     expect(submitted).toHaveLength(1)
+    await expect(form).toHaveCount(0)
+    await expect(rename).toBeFocused()
+    await rename.click()
+    await input.fill('Discard this edit')
     await form.getByRole('button', { name: 'Cancel' }).click()
+    await expect(rename).toBeFocused()
+    await expect(
+      page.getByRole('heading', { name: 'Terra 世界 🪐', exact: true }),
+    ).toBeVisible()
+    expect(submitted).toHaveLength(1)
     await page.reload()
     await expect(
       page.getByRole('heading', { name: 'Terra 世界 🪐', exact: true }),
@@ -171,6 +203,13 @@ test('a rejected rename preserves the draft and leaves the confirmed name unchan
   await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
     'New Terra',
   )
+  await expect(
+    page.getByRole('article', {
+      name: 'Terra [1:371:12] dossier',
+      exact: true,
+    }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(
     page.getByRole('heading', { name: 'Terra', exact: true }),
   ).toBeVisible()
@@ -284,7 +323,7 @@ test('the fallback label is a valid explicit name for an unnamed planet', async 
     page.getByRole('status').filter({ hasText: /^Planet renamed\.$/ }),
   ).toBeVisible()
   expect(planet.name).toBe('Planet')
-  await expect(save).toBeDisabled()
+  await expect(save).toHaveCount(0)
   await page.reload()
   await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
   await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
