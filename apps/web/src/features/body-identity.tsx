@@ -8,11 +8,13 @@ export function BodyIdentity({
   kind,
   at,
   label,
+  coordinatesHidden = false,
 }: {
   name?: unknown
   kind?: unknown
   at: unknown
   label?: string
+  coordinatesHidden?: boolean
 }) {
   const identity = bodyIdentityLabel(name, kind)
   return (
@@ -23,12 +25,16 @@ export function BodyIdentity({
           <span data-identity-separator=""> · </span>
         </span>
       )}
-      <CoordinateLink
-        at={at}
-        target={kind === 'Moon' ? 'moon' : 'planet'}
-        label={label}
-        className={styles.coordinates}
-      />
+      {coordinatesHidden ? (
+        <span>Coordinates hidden</span>
+      ) : (
+        <CoordinateLink
+          at={at}
+          target={kind === 'Moon' ? 'moon' : 'planet'}
+          label={label}
+          className={styles.coordinates}
+        />
+      )}
     </span>
   )
 }

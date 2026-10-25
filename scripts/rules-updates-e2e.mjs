@@ -216,7 +216,7 @@ try {
   await page.getByLabel('System', { exact: true }).fill(String(target.system))
   await page.getByLabel('Position', { exact: true }).fill(String(target.position))
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Review dispatch', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Review dispatch:/ })).toBeVisible()
   await browser.close(); browser = null
   const registration = await fetch(active.base + '/api/v1/registration', { method: 'POST', headers: { Origin: active.base, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'newafteractivation', password: 'password' }) })
   assert.equal(registration.status, 201)

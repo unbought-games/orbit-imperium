@@ -9,6 +9,15 @@ pub struct RankingFacts {
     pub lots: Vec<AssetLot>,
     pub sampled_at: i64,
     pub processing_pending: bool,
+    pub baseline: Option<RankingObservation>,
+}
+
+/// Historical source facts, never persisted scores, ranks or deltas.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RankingObservation {
+    pub sampled_at: i64,
+    pub players: Vec<PlayerId>,
+    pub lots: Vec<AssetLot>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -17,6 +26,7 @@ pub struct RankingPlayer {
     pub username: String,
     pub points: String,
     pub rank: u32,
+    pub previous_rank: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -26,20 +36,44 @@ pub struct Rankings {
     pub sampled_at: i64,
     pub processing_pending: bool,
     pub players: Vec<RankingPlayer>,
+    pub baseline_at: Option<i64>,
 }
 
 impl<S: GameStore> GameService<S> {
     pub async fn rankings(&self, p: Principal, c: QueryContext) -> Result<Rankings, ServiceError> {
         Self::principal(p, c.binding)?;
         let facts = self.store.ranking_facts(c.binding).await?;
+        let baseline_at = facts.baseline.as_ref().map(|b| b.sampled_at);
+        let players = rank_with_baseline(facts.names, facts.lots, facts.baseline)?;
         Ok(Rankings {
             binding: c.binding,
             request_id: c.request_id,
             sampled_at: facts.sampled_at,
             processing_pending: facts.processing_pending,
-            players: rank_players(facts.names, facts.lots)?,
+            players,
+            baseline_at,
         })
     }
+}
+
+pub fn rank_with_baseline(
+    names: PublicPlayerNames,
+    lots: Vec<AssetLot>,
+    baseline: Option<RankingObservation>,
+) -> Result<Vec<RankingPlayer>, ServiceError> {
+    let previous = match baseline {
+        Some(b) => rank_players(
+            b.players.into_iter().map(|p| (p, String::new())).collect(),
+            b.lots,
+        )?,
+        None => vec![],
+    };
+    let ranks: BTreeMap<_, _> = previous.into_iter().map(|p| (p.player, p.rank)).collect();
+    let mut players = rank_players(names, lots)?;
+    for player in &mut players {
+        player.previous_rank = ranks.get(&player.player).copied();
+    }
+    Ok(players)
 }
 
 /// Sum exact paid values before flooring. Ranking compares displayed points;
@@ -77,6 +111,7 @@ pub fn rank_players(
                 username,
                 points: points.to_string(),
                 rank,
+                previous_rank: None,
             })
         })
         .collect()
@@ -132,6 +167,47 @@ mod tests {
             ]
         );
     }
+    #[test]
+    fn movement_uses_global_shared_ranks_and_distinguishes_new_and_missing_history() {
+        let names: PublicPlayerNames = (1..=5).map(|n| (player(n), format!("Pilot {n}"))).collect();
+        // Historical ranks: 1=1, 2=2, 3=2, 4=4, departed player 6=5.
+        let baseline = RankingObservation {
+            sampled_at: 1000,
+            players: [1, 2, 3, 4, 6].map(player).into(),
+            lots: vec![
+                lot(1, 5_000_000_000),
+                lot(2, 3_000_000_000),
+                lot(3, 3_000_000_000),
+                lot(4, 1_000_000_000),
+            ],
+        };
+        let lots = vec![
+            lot(1, 2_000_000_000),
+            lot(2, 4_000_000_000),
+            lot(3, 2_000_000_000),
+            lot(4, 1_000_000_000),
+        ];
+        let rows = rank_with_baseline(names.clone(), lots.clone(), Some(baseline)).unwrap();
+        assert_eq!(
+            rows.iter()
+                .map(|p| (p.player, p.rank, p.previous_rank))
+                .collect::<Vec<_>>(),
+            vec![
+                (player(2), 1, Some(2)), // gain
+                (player(1), 2, Some(1)), // loss
+                (player(3), 2, Some(2)), // unchanged tied rank
+                (player(4), 4, Some(4)), // skipped shared rank
+                (player(5), 5, None),    // new zero-point player
+            ]
+        );
+        assert!(
+            rank_with_baseline(names, lots, None)
+                .unwrap()
+                .iter()
+                .all(|p| p.previous_rank.is_none())
+        );
+    }
+
     #[test]
     fn location_does_not_affect_value_and_large_values_remain_exact() {
         let mut flying = lot(1, 600_000_000);

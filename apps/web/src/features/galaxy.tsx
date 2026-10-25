@@ -1,8 +1,7 @@
 import { useProfileSource } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
-import { Select, Field } from '../ui/form'
+import { GalaxyNavigation } from './galaxy-navigation'
 import styles from './galaxy.module.css'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
@@ -116,54 +115,13 @@ export function Galaxy({
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
-      <div className={styles.toolbar} role="group" aria-label="Galaxy controls">
-        <Field className={styles.coordinateField}>
-          <span>Galaxy</span>
-          <Select
-            value={galaxy}
-            onChange={(e) => browse(Number(e.target.value), system)}
-          >
-            {Array.from({ length: model.settings?.galaxies ?? 1 }, (_, i) => (
-              <option key={i + 1}>{i + 1}</option>
-            ))}
-          </Select>
-        </Field>
-        <Button
-          variant="secondary"
-          size="icon"
-          aria-label="Previous system"
-          title="Previous system"
-          disabled={system <= 1}
-          onClick={() => browse(galaxy, system - 1)}
-        >
-          <ChevronLeft size={18} />
-        </Button>
-        <Field className={styles.coordinateField}>
-          <span>System</span>
-          <Select
-            aria-label="Solar system"
-            value={system}
-            onChange={(e) => browse(galaxy, Number(e.target.value))}
-          >
-            {Array.from(
-              { length: model.settings?.systems_per_galaxy ?? 5 },
-              (_, i) => (
-                <option key={i + 1}>{i + 1}</option>
-              ),
-            )}
-          </Select>
-        </Field>
-        <Button
-          variant="secondary"
-          size="icon"
-          aria-label="Next system"
-          title="Next system"
-          disabled={system >= (model.settings?.systems_per_galaxy ?? 5)}
-          onClick={() => browse(galaxy, system + 1)}
-        >
-          <ChevronRight size={18} />
-        </Button>
-      </div>
+      <GalaxyNavigation
+        galaxy={galaxy}
+        system={system}
+        galaxies={model.settings?.galaxies ?? 1}
+        systems={model.settings?.systems_per_galaxy ?? 5}
+        browse={browse}
+      />
       {!valid && (
         <p role="alert">These coordinates are outside this universe.</p>
       )}

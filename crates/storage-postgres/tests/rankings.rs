@@ -180,10 +180,11 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
     );
     let (status, public) = request(&app, binding, &cookie, csrf).await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(public.as_object().unwrap().len(), 5);
+    assert_eq!(public.as_object().unwrap().len(), 6);
+    assert!(public["baseline_at"].is_null());
     for row in public["players"].as_array().unwrap() {
-        assert_eq!(row.as_object().unwrap().len(), 4);
-        for field in ["player", "username", "points", "rank"] {
+        assert_eq!(row.as_object().unwrap().len(), 5);
+        for field in ["player", "username", "points", "rank", "previous_rank"] {
             assert!(row.get(field).is_some());
         }
     }
@@ -306,6 +307,87 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
             .players
             .iter()
             .any(|p| p.player == other)
+    );
+    // The first daily source observation is immutable despite later score and
+    // membership changes. All readers use yesterday's full roster, including
+    // departed players, to derive historical shared ranks.
+    assert!(after.baseline_at.is_none());
+    let day = 86_400_000;
+    store.set_test_time(day + 500).await.unwrap();
+    let (one, two) = tokio::join!(
+        game.rankings(principal, context()),
+        game.rankings(principal, context())
+    );
+    for snapshot in [one.unwrap(), two.unwrap()] {
+        assert_eq!(snapshot.baseline_at, Some(1000));
+        assert!(snapshot.players.iter().all(|p| p.previous_rank == Some(1)));
+        assert_eq!(
+            snapshot
+                .players
+                .iter()
+                .find(|p| p.player == binding.player)
+                .unwrap()
+                .rank,
+            1
+        );
+        assert!(
+            snapshot
+                .players
+                .iter()
+                .filter(|p| p.player != binding.player)
+                .all(|p| p.rank == 2)
+        );
+    }
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM ranking_observations WHERE universe=$1")
+            .bind(universe.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        2
+    );
+    let retained: Value = sqlx::query_scalar(
+        "SELECT observation FROM ranking_observations WHERE universe=$1 AND day=0",
+    )
+    .bind(universe.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(retained.get("lots").is_some());
+    assert!(retained.get("rank").is_none());
+    assert!(retained.get("points").is_none());
+    assert_eq!(
+        retained["players"].as_array().unwrap().len(),
+        accounts.len()
+    );
+    store.set_test_time(2 * day + 500).await.unwrap();
+    let next = game.rankings(principal, context()).await.unwrap();
+    assert_eq!(next.baseline_at, Some(day + 500));
+    assert!(next.players.iter().all(|p| p.previous_rank == Some(p.rank)));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM ranking_observations WHERE universe=$1")
+            .bind(universe.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        2
+    );
+    // A missed UTC day is explicitly unavailable, not an invented 24h delta.
+    store.set_test_time(4 * day).await.unwrap();
+    assert!(
+        game.rankings(principal, context())
+            .await
+            .unwrap()
+            .baseline_at
+            .is_none()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM ranking_observations WHERE universe=$1")
+            .bind(universe.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        1
     );
     pool.close().await;
 }

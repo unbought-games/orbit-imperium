@@ -24,9 +24,9 @@
 .coordinateField > span {
   line-height: 1.2;
 }
-.toolbar select {
-  width: auto;
-  min-width: 64px;
+.toolbar input {
+  width: 64px;
+  min-width: 0;
   padding: 8px;
   font-size: 1rem;
 }
@@ -257,8 +257,8 @@ summary.positionSummary:focus-visible {
     gap: 2px;
     font-size: 0.75rem;
   }
-  .toolbar select {
-    min-width: 54px;
+  .toolbar input {
+    width: 54px;
   }
   .planet {
     width: 36px;
@@ -306,4 +306,10 @@ summary.positionSummary:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.coordinateError {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
 }

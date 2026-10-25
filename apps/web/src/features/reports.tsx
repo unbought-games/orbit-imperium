@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ReportStarButton } from './report-star-button'
 import { ReportTriageControls, defaultTriage } from './report-triage-controls'
 import { triageReports } from './report-triage'
+import { ReportShareControl } from './report-share-control'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
 import { Button, ButtonLink } from '../ui/button'
@@ -152,6 +153,11 @@ export function Reports({
             </div>
             <div className={styles.controls}>
               <ReportStarButton model={model} report={detail.header.id} />
+              {['Combat', 'ContactLost', 'Espionage'].includes(
+                detail.payload.kind,
+              ) && (
+                <ReportShareControl model={model} report={detail.header.id} />
+              )}
               <ReportVisibilityButton
                 model={model}
                 report={detail.header.id}

@@ -1,0 +1,77 @@
+.panel {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding-block: 0.5rem;
+}
+.panel p {
+  color: var(--text-muted);
+  max-width: 90ch;
+}
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  border: 0;
+  padding: 0.75rem 0;
+  margin: 0.5rem 0;
+}
+.choices legend {
+  font-weight: 600;
+}
+.choices label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+.scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.scroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.scroll caption {
+  text-align: left;
+  padding-block: 0.75rem;
+}
+.scroll th,
+.scroll td {
+  min-width: 10rem;
+  padding: 0.75rem;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.scroll th:first-child {
+  text-align: left;
+  min-width: 9rem;
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+}
+.scroll thead th {
+  color: var(--accent);
+}
+@media (max-width: 600px) {
+  .scroll th:first-child {
+    min-width: 6.5rem;
+  }
+  .panel {
+    padding: 0.75rem;
+  }
+  .scroll th,
+  .scroll td {
+    min-width: 7rem;
+    padding: 0.4rem;
+    font-size: 0.875rem;
+  }
+}

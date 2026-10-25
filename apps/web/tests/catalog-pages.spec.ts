@@ -66,7 +66,7 @@ test('active research remains cancellable from its details after removing Curren
   await pane
     .getByRole('button', { name: 'Cancel research', exact: true })
     .click()
-  await confirmCancellation(page)
+  await expect(page.getByRole('dialog', { name: 'Cancel research?', exact: true })).toHaveCount(0)
   await expect
     .poll(() => sent)
     .toEqual({ type: 'CancelResearch', operation: operation.id })
@@ -515,8 +515,8 @@ for (const width of [1440, 390, 320]) {
       await expect(page.locator('main h1')).toHaveText(tab)
       // Work summaries can have their own headings; the repeated page header is gone.
       await expect(page.locator('main > header').getByRole('heading', { name: tab, exact: true })).toHaveCount(0)
-      await expect(page.locator('main details')).toHaveCount(0)
-      await expect(page.locator('main summary')).toHaveCount(0)
+      await expect(page.locator('main details')).toHaveCount(tab === 'Shipyard' ? 1 : 0)
+      await expect(page.locator('main summary')).toHaveText(tab === 'Shipyard' ? ['Compare ships'] : [])
       if (tab === 'Resources') {
         await expect(page.getByText(/Production, storage and energy/)).toHaveCount(0)
         await expect(page.getByRole('button', { name: 'Resource settings', exact: true })).toHaveCount(0)
@@ -540,7 +540,9 @@ for (const width of [1440, 390, 320]) {
         await expect(page.locator('main').getByText(/^Planet \[.*\]$/)).toHaveCount(0)
         const queue = page.getByRole('region', { name: tab === 'Research' ? 'Research' : 'Shipyard & defense', exact: true })
         await expect(queue).toBeVisible()
-        const queueBounds = (await queue.boundingBox())!
+        // Shipyard starts with its comparison control; other catalogs start with work.
+        const firstSection = tab === 'Shipyard' ? page.locator('main details') : queue
+        const queueBounds = (await firstSection.boundingBox())!
         const tabs = (await page.getByRole('navigation', { name: 'Build navigation' }).boundingBox())!
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeGreaterThanOrEqual(0)
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeLessThanOrEqual(20)
@@ -2062,5 +2064,118 @@ for (const width of [390, 1280]) {
       await expect.poll(() => dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
       await dialog.getByRole('button', { name: 'Close technology', exact: true }).click()
     }
+  })
+}
+
+for (const width of [1280, 390]) {
+  test(`ship comparison supports research updates and keyboard controls at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 950 })
+    const ship = (
+      id: 'LightFighter' | 'HeavyFighter',
+      speed: string,
+      drive: 'CombustionDrive' | 'ImpulseDrive',
+    ): S['CatalogEntry3'] => ({
+      key: { kind: 'Ship', id },
+      enabled: true,
+      mobile: true,
+      requirements: [],
+      body_kinds: ['Planet'],
+      ship_statistics: {
+        cost: ['3000', '1000', '0'],
+        propulsion: {
+          cargo_capacity: '50',
+          base_speed: speed,
+          fuel_consumption: '20',
+          drive,
+          drive_coefficient:
+            drive === 'CombustionDrive' ? ['1', '10'] : ['1', '5'],
+          impulse_upgrade: null,
+        },
+        combat: {
+          attack_ticks: '5000000',
+          shield_ticks: '1000000',
+          hull_ticks: '40000000',
+          technology_bonus: ['1', '10'],
+          rapid_fire_against: [],
+          rapid_fire_from: [],
+        },
+      },
+    })
+    const options = {
+      catalog: [
+        ship('LightFighter', '12500', 'CombustionDrive'),
+        ship('HeavyFighter', '10000', 'ImpulseDrive'),
+      ],
+      research: [
+        { research: 'CombustionDrive' as const, level: 2 },
+        { research: 'ImpulseDrive' as const, level: 4 },
+      ],
+    }
+    await shellFixture(page, options)
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    const summary = page.locator('summary').filter({ hasText: 'Compare ships' })
+    await summary.focus()
+    await page.keyboard.press('Enter')
+    const table = page.getByRole('table', {
+      name: 'Current player ship statistics · per ship',
+    })
+    await expect(
+      table.getByRole('row', { name: 'Effective speed 15,000 18,000' }),
+    ).toBeVisible()
+    await expect(
+      table.getByRole('img', { name: 'Metal', exact: true }),
+    ).toHaveCount(2)
+    await expect(
+      table.getByRole('row', {
+        name: 'Attack strength Unavailable Unavailable',
+      }),
+    ).toBeVisible()
+    options.research[1].level = 5
+    await refreshGame(page)
+    await expect(
+      table.getByRole('row', { name: 'Effective speed 15,000 20,000' }),
+    ).toBeVisible()
+    await page.getByRole('radio', { name: 'Base stats', exact: true }).check()
+    await expect(
+      page.getByRole('row', { name: 'Base speed 12,500 10,000' }),
+    ).toBeVisible()
+    await diagnosticScreenshot(page, {
+      path: `test-results/ship-comparison-${width}.png`,
+      fullPage: true,
+    })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    const region = page.getByRole('region', { name: 'Ship comparison table' })
+    await region.focus()
+    await expect(region).toBeFocused()
+    await page
+      .getByRole('checkbox', { name: 'Heavy Fighter', exact: true })
+      .uncheck()
+    await expect(
+      page.getByRole('columnheader', { name: 'Heavy Fighter', exact: true }),
+    ).toHaveCount(0)
+    await page
+      .getByRole('checkbox', { name: 'Light Fighter', exact: true })
+      .uncheck()
+    await expect(
+      page.getByText('Select ships to compare.', { exact: true }),
+    ).toBeVisible()
+    options.catalog[1].enabled = false
+    options.catalog[0].ship_statistics!.propulsion!.base_speed = '16000'
+    await refreshGame(page)
+    await expect(
+      page.getByRole('checkbox', { name: 'Heavy Fighter', exact: true }),
+    ).toHaveCount(0)
+    await page
+      .getByRole('checkbox', { name: 'Light Fighter', exact: true })
+      .check()
+    await expect(
+      page.getByRole('row', { name: 'Base speed 16,000' }),
+    ).toBeVisible()
   })
 }

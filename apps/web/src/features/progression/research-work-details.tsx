@@ -1,6 +1,6 @@
 import type { Coordinator } from '../../client-model/coordinator'
 import type { researchProgress } from '../../client-model/research-progress'
-import { ConfirmationButton } from '../../ui/confirmation-button'
+import { WorkCancellationButton } from '../work-cancellation-button'
 import { label } from '../../ui/format'
 import { ActiveWorkDetails, RefundAmounts } from './active-work-details'
 import { DetailRow } from './detail-layout'
@@ -25,7 +25,10 @@ export function ResearchWorkDetails({
       status={research.status}
       paid={research.paid}
     >
-      <ConfirmationButton
+      <WorkCancellationButton
+        model={model}
+        operationId={research.operationId}
+        kind="CancelResearch"
         key={research.operationId ?? 'pending'}
         variant="secondary"
         className={styles.cancelWork}
@@ -36,7 +39,7 @@ export function ResearchWorkDetails({
           <>
             <p>
               Cancel {verb.toLowerCase()} {label(research.research)} to level{' '}
-              {research.targetLevel}? Progress on this level will be lost.
+              {research.targetLevel}?
             </p>
             <dl className={styles.compare}>
               <DetailRow label="Full refund">
@@ -55,7 +58,7 @@ export function ResearchWorkDetails({
         }}
       >
         Cancel research
-      </ConfirmationButton>
+      </WorkCancellationButton>
     </ActiveWorkDetails>
   )
 }

@@ -7,6 +7,9 @@ import {
 } from './dispatch-timing'
 
 it('preserves seconds in flight durations instead of rounding to whole minutes', () => {
+  expect(flightDuration(0)).toBe('0s')
+  expect(flightDuration(59000)).toBe('59s')
+  expect(flightDuration(1172000)).toBe('19m 32s')
   expect(flightDuration(200000)).toBe('3m 20s')
   expect(flightDuration(400000)).toBe('6m 40s')
   expect(flightDuration(3700000)).toBe('1h 1m 40s')
