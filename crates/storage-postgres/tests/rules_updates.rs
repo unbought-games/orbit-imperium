@@ -1260,6 +1260,15 @@ async fn beginner_protection_multiplier_is_saved_per_universe_and_can_be_reset()
 
 #[tokio::test]
 async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_restart() {
+    defense_activation_preserves_paid_work(DefenseId::IonCannon).await;
+}
+
+#[tokio::test]
+async fn heavy_laser_activation_preserves_paid_work_and_retained_defenses_across_restart() {
+    defense_activation_preserves_paid_work(DefenseId::HeavyLaser).await;
+}
+
+async fn defense_activation_preserves_paid_work(defense: DefenseId) {
     let (store, pool, universe, binding) = setup().await;
     let (_, _, other, _) = setup().await;
     let service = RulesService::new(store.clone());
@@ -1299,11 +1308,23 @@ async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query("UPDATE research_levels SET level=4 WHERE owner=$1 AND research='IonTechnology'")
-        .bind(binding.player.0)
-        .execute(&pool)
-        .await
-        .unwrap();
+    let research_levels = if defense == DefenseId::HeavyLaser {
+        vec![
+            (ResearchId::LaserTechnology, 6, 300),
+            (ResearchId::EnergyTechnology, 3, 1200),
+        ]
+    } else {
+        vec![(ResearchId::IonTechnology, 4, 1400)]
+    };
+    for (research, level, _) in &research_levels {
+        sqlx::query("UPDATE research_levels SET level=$2 WHERE owner=$1 AND research=$3")
+            .bind(binding.player.0)
+            .bind(i32::try_from(*level).unwrap())
+            .bind(format!("{research:?}"))
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
     sqlx::query("UPDATE bodies SET amounts=$2, revision=revision+1 WHERE id=$1")
         .bind(body.0)
         .bind(sqlx::types::Json(Resources::all(100_000 * SCALE)))
@@ -1313,19 +1334,26 @@ async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_
 
     // Completed facility/research fixtures need one paid-value lot per level.
     // A bare level edit is correctly rejected by the world lineage invariant.
-    for (item, location, base_value) in [
-        (
-            CatalogKey::Building(Building::Shipyard),
-            AssetLocation::Body(body),
-            700,
-        ),
-        (
-            CatalogKey::Research(ResearchId::IonTechnology),
-            AssetLocation::Player,
-            1400,
-        ),
-    ] {
-        for level in 1..=4 {
+    let levels = std::iter::once((
+        CatalogKey::Building(Building::Shipyard),
+        AssetLocation::Body(body),
+        700,
+        4,
+    ))
+    .chain(
+        research_levels
+            .into_iter()
+            .map(|(research, level, base_value)| {
+                (
+                    CatalogKey::Research(research),
+                    AssetLocation::Player,
+                    base_value,
+                    level,
+                )
+            }),
+    );
+    for (item, location, base_value, completed) in levels {
+        for level in 1..=completed {
             let id = OperationId(Uuid::new_v4());
             let lot = AssetLot {
                 id,
@@ -1432,9 +1460,15 @@ async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_
     let (before, _) = store.bound_world(binding).await.unwrap().facts;
     assert_eq!(before.state.manufacturing_batches.len(), 1);
     let mut document = service.export(universe).await.unwrap();
-    let content: serde_json::Value =
-        serde_json::from_slice(include_bytes!("../../../rules/content/ion-cannon.json")).unwrap();
-    let item = ManufacturedItem::Defense(DefenseId::IonCannon);
+    let content: serde_json::Value = serde_json::from_slice(match defense {
+        DefenseId::IonCannon => include_bytes!("../../../rules/content/ion-cannon.json").as_slice(),
+        DefenseId::HeavyLaser => {
+            include_bytes!("../../../rules/content/heavy-laser.json").as_slice()
+        }
+        _ => unreachable!(),
+    })
+    .unwrap();
+    let item = ManufacturedItem::Defense(defense);
     let entry = document
         .artifact
         .catalog

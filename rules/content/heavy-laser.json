@@ -1,0 +1,37 @@
+{
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 4
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "EnergyTechnology",
+      "level": 3
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "LaserTechnology",
+      "level": 6
+    }
+  ],
+  "cost": {
+    "metal": 6000,
+    "crystal": 2000,
+    "deuterium": 0
+  },
+  "combat": {
+    "item": {
+      "kind": "Defense",
+      "id": "HeavyLaser"
+    },
+    "cost": [
+      6000,
+      2000,
+      0
+    ],
+    "attack_hundredths": 25000,
+    "shield_hundredths": 10000
+  }
+}

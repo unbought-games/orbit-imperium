@@ -42,12 +42,14 @@ const content: Record<string, string> = {
     'A stationary missile battery that defends this planet against attacking fleets.',
   LightLaser:
     'A stationary laser battery that defends this planet against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
+  HeavyLaser:
+    'A stationary heavy laser battery that defends this planet against attacking fleets. Requires Shipyard 4, Energy Technology 3 and Laser Technology 6.',
   IonCannon:
     'A stationary cannon with strong shields that defends this planet against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
   SmallShieldDome:
     'A planetary shield that supports the defense of this planet. Only one small shield dome can be stationed or queued here.',
   LaserTechnology:
-    'Unlocks concentrated energy weapons, including Light Lasers at level 3. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
+    'Unlocks concentrated energy weapons, including Light Lasers at level 3 and Heavy Lasers at level 6. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
   IonTechnology:
     'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Higher levels currently offer no further unlocks. Ion research does not improve combat stats or reduce demolition costs.',
   ArmourTechnology:
