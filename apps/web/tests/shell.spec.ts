@@ -2689,6 +2689,7 @@ for (const width of [320, 390, 1440]) {
     await page.reload()
     await expect(trigger).toHaveAttribute('data-value', later.id)
     await trigger.click()
+    await expect(list).toBeVisible()
     await page.mouse.click(width - 10, 800)
     await expect(list).toHaveCount(0)
     await expect(trigger).toHaveAttribute('data-value', later.id)
