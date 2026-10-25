@@ -231,3 +231,49 @@ it.each([
     )
   },
 )
+
+const targetCoordinates = { galaxy: 2, system: 3, position: 4 }
+it.each(['Combat', 'Espionage'])(
+  'renders %s historical body identity with shared fallbacks',
+  (kind) => {
+    for (const [name, bodyKind, expected] of [
+      ['Nova Roma', 'Planet', 'Nova Roma'],
+      ['Luna', 'Moon', 'Luna (Moon)'],
+      [null, 'Planet', 'Planet'],
+      ['   ', 'Moon', 'Moon'],
+      [42, 'Planet', 'Planet'],
+      [
+        '<script>alert(1)</script>',
+        'Planet',
+        '&lt;script&gt;alert(1)&lt;/script&gt;',
+      ],
+    ]) {
+      const identity =
+        kind === 'Combat'
+          ? {
+              target: targetCoordinates,
+              target_name: name,
+              target_kind: bodyKind,
+            }
+          : { target: { coordinates: targetCoordinates, name, kind: bodyKind } }
+      expect(render({ kind, ...identity })).toContain(`${expected} · [2:3:4]`)
+    }
+  },
+)
+it('keeps legacy combat coordinates and never borrows identity for contact-lost reports', () => {
+  expect(render({ kind: 'Combat', target: targetCoordinates })).toContain(
+    'Combat report · [2:3:4]',
+  )
+  expect(render({ kind: 'Combat', target_name: 'Nova Roma' })).toContain(
+    'Nova Roma · Unavailable',
+  )
+  const restricted = render({
+    kind: 'ContactLost',
+    target: targetCoordinates,
+    target_name: 'Hidden',
+    target_kind: 'Moon',
+  })
+  expect(restricted).toContain('Combat report · [2:3:4]')
+  expect(restricted).not.toContain('Hidden')
+  expect(restricted).not.toContain('Moon')
+})
