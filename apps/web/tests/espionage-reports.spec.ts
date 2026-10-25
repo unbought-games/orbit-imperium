@@ -4,7 +4,7 @@ import observation from '../../../contracts/fixtures/espionage-expanded.json' wi
 import { shellFixture, binding, body, id } from './fixtures/game'
 
 for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
-  test(`groups ${variant} espionage buildings at desktop and mobile widths`, async ({
+  test(`groups ${variant} espionage buildings and research at desktop and mobile widths`, async ({
     page,
   }) => {
     await page.clock.setFixedTime(new Date('2026-10-23T12:00:00Z'))
@@ -23,6 +23,20 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
       ...observation,
       target: { ...observation.target, name: variant === 'legacy' ? undefined : 'Nova Roma' },
       resources: { visibility: 'Known', value: { metal: '18763000000', crystal: '10441000000', deuterium: '560000000' } },
+      research:
+        variant === 'hidden'
+          ? { visibility: 'Unknown' }
+          : {
+              visibility: 'Known',
+              value: {
+                ...observation.research.value,
+                WeaponsTechnology: 8,
+                EspionageTechnology: 5,
+                ...(variant === 'expanded'
+                  ? { HyperspaceDrive: 0, PlasmaTechnology: 2 }
+                  : {}),
+              },
+            },
       buildings:
         variant === 'hidden'
           ? { visibility: 'Unknown' }
@@ -119,6 +133,31 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
       expect(await amounts.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
       await expect(amounts).toContainText('18,763')
       const research = report.locator('section').filter({ has: page.getByRole('heading', { name: 'Research', exact: true }) })
+      if (variant === 'hidden') {
+        await expect(research).toContainText('Unknown — this observation did not reveal this section.')
+        await expect(research.locator('h4, dt')).toHaveCount(0)
+      } else {
+        await expect(research.locator('h4')).toHaveText([
+          'Combat and espionage',
+          'Drive research',
+          'Basic research',
+          'Advanced research',
+        ])
+        await expect(research.locator('dt')).toHaveText([
+          'Weapons Technology', 'Shielding Technology', 'Armour Technology', 'Espionage Technology',
+          'Combustion Drive', 'Impulse Drive', ...(variant === 'expanded' ? ['Hyperspace Drive'] : []),
+          'Energy Technology', ...(variant === 'expanded' ? ['Plasma Technology'] : []),
+          'Computer Technology', 'Astrophysics',
+        ])
+        await expect(research.locator('dl').first().locator('dd')).toHaveText([
+          'Level 8', 'Level 0', 'Level 0', 'Level 5',
+        ])
+        const groups = await research.locator('dl').all()
+        for (let index = 1; index < groups.length; index++) {
+          const previous = (await groups[index - 1].boundingBox())!
+          expect((await groups[index].boundingBox())!.y).toBeGreaterThan(previous.y + previous.height)
+        }
+      }
       expect((await report.locator('footer').boundingBox())!.y).toBeGreaterThanOrEqual((await research.boundingBox())!.y + (await research.boundingBox())!.height)
       await expect(report.locator('footer')).toContainText('Activity before contact')
       await expect(report.locator('footer')).toContainText('Counterespionage')
@@ -188,6 +227,9 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
       await page.evaluate(() => document.fonts.ready)
       await diagnosticScreenshot(buildings, {
         path: `test-results/espionage-${variant}-${width}.png`,
+      })
+      await diagnosticScreenshot(research, {
+        path: `test-results/espionage-research-${variant}-${width}.png`,
       })
     }
   })

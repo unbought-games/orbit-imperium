@@ -83,6 +83,44 @@ it('keeps hidden buildings distinct from an observed empty section', () => {
   ).toContain('BuildingsNo buildings')
 })
 
+it('renders observed research in report groups without inventing missing levels', () => {
+  const text = render({
+    kind: 'Espionage',
+    research: {
+      visibility: 'Known',
+      value: {
+        ComputerTechnology: 2,
+        CombustionDrive: 3,
+        EnergyTechnology: null,
+        EspionageTechnology: 0,
+        WeaponsTechnology: 4,
+        FutureResearch: 1,
+      },
+    },
+  })
+  expect(text).toContain(
+    'ResearchCombat and espionageWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchCombustion DriveLevel 3Basic researchEnergy TechnologyLevel UnknownAdvanced researchComputer TechnologyLevel 2Other researchFuture ResearchLevel 1',
+  )
+  expect(text).not.toContain('Shielding Technology')
+})
+
+it.each([
+  undefined,
+  { visibility: 'Unknown', value: { WeaponsTechnology: 30 } },
+  { visibility: 'Unavailable', value: { WeaponsTechnology: 30 } },
+])(
+  'never renders research groups for unrevealed intelligence (%j)',
+  (research) => {
+    const text = render({ kind: 'Espionage', research })
+    expect(text).toContain(
+      'ResearchUnknown — this observation did not reveal this section.',
+    )
+    expect(text).not.toContain('Combat and espionage')
+    expect(text).not.toContain('Weapons Technology')
+    expect(text).not.toContain('No research')
+  },
+)
+
 it('leads a contact-lost report with the known fleet loss without inventing the defender result', () => {
   const text = render({
     kind: 'ContactLost',
