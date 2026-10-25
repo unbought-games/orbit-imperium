@@ -354,7 +354,7 @@ test('rejected cancellation keeps construction active and every upgrade blocked'
 for (const kind of ['construction', 'research'] as const) {
   for (const elapsed of [29_999, 30_000, 30_001, 29 * 3_600_000]) {
     test(`${kind} cancellation uses server elapsed ${elapsed}ms`, async ({ page }) => {
-      await page.clock.install({ time: now })
+      await page.clock.install({ time: now - 60_000 })
       await page.clock.pauseAt(now)
       const paid = { metal: '76000000', crystal: '38000000', deuterium: '0' }
       const timing = { id: id(10), started_at: now - elapsed, due_at: now + 3_600_000, paid }
