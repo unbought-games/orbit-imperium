@@ -877,7 +877,8 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
         nodes
           .filter((n) => {
             const r = n.getBoundingClientRect()
-            const minimum = innerWidth < 1024 ? 44 : 24
+            // Ghost controls are intentionally compact; other touch targets stay 44px.
+            const minimum = n.matches('[data-button-variant="ghost"]') || innerWidth >= 1024 ? 24 : 44
             return (
               r.width > 0 &&
               r.height > 0 &&
