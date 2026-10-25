@@ -2064,3 +2064,116 @@ for (const width of [390, 1280]) {
     }
   })
 }
+
+for (const width of [1280, 390]) {
+  test(`ship comparison supports research updates and keyboard controls at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 950 })
+    const ship = (
+      id: 'LightFighter' | 'HeavyFighter',
+      speed: string,
+      drive: 'CombustionDrive' | 'ImpulseDrive',
+    ): S['CatalogEntry3'] => ({
+      key: { kind: 'Ship', id },
+      enabled: true,
+      mobile: true,
+      requirements: [],
+      body_kinds: ['Planet'],
+      ship_statistics: {
+        cost: ['3000', '1000', '0'],
+        propulsion: {
+          cargo_capacity: '50',
+          base_speed: speed,
+          fuel_consumption: '20',
+          drive,
+          drive_coefficient:
+            drive === 'CombustionDrive' ? ['1', '10'] : ['1', '5'],
+          impulse_upgrade: null,
+        },
+        combat: {
+          attack_ticks: '5000000',
+          shield_ticks: '1000000',
+          hull_ticks: '40000000',
+          technology_bonus: ['1', '10'],
+          rapid_fire_against: [],
+          rapid_fire_from: [],
+        },
+      },
+    })
+    const options = {
+      catalog: [
+        ship('LightFighter', '12500', 'CombustionDrive'),
+        ship('HeavyFighter', '10000', 'ImpulseDrive'),
+      ],
+      research: [
+        { research: 'CombustionDrive' as const, level: 2 },
+        { research: 'ImpulseDrive' as const, level: 4 },
+      ],
+    }
+    await shellFixture(page, options)
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    const summary = page.locator('summary').filter({ hasText: 'Compare ships' })
+    await summary.focus()
+    await page.keyboard.press('Enter')
+    const table = page.getByRole('table', {
+      name: 'Current player ship statistics · per ship',
+    })
+    await expect(
+      table.getByRole('row', { name: 'Effective speed 15,000 18,000' }),
+    ).toBeVisible()
+    await expect(
+      table.getByRole('img', { name: 'Metal', exact: true }),
+    ).toHaveCount(2)
+    await expect(
+      table.getByRole('row', {
+        name: 'Attack strength Unavailable Unavailable',
+      }),
+    ).toBeVisible()
+    options.research[1].level = 5
+    await refreshGame(page)
+    await expect(
+      table.getByRole('row', { name: 'Effective speed 15,000 20,000' }),
+    ).toBeVisible()
+    await page.getByRole('radio', { name: 'Base stats', exact: true }).check()
+    await expect(
+      page.getByRole('row', { name: 'Base speed 12,500 10,000' }),
+    ).toBeVisible()
+    await diagnosticScreenshot(page, {
+      path: `test-results/ship-comparison-${width}.png`,
+      fullPage: true,
+    })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    const region = page.getByRole('region', { name: 'Ship comparison table' })
+    await region.focus()
+    await expect(region).toBeFocused()
+    await page
+      .getByRole('checkbox', { name: 'Heavy Fighter', exact: true })
+      .uncheck()
+    await expect(
+      page.getByRole('columnheader', { name: 'Heavy Fighter', exact: true }),
+    ).toHaveCount(0)
+    await page
+      .getByRole('checkbox', { name: 'Light Fighter', exact: true })
+      .uncheck()
+    await expect(
+      page.getByText('Select ships to compare.', { exact: true }),
+    ).toBeVisible()
+    options.catalog[1].enabled = false
+    options.catalog[0].ship_statistics!.propulsion!.base_speed = '16000'
+    await refreshGame(page)
+    await expect(
+      page.getByRole('checkbox', { name: 'Heavy Fighter', exact: true }),
+    ).toHaveCount(0)
+    await page
+      .getByRole('checkbox', { name: 'Light Fighter', exact: true })
+      .check()
+    await expect(
+      page.getByRole('row', { name: 'Base speed 16,000' }),
+    ).toBeVisible()
+  })
+}

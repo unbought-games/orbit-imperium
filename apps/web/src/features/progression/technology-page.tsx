@@ -1,3 +1,4 @@
+import { ShipComparison } from './ship-comparison'
 import { useState } from 'react'
 import { Network } from 'lucide-react'
 import { CatalogStage } from '../../ui/catalog-stage'
@@ -97,6 +98,9 @@ export function TechnologyPage(props: ProgressionProps) {
   }
   return (
     <>
+      {page === 'shipyard' && (
+        <ShipComparison catalog={view.catalog} research={view.research} />
+      )}
       <WorkSummaries
         view={view}
         body={body}
@@ -241,6 +245,13 @@ function TechnologyInspector({
   }
   return (
     <>
+      {selected.key.kind === 'Ship' && (
+        <ShipComparison
+          catalog={view.catalog}
+          research={view.research}
+          initialShipId={selected.key.id}
+        />
+      )}
       {selected.key.kind === 'Building' ? (
         <>
           <BuildingDetails
