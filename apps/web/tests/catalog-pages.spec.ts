@@ -1971,6 +1971,7 @@ for (const { width, protocol } of [{ width: 390, protocol: 4 as const }, { width
       protocol,
     })
     await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
+    await page.getByText('Technical data', { exact: true }).click()
     const detail = page.getByRole('region', { name: 'Ship technical statistics' })
     const assertStats = async (section: Locator) => {
       for (const [name, value] of [['Cargo capacity', '7,654'], ['Base speed', '4,321'], ['Base fuel consumption', '17'], ['Attack strength', '12.34'], ['Shield strength', '56.78'], ['Hull strength', '800']]) {
@@ -1991,6 +1992,7 @@ for (const { width, protocol } of [{ width: 390, protocol: 4 as const }, { width
     await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
     await page.getByRole('tab', { name: 'Techinfo', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Technology — Small Cargo' })
+    await dialog.getByText('Technical data', { exact: true }).click()
     await assertStats(dialog.getByRole('region', { name: 'Ship technical statistics' }))
     await expect.poll(() => dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/ship-statistics-techinfo-${width}.png` })
@@ -2000,8 +2002,65 @@ for (const { width, protocol } of [{ width: 390, protocol: 4 as const }, { width
 test('older protocol ship details explicitly show unavailable technical statistics', async ({ page }) => {
   await installCatalogFixture(page)
   await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
+  await page.getByText('Technical data', { exact: true }).click()
   await expect(page.getByRole('region', { name: 'Ship technical statistics' })).toContainText('Technical statistics are unavailable')
   await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
   await page.getByRole('tab', { name: 'Techinfo', exact: true }).click()
+  await page.getByRole('dialog').getByText('Technical data', { exact: true }).click()
   await expect(page.getByRole('dialog').getByRole('region', { name: 'Ship technical statistics' })).toContainText('Technical statistics are unavailable')
 })
+
+for (const width of [390, 1280]) {
+  test(`building research and defense technical data stays secondary and keyboard accessible at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const empty: S['TechnicalData3'] = { facts: [], bonuses: [], combat: null, storage_capacities: null }
+    const technicalCatalog = catalog.map(entry => ({
+      ...entry,
+      ...(entry.key.id === 'RoboticsFactory' ? { technical_data: { ...empty, facts: [{ label: 'Construction time', value: 'The raw construction duration is divided by (1 + Robotics Factory level).', subject: null }] } } : {}),
+      ...(entry.key.id === 'CombustionDrive' ? { technical_data: { ...empty, bonuses: [{ label: 'Base speed', fraction: ['3', '20'], subject: { kind: 'Ship', id: 'SmallCargo' }, condition: 'Replaced when Impulse Drive reaches level 8.' }] } } : {}),
+      ...(entry.key.id === 'RocketLauncher' ? { technical_data: { ...empty, combat: { attack_ticks: '8000000', shield_ticks: '2000000', hull_ticks: '20000000', rapid_fire_against: [], rapid_fire_from: [{ unit: { kind: 'Ship', id: 'Cruiser' }, factor: '10' }] }, facts: [{ label: 'Recovery after combat', value: '7 / 10 chance for each destroyed defense to recover independently.', subject: null }] } } : {}),
+      ...(entry.key.id === 'SmallCargo' ? { requirements: [{ type: 'PlayerResearch', research: 'CombustionDrive', level: 6 }] } : {}),
+    })) as S['CatalogEntry3'][]
+    await installCatalogFixture(page, false, undefined, { catalog: technicalCatalog })
+    for (const [route, text, name] of [
+      ['facilities/robotics-factory', 'The raw construction duration', 'Robotics Factory'],
+      ['research/combustion-drive', '+15% of base', 'Combustion Drive'],
+      ['defense/rocket-launcher', 'Base values per defense', 'Rocket Launcher'],
+    ]) {
+      await page.goto(`/u/andromeda/b/${body.id}/${route}`)
+      const disclosure = page.locator('details').filter({ has: page.locator('summary').filter({ hasText: /^Technical data$/ }) })
+      const summary = disclosure.locator('summary')
+      await expect(summary).toBeVisible()
+      await expect(disclosure).not.toHaveAttribute('open', '')
+      await expect(disclosure.getByText(text, { exact: false })).toBeHidden()
+      await summary.focus()
+      await page.keyboard.press('Enter')
+      await expect(disclosure).toHaveAttribute('open', '')
+      await expect(disclosure).toContainText(text)
+      if (route.startsWith('research')) {
+        await expect(disclosure).toContainText('Replaced when Impulse Drive reaches level 8')
+        await expect(disclosure).toContainText('Level 6')
+        await expect(disclosure.getByRole('link', { name: 'Small Cargo', exact: true })).toBeVisible()
+        await expect(disclosure).not.toContainText('Deathstar')
+      }
+      await expect.poll(() => disclosure.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+      await summary.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/technical-${route.split('/')[0]}-${width}.png` })
+      await summary.focus()
+      await page.keyboard.press('Space')
+      await expect(disclosure).not.toHaveAttribute('open', '')
+      await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: `Technology — ${name}` })
+      await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
+      const modalData = dialog.locator('details')
+      await expect(modalData).not.toHaveAttribute('open', '')
+      await modalData.locator('summary').click()
+      await expect(modalData).toContainText(text)
+      if (route.startsWith('research')) {
+        await expect(dialog.getByRole('list', { name: 'Prerequisites', exact: true })).toHaveCount(1)
+      }
+      await expect.poll(() => dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+      await dialog.getByRole('button', { name: 'Close technology', exact: true }).click()
+    }
+  })
+}

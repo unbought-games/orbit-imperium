@@ -3,7 +3,7 @@ import { label } from '../../ui/format'
 import { NumberValue } from '../../ui/number-value'
 import { ResourceValue } from '../../ui/resource-value'
 import { DetailRow, DetailSection } from './detail-layout'
-import { formatCombatStat } from './ship-statistics-format'
+import { CombatStatistics } from './combat-statistics'
 import styles from './detail-layout.module.css'
 
 type Entry = components['schemas']['CatalogEntry3']
@@ -43,34 +43,7 @@ export function ShipStatistics({ entry }: { entry: Entry }) {
                 </DetailRow>
               </>
             )}
-            {combat && (
-              <>
-                <DetailRow label="Attack strength">
-                  {formatCombatStat(combat.attack_ticks)}
-                </DetailRow>
-                <DetailRow label="Shield strength">
-                  {formatCombatStat(combat.shield_ticks)}
-                </DetailRow>
-                <DetailRow label="Hull strength">
-                  {formatCombatStat(combat.hull_ticks)}
-                </DetailRow>
-                {(['against', 'from'] as const).map((direction) => (
-                  <DetailRow key={direction} label={`Rapid fire ${direction}`}>
-                    {combat[`rapid_fire_${direction}`].length
-                      ? combat[`rapid_fire_${direction}`].map(
-                          (target, index) => (
-                            <span key={`${target.unit.kind}:${target.unit.id}`}>
-                              {index > 0 && '; '}
-                              {label(target.unit.id)} ×{' '}
-                              <NumberValue value={target.factor} />
-                            </span>
-                          ),
-                        )
-                      : 'None'}
-                  </DetailRow>
-                ))}
-              </>
-            )}
+            {combat && <CombatStatistics combat={combat} />}
           </dl>
           {propulsion ? (
             <p className={styles.note}>

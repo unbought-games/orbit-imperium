@@ -15,7 +15,7 @@ import { Requirements } from '../../ui/requirements'
 import { label } from '../../ui/format'
 import { ProgressionBlockers } from './quote-review'
 import { pending, type ProgressionProps } from './shared'
-import { ShipStatistics } from './ship-statistics'
+import { TechnicalData } from './technical-data'
 import { catalogContent } from './catalog-content'
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { components } from '../../contracts'
@@ -363,7 +363,12 @@ export function TechnologyDetails({
           )}
         </DetailSection>
       )}
-      <ShipStatistics entry={entry} />
+      <TechnicalData
+        key={`${entry.key.kind}:${entry.key.id}`}
+        entry={entry}
+        view={view}
+        body={body}
+      />
       {!manufacture && (
         <ProgressionActionFeedback
           model={model}

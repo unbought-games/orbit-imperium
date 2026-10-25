@@ -6542,6 +6542,9 @@
           },
           "ship_statistics": {
             "$ref": "#/components/schemas/ShipStatistics3"
+          },
+          "technical_data": {
+            "$ref": "#/components/schemas/TechnicalData3"
           }
         },
         "required": [
@@ -13357,6 +13360,115 @@
         "required": [
           "unit",
           "factor"
+        ],
+        "additionalProperties": false
+      },
+      "TechnicalFact3": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "subject": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CatalogKey3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "subject"
+        ],
+        "additionalProperties": false
+      },
+      "TechnicalBonus3": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "fraction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "subject": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CatalogKey3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "fraction",
+          "subject",
+          "condition"
+        ],
+        "additionalProperties": false
+      },
+      "TechnicalData3": {
+        "type": "object",
+        "properties": {
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TechnicalFact3"
+            }
+          },
+          "bonuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TechnicalBonus3"
+            }
+          },
+          "combat": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShipCombatStatistics3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storage_capacities": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "facts",
+          "bonuses",
+          "combat",
+          "storage_capacities"
         ],
         "additionalProperties": false
       }

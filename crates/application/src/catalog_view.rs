@@ -9,6 +9,8 @@ pub struct CatalogEntryView {
     pub entry: CatalogEntry,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ship_statistics: Option<ShipStatistics>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub technical_data: Option<crate::technical_data::TechnicalData>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ShipStatistics {
@@ -69,46 +71,7 @@ pub fn catalog_view(rules: &Ruleset) -> Result<Vec<CatalogEntryView>, ServiceErr
                                     }
                                 }),
                             });
-                    let combat = rules
-                        .artifact
-                        .world
-                        .as_ref()
-                        .and_then(|world| {
-                            world
-                                .combat
-                                .units
-                                .iter()
-                                .find(|unit| unit.item == ManufacturedItem::Ship(ship))
-                                .map(|unit| (unit, &world.combat))
-                        })
-                        .map(|(unit, combat)| {
-                            let (attack, shield, hull) = combat_unit_stats(unit, [0; 3], combat)
-                                .map_err(|_| ServiceError::InvariantFailure)?;
-                            Ok::<_, ServiceError>(ShipCombatStatistics {
-                                attack_ticks: attack.to_string(),
-                                shield_ticks: shield.to_string(),
-                                hull_ticks: hull.to_string(),
-                                rapid_fire_against: combat
-                                    .rapid_fire
-                                    .iter()
-                                    .filter(|rf| rf.shooter == unit.item)
-                                    .map(|rf| ShipRapidFireStatistics {
-                                        unit: rf.target,
-                                        factor: rf.factor.to_string(),
-                                    })
-                                    .collect(),
-                                rapid_fire_from: combat
-                                    .rapid_fire
-                                    .iter()
-                                    .filter(|rf| rf.target == unit.item)
-                                    .map(|rf| ShipRapidFireStatistics {
-                                        unit: rf.shooter,
-                                        factor: rf.factor.to_string(),
-                                    })
-                                    .collect(),
-                            })
-                        })
-                        .transpose()?;
+                    let combat = combat_statistics(rules, ManufacturedItem::Ship(ship))?;
                     Some(ShipStatistics { propulsion, combat })
                 }
                 _ => None,
@@ -116,9 +79,49 @@ pub fn catalog_view(rules: &Ruleset) -> Result<Vec<CatalogEntryView>, ServiceErr
             Ok(CatalogEntryView {
                 entry: entry.clone(),
                 ship_statistics,
+                technical_data: crate::technical_data::technical_data(rules, entry)?,
             })
         })
         .collect()
+}
+
+/// Shared base combat projection for ships and planetary defenses.
+pub(crate) fn combat_statistics(
+    rules: &Ruleset,
+    item: ManufacturedItem,
+) -> Result<Option<ShipCombatStatistics>, ServiceError> {
+    let Some(combat) = rules.artifact.world.as_ref().map(|w| &w.combat) else {
+        return Ok(None);
+    };
+    let Some(unit) = combat.units.iter().find(|unit| unit.item == item) else {
+        return Ok(None);
+    };
+    let (attack, shield, hull) =
+        combat_unit_stats(unit, [0; 3], combat).map_err(|_| ServiceError::InvariantFailure)?;
+    let rapid_fire = |outgoing| {
+        combat
+            .rapid_fire
+            .iter()
+            .filter(|rf| {
+                if outgoing {
+                    rf.shooter == item
+                } else {
+                    rf.target == item
+                }
+            })
+            .map(|rf| ShipRapidFireStatistics {
+                unit: if outgoing { rf.target } else { rf.shooter },
+                factor: rf.factor.to_string(),
+            })
+            .collect()
+    };
+    Ok(Some(ShipCombatStatistics {
+        attack_ticks: attack.to_string(),
+        shield_ticks: shield.to_string(),
+        hull_ticks: hull.to_string(),
+        rapid_fire_against: rapid_fire(true),
+        rapid_fire_from: rapid_fire(false),
+    }))
 }
 
 #[cfg(test)]

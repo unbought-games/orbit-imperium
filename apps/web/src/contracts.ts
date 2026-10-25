@@ -4547,6 +4547,7 @@ export interface components {
             enabled: boolean;
             mobile: boolean;
             ship_statistics?: components["schemas"]["ShipStatistics3"];
+            technical_data?: components["schemas"]["TechnicalData3"];
         };
         Inventory3: {
             item: components["schemas"]["ItemKey3"];
@@ -6109,6 +6110,23 @@ export interface components {
         ShipRapidFireStatistics3: {
             unit: components["schemas"]["ItemKey3"];
             factor: string;
+        };
+        TechnicalFact3: {
+            label: string;
+            value: string;
+            subject: components["schemas"]["CatalogKey3"] | null;
+        };
+        TechnicalBonus3: {
+            label: string;
+            fraction: string[];
+            subject: components["schemas"]["CatalogKey3"] | null;
+            condition: string | null;
+        };
+        TechnicalData3: {
+            facts: components["schemas"]["TechnicalFact3"][];
+            bonuses: components["schemas"]["TechnicalBonus3"][];
+            combat: components["schemas"]["ShipCombatStatistics3"] | null;
+            storage_capacities: string[] | null;
         };
     };
     responses: never;

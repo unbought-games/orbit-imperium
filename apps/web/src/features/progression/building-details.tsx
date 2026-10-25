@@ -33,6 +33,7 @@ import {
 } from './detail-metrics'
 import styles from './detail-layout.module.css'
 import { ProgressionActionFeedback } from './action-feedback'
+import { TechnicalData } from './technical-data'
 
 export function BuildingDetails({
   building,
@@ -285,6 +286,14 @@ export function BuildingDetails({
             <p>Construction is unavailable.</p>
           )}
         </DetailSection>
+      )}
+      {entry && (
+        <TechnicalData
+          key={entry.key.id}
+          entry={entry}
+          view={view}
+          body={body}
+        />
       )}
       <ProgressionActionFeedback
         model={model}
