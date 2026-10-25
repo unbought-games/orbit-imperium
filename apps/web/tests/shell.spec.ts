@@ -1378,7 +1378,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   const mission = page.getByRole('article', { name: 'Transport fleet' })
   await expect(mission).toContainText('4 Small Cargo')
   await expect(mission).toContainText('6m')
-  await expect(mission).not.toContainText(/6m \d+s/)
+  await expect(mission).toContainText(/6m \d+s/)
   await expect(mission.locator('time')).toHaveAttribute(
     'datetime',
     new Date(fleet.due_at).toISOString(),
