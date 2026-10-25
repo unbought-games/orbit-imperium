@@ -1409,6 +1409,7 @@ fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
     sequential_defense_raids(DefenseId::LightLaser);
     sequential_defense_raids(DefenseId::IonCannon);
     sequential_defense_raids(DefenseId::HeavyLaser);
+    sequential_defense_raids(DefenseId::GaussCannon);
 }
 fn sequential_defense_raids(defense: DefenseId) {
     let (mut s, mut r, p, b, t) = raid_fixture();
@@ -1434,8 +1435,15 @@ fn sequential_defense_raids(defense: DefenseId) {
             }
         }
     }
-    // Ion shields need a larger attack to exercise total destruction and recovery.
-    let fighters = if defense == DefenseId::IonCannon {
+    if defense == DefenseId::GaussCannon {
+        r = common::gauss_cannon_rules(&r);
+        s.profile_hash = r.hash.clone();
+        for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
+            policy.policy_hash = r.hash.clone();
+        }
+    }
+    // Heavier defenses need a larger attack to exercise destruction and recovery.
+    let fighters = if matches!(defense, DefenseId::IonCannon | DefenseId::GaussCannon) {
         300
     } else {
         100

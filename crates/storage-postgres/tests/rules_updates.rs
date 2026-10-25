@@ -1264,6 +1264,11 @@ async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_
 }
 
 #[tokio::test]
+async fn gauss_cannon_activation_preserves_paid_work_and_retained_defenses_across_restart() {
+    defense_activation_preserves_paid_work(DefenseId::GaussCannon).await;
+}
+
+#[tokio::test]
 async fn heavy_laser_activation_preserves_paid_work_and_retained_defenses_across_restart() {
     defense_activation_preserves_paid_work(DefenseId::HeavyLaser).await;
 }
@@ -1273,58 +1278,38 @@ async fn defense_activation_preserves_paid_work(defense: DefenseId) {
     let (_, _, other, _) = setup().await;
     let service = RulesService::new(store.clone());
     let other_rules = store.load_rules(other).await.unwrap();
-    let mut prerequisites = service.export(universe).await.unwrap();
-    let fixture: RulesArtifact =
-        serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-slice-9.json")).unwrap();
-    for research in [ResearchId::LaserTechnology, ResearchId::IonTechnology] {
-        prerequisites
-            .artifact
-            .progression
-            .as_mut()
-            .unwrap()
-            .research
-            .insert(
-                research,
-                fixture.progression.as_ref().unwrap().research[&research].clone(),
-            );
-        let key = CatalogKey::Research(research);
-        *prerequisites
-            .artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == key)
-            .unwrap() = fixture
-            .catalog
-            .iter()
-            .find(|e| e.key == key)
-            .unwrap()
-            .clone();
+    if matches!(defense, DefenseId::IonCannon | DefenseId::HeavyLaser) {
+        let mut prerequisites = service.export(universe).await.unwrap();
+        let fixture: RulesArtifact =
+            serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-slice-9.json")).unwrap();
+        for research in [ResearchId::LaserTechnology, ResearchId::IonTechnology] {
+            prerequisites
+                .artifact
+                .progression
+                .as_mut()
+                .unwrap()
+                .research
+                .insert(
+                    research,
+                    fixture.progression.as_ref().unwrap().research[&research].clone(),
+                );
+            let key = CatalogKey::Research(research);
+            *prerequisites
+                .artifact
+                .catalog
+                .iter_mut()
+                .find(|e| e.key == key)
+                .unwrap() = fixture
+                .catalog
+                .iter()
+                .find(|e| e.key == key)
+                .unwrap()
+                .clone();
+        }
+        service.apply(&prerequisites).await.unwrap();
     }
-    service.apply(&prerequisites).await.unwrap();
     let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
     let body = *snapshot.state.bodies.keys().next().unwrap();
-    sqlx::query("UPDATE building_levels SET level=4 WHERE body=$1 AND building='Shipyard'")
-        .bind(body.0)
-        .execute(&pool)
-        .await
-        .unwrap();
-    let research_levels = if defense == DefenseId::HeavyLaser {
-        vec![
-            (ResearchId::LaserTechnology, 6, 300),
-            (ResearchId::EnergyTechnology, 3, 1200),
-        ]
-    } else {
-        vec![(ResearchId::IonTechnology, 4, 1400)]
-    };
-    for (research, level, _) in &research_levels {
-        sqlx::query("UPDATE research_levels SET level=$2 WHERE owner=$1 AND research=$3")
-            .bind(binding.player.0)
-            .bind(i32::try_from(*level).unwrap())
-            .bind(format!("{research:?}"))
-            .execute(&pool)
-            .await
-            .unwrap();
-    }
     sqlx::query("UPDATE bodies SET amounts=$2, revision=revision+1 WHERE id=$1")
         .bind(body.0)
         .bind(sqlx::types::Json(Resources::all(100_000 * SCALE)))
@@ -1334,26 +1319,92 @@ async fn defense_activation_preserves_paid_work(defense: DefenseId) {
 
     // Completed facility/research fixtures need one paid-value lot per level.
     // A bare level edit is correctly rejected by the world lineage invariant.
-    let levels = std::iter::once((
-        CatalogKey::Building(Building::Shipyard),
-        AssetLocation::Body(body),
-        700,
-        4,
-    ))
-    .chain(
-        research_levels
-            .into_iter()
-            .map(|(research, level, base_value)| {
-                (
-                    CatalogKey::Research(research),
-                    AssetLocation::Player,
-                    base_value,
-                    level,
-                )
-            }),
-    );
-    for (item, location, base_value, completed) in levels {
-        for level in 1..=completed {
+    let levels = match defense {
+        DefenseId::IonCannon => vec![
+            (
+                CatalogKey::Building(Building::Shipyard),
+                AssetLocation::Body(body),
+                700,
+                4,
+            ),
+            (
+                CatalogKey::Research(ResearchId::IonTechnology),
+                AssetLocation::Player,
+                1400,
+                4,
+            ),
+        ],
+        DefenseId::HeavyLaser => vec![
+            (
+                CatalogKey::Building(Building::Shipyard),
+                AssetLocation::Body(body),
+                700,
+                4,
+            ),
+            (
+                CatalogKey::Research(ResearchId::LaserTechnology),
+                AssetLocation::Player,
+                300,
+                6,
+            ),
+            (
+                CatalogKey::Research(ResearchId::EnergyTechnology),
+                AssetLocation::Player,
+                1200,
+                3,
+            ),
+        ],
+        DefenseId::GaussCannon => vec![
+            (
+                CatalogKey::Building(Building::Shipyard),
+                AssetLocation::Body(body),
+                700,
+                6,
+            ),
+            (
+                CatalogKey::Research(ResearchId::EnergyTechnology),
+                AssetLocation::Player,
+                1200,
+                6,
+            ),
+            (
+                CatalogKey::Research(ResearchId::WeaponsTechnology),
+                AssetLocation::Player,
+                1000,
+                3,
+            ),
+            (
+                CatalogKey::Research(ResearchId::ShieldingTechnology),
+                AssetLocation::Player,
+                800,
+                1,
+            ),
+        ],
+        _ => unreachable!(),
+    };
+    for (item, location, base_value, target_level) in levels {
+        match item {
+            CatalogKey::Building(building) => {
+                sqlx::query("UPDATE building_levels SET level=$3 WHERE body=$1 AND building=$2")
+                    .bind(body.0)
+                    .bind(serde_json::to_value(building).unwrap().as_str().unwrap())
+                    .bind(target_level as i32)
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+            }
+            CatalogKey::Research(research) => {
+                sqlx::query("UPDATE research_levels SET level=$3 WHERE owner=$1 AND research=$2")
+                    .bind(binding.player.0)
+                    .bind(serde_json::to_value(research).unwrap().as_str().unwrap())
+                    .bind(target_level as i32)
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+            }
+            _ => unreachable!(),
+        }
+        for level in 1..=target_level {
             let id = OperationId(Uuid::new_v4());
             let lot = AssetLot {
                 id,
@@ -1464,6 +1515,9 @@ async fn defense_activation_preserves_paid_work(defense: DefenseId) {
         DefenseId::IonCannon => include_bytes!("../../../rules/content/ion-cannon.json").as_slice(),
         DefenseId::HeavyLaser => {
             include_bytes!("../../../rules/content/heavy-laser.json").as_slice()
+        }
+        DefenseId::GaussCannon => {
+            include_bytes!("../../../rules/content/gauss-cannon.json").as_slice()
         }
         _ => unreachable!(),
     })

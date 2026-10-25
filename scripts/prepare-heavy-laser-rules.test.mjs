@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { prepareHeavyLaserRules } from './prepare-heavy-laser-rules.mjs'
+import { prepareGaussCannonRules } from './prepare-gauss-cannon-rules.mjs'
 
 const read = name => JSON.parse(fs.readFileSync(new URL(`../rules/${name}`, import.meta.url)))
 const exported = () => ({ universe: 'beta', base_revision: 12, speed: 5, artifact: read('mvp-v1-slice-11.json') })
@@ -85,5 +86,23 @@ test('CLI writes a proposal exclusively and leaves the export unchanged', () => 
     assert.equal(fs.readFileSync(input, 'utf8'), original)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+
+test('Heavy Laser and Gauss Cannon patches compose in either order', () => {
+  const normalize = document => {
+    for (const items of [document.artifact.progression.unit_costs, document.artifact.world.combat.units]) {
+      items.sort((a, b) => a.item.id.localeCompare(b.item.id))
+    }
+    return document
+  }
+  const heavyFirst = prepareGaussCannonRules(prepareHeavyLaserRules(exported()))
+  const gaussFirst = prepareHeavyLaserRules(prepareGaussCannonRules(exported()))
+  assert.deepEqual(normalize(heavyFirst), normalize(gaussFirst))
+  for (const id of ['HeavyLaser', 'GaussCannon']) {
+    assert.equal(heavyFirst.artifact.catalog.find(e => e.key.id === id).enabled, true)
+    assert.equal(heavyFirst.artifact.progression.unit_costs.filter(u => u.item.id === id).length, 1)
+    assert.equal(heavyFirst.artifact.world.combat.units.filter(u => u.item.id === id).length, 1)
   }
 })

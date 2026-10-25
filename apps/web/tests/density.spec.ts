@@ -386,11 +386,11 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 })
     await shellFixture(page, { protocol: 4 })
     for (const [route, title, navigation] of [
-      ['resources', 'Resources', 'Build'],
-      ['facilities', 'Facilities', 'Build'],
-      ['research', 'Research', 'Build'],
-      ['shipyard', 'Shipyard', 'Build'],
-      ['defense', 'Defense', 'Build'],
+      ['resources', 'Resources', 'Develop'],
+      ['facilities', 'Facilities', 'Develop'],
+      ['research', 'Research', 'Develop'],
+      ['shipyard', 'Shipyard', 'Develop'],
+      ['defense', 'Defense', 'Develop'],
       ['fleets', 'Fleets', 'Fleet'],
       ['galaxy', 'Galaxy', 'Fleet'],
       ['dispatch', 'Dispatch', 'Fleet'],

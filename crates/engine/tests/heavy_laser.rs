@@ -171,3 +171,61 @@ fn heavy_laser_manufacturing_uses_exact_batch_cost_and_floored_unit_duration() {
         );
     }
 }
+
+#[test]
+fn heavy_laser_activation_preserves_enabled_gauss_cannon() {
+    let previous =
+        Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-12.json")).unwrap();
+    let next = common::heavy_laser_rules(&previous);
+    let delta = validate_rules_update(&previous, &next).unwrap();
+    assert!(delta.add_research.is_empty());
+    assert!(delta.add_buildings.is_empty());
+    let gauss = ManufacturedItem::Defense(DefenseId::GaussCannon);
+    assert_eq!(
+        previous
+            .artifact
+            .catalog
+            .iter()
+            .find(|e| e.key == gauss.catalog_key()),
+        next.artifact
+            .catalog
+            .iter()
+            .find(|e| e.key == gauss.catalog_key())
+    );
+    assert_eq!(
+        previous
+            .artifact
+            .progression
+            .as_ref()
+            .unwrap()
+            .unit_costs
+            .iter()
+            .find(|u| u.item == gauss),
+        next.artifact
+            .progression
+            .as_ref()
+            .unwrap()
+            .unit_costs
+            .iter()
+            .find(|u| u.item == gauss)
+    );
+    assert_eq!(
+        previous
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .units
+            .iter()
+            .find(|u| u.item == gauss),
+        next.artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .units
+            .iter()
+            .find(|u| u.item == gauss)
+    );
+}
