@@ -11,7 +11,8 @@
     display: flex;
     flex-wrap: wrap;
   }
-  .resources > button {
+  .resources > button,
+  .resources > a {
     flex: 1 0 auto;
     min-width: min(100%, 3rem);
   }

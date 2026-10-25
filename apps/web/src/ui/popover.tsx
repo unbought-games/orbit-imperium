@@ -1,3 +1,8 @@
+import {
+  cloneElement,
+  type ComponentPropsWithRef,
+  type ReactElement,
+} from 'react'
 import { Button } from './button'
 import { useState, type ReactNode } from 'react'
 import {
@@ -24,11 +29,13 @@ export function Popover({
   trigger,
   children,
   className,
+  link,
 }: {
   label: string
   trigger: ReactNode
   children: ReactNode
   className?: string
+  link?: ReactElement<ComponentPropsWithRef<'a'>>
 }) {
   const [open, setOpen] = useState(false)
   const { refs, floatingStyles, context } = useFloating({
@@ -44,10 +51,10 @@ export function Popover({
     handleClose: safePolygon(),
   })
   const focus = useFocus(context)
-  const click = useClick(context)
+  const click = useClick(context, { enabled: !link })
   // Dismiss these details before an enclosing quote handles Escape.
   const dismiss = useDismiss(context, { capture: { escapeKey: true } })
-  const role = useRole(context)
+  const role = useRole(context, { role: link ? 'tooltip' : 'dialog' })
   const { getReferenceProps, getFloatingProps } = useInteractions([
     hover,
     focus,
@@ -57,23 +64,34 @@ export function Popover({
   ])
   return (
     <>
-      <Button
-        variant="ghost"
-        type="button"
-        ref={refs.setReference}
-        className={className}
-        {...getReferenceProps({
-          'aria-label': `${label} details`,
-          // A hover popup dismissed with Escape may not have focused its
-          // trigger. Explicit keyboard re-entry must still reopen it, even
-          // while Floating UI suppresses focus restored by dismissal.
-          onKeyUp: (event) => {
-            if (event.key === 'Tab') setOpen(true)
-          },
-        })}
-      >
-        {trigger}
-      </Button>
+      {link ? (
+        cloneElement(link, {
+          ref: refs.setReference,
+          className,
+          ...getReferenceProps({
+            'aria-label': link.props['aria-label'] ?? label,
+          }),
+          children: trigger,
+        })
+      ) : (
+        <Button
+          variant="ghost"
+          type="button"
+          ref={refs.setReference}
+          className={className}
+          {...getReferenceProps({
+            'aria-label': `${label} details`,
+            // A hover popup dismissed with Escape may not have focused its
+            // trigger. Explicit keyboard re-entry must still reopen it, even
+            // while Floating UI suppresses focus restored by dismissal.
+            onKeyUp: (event) => {
+              if (event.key === 'Tab') setOpen(true)
+            },
+          })}
+        >
+          {trigger}
+        </Button>
+      )}
       {open && (
         <FloatingPortal>
           <FloatingFocusManager

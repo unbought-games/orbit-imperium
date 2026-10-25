@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Coordinator } from '../../client-model/coordinator'
 import type { Attempt, Command } from '../../client-model/commands'
 import type { components } from '../../contracts'
@@ -89,6 +89,77 @@ function setup() {
 }
 
 describe('production autosave', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('debounces movement, ignores refresh triggers during the wait and flushes the final edit', async () => {
+    vi.useFakeTimers()
+    const { autosave, model, sent, snapshot } = setup()
+    autosave.changeDeferred('metal_mine', 90)
+    await vi.advanceTimersByTimeAsync(200)
+    autosave.changeDeferred('metal_mine', 0)
+    snapshot({ crystal_mine: 60 }, '2')
+    await vi.advanceTimersByTimeAsync(299)
+    expect(sent).toHaveLength(0)
+    expect(
+      productionControlSettings(
+        model.store.getState(),
+        'body',
+        autosave.store.getState().edits,
+      )?.metal_mine,
+    ).toBe(0)
+    autosave.flush()
+    await settle()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({
+      expected_settings_revision: '2',
+      settings: { metal_mine: 0, crystal_mine: 60 },
+    })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(sent).toHaveLength(1)
+  })
+
+  it('saves the trailing edit after leaving a planet without leaking it into another planet', async () => {
+    vi.useFakeTimers()
+    const { autosave, model, sent } = setup()
+    const view = model.store.getState()
+      .view as components['schemas']['BoundView3']
+    model.store.setState({
+      view: {
+        ...view,
+        progression: {
+          ...view.progression,
+          production: [
+            ...view.progression.production,
+            { ...view.progression.production[0], body: 'other' },
+          ],
+        },
+      },
+    })
+    autosave.changeDeferred('metal_mine', 0)
+    const other = productionAutosave(model, 'other')
+    other.changeDeferred('solar_plant', 70)
+    await vi.advanceTimersByTimeAsync(300)
+    expect(sent).toHaveLength(2)
+    expect(sent[0]).toMatchObject({
+      body: 'body',
+      settings: { metal_mine: 0, solar_plant: 100 },
+    })
+    expect(sent[1]).toMatchObject({
+      body: 'other',
+      settings: { metal_mine: 100, solar_plant: 70 },
+    })
+  })
+
+  it('cancels a deferred save when the session changes', async () => {
+    vi.useFakeTimers()
+    const { autosave, model, sent } = setup()
+    autosave.changeDeferred('metal_mine', 0)
+    model.store.setState({ binding: null, view: null, ready: false })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(sent).toHaveLength(0)
+    expect(autosave.store.getState().edits).toEqual({})
+  })
+
   it('serializes rapid edits, waits for reconciliation and merges into current confirmed settings', async () => {
     const { autosave, sent, receipt, snapshot } = setup()
     autosave.change('metal_mine', 50)
