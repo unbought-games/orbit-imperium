@@ -20,6 +20,7 @@ import {
   coordinateErrors,
   destinationError,
   dispatchFailure,
+  dispatchObservationError,
   dispatchQuantity,
   parsePastedCoordinates,
 } from '../client-model/dispatch-validation'
@@ -303,16 +304,12 @@ export function useDispatch({
         setError(resolvedProblem)
         return
       }
-      if (
-        draft?.target?.type === 'Body' &&
-        (destination.type !== 'Body' ||
-          destination.id !== draft.target.id ||
-          destination.expected_owner !== draft.target.expected_owner ||
-          destination.expected_kind !== draft.target.expected_kind)
+      const observationProblem = dispatchObservationError(
+        draft,
+        selection,
+        destination,
       )
-        throw Error(
-          'The observed target has changed. Choose a current target in Galaxy.',
-        )
+      if (observationProblem) throw Error(observationProblem)
       const cargoAmounts = addAllCargo
         ? ['0', '0', '0']
         : cargo.map(dispatchQuantity)

@@ -4,6 +4,7 @@ import {
   coordinateErrors,
   destinationError,
   dispatchFailure,
+  dispatchObservationError,
   dispatchQuantity,
   parsePastedCoordinates,
 } from './dispatch-validation'
@@ -225,4 +226,97 @@ it('uses a general requirement message when colony position context is unavailab
       mission: 'Transport',
     }),
   ).toBe(message)
+})
+
+const observedCoordinates = { galaxy: 1, system: 24, position: 5 }
+const observedBody = { coordinates: observedCoordinates, target: own }
+const bodySelection = {
+  type: 'BodyAt' as const,
+  coordinates: observedCoordinates,
+  kind: 'Planet' as const,
+}
+it('accepts an unchanged observed colony and a manually entered destination', () => {
+  expect(dispatchObservationError(observedBody, bodySelection, own)).toBe('')
+  expect(dispatchObservationError(null, bodySelection, own)).toBe('')
+  expect(
+    dispatchObservationError(
+      { coordinates: observedCoordinates },
+      bodySelection,
+      own,
+    ),
+  ).toBe('')
+})
+it.each(['galaxy', 'system', 'position'] as const)(
+  'does not apply the old identity after editing %s',
+  (field) => {
+    expect(
+      dispatchObservationError(
+        observedBody,
+        {
+          ...bodySelection,
+          coordinates: {
+            ...observedCoordinates,
+            [field]: observedCoordinates[field] + 1,
+          },
+        },
+        { ...own, id: 'different-colony' },
+      ),
+    ).toBe('')
+  },
+)
+it.each([
+  { ...own, id: 'replacement-colony' },
+  { ...own, expected_owner: 'new-owner' },
+  { ...own, expected_kind: 'Moon' as const },
+  {
+    type: 'EmptyPosition' as const,
+    coordinates: observedCoordinates,
+    slot_revision: '1',
+  },
+])(
+  'rejects a genuinely changed target at the original body selection: %j',
+  (destination) => {
+    expect(
+      dispatchObservationError(observedBody, bodySelection, destination),
+    ).toContain('The observed target has changed')
+  },
+)
+it('keeps acquisition and recolonization changes protected at the original coordinates', () => {
+  const formerOwner = {
+    ...observedBody,
+    target: { ...own, expected_owner: 'former-owner' },
+  }
+  expect(dispatchObservationError(formerOwner, bodySelection, own)).toContain(
+    'The observed target has changed',
+  )
+  expect(
+    dispatchObservationError(observedBody, bodySelection, {
+      ...own,
+      id: 'new-colony',
+    }),
+  ).toContain('The observed target has changed')
+})
+it('does not bind a body observation to a deliberately selected debris or empty position', () => {
+  expect(
+    dispatchObservationError(
+      observedBody,
+      { type: 'DebrisAt', coordinates: observedCoordinates },
+      {
+        type: 'Debris',
+        coordinates: observedCoordinates,
+        field_identity: 'debris',
+      },
+    ),
+  ).toBe('')
+  expect(
+    dispatchObservationError(
+      observedBody,
+      { type: 'EmptyPositionAt', coordinates: observedCoordinates },
+      {
+        type: 'EmptyPosition',
+        coordinates: observedCoordinates,
+        slot_revision: '1',
+      },
+    ),
+  ).toBe('')
 })
