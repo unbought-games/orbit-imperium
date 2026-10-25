@@ -10,7 +10,7 @@ export const buildPages: Page[] = [
 export const fleetPages: Page[] = ['galaxy', 'dispatch', 'fleets']
 export const navigationGroups: { title: string; pages: Page[] }[] = [
   { title: 'Empire', pages: ['overview', 'resource-settings'] },
-  { title: 'Build', pages: buildPages },
+  { title: 'Develop', pages: buildPages },
   { title: 'Fleet & intelligence', pages: [...fleetPages, 'reports'] },
   { title: 'Community', pages: ['high-scores', 'alliance'] },
   { title: 'Account', pages: ['settings'] },
@@ -33,7 +33,7 @@ export const pageTitles: Record<Page, string> = {
 }
 export function navigationAnchor(page: Page) {
   if (page === 'overview') return 'Empire'
-  if (buildPages.includes(page)) return 'Build'
+  if (buildPages.includes(page)) return 'Develop'
   if (fleetPages.includes(page)) return 'Fleet'
   return 'Menu'
 }

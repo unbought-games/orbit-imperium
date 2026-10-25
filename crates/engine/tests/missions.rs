@@ -1408,12 +1408,19 @@ fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
     sequential_defense_raids(DefenseId::RocketLauncher);
     sequential_defense_raids(DefenseId::LightLaser);
     sequential_defense_raids(DefenseId::IonCannon);
+    sequential_defense_raids(DefenseId::HeavyLaser);
     sequential_defense_raids(DefenseId::GaussCannon);
 }
 fn sequential_defense_raids(defense: DefenseId) {
     let (mut s, mut r, p, b, t) = raid_fixture();
-    if matches!(defense, DefenseId::LightLaser | DefenseId::IonCannon) {
+    if matches!(
+        defense,
+        DefenseId::LightLaser | DefenseId::IonCannon | DefenseId::HeavyLaser
+    ) {
         r = common::light_laser_rules(&r);
+        if defense == DefenseId::HeavyLaser {
+            r = common::heavy_laser_rules(&r);
+        }
         if defense == DefenseId::IonCannon {
             r = common::ion_cannon_rules(&common::ion_rules(&r));
         }
@@ -2414,7 +2421,7 @@ fn planet_renaming_is_public_free_repeatable_and_owner_only() {
     }
     for (id, expected) in [
         (target, GameError::NotOwned),
-        (BodyId(Uuid::new_v4()), GameError::NotOwned),
+        (BodyId(Uuid::from_u128(987654321)), GameError::NotOwned),
     ] {
         assert!(
             matches!(run(&mut s, &r, p, id, 1000, 5010, rename(id, "Stolen")), TransitionResult::Rejected(e) if e == expected)
@@ -2643,3 +2650,6 @@ fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
         }
     }
 }
+
+#[path = "missions/large_cargo.rs"]
+mod large_cargo;

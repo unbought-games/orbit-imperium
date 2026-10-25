@@ -30,6 +30,8 @@ const content: Record<string, string> = {
     'Establishes a planet at an eligible empty position. Requires Shipyard 4 and Impulse Drive 3. Success consumes one ship and deposits cargo; escorts and extra Colony Ships return. Uses impulse propulsion with 7,500 cargo capacity shared with mission fuel.',
   SmallCargo:
     'Transports resources between planets. Cargo capacity is shared by resources and mission fuel.',
+  LargeCargo:
+    'A bulk transport powered by combustion engines for moving large resource shipments between planets. Cargo capacity is shared by resources and mission fuel.',
   LightFighter: 'A small combat ship for attacking and defending planets.',
   HeavyFighter:
     'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
@@ -42,6 +44,8 @@ const content: Record<string, string> = {
     'A stationary missile battery that defends this planet against attacking fleets.',
   LightLaser:
     'A stationary laser battery that defends this planet against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
+  HeavyLaser:
+    'A stationary heavy laser battery that defends this planet against attacking fleets. Requires Shipyard 4, Energy Technology 3 and Laser Technology 6.',
   IonCannon:
     'A stationary cannon with strong shields that defends this planet against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
   GaussCannon:
@@ -49,7 +53,7 @@ const content: Record<string, string> = {
   SmallShieldDome:
     'A planetary shield that supports the defense of this planet. Only one small shield dome can be stationed or queued here.',
   LaserTechnology:
-    'Unlocks concentrated energy weapons, including Light Lasers at level 3. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
+    'Unlocks concentrated energy weapons, including Light Lasers at level 3 and Heavy Lasers at level 6. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
   IonTechnology:
     'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Higher levels currently offer no further unlocks. Ion research does not improve combat stats or reduce demolition costs.',
   ArmourTechnology:
