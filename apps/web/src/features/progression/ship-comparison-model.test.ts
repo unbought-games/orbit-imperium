@@ -158,3 +158,19 @@ describe('ship comparison', () => {
       expect(researchedValue('1', coefficient, 0)).toBeUndefined()
   })
 })
+
+it('identifies satellites as stationary while retaining combat comparisons', () => {
+  const satellite: ShipEntry = {
+    ...ship,
+    key: { kind: 'Ship', id: 'SolarSatellite' },
+    mobile: false,
+    ship_statistics: { ...ship.ship_statistics!, propulsion: null },
+  }
+  expect(comparisonStats(satellite, research, 'base')).toMatchObject({
+    stationary: true,
+    speed: undefined,
+    drive: undefined,
+    cargo: undefined,
+  })
+  expect(comparisonStats(satellite, research, 'current').attack).toBeDefined()
+})
