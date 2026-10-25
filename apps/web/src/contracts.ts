@@ -6074,6 +6074,7 @@ export interface components {
             username: string;
             rank: number;
             points: components["schemas"]["Decimal"];
+            previous_rank?: number | null;
         };
         Rankings: {
             binding: components["schemas"]["Binding"];
@@ -6082,6 +6083,7 @@ export interface components {
             sampled_at: number;
             processing_pending: boolean;
             players: components["schemas"]["RankingPlayer"][];
+            baseline_at?: number | null;
         };
         ShipStatistics3: {
             propulsion: components["schemas"]["ShipPropulsionStatistics3"] | null;
