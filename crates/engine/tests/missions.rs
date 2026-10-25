@@ -205,6 +205,7 @@ fn run(
                     Input::Command(Command::World {
                         action: WorldAction::SetReportHidden { .. }
                             | WorldAction::MarkReportRead { .. }
+                            | WorldAction::SetReportStarred { .. }
                     })
                 ) {
                     None
@@ -2563,6 +2564,30 @@ fn report_removal_is_recipient_scoped_reversible_and_preserves_evidence() {
         assert_eq!(w.report_states[0].hidden, hidden);
         assert!(!w.report_states[0].read);
     }
+    let star = |report, starred| {
+        Input::Command(Command::World {
+            action: WorldAction::SetReportStarred { report, starred },
+        })
+    };
+    assert_eq!(
+        run(&mut s, &r, other, t, 1000, 8807, star(private, true)),
+        TransitionResult::Rejected(GameError::NotFound)
+    );
+    let result = run(&mut s, &r, p, b, 1000, 8808, star(shared, true));
+    apply(&mut s, result);
+    assert_eq!(
+        run(&mut s, &r, p, b, 1000, 8809, action(shared, true)),
+        TransitionResult::Rejected(GameError::InvalidInput)
+    );
+    assert!(!s.world.as_ref().unwrap().records.report_states[0].hidden);
+    // A's star does not protect B's independent copy.
+    let result = run(&mut s, &r, other, t, 1000, 8810, action(shared, true));
+    apply(&mut s, result);
+    let result = run(&mut s, &r, p, b, 1000, 8811, star(shared, false));
+    apply(&mut s, result);
+    let result = run(&mut s, &r, p, b, 1000, 8812, action(shared, true));
+    apply(&mut s, result);
+    assert_eq!(s.world.as_ref().unwrap().records.reports, evidence);
 }
 
 #[path = "missions/cruiser.rs"]

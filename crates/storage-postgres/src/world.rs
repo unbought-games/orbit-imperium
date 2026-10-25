@@ -281,7 +281,9 @@ pub(crate) async fn load_selected(
     let report = match input {
         Input::Command(Command::World {
             action:
-                WorldAction::MarkReportRead { report } | WorldAction::SetReportHidden { report, .. },
+                WorldAction::MarkReportRead { report }
+                | WorldAction::SetReportHidden { report, .. }
+                | WorldAction::SetReportStarred { report, .. },
         }) => Some(*report),
         _ => None,
     };
@@ -300,7 +302,7 @@ pub(crate) async fn load_selected(
             reports.insert(r.id, r);
         }
         for row in sqlx::query(
-            "SELECT recipient,read,hidden FROM mission_report_recipients WHERE report=$1 AND recipient=ANY($2) ORDER BY recipient",
+            "SELECT recipient,read,hidden,starred FROM mission_report_recipients WHERE report=$1 AND recipient=ANY($2) ORDER BY recipient",
         )
         .bind(id.0)
         .bind(&owners)
@@ -313,6 +315,7 @@ pub(crate) async fn load_selected(
                 recipient: PlayerId(row.try_get("recipient").map_err(db_error)?),
                 read: row.try_get("read").map_err(db_error)?,
                 hidden: row.try_get("hidden").map_err(db_error)?,
+                starred: row.try_get("starred").map_err(db_error)?,
             });
         }
     }
@@ -654,7 +657,7 @@ pub(crate) async fn save(
         {
             return Err(StoreError::CorruptData);
         }
-        sqlx::query("UPDATE mission_report_recipients SET read=$3,hidden=$4 WHERE report=$1 AND recipient=$2").bind(state.report.0).bind(state.recipient.0).bind(state.read).bind(state.hidden).execute(&mut **tx).await.map_err(db_error)?;
+        sqlx::query("UPDATE mission_report_recipients SET read=$3,hidden=$4,starred=$5 WHERE report=$1 AND recipient=$2").bind(state.report.0).bind(state.recipient.0).bind(state.read).bind(state.hidden).bind(state.starred).execute(&mut **tx).await.map_err(db_error)?;
     }
     sqlx::query("INSERT INTO world_evidence(universe,input,deltas,audits) VALUES($1,$2,$3,$4)")
         .bind(u.0)
@@ -909,12 +912,13 @@ impl PgStore {
         } else {
             (head, None, None)
         };
-        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let rules = crate::facts::rules(&mut tx, b.universe).await?;
         let has_more = rows.len() > q.limit as usize;
         let items = rows
             .iter()
             .take(q.limit as usize)
-            .map(header)
+            .map(|row| header(row, &rules))
             .collect::<Result<Vec<_>, _>>()?;
         let mut cursor_record = None;
         let next_cursor = if has_more {
@@ -962,11 +966,12 @@ impl PgStore {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
         let at = crate::snapshots::safe_time(&mut tx, b.universe, b.player).await?;
-        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
+        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;
+        let rules = crate::facts::rules(&mut tx, b.universe).await?;
         let detail = ReportDetail4 {
             player_names: Default::default(),
-            header: header(&row)?,
+            header: header(&row, &rules)?,
             payload: r
                 .payloads
                 .get(&b.player)
@@ -986,17 +991,24 @@ impl PgStore {
         Ok(snapshot)
     }
 }
-fn header(row: &sqlx::postgres::PgRow) -> Result<ReportHeader4, StoreError> {
+fn header(row: &sqlx::postgres::PgRow, rules: &Ruleset) -> Result<ReportHeader4, StoreError> {
     let payload: serde_json::Value = row.try_get("preview_payload").map_err(db_error)?;
     if !payload.is_object() {
         return Err(StoreError::CorruptData);
     }
     Ok(ReportHeader4 {
+        fleet_investment: orbit_application::report_preview::report_investment(
+            &payload, "fleet", rules,
+        ),
+        defense_investment: orbit_application::report_preview::report_investment(
+            &payload, "defenses", rules,
+        ),
         preview: Some(orbit_application::report_preview(&payload)),
         id: ReportId(row.try_get("id").map_err(db_error)?),
         kind: row.try_get("kind").map_err(db_error)?,
         observed_at: row.try_get("at_ms").map_err(db_error)?,
         read: row.try_get("read").map_err(db_error)?,
         hidden: row.try_get("hidden").map_err(db_error)?,
+        starred: row.try_get("starred").map_err(db_error)?,
     })
 }

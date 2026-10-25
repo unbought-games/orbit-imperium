@@ -1,3 +1,5 @@
+import { reportMetric, type ReportSort } from './report-triage'
+import { ReportStarButton } from './report-star-button'
 import { CoordinateLink } from './coordinate-link'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -26,6 +28,9 @@ export function ReportListRow({
   origin,
   now,
   disabled,
+  selected,
+  onSelect,
+  sort,
 }: {
   report: components['schemas']['ReportHeader4']
   playerNames?: PlayerNames
@@ -34,6 +39,9 @@ export function ReportListRow({
   origin: string
   now: number
   disabled: boolean
+  sort?: ReportSort
+  selected?: boolean
+  onSelect?: (checked: boolean) => void
 }) {
   const preview = reportPreview(report.preview, model.binding?.player)
   const outcome = reportListTitle(report, model.binding?.player)
@@ -51,6 +59,17 @@ export function ReportListRow({
     >
       <div className={styles.reportMain}>
         <div className={styles.rowHeading}>
+          {onSelect && (
+            <label className={styles.selection}>
+              <input
+                type="checkbox"
+                aria-label={`Select ${title} report ${exactTime(report.observed_at)}`}
+                checked={selected}
+                disabled={disabled || report.starred}
+                onChange={(e) => onSelect(e.target.checked)}
+              />
+            </label>
+          )}
           <Link
             className={styles.reportLink}
             aria-label={title}
@@ -93,6 +112,16 @@ export function ReportListRow({
             </CoordinateLink>
           )}
         </div>
+        {(sort === 'fleet' || sort === 'defenses') && (
+          <span className={styles.preview}>
+            {sort === 'fleet' ? 'Fleet' : 'Defense'} investment:{' '}
+            {reportMetric(report, sort) === null ? (
+              'Unknown'
+            ) : (
+              <ResourceNumber value={reportMetric(report, sort)!.toString()} />
+            )}
+          </span>
+        )}
         {preview.facts.length > 0 && (
           <span className={styles.preview}>
             {preview.facts.map((fact, index) => (
@@ -137,13 +166,16 @@ export function ReportListRow({
       >
         {reportAge(report.observed_at, now)}
       </time>
-      <ReportVisibilityButton
-        model={model}
-        report={report.id}
-        hidden={report.hidden}
-        disabled={disabled}
-        compact
-      />
+      <div className={styles.rowActions}>
+        <ReportStarButton model={model} report={report.id} />
+        <ReportVisibilityButton
+          model={model}
+          report={report.id}
+          hidden={report.hidden}
+          disabled={disabled}
+          compact
+        />
+      </div>
     </Panel>
   )
 }

@@ -9317,6 +9317,27 @@
               "name"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "SetReportStarred"
+              },
+              "report": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "starred": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "report",
+              "starred"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -10676,6 +10697,25 @@
           },
           "preview": {
             "$ref": "#/components/schemas/ReportPreview4"
+          },
+          "starred": {
+            "type": "boolean"
+          },
+          "fleet_investment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+$",
+            "description": "Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable."
+          },
+          "defense_investment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+$",
+            "description": "Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable."
           }
         },
         "required": [
