@@ -1,28 +1,38 @@
 .editor {
-  padding: 0 18px 12px;
   min-width: 0;
 }
-.editor form {
-  display: grid;
-  gap: 8px;
-}
-.editor input {
-  width: 100%;
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
 }
-.editor small {
-  color: var(--text-muted);
+.nameRow h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.nameRow input {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  min-height: 32px;
+  margin-block: 4px;
+  padding: 3px 6px;
+  font: 1.125rem/1.2 var(--font-editorial);
+  color: var(--champagne-light);
 }
 .editor p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   overflow-wrap: anywhere;
 }
 .editor p:empty {
   display: none;
 }
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
