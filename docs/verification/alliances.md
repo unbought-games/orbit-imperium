@@ -78,3 +78,13 @@ After repair: all 20 alliance domain tests passed (0.028 s execution); all 10 al
 ## PR #143 Solar Satellite integration
 
 Main then advanced to `ffd0872` with Solar Satellites, causing another conflict in the same browser-suite list. Merge revision `0e7beb5` preserves both alliance suites and the Solar Satellite suite; generated contracts merged without drift. On this revision, `make check` passed in 122.21 s: 108 tooling tests (one explicit-only Docker test skipped), 877 client tests, 400 workspace plus 32 bridge plus seven storage unit tests, Clippy, static/contract/architecture checks and production build. All 23 selected alliance, identity, High Scores and Solar Satellite browser cases passed in 13.88 s overall (12.4 s runner). No database resources were created; browser runner cleanup completed.
+
+## PR #143 recovery and draft review repairs
+
+Implementation revision `4d84799dbae9ee77d22775b344406556c6c2e081` fixes threads `PRRT_kwDOVRgPYs6wFY4_`, `PRRT_kwDOVRgPYs6wFY5C` and `PRRT_kwDOVRgPYs6wFY5G` from head `34ef8a0`:
+
+- An expired revision-bound noticeboard cursor automatically retries once from the newest page. Manual Refresh also discards any old page cursor, instead of repeatedly failing on the same cursor.
+- Role mutation responses are compared with the previous authoritative permission observation before clearing private drafts. Unrelated drafts survive unchanged authority; real membership or permission loss still clears them.
+- Command 403/404 responses may mean a missing target or denied action rather than lost membership. The controller hides the previous private view, reloads Mine, and clears drafts only if refreshed authority is lost (or the read itself denies access). The action error remains visible after successful revalidation.
+
+Four new controller regressions failed before repair and passed afterward, alongside the existing tests. Full client suite: 881 passed, 3.77 s total (3.13 s runner). All 12 alliance browser scenarios passed in 14.07 s total (13.0 s runner), including actual expired-cursor recovery and a notice draft surviving a role save. Initial new browser locators matched both hidden/visible editors and multiple status regions; narrowed them to visible textboxes and the noticeboard status, then reran without changing assertions. Final static checks passed in 7.56 s after correcting test formatting; production build passed in 9.68 s. No database resources started; browser runners cleaned up their processes.
