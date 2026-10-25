@@ -141,7 +141,6 @@ export function MissionFleets({
           </span>
         </div>
       </TaskHeader>
-      {!item && <FleetInventory model={model} origin={origin} />}
       {!fleets.length && !launches.length && (
         <EmptyState
           icon={Rocket}
@@ -319,6 +318,7 @@ export function MissionFleets({
           ))}
         </section>
       )}
+      {!item && <FleetInventory model={model} origin={origin} />}
       <details className={styles.rules}>
         <summary>Fleet slots and protection</summary>
         <Text>Returning fleets occupy a slot.</Text>
