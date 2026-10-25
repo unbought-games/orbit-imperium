@@ -194,3 +194,28 @@ it('draws only known owned routes and switches dense networks to the roster', ()
   }))
   expect(empirePaths(empireNodes(many), empireFlights(view))).toEqual([])
 })
+
+it.each([
+  ['Attack', true],
+  ['Espionage', true],
+  ['Transport', false],
+  ['Deploy', false],
+  ['Harvest', false],
+  ['Colonize', false],
+] as const)(
+  'classifies incoming %s consistently without flagging owned fleets',
+  (mission, hostile) => {
+    const view = fixture()
+    view.missions.incoming[0].mission = mission
+    view.missions.fleets[0].intent.mission = mission
+    expect(empireFlights(view).map((flight) => flight.hostile)).toEqual([
+      hostile,
+      false,
+    ])
+    view.missions.fleets[0].leg = 'Returning'
+    expect(empireFlights(view).map((flight) => flight.hostile)).toEqual([
+      hostile,
+      false,
+    ])
+  },
+)

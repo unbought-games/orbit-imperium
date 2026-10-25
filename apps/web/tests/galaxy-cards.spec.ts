@@ -334,7 +334,7 @@ test('incoming fleets and report details use the supplied public name without an
   await page.getByRole('link', { name: 'Fleet', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Incoming fleets' }),
-  ).toContainText('Attack · Commander Vega')
+  ).toContainText('From Commander Vega')
   const reportId = id(62)
   let names: Record<string, string> | undefined = playerNames
   await page.route('**/api/**/reports/**', async (route) => {

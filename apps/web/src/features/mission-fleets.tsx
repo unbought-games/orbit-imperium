@@ -1,7 +1,7 @@
 import { Radar, Rocket } from 'lucide-react'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
-import { PlayerName } from './player-name'
+import { IncomingFleet } from './incoming-fleet'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { useUniverseName } from '../shell/session-context'
 import {
@@ -29,7 +29,6 @@ import {
   missionLocation,
   arrivalCountdown,
   exactTime,
-  incomingManifest,
   recallEstimate,
   shipManifest,
 } from './mission-presentation'
@@ -182,7 +181,7 @@ export function MissionFleets({
           <div className={styles.missionFacts}>
             <div>
               <Heading level={3} className={styles.missionTitle}>
-                {fleet.intent.mission} · {fleet.leg}
+                Your {fleet.intent.mission.toLowerCase()} · {fleet.leg}
               </Heading>
               <Text>{shipManifest(fleet.ships)}</Text>
               <Text>
@@ -299,21 +298,7 @@ export function MissionFleets({
             />
           )}
           {view.missions.incoming.map((fleet, index) => (
-            <article className={styles.incomingRow} key={index}>
-              <div>
-                <Heading level={3}>
-                  {fleet.mission} ·{' '}
-                  <PlayerName player={fleet.sender} names={view.player_names} />
-                </Heading>
-                <Text>{incomingManifest(fleet.ships)}</Text>
-              </div>
-              <div>
-                <strong>{arrivalCountdown(fleet.arrival_at, now)}</strong>
-                <time dateTime={new Date(fleet.arrival_at).toISOString()}>
-                  {exactTime(fleet.arrival_at)}
-                </time>
-              </div>
-            </article>
+            <IncomingFleet key={index} fleet={fleet} view={view} now={now} />
           ))}
         </section>
       )}

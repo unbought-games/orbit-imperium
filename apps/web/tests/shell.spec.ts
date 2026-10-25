@@ -2589,7 +2589,7 @@ test('incoming attacks stay in the phone viewport when there are no outgoing fle
     page.getByRole('heading', { name: 'No active fleets.' }),
   ).toBeVisible()
   const incoming = page.getByRole('region', { name: 'Incoming fleets' })
-  const attack = incoming.getByRole('heading', { name: /Attack/ })
+  const attack = incoming.getByRole('heading', { name: /Incoming attack/ })
   await expect(attack).toBeInViewport()
   const dock = await page
     .getByRole('navigation', { name: 'Main navigation' })

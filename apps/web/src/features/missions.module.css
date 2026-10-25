@@ -152,8 +152,7 @@
     400 clamp(1.5rem, 3vw, 2.6rem) / 1.15 Georgia,
     serif;
 }
-.arrival time,
-.incomingRow time {
+.arrival time {
   display: block;
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -210,14 +209,6 @@
 }
 .incoming {
   padding-block: 0.5rem 1.5rem;
-}
-.incomingRow {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1rem;
-  border-top: 1px solid var(--border);
-  padding-block: 1.2rem;
 }
 .rules {
   border-top: 1px solid var(--border);
