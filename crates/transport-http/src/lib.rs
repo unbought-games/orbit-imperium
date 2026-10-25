@@ -214,6 +214,14 @@ where
         .route("/api/v4/universes/{id}/presence", post(v4::presence::<S>))
         .route("/api/v4/universes/{id}/world", post(v4::query::<S>))
         .route("/api/v4/universes/{id}/rankings", post(v4::rankings::<S>))
+        .route(
+            "/api/v4/shared-reports/{token}",
+            get(v4::shared_report::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/reports/{report}/share",
+            post(v4::report_share::<S>),
+        )
         .route("/api/v4/universes/{id}/reports", post(v4::reports::<S>))
         .route(
             "/api/v4/universes/{id}/reports/{report}",

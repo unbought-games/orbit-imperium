@@ -1,6 +1,7 @@
 use super::bound_api::{Discovery, ReceiptQuery, no_store_json, path_binding, principal};
 use super::*;
 use axum::extract::Query;
+use axum::http::HeaderValue;
 
 pub(super) async fn binding<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -208,4 +209,35 @@ pub(super) async fn rankings<S: GameStore + IdentityStore>(
     Ok(no_store_json(
         s.game.rankings(principal(&session, u)?, c).await?,
     ))
+}
+
+pub(super) async fn report_share<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path((id, report)): Path<(uuid::Uuid, uuid::Uuid)>,
+    ApiJson(q): ApiJson<ReportShareRequest>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, q.context.binding)?;
+    Ok(no_store_json(
+        s.game
+            .report_share(principal(&session, u)?, ReportId(report), q)
+            .await?,
+    ))
+}
+pub(super) async fn shared_report<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    Path(token): Path<uuid::Uuid>,
+) -> Result<Response, Problem> {
+    let mut response = no_store_json(s.game.shared_report(token).await?);
+    response.headers_mut().insert(
+        "x-robots-tag",
+        HeaderValue::from_static("noindex, nofollow, noarchive"),
+    );
+    response
+        .headers_mut()
+        .insert("referrer-policy", HeaderValue::from_static("no-referrer"));
+    Ok(response)
 }
