@@ -115,12 +115,6 @@
   color: var(--text-muted);
   font-size: 0.75rem;
 }
-.targetCoordinates {
-  display: inline;
-  min-height: 0;
-  min-width: 0;
-  padding: 0;
-}
 .target > button {
   flex-shrink: 0;
   font-size: 0.8125rem;

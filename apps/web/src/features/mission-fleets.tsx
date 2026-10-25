@@ -24,6 +24,7 @@ import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { routeTarget } from '../shell/route-target'
 import { TaskHeader } from '../ui/task-header'
+import { FleetInventory } from './fleet-inventory'
 import { MissionTrajectory } from './mission-trajectory'
 import {
   missionLocation,
@@ -317,6 +318,7 @@ export function MissionFleets({
           ))}
         </section>
       )}
+      {!item && <FleetInventory model={model} origin={origin} />}
       <details className={styles.rules}>
         <summary>Fleet slots and protection</summary>
         <Text>Returning fleets occupy a slot.</Text>
