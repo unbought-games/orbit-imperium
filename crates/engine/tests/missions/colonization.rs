@@ -471,6 +471,7 @@ fn ordinary_starter_builds_researches_manufactures_and_colonizes_without_grants(
                 let rate = production_rates_with_settings(
                     &s.bodies[&b],
                     &s.production_settings[&b].settings,
+                    0,
                     r,
                 )
                 .unwrap();

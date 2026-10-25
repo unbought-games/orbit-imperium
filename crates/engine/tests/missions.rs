@@ -2653,3 +2653,5 @@ fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
 
 #[path = "missions/large_cargo.rs"]
 mod large_cargo;
+#[path = "missions/solar_satellite.rs"]
+mod solar_satellite;

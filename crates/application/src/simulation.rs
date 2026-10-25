@@ -3,7 +3,7 @@
 use crate::*;
 use orbit_engine::{
     BattleInput, BattleOrigin, BattleParticipant, BattleSide, CombatRules, ManufacturedItem,
-    RandomStream, resolve_battle,
+    RandomStream, ShipType, resolve_battle,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -90,7 +90,9 @@ fn validate_simulation(inputs: &SimulationInputs, rules: &CombatRules) -> Result
             if unit.count == 0
                 || !seen.insert(unit.item)
                 || !rules.units.iter().any(|r| r.item == unit.item)
-                || (attacker && !matches!(unit.item, ManufacturedItem::Ship(_)))
+                || (attacker
+                    && (!matches!(unit.item, ManufacturedItem::Ship(_))
+                        || unit.item == ManufacturedItem::Ship(ShipType::SolarSatellite)))
             {
                 return Err(ServiceError::Malformed);
             }
@@ -208,6 +210,28 @@ mod tests {
         q.attacker.units[0].item = ManufacturedItem::Defense(DefenseId::RocketLauncher);
         assert!(validate_simulation(&q, &rules).is_err());
         assert!(serde_json::from_value::<SimulationInputs>(serde_json::json!({"attacker": {"technology": [null,0,0], "units": []}, "defender": {"technology": [0,0,0], "units": []}})).is_err());
+    }
+    #[test]
+    fn satellites_are_valid_defenders_but_malformed_attackers() {
+        let rules = orbit_engine::Ruleset::from_json(include_bytes!(
+            "../../../rules/mvp-v1-solar-satellite.json"
+        ))
+        .unwrap()
+        .artifact
+        .world
+        .unwrap()
+        .combat;
+        let mut q = inputs();
+        q.defender.units.push(SimulationUnit {
+            item: ManufacturedItem::Ship(ShipType::SolarSatellite),
+            count: 3,
+        });
+        assert!(validate_simulation(&q, &rules).is_ok());
+        q.attacker.units.push(q.defender.units[0].clone());
+        assert!(matches!(
+            validate_simulation(&q, &rules),
+            Err(ServiceError::Malformed)
+        ));
     }
     #[test]
     fn uses_supplied_universe_combat_stats_for_occupied_targets() {

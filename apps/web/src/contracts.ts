@@ -5027,6 +5027,10 @@ export interface components {
             energy_demand: components["schemas"]["Decimal"];
             utilization: components["schemas"]["Decimal"];
             fuel_utilization: components["schemas"]["Decimal"];
+            solar_satellite?: {
+                unit_energy: components["schemas"]["Decimal"];
+                energy_supply: components["schemas"]["Decimal"];
+            };
         };
         ResearchOperationDto: {
             /** Format: uuid */

@@ -7,6 +7,8 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProgressionRules {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub solar_satellite: Option<SolarSatelliteRule>,
     pub building_formula: String,
     pub demolition_formula: String,
     /// Whole resource units, certified by G03; scaled only on use.
@@ -66,6 +68,22 @@ impl ProgressionRules {
                 return Err(RulesError::Range);
             }
         }
+        if let Some(rule) = &self.solar_satellite {
+            rule.validate()?;
+            if a.world.is_none()
+                || a.ships.contains_key(&ShipType::SolarSatellite)
+                || !a
+                    .catalog
+                    .iter()
+                    .any(|e| e.key == CatalogKey::Ship(ShipType::SolarSatellite) && !e.mobile)
+                || !self
+                    .unit_costs
+                    .iter()
+                    .any(|u| u.item == ManufacturedItem::Ship(ShipType::SolarSatellite))
+            {
+                return Err(RulesError::InvalidReference);
+            }
+        }
         let mut items = BTreeSet::new();
         for u in &self.unit_costs {
             if !items.insert(u.item)
@@ -98,6 +116,9 @@ impl ProgressionRules {
         for unit in &self.unit_costs {
             if !a.catalog.iter().any(|e| e.key == unit.item.catalog_key())
                 || match unit.item {
+                    ManufacturedItem::Ship(ShipType::SolarSatellite) => {
+                        self.solar_satellite.is_none()
+                    }
                     ManufacturedItem::Ship(k) => a.world.is_some() && !a.ships.contains_key(&k),
                     ManufacturedItem::Defense(k) => !matches!(
                         k,

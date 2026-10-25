@@ -52,10 +52,11 @@ pub fn validate_rules_update(
         .progression
         .as_ref()
         .ok_or(RulesError::InvalidReference)?;
-    if before
-        .unit_costs
-        .iter()
-        .any(|u| !after.unit_costs.iter().any(|n| n.item == u.item))
+    if (before.solar_satellite.is_some() && after.solar_satellite.is_none())
+        || before
+            .unit_costs
+            .iter()
+            .any(|u| !after.unit_costs.iter().any(|n| n.item == u.item))
     {
         return Err(RulesError::InvalidReference);
     }
@@ -75,13 +76,14 @@ pub fn validate_rules_update(
 pub fn settle_rules_boundary(
     body: &Body,
     settings: &ProductionSettings,
+    satellites: i64,
     at: Timestamp,
     current: &Ruleset,
 ) -> Result<ResourceCheckpoint, InvariantError> {
     crate::economy::settle_rates(
         body,
         at,
-        production_rates_with_settings(body, settings, current)?,
+        production_rates_with_settings(body, settings, satellites, current)?,
         current,
     )
 }

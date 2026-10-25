@@ -192,3 +192,26 @@ it('excludes catalog units without combat rules and blocks observed unsupported 
     simulationFields(report, legacy, []).filter((f) => f.item),
   ).toHaveLength(2)
 })
+
+it.each([true, false])(
+  'satellites remain defenders only even when manufacture is disabled (%s)',
+  (enabled) => {
+    const item = { kind: 'Ship', id: 'SolarSatellite' } as const
+    const observed: Espionage = {
+      ...report,
+      fleet: { visibility: 'Known', value: [{ item, count: '7' }] },
+    }
+    const fields = simulationFields(
+      observed,
+      [...catalog, { ...catalog[0], key: item, enabled, mobile: false }],
+      [],
+    )
+    expect(
+      fields.find((f) => f.key === 'defender:Ship:SolarSatellite')?.value,
+    ).toBe('7')
+    expect(fields.some((f) => f.key === 'attacker:Ship:SolarSatellite')).toBe(
+      false,
+    )
+    expect(unsupportedReportUnits(observed, fields)).toEqual([])
+  },
+)

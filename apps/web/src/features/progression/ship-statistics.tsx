@@ -10,6 +10,7 @@ type Entry = components['schemas']['CatalogEntry3']
 
 export function ShipStatistics({ entry }: { entry: Entry }) {
   if (entry.key.kind !== 'Ship') return null
+  const stationary = entry.key.id === 'SolarSatellite' && !entry.mobile
   const stats = entry.ship_statistics
   const propulsion = stats?.propulsion
   const combat = stats?.combat
@@ -17,8 +18,9 @@ export function ShipStatistics({ entry }: { entry: Entry }) {
   return (
     <DetailSection title="Ship technical statistics">
       <p className={styles.note}>
-        Base values per ship, before research bonuses. Actual flight time and
-        mission fuel depend on the fleet, route and speed setting.
+        {stationary
+          ? 'Stationary energy source. Cannot fly or carry cargo; uses no fuel or building fields. Can be destroyed in combat and does not recover.'
+          : 'Base values per ship, before research bonuses. Actual flight time and mission fuel depend on the fleet, route and speed setting.'}
       </p>
       {!propulsion && !combat ? (
         <p className={styles.note}>
@@ -49,11 +51,11 @@ export function ShipStatistics({ entry }: { entry: Entry }) {
             <p className={styles.note}>
               Cargo capacity is shared by resources and mission fuel.
             </p>
-          ) : (
+          ) : !stationary ? (
             <p className={styles.note}>
               Propulsion statistics are unavailable.
             </p>
-          )}
+          ) : null}
           {!combat && (
             <p className={styles.note}>Combat statistics are unavailable.</p>
           )}
