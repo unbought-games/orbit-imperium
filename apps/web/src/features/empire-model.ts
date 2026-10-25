@@ -1,3 +1,4 @@
+import { isHostileMission } from '../client-model/hostile-fleets'
 import { missionLocation } from './mission-presentation'
 import type { BoundView } from '../client-model/commands'
 import { resourceNames } from '../client-model/resources'
@@ -87,7 +88,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
             : f.ships.visibility === 'Types'
               ? `${f.ships.total} ships · ${f.ships.types.map(label).join(', ')}`
               : shipSummary(f.ships.ships),
-      hostile: f.mission === 'Attack',
+      hostile: isHostileMission(f.mission),
     }),
   )
   return [...owned, ...incoming].sort((a, b) => a.due - b.due)

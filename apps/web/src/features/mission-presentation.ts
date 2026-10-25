@@ -4,9 +4,11 @@ import { coordinates, label } from '../ui/format'
 type S = components['schemas']
 
 export function arrivalCountdown(deadline: number, now: number) {
-  return formatRemaining(
-    deadline <= now ? null : Math.floor((deadline - now) / 1000),
-  )
+  if (deadline <= now) return 'Awaiting confirmation'
+  const seconds = Math.floor((deadline - now) / 1000)
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return `${hours ? `${hours}h ` : ''}${seconds >= 60 ? `${minutes}m ` : ''}${seconds % 60}s`
 }
 const timestampFormat = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',

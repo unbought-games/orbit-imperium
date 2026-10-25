@@ -338,7 +338,7 @@ test('incoming fleets and report details use the supplied public name without an
     .click()
   await expect(
     page.getByRole('region', { name: 'Incoming fleets' }),
-  ).toContainText('Attack · Commander Vega')
+  ).toContainText('From Commander Vega')
   const reportId = id(62)
   let names: Record<string, string> | undefined = playerNames
   await page.route('**/api/**/reports/**', async (route) => {
@@ -731,7 +731,7 @@ test('galaxy probe countdown ticks without reloading rows or fetching the system
   }
   await setup(page, null, { missions, sampledAt: now })
   const target = page.getByRole('region', { name: 'Galaxy positions' }).getByRole('listitem').nth(1)
-  await expect(target.getByRole('status')).toHaveText('Espionage en route · 2m')
+  await expect(target.getByRole('status')).toHaveText('Espionage en route · 2m 0s')
   await target.locator('summary').click()
   const row = await target.elementHandle()
   let requests = 0
