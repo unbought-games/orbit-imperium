@@ -2405,7 +2405,7 @@ fn planet_renaming_is_public_free_repeatable_and_owner_only() {
     }
     for (id, expected) in [
         (target, GameError::NotOwned),
-        (BodyId(Uuid::new_v4()), GameError::NotOwned),
+        (BodyId(Uuid::from_u128(987654321)), GameError::NotOwned),
     ] {
         assert!(
             matches!(run(&mut s, &r, p, id, 1000, 5010, rename(id, "Stolen")), TransitionResult::Rejected(e) if e == expected)
@@ -2610,3 +2610,6 @@ fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
         }
     }
 }
+
+#[path = "missions/large_cargo.rs"]
+mod large_cargo;
