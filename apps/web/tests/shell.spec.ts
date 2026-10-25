@@ -1568,13 +1568,15 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     activity: { type: 'None' },
     counterespionage: { probability_ppm: 0, detected: false },
   }
+  let reportDetailRequests = 0
   let reportMode: 'populated' | 'empty' | 'failed' = 'populated'
   await page.route('**/api/**/reports**', async (route) => {
+    const detail = new URL(route.request().url()).pathname.endsWith(header.id)
+    if (detail) reportDetailRequests++
     if (reportMode === 'failed')
       return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     const request = route.request().postDataJSON()
     const context = request.context ?? request
-    const detail = new URL(route.request().url()).pathname.endsWith(header.id)
     await route.fulfill({
       json: {
         protocol: 4,
@@ -1594,7 +1596,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
       },
     })
   })
-  await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(
     page.getByRole('link', { name: 'Espionage', exact: true }),
   ).toBeVisible()
@@ -1650,14 +1652,17 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     fullPage: true,
   })
   reportMode = 'empty'
-  await page.goto(`/u/andromeda/reports?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(page.getByText('No reports to show.', { exact: true })).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/reports-empty-phone.png',
     fullPage: true,
   })
+  // Legacy URLs remount the report during canonicalization. Keep this retry
+  // scenario on the final route so a redirect cannot consume its recovery.
+  reportDetailRequests = 0
   reportMode = 'failed'
-  await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
   await expect(
     page.getByRole('button', { name: 'Retry reports', exact: true }),
   ).toBeVisible()
@@ -1668,11 +1673,13 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     path: 'test-results/reports-unavailable-phone.png',
     fullPage: true,
   })
+  expect(reportDetailRequests).toBe(1)
   reportMode = 'populated'
   await page.getByRole('button', { name: 'Retry reports', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Report observation' }),
   ).toContainText('No stationed ships')
+  expect(reportDetailRequests).toBe(2)
 })
 
 test('secondary pages retain empty, unavailable and settings states at phone width', async ({
