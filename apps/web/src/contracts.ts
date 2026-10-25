@@ -4546,6 +4546,7 @@ export interface components {
             requirements: components["schemas"]["Requirement3"][];
             enabled: boolean;
             mobile: boolean;
+            ship_statistics?: components["schemas"]["ShipStatistics3"];
         };
         Inventory3: {
             item: components["schemas"]["ItemKey3"];
@@ -6079,6 +6080,34 @@ export interface components {
             sampled_at: number;
             processing_pending: boolean;
             players: components["schemas"]["RankingPlayer"][];
+        };
+        ShipStatistics3: {
+            propulsion: components["schemas"]["ShipPropulsionStatistics3"] | null;
+            combat: components["schemas"]["ShipCombatStatistics3"] | null;
+        };
+        ShipPropulsionStatistics3: {
+            cargo_capacity: string;
+            base_speed: string;
+            fuel_consumption: string;
+            drive: components["schemas"]["ResearchId3"];
+            impulse_upgrade: components["schemas"]["ShipImpulseStatistics3"] | null;
+        };
+        ShipImpulseStatistics3: {
+            minimum_level: number;
+            base_speed: string;
+            fuel_consumption: string;
+        };
+        /** @description Base combat statistics without research bonuses, in 1/100,000 points. */
+        ShipCombatStatistics3: {
+            attack_ticks: string;
+            shield_ticks: string;
+            hull_ticks: string;
+            rapid_fire_against: components["schemas"]["ShipRapidFireStatistics3"][];
+            rapid_fire_from: components["schemas"]["ShipRapidFireStatistics3"][];
+        };
+        ShipRapidFireStatistics3: {
+            unit: components["schemas"]["ItemKey3"];
+            factor: string;
         };
     };
     responses: never;

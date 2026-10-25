@@ -83,7 +83,7 @@ impl CombatRules {
             // values at 0 and 1 establish precision for every integer level;
             // the upper endpoint also checks the supported range for overflow.
             for level in [0, 1, u32::MAX] {
-                stats(u, [level; 3], self)?;
+                combat_unit_stats(u, [level; 3], self)?;
             }
         }
         let mut pairs = std::collections::BTreeSet::new();
@@ -209,7 +209,8 @@ fn scaled(base: u128, level: u32, r: &CombatRules) -> Result<u128, InvariantErro
     }
     Ok(n / u128::from(b))
 }
-fn stats(
+/// Attack, shield and hull in 1/100,000 units, shared by combat and presentation.
+pub fn combat_unit_stats(
     u: &CombatUnitRule,
     tech: [u32; 3],
     r: &CombatRules,
@@ -358,7 +359,7 @@ pub fn resolve_battle(
                 .iter()
                 .find(|u| u.item == item)
                 .ok_or_else(|| bad("unsupported combat unit"))?;
-            let (a, s, h) = stats(rule, participant.technology, r)?;
+            let (a, s, h) = combat_unit_stats(rule, participant.technology, r)?;
             let n = usize::try_from(n).map_err(|_| bad("combat instance range"))?;
             units
                 .try_reserve(n)
