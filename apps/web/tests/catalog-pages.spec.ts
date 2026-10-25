@@ -543,7 +543,7 @@ for (const width of [1440, 390, 320]) {
         // Shipyard starts with its comparison control; other catalogs start with work.
         const firstSection = tab === 'Shipyard' ? page.locator('main details') : queue
         const queueBounds = (await firstSection.boundingBox())!
-        const tabs = (await page.getByRole('navigation', { name: 'Build navigation' }).boundingBox())!
+        const tabs = (await page.getByRole('navigation', { name: 'Develop navigation' }).boundingBox())!
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeGreaterThanOrEqual(0)
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeLessThanOrEqual(20)
       }

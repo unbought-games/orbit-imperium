@@ -130,7 +130,7 @@ function ItemPreview({ runtime }: { runtime: Preview }) {
           </main>
           <div className={styles.dock} aria-hidden="true">
             <span>Empire</span>
-            <span>Build</span>
+            <span>Develop</span>
             <span>Fleet</span>
             <span>Menu</span>
           </div>
