@@ -184,8 +184,8 @@ function SimulationForm({
           </p>
           {unsupported.length > 0 && (
             <p role="alert">
-              This report contains units unavailable in the current catalog. It
-              cannot be simulated without dropping observed forces.
+              This report contains units unsupported by the current combat
+              rules. It cannot be simulated without dropping observed forces.
             </p>
           )}
           {prepared.error && <p role="status">{prepared.error}</p>}

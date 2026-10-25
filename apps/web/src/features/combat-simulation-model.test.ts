@@ -8,6 +8,18 @@ import {
 } from './combat-simulation-model'
 import type { components } from '../contracts'
 const report = observation as Espionage
+const technicalData = {
+  facts: [],
+  bonuses: [],
+  storage_capacities: null,
+  combat: {
+    attack_ticks: '5000000',
+    shield_ticks: '1000000',
+    hull_ticks: '40000000',
+    rapid_fire_against: [],
+    rapid_fire_from: [],
+  },
+}
 const catalog: components['schemas']['CatalogEntry3'][] = [
   {
     key: { kind: 'Ship', id: 'LightFighter' },
@@ -15,6 +27,7 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
     requirements: [],
     enabled: true,
     mobile: true,
+    technical_data: technicalData,
   },
   {
     key: { kind: 'Defense', id: 'RocketLauncher' },
@@ -22,6 +35,7 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
     requirements: [],
     enabled: true,
     mobile: false,
+    technical_data: technicalData,
   },
 ]
 const attacking = { 'attacker:Ship:LightFighter': '10' }
@@ -122,4 +136,34 @@ describe('report combat prefill', () => {
       fields.find((f) => f.key === 'defender:WeaponsTechnology')?.value,
     ).toBe('0')
   })
+})
+
+it('excludes catalog units without combat rules and blocks observed unsupported forces', () => {
+  const unavailable = catalog.map((e) => ({
+    ...e,
+    technical_data: { ...technicalData, combat: null },
+  }))
+  const fields = simulationFields(report, unavailable, [])
+  expect(fields.filter((f) => f.item)).toEqual([])
+  const observed = {
+    ...report,
+    fleet: {
+      visibility: 'Known',
+      value: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '5' }],
+    },
+  } as Espionage
+  expect(unsupportedReportUnits(observed, fields)).toHaveLength(1)
+  // Earlier clients expose ship combat data separately; never use enabled/mobile
+  // as a proxy for whether the combat engine supports a unit.
+  const legacy = [
+    {
+      ...catalog[0],
+      enabled: false,
+      technical_data: undefined,
+      ship_statistics: { propulsion: null, combat: technicalData.combat },
+    },
+  ]
+  expect(
+    simulationFields(report, legacy, []).filter((f) => f.item),
+  ).toHaveLength(2)
 })

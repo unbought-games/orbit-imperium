@@ -23,7 +23,9 @@ export function simulationFields(
   research: { research: string; level: number }[],
 ): SimulationField[] {
   const units = catalog.filter(
-    (e) => e.key.kind === 'Ship' || e.key.kind === 'Defense',
+    (e) =>
+      (e.key.kind === 'Ship' || e.key.kind === 'Defense') &&
+      !!(e.technical_data?.combat ?? e.ship_statistics?.combat),
   )
   return (['attacker', 'defender'] as const).flatMap((side) => [
     ...combatTechnologies.map((id, technology) => ({

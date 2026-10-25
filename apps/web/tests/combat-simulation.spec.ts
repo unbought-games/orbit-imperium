@@ -3,9 +3,13 @@ import { test, expect } from './fixtures/test'
 import { installGameFixture, binding, body, id } from './fixtures/game'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import type { components } from '../src/contracts'
+const technicalData = {
+  facts: [], bonuses: [], storage_capacities: null,
+  combat: { attack_ticks: '5000000', shield_ticks: '1000000', hull_ticks: '40000000', rapid_fire_against: [], rapid_fire_from: [] },
+}
 const catalog: components['schemas']['CatalogEntry3'][] = [
-  { key: { kind: 'Ship', id: 'LightFighter' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: true },
-  { key: { kind: 'Defense', id: 'RocketLauncher' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false },
+  { key: { kind: 'Ship', id: 'LightFighter' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: true, technical_data: technicalData },
+  { key: { kind: 'Defense', id: 'RocketLauncher' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: technicalData },
 ]
 for (const hidden of [false, true]) test(`prefills report simulation with ${hidden ? 'unknown' : 'observed'} intelligence`, async ({ page }) => {
   await installGameFixture(page, { protocol: 4, catalog, extraCapabilities: ['Reports'] })
