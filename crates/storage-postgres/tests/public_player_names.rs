@@ -109,7 +109,7 @@ async fn visible_names_are_batched_scoped_current_and_separate_from_report_histo
     );
 
     let id = ReportId(Uuid::new_v4());
-    let visible = json!({"kind":"Combat","participants":[{"owner":other.player}],"rounds":[{"start":[{"owner":other.player}],"end":[]}],"captured":"immutable"});
+    let visible = json!({"kind":"Combat","target_name":"Historical colony","target_kind":"Planet","participants":[{"owner":other.player,"side":"Defender"}],"rounds":[{"start":[{"owner":other.player}],"end":[]}],"captured":"immutable"});
     let hidden_player = bindings[2].player;
     let report = MissionReport {
         id,
@@ -136,6 +136,23 @@ async fn visible_names_are_batched_scoped_current_and_separate_from_report_histo
     .execute(&pool)
     .await
     .unwrap();
+    let report_query = || ReportsQuery4 {
+        context: context(),
+        cursor: None,
+        kind: None,
+        limit: 100,
+        include_hidden: false,
+    };
+    let page = game.reports4(principal, report_query()).await.unwrap();
+    assert_eq!(
+        page.data.player_names,
+        BTreeMap::from([(other.player, accounts[1].name.clone())])
+    );
+    assert_eq!(page.data.items.len(), 1);
+    assert_eq!(
+        page.data.items[0].preview.as_ref().unwrap()["target_name"],
+        "Historical colony"
+    );
     let detail = game.report4(principal, context(), id).await.unwrap();
     assert_eq!(
         detail.data.player_names,
@@ -171,6 +188,15 @@ async fn visible_names_are_batched_scoped_current_and_separate_from_report_histo
         "Renamed commander"
     );
     assert_eq!(renamed.data.payload, visible);
+    let renamed_page = game.reports4(principal, report_query()).await.unwrap();
+    assert_eq!(
+        renamed_page.data.player_names[&other.player],
+        "Renamed commander"
+    );
+    assert_eq!(
+        renamed_page.data.items[0].preview,
+        page.data.items[0].preview
+    );
     let persisted: serde_json::Value =
         sqlx::query_scalar("SELECT data FROM mission_reports WHERE id=$1")
             .bind(id.0)
@@ -187,6 +213,12 @@ async fn visible_names_are_batched_scoped_current_and_separate_from_report_histo
         .unwrap();
     let missing = game.report4(principal, context(), id).await.unwrap();
     assert!(missing.data.player_names.is_empty());
+    let missing_page = game.reports4(principal, report_query()).await.unwrap();
+    assert!(missing_page.data.player_names.is_empty());
+    assert_eq!(
+        missing_page.data.items[0].preview,
+        page.data.items[0].preview
+    );
     assert_eq!(missing.data.payload, visible);
     pool.close().await;
 }

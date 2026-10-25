@@ -35,6 +35,7 @@ export function mergeReportPages(
 ): StoredPage {
   return {
     ...next,
+    player_names: { ...old?.player_names, ...next.player_names },
     items: [
       ...new Set([...(old?.items ?? []), ...next.items.map((row) => row.id)]),
     ],

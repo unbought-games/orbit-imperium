@@ -6,14 +6,21 @@ import { Link } from '../ui/link'
 import { ResourceMark } from '../ui/resource-mark'
 import { ResourceNumber } from '../ui/number-value'
 import { Panel } from '../ui/panel'
-import { label } from '../ui/format'
+import type { PlayerNames } from './player-label'
+import { label, coordinates } from '../ui/format'
 import { exactTime } from './mission-presentation'
-import { reportPreview, reportAge, reportListTitle } from './report-preview'
+import {
+  reportPreview,
+  reportAge,
+  reportListTitle,
+  reportListIdentity,
+} from './report-preview'
 import { ReportVisibilityButton } from './report-visibility-button'
 import styles from './reports.module.css'
 
 export function ReportListRow({
   report,
+  playerNames,
   model,
   universe,
   origin,
@@ -21,6 +28,7 @@ export function ReportListRow({
   disabled,
 }: {
   report: components['schemas']['ReportHeader4']
+  playerNames?: PlayerNames
   model: Coordinator
   universe: string
   origin: string
@@ -29,17 +37,23 @@ export function ReportListRow({
 }) {
   const preview = reportPreview(report.preview, model.binding?.player)
   const outcome = reportListTitle(report, model.binding?.player)
+  const identity = reportListIdentity(
+    report.preview,
+    model.binding?.player,
+    playerNames,
+  )
+  const title = [outcome.title, identity].filter(Boolean).join(' · ')
   return (
     <Panel
       as="article"
       className={styles.reportRow}
-      aria-label={`${outcome.title} report ${exactTime(report.observed_at)}`}
+      aria-label={`${title} report ${exactTime(report.observed_at)}`}
     >
       <div className={styles.reportMain}>
         <div className={styles.rowHeading}>
           <Link
             className={styles.reportLink}
-            aria-label={outcome.title}
+            aria-label={title}
             onClick={() => void model.recordPresence('AccountVisit', null)}
             {...routeTarget(universe, 'reports', origin, report.id)}
           >
@@ -59,6 +73,11 @@ export function ReportListRow({
               />
             )}
             {report.hidden && <span>Deleted</span>}
+            {identity && (
+              <span className={styles.identity} title={identity}>
+                {identity}
+              </span>
+            )}
           </Link>
           {preview.coordinates && (
             <CoordinateLink
@@ -70,7 +89,7 @@ export function ReportListRow({
               }
               className={styles.location}
             >
-              {preview.location}
+              {coordinates({ coordinates: preview.coordinates })}
             </CoordinateLink>
           )}
         </div>

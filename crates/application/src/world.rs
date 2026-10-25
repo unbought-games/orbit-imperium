@@ -144,6 +144,8 @@ pub struct ReportDetail4 {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportsPage4 {
+    #[serde(default)]
+    pub player_names: PublicPlayerNames,
     pub items: Vec<ReportHeader4>,
     pub next_cursor: Option<String>,
     pub has_more: bool,
@@ -305,9 +307,19 @@ impl<S: GameStore> GameService<S> {
             return Err(ServiceError::Malformed);
         }
         let ReadSnapshot {
-            facts: (page, rev),
+            facts: (mut page, rev),
             progress,
         } = self.store.world_reports(q.clone()).await?;
+        page.player_names = self
+            .public_names(
+                q.context.binding,
+                page.items
+                    .iter()
+                    .filter_map(|header| header.preview.as_ref())
+                    .flat_map(public_players::report_players)
+                    .collect(),
+            )
+            .await?;
         Ok(ReadSnapshot {
             progress,
             facts: BoundWorld {

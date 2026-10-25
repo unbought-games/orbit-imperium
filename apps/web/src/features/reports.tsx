@@ -255,6 +255,7 @@ export function Reports({
             <ReportListRow
               key={r.id}
               report={r}
+              playerNames={page.player_names}
               model={model}
               universe={universe}
               origin={origin}

@@ -938,6 +938,7 @@ impl PgStore {
             b.player,
             (
                 ReportsPage4 {
+                    player_names: Default::default(),
                     items,
                     next_cursor,
                     has_more,

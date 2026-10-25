@@ -23,11 +23,13 @@
 }
 .reportLink {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
   text-align: left;
-  justify-content: center;
-  gap: 3px;
+  justify-content: flex-start;
+  gap: 3px 8px;
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   color: var(--text-primary);
   text-decoration: none;
@@ -166,4 +168,14 @@
 .reportMain .location a {
   min-height: 20px;
   min-width: 0;
+}
+
+.identity {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }

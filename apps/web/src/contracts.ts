@@ -5498,6 +5498,7 @@ export interface components {
             next_cursor: string | null;
             has_more: boolean;
             as_of_ms: number;
+            player_names?: components["schemas"]["PublicPlayerNames4"];
         };
         BoundReports4: {
             /** @constant */

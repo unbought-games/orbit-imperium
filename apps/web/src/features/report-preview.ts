@@ -1,4 +1,5 @@
 import { combatOutcome, hasCombatLoot } from './combat-report-model'
+import { playerLabel, type PlayerNames } from './player-label'
 import { bodyIdentityLabel } from './body-identity-label'
 import { formatDuration } from '../client-model/duration'
 import type { components } from '../contracts'
@@ -144,4 +145,33 @@ export function reportListTitle(report: S['ReportHeader4'], viewer?: string) {
     return combatOutcome(preview.outcome, side)
   }
   return { title: label(report.kind), symbol: '', tone: 'neutral' }
+}
+
+/** Names resolve only IDs already exposed by this recipient's historical preview. */
+export function reportListIdentity(
+  preview: Preview | undefined,
+  viewer?: string,
+  names?: PlayerNames,
+): string {
+  if (!preview) return ''
+  let owners: string[] = []
+  let body = ''
+  if (preview.kind === 'Espionage') {
+    if (preview.target) owners = [preview.target.owner]
+    body = bodyIdentityLabel(preview.target?.name, preview.target?.kind)
+  } else if (preview.kind === 'Combat') {
+    const side = preview.participants?.find((p) => p.owner === viewer)?.side
+    owners = (preview.participants ?? [])
+      .filter((p) => (side ? p.side !== side : p.side === 'Defender'))
+      .map((p) => p.owner)
+    body = bodyIdentityLabel(preview.target_name, preview.target_kind)
+  }
+  return [
+    ...[...new Set(owners)]
+      .filter((owner) => names?.[owner]?.trim())
+      .map((owner) => playerLabel(owner, names)),
+    body,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }

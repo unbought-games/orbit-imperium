@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { reportPreview, reportAge } from './report-preview'
+import { reportPreview, reportAge, reportListIdentity } from './report-preview'
 
 it('shows the return location, exact ship manifest and whether cargo came home', () => {
   expect(
@@ -142,4 +142,72 @@ it('retains moon intent for both espionage and combat coordinate actions', () =>
       },
     }).targetKind,
   ).toBeUndefined()
+})
+
+it('shows only known target identities and historical planet names', () => {
+  const names = { enemy: 'Renamed commander', viewer: 'You', ally: 'Ally' }
+  expect(
+    reportListIdentity(
+      {
+        kind: 'Espionage',
+        target: {
+          body: 'body',
+          owner: 'enemy',
+          name: 'Old colony',
+          kind: 'Planet',
+          coordinates: { galaxy: 1, system: 2, position: 3 },
+        },
+      },
+      'viewer',
+      names,
+    ),
+  ).toBe('Renamed commander · Old colony')
+  const combat = {
+    kind: 'Combat',
+    target_name: 'Old moon',
+    target_kind: 'Moon',
+    participants: [
+      { owner: 'viewer', side: 'Attacker' },
+      { owner: 'ally', side: 'Attacker' },
+      { owner: 'enemy', side: 'Defender' },
+      { owner: 'enemy', side: 'Defender' },
+    ],
+  } as const
+  // Mutable fixture matches the generated array contract.
+  const preview = { ...combat, participants: [...combat.participants] }
+  expect(reportListIdentity(preview, 'viewer', names)).toBe(
+    'Renamed commander · Old moon (Moon)',
+  )
+  expect(reportListIdentity(preview, 'enemy', names)).toBe(
+    'You · Ally · Old moon (Moon)',
+  )
+  expect(reportListIdentity(preview, undefined, names)).toBe(
+    'Renamed commander · Old moon (Moon)',
+  )
+  expect(reportListIdentity(preview, 'viewer', {})).toBe('Old moon (Moon)')
+  expect(reportListIdentity({ kind: 'Combat' }, 'viewer', names)).toBe('')
+  expect(
+    reportListIdentity(
+      { kind: 'ContactLost', target: { galaxy: 1, system: 2, position: 3 } },
+      'viewer',
+      names,
+    ),
+  ).toBe('')
+  expect(reportListIdentity(undefined, 'viewer', names)).toBe('')
+  expect(
+    reportListIdentity(
+      {
+        kind: 'Espionage',
+        target: {
+          body: 'body',
+          owner: 'missing',
+          kind: 'Planet',
+          name: ' ',
+          coordinates: { galaxy: 1, system: 2, position: 3 },
+        },
+      },
+      'viewer',
+      names,
+    ),
+  ).toBe('Planet')
 })
