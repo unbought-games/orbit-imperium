@@ -219,3 +219,25 @@ it.each([
     ])
   },
 )
+
+it.each(['Transport', 'Deploy', 'Attack'] as const)(
+  'preserves current %s cargo on either leg without exposing incoming cargo',
+  (mission) => {
+    const view = fixture()
+    const fleet = view.missions.fleets[0]
+    fleet.intent.mission = mission
+    fleet.intent.cargo = {
+      metal: '99000000',
+      crystal: '88000000',
+      deuterium: '77000000',
+    }
+    for (const leg of ['Outbound', 'Returning'] as const) {
+      fleet.leg = leg
+      fleet.cargo = { metal: '1500000', crystal: '2500000', deuterium: '0' }
+      expect(empireFlights(view)[1].cargo).toBe(fleet.cargo)
+      expect(empireFlights(view)[0]).not.toHaveProperty('cargo')
+      fleet.cargo = { metal: '0', crystal: '0', deuterium: '0' }
+      expect(empireFlights(view)[1].cargo).toEqual(fleet.cargo)
+    }
+  },
+)

@@ -187,33 +187,6 @@
   font-size: 0.8rem;
   color: var(--text-muted);
 }
-.cargo {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 1rem 0 0;
-  padding: 1rem 0;
-  border-block: 1px solid #cbb68d40;
-}
-.cargo div {
-  padding-inline: 1rem;
-  border-right: 1px solid #cbb68d40;
-}
-.cargo div:first-child {
-  padding-left: 0;
-}
-.cargo div:last-child {
-  border: 0;
-}
-.cargo dt {
-  text-transform: capitalize;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
-.cargo dd {
-  margin: 0.4rem 0 0;
-  font-size: 1.2rem;
-  font-variant-numeric: tabular-nums;
-}
 .fuel {
   display: flex;
   flex-wrap: wrap;
@@ -308,9 +281,6 @@
   }
   .missionTitle {
     font-size: 1.25rem;
-  }
-  .cargo div {
-    padding-inline: 0.6rem;
   }
 }
 .shipMark {

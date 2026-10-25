@@ -1,3 +1,4 @@
+import { FleetCargo } from './fleet-cargo'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
 import { PlanetRename } from './planet-rename'
@@ -124,6 +125,7 @@ function FlightList({
             )}
             <span className={styles.route}>{flight.route}</span>
             <small>{flight.ships || 'No ships reported'}</small>
+            {flight.leg !== 'Incoming' && <FleetCargo cargo={flight.cargo} />}
           </div>
           {available && (
             <Link
