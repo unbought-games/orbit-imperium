@@ -1258,6 +1258,68 @@ test('Light Laser shows completed inventory and builds a batch at its catalog co
 })
 
 for (const width of [390, 1440]) {
+  test.describe(`catalog focus at ${width}px`, () => {
+    test.use({ viewport: { width, height: 844 }, hasTouch: true, isMobile: width === 390 })
+
+    test('detail containers stay unoutlined while controls retain keyboard focus', async ({ page, browserName }) => {
+      await setup(page)
+      await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+      const tile = page.getByRole('link', { name: 'Build Small Cargo', exact: true })
+      if (width === 390) await tile.tap()
+      else await tile.click()
+      const panel = page.getByRole('region', { name: 'Progression quote' })
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      await page.reload()
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-reload-${width}.png` })
+
+      const tree = panel.getByRole('button', { name: 'Technology tree', exact: true })
+      if (width === 390) await tree.tap()
+      else await tree.click()
+      const close = page.getByRole('button', { name: 'Close technology' })
+      if (width === 390) await close.tap()
+      else await close.click()
+      // WebKit leaves pointer-activated buttons unfocused, so the native dialog
+      // returns to the panel. Keyboard activation below must return to the button.
+      await expect(browserName === 'webkit' ? panel : tree).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+
+      const back = panel.getByRole('link', { name: 'Back to Shipyard', exact: true })
+      await back.click()
+      await expect(tile).toBeFocused()
+      await page.keyboard.press('Enter')
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      // macOS WebKit uses Option-Tab to include links and buttons in traversal.
+      const tabKey = browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab'
+      await page.keyboard.press(tabKey)
+      await expect(back).toBeFocused()
+      await expect(back).toHaveCSS('outline-style', 'solid')
+      // Traverse real controls from the programmatic reading-order anchor.
+      const quantity = panel.getByLabel('Shipyard quantity')
+      let visitedQuantity = false
+      for (let i = 0; i < 20 && !(await tree.evaluate(element => element === document.activeElement)); i++) {
+        await page.keyboard.press(tabKey)
+        if (await quantity.evaluate(element => element === document.activeElement)) {
+          visitedQuantity = true
+          await expect(quantity).toHaveCSS('outline-style', 'solid')
+        }
+      }
+      expect(visitedQuantity).toBe(true)
+      await expect(tree).toBeFocused()
+      await expect(tree).toHaveCSS('outline-style', 'solid')
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('dialog', { name: 'Technology — Small Cargo', exact: true })).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(tree).toBeFocused()
+      await expect(tree).toHaveCSS('outline-style', 'solid')
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-keyboard-${width}.png` })
+    })
+  })
+
   test(`catalog deep links survive refresh and history without Escape dismissal at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const { sent } = await setup(page)
@@ -1284,6 +1346,8 @@ for (const width of [390, 1440]) {
       await expect(panel).toBeVisible()
       await page.reload()
       await expect(panel).toBeVisible()
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
       await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
       const back = panel.getByRole('link', { name: `Back to ${tab}`, exact: true })
       await expect(back).toHaveAttribute('href', parent)
