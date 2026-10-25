@@ -414,3 +414,194 @@ for (const width of [390, 1280]) {
     }
   })
 }
+
+for (const width of [320, 390, 1440]) {
+  test(`fleet threats, visible routes and ticking countdowns at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.clock.install({ time: now })
+    await page.clock.pauseAt(now)
+    const incoming = (
+      mission: S['Mission4'],
+      ships: S['IncomingShips4'],
+      target = body.id,
+    ): S['IncomingMission4'] => ({
+      sender: id(99),
+      origin: { galaxy: 1, system: 24, position: 6 },
+      target,
+      mission,
+      ships,
+      arrival_at: now + 454000,
+    })
+    await shellFixture(page, {
+      protocol: 4,
+      sampledAt: now,
+      playerNames: { [id(99)]: 'Commander Vega' },
+      bodies: [{ ...body, name: 'Home' }],
+      missions: {
+        fleets: [
+          {
+            ...fleet,
+            intent: { ...fleet.intent, mission: 'Attack' },
+            due_at: now + 754000,
+          },
+          {
+            ...fleet,
+            id: id(31),
+            intent: { ...fleet.intent, mission: 'Espionage' },
+            leg: 'Returning',
+            can_recall: false,
+            due_at: now + 3661000,
+          },
+        ],
+        incoming: [
+          incoming('Attack', { visibility: 'Unknown' }),
+          incoming('Espionage', { visibility: 'Total', total: '3' }),
+          incoming('Transport', {
+            visibility: 'Types',
+            total: '8',
+            types: ['SmallCargo', 'LargeCargo'],
+          }),
+          incoming('Deploy', {
+            visibility: 'Exact',
+            total: '2',
+            ships: [{ ship_type: 'LightFighter', count: '2' }],
+          }),
+          incoming('Attack', { visibility: 'Unknown' }, id(98)),
+        ],
+        score_value_micro: '0',
+        fleet_slots: '4',
+      },
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    const attacks = page.getByRole('article', {
+      name: 'Incoming attack fleet',
+      exact: true,
+    })
+    const attack = attacks.first()
+    const spy = page.getByRole('article', {
+      name: 'Incoming espionage fleet',
+      exact: true,
+    })
+    const transport = page.getByRole('article', {
+      name: 'Incoming transport fleet',
+      exact: true,
+    })
+    const deploy = page.getByRole('article', {
+      name: 'Incoming deploy fleet',
+      exact: true,
+    })
+    const outbound = page.getByRole('article', {
+      name: 'Attack fleet',
+      exact: true,
+    })
+    const returning = page.getByRole('article', {
+      name: 'Espionage fleet',
+      exact: true,
+    })
+    await expect(attack.getByRole('heading')).toHaveText(
+      'Incoming attack · Hostile',
+    )
+    await expect(spy.getByRole('heading')).toHaveText(
+      'Incoming espionage · Hostile',
+    )
+    await expect(outbound.getByRole('heading')).toHaveText(
+      'Your attack · Outbound',
+    )
+    await expect(returning.getByRole('heading')).toHaveText(
+      'Your espionage · Returning',
+    )
+    await expect(outbound).toContainText('12m 34s')
+    await expect(returning).toContainText('Return in')
+    await expect(returning).toContainText('1h 1m 1s')
+    await expect(returning).toContainText('←')
+    await expect(attack).toContainText('From Commander Vega')
+    await expect(attack).toContainText('[1:24:6] → Home [1:371:12]')
+    await expect(
+      attack.getByRole('link', {
+        name: 'View origin [1:24:6] in galaxy',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(
+      attack.getByRole('link', {
+        name: 'View destination [1:371:12] in galaxy',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(attacks.last()).toContainText('[1:24:6] → Unrevealed location')
+    await expect(
+      attacks.last().getByRole('link', { name: /View destination/ }),
+    ).toHaveCount(0)
+    await expect(attack).toContainText('Ship composition unknown')
+    await expect(spy).toContainText('3 ships · Types unknown')
+    await expect(transport).toContainText('8 ships · Small Cargo, Large Cargo')
+    await expect(deploy).toContainText('2 Light Fighter')
+    await expect(attack).not.toContainText('Small Cargo')
+    await expect(spy).not.toContainText('Espionage Probe')
+    const danger = await page
+      .locator('html')
+      .evaluate((el) =>
+        getComputedStyle(el).getPropertyValue('--danger').trim(),
+      )
+    // Resolve the theme token through the browser rather than hard-coding a palette.
+    const color = await attack.evaluate((el, token) => {
+      const swatch = document.createElement('span')
+      swatch.style.color = token
+      el.append(swatch)
+      const result = getComputedStyle(swatch).color
+      swatch.remove()
+      return result
+    }, danger)
+    for (const hostile of [attack, spy]) {
+      await expect(hostile.getByRole('heading')).toHaveCSS('color', color)
+      await expect(hostile.locator('strong')).toHaveCSS('color', color)
+    }
+    for (const friendly of [transport, deploy, outbound, returning]) {
+      await expect(friendly).not.toContainText('Hostile')
+      await expect(friendly.getByRole('heading')).not.toHaveCSS('color', color)
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width)
+    await diagnosticScreenshot(page, {
+      path: `test-results/fleet-threats-${width}.png`,
+      fullPage: true,
+    })
+    await attack.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, {
+      path: `test-results/fleet-threats-incoming-${width}.png`,
+    })
+    await expect(attack).toContainText('7m 34s')
+    await page.clock.runFor(1000)
+    await expect(attack).toContainText('7m 33s')
+    await expect(outbound).toContainText('12m 33s')
+    // A stale snapshot must not clear threats when the arrival estimate elapses.
+    await page.route('**/api/**/overview', (route) =>
+      route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
+    )
+    await page.clock.runFor(453000)
+    await expect(attack).toContainText('Awaiting confirmation')
+    await expect(attack.getByRole('heading')).toHaveText(
+      'Incoming attack · Hostile',
+    )
+    await expect(attack.getByRole('heading')).toHaveCSS('color', color)
+    await page.unroute('**/api/**/overview')
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    const board = page.getByRole('region', { name: 'Fleet movements' })
+    await expect(board).toContainText('3 incoming hostile fleets detected')
+    const spyFlight = board
+      .getByRole('listitem')
+      .filter({
+        has: page.getByRole('link', { name: 'View Espionage incoming fleet' }),
+      })
+    const ownFlight = board
+      .getByRole('listitem')
+      .filter({
+        has: page.getByRole('link', { name: 'View Attack outbound fleet' }),
+      })
+    await expect(spyFlight.locator('svg').first()).toHaveCSS('color', color)
+    await expect(ownFlight.locator('svg').first()).not.toHaveCSS('color', color)
+  })
+}

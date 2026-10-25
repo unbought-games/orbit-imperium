@@ -1258,6 +1258,68 @@ test('Light Laser shows completed inventory and builds a batch at its catalog co
 })
 
 for (const width of [390, 1440]) {
+  test.describe(`catalog focus at ${width}px`, () => {
+    test.use({ viewport: { width, height: 844 }, hasTouch: true, isMobile: width === 390 })
+
+    test('detail containers stay unoutlined while controls retain keyboard focus', async ({ page, browserName }) => {
+      await setup(page)
+      await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+      const tile = page.getByRole('link', { name: 'Build Small Cargo', exact: true })
+      if (width === 390) await tile.tap()
+      else await tile.click()
+      const panel = page.getByRole('region', { name: 'Progression quote' })
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      await page.reload()
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-reload-${width}.png` })
+
+      const tree = panel.getByRole('button', { name: 'Technology tree', exact: true })
+      if (width === 390) await tree.tap()
+      else await tree.click()
+      const close = page.getByRole('button', { name: 'Close technology' })
+      if (width === 390) await close.tap()
+      else await close.click()
+      // WebKit leaves pointer-activated buttons unfocused, so the native dialog
+      // returns to the panel. Keyboard activation below must return to the button.
+      await expect(browserName === 'webkit' ? panel : tree).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+
+      const back = panel.getByRole('link', { name: 'Back to Shipyard', exact: true })
+      await back.click()
+      await expect(tile).toBeFocused()
+      await page.keyboard.press('Enter')
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      // macOS WebKit uses Option-Tab to include links and buttons in traversal.
+      const tabKey = browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab'
+      await page.keyboard.press(tabKey)
+      await expect(back).toBeFocused()
+      await expect(back).toHaveCSS('outline-style', 'solid')
+      // Traverse real controls from the programmatic reading-order anchor.
+      const quantity = panel.getByLabel('Shipyard quantity')
+      let visitedQuantity = false
+      for (let i = 0; i < 20 && !(await tree.evaluate(element => element === document.activeElement)); i++) {
+        await page.keyboard.press(tabKey)
+        if (await quantity.evaluate(element => element === document.activeElement)) {
+          visitedQuantity = true
+          await expect(quantity).toHaveCSS('outline-style', 'solid')
+        }
+      }
+      expect(visitedQuantity).toBe(true)
+      await expect(tree).toBeFocused()
+      await expect(tree).toHaveCSS('outline-style', 'solid')
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('dialog', { name: 'Technology — Small Cargo', exact: true })).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(tree).toBeFocused()
+      await expect(tree).toHaveCSS('outline-style', 'solid')
+      await expect(panel).toHaveCSS('outline-style', 'none')
+      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-keyboard-${width}.png` })
+    })
+  })
+
   test(`catalog deep links survive refresh and history without Escape dismissal at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const { sent } = await setup(page)
@@ -1284,6 +1346,8 @@ for (const width of [390, 1440]) {
       await expect(panel).toBeVisible()
       await page.reload()
       await expect(panel).toBeVisible()
+      await expect(panel).toBeFocused()
+      await expect(panel).toHaveCSS('outline-style', 'none')
       await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
       const back = panel.getByRole('link', { name: `Back to ${tab}`, exact: true })
       await expect(back).toHaveAttribute('href', parent)
@@ -1881,3 +1945,55 @@ for (const gate of ['Shipyard', 'IonTechnology', 'disabled'] as const) {
     expect(sent).toEqual([])
   })
 }
+
+for (const { width, protocol } of [{ width: 390, protocol: 4 as const }, { width: 1280, protocol: 3 as const }]) {
+  test(`ship technical statistics show authoritative base values at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const stats: S['ShipStatistics3'] = {
+      propulsion: {
+        cargo_capacity: '7654', base_speed: '4321', fuel_consumption: '17',
+        drive: 'CombustionDrive',
+        impulse_upgrade: { minimum_level: 8, base_speed: '9876', fuel_consumption: '33' },
+      },
+      combat: { attack_ticks: '1234000', shield_ticks: '5678000', hull_ticks: '80000000', rapid_fire_against: [{ unit: { kind: 'Ship', id: 'EspionageProbe' }, factor: '5' }], rapid_fire_from: [] },
+    }
+    await installCatalogFixture(page, false, undefined, {
+      catalog: catalog.map(entry => entry.key.id === 'SmallCargo' ? { ...entry, ship_statistics: stats } : entry),
+      research: [{ research: 'CombustionDrive', level: 10 }],
+      protocol,
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
+    const detail = page.getByRole('region', { name: 'Ship technical statistics' })
+    const assertStats = async (section: Locator) => {
+      for (const [name, value] of [['Cargo capacity', '7,654'], ['Base speed', '4,321'], ['Base fuel consumption', '17'], ['Attack strength', '12.34'], ['Shield strength', '56.78'], ['Hull strength', '800']]) {
+        await expect(section.locator('dl > div').filter({ has: page.getByText(name, { exact: true }) }).locator('dd')).toHaveText(value)
+      }
+      await expect(section).toContainText('Base values per ship, before research bonuses.')
+      await expect(section).toContainText('At Impulse Drive level 8')
+      await expect(section).toContainText('Espionage Probe × 5')
+      await expect(section).toContainText('Rapid fire fromNone')
+      await expect(section).toContainText('9,876')
+      await expect(section.locator('dl').getByLabel('Deuterium', { exact: true })).toBeVisible()
+    }
+    await assertStats(detail)
+    await expect.poll(() => detail.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await detail.getByRole('heading', { name: 'Ship technical statistics' }).click()
+    await detail.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/ship-statistics-detail-${width}.png` })
+    await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
+    await page.getByRole('tab', { name: 'Techinfo', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Technology — Small Cargo' })
+    await assertStats(dialog.getByRole('region', { name: 'Ship technical statistics' }))
+    await expect.poll(() => dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/ship-statistics-techinfo-${width}.png` })
+  })
+}
+
+test('older protocol ship details explicitly show unavailable technical statistics', async ({ page }) => {
+  await installCatalogFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
+  await expect(page.getByRole('region', { name: 'Ship technical statistics' })).toContainText('Technical statistics are unavailable')
+  await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
+  await page.getByRole('tab', { name: 'Techinfo', exact: true }).click()
+  await expect(page.getByRole('dialog').getByRole('region', { name: 'Ship technical statistics' })).toContainText('Technical statistics are unavailable')
+})

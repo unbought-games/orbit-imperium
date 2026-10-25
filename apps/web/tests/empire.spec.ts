@@ -230,7 +230,7 @@ test('empire shows every body, its own work and resources, and directional fleet
     exact: true,
   })
   await expect(traffic.getByRole('listitem')).toHaveCount(4)
-  await expect(traffic).toContainText('1 incoming attack detected')
+  await expect(traffic).toContainText('1 incoming hostile fleet detected')
   await expect(traffic).toContainText('Ship composition unknown')
   await expect(
     page.getByRole('region', { name: 'Empire research' }).getByRole('link', { name: /Energy Technology/ }),
@@ -446,7 +446,7 @@ test('a large empire keeps every network target reachable and phone movements vi
 })
 
 for (const width of [320, 390, 1280]) {
-  test(`all fleet movements are visible by default with peaceful and combat tints at ${width}px`, async ({ page }) => {
+  test(`all fleet movements are visible by default with owned and hostile tints at ${width}px`, async ({ page }) => {
     const now = new Date('2026-10-24T12:00:00Z')
     await page.clock.install({ time: now })
     await page.setViewportSize({ width, height: 844 })
@@ -467,7 +467,7 @@ for (const width of [320, 390, 1280]) {
     const board = page.getByRole('region', { name: 'Fleet movements', exact: true })
     await expect(board.getByRole('listitem')).toHaveCount(13)
     await expect(board.getByRole('button', { name: /movements/ })).toHaveCount(0)
-    await expect(board).toContainText('1 incoming attack detected')
+    await expect(board).toContainText('1 incoming hostile fleet detected')
     const appearance = async (mission: string, leg: string) => {
       const row = board.getByRole('listitem').filter({
         has: page.getByRole('link', { name: `View ${mission} ${leg} fleet`, exact: true }),
@@ -487,7 +487,7 @@ for (const width of [320, 390, 1280]) {
     for (const mission of missions) {
       for (const leg of ['outbound', 'returning']) {
         expect(await appearance(mission, leg)).toEqual(
-          mission === 'Attack' || mission === 'Espionage' ? combat : peaceful,
+          peaceful,
         )
       }
     }

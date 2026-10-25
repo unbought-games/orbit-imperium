@@ -90,9 +90,7 @@ function FlightList({
         <li
           key={flight.key}
           className={
-            flight.mission === 'Attack' || flight.mission === 'Espionage'
-              ? styles.combatFlight
-              : styles.peacefulFlight
+            flight.hostile ? styles.combatFlight : styles.peacefulFlight
           }
         >
           <span className={styles.flightIcon}>
@@ -276,8 +274,8 @@ function FleetBoard({
         {!fleetAvailable
           ? 'Fleet missions unavailable in this universe'
           : threats
-            ? `${threats} incoming attack${threats === 1 ? '' : 's'} detected`
-            : 'No incoming attacks detected'}
+            ? `${threats} incoming hostile fleet${threats === 1 ? '' : 's'} detected`
+            : 'No incoming hostile fleets detected'}
       </div>
       <div className={styles.fleetBody}>
         {flights.length ? (

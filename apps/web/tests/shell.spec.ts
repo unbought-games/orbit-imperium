@@ -1410,7 +1410,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   const mission = page.getByRole('article', { name: 'Transport fleet' })
   await expect(mission).toContainText('4 Small Cargo')
   await expect(mission).toContainText('6m')
-  await expect(mission).not.toContainText(/6m \d+s/)
+  await expect(mission).toContainText(/6m \d+s/)
   await expect(mission.locator('time')).toHaveAttribute(
     'datetime',
     new Date(fleet.due_at).toISOString(),
@@ -2621,7 +2621,7 @@ test('incoming attacks stay in the phone viewport when there are no outgoing fle
     page.getByRole('heading', { name: 'No active fleets.' }),
   ).toBeVisible()
   const incoming = page.getByRole('region', { name: 'Incoming fleets' })
-  const attack = incoming.getByRole('heading', { name: /Attack/ })
+  const attack = incoming.getByRole('heading', { name: /Incoming attack/ })
   await expect(attack).toBeInViewport()
   const dock = await page
     .getByRole('navigation', { name: 'Main navigation' })

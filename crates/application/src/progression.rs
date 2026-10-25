@@ -241,7 +241,7 @@ pub struct BoundView3 {
     pub as_of_ms: i64,
     pub profile_hash: Hash,
     pub speed: i32,
-    pub catalog: Vec<CatalogEntry>,
+    pub catalog: Vec<crate::CatalogEntryView>,
     pub research: Vec<ResearchDto>,
     pub capabilities: Vec<CapabilityState>,
     pub bodies: Vec<BodyV3>,
@@ -508,7 +508,7 @@ pub(crate) fn progression_projection(
         as_of_ms: facts.at,
         profile_hash: facts.rules.hash.clone(),
         speed: facts.rules.speed,
-        catalog: facts.rules.artifact.catalog.clone(),
+        catalog: crate::catalog_view(&facts.rules)?,
         research: projection
             .research
             .levels

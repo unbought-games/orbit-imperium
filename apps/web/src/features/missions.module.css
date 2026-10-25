@@ -2,6 +2,36 @@
   overflow-wrap: anywhere;
   color: var(--text);
 }
+.dispatchFeedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #57788a;
+  border-radius: 8px;
+  background: #12232d;
+  color: #c6dce8;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.dispatchFeedback > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.dispatchFeedback p {
+  margin: 2px 0 0;
+}
+.dispatchFeedback[data-state='committed'] {
+  border-color: #487c67;
+  background: #142a24;
+  color: #bce8d3;
+}
+.dispatchFeedback[data-state='uncertain'],
+.dispatchFeedback[data-state='rejected'] {
+  border-color: #ab8253;
+  background: #211c17;
+  color: #ffe2bd;
+}
 .actions {
   display: flex;
   align-items: center;
@@ -152,8 +182,7 @@
     400 clamp(1.5rem, 3vw, 2.6rem) / 1.15 Georgia,
     serif;
 }
-.arrival time,
-.incomingRow time {
+.arrival time {
   display: block;
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -210,14 +239,6 @@
 }
 .incoming {
   padding-block: 0.5rem 1.5rem;
-}
-.incomingRow {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1rem;
-  border-top: 1px solid var(--border);
-  padding-block: 1.2rem;
 }
 .rules {
   border-top: 1px solid var(--border);

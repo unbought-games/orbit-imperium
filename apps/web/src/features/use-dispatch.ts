@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
-import { attemptKey, type Command } from '../client-model/commands'
+import type { Command } from '../client-model/commands'
 import {
   canSubmitQuote,
   currentServerTime,
@@ -22,6 +22,7 @@ import {
   coordinateErrors,
   destinationError,
   dispatchFailure,
+  dispatchObservationError,
   dispatchQuantity,
 } from '../client-model/dispatch-validation'
 type S = components['schemas']
@@ -217,17 +218,18 @@ export function useDispatch({
   const [submitted, setSubmitted] = useState<{
     key: string
     generation: number
+    coordinates: S['Coordinates']
   } | null>(null)
-  const submittedStatus = useStore(model.store, (state) =>
-    submitted ? state.attempts.get(submitted.key)?.status : undefined,
+  const submittedAttempt = useStore(model.store, (state) =>
+    submitted ? state.attempts.get(submitted.key) : undefined,
   )
+  const submittedStatus = submittedAttempt?.status
   useEffect(() => {
     if (!submitted || submittedStatus !== 'committed') return
     if (submitted.generation === generation.current) {
       setShips({})
       setCargo(['0', '0', '0'])
     }
-    setSubmitted(null)
   }, [submitted, submittedStatus])
   useEffect(
     () => () => {
@@ -237,6 +239,7 @@ export function useDispatch({
   )
   const clear = () => {
     generation.current++
+    setSubmitted(null)
     setQuote(null)
     setBusy(false)
     setError('')
@@ -250,15 +253,29 @@ export function useDispatch({
       return
     const requestGeneration = ++generation.current
     setQuote(null)
-    const id = await model.send(command, quote)
-    if (id && requestGeneration === generation.current)
+    const previousAttempts = model.store.getState().attempts
+    const sending = model.send(command, quote)
+    // send registers the attempt synchronously, before saving or delivering it.
+    // Select only this invocation's new ID, including while delivery is pending.
+    const key = [...model.store.getState().attempts.keys()].find(
+      (key) => !previousAttempts.has(key),
+    )
+    if (key)
       setSubmitted({
-        key: attemptKey(view.binding, id),
+        key,
         generation: requestGeneration,
+        coordinates: {
+          galaxy: Number(galaxy),
+          system: Number(system),
+          position: Number(position),
+        },
       })
+    const id = await sending
+    if (!id && requestGeneration === generation.current) setSubmitted(null)
   }
   async function review(addAllCargo = false) {
     const requestGeneration = ++generation.current
+    setSubmitted(null)
     setError('')
     setQuote(null)
     setBusy(true)
@@ -303,16 +320,12 @@ export function useDispatch({
         setError(resolvedProblem)
         return
       }
-      if (
-        draft?.target?.type === 'Body' &&
-        (destination.type !== 'Body' ||
-          destination.id !== draft.target.id ||
-          destination.expected_owner !== draft.target.expected_owner ||
-          destination.expected_kind !== draft.target.expected_kind)
+      const observationProblem = dispatchObservationError(
+        draft,
+        selection,
+        destination,
       )
-        throw Error(
-          'The observed target has changed. Choose a current target in Galaxy.',
-        )
+      if (observationProblem) throw Error(observationProblem)
       const cargoAmounts = addAllCargo
         ? ['0', '0', '0']
         : cargo.map(dispatchQuantity)
@@ -357,6 +370,8 @@ export function useDispatch({
     }
   }
   return {
+    submittedAttempt,
+    submittedCoordinates: submitted?.coordinates,
     timing: timing?.terms,
     timingMessage: !coordinatesValid
       ? 'Enter a valid destination to see flight times.'

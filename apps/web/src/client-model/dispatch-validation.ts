@@ -53,6 +53,33 @@ export function coordinateErrors(
   }
 }
 
+/** An observation binds its original body selection, not later edits to the form. */
+export function dispatchObservationError(
+  observation: {
+    coordinates: S['Coordinates']
+    target?: S['MissionDestination4']
+  } | null,
+  selection: S['DestinationSelection4'],
+  destination: S['MissionDestination4'],
+): string {
+  if (
+    observation?.target?.type !== 'Body' ||
+    selection.type !== 'BodyAt' ||
+    selection.kind !== observation.target.expected_kind ||
+    selection.coordinates.galaxy !== observation.coordinates.galaxy ||
+    selection.coordinates.system !== observation.coordinates.system ||
+    selection.coordinates.position !== observation.coordinates.position
+  )
+    return ''
+  const target = observation.target
+  return destination.type !== 'Body' ||
+    destination.id !== target.id ||
+    destination.expected_owner !== target.expected_owner ||
+    destination.expected_kind !== target.expected_kind
+    ? 'The observed target has changed. Choose a current target in Galaxy.'
+    : ''
+}
+
 export function destinationError(
   mission: S['FleetIntent4']['mission'],
   destination: S['MissionDestination4'],

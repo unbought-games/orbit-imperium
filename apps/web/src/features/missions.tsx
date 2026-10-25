@@ -30,6 +30,7 @@ import styles from './missions.module.css'
 import { exactTime, shipManifest } from './mission-presentation'
 import { TaskHeader } from '../ui/task-header'
 import { DispatchTiming } from './dispatch-timing'
+import { DispatchFeedback } from './dispatch-feedback'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
@@ -102,6 +103,8 @@ export function Dispatch({
     targetName,
     timing,
     timingMessage,
+    submittedAttempt,
+    submittedCoordinates,
   } = useDispatch({ model, view, body, draft })
   return (
     <Section className={styles.screen}>
@@ -365,6 +368,12 @@ export function Dispatch({
               {error}
             </Text>
           )}
+          <DispatchFeedback
+            model={model}
+            attempt={submittedAttempt}
+            destination={submittedCoordinates}
+            origin={body.id}
+          />
           <Button
             ref={reviewButtonRef}
             disabled={busy || !coordinatesValid || !!targetProblem}
