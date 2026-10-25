@@ -54,3 +54,29 @@ describe('ship statistics', () => {
     ).toBe('')
   })
 })
+
+it('explains stationary satellites without suggesting a missing propulsion implementation', () => {
+  const html = renderToStaticMarkup(
+    createElement(ShipStatistics, {
+      entry: {
+        ...entry,
+        key: { kind: 'Ship', id: 'SolarSatellite' },
+        mobile: false,
+        ship_statistics: {
+          propulsion: null,
+          combat: {
+            attack_ticks: '100000',
+            shield_ticks: '100000',
+            hull_ticks: '20000000',
+            rapid_fire_against: [],
+            rapid_fire_from: [],
+          },
+        },
+      },
+    }),
+  )
+  expect(html).toContain('Cannot fly or carry cargo')
+  expect(html).toContain('does not recover')
+  expect(html).not.toContain('Propulsion statistics are unavailable')
+  expect(html).not.toContain('Actual flight time')
+})

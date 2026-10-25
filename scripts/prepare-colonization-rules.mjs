@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { addSatelliteRapidFire } from './prepare-solar-satellite-rules.mjs'
 import { pathToFileURL } from 'node:url'
 
 const content = JSON.parse(fs.readFileSync(new URL('../rules/content/colonization.json', import.meta.url)))
@@ -31,6 +32,7 @@ export function prepareColonizationRules(document) {
   replace(artifact.progression.unit_costs, { item, cost: structuredClone(content.cost) }, sameItem)
   replace(artifact.world.combat.units, structuredClone(content.combat), sameItem)
   replace(artifact.world.combat.rapid_fire, structuredClone(content.rapid_fire), x => x.shooter.kind === 'Ship' && x.shooter.id === 'ColonyShip' && x.target.kind === 'Ship' && x.target.id === 'EspionageProbe')
+  addSatelliteRapidFire(artifact, 'ColonyShip')
   return next
 }
 

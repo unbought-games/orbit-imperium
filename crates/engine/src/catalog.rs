@@ -121,7 +121,12 @@ fn has_definition(a: &RulesArtifact, key: CatalogKey) -> bool {
                 p.research.contains_key(&k)
             }),
         CatalogKey::Ship(k) => {
-            (a.ships.contains_key(&k) || (a.progression.is_some() && a.world.is_none()))
+            (a.ships.contains_key(&k)
+                || (k == ShipType::SolarSatellite
+                    && a.progression
+                        .as_ref()
+                        .is_some_and(|p| p.solar_satellite.is_some()))
+                || (a.progression.is_some() && a.world.is_none()))
                 && a.progression.as_ref().is_none_or(|p| {
                     p.unit_costs
                         .iter()

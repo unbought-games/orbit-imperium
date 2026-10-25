@@ -44,7 +44,7 @@ export function simulationFields(
         side === 'attacker' ? ('Your research' as const) : ('Report' as const),
     })),
     ...units
-      .filter((e) => side === 'defender' || e.key.kind === 'Ship')
+      .filter((e) => side === 'defender' || (e.key.kind === 'Ship' && e.mobile))
       .map((e) => {
         const observation =
           e.key.kind === 'Ship' ? report.fleet : report.defenses

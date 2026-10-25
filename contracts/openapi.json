@@ -8673,6 +8673,22 @@
           },
           "fuel_utilization": {
             "$ref": "#/components/schemas/Decimal"
+          },
+          "solar_satellite": {
+            "type": "object",
+            "properties": {
+              "unit_energy": {
+                "$ref": "#/components/schemas/Decimal"
+              },
+              "energy_supply": {
+                "$ref": "#/components/schemas/Decimal"
+              }
+            },
+            "required": [
+              "unit_energy",
+              "energy_supply"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
