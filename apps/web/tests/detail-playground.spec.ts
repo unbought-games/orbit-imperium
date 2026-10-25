@@ -46,8 +46,8 @@ for (const [scene, title, action] of examples) {
       await expect(firstBuild).toBeVisible()
       await expect(page.getByText('Next · level 1', { exact: true })).toHaveCount(0)
       await expect(page.getByRole('progressbar')).toHaveCount(0)
-      await expect(page.getByText('33 / h', { exact: true })).toBeVisible()
-      await expect(page.getByText('Power to operate', { exact: true })).toBeVisible()
+      await expect(page.getByText('63 / h', { exact: true })).toBeVisible()
+      await expect(page.getByText('Energy balance', { exact: true })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Solar Plant', exact: true })).toHaveCount(0)
       await expect(button).toHaveText('Build Metal Mine')
       const emptyBox = (await empty.boundingBox())!
@@ -75,7 +75,7 @@ for (const [scene, title, action] of examples) {
       await expect(page.getByRole('button', { name: 'Energy balance details', exact: true })).toContainText('(92%)')
       await expect(page.getByText('Estimated production efficiency', { exact: true })).toHaveCount(0)
       await expect(page.getByRole('link', { name: 'Solar Plant', exact: true })).toHaveCount(0)
-      await expect(page.getByText('+10')).toBeVisible()
+      await expect(page.getByText('-21')).toBeVisible()
       await expect(page.getByText('-11', { exact: true })).toBeVisible()
       await expect(button).toBeEnabled()
     }
@@ -204,8 +204,8 @@ test('icon-only decision costs keep named accessible triggers and spending detai
 })
 
 
-for (const [scene, label] of [['mine-energy', 'Energy balance'], ['mine-zero', 'Operating power']] as const) {
-  test(`${label} keeps energy explanation and recommendations behind the value`, async ({ page }) => {
+for (const [scene, label] of [['mine-energy', 'Energy balance'], ['mine-zero', 'Energy balance']] as const) {
+  test(`${scene} ${label} keeps energy explanation and recommendations behind the value`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(`/detail-playground?scene=${scene}`)
     const trigger = page.getByRole('button', { name: `${label} details`, exact: true })
@@ -350,3 +350,28 @@ test.describe('scheduled completion dates', () => {
     })
   }
 })
+
+
+for (const width of [320, 390, 1440]) {
+  test(`mine summary shows planet totals and change before the resulting total at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/detail-playground?scene=mine-ready')
+    const current = page.getByLabel('Current level and benefit')
+    await expect(current).toContainText('Planet output')
+    await expect(current).toContainText('908 / h')
+    await expect(current).not.toContainText('878 / h')
+    await expect(page.locator('dl > div').first()).toContainText('Upgrade cost')
+    const output = page.locator('dl > div').filter({ has: page.getByText('Planet output', { exact: true }) })
+    await expect(output.getByTitle('Change', { exact: true })).toContainText('+329 / h')
+    await expect(output.getByTitle('New total', { exact: true })).toContainText('1,237 / h')
+    const energy = page.getByRole('button', { name: 'Energy balance details', exact: true })
+    await expect(energy).toContainText('-21 → +44')
+    await expect(page.getByText('Planet total at saved settings, including base production.')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.getByRole('button', { name: 'Demolish Metal Mine', exact: true }).click()
+    await expect(page.locator('dl > div').first()).toContainText('Demolition cost')
+    await expect(output.getByTitle('Change', { exact: true })).toContainText('-258 / h')
+    await expect(output.getByTitle('New total', { exact: true })).toContainText('650 / h')
+    await expect(energy).toContainText('+15 → +80')
+  })
+}
