@@ -168,3 +168,72 @@ test('rank movement is accessible, stable through filters and paging, and refres
   await expect(table.locator('tr[data-self]').getByLabel('Rank change unavailable: no snapshot from yesterday')).toHaveText('—')
   await expect(page.getByText('Rank changes unavailable:', { exact: false })).toBeVisible()
 })
+
+
+test('alliance standings share one snapshot, search names and tags, and navigate around my alliance', async ({ page }) => {
+  await installGameFixture(page, { protocol: 4 })
+  const alliances = Array.from({ length: 123 }, (_, i) => ({
+    alliance: { id: id(6000 + i), universe: binding.universe, name: i === 80 ? 'Étoile alliance with a very long recruitment name' : `Alliance ${i}`, tag: `TAG${i}` },
+    member_count: 2, points: i === 0 ? '18446744073' : `${1000 - i}`, average_points: i === 0 ? '9223372036' : '450', rank: i < 2 ? 1 : i + 1, previous_rank: i === 2 ? null : i + 3,
+  }))
+  let baseline: number | null = 1792800000000
+  let ownAlliance = true
+  let requests = 0
+  await page.route('**/rankings', route => {
+    requests++
+    return route.fulfill({ json: {
+      binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1792886400000,
+      processing_pending: false, baseline_at: 1792800000000, alliance_baseline_at: baseline, alliances,
+      players: [{ player: binding.player, username: 'My Commander', points: '500', rank: 1, ...(ownAlliance ? { alliance: alliances[80].alliance } : {}) }],
+    } })
+  })
+  await page.goto('/u/andromeda/high-scores')
+  await expect(page.getByRole('table').getByRole('link', { name: /Alliance Étoile/ })).toHaveAttribute('href', `/alliances/${binding.universe}/${alliances[80].alliance.id}`)
+  await page.getByRole('button', { name: 'Alliances', exact: true }).click()
+  const table = page.getByRole('table', { name: 'Universe alliance total-score rankings' })
+  await expect(page.getByRole('button', { name: 'Alliances', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(table.getByRole('row')).toHaveCount(51)
+  await expect(table.getByRole('row').nth(1)).toContainText('18,446,744,073')
+  await expect(table.getByRole('row').nth(1)).toContainText('9,223,372,036')
+  await expect(table.getByLabel('New to the rankings since the baseline')).toHaveText('New')
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/alliance-high-scores-${width}.png` })
+  }
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await expect(table).toBeFocused()
+  await expect(table.getByRole('row').nth(1)).toContainText('Alliance 50')
+  await page.getByRole('searchbox', { name: 'Find an alliance' }).fill('tag80')
+  await expect(table.getByRole('row')).toHaveCount(2)
+  await expect(table.locator('tr[data-self]')).toContainText('Étoile')
+  await expect(table.locator('tr[data-self]').getByLabel('Up 2 places since the baseline')).toHaveText('+2')
+  await page.getByRole('button', { name: 'Around my alliance' }).click()
+  await expect(table.getByRole('row').nth(1)).toContainText('Alliance 55')
+  await expect(table.locator('tr[data-self]').getByRole('link')).toBeFocused()
+  await expect(page.getByRole('searchbox')).toHaveValue('')
+  expect(requests).toBe(1)
+  baseline = null
+  ownAlliance = false
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Around my alliance' })).toBeDisabled()
+  await expect(table.locator('tr[data-self]')).toHaveCount(0)
+  await expect(table.getByLabel('Rank change unavailable: no snapshot from yesterday')).toHaveCount(50)
+  await page.getByRole('searchbox').fill('no such alliance')
+  await expect(page.getByText('No alliances match “no such alliance”.')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear search' }).click()
+  await expect(page.getByRole('searchbox')).toBeFocused()
+  await page.getByRole('button', { name: 'Players', exact: true }).click()
+  await expect(page.getByRole('table', { name: 'Universe total-score rankings' })).toContainText('My Commander')
+  await expect(page.getByRole('searchbox', { name: 'Find a player' })).toHaveValue('')
+})
+
+test('legacy rankings responses retain players and show an honest empty alliance view', async ({ page }) => {
+  await installGameFixture(page, { protocol: 4 })
+  await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [] } }))
+  await page.goto('/u/andromeda/high-scores')
+  await page.getByRole('button', { name: 'Alliances', exact: true }).click()
+  await expect(page.getByText('No alliances are ranked yet.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Around my alliance' })).toBeDisabled()
+  await expect(page.getByText('Rank changes unavailable:', { exact: false })).toBeVisible()
+})

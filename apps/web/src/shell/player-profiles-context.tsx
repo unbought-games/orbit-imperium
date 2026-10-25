@@ -58,6 +58,28 @@ export function useProfileSource(
     if (key) return controller.watch(JSON.parse(key) as ProfileSource)
   }, [controller, key, revision])
 }
+/** Observe current public identity for known player IDs without duplicating it in a screen. */
+export function useProfilePlayers(players: readonly string[]) {
+  const controller = useController()
+  const key = JSON.stringify([...new Set(players)].sort())
+  useEffect(() => {
+    const ids = JSON.parse(key) as string[]
+    const releases: (() => void)[] = []
+    for (let offset = 0; offset < ids.length; offset += 50)
+      releases.push(
+        controller.watch({
+          type: 'Rankings',
+          players: ids.slice(offset, offset + 50),
+        }),
+      )
+    return () => releases.forEach((release) => release())
+  }, [controller, key])
+}
+
+export function useRefreshPlayerProfiles() {
+  return useController().refreshAll
+}
+
 export function usePlayerDisplay(player: string) {
   const controller = useContext(PlayerProfilesContext)
   return useStore(controller?.store ?? emptyProfiles, (state) =>

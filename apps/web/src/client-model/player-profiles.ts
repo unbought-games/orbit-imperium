@@ -48,6 +48,19 @@ export class PlayerProfilesController {
       this.watches.delete(key)
     }
   }
+  /** Refresh after a committed social change; fence all older in-flight snapshots. */
+  refreshAll = () => {
+    this.generation++
+    clearTimeout(this.expiry)
+    this.store.setState({ players: {}, now: Date.now() })
+    for (const [key, entry] of this.watches) {
+      clearTimeout(entry.timer)
+      entry.timer = undefined
+      entry.request?.abort()
+      entry.request = undefined
+      if (this.active) void this.refresh(key, entry)
+    }
+  }
   start() {
     this.active = true
     for (const [key, entry] of this.watches) void this.refresh(key, entry)

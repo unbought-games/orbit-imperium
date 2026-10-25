@@ -1,3 +1,4 @@
+import { HistoricalAlliances, type PlayerAlliances } from './player-alliance'
 import { BodyIllustration } from './body-illustration'
 import { BodyIdentity } from './body-identity'
 import { readCoordinates } from '../shell/galaxy-location'
@@ -156,21 +157,30 @@ function Risk({ value }: { value: unknown }) {
     </Text>
   )
 }
-export function ReportObservation({
+type ObservationProps = {
+  payload: RecordValue
+  viewer?: string
+  playerNames?: PlayerNames
+  playerAlliances?: PlayerAlliances
+  combatActions?: ReactNode
+  targetActions?: ReactNode
+  shared?: boolean
+}
+export function ReportObservation(props: ObservationProps) {
+  return (
+    <HistoricalAlliances.Provider value={props.playerAlliances ?? {}}>
+      <ReportObservationContent {...props} />
+    </HistoricalAlliances.Provider>
+  )
+}
+function ReportObservationContent({
   payload,
   viewer,
   playerNames,
   combatActions,
   targetActions,
   shared = false,
-}: {
-  payload: RecordValue
-  viewer?: string
-  playerNames?: PlayerNames
-  combatActions?: ReactNode
-  targetActions?: ReactNode
-  shared?: boolean
-}) {
+}: ObservationProps) {
   const kind = payload.kind
   if (kind === 'Colonized' || kind === 'ColonizationFailed') {
     const reasons: Record<string, string> = {

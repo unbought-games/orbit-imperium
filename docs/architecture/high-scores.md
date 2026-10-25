@@ -1,13 +1,13 @@
 # High Scores
 
-The initial High Scores screen ranks players by total completed-asset value in
-their current universe. The selected scope is player search, paging, Around me,
-public identity, and a compact read-only ranking detail dialog. There are no
-alliance standings, bios, profile editing, messages or additional score categories.
+High Scores ranks players and alliances by total completed-asset value in their
+current universe. Both views support search, paging and navigation around the
+viewer. Player rows link alliance tags to public recruitment pages; player
+details show the score from the selected ranking response and public identity.
 
 The owner selected fresh snapshots on entry and explicit refresh on 2026-10-24,
 superseding the historical G17 proposal for shared five-minute cuts. Each request
-reads membership, names and asset lots in one PostgreSQL repeatable-read, read-only
+reads universe and alliance membership, names and asset lots in one PostgreSQL repeatable-read, read-only
 transaction. It does not settle work, write totals, record presence, or use a
 background snapshot publisher. After reading, the first request of a UTC day
 records the source observation separately for historical rank comparisons. It exposes its sample time and whether due work
@@ -79,6 +79,41 @@ the existing refresh error behavior and retain the last complete client response
 The browser derives signed movement from the response. Search, paging and Around
 me retain the global comparison. Table and detail indicators include accessible
 text, visible signs, and distinct labels for missing history and new players.
+
+## Alliance standings
+
+The same response includes `alliances` and `alliance_baseline_at`. Each public
+row contains alliance identity, member count, total and average point strings,
+rank and nullable previous rank. It never includes a current or historical
+roster. Player rows carry their current observed optional alliance identity.
+
+Alliance valuation sums each member's exact completed-asset value before
+rounding. Totals use an i128 accumulator over validated i64 member values;
+points divide that total by 1,000,000,000, and average points divide the exact
+total by member count and 1,000,000,000. Both round down. Summing already rounded
+player points would lose small members' contributions and is not used. Alliance
+ranking shares the player competition rules (1, 1, 3), with alliance UUID order
+making equal rows deterministic. Zero-point alliances remain ranked.
+
+Daily source observations include alliance identity and member IDs alongside
+asset lots in the same repeatable-read snapshot. Membership changes, renames and
+disband do not rewrite yesterday's facts. Disbanded alliances still participate
+in yesterday's rank calculation but are omitted from today's rows. An absent
+`alliances` key in legacy observations means alliance history is unavailable;
+an observed empty list means history is valid and all current alliances are new.
+An alliance baseline can therefore be unavailable while the player baseline is
+available. The first observation of a day is never replaced to fill legacy gaps.
+
+`alliance_scores_in_snapshot` derives the same scores and movement inside an
+existing repeatable-read transaction for public/private alliance summaries.
+It returns only public score DTOs and does not record daily observations. There
+are no stored score, average, count or rank columns.
+
+The Players/Alliances switch is local interaction state. Search, pagination and
+own-alliance rows derive directly from the retained response. Alliance search
+matches normalized names or tags; own alliance comes from the viewer's player
+row in that observation. Refresh updates all of these together. An alliance row
+links to its public recruitment page, where private roster information is absent.
 
 ## Validation record — 2026-10-24
 

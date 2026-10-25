@@ -81,6 +81,7 @@ export function reportsReducer(
           detail: {
             payload: action.detail.payload,
             player_names: action.detail.player_names,
+            player_alliances: action.detail.player_alliances,
             report: action.detail.header.id,
           },
         }

@@ -2,11 +2,14 @@ import { createStore } from 'zustand/vanilla'
 import type { Rankings } from './commands'
 
 export type RankingPlayer = Rankings['players'][number]
+export type RankingAlliance = NonNullable<Rankings['alliances']>[number]
+export type RankingScope = 'players' | 'alliances'
+export type RankedRow = Pick<RankingPlayer, 'rank' | 'previous_rank'>
 export const rankingPageSize = 50
 
 /** Positive movement means climbing toward rank one. Missing historical members
  * are new; a missing universe baseline is not evidence of a new player. */
-export function rankMovement(row: RankingPlayer, baselineAt?: number | null) {
+export function rankMovement(row: RankedRow, baselineAt?: number | null) {
   if (baselineAt == null)
     return {
       text: '—',
@@ -33,17 +36,20 @@ export function rankMovement(row: RankingPlayer, baselineAt?: number | null) {
   }
 }
 
-export function rankingWindow(
-  players: RankingPlayer[],
+function normalized(value: string) {
+  return value.trim().normalize('NFKC').toLocaleLowerCase()
+}
+
+function windowRows<T>(
+  rows: T[],
   search: string,
   offset: number,
+  label: (row: T) => string,
 ) {
-  const term = search.trim().normalize('NFKC').toLocaleLowerCase()
+  const term = normalized(search)
   const matches = term
-    ? players.filter((p) =>
-        p.username.normalize('NFKC').toLocaleLowerCase().includes(term),
-      )
-    : players
+    ? rows.filter((row) => normalized(label(row)).includes(term))
+    : rows
   const start = Math.min(Math.max(0, offset), Math.max(0, matches.length - 1))
   return {
     rows: matches.slice(start, start + rankingPageSize),
@@ -52,14 +58,45 @@ export function rankingWindow(
   }
 }
 
-export function aroundPlayer(players: RankingPlayer[], player: string) {
-  const index = players.findIndex((p) => p.player === player)
+export function rankingWindow(
+  players: RankingPlayer[],
+  search: string,
+  offset: number,
+) {
+  return windowRows(players, search, offset, (row) => row.username)
+}
+
+export function allianceRankingWindow(
+  alliances: RankingAlliance[],
+  search: string,
+  offset: number,
+) {
+  return windowRows(
+    alliances,
+    search,
+    offset,
+    (row) => `${row.alliance.name} [${row.alliance.tag}]`,
+  )
+}
+
+function aroundIndex(length: number, index: number) {
   return Math.max(
     0,
-    Math.min(
-      index - Math.floor(rankingPageSize / 2),
-      players.length - rankingPageSize,
-    ),
+    Math.min(index - Math.floor(rankingPageSize / 2), length - rankingPageSize),
+  )
+}
+
+export function aroundPlayer(players: RankingPlayer[], player: string) {
+  return aroundIndex(
+    players.length,
+    players.findIndex((p) => p.player === player),
+  )
+}
+
+export function aroundAlliance(alliances: RankingAlliance[], alliance: string) {
+  return aroundIndex(
+    alliances.length,
+    alliances.findIndex((a) => a.alliance.id === alliance),
   )
 }
 

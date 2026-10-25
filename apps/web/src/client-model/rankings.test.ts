@@ -1,6 +1,9 @@
 import { expect, it } from 'vitest'
 import {
   aroundPlayer,
+  aroundAlliance,
+  allianceRankingWindow,
+  type RankingAlliance,
   rankMovement,
   rankingWindow,
   RankingsController,
@@ -110,4 +113,43 @@ it('labels movement with signs and text, distinguishes new players and absent hi
   expect(rankMovement(rankingWindow(observed, '', 80).rows[0], 0).text).toBe(
     '+3',
   )
+})
+
+it('searches alliance names and tags, pages stable ranks, and locates own alliance by identity', () => {
+  const alliances: RankingAlliance[] = Array.from({ length: 123 }, (_, i) => ({
+    alliance: {
+      id: `alliance-${i}`,
+      universe: 'u',
+      name: i === 80 ? 'Étoile Fleet' : `Fleet ${i}`,
+      tag: `TAG${i}`,
+    },
+    member_count: i + 1,
+    points: '18446744073',
+    average_points: '9223372036',
+    rank: i < 2 ? 1 : i + 1,
+    previous_rank: i + 4,
+  }))
+  expect(allianceRankingWindow(alliances, ' E\u0301TOILE ', 0).rows).toEqual([
+    alliances[80],
+  ])
+  expect(allianceRankingWindow(alliances, 'tag80', 0).rows).toEqual([
+    alliances[80],
+  ])
+  expect(
+    [0, 50, 100].flatMap(
+      (offset) => allianceRankingWindow(alliances, '', offset).rows,
+    ),
+  ).toEqual(alliances)
+  expect(aroundAlliance(alliances, 'alliance-80')).toBe(55)
+  expect(aroundAlliance(alliances, 'alliance-122')).toBe(73)
+  expect(aroundAlliance([], 'missing')).toBe(0)
+  expect(
+    rankMovement(allianceRankingWindow(alliances, 'tag80', 0).rows[0], 0).text,
+  ).toBe('+3')
+  expect(rankMovement(alliances[0], null).direction).toBe('unknown')
+  expect(allianceRankingWindow(alliances, 'missing', 100)).toEqual({
+    rows: [],
+    start: 0,
+    count: 0,
+  })
 })

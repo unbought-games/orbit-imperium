@@ -108,3 +108,38 @@ it('refreshes on page restoration and releases timers on stop', async () => {
   expect(api).toHaveBeenCalledTimes(2)
   expect(c.store.getState().players).toEqual({})
 })
+
+it('refreshes affiliation after social changes and fences older in-flight responses', async () => {
+  const old = result(1)
+  old.players[0].alliance = {
+    id: 'old',
+    universe: 'u',
+    tag: 'OLD',
+    name: 'Old alliance',
+  }
+  let finishOld!: (value: PlayerProfiles) => void
+  const signals: AbortSignal[] = []
+  let calls = 0
+  const c = start((_source, signal) => {
+    signals.push(signal)
+    calls++
+    if (calls === 1) return Promise.resolve(old)
+    if (calls === 2)
+      return new Promise((resolve) => {
+        finishOld = resolve
+      })
+    return Promise.resolve(result(1))
+  })
+  await vi.advanceTimersByTimeAsync(0)
+  expect(currentPlayer(c.store.getState(), 'other')?.alliance?.tag).toBe('OLD')
+  cleanup.push(c.watch({ type: 'Rankings', players: ['other'] }))
+  c.refreshAll()
+  expect(signals[1].aborted).toBe(true)
+  expect(currentPlayer(c.store.getState(), 'other')).toBeUndefined()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(currentPlayer(c.store.getState(), 'other')?.username).toBe('Commander')
+  expect(currentPlayer(c.store.getState(), 'other')?.alliance).toBeUndefined()
+  finishOld(old)
+  await vi.advanceTimersByTimeAsync(0)
+  expect(currentPlayer(c.store.getState(), 'other')?.alliance).toBeUndefined()
+})

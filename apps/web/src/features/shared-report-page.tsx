@@ -61,6 +61,7 @@ export function SharedReportPage({ token }: { token: string }) {
           <ReportObservation
             payload={report.payload}
             playerNames={report.player_names}
+            playerAlliances={report.player_alliances}
             shared
           />
         </>

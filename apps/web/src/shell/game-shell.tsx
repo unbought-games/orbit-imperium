@@ -45,7 +45,7 @@ export function GameShell() {
     item?: string
     coordinates?: string
   }
-  const search = leaf.search as { body?: string }
+  const search = leaf.search as { body?: string; alliance?: string }
   const route = resolveNamedDestination(
     {
       universe: params.universe,
@@ -81,7 +81,9 @@ export function GameShell() {
           ? { search: validateGalaxySearch(leaf.search) }
           : page === 'dispatch'
             ? { search: validateDispatchSearch(leaf.search) }
-            : {}),
+            : page === 'alliance'
+              ? { search: { body: body.id, alliance: search.alliance } }
+              : {}),
         replace: true,
       })
     }

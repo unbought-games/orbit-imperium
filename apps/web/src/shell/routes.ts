@@ -15,6 +15,7 @@ export type Page =
   | 'reports'
   | 'galaxy'
   | 'high-scores'
+  | 'alliance'
 export type Destination = {
   universe?: string
   page: Page | null
@@ -75,6 +76,8 @@ export function resolveDestination(
     return unavailable(
       'Planet unavailable. This address does not identify a planet you can access.',
     )
+  if (page === 'alliance' && view.protocol !== 4)
+    return unavailable('Alliances are unavailable in this universe.')
   if (page === 'high-scores' && view.protocol !== 4)
     return unavailable('High Scores are unavailable in this universe.')
   if (page === 'facilities' && view.protocol === 2)
@@ -120,7 +123,12 @@ export function resolveDestination(
     return unavailable(
       'This item is unavailable or outside the current authorized view.',
     )
-  if (!body && page !== 'settings' && page !== 'high-scores')
+  if (
+    !body &&
+    page !== 'settings' &&
+    page !== 'high-scores' &&
+    page !== 'alliance'
+  )
     return unavailable('No planet is available for this membership.')
   return {
     page,

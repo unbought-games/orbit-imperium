@@ -1297,3 +1297,33 @@ it('discards simulation responses from a changed identity, request or rules prof
     ).rejects.toThrow('universe changed')
   }
 })
+
+it('alliance not-found and permission errors stay local to the screen', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { session, snapshot } = readyFixture(4)
+  for (const status of [403, 404]) {
+    const { c, port } = setup()
+    await c.initialize(session, snapshot)
+    const before = c.view
+    port.allianceQuery = async () => {
+      throw { status, code: 'NotFound' }
+    }
+    await expect(
+      c.allianceQuery({ type: 'Detail', alliance: id(999), post_before: null }),
+    ).rejects.toMatchObject({ status })
+    expect(c.ready).toBe(true)
+    expect(c.view).toBe(before)
+    port.allianceCommand = async () => {
+      throw { status, code: 'NotFound' }
+    }
+    await expect(
+      c.allianceCommand({
+        command_id: id(998),
+        expected_revision: 1,
+        action: { type: 'Leave', alliance: id(999) },
+      }),
+    ).rejects.toMatchObject({ status })
+    expect(c.ready).toBe(true)
+    expect(c.view).toBe(before)
+  }
+})

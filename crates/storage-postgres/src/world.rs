@@ -639,6 +639,19 @@ pub(crate) async fn save(
             continue;
         }
         sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) VALUES($1,$2,$3,$4,$5,$6)").bind(u.0).bind(id.0).bind(report.event.0).bind(&report.kind).bind(report.at).bind(sqlx::types::Json(report)).execute(&mut **tx).await.map_err(db_error)?;
+        let visible = report
+            .payloads
+            .values()
+            .flat_map(report_profile_players)
+            .collect::<std::collections::BTreeSet<_>>();
+        crate::alliance_identity::capture_report_alliances(
+            tx,
+            u,
+            *id,
+            report.at,
+            visible.into_iter().collect(),
+        )
+        .await?;
         for recipient in report.payloads.keys() {
             let revision:i64=sqlx::query_scalar("UPDATE mission_report_heads SET revision=revision+1 WHERE universe=$1 AND recipient=$2 RETURNING revision").bind(u.0).bind(recipient.0).fetch_one(&mut **tx).await.map_err(db_error)?;
             sqlx::query("INSERT INTO mission_report_recipients(report,recipient,created_revision) VALUES($1,$2,$3)").bind(id.0).bind(recipient.0).bind(revision).execute(&mut **tx).await.map_err(db_error)?;
@@ -920,7 +933,7 @@ impl PgStore {
         } else {
             (head, None, None)
         };
-        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
         let rules = crate::facts::rules(&mut tx, b.universe).await?;
         let has_more = rows.len() > q.limit as usize;
         let items = rows
@@ -974,10 +987,18 @@ impl PgStore {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
         let at = crate::snapshots::safe_time(&mut tx, b.universe, b.player).await?;
-        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
+        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;
         let rules = crate::facts::rules(&mut tx, b.universe).await?;
+        let identities: PublicPlayerAlliances =
+            decode(row.try_get("alliance_identities").map_err(db_error)?)?;
+        let payload = r
+            .payloads
+            .get(&b.player)
+            .cloned()
+            .ok_or(StoreError::CorruptData)?;
         let detail = ReportDetail4 {
+            player_alliances: visible_report_alliances(&payload, &identities),
             player_names: Default::default(),
             header: header(&row, &rules)?,
             payload: r
@@ -1004,7 +1025,10 @@ fn header(row: &sqlx::postgres::PgRow, rules: &Ruleset) -> Result<ReportHeader4,
     if !payload.is_object() {
         return Err(StoreError::CorruptData);
     }
+    let identities: PublicPlayerAlliances =
+        decode(row.try_get("alliance_identities").map_err(db_error)?)?;
     Ok(ReportHeader4 {
+        player_alliances: visible_report_alliances(&payload, &identities),
         fleet_investment: orbit_application::report_preview::report_investment(
             &payload, "fleet", rules,
         ),

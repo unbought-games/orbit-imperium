@@ -201,3 +201,27 @@
   gap: 0.4rem;
   color: var(--text-muted);
 }
+
+.scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.scopes [aria-pressed='true'] {
+  border-color: var(--champagne-light);
+  color: var(--champagne-light);
+}
+.allianceName {
+  display: inline-block;
+  color: var(--text);
+  min-height: 44px;
+  padding-block: 0.4rem;
+}
+.memberCount,
+.average {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}

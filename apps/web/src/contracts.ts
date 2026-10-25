@@ -4175,6 +4175,396 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/universes/{universe}/alliances/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AllianceQueryRequest"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AllianceView"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/alliances/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AllianceCommandRequest"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AllianceCommandResult"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/alliances/{alliance}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                    alliance: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PublicAlliance"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5675,6 +6065,9 @@ export interface components {
             fleet_investment?: string | null;
             /** @description Recipient-visible espionage units valued at active-rules total resource investment, in micro resource units. Null means unknown or inapplicable. */
             defense_investment?: string | null;
+            player_alliances?: {
+                [key: string]: components["schemas"]["AllianceIdentity"];
+            };
         };
         ReportsPage4: {
             items: components["schemas"]["ReportHeader4"][];
@@ -5706,6 +6099,9 @@ export interface components {
             header: components["schemas"]["ReportHeader4"];
             payload: components["schemas"]["ReportPayload4"];
             player_names?: components["schemas"]["PublicPlayerNames4"];
+            player_alliances?: {
+                [key: string]: components["schemas"]["AllianceIdentity"];
+            };
         };
         BoundReport4: {
             /** @constant */
@@ -6129,6 +6525,7 @@ export interface components {
             supporter_tier?: 1 | 2 | 3;
             observed_at: number;
             expires_at: number;
+            alliance?: components["schemas"]["AllianceIdentity"];
         };
         PlayerProfiles: {
             binding: components["schemas"]["Binding"];
@@ -6257,6 +6654,7 @@ export interface components {
             rank: number;
             points: components["schemas"]["Decimal"];
             previous_rank?: number | null;
+            alliance?: components["schemas"]["AllianceIdentity"];
         };
         Rankings: {
             binding: components["schemas"]["Binding"];
@@ -6266,6 +6664,8 @@ export interface components {
             processing_pending: boolean;
             players: components["schemas"]["RankingPlayer"][];
             baseline_at?: number | null;
+            alliances?: components["schemas"]["RankingAlliance"][];
+            alliance_baseline_at?: number | null;
         };
         ShipStatistics3: {
             propulsion: components["schemas"]["ShipPropulsionStatistics3"] | null;
@@ -6385,6 +6785,283 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+            player_alliances?: {
+                [key: string]: components["schemas"]["AllianceIdentity"];
+            };
+        };
+        /** @enum {string} */
+        AlliancePermission: "ViewMembers" | "ViewActivity" | "ViewApplications" | "ProcessApplications" | "EditProfile" | "ManageRecruitment" | "PublishPosts" | "ManagePosts" | "PinPosts" | "ManageRoles" | "AssignRoles" | "KickMembers" | "ViewAudit";
+        /** @enum {string} */
+        AllianceRecruitment: "Open" | "Application" | "Closed";
+        AllianceIdentity: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            universe: string;
+            tag: string;
+            name: string;
+        };
+        AllianceScore: {
+            rank: number;
+            points: string;
+            average_points: string;
+            previous_rank: number | null;
+            baseline_at: number | null;
+        };
+        AllianceSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            universe: string;
+            tag: string;
+            name: string;
+            member_count: number;
+            recruitment: components["schemas"]["AllianceRecruitment"];
+            ranking?: components["schemas"]["AllianceScore"];
+        };
+        AllianceRole: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            permissions: components["schemas"]["AlliancePermission"][];
+            grantable_permissions: components["schemas"]["AlliancePermission"][];
+            is_default: boolean;
+        };
+        AllianceMember: {
+            /** Format: uuid */
+            player: string;
+            username: string;
+            joined_at: number;
+            roles: string[];
+            /** @enum {string} */
+            activity?: "Recent" | "Away" | "Inactive";
+        };
+        AllianceApplication: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            alliance: string;
+            alliance_tag: string;
+            /** Format: uuid */
+            player: string;
+            username: string;
+            text: string;
+            created_at: number;
+        };
+        AlliancePost: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            author: string;
+            author_name: string;
+            title: string;
+            body: string;
+            created_at: number;
+            updated_at: number;
+            pinned: boolean;
+        };
+        AllianceAudit: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            actor: string;
+            actor_name: string;
+            action: string;
+            at: number;
+            target: string | null;
+        };
+        AllianceDetail: {
+            summary: components["schemas"]["AllianceSummary"];
+            public_text: string;
+            revision: number;
+            /** Format: uuid */
+            leader: string;
+            permissions: components["schemas"]["AlliancePermission"][];
+            grantable_permissions: components["schemas"]["AlliancePermission"][];
+            roles?: components["schemas"]["AllianceRole"][];
+            members?: components["schemas"]["AllianceMember"][];
+            applications?: components["schemas"]["AllianceApplication"][];
+            posts?: components["schemas"]["AlliancePost"][];
+            next_post_before?: string | null;
+            audit?: components["schemas"]["AllianceAudit"][];
+        };
+        PublicAlliance: {
+            summary: components["schemas"]["AllianceSummary"];
+            public_text: string;
+        };
+        AllianceQuery: {
+            /** @constant */
+            type: "Directory";
+            search: string;
+            offset: number;
+        } | {
+            /** @constant */
+            type: "Mine";
+        } | {
+            /** @constant */
+            type: "Detail";
+            /** Format: uuid */
+            alliance: string;
+            post_before: string | null;
+        };
+        AllianceQueryRequest: {
+            context: components["schemas"]["QueryContext"];
+            query: components["schemas"]["AllianceQuery"];
+        };
+        AllianceView: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            sampled_at: number;
+            directory: components["schemas"]["AllianceSummary"][];
+            directory_count: number;
+            alliance: components["schemas"]["AllianceDetail"] | null;
+            applications: components["schemas"]["AllianceApplication"][];
+        };
+        AllianceAction: {
+            /** @constant */
+            type: "Create";
+            name: string;
+            tag: string;
+        } | {
+            /** @constant */
+            type: "Join";
+            /** Format: uuid */
+            alliance: string;
+        } | {
+            /** @constant */
+            type: "Apply";
+            /** Format: uuid */
+            alliance: string;
+            text: string;
+        } | {
+            /** @constant */
+            type: "Withdraw";
+            /** Format: uuid */
+            application: string;
+        } | {
+            /** @constant */
+            type: "Accept";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            application: string;
+        } | {
+            /** @constant */
+            type: "Reject";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            application: string;
+        } | {
+            /** @constant */
+            type: "Leave";
+            /** Format: uuid */
+            alliance: string;
+        } | {
+            /** @constant */
+            type: "Disband";
+            /** Format: uuid */
+            alliance: string;
+        } | {
+            /** @constant */
+            type: "Kick";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            player: string;
+        } | {
+            /** @constant */
+            type: "Transfer";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            player: string;
+        } | {
+            /** @constant */
+            type: "Update";
+            /** Format: uuid */
+            alliance: string;
+            name: string;
+            tag: string;
+            public_text: string;
+            recruitment: components["schemas"]["AllianceRecruitment"];
+        } | {
+            /** @constant */
+            type: "SaveRole";
+            /** Format: uuid */
+            alliance: string;
+            role: string | null;
+            name: string;
+            permissions: components["schemas"]["AlliancePermission"][];
+            grantable_permissions: components["schemas"]["AlliancePermission"][];
+        } | {
+            /** @constant */
+            type: "DeleteRole";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            role: string;
+        } | {
+            /** @constant */
+            type: "AssignRoles";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            player: string;
+            roles: string[];
+        } | {
+            /** @constant */
+            type: "CreatePost";
+            /** Format: uuid */
+            alliance: string;
+            title: string;
+            body: string;
+        } | {
+            /** @constant */
+            type: "EditPost";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            post: string;
+            title: string;
+            body: string;
+        } | {
+            /** @constant */
+            type: "DeletePost";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            post: string;
+        } | {
+            /** @constant */
+            type: "PinPost";
+            /** Format: uuid */
+            alliance: string;
+            /** Format: uuid */
+            post: string;
+            pinned: boolean;
+        };
+        AllianceCommandRequest: {
+            context: components["schemas"]["QueryContext"];
+            /** Format: uuid */
+            command_id: string;
+            expected_revision: number | null;
+            action: components["schemas"]["AllianceAction"];
+        };
+        AllianceCommandResult: {
+            /** Format: uuid */
+            command_id: string;
+            alliance: string | null;
+            revision: number | null;
+        };
+        RankingAlliance: {
+            alliance: components["schemas"]["AllianceIdentity"];
+            member_count: number;
+            points: string;
+            average_points: string;
+            rank: number;
+            previous_rank: number | null;
         };
     };
     responses: never;
