@@ -247,7 +247,7 @@ for (const signup of [true, false]) {
     })
     await page.route('**/', async route => {
       const response = await route.fetch()
-      const html = (await response.text()).replace(
+      const html = (await response.text()).replace('/src/main.tsx', '/src/landing-main.tsx').replace(
         '<script id="orbit-bootstrap" type="application/json"></script>',
         `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
       )

@@ -15,6 +15,7 @@ type Prepare =
 struct StaticAssets {
     files: ServeDir,
     index: PathBuf,
+    homepage: PathBuf,
     prepare: Prepare,
     origin: String,
 }
@@ -34,7 +35,8 @@ pub(super) fn router<S: GameStore + IdentityStore + Send + Sync + 'static>(
 fn router_with(assets: String, origin: String, prepare: Prepare) -> Router {
     Router::new().fallback(serve).with_state(StaticAssets {
         files: ServeDir::new(&assets).append_index_html_on_directories(false),
-        index: PathBuf::from(assets).join("index.html"),
+        index: PathBuf::from(&assets).join("index.html"),
+        homepage: PathBuf::from(assets).join("homepage.html"),
         prepare,
         origin,
     })
@@ -45,7 +47,7 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
     };
     let public_document = path.starts_with("/reports/shared/") || path.starts_with("/alliances/");
     let namespace = path.split('/').nth(1).unwrap_or_default();
-    if matches!(namespace, "api" | "health") {
+    if matches!(namespace, "api" | "health") || path == "/homepage.html" {
         return StatusCode::NOT_FOUND.into_response();
     }
     if request.method() != Method::GET && request.method() != Method::HEAD {
@@ -91,7 +93,7 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
         let body = if head {
             String::new()
         } else {
-            let template = match tokio::fs::read_to_string(&assets.index).await {
+            let mut template = match tokio::fs::read_to_string(&assets.index).await {
                 Ok(t) => t,
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             };
@@ -104,6 +106,19 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
             } else {
                 (assets.prepare)(request.headers().clone()).await
             };
+            if entry
+                && matches!(
+                    bootstrap.result,
+                    orbit_application::BootstrapResult::Anonymous
+                )
+            {
+                // Older/custom asset builds retain the regular entry as a safe fallback.
+                match tokio::fs::read_to_string(&assets.homepage).await {
+                    Ok(homepage) => template = homepage,
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+                }
+            }
             match render_bootstrap_html(&template, &bootstrap) {
                 Ok(html)
                     if entry
@@ -215,6 +230,76 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[tokio::test]
+    async fn only_anonymous_home_requests_use_the_lightweight_entry() {
+        use orbit_application::{
+            AccountId, AuthenticatedSession, BootstrapError, BootstrapGame, BootstrapResult,
+        };
+        let assets = Assets::new();
+        std::fs::write(
+            assets.0.join("homepage.html"),
+            format!("<title>Orbit Imperium</title>LIGHTWEIGHT{INDEX}"),
+        )
+        .unwrap();
+        for result in [
+            BootstrapResult::Anonymous,
+            BootstrapResult::Unavailable {
+                code: BootstrapError::Unavailable,
+            },
+            BootstrapResult::Authenticated {
+                session: AuthenticatedSession {
+                    account: AccountId(uuid::Uuid::nil()),
+                    csrf: "csrf".into(),
+                    expires_at: 0,
+                    memberships: vec![],
+                },
+                game: BootstrapGame::NoMembership,
+            },
+        ] {
+            let anonymous = matches!(result, BootstrapResult::Anonymous);
+            let app = router_with(
+                assets.0.to_string_lossy().into_owned(),
+                "https://community.example".into(),
+                Arc::new(move |_| {
+                    let result = result.clone();
+                    Box::pin(async {
+                        Bootstrap {
+                            version: 1,
+                            signup_enabled: true,
+                            result,
+                        }
+                    })
+                }),
+            );
+            for path in ["/", "/index.html", "/login", "/u/demo/overview"] {
+                let response = app
+                    .clone()
+                    .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+                let body = String::from_utf8(
+                    to_bytes(response.into_body(), 16384)
+                        .await
+                        .unwrap()
+                        .to_vec(),
+                )
+                .unwrap();
+                assert_eq!(
+                    body.contains("LIGHTWEIGHT"),
+                    anonymous && matches!(path, "/" | "/index.html"),
+                    "{path}"
+                );
+            }
+        }
+        let response = assets
+            .router()
+            .oneshot(Request::get("/homepage.html").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
@@ -436,6 +521,7 @@ mod tests {
             "/assets/missing",
             "/favicon.ico",
             "/missing.json",
+            "/homepage.html",
             "/nested/missing.js",
             "/missing.js/",
             "/missing%2Ejs",

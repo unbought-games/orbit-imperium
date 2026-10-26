@@ -16,7 +16,7 @@ export function anonymousLanding(payload: unknown): boolean | null {
 }
 
 export function readAnonymousLanding(document: Document, pathname: string) {
-  if (pathname !== '/') return null
+  if (pathname !== '/' && pathname !== '/index.html') return null
   const nodes = document.querySelectorAll('#orbit-bootstrap')
   if (
     nodes.length !== 1 ||

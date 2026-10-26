@@ -13,6 +13,10 @@ runs. The shared template is `crates/transport-http/assets/home-head.html`; both
 Rust and the browser consume it. It references the existing canonical hero asset.
 There are no invented ratings, reviews, pricing or availability claims.
 
+The server selects a separate built homepage entry only for anonymous home
+requests. Its HTML is derived from index.html by the build, and Vite emits
+independent script/preload graphs. Game routes retain their eager entry so
+loading the public page faster does not delay game startup.
 The browser's standalone anonymous landing entry uses the same presentation as
 the routed home page and respects the server's registration flag. Authenticated,
 unavailable, malformed and unknown bootstrap states retain the full game startup.
