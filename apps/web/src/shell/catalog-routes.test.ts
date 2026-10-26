@@ -34,4 +34,16 @@ it('validates catalog identity and category without hiding disabled items', () =
   expect(resolveCatalogItem('resources', 'impulse-drive', view)).toBeNull()
   expect(resolveCatalogItem('research', 'invented-technology', view)).toBeNull()
   expect(resolveCatalogItem('resources', 'metal-mine', view)).toBe('MetalMine')
+  expect(resolveCatalogItem('resources', 'solar-satellite', view)).toBeNull()
+  view.catalog.push({
+    key: { kind: 'Ship', id: 'SolarSatellite' },
+    enabled: true,
+    body_kinds: ['Planet'],
+    requirements: [],
+    mobile: false,
+  })
+  expect(resolveCatalogItem('resources', 'solar-satellite', view)).toBeNull()
+  expect(resolveCatalogItem('shipyard', 'solar-satellite', view)).toBe(
+    'SolarSatellite',
+  )
 })

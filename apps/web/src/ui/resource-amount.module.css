@@ -127,13 +127,3 @@
     overflow-wrap: normal;
   }
 }
-@media (max-width: 359px) {
-  .stock {
-    gap: 4px;
-    padding-inline: 0;
-  }
-  .stock .symbol {
-    width: 14px;
-    height: 14px;
-  }
-}

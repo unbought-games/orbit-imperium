@@ -12,10 +12,12 @@ const returnTime = new Intl.DateTimeFormat(undefined, {
 })
 export function DispatchTiming({
   terms,
+  mission,
   now,
   message,
 }: {
   terms?: components['schemas']['FleetTerms4']
+  mission: components['schemas']['Mission4']
   now: number
   message?: string
 }) {
@@ -28,22 +30,18 @@ export function DispatchTiming({
       aria-label="Flight timing"
       title="Estimated timing if sent now"
     >
-      {terms && schedule ? (
-        <dl>
-          <div>
-            <dt>To destination</dt>
-            <dd title={exactTime(schedule.arrival)}>
-              {flightDuration(terms.duration_ms)}
-            </dd>
-          </div>
-          <div>
-            <dt>
-              {terms.intent.mission === 'Colonize'
-                ? 'Back if needed'
-                : 'Back at'}
-            </dt>
-            <dd>
-              {schedule.returnAt === null ? (
+      <dl>
+        <div>
+          <dt>To destination</dt>
+          <dd title={schedule ? exactTime(schedule.arrival) : undefined}>
+            {terms ? flightDuration(terms.duration_ms) : '—'}
+          </dd>
+        </div>
+        <div>
+          <dt>{mission === 'Colonize' ? 'Back if needed' : 'Back at'}</dt>
+          <dd>
+            {schedule ? (
+              schedule.returnAt === null ? (
                 'One-way'
               ) : (
                 <time
@@ -52,17 +50,18 @@ export function DispatchTiming({
                 >
                   {returnTime.format(schedule.returnAt)}
                 </time>
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>Total flight</dt>
-            <dd>{flightDuration(schedule.total)}</dd>
-          </div>
-        </dl>
-      ) : (
-        <p>{message ?? 'Updating flight times…'}</p>
-      )}
+              )
+            ) : (
+              '—'
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Total flight</dt>
+          <dd>{schedule ? flightDuration(schedule.total) : '—'}</dd>
+        </div>
+      </dl>
+      <p>{terms ? '' : (message ?? 'Updating flight times…')}</p>
     </section>
   )
 }

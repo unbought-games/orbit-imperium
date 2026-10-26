@@ -272,7 +272,12 @@ export function Dispatch({
                 </Button>
               </Text>
             )}
-            <DispatchTiming terms={timing} now={now} message={timingMessage} />
+            <DispatchTiming
+              terms={timing}
+              mission={mission}
+              now={now}
+              message={timingMessage}
+            />
             {mission === 'Attack' && !targetProblem && !attackWarning && (
               <Text className={styles.destinationNotice}>
                 Beginner protection can prevent attacks between players of

@@ -19,9 +19,11 @@ export function ResourceCosts({
   cost,
   available,
   compact = false,
+  placeholder = false,
   showShortfalls = true,
 }: {
   compact?: boolean
+  placeholder?: boolean
   showShortfalls?: boolean
   cost: components['schemas']['Resources']
   available: components['schemas']['Resources']
@@ -36,6 +38,17 @@ export function ResourceCosts({
         {materials
           .filter(({ name }) => BigInt(cost[name]) > 0n)
           .map(({ name, title }) => {
+            if (placeholder)
+              return (
+                <span
+                  key={name}
+                  className={styles.compactMaterial}
+                  aria-label={`${title} amount unavailable`}
+                >
+                  <ResourceMark resource={name} width={22} height={22} />
+                  <strong>—</strong>
+                </span>
+              )
             const { after, shortfall } = resourceDecision(
               cost[name],
               available[name],

@@ -1,0 +1,30 @@
+.summary {
+  margin: 0;
+  border-block: 1px solid var(--border);
+}
+.summary > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.summary dd {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary > div:last-child dd {
+  overflow-x: auto;
+}
+.summary > div:last-child dd > div {
+  flex-wrap: nowrap;
+  width: max-content;
+  min-width: 100%;
+  justify-content: flex-end;
+}
+.costPlaceholder {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: flex-end;
+}

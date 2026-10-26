@@ -327,6 +327,41 @@ test('mobile resource stock uses icons and compact balances with capacity detail
   await expect(details).toContainText('Above capacity')
 })
 
+test('mobile planet selector grows into free space while resource widths stay fixed', async ({ page }) => {
+  const name = 'Nova Roma Research Colony'
+  await page.setViewportSize({ width: 390, height: 844 })
+  await shellFixture(page, {
+    bodies: [{ ...body, name }],
+  })
+  const selector = page.getByRole('combobox', { name: 'Selected body' })
+  const label = selector.getByText(name, { exact: true })
+  const ledger = page.getByLabel('Current resources')
+  const widths = async () => Promise.all(
+    (await ledger.locator(':scope > button, :scope > a').all()).map(async resource =>
+      (await resource.boundingBox())!.width,
+    ),
+  )
+  const baseline = await widths()
+  const compact = (await selector.boundingBox())!
+  expect(await label.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
+  for (const width of [440, 767, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    const planet = (await selector.boundingBox())!
+    const stock = (await ledger.boundingBox())!
+    const gutter = width < 360 ? 8 : 18
+    expect(planet.x).toBe(gutter)
+    expect(stock.x + stock.width).toBeCloseTo(width - gutter, 1)
+    expect(planet.x + planet.width).toBeCloseTo(stock.x - 4, 1)
+    expect(await widths()).toEqual(baseline)
+    expect(stock.height).toBe(44)
+    if (width === 767) {
+      expect(planet.width - compact.width).toBeCloseTo(767 - 390, 1)
+      expect(await label.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+})
+
 test('mobile top bar stays pinned while content scrolls beneath it and details remain usable', async ({
   page,
 }) => {

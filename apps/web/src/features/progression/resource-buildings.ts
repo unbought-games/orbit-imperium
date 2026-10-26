@@ -30,11 +30,6 @@ export const resourceBuildings = [
     description: 'Generates energy using deuterium fuel.',
   },
   {
-    id: 'SolarSatellite',
-    art: resolveCatalogArt({ kind: 'Ship', id: 'SolarSatellite' }),
-    description: 'Collects solar energy in orbit.',
-  },
-  {
     id: 'MetalStorage',
     art: resolveCatalogArt({ kind: 'Building', id: 'MetalStorage' }),
     description:

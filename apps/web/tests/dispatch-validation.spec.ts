@@ -378,7 +378,7 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
   await expect(ship).toHaveValue('0')
   await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue('0')
   for (const field of cargo) await expect(field).toHaveValue('0')
-  await expect(page.getByRole('region', { name: 'Flight timing' })).toHaveText(
+  await expect(page.getByRole('region', { name: 'Flight timing' }).locator('p')).toHaveText(
     'Select ships to see flight times.',
   )
   expect(state.launches).toBe(1)
@@ -557,11 +557,18 @@ test('flight timing updates with speed and selected ships without opening review
   const state = await setup(page)
   const timing = page.getByRole('region', { name: 'Flight timing' })
   const ship = page.getByLabel('Small Cargo · 2 available')
-  await ship.fill('')
-  await expect(timing).toHaveText('Select ships to see flight times.')
+  await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
+  await ship.click()
+  const initialShipPosition = (await ship.boundingBox())!.y
+  await ship.press('Backspace')
+  await expect(ship).toHaveValue('')
+  await expect(timing.locator('dd')).toHaveText(['—', '—', '—'])
+  expect((await ship.boundingBox())!.y).toBe(initialShipPosition)
+  await expect(timing.locator('p')).toHaveText('Select ships to see flight times.')
   await ship.fill('1')
   await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
   await expect(timing.locator('dd').nth(2)).toHaveText('3m 20s')
+  expect((await ship.boundingBox())!.y).toBe(initialShipPosition)
   const firstReturn = Date.parse(
     (await timing.locator('time').getAttribute('datetime'))!,
   )
