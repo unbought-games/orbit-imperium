@@ -1462,3 +1462,170 @@ test.describe('touch status tooltips', () => {
     await expect(page.getByRole('tooltip')).toBeHidden()
   })
 })
+
+const recyclerCatalog: components['schemas']['CatalogEntry3'][] = [{
+  key: { kind: 'Ship', id: 'Recycler' }, enabled: true, mobile: true,
+  body_kinds: ['Planet'], requirements: [],
+  ship_statistics: { combat: null, propulsion: { cargo_capacity: '20000', base_speed: '2000', fuel_consumption: '300', drive: 'CombustionDrive', impulse_upgrade: null } },
+}]
+async function setupHarvest(page: Page, count = '5', slots = '3') {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await setup(page, null, {
+    catalog: recyclerCatalog,
+    bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'Recycler' }, count }] }],
+    missions: { fleets: [], incoming: [], fleet_slots: slots, score_value_micro: '0' },
+  }, { 2: { debris: { field_identity: id(42), metal: '40000', crystal: '1' } } })
+}
+async function openHarvest(page: Page) {
+  await actions(page, 2).click()
+  await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
+  await expect(sheet).toBeVisible()
+  return sheet
+}
+function harvestTerms(intent: components['schemas']['FleetIntent4']) {
+  return { intent, profile_hash: 'a'.repeat(64), terms_hash: 'b'.repeat(64), distance: 1000, speeds: [['Recycler', '2000']], duration_ms: 120000, fuel: '1000000', capacity: '60000000000', maximum_payload: '60000000000', slot_limit: '3' }
+}
+
+test('mobile harvest opens at half height, derives the count, and Customize preserves destination', async ({ page }) => {
+  // LAN HTTP does not expose secure-context randomUUID. UI sessions need no UUID.
+  await page.addInitScript(() => Object.defineProperty(crypto, 'randomUUID', { value: undefined }))
+  await setupHarvest(page)
+  const requests: string[] = []
+  page.on('request', request => { if (request.url().endsWith('/commands')) requests.push(request.url()) })
+  const sheet = await openHarvest(page)
+  const panel = sheet.getByRole('region', { name: 'Harvest mission sheet', exact: true })
+  await expect.poll(async () => (await panel.boundingBox())?.y).toBeCloseTo(444, 0)
+  await expect(sheet.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('3')
+  await expect(sheet).toContainText('5 available · 3 needed')
+  await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+  await expect(page).toHaveURL(/\/galaxy$/)
+  expect(requests).toEqual([])
+  await sheet.getByRole('button', { name: 'Customize', exact: true }).click()
+  await expect(page).toHaveURL(/\/dispatch\?/)
+  await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toHaveValue('Harvest')
+  await expect(page.getByRole('combobox', { name: 'Destination type' })).toHaveValue('debris')
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '2'))
+})
+
+for (const [count, slots, reason] of [
+  ['0', '3', 'No recyclers available on the selected planet.'],
+  ['5', '0', 'No fleet slots available. Wait for a fleet to return.'],
+] as const) {
+  test(`mobile harvest explains ${reason}`, async ({ page }) => {
+    await setupHarvest(page, count, slots)
+    const sheet = await openHarvest(page)
+    await expect(sheet).toContainText(reason)
+    await expect(sheet.getByRole('textbox', { name: 'Recyclers', exact: true })).toBeDisabled()
+    await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
+    await expect(sheet.getByRole('button', { name: 'Customize', exact: true })).toBeEnabled()
+  })
+}
+
+test('mobile harvest caps the default and validates manual quantities', async ({ page }) => {
+  await setupHarvest(page, '2')
+  const sheet = await openHarvest(page), input = sheet.getByRole('textbox', { name: 'Recyclers', exact: true })
+  await expect(input).toHaveValue('2')
+  await expect(sheet).toContainText('2 available · 3 needed')
+  for (const value of ['0', '', '1.5', '3']) {
+    await input.fill(value)
+    await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
+  }
+  await input.fill('1')
+  await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+  await page.keyboard.press('Escape')
+  await expect(sheet).not.toBeVisible()
+  await expect(actions(page, 2)).toBeFocused()
+})
+
+test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', async ({ page }) => {
+  await setupHarvest(page)
+  let quotes = 0, launches = 0
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/world', async route => {
+    const request = route.request().postDataJSON()
+    if (request.type !== 'FleetQuote') return route.fallback()
+    quotes++
+    expect(request.intent).toEqual({ origin: body.id, mission: 'Harvest', destination: { type: 'Debris', coordinates: { galaxy: 1, system: 371, position: 2 }, field_identity: id(42) }, ships: [{ owner: binding.player, ship_type: 'Recycler', count: '3' }], cargo: { metal: '0', crystal: '0', deuterium: '0' }, speed_percent: 100 })
+    await gate
+    await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: harvestTerms(request.intent) } })
+  })
+  await page.route('**/commands', async route => {
+    const { gameplay } = route.request().postDataJSON()
+    if (gameplay.command.type !== 'World' || gameplay.command.action.type !== 'LaunchFleet') return route.fallback()
+    launches++
+    await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [id(90)], minimum_viewer_revision: '2' } })
+  })
+  const sheet = await openHarvest(page)
+  await sheet.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(sheet.getByRole('button', { name: 'Sending…', exact: true })).toBeDisabled()
+  await expect.poll(() => quotes).toBe(1)
+  release()
+  await expect(sheet).not.toBeVisible()
+  await expect(page).toHaveURL(/\/galaxy$/)
+  expect(launches).toBe(1)
+  await expect(page.getByText('Fleet slots: 1 used / 3 total')).toBeVisible()
+  const reopened = await openHarvest(page)
+  await expect(reopened.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('2')
+})
+
+test('closing mobile harvest while quoting never launches a stale selection', async ({ page }) => {
+  await setupHarvest(page)
+  let release!: () => void, quotes = 0, launches = 0
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/world', async route => {
+    const request = route.request().postDataJSON()
+    if (request.type !== 'FleetQuote') return route.fallback()
+    quotes++
+    await gate
+    await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: harvestTerms(request.intent) } })
+  })
+  page.on('request', request => { if (request.url().endsWith('/commands') && request.postDataJSON().gameplay?.command?.action?.type === 'LaunchFleet') launches++ })
+  const sheet = await openHarvest(page)
+  await sheet.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect.poll(() => quotes).toBe(1)
+  await page.keyboard.press('Escape')
+  await expect(sheet).not.toBeVisible()
+  const response = page.waitForResponse(response => response.url().endsWith('/world') && response.request().postDataJSON().type === 'FleetQuote')
+  release()
+  await response
+  await openHarvest(page)
+  expect(launches).toBe(0)
+})
+
+test('desktop Harvest retains the ordinary dispatch flow', async ({ page }) => {
+  await setupHarvest(page)
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await actions(page, 2).click()
+  await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
+  await expect(page).toHaveURL(/\/dispatch\?/)
+  await expect(page.getByRole('dialog', { name: 'Harvest mission', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toHaveValue('Harvest')
+})
+
+test('mobile coordinate Harvest action uses the same quick sheet and restores its opener', async ({ page }) => {
+  await setupHarvest(page)
+  const trigger = rows(page).nth(1).getByRole('button', { name: 'Location actions for [1:371:2]', exact: true })
+  await trigger.click()
+  await page.getByRole('menuitem', { name: 'Prepare harvest', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
+  await expect(sheet).toBeVisible()
+  await expect(sheet.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('3')
+  await expect(page).toHaveURL(/\/galaxy$/)
+  await page.keyboard.press('Escape')
+  await expect(sheet).not.toBeVisible()
+  await expect(trigger).toBeFocused()
+})
+
+test('mobile harvest displays fuel quote failures without creating a departure', async ({ page }) => {
+  await setupHarvest(page)
+  let launches = 0
+  await page.route('**/world', route => route.request().postDataJSON().type === 'FleetQuote' ? route.fulfill({ status: 409, json: { code: 'InsufficientResources' } }) : route.fallback())
+  page.on('request', request => { if (request.url().endsWith('/commands') && request.postDataJSON().gameplay?.command?.action?.type === 'LaunchFleet') launches++ })
+  const sheet = await openHarvest(page)
+  await sheet.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(sheet.getByRole('alert')).toContainText(/fuel|deuterium|resources/i)
+  await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+  expect(launches).toBe(0)
+})

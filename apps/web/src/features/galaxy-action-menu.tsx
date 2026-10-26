@@ -1,4 +1,5 @@
 import { Crosshair, Ellipsis, Recycle, Rocket, Truck } from 'lucide-react'
+import { useRef } from 'react'
 import { Menu } from '@base-ui/react/menu'
 import { Button } from '../ui/button'
 import type { components } from '../contracts'
@@ -27,12 +28,15 @@ export function GalaxyActionMenu({
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
+    opener?: HTMLElement | null,
   ) => void
 }) {
+  const trigger = useRef<HTMLButtonElement>(null)
   const enabled = actions.some((action) => !action.reason)
   return (
     <Menu.Root>
       <Menu.Trigger
+        ref={trigger}
         render={<Button variant="ghost" className={styles.actionTrigger} />}
         aria-label={`Actions for ${target}`}
         disabled={!enabled}
@@ -63,7 +67,9 @@ export function GalaxyActionMenu({
                   className={styles.menuItem}
                   disabled={!!action.reason}
                   title={action.reason}
-                  onClick={() => onDraft(coordinates, action.mission)}
+                  onClick={() => {
+                    onDraft(coordinates, action.mission, trigger.current)
+                  }}
                 >
                   <Icon size={15} aria-hidden="true" />
                   {action.mission}

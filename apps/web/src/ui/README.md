@@ -133,3 +133,41 @@ Community → Alliance opens a universe-level screen for discovery, membership, 
 The screen-scoped Zustand controller retains server responses and command identities. Edited form values are local drafts, preserved through transient failure/refresh and cleared when membership or authority is lost. Unknown command outcomes retry the identical command; success refreshes authoritative state and affected public identities. Markdown renders with HTML/images disabled and a safe link allowlist. Board pages are revision-bound, hold 20 notices, and derive pin/management actions from permissions.
 
 Shared player identity renders alliance tags throughout live game screens. Historical report contexts override current affiliations using captured event-time facts, including an explicitly empty map for old reports. Shared reports hide affiliation when player identity is redacted.
+
+## Mobile action sheets
+
+Use `ActionSheet` as the default mobile pattern for new contextual actions and short forms. Desktop callers may retain dialogs, popovers, or inline controls; do not migrate a whole flow just to share its presentation. The primitive itself works at desktop widths too, capped at 640px. All styling defaults to Orbit tokens, shared buttons, and editorial headings.
+
+`open` / `onOpenChange` are controlled by the caller. Keep the component mounted through closure so the exit spring completes before releasing modality and restoring opener focus. Form drafts stay with the caller; game data stays in the authoritative store. `children` accepts ordinary content or a render function with `{ snapTo, close }`. Opening a sheet never submits gameplay.
+
+```tsx
+const [open, setOpen] = useState(false)
+
+<Button onClick={() => setOpen(true)}>Planet actions</Button>
+<ActionSheet
+  open={open}
+  onOpenChange={setOpen}
+  title="Planet actions"
+  description="Aster · [1:50:8]"
+  snapPoints={[12.5, 50, 80, 100]}
+  initialSnap={50}
+>
+  {({ close }) => <Button onClick={close}>Done</Button>}
+</ActionSheet>
+```
+
+Stops are percentages of the available height after reserving 44px at the top, not percentages of the whole screen. Defaults are `[12.5, 50, 100]`, opening at 50. Stops are validated, sorted and deduplicated; custom maxima also govern keyboard and form expansion. `mode="free"` retains arbitrary release heights within the configured bounds. `spring` is `silky` (default), `snappy`, or `soft`. `flickToDismiss`, `dim`, and `depth` default to true.
+
+For the recessed-page effect, wrap the page in `ActionSheetSurface`, pass its ref as `backgroundRef`, and put the sheet alongside it. The surface is a viewport-sized scroll container; opt into that scroll ownership deliberately rather than transforming arbitrary tall content or searching for application DOM. It scales about its bottom edge, leaving its bottom flush and its top inset 12px. The Full stop exposes another 32px of that page. The native modal is portaled to the document and stays outside the transformed surface. Closing/unmounting restores styles, document scroll, and focus. Ordinary sheets without a surface still dim and block the background.
+
+The dedicated 48px handle owns dragging. Content retains native scrolling, selection, links, and controls. Arrow keys select adjacent stops (10% increments in freeform); Home/End select configured endpoints. Escape, backdrop taps, and the visible close button dismiss. Gentle flicks move toward the next stop from the gesture's origin, without skipping a just-crossed notch. Flick dismissal requires at least 1500px/s **and** 36px of downward travel; dragging below 7% also dismisses. No fake haptics/audio.
+
+The controller tracks the Visual Viewport for browser chrome, rotation and software keyboards. Focused fields expand to the configured maximum and scroll into view after settling. Only the inner content scrolls; the modal wrapper uses `overflow: clip`. A 64px paint extension covers upward overshoot at the bottom. Motion values drive position, dimming, and visible content height without React renders per animation frame. Reduced motion removes spring movement and background scaling. This is a specific exception to the otherwise immediate UI-state policy, not permission for general animated controls.
+
+Behavior and thresholds preserve the final **Prototype Mobile Action Sheets** chat (`01a1733c-ef28-7082-a540-538340e5e2ca`) and its Sheet Lab source, including all three follow-up corrections. The implementation is split into a typed component, lifecycle hook, pure gesture/geometry helpers, DOM effects, and CSS Modules.
+
+Open `/action-sheet-playground` in Vite to test snap/freeform modes, alternate stops, springs, depth/dimming, form controls, and scrolling in an isolated Orbit preview. It makes no game API requests and is excluded from production bundles. Unit coverage runs with `npm test -- action-sheet-physics`; browser coverage runs with `npm run test:ui -- action-sheet.spec.ts`. Simulated viewport events verify keyboard geometry, but actual iPhone Safari keyboard and touch feel still require on-device inspection.
+
+Galaxy’s mobile Harvest actions (row menu and coordinate menu, below 768px) open a 50% `GalaxyHarvestSheet`. The compact form suggests `ceil((metal + crystal) / recycler capacity)`, capped by currently available recyclers. Galaxy debris and catalog capacity are whole units; harvesting also respects the engine’s 20,000-unit collection cap per Recycler. Suggestions, inventory and fleet slots derive from the live Zustand projection, including unresolved departures. Only a user's quantity edit is stored locally. Empty inventories and occupied slots disable the form with explicit explanations. Customize preserves the origin, debris coordinates and Harvest mission in regular dispatch; desktop Harvest continues directly to dispatch.
+
+Send requests a fresh server quote for recyclers alone at 100% speed with no cargo, rechecks availability/binding/context, and submits through the ordinary durable command path. Dismissing or navigating away before quoting finishes cancels that launch. Pending/uncertain departures cannot be sent again from the same sheet; uncertainty offers recovery of the saved command. Success closes the sheet, while rejections remain actionable. Menu integrations pass `returnFocusRef` so sheets return focus to the persistent trigger rather than a removed menu item. UI opening keys use a local counter, which also works over LAN HTTP.
