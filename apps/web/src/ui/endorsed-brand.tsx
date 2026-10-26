@@ -2,7 +2,13 @@ import { Link } from './link'
 import styles from './endorsed-brand.module.css'
 
 /** One canonical lockup, with independent game and publisher destinations. */
-export function EndorsedBrand({ homeLink = true }: { homeLink?: boolean }) {
+export function EndorsedBrand({
+  homeLink = true,
+  nativeLinks = false,
+}: {
+  homeLink?: boolean
+  nativeLinks?: boolean
+}) {
   return (
     <div className={styles.lockup}>
       <img
@@ -12,7 +18,9 @@ export function EndorsedBrand({ homeLink = true }: { homeLink?: boolean }) {
         height={100}
         alt=""
       />
-      {homeLink ? (
+      {homeLink && nativeLinks ? (
+        <a className={styles.home} href="/" aria-label="Orbit Imperium" />
+      ) : homeLink ? (
         <Link className={styles.home} to="/" aria-label="Orbit Imperium" />
       ) : (
         <span className={styles.home} role="img" aria-label="Orbit Imperium" />
