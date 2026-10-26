@@ -1,6 +1,6 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, binding, id } from './fixtures/game'
+import { installGameFixture, refreshGame, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 import { permissionLabels } from '../src/client-model/alliances'
 type S = components['schemas']
@@ -136,8 +136,13 @@ test('noticeboard renders safely, creates, pins, edits and loads a stable older 
   const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Rally at dawn' }) })
   await article.getByText('Edit notice', { exact: true }).click()
   await article.getByLabel('Notice title', { exact: true }).fill('Rally at noon')
+  await article.getByRole('button', { name: 'Preview notice', exact: true }).click()
+  await article.getByRole('textbox', { name: 'Notice body', exact: true }).fill('**Meet** at noon instead.')
+  await article.getByRole('button', { name: 'Preview notice', exact: true }).click()
+  await expect(article.getByText('Meet at noon instead.', { exact: true })).toHaveCount(1)
   await article.getByRole('button', { name: 'Save notice' }).click()
   await expect(page.getByRole('heading', { name: 'Rally at noon' })).toBeVisible()
+  await expect(page.getByText('Meet at noon instead.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Older notices' }).click()
   await expect(page.getByRole('heading', { name: 'Older chapter' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Rally at noon' })).toHaveCount(0)
@@ -321,3 +326,60 @@ test('saving an unrelated role retains an edited notice draft', async ({page})=>
   await expect(page.getByRole('textbox',{name:'Notice title',exact:true})).toHaveValue('Unpublished orders')
   await expect(page.getByRole('textbox',{name:'Notice body',exact:true})).toHaveValue('Keep this draft while assigning duties.')
 })
+
+for (const viewport of [{ width: 390, height: 740 }, { width: 1440, height: 900 }]) {
+  test.describe(`alliance reading at ${viewport.width}px`, () => {
+    test.use({ viewport, isMobile: viewport.width < 768, hasTouch: viewport.width < 768 })
+
+    test('long pinned notices preserve reading, selection and focus through live updates', async ({ page }) => {
+      const now = new Date('2026-10-26T12:00:00Z')
+      await page.clock.install({ time: now })
+      await page.clock.pauseAt(now)
+      const detail = own()
+      detail.posts![0].pinned = true
+      // A tall preformatted notice mirrors the ASCII art in the iPhone report.
+      detail.posts![0].body = '```\n' + Array.from({ length: 60 }, (_, index) => `| Standing order ${index + 1} |`).join('\n') + '\n```\n\nRead these standing orders together.\n\n[Read recruitment](/alliances/' + binding.universe + '/' + alliance + ')'
+      await fixture(page, detail)
+      await page.goto('/u/andromeda/alliance')
+      const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Welcome aboard' }) })
+      await expect(article).toBeVisible()
+      await page.clock.runFor(500)
+      await page.evaluate(() => document.fonts.ready)
+      const passage = article.getByText('Read these standing orders together.', { exact: true })
+      await passage.scrollIntoViewIfNeeded()
+      await passage.evaluate(node => {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        const selection = window.getSelection()!
+        selection.removeAllRanges()
+        selection.addRange(range)
+      })
+      const before = await page.evaluate(() => scrollY)
+      await page.clock.runFor(1000)
+      expect(await page.evaluate(() => scrollY)).toBeCloseTo(before, 0)
+      expect(await page.evaluate(() => window.getSelection()?.toString())).toBe('Read these standing orders together.')
+
+      const link = article.getByRole('link', { name: 'Read recruitment', exact: true })
+      await link.focus()
+      const focusedPosition = await page.evaluate(() => scrollY)
+      const refreshed = page.waitForResponse(response => response.url().endsWith('/overview'))
+      await refreshGame(page)
+      await page.clock.runFor(1000)
+      await refreshed
+      await expect(link).toBeFocused()
+      expect(await page.evaluate(() => scrollY)).toBeCloseTo(focusedPosition, 0)
+
+      // Mobile browser chrome changes the viewport height while reading.
+      await page.setViewportSize({ ...viewport, height: viewport.height + 90 })
+      const pages = page.getByRole('navigation', { name: 'Notice pages' })
+      await pages.scrollIntoViewIfNeeded()
+      await page.clock.runFor(1000)
+      await expect(pages.getByRole('button', { name: 'Newest notices' })).toBeInViewport()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await diagnosticScreenshot(page, { path: `test-results/alliance-reading-${viewport.width}.png` })
+      await link.click()
+      await expect(page).toHaveURL(new RegExp(`/alliances/${binding.universe}/${alliance}$`))
+      await expect(page.getByRole('heading', { name: summary.name })).toBeVisible()
+    })
+  })
+}

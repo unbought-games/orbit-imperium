@@ -1,5 +1,5 @@
 import { useAllianceDraft } from './drafts'
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { components } from '../../contracts'
 import type { AllianceAction } from '../../client-model/alliances'
 import { Button } from '../../ui/button'
@@ -7,12 +7,10 @@ import { allianceMarkdown } from './markdown'
 import styles from './alliances.module.css'
 export type Run = (action: AllianceAction) => Promise<boolean>
 export function Markdown({ text }: { text: string }) {
-  return (
-    <div
-      className={styles.markdown}
-      dangerouslySetInnerHTML={{ __html: allianceMarkdown(text) }}
-    />
-  )
+  // Game clock updates must not replace unchanged notice DOM: that disrupts
+  // browser scrolling, text selection and focused links while reading.
+  const markup = useMemo(() => ({ __html: allianceMarkdown(text) }), [text])
+  return <div className={styles.markdown} dangerouslySetInnerHTML={markup} />
 }
 export function Summary({
   summary,

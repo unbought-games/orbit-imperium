@@ -1784,6 +1784,11 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
 test('dispatch fences changed drafts and keeps uncertain launch recovery in action notices', async ({
   page,
 }) => {
+  // Count explicit review requests without racing the background flight estimate.
+  // Flight timing has separate coverage; recovery below is requested explicitly.
+  const now = new Date()
+  await page.clock.install({ time: now })
+  await page.clock.pauseAt(now)
   await shellFixture(page, {
     protocol: 4,
     catalog: [
