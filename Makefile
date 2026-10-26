@@ -18,6 +18,7 @@ BRIDGE_TESTS = cargo nextest run -p orbit-server --all-targets --features test-s
 DB_TESTS = cargo nextest run -p orbit-storage-postgres --features test-support
 DB_SUITES = $(basename $(notdir $(wildcard crates/storage-postgres/tests/*.rs)))
 DB_TARGETS = $(addprefix _db-,$(DB_SUITES))
+DB_JOBS ?= 4
 
 .PHONY: check test-tooling test-client test-server test-db test-ui prepare-server _server _database _static $(DB_TARGETS)
 check: test-tooling test-client test-server
@@ -53,7 +54,7 @@ _server:
 
 test-db:
 	$(DB_TESTS) --tests --no-run
-	$(MAKE) -j2 _database
+	$(MAKE) -j$(DB_JOBS) _database
 
 _database: $(DB_TARGETS)
 $(DB_TARGETS): _db-%:
