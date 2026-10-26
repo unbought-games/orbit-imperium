@@ -7,7 +7,7 @@ pub struct EnergyStats {
     pub demand: i64,
     pub utilization: i64,
 }
-fn output_factors(
+pub(crate) fn output_factors(
     body: &Body,
     settings: &ProductionSettings,
     rules: &Ruleset,
@@ -24,7 +24,7 @@ fn output_factors(
     }
     Ok(output)
 }
-fn energy_ratios(
+pub(crate) fn energy_ratios(
     output: &[Rational; 4],
     satellite_energy: i64,
     rules: &Ruleset,
@@ -91,7 +91,7 @@ pub fn production_rates_with_settings(
 }
 // Shared by actual production and the full-output building preview. Base income,
 // throttling and energy utilization are applied only to actual planet production.
-fn resource_output(
+pub(crate) fn resource_output(
     body: &Body,
     index: usize,
     output: Rational,

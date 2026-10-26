@@ -9643,6 +9643,9 @@
           },
           "building_benefit": {
             "$ref": "#/components/schemas/BuildingBenefit"
+          },
+          "building_production": {
+            "$ref": "#/components/schemas/BuildingProduction"
           }
         },
         "required": [
@@ -9736,6 +9739,28 @@
             "required": [
               "unit_energy",
               "energy_supply"
+            ],
+            "additionalProperties": false
+          },
+          "fusion_reactor": {
+            "type": "object",
+            "properties": {
+              "energy_supply": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "projection_limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "energy_supply",
+              "projection_limit"
             ],
             "additionalProperties": false
           }
@@ -11626,6 +11651,9 @@
           },
           "building_benefit": {
             "$ref": "#/components/schemas/BuildingBenefit"
+          },
+          "building_production": {
+            "$ref": "#/components/schemas/BuildingProduction"
           }
         },
         "required": [
@@ -17067,6 +17095,75 @@
             }
           }
         }
+      },
+      "BuildingProductionValues": {
+        "type": "object",
+        "properties": {
+          "energy_supply": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "energy_demand": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "utilization": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "fusion_supply": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "fuel_deuterium_per_hour": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "fuel_utilization": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "metal_per_hour": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "crystal_per_hour": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "net_deuterium_per_hour": {
+            "type": "string",
+            "pattern": "^-?(0|[1-9][0-9]*)$"
+          }
+        },
+        "required": [
+          "energy_supply",
+          "energy_demand",
+          "utilization",
+          "fusion_supply",
+          "fuel_deuterium_per_hour",
+          "fuel_utilization",
+          "metal_per_hour",
+          "crystal_per_hour",
+          "net_deuterium_per_hour"
+        ],
+        "additionalProperties": false
+      },
+      "BuildingProduction": {
+        "type": "object",
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/BuildingProductionValues"
+          },
+          "target": {
+            "$ref": "#/components/schemas/BuildingProductionValues"
+          }
+        },
+        "required": [
+          "current",
+          "target"
+        ],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

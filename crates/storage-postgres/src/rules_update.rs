@@ -140,6 +140,7 @@ async fn settle_and_initialize(
             body,
             &state.production_settings[&body.id].settings,
             satellite_counts[&body.id],
+            state.research[&body.owner].levels[&ResearchId::EnergyTechnology],
             at,
             current,
         )
@@ -165,6 +166,7 @@ async fn settle_and_initialize(
             body,
             &state.production_settings[&body.id].settings,
             satellite_counts[&body.id],
+            state.research[&body.owner].levels[&ResearchId::EnergyTechnology],
             at,
             next,
         )

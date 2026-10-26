@@ -27,7 +27,8 @@ export const resourceBuildings = [
   {
     id: 'FusionReactor',
     art: resolveCatalogArt({ kind: 'Building', id: 'FusionReactor' }),
-    description: 'Generates energy using deuterium fuel.',
+    description:
+      'Generates energy using deuterium fuel. Energy Technology increases output. Requires Deuterium Synthesizer 5 and Energy Technology 3.',
   },
   {
     id: 'MetalStorage',

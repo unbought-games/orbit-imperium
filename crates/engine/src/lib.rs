@@ -93,3 +93,7 @@ mod colonization;
 pub use colonization::*;
 
 pub mod alliances;
+
+mod fusion;
+pub use fusion::*;
+mod fuel_settlement;

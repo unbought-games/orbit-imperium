@@ -44,7 +44,7 @@ impl ProductionSettings {
         {
             return Err(GameError::InvalidInput);
         }
-        if self.fusion_reactor != 100
+        if (self.fusion_reactor != 100 && fusion_rule(rules).is_none())
             || (self.solar_satellite != 100 && solar_satellite_rule(rules).is_none())
         {
             return Err(GameError::UnavailableContent);
@@ -106,6 +106,8 @@ pub struct ProgressionInspection {
     pub building_energy: Option<BuildingEnergy>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub building_benefit: Option<BuildingBenefit>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub building_production: Option<BuildingProduction>,
 }
 fn block(code: GameError) -> ProgressionBlocker {
     ProgressionBlocker {
@@ -130,6 +132,16 @@ pub fn settle_production(
         return settle_economy(b, at, r);
     }
     validate_body(s, b.id, r)?;
+    if fusion_rule(r).is_some() {
+        return settle_fusion(
+            b,
+            &s.production_settings[&b.id].settings,
+            solar_satellite_count(s, b, r)?,
+            energy_technology(s, b)?,
+            at,
+            r,
+        );
+    }
     crate::economy::settle_rates(b, at, body_production_rates(s, b, r)?, r)
 }
 fn head(s: &GameState, kind: &str, id: impl std::fmt::Display) -> Result<(), InvariantError> {
@@ -330,6 +342,7 @@ pub fn inspect_progression(
         estimates: None,
         building_energy: None,
         building_benefit: None,
+        building_production: None,
     };
     let Some((id, key)) = request_identity(q) else {
         out.blockers.push(block(GameError::UnavailableContent));
@@ -390,6 +403,31 @@ pub fn inspect_progression(
     } = &terms
     {
         out.building_benefit = building_benefit(b, *building, *source_level, *target_level, r)?;
+        if fusion_rule(r).is_some()
+            && (*building == Building::FusionReactor
+                || b.levels
+                    .get(&Building::FusionReactor)
+                    .is_some_and(|level| *level > 0))
+        {
+            let mut preview = b.clone();
+            preview.checkpoint = settle_production(s, b, at, r)?;
+            let current = body_economy(s, &preview, r)?.into();
+            preview.levels.insert(*building, *target_level);
+            let target = body_economy(s, &preview, r)?.into();
+            out.building_production = Some(BuildingProduction { current, target });
+            if *building == Building::FusionReactor {
+                let technology = energy_technology(s, b)?;
+                out.building_benefit = Some(BuildingBenefit {
+                    kind: BuildingBenefitKind::Energy,
+                    current: fusion_full_output(*source_level, technology, r)?
+                        .0
+                        .to_string(),
+                    target: fusion_full_output(*target_level, technology, r)?
+                        .0
+                        .to_string(),
+                });
+            }
+        }
         out.building_energy = Some(building_energy(
             b,
             *building,
@@ -678,8 +716,14 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         }) => {
             let b = owned(s, *body, i, r)?;
             settings.validate(r)?;
-            if solar_satellite_rule(r).is_some() {
-                production_rates_with_settings(b, settings, solar_satellite_count(s, b, r)?, r)?;
+            if solar_satellite_rule(r).is_some() || fusion_rule(r).is_some() {
+                production_economy(
+                    b,
+                    settings,
+                    solar_satellite_count(s, b, r)?,
+                    energy_technology(s, b)?,
+                    r,
+                )?;
             }
             let settled = settle(s, b, i, r)?;
             let old = &s.production_settings[body];
@@ -804,7 +848,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 if b.retained_capacity.is_some() {
                     b.retained_capacity = Some(capacity);
                 }
-                body_production_rates(s, &b, r)?;
+                body_economy(s, &b, r)?;
                 op.status = ConstructionStatus::Completed;
             }
             op.revision = add(op.revision, 1)?;
@@ -921,7 +965,15 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             } else {
                 if op.research == ResearchId::EnergyTechnology {
                     for b in s.bodies.values().filter(|b| b.owner == op.owner) {
-                        c.bodies.push(settle(s, b, i, r)?);
+                        let settled = settle(s, b, i, r)?;
+                        production_economy(
+                            &settled,
+                            &s.production_settings[&b.id].settings,
+                            solar_satellite_count(s, b, r)?,
+                            op.target_level,
+                            r,
+                        )?;
+                        c.bodies.push(settled);
                     }
                 }
                 levels.levels.insert(op.research, op.target_level);
@@ -1038,10 +1090,11 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if original.item == ManufacturedItem::Ship(ShipType::SolarSatellite) {
                 c.bodies.push(settle(s, b, i, r)?);
                 // Validate the new rate before crediting any inventory or score.
-                production_rates_with_settings(
+                production_economy(
                     b,
                     &s.production_settings[&b.id].settings,
                     add(solar_satellite_count(s, b, r)?, 1)?,
+                    energy_technology(s, b)?,
                     r,
                 )?;
             }

@@ -1,0 +1,14 @@
+{
+  "building": { "base": [900, 360, 180], "growth": [9, 5] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "DeuteriumSynthesizer", "level": 5 },
+    { "type": "PlayerResearch", "research": "EnergyTechnology", "level": 3 }
+  ],
+  "production": {
+    "energy_base": 30,
+    "energy_growth": [21, 20],
+    "technology_divisor": 100,
+    "fuel_base": 10,
+    "fuel_growth": [11, 10]
+  }
+}

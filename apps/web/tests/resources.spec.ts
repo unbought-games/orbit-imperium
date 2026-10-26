@@ -351,10 +351,10 @@ test('resource settings keep production rules and fuel figures without repeated 
   await expect(settings).toContainText('Deuterium fuel: 0 / hour')
   await expect(settings).toContainText('Net deuterium: 10 / hour')
   await expect(settings).toContainText(
-    'Full storage stops production; excess resources remain usable.',
+    'Full storage suppresses new income; fuel consumption continues and excess resources remain usable.',
   )
   await expect(settings).toContainText(
-    'Energy shortages reduce output without changing your settings.',
+    'Energy and fuel shortages reduce output without changing your settings.',
   )
   await expect(settings).not.toContainText('Confirmed economy')
   await expect(settings).not.toContainText('output · energy demand')
