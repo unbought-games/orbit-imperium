@@ -84,7 +84,7 @@ function Levels({
   emptyLabel: string
 }) {
   return rows.length ? (
-    <dl className={styles.grid}>
+    <dl className={styles.levels}>
       {rows.map(([name, level]) => (
         <div key={name}>
           <dt>{label(name)}</dt>

@@ -1,39 +1,40 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
-import { colonizationStatus } from '../client-model/colonization'
-import { GalaxyPosition } from './galaxy-position'
+import { GalaxyDebris, debrisFieldSize } from './galaxy-debris'
 
 it.each([
   ['900', '1500', '900', '1,500'],
   ['0', '400', '0', '400'],
   ['1000000', '9223372036854', '1,000,000', '9,223,372,036,854'],
 ])(
-  'renders Galaxy API debris %s / %s as whole resources with accessible icons',
-  (metal, crystal, metalDisplay, crystalDisplay) => {
+  'renders whole-unit debris %s / %s with exact accessible values and colored resource marks',
+  (metal, crystal, m, c) => {
     const markup = renderToStaticMarkup(
-      createElement(GalaxyPosition, {
-        position: {
-          coordinates: { galaxy: 1, system: 1, position: 4 },
-          body: null,
-          // PublicDebris contains whole units, unlike report Resources.
-          debris: { field_identity: 'field', metal, crystal },
-        },
-        player: 'viewer',
-        origin: 'origin',
-        canAttack: true,
-        colony: colonizationStatus(null, 4),
-        onDraft: () => {},
+      createElement(GalaxyDebris, {
+        debris: { field_identity: 'field', metal, crystal },
       }),
     )
-    expect(markup.replace(/<[^>]+>/g, '')).toContain(
-      `Debris field${metalDisplay}${crystalDisplay}`,
-    )
+    for (const full of [m, c]) expect(markup).toContain(`title="${full}"`)
     for (const resource of ['metal', 'crystal']) {
-      const title = resource[0].toUpperCase() + resource.slice(1)
-      expect(markup).toContain(`title="${title}"`)
-      expect(markup).toContain(`aria-label="${title}"`)
+      const name = resource[0].toUpperCase() + resource.slice(1)
+      expect(markup).toContain(`aria-label="${name}"`)
       expect(markup).toContain(`color:var(--resource-${resource})`)
     }
+    expect(markup).toContain('Debris field')
+  },
+)
+
+it.each([
+  ['0', '300', 'small'],
+  ['9999', '0', 'small'],
+  ['9999', '1', 'medium'],
+  ['499999', '500000', 'medium'],
+  ['499999', '500001', 'large'],
+  ['9007199254740993', '0', 'large'],
+])(
+  'selects %s + %s whole units as a %s debris field',
+  (metal, crystal, size) => {
+    expect(debrisFieldSize(metal, crystal)).toBe(size)
   },
 )

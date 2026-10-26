@@ -242,18 +242,6 @@ pub fn validate_progression_collections(s: &GameState, b: &Body) -> Result<(), I
     }
     head(s, &format!("inventory:{}", b.id), b.owner)?;
     reserved_fields(s, b.id)?;
-    let domes: Vec<_> = s
-        .manufacturing_batches
-        .values()
-        .filter(|x| {
-            x.body == b.id
-                && x.status == ManufacturingStatus::Active
-                && x.item == ManufacturedItem::Defense(DefenseId::SmallShieldDome)
-        })
-        .collect();
-    if domes.len() > 1 {
-        return Err(bad("multiple active dome batches"));
-    }
     if s.research_operations
         .values()
         .filter(|x| x.owner == b.owner && x.status == ResearchStatus::Active)
@@ -294,6 +282,25 @@ pub fn validate_progression_collections(s: &GameState, b: &Body) -> Result<(), I
             )? != x.next_due_at
         {
             return Err(bad("invalid batch"));
+        }
+    }
+    // Each dome type has its own capacity, including paid work still in the FIFO.
+    for defense in [DefenseId::SmallShieldDome, DefenseId::LargeShieldDome] {
+        let item = ManufacturedItem::Defense(defense);
+        let completed = s
+            .inventories
+            .iter()
+            .find(|x| x.body == b.id && x.item == item)
+            .map_or(0, |x| x.count);
+        let total = s
+            .manufacturing_batches
+            .values()
+            .filter(|x| x.body == b.id && x.status == ManufacturingStatus::Active && x.item == item)
+            .try_fold(completed, |n, x| {
+                n.checked_add(x.quantity - x.completed_prefix)
+            });
+        if total.is_none_or(|n| n > 1) {
+            return Err(bad("shield dome capacity exceeded"));
         }
     }
     Ok(())
@@ -496,7 +503,7 @@ pub fn inspect_progression(
             if total.is_none() {
                 out.blockers.push(block(GameError::NumericRange))
             }
-            if *item == ManufacturedItem::Defense(DefenseId::SmallShieldDome)
+            if matches!(item, ManufacturedItem::Defense(defense) if defense.is_shield_dome())
                 && total.is_some_and(|n| n > 1)
             {
                 out.blockers.push(block(GameError::CapacityReserved))

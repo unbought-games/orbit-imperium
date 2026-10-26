@@ -91,7 +91,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
             .await
             .unwrap();
     let plan = service.prepare_upgrade(universe).await.unwrap();
-    assert_eq!(plan.release, "0.4.0");
+    assert_eq!(plan.release, "0.5.0");
     assert!(!plan.diff.changes.is_empty());
     assert_eq!(
         plan.diff.initialize.add_research,
@@ -131,6 +131,21 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
                 .enabled
         );
     }
+    assert!(after.rules.artifact.catalog.iter().any(|entry| entry.key
+        == CatalogKey::Defense(DefenseId::LargeShieldDome)
+        && entry.enabled));
+    assert!(
+        after
+            .rules
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .units
+            .iter()
+            .any(|unit| unit.item == ManufacturedItem::Defense(DefenseId::LargeShieldDome))
+    );
     assert_eq!(after.state.players, before.state.players);
     assert_eq!(after.state.epoch, before.state.epoch);
     assert_eq!(after.state.constructions, before.state.constructions);

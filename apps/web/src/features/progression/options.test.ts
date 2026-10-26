@@ -215,6 +215,58 @@ it('blocks numeric overflow and shield dome capacity locally', () => {
   ).not.toContain('CapacityReserved')
 })
 
+it.each(['SmallShieldDome', 'LargeShieldDome'] as const)(
+  '%s counts only its own completed and queued units on this planet',
+  (id) => {
+    const source = unitOptions()
+    if (source.terms?.type !== 'Manufacture') throw Error('fixture')
+    source.terms.item = { kind: 'Defense', id }
+    const current = structuredClone(view)
+    const other =
+      id === 'SmallShieldDome' ? 'LargeShieldDome' : 'SmallShieldDome'
+    current.bodies[0].inventories = [
+      { item: { kind: 'Defense', id: other }, count: '1' },
+    ]
+    const capacity = (quantity = '1') =>
+      manufacturingPreview(source, current, quantity)!.blockers.map(
+        (b) => b.code,
+      )
+    expect(capacity()).not.toContain('CapacityReserved')
+    expect(capacity('2')).toContain('CapacityReserved')
+    current.bodies[0].inventories.push({
+      item: { kind: 'Defense', id },
+      count: '1',
+    })
+    expect(capacity()).toContain('CapacityReserved')
+    current.bodies[0].inventories[1].count = '0'
+    expect(capacity()).not.toContain('CapacityReserved')
+    current.progression.manufacturing = [
+      {
+        id: 'dome-batch',
+        body: body.id,
+        item: { kind: 'Defense', id },
+        quantity: '1',
+        completed_prefix: '0',
+        remaining: '1',
+        paid: body.amounts,
+        accepted_at: 1000,
+        first_start_at: 1000,
+        next_due_at: 2000,
+        final_due_at: 2000,
+        unit_duration_ms: 1000,
+        state: 'Producing',
+        can_cancel: false,
+      },
+    ]
+    expect(capacity()).toContain('CapacityReserved')
+    current.progression.manufacturing[0].body = 'other-planet'
+    expect(capacity()).not.toContain('CapacityReserved')
+    current.progression.manufacturing[0].body = body.id
+    current.progression.manufacturing[0].item = { kind: 'Defense', id: other }
+    expect(capacity()).not.toContain('CapacityReserved')
+  },
+)
+
 it('requires server validation to match the displayed quantity, cost and production time', () => {
   const source = unitOptions()
   const preview = manufacturingPreview(source, view, '3')!

@@ -1,5 +1,6 @@
 import { Diamond, Orbit, Sparkles, Star } from 'lucide-react'
 import styles from './supporter-identity.module.css'
+import { InfoTooltip } from '../ui/info-tooltip'
 
 export type SupporterTier = 1 | 2 | 3
 export type SupporterPalette = 'aurora' | 'starlight'
@@ -17,10 +18,12 @@ export function SupporterIdentity({
   tier,
   palette = 'starlight',
   badge = 'star',
+  badgeTooltip = false,
 }: {
   name: string
   tier?: SupporterTier
   palette?: SupporterPalette
+  badgeTooltip?: boolean
   badge?: SupporterBadge
 }) {
   const Icon =
@@ -34,16 +37,25 @@ export function SupporterIdentity({
   return (
     <span className={styles.identity} data-palette={palette} data-tier={tier}>
       <span className={styles.name}>{name}</span>
-      {tier && (
-        <span
-          className={styles.badge}
-          role="img"
-          aria-label={`Supporter · ${tierLabels[tier]} USD`}
-          title={`Supporter · ${tierLabels[tier]} USD`}
-        >
-          <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
-        </span>
-      )}
+      {tier &&
+        (badgeTooltip ? (
+          <InfoTooltip
+            className={styles.badge}
+            label={`Supporter · ${tierLabels[tier]} USD`}
+            description="This player supports Orbit Imperium. Supporter status does not affect gameplay strength or protection."
+          >
+            <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+          </InfoTooltip>
+        ) : (
+          <span
+            className={styles.badge}
+            role="img"
+            aria-label={`Supporter · ${tierLabels[tier]} USD`}
+            title={`Supporter · ${tierLabels[tier]} USD`}
+          >
+            <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+          </span>
+        ))}
     </span>
   )
 }

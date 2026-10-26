@@ -13,6 +13,11 @@ pub enum DefenseId {
     PlasmaTurret,
     LargeShieldDome,
 }
+impl DefenseId {
+    pub fn is_shield_dome(self) -> bool {
+        matches!(self, Self::SmallShieldDome | Self::LargeShieldDome)
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum MissileId {
     AntiBallisticMissile,

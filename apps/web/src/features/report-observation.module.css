@@ -7,6 +7,31 @@
   gap: var(--space-3);
   margin: 0;
 }
+.levels {
+  display: grid;
+  /* Keep empty tracks so small groups align with the larger groups above. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  column-gap: var(--space-5);
+  max-width: 68rem;
+  margin: 0;
+}
+.levels > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid #cbb68d15;
+}
+.observation .levels dt {
+  font-weight: 400;
+}
+.observation .levels dd {
+  margin: 0;
+  font-size: 1rem;
+  text-align: right;
+  white-space: nowrap;
+}
 .observation dt {
   font-weight: 600;
   color: var(--text-muted);

@@ -103,7 +103,7 @@ pub(crate) fn technical_data(
                 let [n, d] = world.combat.defense_recovery_probability;
                 data.fact("Recovery after combat", format!("{n} / {d} chance for each destroyed defense to recover independently; not a guaranteed fraction of losses."));
             }
-            if defense == DefenseId::SmallShieldDome {
+            if defense.is_shield_dome() {
                 data.fact("Planet limit", "One completed or queued dome of this type per planet. Its shield protects itself, not other units.");
             }
         }
@@ -233,6 +233,35 @@ mod tests {
             }
         }
         assert_eq!(before, serde_json::to_value(&r.artifact).unwrap());
+    }
+    #[test]
+    fn both_domes_explain_independent_limits_and_large_dome_uses_active_stats() {
+        let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+        for defense in [DefenseId::SmallShieldDome, DefenseId::LargeShieldDome] {
+            let projected = data(&r, CatalogKey::Defense(defense));
+            assert!(
+                projected
+                    .facts
+                    .iter()
+                    .any(|fact| fact.label == "Planet limit"
+                        && fact.value.contains("of this type")
+                        && fact.value.contains("not other units"))
+            );
+            assert!(
+                projected
+                    .facts
+                    .iter()
+                    .any(|fact| fact.label == "Recovery after combat")
+            );
+        }
+        let large = data(&r, CatalogKey::Defense(DefenseId::LargeShieldDome))
+            .combat
+            .unwrap();
+        assert_eq!(large.attack_ticks, "100000");
+        assert_eq!(large.shield_ticks, "1000000000");
+        assert_eq!(large.hull_ticks, "1000000000");
+        assert!(large.rapid_fire_against.is_empty());
+        assert!(large.rapid_fire_from.is_empty());
     }
     #[test]
     fn heavy_laser_projects_base_stats_from_active_rules() {

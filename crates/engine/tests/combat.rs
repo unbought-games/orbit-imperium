@@ -213,3 +213,104 @@ fn fighter_and_launcher_fire_is_attributed_to_the_shooter() {
         serde_json::to_value(attacker).unwrap()
     );
 }
+
+#[test]
+fn large_shield_dome_bounces_light_fighters_and_resets_shields_each_round() {
+    use uuid::Uuid;
+    let rules = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+    let combat = &rules.artifact.world.as_ref().unwrap().combat;
+    let dome = ManufacturedItem::Defense(DefenseId::LargeShieldDome);
+    let stats = |item| {
+        combat_unit_stats(
+            combat.units.iter().find(|u| u.item == item).unwrap(),
+            [6; 3],
+            combat,
+        )
+        .unwrap()
+    };
+    let (_, shield, hull) = stats(dome);
+    assert_eq!(shield, 16000 * 100000);
+    assert_eq!(hull, 16000 * 100000);
+    for (ship, bounced) in [
+        (ShipType::LightFighter, true),
+        (ShipType::HeavyFighter, false),
+        (ShipType::Cruiser, false),
+    ] {
+        let (attack, _, _) = stats(ManufacturedItem::Ship(ship));
+        let hit = apply_combat_hit(attack, shield, shield, hull, hull, combat).unwrap();
+        assert_eq!(hit.bounced, bounced);
+        assert_eq!(hit.shield_removed > 0, !bounced);
+    }
+    let target = BodyId(Uuid::from_u128(1));
+    let encounter = InputId(Uuid::from_u128(2));
+    let mut input = BattleInput {
+        encounter_id: encounter,
+        at: 0,
+        target,
+        rules_hash: rules.hash.clone(),
+        participants: vec![
+            BattleParticipant {
+                owner: PlayerId(Uuid::from_u128(3)),
+                origin: BattleOrigin::Fleet(FleetId(Uuid::from_u128(4))),
+                side: BattleSide::Attacker,
+                technology: [6; 3],
+                units: vec![(ManufacturedItem::Ship(ShipType::LightFighter), 100)],
+            },
+            BattleParticipant {
+                owner: PlayerId(Uuid::from_u128(5)),
+                origin: BattleOrigin::Stationed(target),
+                side: BattleSide::Defender,
+                technology: [6; 3],
+                units: vec![(dome, 1)],
+            },
+        ],
+    };
+    let rng = || {
+        RandomStream::new(
+            &[7; 32],
+            UniverseId(Uuid::from_u128(6)),
+            Epoch(Uuid::from_u128(7)),
+            encounter,
+            "battle",
+        )
+        .unwrap()
+    };
+    let result = resolve_battle(&input, combat, &mut rng()).unwrap();
+    assert_eq!(result.outcome, BattleOutcome::Draw);
+    assert_eq!(result.rounds.len(), 6);
+    assert!(
+        result
+            .destroyed
+            .iter()
+            .all(|counts| counts.units.iter().all(|(_, n)| *n == 0))
+    );
+    // One Cruiser can chip the dome's shield but cannot overcome its round reset.
+    input.participants[0].units = vec![(ManufacturedItem::Ship(ShipType::Cruiser), 1)];
+    let result = resolve_battle(&input, combat, &mut rng()).unwrap();
+    assert_eq!(result.outcome, BattleOutcome::Draw);
+    let removed: Vec<_> = result
+        .rounds
+        .iter()
+        .map(|round| {
+            round
+                .fire
+                .iter()
+                .find(|fire| fire.side == BattleSide::Attacker)
+                .unwrap()
+                .shield_removed_ticks
+                .clone()
+        })
+        .collect();
+    assert_eq!(removed.len(), 6);
+    assert!(removed.iter().all(|n| n == &removed[0] && n != "0"));
+    // A sufficiently strong fleet can destroy the dome.
+    input.participants[0].units = vec![(ManufacturedItem::Ship(ShipType::Cruiser), 1000)];
+    let result = resolve_battle(&input, combat, &mut rng()).unwrap();
+    assert_eq!(result.outcome, BattleOutcome::AttackerVictory);
+    assert!(
+        result
+            .destroyed
+            .iter()
+            .any(|counts| counts.units.contains(&(dome, 1)))
+    );
+}
