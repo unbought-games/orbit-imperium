@@ -154,6 +154,7 @@ for (const width of [320, 390, 1280]) {
     ])
     await expect(panel.getByRole('columnheader')).toHaveText(['Ship', 'Stationed', 'Flying', 'Queued'])
     await expect(panel.getByRole('row')).toHaveCount(2)
+    expect((await panel.getByRole('row').first().boundingBox())!.height).toBeLessThan(44)
     await expect(panel.getByRole('rowheader', { name: /Light Fighter|Solar Satellite/ })).toHaveCount(0)
     await expect(page.getByText('Fleet slots: 2 used / 8 total', { exact: true })).toBeVisible()
     expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
@@ -182,6 +183,8 @@ for (const width of [320, 390, 1280]) {
     revision += 1
     await refreshGame(page)
     await expect(cargo.getByRole('cell').first()).toHaveText('42')
+    await panel.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(panel, { path: `test-results/fleet-inventory-compact-${width}.png` })
     await selectBody(page, id(6))
     await expect(panel).toContainText('No ships stationed here.')
     await expect(cargo.getByRole('cell')).toHaveText(['0', '9', '7'])
