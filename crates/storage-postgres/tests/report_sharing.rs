@@ -163,6 +163,14 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
     // Pause publication after it has starred the recipient but before commit.
     // A command committing concurrently must lock before reading its facts;
     // otherwise it can read the old star then overwrite the new one later.
+    let cursor = store.read_updates(a, None, 128).await.unwrap().items[0]
+        .cursor
+        .clone()
+        .unwrap();
+    let other_cursor = store.read_updates(b, None, 128).await.unwrap().items[0]
+        .cursor
+        .clone()
+        .unwrap();
     let mut hold = pool.begin().await.unwrap();
     sqlx::query("SELECT revision FROM viewer_heads WHERE universe=$1 AND player=$2 FOR UPDATE")
         .bind(u.0)
@@ -197,6 +205,19 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
     let token = published_status.token.unwrap();
     assert!(published_status.header.starred && published_status.header.shared);
     assert_eq!(commit.await.unwrap(), CommitOutcome::Conflict);
+    let updates = store.read_updates(a, Some(&cursor), 128).await.unwrap();
+    assert_eq!(updates.items.len(), 1);
+    assert!(
+        matches!(&updates.items[0].event, StreamEvent::Invalidate { minimum_viewer_revision } if minimum_viewer_revision == &published_status.viewer_revision)
+    );
+    assert!(
+        store
+            .read_updates(b, Some(&other_cursor), 128)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
     game.resolve_claim(claim).await.unwrap();
     let published = store.world_report(a, id).await.unwrap();
     assert!(published.facts.0.header.starred);
@@ -240,6 +261,10 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
     let public = game.shared_report(other_token).await.unwrap();
     assert!(public.player_names.values().any(|n| n == &accounts[0].name));
     assert!(!serde_json::to_string(&public).unwrap().contains("SECRET"));
+    let revoke_cursor = store.read_updates(a, None, 128).await.unwrap().items[0]
+        .cursor
+        .clone()
+        .unwrap();
     game.report_share(principal(a), id, request(a, ReportShareAction::Revoke))
         .await
         .unwrap();
@@ -252,6 +277,14 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
     assert!(revoked.facts.0.header.starred);
     assert!(!revoked.facts.0.header.shared);
     assert!(revoked.facts.2 > published.facts.2);
+    let updates = store
+        .read_updates(a, Some(&revoke_cursor), 128)
+        .await
+        .unwrap();
+    assert_eq!(updates.items.len(), 1);
+    assert!(
+        matches!(&updates.items[0].event, StreamEvent::Invalidate { minimum_viewer_revision } if minimum_viewer_revision == &revoked.facts.2.to_string())
+    );
     let new_token = game
         .report_share(principal(a), id, request(a, create.clone()))
         .await

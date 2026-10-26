@@ -71,6 +71,9 @@ impl PgStore {
                 .fetch_one(&mut *tx)
                 .await
                 .map_err(db_error)?;
+        if mutating {
+            crate::updates::append_report_share_update(&mut tx, b, viewer_revision).await?;
+        }
         let header_row = sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,EXISTS(SELECT 1 FROM mission_report_shares s WHERE s.report=r.id AND s.recipient=p.recipient AND s.epoch=$4) AS shared,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3")
             .bind(b.universe.0).bind(report.0).bind(b.player.0).bind(b.epoch.0).fetch_one(&mut *tx).await.map_err(db_error)?;
         let rules = crate::facts::rules(&mut tx, b.universe).await?;

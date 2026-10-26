@@ -18,7 +18,8 @@ same transaction. Revocation leaves the star intact. Unstarring a shared report
 warns that later deletion, including bulk cleanup, permanently removes its links.
 Sharing status in report headers is derived from active publication records.
 Sharing responses return the complete header and its viewer revision together.
-Publication and revocation advance the viewer revision; report command commits
+Publication and revocation advance the viewer revision and publish durable
+refresh events to other open tabs; report command commits
 lock recipient rows before revalidating their facts to prevent lost updates.
 Deletion revokes sharing permanently, including after restoring a report.
 
