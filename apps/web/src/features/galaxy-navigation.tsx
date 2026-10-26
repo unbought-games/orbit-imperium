@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useLocation } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -22,9 +22,7 @@ export function GalaxyNavigation({
   galaxies,
   systems,
   browse,
-  fleetSlots,
 }: {
-  fleetSlots?: ReactNode
   galaxy: number
   system: number
   galaxies: number
@@ -141,7 +139,6 @@ export function GalaxyNavigation({
       <Button type="submit" variant="secondary">
         Go
       </Button>
-      {fleetSlots && <div className={styles.slots}>{fleetSlots}</div>}
       {(invalidGalaxy || invalidSystem) && (
         <p id={errorId} role="alert" className={styles.coordinateError}>
           {invalidGalaxy &&

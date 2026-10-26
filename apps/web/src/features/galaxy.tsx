@@ -119,20 +119,20 @@ export function Galaxy({
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
+      {espionage.state.view?.protocol === 4 && (
+        <div className={styles.slots}>
+          <FleetSlots
+            used={occupiedFleetSlots(espionage.state)}
+            total={espionage.state.view.missions.fleet_slots}
+          />
+        </div>
+      )}
       <GalaxyNavigation
         galaxy={galaxy}
         system={system}
         galaxies={model.settings?.galaxies ?? 1}
         systems={model.settings?.systems_per_galaxy ?? 5}
         browse={browse}
-        fleetSlots={
-          espionage.state.view?.protocol === 4 ? (
-            <FleetSlots
-              used={occupiedFleetSlots(espionage.state)}
-              total={espionage.state.view.missions.fleet_slots}
-            />
-          ) : undefined
-        }
       />
       {!valid && (
         <p role="alert">These coordinates are outside this universe.</p>

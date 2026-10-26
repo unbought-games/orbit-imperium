@@ -315,13 +315,7 @@ summary.positionSummary:focus-visible {
 }
 
 .slots {
-  margin-left: auto;
+  padding-block: 0.5rem;
   font-size: 0.875rem;
   color: var(--text-muted);
-}
-@media (max-width: 599px) {
-  .slots {
-    flex-basis: 100%;
-    margin-left: 0;
-  }
 }
