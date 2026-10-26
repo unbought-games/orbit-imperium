@@ -72,7 +72,7 @@ async function buildingFixture(page: Page, active = false) {
   })
   await page.route('**/progression-options', (route) => {
     const { context, request } = route.request().postDataJSON()
-    const building = request.building as keyof typeof planet.levels
+    const building = request.building as S['BuildingId3']
     const source = planet.levels[building]!
     const response: S['BoundProgressionOptions4'] = {
       protocol: 4,
