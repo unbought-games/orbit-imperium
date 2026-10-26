@@ -41,140 +41,135 @@
 .positionList {
   list-style: none;
   display: grid;
-  gap: 0;
+  grid-template-columns: 52px minmax(0, 1fr) minmax(180px, 0.7fr) 156px;
+  column-gap: 14px;
+  row-gap: 0;
   margin: 0;
   padding: 0;
 }
 .positionList > li {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 90px);
   scroll-margin-block-end: 6rem;
 }
+
 .positionCard {
-  border-bottom: 1px solid #cbb68d35;
-  border-left: 3px solid transparent;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  border-bottom: 1px solid #cbb68d24;
   overflow-wrap: anywhere;
+}
+.positionCard:hover {
+  background: #a4dbef04;
 }
 .positionSummary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  gap: 14px;
   align-items: center;
-  padding: 12px;
-  list-style: none;
+  padding: 13px 12px;
 }
-summary.positionSummary {
-  cursor: pointer;
-  touch-action: manipulation;
+.planet {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: contain;
 }
-summary.positionSummary::-webkit-details-marker {
-  display: none;
-}
-summary.positionSummary:hover {
-  background: #a4dbef06;
-}
-summary.positionSummary:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
-}
-.positionCard[open] {
-  background: #cbb68d06;
-}
-.positionCard[open] .expand {
-  transform: rotate(180deg);
-}
-.planetCell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+.emptyOrbit {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px dashed #aebccd38;
+  border-radius: 50%;
+  color: #7c8b95;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 .planetInfo {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 .planetTitle {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.5rem;
+  gap: 2px 10px;
+  min-width: 0;
 }
 .planetTitle > strong {
-  overflow-wrap: anywhere;
-  font:
-    400 1.05rem Georgia,
-    serif;
-  color: #efdfc4;
+  font-size: 0.875rem;
+  font-weight: 450;
+  color: #c9c5b9;
 }
 .coordinates {
-  white-space: nowrap;
+  color: #8d9da7;
+  font-size: 0.75rem;
+}
+.coordinates button {
+  font-size: inherit;
+  color: inherit;
+  min-height: 24px;
 }
 .playerStatus {
   display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.2rem 0.4rem;
-  font-size: 0.8rem;
-}
-.flights {
-  display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
-  color: var(--link);
-  font-size: 0.75rem;
-}
-.flights > span {
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
-}
-.playerStatus > small::before {
-  content: '·';
-  margin-right: 0.4rem;
-  color: var(--text-muted);
-}
-.playerStatus > small {
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.playerStatus > .player,
-.playerStatus > .yourPlayer {
+  gap: 4px 9px;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.coordinates,
-.positionSummary small {
-  color: var(--text-muted);
-  font-size: 0.8rem;
 }
 .player {
-  color: var(--text);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: #f4f4f2;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
-.planet {
-  display: block;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  object-fit: contain;
-  outline: 1px solid #cbb68d40;
-  outline-offset: 4px;
+/* In galaxy, name color conveys gameplay status. Supporter badges retain
+   their own tier color, supplied by SupporterIdentity. */
+.player [data-palette] {
+  color: inherit;
 }
-.yourPlayer {
+.inactive {
+  color: #a0a6ad;
+}
+.longInactive {
+  color: #7b858e;
+}
+.vacation {
+  color: #c6b8ed;
+}
+.statusIcons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+.statusIcons:empty {
+  display: none;
+}
+.you {
   color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 500;
 }
-.positionSummary .recent {
+.activity {
+  color: #a6b1ba;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+.recent {
   color: #e5c28c;
-}
-.owned {
-  border-left-color: #cbb68d70;
-}
-.protected,
-.protected[open] {
-  border-left: 3px solid #86d8b1;
-  background: #86d8b10c;
+  font-size: 0.6rem;
 }
 .protected .player {
   color: #a4e8c8;
@@ -182,63 +177,188 @@ summary.positionSummary:focus-visible {
 .protectionBadge {
   display: inline-flex;
   align-items: center;
-  justify-self: start;
-  gap: 0.35rem;
-  padding: 0.1rem 0.3rem;
-  border: 1px solid #86d8b155;
-  border-radius: 4px;
+  gap: 3px;
   color: #a4e8c8;
-  background: #86d8b112;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-.protectionBadge svg {
-  flex-shrink: 0;
-}
-.positionSummary .protectionNote {
-  grid-column: 1 / -1;
-  padding-right: 0.75rem;
-  color: #b8d8c9;
-  line-height: 1.5;
-  max-width: 48ch;
+  font-size: 0.7rem;
 }
 .debris {
-  display: grid;
-  justify-items: end;
-  text-align: right;
-  gap: 0.3rem;
-  min-width: 0;
-  font-size: 0.9rem;
-}
-.expand {
-  color: var(--link);
-}
-.actions {
+  grid-column: 3;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.6rem;
-  padding: 0 12px 8px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: #c6d0d5;
+  font-variant-numeric: tabular-nums;
 }
-.actions p {
-  margin: 0;
-  align-self: center;
-  flex: 1 1 220px;
+.debrisArt {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
-.empty .positionSummary {
-  min-height: 44px;
-  padding-block: 4px;
+.debrisCompact {
+  display: none;
 }
-.empty .planetTitle > strong {
-  color: var(--text-muted);
-  font: inherit;
+.debrisAmounts {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.quickActions {
+  grid-column: 4;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+.actionIcon {
+  display: none;
+}
+.spyButton,
+.actionTrigger {
+  min-height: 36px;
+  padding: 6px 9px;
   font-size: 0.8rem;
 }
-.actions button {
+.spyButton {
+  color: #b4def0;
+  background: #a4dbef0b;
+  border: 1px solid #a4dbef26;
+}
+.spyContent {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
+  opacity: 1;
+  transition: opacity 240ms ease;
+}
+.spyCheck {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #a4e8c8;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+.spyButton[data-feedback='true'] {
+  opacity: 1;
+  border-color: transparent;
+  background: transparent;
+}
+.spyButton[data-feedback='true'] .spyContent {
+  opacity: 0;
+}
+.spyButton[data-feedback='true'] .spyCheck {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spyContent,
+  .spyCheck {
+    transition: none;
+  }
+}
+.actionTrigger {
+  color: #b1bdc5;
+}
+.menuPositioner {
+  z-index: 100;
+}
+.actionMenu {
+  min-width: 190px;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 5px;
+  background: #111e28;
+  border: 1px solid #526370;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px #0008;
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 4px;
+  color: #edf0f1;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.menuItem[data-highlighted] {
+  background: #a4dbef16;
+  outline: none;
+}
+.menuItem[data-disabled] {
+  color: #7b858e;
+  cursor: not-allowed;
+}
+.menuNote {
+  margin: 0;
+  padding: 4px 10px 10px;
+  font-size: 0.75rem;
+  color: #aab8c2;
+  line-height: 1.5;
+}
+.flightSingle,
+.flights {
+  margin-top: 3px;
+  color: var(--link);
+  font-size: 0.75rem;
+}
+.flightSingle,
+.flights summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.flightSingle {
+  flex-wrap: wrap;
+}
+.flights summary {
+  cursor: pointer;
+  list-style: none;
+  width: fit-content;
+  padding-block: 3px;
+}
+.flights summary::-webkit-details-marker {
+  display: none;
+}
+.flights summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.flightExpand {
+  margin-left: 5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: #97abb7;
+}
+.flights ul {
+  margin: 6px 0 2px 18px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+}
+.inlineError {
+  margin: 3px 0 0;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.empty .positionSummary {
+  padding-block: 8px;
+}
+.empty .planetTitle > strong {
+  color: #8d9da7;
 }
 .error,
 .loading {
@@ -246,6 +366,23 @@ summary.positionSummary:focus-visible {
 }
 .error {
   color: var(--danger);
+}
+@media (max-width: 767px) {
+  .screen {
+    margin-inline: calc(-1 * var(--shell-inline-gutter));
+  }
+  .toolbar {
+    padding-inline: 12px;
+  }
+  .slots,
+  .error,
+  .loading,
+  .coordinateError {
+    padding-inline: 12px;
+  }
+  .positionList > .selectedPosition {
+    outline-offset: -2px;
+  }
 }
 @media (max-width: 599px) {
   .toolbar {
@@ -260,18 +397,61 @@ summary.positionSummary:focus-visible {
   .toolbar input {
     width: 54px;
   }
-  .planet {
-    width: 36px;
-    height: 36px;
-  }
-  .planetCell {
-    gap: 0.7rem;
+  .positionList {
+    grid-template-columns: 45px minmax(0, 1fr) 112px 44px;
+    column-gap: 8px;
   }
   .positionSummary {
-    gap: 0.5rem;
+    gap: 8px;
+    padding: 12px;
+  }
+  .planet,
+  .emptyOrbit {
+    width: 30px;
+    height: 30px;
+  }
+  .quickActions {
+    grid-column: 4;
+    flex-direction: column;
+    justify-self: end;
+    gap: 2px;
+  }
+  .spyButton,
+  .actionTrigger {
+    min-height: 32px;
+    width: 32px;
+    padding: 5px;
+    font-size: 0.75rem;
+  }
+  .actionText {
+    display: none;
+  }
+  .actionIcon {
+    display: block;
+  }
+  .player {
+    font-size: 0.95rem;
+  }
+  .planetTitle {
+    gap: 0 6px;
   }
   .planetTitle > strong {
-    font-size: 1rem;
+    font-size: 0.8rem;
+  }
+  .debris {
+    font-size: 0.75rem;
+    gap: 6px;
+  }
+  .debrisExact {
+    display: none;
+  }
+  .debrisCompact {
+    display: inline;
+    white-space: nowrap;
+  }
+  .debrisArt {
+    width: 32px;
+    height: 32px;
   }
 }
 
@@ -282,30 +462,11 @@ summary.positionSummary:focus-visible {
   scroll-margin-block-end: 6rem;
 }
 .locationLabel {
+  grid-column: 1 / -1;
   padding: 0.5rem 1rem;
   margin: 0;
   color: var(--link);
   font-weight: 600;
-}
-
-.coordinates a {
-  min-height: 20px;
-  min-width: 0;
-}
-
-/* Empty slots stay one compact row even with wider fallback fonts. Keep the
-   address/actions intact; the secondary label may ellipsize on narrow screens. */
-.empty .planetTitle {
-  flex-wrap: nowrap;
-}
-.empty .planetTitle > [data-coordinate] {
-  flex-shrink: 0;
-}
-.empty .planetTitle > strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .coordinateError {

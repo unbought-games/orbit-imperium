@@ -65,4 +65,5 @@ export async function sendGalaxyProbe(
       model.store.getState().message ||
         'The probe could not be sent. Check available probes and fleet slots.',
     )
+  return commandId
 }
