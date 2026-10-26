@@ -5467,6 +5467,8 @@ export interface components {
             };
         };
         BodyV3: {
+            /** @description Maximum planet temperature in degrees Celsius, from authoritative body state. Omitted for moons and older servers. */
+            max_temperature?: number;
             /** Format: uuid */
             id: string;
             coordinates: components["schemas"]["Coordinates"];

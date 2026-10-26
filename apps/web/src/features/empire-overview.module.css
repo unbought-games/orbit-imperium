@@ -909,7 +909,7 @@
   .commandDeck {
     display: block;
   }
-  .commandMap {
+  .mapDisclosure {
     display: none;
   }
   .fleetBoard {
@@ -1144,4 +1144,18 @@
   color: var(--text-muted);
   font-size: 0.75rem;
   margin-bottom: 4px;
+}
+
+.climate {
+  padding: 12px 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.climate > summary {
+  cursor: pointer;
+  color: var(--text);
+}
+.climate p {
+  margin: 8px 0 0;
 }

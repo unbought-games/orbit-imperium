@@ -166,3 +166,12 @@ export function empirePaths(
       : []
   })
 }
+
+/** Prefer current body state; retained colony metadata supports older servers. */
+export function planetMaxTemperature(body: BoundView['bodies'][number]) {
+  if (body.kind !== 'Planet') return undefined
+  return (
+    ('max_temperature' in body ? body.max_temperature : undefined) ??
+    ('colony' in body ? body.colony?.max_temperature : undefined)
+  )
+}

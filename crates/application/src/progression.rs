@@ -147,6 +147,8 @@ pub struct BoundProgressionOptions {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BodyV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_temperature: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colony: Option<ColonyDto>,
@@ -391,6 +393,7 @@ pub(crate) fn progression_projection(
         let rate = production_rates_with_settings(b, &settings.settings, satellites, &facts.rules)
             .map_err(|_| ServiceError::InvariantFailure)?;
         bodies.push(BodyV3 {
+            max_temperature: (b.kind == BodyKind::Planet).then_some(b.max_temperature),
             colony: None,
             id: b.id,
             coordinates: b.coordinates,

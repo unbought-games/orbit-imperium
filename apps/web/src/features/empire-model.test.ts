@@ -7,6 +7,7 @@ import {
   empirePaths,
   empireTotals,
   storagePercent,
+  planetMaxTemperature,
 } from './empire-model'
 
 function fixture() {
@@ -241,3 +242,21 @@ it.each(['Transport', 'Deploy', 'Attack'] as const)(
     }
   },
 )
+
+it('uses authoritative maximum temperature, preserving zero and negative temperatures', () => {
+  const planet = fixture().bodies[0]
+  expect(planetMaxTemperature(planet)).toBeUndefined()
+  planet.colony = {
+    diameter_km: 10000,
+    min_temperature: 24,
+    max_temperature: 64,
+    created_at: 0,
+    profile: 'oi-redesign-reconstructed-v1',
+  }
+  expect(planetMaxTemperature(planet)).toBe(64)
+  for (const temperature of [0, -120, 260]) {
+    planet.max_temperature = temperature
+    expect(planetMaxTemperature(planet)).toBe(temperature)
+  }
+  expect(planetMaxTemperature({ ...planet, kind: 'Moon' })).toBeUndefined()
+})

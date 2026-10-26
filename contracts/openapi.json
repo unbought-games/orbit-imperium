@@ -8899,6 +8899,12 @@
       "BodyV3": {
         "type": "object",
         "properties": {
+          "max_temperature": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647,
+            "description": "Maximum planet temperature in degrees Celsius, from authoritative body state. Omitted for moons and older servers."
+          },
           "id": {
             "type": "string",
             "format": "uuid"
