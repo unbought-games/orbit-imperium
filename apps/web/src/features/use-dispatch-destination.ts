@@ -15,6 +15,7 @@ export function useDispatchDestination(
   origin: string,
   coordinates: S['Coordinates'] | null,
   kind: LocationKind,
+  mission: S['Mission4'],
 ) {
   const galaxy = coordinates?.galaxy
   const system = coordinates?.system
@@ -50,7 +51,7 @@ export function useDispatchDestination(
       current = false
       clearTimeout(timer)
     }
-  }, [model, key, galaxy, system, enabled, revision])
+  }, [model, key, galaxy, system, enabled, revision, mission])
   const currentRead =
     enabled && read?.model === model && read.key === key ? read : null
   const observation = currentRead?.observation

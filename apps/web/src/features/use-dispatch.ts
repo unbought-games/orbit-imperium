@@ -82,6 +82,7 @@ export function useDispatch({
     body.id,
     destinationCoordinates,
     targetKind,
+    mission,
   )
   const { target, observation } = destination
   const observedTarget = observation?.positions.find(

@@ -994,6 +994,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   page,
 }) => {
   const state = await setup(page)
+  await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
   state.blocker = 'BeginnerProtected'
   await mission(page).selectOption('Attack')
   await expect(
@@ -1071,6 +1072,7 @@ test('late eligibility and quote failures cannot overwrite an edited destination
   page,
 }) => {
   const state = await setup(page)
+  await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
   let release!: () => void
   let held = false
   const gate = new Promise<void>((resolve) => {
