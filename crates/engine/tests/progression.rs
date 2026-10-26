@@ -3540,3 +3540,6 @@ fn shield_dome_collection_validation_rejects_inventory_and_queue_overcapacity() 
         assert!(validate_progression_collections(&s, &s.bodies[&b]).is_err());
     }
 }
+
+#[path = "progression/plasma.rs"]
+mod plasma;

@@ -30,8 +30,9 @@ The bundled content release is currently **0.5.0**. This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
-Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon and Large Shield Dome.
-The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
+Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon, Large Shield Dome and
+Plasma Technology. Plasma is research-only; Bombers and Plasma Turrets remain
+disabled. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
 including fuel-aware production and level-zero initialization. The original signup
 baseline, fully activated v0.3.0 worlds and partial activations can all be upgraded.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
@@ -106,6 +107,8 @@ The per-content preparation scripts remain available for selective/custom
 activation and older release workflows. Normal standard upgrades use the binary
 command above; existing external deployment automation must explicitly switch to
 it after the image containing this command is deployed.
+
+For Plasma Technology prerequisites and activation, see [Plasma Technology](plasma-technology.md).
 
 For Ion Technology prerequisites and activation, see [Ion Technology](ion-technology.md).
 
