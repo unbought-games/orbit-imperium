@@ -9,7 +9,7 @@ pub struct ShipRequestDto {
     pub ship_type: ShipType,
     pub count: String,
 }
-fn quantity(value: &str) -> Result<i64, ServiceError> {
+pub(crate) fn quantity(value: &str) -> Result<i64, ServiceError> {
     if value.is_empty()
         || value.len() > 19
         || !value.bytes().all(|b| b.is_ascii_digit())

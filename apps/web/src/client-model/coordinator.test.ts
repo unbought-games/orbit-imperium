@@ -1281,7 +1281,10 @@ it('discards simulation responses from a changed identity, request or rules prof
             : context.binding,
         request_id: mismatch === 'request' ? id(999) : context.request_id,
         profile_hash: (mismatch === 'rules' ? 'b' : 'a').repeat(64),
+        loot_rules_enabled: true,
         samples: Array.from({ length: 10 }, () => ({
+          surviving_cargo_capacity: '0',
+          estimated_loot: null,
           outcome: 'AttackerVictory' as const,
           rounds: 0,
           attacker: [],

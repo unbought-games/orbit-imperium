@@ -5,7 +5,9 @@ report-visible espionage snapshot. Forces and combat technology retain their
 observation time; no target lookup occurs. Known empty sections mean zero, while
 unknown sections remain blank until the player enters assumptions or explicitly
 assumes zero. Edits are separate from report facts. Own technology defaults come
-from the existing game view; attacking ship counts start at zero.
+from the existing game view; attacking ship counts start at zero. The selected
+planet's stationed inventory appears beside each attacker ship input as a live
+reference, without restricting hypothetical counts.
 
 The authenticated, CSRF-protected `POST /api/v4/universes/{universe}/combat-simulation`
 endpoint accepts a bound context and two hypothetical forces. It validates the
@@ -18,9 +20,24 @@ from a battle. It is available to every protocol-4 player.
 The initial interactive service supports 2,000 total units and technology 0–100,
 with two CPU workers and no unbounded queue. Excess values are rejected, never
 clamped. Empty known defenses are supported. Results are sample outcomes and mean
-survivors before repairs; they exclude missiles, repair rolls, debris recovery,
-loot and fuel. Scope changes or input edits invalidate results. Large actual
-fleets can be explored only by explicitly editing the scenario, not by quietly
+attacker losses alongside survivors, and defender survivors before repairs.
+They exclude missiles, repair rolls and debris recovery. For each battle sample,
+the server uses the universe's ship capacities and the same `payload_capacity`
+and `raid_loot` functions as actual attacks. Only attacker victories can loot;
+draws, defeats, mutual destruction and zero capacity yield zero. The UI aggregates
+those samples into average/range cargo capacity and estimated resource haul,
+including losing samples. It never calculates loot from an average fleet.
+
+Only report-observed resource amounts are submitted; missing observations remain
+unknown and yield no loot estimate. The report time/age remains visible and no
+resource production or spending is forecast. Raiding-disabled universes return no
+loot estimate. The estimate assumes empty arrival cargo and uses whole-unit,
+five-pass loot allocation capped at half the observed stock of each resource.
+Launch fuel is paid up front; surviving arrival capacity has no fuel deduction.
+Fuel cost and launch feasibility are not computed, so the estimate is gross loot,
+not profit or a guarantee. Resource values retain exact micro-unit arithmetic and
+are displayed with canonical resource icons, rounded down to whole units. Scope
+changes or input edits invalidate results. Large actual fleets can be explored only by explicitly editing the scenario, not by quietly
 scaling down a report.
 
 ## Community simulator investigation

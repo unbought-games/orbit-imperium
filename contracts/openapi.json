@@ -14411,6 +14411,10 @@
           },
           "defender": {
             "$ref": "#/components/schemas/SimulationSide"
+          },
+          "observed_resources": {
+            "$ref": "#/components/schemas/Resources",
+            "description": "Historical report-observed resources in micro-units. Omission means unknown."
           }
         },
         "required": [
@@ -14462,13 +14466,28 @@
             "items": {
               "$ref": "#/components/schemas/SimulationUnit"
             }
+          },
+          "surviving_cargo_capacity": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "estimated_loot": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Resources"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "outcome",
           "rounds",
           "attacker",
-          "defender"
+          "defender",
+          "surviving_cargo_capacity",
+          "estimated_loot"
         ],
         "additionalProperties": false
       },
@@ -14492,13 +14511,17 @@
             },
             "minItems": 10,
             "maxItems": 10
+          },
+          "loot_rules_enabled": {
+            "type": "boolean"
           }
         },
         "required": [
           "binding",
           "request_id",
           "profile_hash",
-          "samples"
+          "samples",
+          "loot_rules_enabled"
         ],
         "additionalProperties": false
       },

@@ -1,4 +1,5 @@
 import type { components } from '../contracts'
+import { resourceNames } from '../client-model/resources'
 type S = components['schemas']
 export type Espionage = S['EspionagePayload4']
 export type SimulationInputs = S['SimulationInputs']
@@ -11,6 +12,7 @@ export type SimulationField = {
   source: 'Report' | 'Your research' | 'Plan'
   item?: S['ItemKey3']
   technology?: number
+  available?: string
 }
 export const combatTechnologies = [
   'WeaponsTechnology',
@@ -21,6 +23,7 @@ export function simulationFields(
   report: Espionage,
   catalog: S['CatalogEntry3'][],
   research: { research: string; level: number }[],
+  inventories?: S['BodyV3']['inventories'],
 ): SimulationField[] {
   const units = catalog.filter(
     (e) =>
@@ -54,6 +57,12 @@ export function simulationFields(
           side,
           label: item.id,
           item,
+          available:
+            side === 'attacker' && inventories
+              ? (inventories.find(
+                  (u) => u.item.kind === item.kind && u.item.id === item.id,
+                )?.count ?? '0')
+              : undefined,
           value:
             side === 'attacker'
               ? '0'
@@ -87,8 +96,12 @@ export function unsupportedReportUnits(
 export function simulationInputs(
   fields: SimulationField[],
   edits: Record<string, string>,
+  resources?: Espionage['resources'],
 ): { inputs: SimulationInputs | null; error: string | null } {
   const inputs: SimulationInputs = {
+    ...(resources?.visibility === 'Known'
+      ? { observed_resources: resources.value }
+      : {}),
     attacker: { technology: [0, 0, 0], units: [] },
     defender: { technology: [0, 0, 0], units: [] },
   }
@@ -167,4 +180,50 @@ export function unknownAssumptions(
       )
       .map((f) => [f.key, '0']),
   )
+}
+
+export function attackerLosses(
+  response: SimulationResponse,
+  unit: S['SimulationUnit'],
+) {
+  return unit.count - averageSurvivors(response, 'attacker', unit.item)
+}
+
+/** Aggregate the independently calculated battle samples, never an average fleet.
+ * Keep micro-unit sums exact even above JavaScript's safe integer range. */
+export function sampledAmounts(values: string[]) {
+  if (!values.length) return null
+  const amounts = values.map(BigInt)
+  return {
+    average: amounts.reduce((sum, n) => sum + n, 0n) / BigInt(amounts.length),
+    minimum: amounts.reduce((a, b) => (a < b ? a : b)),
+    maximum: amounts.reduce((a, b) => (a > b ? a : b)),
+  }
+}
+export function planningSummary(response: SimulationResponse) {
+  const known =
+    response.samples.length > 0 &&
+    response.samples.every((s) => s.estimated_loot !== null)
+  return {
+    cargo: sampledAmounts(
+      response.samples.map((s) => s.surviving_cargo_capacity),
+    ),
+    loot: known
+      ? resourceNames.map((resource) => ({
+          resource,
+          ...sampledAmounts(
+            response.samples.map((s) => s.estimated_loot![resource]),
+          )!,
+        }))
+      : null,
+    total: known
+      ? sampledAmounts(
+          response.samples.map((s) =>
+            resourceNames
+              .reduce((sum, r) => sum + BigInt(s.estimated_loot![r]), 0n)
+              .toString(),
+          ),
+        )
+      : null,
+  }
 }
