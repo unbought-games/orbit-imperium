@@ -252,7 +252,7 @@ for (const historical of [true, false]) {
     if (historical) await prepareHistoricalDraft(page)
     await mission(page).selectOption('Deploy')
     await setDestination(page, { position: '2' })
-    await page.getByLabel('Metal', { exact: true }).fill('42')
+    await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 })
       await review(page).click()
@@ -537,7 +537,7 @@ test('a delayed successful launch does not erase edits for the next fleet', asyn
   await expect(dispatchResult(page)).toContainText('Sending fleet order…')
   const ship = page.getByLabel(/Small Cargo · \d+ available/)
   await ship.fill('2')
-  await page.getByLabel('Metal', { exact: true }).fill('42')
+  await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
   const response = page.waitForResponse('**/commands')
   release()
   await response
@@ -545,7 +545,7 @@ test('a delayed successful launch does not erase edits for the next fleet', asyn
     page.getByRole('status').filter({ hasText: 'Launch Fleet:' }),
   ).toContainText('Action confirmed.')
   await expect(ship).toHaveValue('2')
-  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
+  await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toHaveValue('42')
   await expect(dispatchResult(page)).toHaveCount(0)
   expect(state.launches).toBe(1)
 })
@@ -721,7 +721,7 @@ for (const action of ['Add all', 'Max deuterium']) {
     }
     await page.getByRole('button', { name: action, exact: true }).click()
     await expect.poll(() => held).toBe(true)
-    await page.getByLabel('Metal', { exact: true }).fill('42')
+    await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
     const response = page.waitForResponse(
       (response) =>
         response.url().endsWith('/world') &&
@@ -729,9 +729,9 @@ for (const action of ['Add all', 'Max deuterium']) {
     )
     release()
     await response
-    await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
-    await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
-    await expect(page.getByLabel('Deuterium', { exact: true })).toHaveValue('0')
+    await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toHaveValue('42')
+    await expect(page.getByRole('textbox', { name: 'Crystal', exact: true })).toHaveValue('0')
+    await expect(page.getByRole('textbox', { name: 'Deuterium', exact: true })).toHaveValue('0')
     await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
       0,
     )
@@ -742,9 +742,9 @@ test('max deuterium keeps other cargo and Add all evenly fills the remaining spa
   page,
 }) => {
   const state = await setup(page)
-  const metal = page.getByLabel('Metal', { exact: true })
-  const crystal = page.getByLabel('Crystal', { exact: true })
-  const deuterium = page.getByLabel('Deuterium', { exact: true })
+  const metal = page.getByRole('textbox', { name: 'Metal', exact: true })
+  const crystal = page.getByRole('textbox', { name: 'Crystal', exact: true })
+  const deuterium = page.getByRole('textbox', { name: 'Deuterium', exact: true })
   await metal.fill('100')
   await page.getByRole('button', { name: 'Max deuterium', exact: true }).click()
   const fuelReserved = BigInt(body.amounts.deuterium) / 1000000n - 1n
@@ -774,12 +774,12 @@ test('Add all leaves invalid cargo untouched and explains the problem', async ({
   page,
 }) => {
   await setup(page)
-  const metal = page.getByLabel('Metal', { exact: true })
+  const metal = page.getByRole('textbox', { name: 'Metal', exact: true })
   await metal.fill('invalid')
   await page.getByRole('button', { name: 'Add all', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('whole nonnegative')
   await expect(metal).toHaveValue('invalid')
-  await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
+  await expect(page.getByRole('textbox', { name: 'Crystal', exact: true })).toHaveValue('0')
 })
 
 test('mission changes keep the same destination visible during refresh but never reuse it for other coordinates', async ({
@@ -973,6 +973,9 @@ test('coordinate errors appear beside entry before review, including pasted emoj
 test('own-planet attack is actionable, while transport to another owned planet and own-position harvest stay available', async ({
   page,
 }) => {
+  const now = new Date('2026-10-26T12:00:00Z')
+  await page.clock.install({ time: now })
+  await page.clock.pauseAt(now)
   const state = await setup(page)
   await setDestination(page, { position: '2' })
   await mission(page).selectOption('Attack')
@@ -982,6 +985,8 @@ test('own-planet attack is actionable, while transport to another owned planet a
       .filter({ hasText: 'You cannot attack your own planet' }),
   ).toContainText('use Transport')
   await expect(review(page)).toBeDisabled()
+  // Advance beyond the timing debounce only after the invalid attack is selected.
+  await page.clock.runFor(1000)
   expect(state.quotes).toBe(0)
   await mission(page).selectOption('Transport')
   await review(page).click()
@@ -1022,7 +1027,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   // The observation is advisory: a newer valid quote can supersede a stale blocker.
   state.quoteError = null
-  await page.getByLabel('Metal', { exact: true }).fill('42')
+  await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
   await page
@@ -1035,7 +1040,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   ).toContainText('Fleet not sent: Beginner protection prevents')
   expect(state.launches).toBe(1)
   await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
-  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
+  await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toHaveValue('42')
 })
 
 test('fresh destination ownership is checked even when it was not in the owned-planet view', async ({

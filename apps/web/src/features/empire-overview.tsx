@@ -14,6 +14,7 @@ import {
   Orbit,
   Radar,
   ShieldAlert,
+  Shield,
 } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import type { BoundView } from '../client-model/commands'
@@ -36,6 +37,7 @@ import {
   empirePaths,
   empireTotals,
   storagePercent,
+  planetMaxTemperature,
   type EmpireFlight,
 } from './empire-model'
 import styles from './empire-overview.module.css'
@@ -304,6 +306,86 @@ function FleetBoard({
   )
 }
 
+function PlanetClimate({ view, body }: { view: BoundView; body: Body }) {
+  if (body.kind !== 'Planet') return null
+  const temperature = planetMaxTemperature(body)
+  const satellite =
+    view.protocol !== 2
+      ? view.progression.production.find(
+          (production) => production.body === body.id,
+        )?.solar_satellite
+      : undefined
+  return (
+    <details className={styles.climate}>
+      <summary>
+        Maximum temperature:{' '}
+        {temperature === undefined ? 'Unavailable' : `${temperature} °C`}
+      </summary>
+      <p>
+        Maximum temperature affects deuterium production and solar satellite
+        energy output.
+      </p>
+      {satellite && (
+        <p>
+          Each solar satellite produces{' '}
+          <ResourceQuantity resource="energy" value={satellite.unit_energy} />{' '}
+          at 100% production.
+        </p>
+      )}
+      {temperature === undefined && (
+        <p>
+          This server has not supplied temperature metadata for this planet.
+        </p>
+      )}
+    </details>
+  )
+}
+
+function StationedUnits({
+  body,
+  kind,
+}: {
+  body: Body
+  kind: 'Ship' | 'Defense'
+}) {
+  const items = body.inventories.filter((entry) => entry.item.kind === kind)
+  const title = kind === 'Ship' ? 'Orbital fleet' : 'Planetary defenses'
+  const Icon = kind === 'Ship' ? Orbit : Shield
+  return (
+    <details className={styles.inventory}>
+      <summary>
+        <span>
+          <Icon size={15} /> {title}
+        </span>
+        <span>{items.length} unit types</span>
+      </summary>
+      <section aria-label={title}>
+        {items.length ? (
+          <dl>
+            {items.map((item) => (
+              <div key={item.item.id}>
+                <dt>{label(item.item.id)}</dt>
+                <dd>{item.count}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <EmptyState
+            icon={Icon}
+            variant="compact"
+            headingLevel={3}
+            title={
+              kind === 'Ship'
+                ? 'No ships stationed here.'
+                : 'No defenses stationed here.'
+            }
+          />
+        )}
+      </section>
+    </details>
+  )
+}
+
 function PlanetDossier({
   model,
   view,
@@ -372,6 +454,7 @@ function PlanetDossier({
           </span>
         </Destination>
       </header>
+      <PlanetClimate view={view} body={body} />
       <dl className={styles.resources} aria-label="Planet resources">
         {resourceNames.map((name) => (
           <div
@@ -458,34 +541,8 @@ function PlanetDossier({
           />
         )}
       </details>
-      <details className={styles.inventory}>
-        <summary>
-          <span>
-            <Orbit size={15} /> Orbital fleet
-          </span>
-          <span>{body.inventories.length} unit types</span>
-        </summary>
-        <section aria-label="Orbital fleet">
-          {body.inventories.length ? (
-            <dl>
-              {body.inventories.map((item) => (
-                <div key={`${item.item.kind}:${item.item.id}`}>
-                  <dt>{label(item.item.id)}</dt>
-                  <dd>{item.count}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <EmptyState
-              icon={Orbit}
-              variant="compact"
-              headingLevel={3}
-              title="No units stationed here."
-              description="Ships and defenses stationed at this world will appear here."
-            />
-          )}
-        </section>
-      </details>
+      <StationedUnits body={body} kind="Ship" />
+      <StationedUnits body={body} kind="Defense" />
       <div className={styles.cardFooter}>
         <Destination view={view} body={body.id} page="dispatch">
           Dispatch fleet <ArrowUpRight size={13} />

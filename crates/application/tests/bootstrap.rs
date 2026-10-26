@@ -316,3 +316,79 @@ fn unsupported_protocol_is_not_a_ready_snapshot() {
         ));
     });
 }
+
+#[test]
+fn planet_temperature_comes_from_body_state_without_colony_metadata() {
+    futures::executor::block_on(async {
+        for protocol in [3, 4] {
+            for temperature in [-120, 0, 260] {
+                let (mut store, session) = setup(protocol);
+                let facts = &mut store.facts;
+                let body = Body {
+                    name: None,
+                    id: BodyId(Uuid::from_u128(50)),
+                    universe: facts.universe,
+                    owner: facts.player,
+                    kind: BodyKind::Planet,
+                    coordinates: Coordinates {
+                        galaxy: 1,
+                        system: 1,
+                        position: 8,
+                    },
+                    fields: 163,
+                    max_temperature: temperature,
+                    retained_capacity: None,
+                    checkpoint: ResourceCheckpoint {
+                        amounts: Resources::default(),
+                        carry: Resources::default(),
+                        at: 0,
+                    },
+                    levels: Building::MVP
+                        .into_iter()
+                        .map(|building| (building, 0))
+                        .collect(),
+                    revision: 0,
+                };
+                facts.coverage.bodies.insert(body.id);
+                facts.coverage.construction_bodies.insert(body.id);
+                facts.coverage.production_bodies.insert(body.id);
+                facts
+                    .coverage
+                    .inventory_owners
+                    .insert((body.id, body.owner));
+                facts.bodies.push(body.clone());
+                for state in [&mut facts.progression, &mut facts.world]
+                    .into_iter()
+                    .flatten()
+                {
+                    state.coverage = facts.coverage.clone();
+                    state.bodies.insert(body.id, body.clone());
+                    state.production_settings.insert(
+                        body.id,
+                        ProductionSettingsRecord {
+                            body: body.id,
+                            settings: ProductionSettings::default(),
+                            revision: 0,
+                        },
+                    );
+                    for kind in ["constructions", "production"] {
+                        state
+                            .collection_revisions
+                            .insert(format!("{kind}:{}", body.id), 0);
+                    }
+                    state
+                        .collection_revisions
+                        .insert(format!("research:{}", body.owner), 0);
+                }
+                let result = GameService::new(store)
+                    .initial_game(&session, Uuid::nil())
+                    .await
+                    .unwrap()
+                    .unwrap();
+                let json = serde_json::to_value(result).unwrap();
+                assert_eq!(json["view"]["bodies"][0]["max_temperature"], temperature);
+                assert!(json["view"]["bodies"][0].get("colony").is_none());
+            }
+        }
+    });
+}

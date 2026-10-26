@@ -27,6 +27,13 @@ function empireFixture(now = Date.now()) {
         deuterium: '15000000000',
       },
       fields_used: 87,
+      max_temperature: -20,
+      inventories: [
+        ...body.inventories,
+        { item: { kind: 'Ship', id: 'SolarSatellite' }, count: '4' },
+        { item: { kind: 'Defense', id: 'RocketLauncher' }, count: '3' },
+        { item: { kind: 'Defense', id: 'LightLaser' }, count: '2' },
+      ],
     },
     {
       ...body,
@@ -149,6 +156,7 @@ function empireFixture(now = Date.now()) {
       })),
     production: bodies.map((b) => ({
       body: b.id,
+      solar_satellite: { unit_energy: '20000000', energy_supply: '80000000' },
       settings: {
         metal_mine: 100,
         crystal_mine: 100,
@@ -219,6 +227,9 @@ test('empire shows every body, its own work and resources, and directional fleet
   await expect(planet).toContainText('Metal Mine · Level 8')
   await expect(colony).toContainText('Robotics Factory · Level 7')
   await expect(colony).toContainText('15191 km · 24 to 64 °C')
+  await expect(planet.getByText('Maximum temperature: -20 °C')).toBeVisible()
+  await expect(colony.getByText('Maximum temperature: 64 °C')).toBeVisible()
+  await expect(moon.getByText(/Maximum temperature/)).toHaveCount(0)
   await expect(moon).not.toContainText('Metal Mine · Level 8')
   await expect(planet.getByLabel('Planet resources')).toContainText('25,216')
   await expect(planet).toContainText('1 in')
@@ -292,6 +303,9 @@ test('desktop and phone command views keep all information readable without hori
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
+    const disclosure = page.locator('summary').filter({ hasText: 'Empire orbital network' })
+    if (width <= 767) await expect(disclosure).toBeHidden()
+    else await expect(disclosure).toBeVisible()
     const bodies = page.getByRole('article')
     await expect(bodies).toHaveCount(4)
     for (const dossier of await bodies.all()) {
@@ -320,6 +334,21 @@ test('desktop and phone command views keep all information readable without hori
   await expect(
     planet.getByRole('region', { name: 'Orbital fleet' }),
   ).toContainText('Small Cargo2')
+  const ships = planet.getByRole('region', { name: 'Orbital fleet', exact: true })
+  await expect(ships).toContainText('Solar Satellite4')
+  await expect(ships).not.toContainText('Rocket Launcher')
+  await expect(ships).not.toContainText('Light Laser')
+  await expect(planet.locator('summary').filter({ hasText: 'Orbital fleet' })).toContainText('2 unit types')
+  await planet.locator('summary').filter({ hasText: 'Planetary defenses' }).click()
+  const defenses = planet.getByRole('region', { name: 'Planetary defenses', exact: true })
+  await expect(defenses).toContainText('Rocket Launcher3')
+  await expect(defenses).toContainText('Light Laser2')
+  await expect(defenses).not.toContainText('Small Cargo')
+  await planet.getByText('Maximum temperature: -20 °C').click()
+  await expect(planet).toContainText('Maximum temperature affects deuterium production and solar satellite energy output.')
+  await expect(planet).toContainText('Each solar satellite produces 20 at 100% production.')
+  await expect(page.getByRole('article', { name: 'Planet [1:402:2] dossier', exact: true }).getByText('Maximum temperature: Unavailable')).toBeVisible()
+  await diagnosticScreenshot(page, { path: 'test-results/empire-details-mobile.png', fullPage: true })
   options.bodies.push({
     ...body,
     id: id(9),
@@ -586,3 +615,14 @@ for (const width of [320, 390, 1280]) {
     await verifyCargo(page.getByRole('article', { name: 'Attack fleet', exact: true }), 2)
   })
 }
+
+test('empty ship and defense sections describe their own unit category', async ({ page }) => {
+  const options = empireFixture()
+  options.bodies[0].inventories = []
+  await shellFixture(page, options)
+  const planet = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
+  await planet.locator('summary').filter({ hasText: 'Orbital fleet' }).click()
+  await planet.locator('summary').filter({ hasText: 'Planetary defenses' }).click()
+  await expect(planet.getByRole('region', { name: 'Orbital fleet', exact: true })).toHaveText('No ships stationed here.')
+  await expect(planet.getByRole('region', { name: 'Planetary defenses', exact: true })).toHaveText('No defenses stationed here.')
+})
