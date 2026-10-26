@@ -8,6 +8,8 @@ kill_timeout = 45
 [deploy]
   strategy = "rolling"
 [env]
+  # Set ORBIT_ORIGIN=https://<public-host> via the app environment/secrets.
+  # TLS terminates at Fly; internal HTTP still uses Secure browser cookies.
   ORBIT_ROLE = "api"
   ORBIT_BIND = "0.0.0.0:8080"
   ORBIT_METRICS_BIND = "0.0.0.0:9091"

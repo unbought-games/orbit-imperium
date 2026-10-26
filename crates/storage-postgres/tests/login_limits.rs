@@ -23,7 +23,6 @@ async fn one_source_cannot_exhaust_another_sources_login_budget() {
             signup_per_minute: 5,
             legacy_signup_enabled: true,
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 3,
             trusted_fly_proxies: Vec::new(),

@@ -1,3 +1,4 @@
+import { commandId } from './command-id'
 import type { components } from '../contracts'
 import { validate } from '../client-model/schema'
 export type ProfileSource = components['schemas']['ProfileSource']
@@ -10,7 +11,7 @@ export function playerProfilesApi(binding: Binding, csrf: string) {
     source: ProfileSource,
     signal: AbortSignal,
   ): Promise<PlayerProfiles> => {
-    const request_id = crypto.randomUUID()
+    const request_id = commandId(crypto)
     const response = await fetch(
       `/api/v1/universes/${binding.universe}/player-profiles`,
       {

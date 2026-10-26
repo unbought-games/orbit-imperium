@@ -52,9 +52,10 @@ npm run dev -- --host 0.0.0.0
 ```
 
 Replace the example IP with your computer's address, then open that URL on both
-devices. Local development enables `ORBIT_LOCAL_INSECURE=1`, which permits HTTP
-cookies on loopback and private network IPs with an explicit port. Production
-still requires HTTPS. The backend can remain bound to loopback behind Vite.
+devices. Local development enables `ORBIT_ALLOW_INSECURE_HTTP=1`, which explicitly permits HTTP
+cookies for the configured origin. Public/private hostnames and IPs work, with or
+without an explicit port. Official production uses HTTPS; see the
+[origin and migration guidance](architecture/deployment.md#browser-origin-http-and-https). The backend can remain bound to loopback behind Vite.
 
 The project is organized into these components:
 
@@ -107,7 +108,7 @@ Trusted `main` revisions publish one API/worker image to private ECR after CI
 passes. The [image release contract](operations/image-releases.md) describes
 OIDC setup, license and dependency notice inspection, and the commit/digest record.
 
-Production requires PostgreSQL, a `DATABASE_URL`, an `ORBIT_ORIGIN` matching the public URL, and HTTPS. See the [production setup guide](operations/signup.md) for build commands and configuration, and the [operator runbook](runbooks/development-server.md) for deployment and database maintenance.
+Hosting requires PostgreSQL, a `DATABASE_URL`, and an `ORBIT_ORIGIN` matching the browser URL. Use HTTPS for public hosting, or explicitly opt into unencrypted HTTP as documented above. See the [production setup guide](operations/signup.md) for build commands and configuration, and the [operator runbook](runbooks/development-server.md) for deployment and database maintenance.
 
 For Fly.io deployments:
 

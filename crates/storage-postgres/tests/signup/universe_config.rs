@@ -449,7 +449,6 @@ async fn universe_policy_two_http_instances_refresh_and_fail_closed() {
     let u = request.universe;
     let config = HttpConfig {
         origin: "https://game.example".into(),
-        secure_cookies: true,
         assets: "missing".into(),
         login_per_minute: 30,
         signup: Some(SignupPolicy {

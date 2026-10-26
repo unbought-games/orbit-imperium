@@ -79,7 +79,7 @@ The seed file is 32 raw bytes. It is generation material, not an authentication 
 unset ORBIT_GALAXIES ORBIT_SYSTEMS_PER_GALAXY ORBIT_POSITIONS_PER_SYSTEM
 export ORBIT_BIND=127.0.0.1:18187
 export ORBIT_ORIGIN=http://localhost:18187
-export ORBIT_LOCAL_INSECURE=1
+export ORBIT_ALLOW_INSECURE_HTTP=1
 export ORBIT_TEST_SEEDED=1 # historical fixture mode; requires test-support build
 export ORBIT_ASSETS="$PWD/apps/web/dist"
 target/release/orbit serve
@@ -144,7 +144,7 @@ target/release/orbit mvp-fleets-bootstrap \
   --at "$(node -e 'process.stdout.write(String(Date.now()))')"
 export ORBIT_BIND=127.0.0.1:18217
 export ORBIT_ORIGIN=http://localhost:18217
-export ORBIT_LOCAL_INSECURE=1
+export ORBIT_ALLOW_INSECURE_HTTP=1
 export ORBIT_TEST_SEEDED=1 # historical fixture mode; requires test-support build
 export ORBIT_ASSETS="$PWD/apps/web/dist"
 target/release/orbit serve
@@ -190,7 +190,7 @@ target/release/orbit mvp-raids-bootstrap \
   --at "$(node -e 'process.stdout.write(String(Date.now()))')"
 export ORBIT_BIND=127.0.0.1:18317
 export ORBIT_ORIGIN=http://localhost:18317
-export ORBIT_LOCAL_INSECURE=1
+export ORBIT_ALLOW_INSECURE_HTTP=1
 export ORBIT_TEST_SEEDED=1 # historical fixture mode; requires test-support build
 export ORBIT_ASSETS="$PWD/apps/web/dist"
 target/release/orbit serve

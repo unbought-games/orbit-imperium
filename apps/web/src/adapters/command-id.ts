@@ -1,4 +1,4 @@
-// randomUUID requires HTTPS (or localhost); getRandomValues also works on LAN HTTP.
+// randomUUID requires HTTPS (or localhost); getRandomValues also works on HTTP origins.
 export function commandId(source: Pick<Crypto, 'getRandomValues'>): string {
   const bytes = source.getRandomValues(new Uint8Array(16))
   bytes[6] = (bytes[6] & 0x0f) | 0x40

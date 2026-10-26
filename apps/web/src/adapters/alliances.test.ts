@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest'
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { allianceQuery, allianceCommand, readPublicAlliance } from './alliances'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -11,6 +11,12 @@ const summary = {
   member_count: 4,
   recruitment: 'Open',
 }
+// Model an HTTP page: cryptographic random bytes exist, randomUUID does not.
+beforeEach(() => {
+  vi.stubGlobal('crypto', {
+    getRandomValues: (bytes: Uint8Array) => bytes.fill(0xaa),
+  })
+})
 afterEach(() => vi.unstubAllGlobals())
 it('binds queries and CSRF and rejects mismatched responses', async () => {
   const fetch = vi.fn().mockImplementation(async (_, options) => {

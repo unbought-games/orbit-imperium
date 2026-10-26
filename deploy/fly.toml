@@ -5,6 +5,8 @@ kill_timeout = "45s"
 [build]
   dockerfile = "../Dockerfile"
 [env]
+  # Set ORBIT_ORIGIN=https://<public-host> via the app environment/secrets.
+  # TLS terminates at Fly; internal HTTP still uses Secure browser cookies.
   ORBIT_ROLE = "combined"
   ORBIT_POOL_ADMISSION = "4"
   ORBIT_POOL_READS = "4"

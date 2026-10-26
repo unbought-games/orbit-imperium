@@ -4,7 +4,7 @@ Create a production universe explicitly before starting the server. Players then
 
 Follow [universe configuration operations](universe-configuration.md) for exact fresh-install commands, live policy edits, API routing and the required two-artifact bridge upgrade of retained worlds. A new universe defaults to 5× speed and 1×100×15 topology; historical worlds keep their saved values. `serve` prepares compatible schema migrations and validates existing worlds without creating or resetting them.
 
-Put HTTPS in front of a remote server and set `ORBIT_ORIGIN` to its public origin. Secure session cookies are enabled by default. Only for localhost, use `ORBIT_LOCAL_INSECURE=1` (the local wrapper does this).
+Set `ORBIT_ORIGIN` to the browser-facing origin. HTTPS origins always use Secure cookies, including behind a TLS-terminating proxy. To host over HTTP, explicitly set `ORBIT_ALLOW_INSECURE_HTTP=1` (the local wrapper does this). See [HTTP/HTTPS configuration and migration](../architecture/deployment.md#browser-origin-http-and-https) for valid origins, the retired flag and production implications.
 
 ## Configuration
 

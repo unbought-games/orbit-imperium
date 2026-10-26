@@ -3,7 +3,9 @@
 Official Orbit uses `ORBIT_AUTH_MODE=oidc` and the issuer
 `https://accounts.unbought.games/api/auth`. Set `ORBIT_OIDC_CLIENT_ID` and
 `ORBIT_OIDC_CLIENT_SECRET` through runtime environment, plus the existing
-`ORBIT_ORIGIN`, secure-cookie and PostgreSQL settings. Register the exact
+`ORBIT_ORIGIN` and PostgreSQL settings. HTTPS origins always use Secure cookies.
+The [HTTP opt-in](../architecture/deployment.md#browser-origin-http-and-https)
+does not relax the OIDC library’s HTTPS/loopback requirements for issuers and callbacks. Register the exact
 `ORBIT_ORIGIN/api/auth/callback` and `ORBIT_ORIGIN/api/auth/backchannel-logout`
 URLs at the accounts service. Its verification-return URL is
 `ORBIT_ORIGIN/api/auth/login?verify=true`.

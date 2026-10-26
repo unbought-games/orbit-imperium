@@ -1,3 +1,4 @@
+import { commandId } from '../adapters/command-id'
 import type { components } from '../contracts'
 import { readyFixture, id } from '../test-support/bootstrap'
 import { completePreviewWork } from './detail-preview-completion'
@@ -601,7 +602,7 @@ export async function createDetailPreview(
       async clear() {},
     },
     {
-      newId: () => crypto.randomUUID(),
+      newId: () => commandId(crypto),
       monotonicNowMs: () => performance.now(),
       isOnline: () => true,
     },

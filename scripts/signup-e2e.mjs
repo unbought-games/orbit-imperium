@@ -15,7 +15,7 @@ const admin=new pg.Client({connectionString:connection+'orbit'});await admin.con
 const portLease=await reserveTestPort(process.env.ORBIT_TEST_SIGNUP_PORT);
 const peerLease=await reserveTestPort(process.env.ORBIT_TEST_SIGNUP_PEER_PORT);
 const port=portLease.port,base=`http://localhost:${port}`;
-const env={...process.env,DATABASE_URL:connection+db,ORBIT_BIND:`127.0.0.1:${port}`,ORBIT_ORIGIN:base,ORBIT_LOCAL_INSECURE:'1',ORBIT_TEST_BASE_URL:base,ORBIT_SIGNUP_E2E:'1'};
+const env={...process.env,DATABASE_URL:connection+db,ORBIT_BIND:`127.0.0.1:${port}`,ORBIT_ORIGIN:base,ORBIT_ALLOW_INSECURE_HTTP:'1',ORBIT_TEST_BASE_URL:base,ORBIT_SIGNUP_E2E:'1'};
 delete env.ORBIT_TEST_SEEDED;delete env.ORBIT_UNIVERSE_ID;
 for(const key of ['ORBIT_SPEED','ORBIT_GALAXIES','ORBIT_SYSTEMS_PER_GALAXY','ORBIT_POSITIONS_PER_SYSTEM','ORBIT_MAX_PLAYERS','ORBIT_SIGNUP_ENABLED','ORBIT_SIGNUP_PER_MINUTE','ORBIT_COMMANDS_PER_MINUTE'])delete env[key];
 const binary=process.env.ORBIT_TEST_SERVER_BINARY??'target/debug/orbit';

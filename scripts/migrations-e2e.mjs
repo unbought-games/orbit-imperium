@@ -40,7 +40,7 @@ function environment(url, httpPort, overrides = {}) {
   const env = {...process.env};
   for (const name of Object.keys(env)) if (name.startsWith('ORBIT_')) delete env[name];
   return {...env, DATABASE_URL: url, ORBIT_BIND: `127.0.0.1:${httpPort}`, ORBIT_ORIGIN: `http://localhost:${httpPort}`,
-    ORBIT_LOCAL_INSECURE: '1', ORBIT_TEST_SEEDED: '1', ORBIT_ASSETS: resolve('apps/web/dist'), ...overrides};
+    ORBIT_ALLOW_INSECURE_HTTP: '1', ORBIT_TEST_SEEDED: '1', ORBIT_ASSETS: resolve('apps/web/dist'), ...overrides};
 }
 function launch(env, executable = binary, args = ['serve']) {
   const process = spawn(executable, args, {env, stdio: ['ignore', 'pipe', 'pipe']});

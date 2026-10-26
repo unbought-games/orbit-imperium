@@ -124,7 +124,6 @@ async fn creation_update_and_sessions_share_unique_authoritative_names() {
         store.clone(),
         HttpConfig {
             origin: "https://game.example".into(),
-            secure_cookies: true,
             assets: "missing".into(),
             login_per_minute: 30,
             signup: Some(SignupPolicy {
