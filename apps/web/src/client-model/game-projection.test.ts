@@ -1426,3 +1426,30 @@ it('stops extrapolating every resource at a fusion fuel boundary', () => {
     deuterium: '750',
   })
 })
+
+it.each([
+  { level: 0, setting: 100, deuterium: '100', freezes: false },
+  { level: 1, setting: 0, deuterium: '100', freezes: false },
+  { level: 1, setting: 100, deuterium: '0', freezes: false },
+  { level: 1, setting: 100, deuterium: '100', freezes: true },
+])(
+  'only fuel-changing payments on active reactors pause extrapolation: %j',
+  ({ level, setting, deuterium, freezes }) => {
+    const s = state()
+    const view = s.view as S['BoundView4']
+    view.bodies[0].levels.FusionReactor = level
+    const production = view.progression.production[0]
+    production.fusion_reactor = { energy_supply: '100', projection_limit: null }
+    production.settings.fusion_reactor =
+      setting as S['ProductionSettings']['fusion_reactor']
+    const q = quote()
+    if (q.terms?.type !== 'Building') throw new Error('building fixture')
+    q.terms.paid.metal = '100'
+    q.terms.paid.deuterium = deuterium
+    intent(s, upgrade, q)
+    s.now = s.receivedAt + 500
+    expect(projectGameView(s)?.bodies[0].amounts.metal).toBe(
+      freezes ? '900' : '1400',
+    )
+  },
+)

@@ -662,18 +662,27 @@ export function projectGameView(state: GameState): BoundView | null {
         ...deadlines,
       ),
     )
-    for (const { attempt, intent } of active)
+    const requestedReactor =
+      view.protocol !== 2 &&
+      'FusionReactor' in body.levels &&
+      Number(body.levels.FusionReactor) > 0 &&
+      view.progression.production.some(
+        (p) =>
+          p.body === body.id &&
+          p.fusion_reactor &&
+          p.settings.fusion_reactor > 0,
+      )
+    for (const { attempt, intent } of active) {
+      const command = attempt.envelope.command
+      const cost = requestedReactor
+        ? payment(command, intent, view, state)
+        : null
       if (
-        (attempt.envelope.command.type === 'SetProduction' &&
-          attempt.envelope.command.body === body.id) ||
-        (view.protocol !== 2 &&
-          view.progression.production.some(
-            (p) => p.body === body.id && p.fusion_reactor,
-          ) &&
-          payment(attempt.envelope.command, intent, view, state)?.body ===
-            body.id)
+        (command.type === 'SetProduction' && command.body === body.id) ||
+        (cost?.body === body.id && BigInt(cost.delta.deuterium) !== 0n)
       )
         horizon = Math.min(horizon, intent.submittedAt)
+    }
     const rate = rawResourceRates(view, body)
     let cursor = view.as_of_ms
     for (const { attempt, intent } of active.sort(

@@ -78,11 +78,23 @@ export function buildingInsights(
   const percent = BigInt(
     setting && production ? production.settings[setting] : 100,
   )
-  const supply = BigInt(production?.energy_supply ?? body.energy.supply)
-  const demand = BigInt(production?.energy_demand ?? body.energy.demand)
-  const utilization = BigInt(production?.utilization ?? body.energy.utilization)
-  const benefit = proposal?.building_benefit
   const projected = proposal?.building_production
+  const supply = BigInt(
+    projected?.current.energy_supply ??
+      production?.energy_supply ??
+      body.energy.supply,
+  )
+  const demand = BigInt(
+    projected?.current.energy_demand ??
+      production?.energy_demand ??
+      body.energy.demand,
+  )
+  const utilization = BigInt(
+    projected?.current.utilization ??
+      production?.utilization ??
+      body.energy.utilization,
+  )
+  const benefit = proposal?.building_benefit
   const energy = proposal?.building_energy
   const consumptionChange = energy
     ? ((BigInt(energy.target_consumption) -
@@ -171,7 +183,7 @@ export function buildingInsights(
       balanceChange:
         afterDemand === null
           ? null
-          : (supplyChange - (afterDemand - demand)).toString(),
+          : (afterSupply - afterDemand - (supply - demand)).toString(),
       utilization: utilization.toString(),
       afterUtilization: afterUtilization?.toString() ?? null,
       constructionBlocked:

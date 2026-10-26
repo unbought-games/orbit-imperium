@@ -612,7 +612,9 @@ it('uses server fuel-limited output for fusion previews rather than rated power'
     },
   }
   const insight = buildingInsights(view, body, 'FusionReactor', proposal)
+  expect(insight.energy.current).toBe(micro(-67))
   expect(insight.energy.after).toBe(micro(-60))
+  expect(insight.energy.balanceChange).toBe(micro(7))
   expect(insight.benefit).toMatchObject({
     current: micro(13),
     target: micro(20),
