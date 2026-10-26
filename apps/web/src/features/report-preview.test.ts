@@ -211,3 +211,23 @@ it('shows only known target identities and historical planet names', () => {
     ),
   ).toBe('Planet')
 })
+
+it('includes public bot identity in compact report labels', () => {
+  expect(
+    reportListIdentity(
+      {
+        kind: 'Espionage',
+        target: {
+          owner: 'bot',
+          body: 'planet',
+          kind: 'Planet',
+          coordinates: { galaxy: 1, system: 1, position: 1 },
+        },
+      },
+      undefined,
+      { bot: 'Harvester' },
+      undefined,
+      { bot: { kind: 'bot' } },
+    ),
+  ).toContain('Harvester Bot')
+})

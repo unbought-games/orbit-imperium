@@ -6,6 +6,7 @@ impl PgStore {
     pub(crate) async fn read_rankings(&self, b: Binding) -> Result<RankingFacts, StoreError> {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
+        crate::bots::observe(&mut tx, b).await?;
         if crate::facts::rules(&mut tx, b.universe).await?.protocol() != 4 {
             return Err(StoreError::UnsupportedProtocol);
         }

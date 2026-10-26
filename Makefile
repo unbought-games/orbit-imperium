@@ -211,6 +211,19 @@ test-speed-updates: test-runtime
 run-speed-updates:
 	$(TIMEOUT) full-system node scripts/speed-updates-e2e.mjs
 
+# Explicit S1 bot contract acceptance. Build the real pre-S1 binary first;
+# baseline artifacts use a separate target directory to prevent cache collisions.
+.PHONY: prepare-bots test-bots run-bots
+prepare-bots:
+	$(TIMEOUT) compile sh scripts/build-bots-previous.sh
+	$(TIMEOUT) compile cargo build -p orbit-server --features test-support
+
+test-bots: prepare-bots
+	$(MAKE) run-bots
+
+run-bots:
+	$(TIMEOUT) full-system node scripts/bots-e2e.mjs
+
 .PHONY: test-homepage
 test-homepage:
 	cargo nextest run -p orbit-transport-http --lib -E 'test(home_seo::) | test(static_assets::) | test(shared_report_preview::) | test(public_reports_need_no_session_but_sharing_management_requires_auth_origin_and_csrf)'

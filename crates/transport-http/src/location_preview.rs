@@ -68,9 +68,12 @@ async fn load<S: GameStore + IdentityStore>(
                 .await
                 .into_iter()
                 .next()
-                .map(|p| (p.username, p.supporter_tier))
+                .map(|p| (bot_label(p.username, p.kind), p.supporter_tier))
         } else {
-            identities.into_iter().next().map(|p| (p.username, None))
+            identities
+                .into_iter()
+                .next()
+                .map(|p| (bot_label(p.username, p.kind), None))
         };
     }
     Ok(Card {
@@ -89,6 +92,11 @@ pub(super) async fn page<S: GameStore + IdentityStore + Send + Sync + 'static>(
         Ok(c) => c,
         Err(status) => return status.into_response(),
     };
+    if let Err(error) =
+        super::bots::public_access(&s, &headers, Some(card.appearance.universe)).await
+    {
+        return error.into_response();
+    }
     let template =
         match tokio::fs::read_to_string(std::path::Path::new(&s.config.assets).join("index.html"))
             .await
@@ -119,9 +127,19 @@ pub(super) async fn image<S: GameStore + IdentityStore + Send + Sync + 'static>(
     State(s): State<Arc<HttpState<S>>>,
     Path((universe, coordinates)): Path<(String, String)>,
     Query(options): Query<Options>,
+    headers: HeaderMap,
 ) -> Response {
+    let card = match load(&s, &universe, &coordinates, options).await {
+        Ok(card) => card,
+        Err(status) => return status.into_response(),
+    };
+    if let Err(error) =
+        super::bots::public_access(&s, &headers, Some(card.appearance.universe)).await
+    {
+        return error.into_response();
+    }
     match image_bytes(
-        load(&s, &universe, &coordinates, options),
+        std::future::ready(Ok(card)),
         s.config.assets.clone(),
         RENDERS.clone(),
     )
@@ -161,6 +179,14 @@ async fn image_bytes(
     .await
     .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
     .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)
+}
+
+fn bot_label(name: String, kind: PlayerKind) -> String {
+    if kind == PlayerKind::Bot {
+        format!("{name} · Bot")
+    } else {
+        name
+    }
 }
 
 #[cfg(test)]

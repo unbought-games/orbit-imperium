@@ -16,7 +16,7 @@ async fn fresh() -> (PgStore, PgPool) {
 }
 
 async fn facts(pool: &PgPool) -> serde_json::Value {
-    sqlx::query_scalar("SELECT jsonb_build_object('worlds',(SELECT jsonb_agg(to_jsonb(u)) FROM universes u),'bootstrap',(SELECT jsonb_agg(to_jsonb(b)) FROM mvp_bootstraps b),'policies',(SELECT jsonb_agg(to_jsonb(p)) FROM universe_policies p),'audit',(SELECT jsonb_agg(to_jsonb(a)) FROM universe_policy_changes a),'accounts',(SELECT jsonb_agg(to_jsonb(a)) FROM accounts a),'bodies',(SELECT jsonb_agg(to_jsonb(b)) FROM bodies b))")
+    sqlx::query_scalar("SELECT jsonb_build_object('worlds',(SELECT jsonb_agg(to_jsonb(u)) FROM universes u),'bootstrap',(SELECT jsonb_agg(to_jsonb(b)) FROM mvp_bootstraps b),'policies',(SELECT jsonb_agg(to_jsonb(p)) FROM universe_policies_v2 p),'audit',(SELECT jsonb_agg(to_jsonb(a)) FROM universe_policy_changes a),'accounts',(SELECT jsonb_agg(to_jsonb(a)) FROM accounts a),'bodies',(SELECT jsonb_agg(to_jsonb(b)) FROM bodies b))")
         .fetch_one(pool).await.unwrap()
 }
 
@@ -205,7 +205,7 @@ async fn selection_is_explicit_with_multiple_worlds_and_never_creates_an_extra_w
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query("DELETE FROM universe_policies WHERE universe=$1")
+    sqlx::query("DELETE FROM universe_policies_v2 WHERE universe=$1")
         .bind(first.universe.0)
         .execute(&pool)
         .await
@@ -229,7 +229,7 @@ async fn failed_naming_rolls_back_the_entire_world_and_can_be_retried() {
         ..Default::default()
     };
     assert!(store.setup_universe(&request).await.is_err());
-    let counts: (i64,i64,i64,i64,i64) = sqlx::query_as("SELECT (SELECT count(*) FROM universes),(SELECT count(*) FROM universe_policies),(SELECT count(*) FROM universe_policy_changes),(SELECT count(*) FROM mvp_bootstraps),(SELECT count(*) FROM world_heads)")
+    let counts: (i64,i64,i64,i64,i64) = sqlx::query_as("SELECT (SELECT count(*) FROM universes),(SELECT count(*) FROM universe_policies_v2),(SELECT count(*) FROM universe_policy_changes),(SELECT count(*) FROM mvp_bootstraps),(SELECT count(*) FROM world_heads)")
         .fetch_one(&pool).await.unwrap();
     assert_eq!(counts, (0, 0, 0, 0, 0));
     sqlx::query("DROP TRIGGER reject_setup_name ON universes")

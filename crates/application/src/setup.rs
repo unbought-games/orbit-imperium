@@ -35,6 +35,7 @@ impl UniverseSetup {
                     .unwrap_or(immutable.positions_per_system),
             },
             policy: UniversePolicy {
+                bots: Default::default(),
                 signup_enabled: self.signup_enabled.unwrap_or(policy.signup_enabled),
                 max_players: self.max_players,
                 signup_per_minute: self.signup_per_minute.unwrap_or(policy.signup_per_minute),

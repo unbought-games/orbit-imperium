@@ -46,6 +46,10 @@ pub(super) async fn stream<S: GameStore + IdentityStore + UpdateStore + Send + S
         universe: principal.universe,
         epoch: query.epoch,
     };
+    s.updates
+        .bot_observe(binding)
+        .await
+        .map_err(ServiceError::from)?;
     let after = headers
         .get("last-event-id")
         .map(|v| {
@@ -110,7 +114,13 @@ async fn deliver<S: GameStore + IdentityStore + UpdateStore + Send + Sync + 'sta
         if current.binding != binding {
             return;
         }
+        if s.updates.bot_observe(binding).await.is_err() {
+            return;
+        }
         for update in page.items {
+            if s.updates.bot_observe(binding).await.is_err() {
+                return;
+            }
             let Ok(mut event) = Event::default().event("game-update").json_data(&update) else {
                 return;
             };
@@ -129,6 +139,7 @@ async fn deliver<S: GameStore + IdentityStore + UpdateStore + Send + Sync + 'sta
                 _=draining(&mut drain)=>return,
                 _=sender.closed()=>return,
                 _=watcher.changed()=>{},
+                _=tokio::time::sleep(Duration::from_secs(1))=>{},
             }
         }
         page = match s.updates.read_updates(binding, cursor.as_deref(), 64).await {

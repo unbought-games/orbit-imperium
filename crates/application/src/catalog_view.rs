@@ -152,6 +152,30 @@ pub(crate) fn combat_statistics(
     }))
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BoundCatalog {
+    pub binding: crate::Binding,
+    pub request_id: uuid::Uuid,
+    pub profile_hash: Hash,
+    pub catalog: Vec<CatalogEntryView>,
+}
+impl<S: crate::GameStore> crate::GameService<S> {
+    pub async fn bound_catalog(
+        &self,
+        p: crate::Principal,
+        c: crate::QueryContext,
+    ) -> Result<BoundCatalog, ServiceError> {
+        Self::principal(p, c.binding)?;
+        let facts = self.store.bound_view(c.binding).await?;
+        Ok(BoundCatalog {
+            binding: c.binding,
+            request_id: c.request_id,
+            profile_hash: facts.rules.hash.clone(),
+            catalog: catalog_view(&facts.rules)?,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

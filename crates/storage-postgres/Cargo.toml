@@ -124,3 +124,7 @@ required-features = ["test-support"]
 [[test]]
 name = "rankings"
 required-features = ["test-support"]
+
+[[test]]
+name = "bots"
+required-features = ["test-support"]

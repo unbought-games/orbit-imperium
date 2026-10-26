@@ -282,6 +282,7 @@ impl<S: GameStore> GameService<S> {
         request: QuoteRequestDto3,
     ) -> Result<ReadSnapshot<BoundProgressionOptions>, ServiceError> {
         Self::principal(p, c.binding)?;
+        self.store.bot_observe(c.binding).await?;
         let q = request.domain()?;
         let ReadSnapshot {
             facts: (facts, revision),
@@ -363,6 +364,7 @@ impl<S: GameStore> GameService<S> {
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView3>, ServiceError> {
         Self::principal(p, c.binding)?;
+        self.store.bot_observe(c.binding).await?;
         let facts = self.store.bound_view(c.binding).await?;
         if !facts.rules.progression() {
             return Err(ServiceError::UnsupportedProtocol);

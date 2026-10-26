@@ -1,5 +1,6 @@
 mod analytics;
 mod audit_cli;
+mod bots_cli;
 mod config;
 mod engine_executor;
 mod metrics;
@@ -40,6 +41,12 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         println!("{}", setup_cli::HELP);
         return Ok(());
     }
+    if args.get(1).map(String::as_str) == Some("bots")
+        && args.get(2).map(String::as_str) == Some("--help")
+    {
+        println!("{}", bots_cli::HELP);
+        return Ok(());
+    }
     let selected = command(&args)?;
     let setup = (selected == "setup")
         .then(|| setup_cli::parse(&args, |key| env::var(key).ok()))
@@ -62,6 +69,7 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         connection_started.elapsed().as_millis()
     );
     match selected {
+        "bots" => bots_cli::run(&store, bots_cli::parse(&args)?).await?,
         "setup" => setup_cli::run(&store, setup.ok_or("missing setup options")?).await?,
         "universe" => {
             universe_cli::run(&store, universe_command.ok_or("missing universe command")?).await?
@@ -147,6 +155,7 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
 fn command(args: &[String]) -> Result<&str, Box<dyn Error>> {
     let name = args.get(1).map(String::as_str).unwrap_or("serve");
     match name {
+        "bots" => { bots_cli::parse(args)?; Ok(name) },
         "universe" | "setup" => Ok(name),
         "runtime" => { runtime_cli::parse(args)?; Ok(name) },
         "rules" => { rules_cli::parse_rules_cli(args)?; Ok(name) },

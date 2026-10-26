@@ -1,5 +1,6 @@
 mod alliance_identity;
 mod alliances;
+mod bots;
 mod colonization;
 mod rankings;
 mod report_sharing;
@@ -53,6 +54,9 @@ impl PgStore {
     }
 }
 fn db_error(error: sqlx::Error) -> StoreError {
+    if error.as_database_error().and_then(|e| e.code()).as_deref() == Some("40001") {
+        return StoreError::SnapshotRetry;
+    }
     if let sqlx::Error::Database(ref db) = error
         && db.code().as_deref() == Some("PON01")
     {

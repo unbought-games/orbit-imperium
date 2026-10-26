@@ -47,6 +47,7 @@ impl PgStore {
             if row.try_get::<String,_>("intent_hash").map_err(db_error)? != intent { return Err(StoreError::Conflict); }
             return Ok(row.try_get::<sqlx::types::Json<AllianceCommandResult>,_>("result").map_err(db_error)?.0);
         }
+        crate::bots::charge(&mut tx, b, "alliance", q.command_id, true).await?;
         let at = now(&mut tx).await?;
         let joining = matches!(
             &q.action,

@@ -87,6 +87,12 @@ export function usePlayerDisplay(player: string) {
   )
 }
 
+/** Authoritative profile observations for pure compact-label projections. */
+export function usePlayerDisplays() {
+  const controller = useContext(PlayerProfilesContext)
+  return useStore(controller?.store ?? emptyProfiles, (state) => state.players)
+}
+
 // Standalone report renderers can show known names without an authenticated
 // profile provider; this immutable empty store never carries account data.
 const emptyProfiles = new PlayerProfilesController(async () => {
