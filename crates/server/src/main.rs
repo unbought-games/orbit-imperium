@@ -7,6 +7,7 @@ mod rules_cli;
 mod runtime;
 mod runtime_cli;
 mod serving;
+mod setup_cli;
 mod universe_cli;
 mod universe_serving;
 #[cfg(feature = "test-support")]
@@ -31,7 +32,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 async fn run_main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
+    if args.len() == 4 && args[1] == "rules" && args[2] == "upgrade" && args[3] == "--help" {
+        println!("{}", rules_cli::UPGRADE_HELP);
+        return Ok(());
+    }
+    if args.get(1).map(String::as_str) == Some("setup") && args.len() == 3 && args[2] == "--help" {
+        println!("{}", setup_cli::HELP);
+        return Ok(());
+    }
     let selected = command(&args)?;
+    let setup = (selected == "setup")
+        .then(|| setup_cli::parse(&args, |key| env::var(key).ok()))
+        .transpose()?;
     let universe_command = (selected == "universe")
         .then(|| universe_cli::parse(&args, |key| env::var(key).ok()))
         .transpose()?;
@@ -50,6 +62,7 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         connection_started.elapsed().as_millis()
     );
     match selected {
+        "setup" => setup_cli::run(&store, setup.ok_or("missing setup options")?).await?,
         "universe" => {
             universe_cli::run(&store, universe_command.ok_or("missing universe command")?).await?
         }
@@ -134,14 +147,14 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
 fn command(args: &[String]) -> Result<&str, Box<dyn Error>> {
     let name = args.get(1).map(String::as_str).unwrap_or("serve");
     match name {
-        "universe" => Ok(name),
+        "universe" | "setup" => Ok(name),
         "runtime" => { runtime_cli::parse(args)?; Ok(name) },
         "rules" => { rules_cli::parse_rules_cli(args)?; Ok(name) },
         "audit" => { audit_cli::parse(args)?; Ok(name) },
         "serve" | "db-init" | "db-init-progression" | "db-init-fleets" | "db-init-raids" if args.len() <= 2 => Ok(name),
         "dev-seed" | "dev-reset" | "mvp-bootstrap" | "mvp-progression-bootstrap" | "mvp-fleets-bootstrap" | "mvp-raids-bootstrap"
             if cfg!(feature = "test-support") && args.len() == 6 && matches!((args[2].as_str(), args[4].as_str()), ("--universe", "--at") | ("--at", "--universe")) => Ok(name),
-        _ => Err("invalid command/options: use serve, db-init, or a seed/bootstrap command with exactly --universe UUID and --at MILLISECONDS".into()),
+        _ => Err("invalid command/options: use setup --help, serve, db-init, or a seed/bootstrap command with exactly --universe UUID and --at MILLISECONDS".into()),
     }
 }
 

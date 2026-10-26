@@ -33,15 +33,47 @@ export ORBIT_ASSETS=apps/web/dist
 export ORBIT_BIND=127.0.0.1:8080
 export ORBIT_ORIGIN=http://localhost:8080
 export ORBIT_ALLOW_INSECURE_HTTP=1 # explicit opt-in for this HTTP origin
-export ORBIT_UNIVERSE_ID=00000000-0000-4000-8000-000000000001
-
-target/universe-final/release/orbit db-init
-target/universe-final/release/orbit universe create --universe "$ORBIT_UNIVERSE_ID"
-target/universe-final/release/orbit universe show --universe "$ORBIT_UNIVERSE_ID"
+target/universe-final/release/orbit setup --name "Friends" --speed 3
 target/universe-final/release/orbit serve
 ```
 
-Use an installation-specific UUID. Automated provisioning should always supply `--universe`: if a response is lost, `universe show --universe UUID` resolves the outcome. Repeating creation conflicts and never resets the world. Omitting `--universe` generates a new UUID each time. Creation prints JSON containing `status`, `universe`, `name` and `configuration`, and a worker-restart reminder on stderr. `universe list` and `universe show` expose safe JSON configuration summaries, including rules hashes/revisions and the derived effective ceiling.
+### Repeatable setup
+
+`orbit setup` requires only `DATABASE_URL`: provision the PostgreSQL database and
+credentials first. Configure the browser-facing origin and other runtime settings
+for `serve` as described in the [signup guide](signup.md). Setup does not start a
+server, configure HTTPS, write environment files or create player accounts.
+
+Without options, setup creates a universe with the defaults above, an automatic
+galaxy name, and all standard content bundled in the installed binary. `--name` and
+`--speed` customize it. It also accepts the topology and
+policy options shown below. Run `orbit setup --help` without a database connection
+to see every option. The command always prints JSON to stdout with `status`
+(`created` or `already_initialized`), `universe`, `name`, and `configuration`;
+diagnostics and the worker-restart reminder go to stderr.
+
+On an empty database, setup applies migrations and atomically creates the world,
+its name and policy. Concurrent setup calls serialize; a failed creation rolls
+back and can be retried. Repeating setup without a UUID reuses the sole existing
+universe, including after a lost response. Omitted options preserve saved values;
+explicit options must match them. Conflicts fail without resetting player progress
+or changing universe settings. Compatible schema migrations may already have run.
+Live policy or name edits remain the responsibility of the explicit update commands.
+To activate new standard content in an existing world after deploying a new image,
+use `orbit rules upgrade`; see the [standard upgrade workflow](rules-updates.md#standard-release-upgrades).
+
+Optionally select an installation-specific UUID with `--universe UUID` or
+`ORBIT_UNIVERSE_ID`. When both are supplied they must agree. Multiple existing
+universes require an explicit UUID; a missing UUID in a nonempty database fails
+instead of creating an extra world. Use `universe create` for additional worlds.
+Legacy worlds without a saved policy require the bridge upgrade below; setup does
+not infer or import their configuration and is unavailable in bridge builds.
+
+The lower-level `db-init` and `universe create` commands remain available. Unlike
+setup, repeating `universe create` with the same UUID conflicts; omitting its UUID
+creates a new world each time. `universe list` and `universe show --universe UUID`
+expose safe JSON configuration summaries, including rules hashes/revisions and the
+derived effective ceiling.
 
 To select other creation settings, for example:
 
@@ -55,7 +87,7 @@ target/universe-final/release/orbit universe create \
 
 After creating a world while processes are running, restart **every worker**, including combined processes, before routing signup traffic to it. Workers discover worlds only at startup. Readiness does not prove that every newly created world has a worker. API and combined roles bind signup with `ORBIT_UNIVERSE_ID`; with exactly one world they can infer it. With multiple worlds the binding is required and must name an existing world. A binding never creates a world or restricts other authorized game routes. Worker-only roles process all supported worlds and need no signup binding.
 
-For local development, `make dev-setup UNIVERSE=UUID` explicitly starts PostgreSQL, builds the server, initializes schema and creates that world once. Then use `make dev` for ordinary starts/restarts. The default localhost database configuration is in [development guide](../development.md#running-locally).
+For local development, `make dev-setup` starts PostgreSQL, builds the server and runs repeatable setup. Optionally pass `UNIVERSE=UUID`. Then use `make dev` for ordinary starts/restarts. The default localhost database configuration is in [development guide](../development.md#running-locally).
 
 ## Live policy edits
 
@@ -141,8 +173,7 @@ Final `serve` applies compatible schema migrations but never provisions a univer
 For fresh container setup, run one-off CLI containers on the database network before starting the game container, using a private environment file:
 
 ```sh
-docker run --rm --network GAME_NETWORK --env-file /private/orbit.env orbit-imperium:config-final db-init
-docker run --rm --network GAME_NETWORK --env-file /private/orbit.env orbit-imperium:config-final universe create --universe UUID
+docker run --rm --network GAME_NETWORK --env-file /private/orbit.env orbit-imperium:config-final setup --name "Friends" --speed 3
 docker run -d --name orbit-game --network GAME_NETWORK --env-file /private/orbit.env -p 8080:8080 orbit-imperium:config-final
 ```
 

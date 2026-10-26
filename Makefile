@@ -78,12 +78,11 @@ dev-seed:
 dev-reset:
 	node scripts/local.mjs dev-reset $(if $(UNIVERSE),--universe "$(UNIVERSE)") $(if $(AT),--at "$(AT)")
 
-# Explicit one-time setup; use UNIVERSE=<uuid> for retry-safe provisioning.
+# Repeatable setup; omit UNIVERSE to create or reuse the sole universe.
 .PHONY: dev-setup build-universe-final build-universe-bridge
 dev-setup: db-up
 	cargo build -p orbit-server
-	node scripts/local.mjs db-init
-	node scripts/local.mjs universe create $(if $(UNIVERSE),--universe "$(UNIVERSE)")
+	node scripts/local.mjs setup $(if $(UNIVERSE),--universe "$(UNIVERSE)")
 
 # Separate deployable artifacts. The default image remains the final release.
 build-universe-final:

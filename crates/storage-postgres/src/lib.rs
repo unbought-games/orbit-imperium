@@ -7,7 +7,7 @@ use orbit_application::StoreError;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 mod enrollment;
 mod universe_config;
-pub use universe_config::UniverseConfigChange;
+pub use universe_config::{SetupOutcome, UniverseConfigChange};
 mod pools;
 pub use pools::{PoolLimits, PoolSnapshot};
 mod migrations;

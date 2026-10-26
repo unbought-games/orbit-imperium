@@ -1,6 +1,6 @@
 # Production signup setup
 
-Create a production universe explicitly before starting the server. Players then choose an account name and password in the browser, receive one starter planet and enter the game immediately. No accounts file, seed file, email service, verification or manual enrollment is needed.
+Run `orbit setup` against your PostgreSQL database, then `orbit serve`. Setup applies migrations and creates the first universe; repeating it preserves the existing world. Players then choose an account name and password in the browser, receive one starter planet and enter the game immediately. No accounts file, seed file, email service, verification or manual enrollment is needed.
 
 Follow [universe configuration operations](universe-configuration.md) for exact fresh-install commands, live policy edits, API routing and the required two-artifact bridge upgrade of retained worlds. A new universe defaults to 5× speed and 1×100×15 topology; historical worlds keep their saved values. `serve` prepares compatible schema migrations and validates existing worlds without creating or resetting them.
 

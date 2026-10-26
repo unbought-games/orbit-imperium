@@ -2,7 +2,7 @@
 use orbit_application::*;
 use orbit_storage_postgres::PgStore;
 use std::{collections::BTreeMap, path::PathBuf};
-mod parse;
+pub(crate) mod parse;
 pub use parse::parse;
 #[cfg(test)]
 use parse::parse_for_mode;

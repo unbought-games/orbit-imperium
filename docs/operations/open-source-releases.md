@@ -52,6 +52,16 @@ stable across attempts so rerunning only failed jobs can reuse successful builds
 
 ## Release assets
 
+Content additions also update the compiled recipe in
+`crates/engine/src/standard_rules/`, its `STANDARD_RULES_RELEASE`, and its tests.
+The recipe explicitly identifies owned fields and recognized older values;
+changing an existing bundled default must supply a reviewed predecessor rather
+than overwrite a custom value. Keep historical fixtures intact. Verify fresh
+setup, upgrade from the previous standard content, partial activations, conflicts,
+and retry/no-op behavior. A code-only patch release need not change the content
+bundle version. Operators use `orbit rules upgrade` from the installed image;
+release publication itself never activates a live universe.
+
 Numbered images are published at `ghcr.io/unbought-games/orbit-imperium:<version>`
 for **linux/amd64** and **linux/arm64**. Docker selects the host architecture:
 

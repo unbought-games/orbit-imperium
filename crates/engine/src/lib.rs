@@ -77,6 +77,8 @@ pub use raiding::*;
 
 mod rules_update;
 pub use rules_update::*;
+mod standard_rules;
+pub use standard_rules::*;
 mod scheduling;
 pub use scheduling::*;
 

@@ -31,6 +31,14 @@ pub struct RulesDiff {
     pub changes: Vec<RuleChange>,
     pub initialize: RulesCatalogDelta,
 }
+/// The proposal remains in memory; preview output shows its diff rather than a second rules file.
+#[derive(Debug, Serialize)]
+pub struct RulesUpgradePlan {
+    pub release: &'static str,
+    #[serde(skip)]
+    pub document: RulesDocument,
+    pub diff: RulesDiff,
+}
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status")]
 pub enum RulesApplyOutcome {
@@ -46,6 +54,8 @@ pub enum RulesApplyOutcome {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum RulesUpdateError {
+    #[error(transparent)]
+    StandardContent(#[from] StandardRulesError),
     #[error("invalid rules update: {reason}")]
     Invalid { reason: String },
     #[error(
@@ -89,6 +99,21 @@ pub struct RulesService<S: RulesStore> {
 impl<S: RulesStore> RulesService<S> {
     pub fn new(store: S) -> Self {
         Self { store }
+    }
+    pub async fn prepare_upgrade(
+        &self,
+        universe: UniverseId,
+    ) -> Result<RulesUpgradePlan, RulesUpdateError> {
+        let mut document = self.export(universe).await?;
+        let current = proposed(&document)?;
+        let next = upgrade_standard_rules(&current)?;
+        document.artifact = next.artifact;
+        let diff = self.diff(&document).await?;
+        Ok(RulesUpgradePlan {
+            release: STANDARD_RULES_RELEASE,
+            document,
+            diff,
+        })
     }
     pub async fn export(&self, universe: UniverseId) -> Result<RulesDocument, RulesUpdateError> {
         let current = self.store.current_rules(universe).await?;

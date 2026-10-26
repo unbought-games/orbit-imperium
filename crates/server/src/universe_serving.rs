@@ -17,7 +17,7 @@ fn binding(ids: &[UniverseId], requested: Option<UniverseId>) -> Result<Universe
         }
         None => match ids {
             [id] => Ok(*id),
-            [] => Err("no universes exist; run db-init then universe create before serving".into()),
+            [] => Err("no universes exist; run orbit setup before serving (or db-init then universe create)".into()),
             _ => Err(
                 "multiple universes exist; set ORBIT_UNIVERSE_ID for this API's signup route"
                     .into(),
