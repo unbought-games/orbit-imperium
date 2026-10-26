@@ -9,7 +9,7 @@
   },
   "scripts": {
     "contracts": "openapi-typescript contracts/openapi.json -o apps/web/src/contracts.ts",
-    "build": "npm run news:build && npm run routes && tsc --noEmit -p apps/web && vite build --config apps/web/vite.config.ts",
+    "build": "npm run news:build && npm run routes && tsc --noEmit -p apps/web && node scripts/homepage-template.mjs && vite build --config apps/web/vite.config.ts",
     "test": "vitest run --config apps/web/vite.config.ts",
     "dev": "npm run news:build && vite --config apps/web/vite.config.ts",
     "test:e2e": "make test-core",

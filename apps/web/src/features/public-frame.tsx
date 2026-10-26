@@ -13,11 +13,13 @@ export function PublicFrame({
   variant = 'auth',
   afterHero,
   headerActions,
+  nativeLinks = false,
 }: {
   children: ReactNode
   variant?: 'landing' | 'auth' | 'recovery'
   afterHero?: ReactNode
   headerActions?: ReactNode
+  nativeLinks?: boolean
 }) {
   return (
     <main
@@ -26,7 +28,10 @@ export function PublicFrame({
       className={`${styles.frame} ${styles[variant]}`}
     >
       <header className={styles.header}>
-        <EndorsedBrand homeLink={variant !== 'recovery'} />
+        <EndorsedBrand
+          homeLink={variant !== 'recovery'}
+          nativeLinks={nativeLinks}
+        />
         {headerActions}
       </header>
       <div className={styles.composition}>

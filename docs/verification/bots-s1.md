@@ -104,3 +104,17 @@ visitor. Retained usage/query evidence has no automated purge in S1. Bot-runner
 adoption must preserve command journals and defer fresh overview after inactive
 receipt recovery. S2 population maintenance/shared cleanup, S3 personality lifecycle,
 lab work and strategy changes are outside this implementation.
+
+## PR integration — 2026-10-26
+
+Integrated main `f9ea405b3f988d20fd06e89e5f98ef9cc0e57504` for PR #163.
+The only content conflict was the appended Make targets; both `test-homepage`
+and the explicit bot acceptance targets were retained. The HTTP module merged
+cleanly. On that combined tree, 46 transport tests passed (9.657 s), 916 client
+tests passed (5.34 s), and the production web build passed (Vite 3.12 s).
+`make test-bots` also passed: previous/current build phases were 29.20/15.13 s;
+scenario 9.042 s and cleanup completed at 9.073 s. The disposable database
+`orbit_bots_123f90c8b97a` was dropped. The tested candidate was based on `3a6fb28`
+with worktree SHA-256 `72f9cff6ce6e6dd398e93a64ef65cb8fc43835dfdcf6f500079b7e32875e9eb7`;
+this evidence paragraph was added afterward. Remote CI will validate the pushed
+merge commit and the merge queue's integration revision separately.

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ButtonLink } from '../ui/button'
+import { ButtonLinkAnchor } from '../ui/button'
 import styles from './home-details.module.css'
 
 const repository = 'https://github.com/unbought-games/orbit-imperium'
@@ -183,10 +183,10 @@ export function HomeDetails({
             something feels wrong, we’d like to hear about it.
           </p>
           <div className={styles.joinAction}>
-            <ButtonLink to={signupEnabled ? '/signup' : '/login'}>
+            <ButtonLinkAnchor href={signupEnabled ? '/signup' : '/login'}>
               {signupEnabled ? 'Join the open beta' : 'Return to your account'}
               <span aria-hidden="true">→</span>
-            </ButtonLink>
+            </ButtonLinkAnchor>
           </div>
         </div>
         <div className={styles.community}>{children}</div>

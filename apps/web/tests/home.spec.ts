@@ -201,6 +201,7 @@ for (const width of [320, 390, 768, 1440]) {
     ).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
     // The expanded marketing sections are confined to the landing route.
     await expect(page.locator('#mobile')).toHaveCount(0)
+  await expect(page.locator('[data-orbit-home-head]')).toHaveCount(0)
   })
 }
 
@@ -227,8 +228,54 @@ test('returning players go straight to their empire without loading marketing im
     if (request.url().includes('/art/landing/')) images.push(request.url())
   })
   await installGameFixture(page)
+  await page.route('**/', async route => {
+    const response = await route.fetch()
+    await route.fulfill({ response, body: (await response.text()).replace('</head>', '<link data-orbit-home-head rel="canonical" href="https://community.example/"><meta data-orbit-home-head property="og:url" content="https://community.example/"></head>') })
+  })
   await page.goto('/')
   await expect(page.locator('main h1')).toContainText('Empire —')
   await expect(page.locator('#mobile')).toHaveCount(0)
   expect(images).toEqual([])
+})
+
+for (const signup of [true, false]) {
+  test(`embedded anonymous homepage loads independently of the game with signup ${signup}`, async ({ page }) => {
+    await anonymous(page, signup)
+    let gameStartup = false
+    page.on('request', request => {
+      if (request.url().includes('/start-game.tsx')) gameStartup = true
+    })
+    await page.route('**/', async route => {
+      const response = await route.fetch()
+      const html = (await response.text()).replace('/src/main.tsx', '/src/landing-main.tsx').replace(
+        '<script id="orbit-bootstrap" type="application/json"></script>',
+        `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
+      )
+      await route.fulfill({ response, body: html })
+    })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Victory isn’t for sale.')
+    await expect(page).toHaveTitle('Orbit Imperium — Multiplayer Space Strategy Game')
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new URL('/', page.url()).href)
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/art\/orbital-capital\/orbital-capital-1200.webp$/)
+    const graph = await page.locator('script[type="application/ld+json"]').textContent()
+    expect(JSON.parse(graph!)['@graph'][1]['@type']).toBe('VideoGame')
+    await expect(page.getByRole('link', { name: 'Create an account', exact: true })).toHaveCount(signup ? 1 : 0)
+    expect(gameStartup).toBe(false)
+    await page.getByRole('link', { name: 'Log in', exact: true }).click()
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(0)
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0)
+  })
+}
+
+test('SPA navigation between authentication and home scopes metadata to home', async ({ page }) => {
+  await anonymous(page)
+  await page.goto('/login')
+  await page.getByRole('link', { name: 'Orbit Imperium', exact: true }).click()
+  await expect(page).toHaveTitle('Orbit Imperium — Multiplayer Space Strategy Game')
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(1)
+  await page.getByRole('link', { name: 'Log in', exact: true }).click()
+  await expect(page).toHaveTitle('Sign in · Orbit Imperium')
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(0)
 })

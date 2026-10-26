@@ -15,7 +15,9 @@ type Prepare =
 struct StaticAssets {
     files: ServeDir,
     index: PathBuf,
+    homepage: PathBuf,
     prepare: Prepare,
+    origin: String,
 }
 pub(super) fn router<S: GameStore + IdentityStore + Send + Sync + 'static>(
     state: Arc<HttpState<S>>,
@@ -23,17 +25,20 @@ pub(super) fn router<S: GameStore + IdentityStore + Send + Sync + 'static>(
     let assets = state.config.assets.clone();
     router_with(
         assets,
+        state.config.origin.clone(),
         Arc::new(move |headers| {
             let state = state.clone();
             Box::pin(async move { prepare_bootstrap(&state, &headers).await })
         }),
     )
 }
-fn router_with(assets: String, prepare: Prepare) -> Router {
+fn router_with(assets: String, origin: String, prepare: Prepare) -> Router {
     Router::new().fallback(serve).with_state(StaticAssets {
         files: ServeDir::new(&assets).append_index_html_on_directories(false),
-        index: PathBuf::from(assets).join("index.html"),
+        index: PathBuf::from(&assets).join("index.html"),
+        homepage: PathBuf::from(assets).join("homepage.html"),
         prepare,
+        origin,
     })
 }
 async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Response {
@@ -42,13 +47,27 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
     };
     let public_document = path.starts_with("/reports/shared/") || path.starts_with("/alliances/");
     let namespace = path.split('/').nth(1).unwrap_or_default();
-    if matches!(namespace, "api" | "health") {
+    if matches!(namespace, "api" | "health") || path == "/homepage.html" {
         return StatusCode::NOT_FOUND.into_response();
     }
     if request.method() != Method::GET && request.method() != Method::HEAD {
         return (
             StatusCode::METHOD_NOT_ALLOWED,
             [(header::ALLOW, "GET, HEAD")],
+        )
+            .into_response();
+    }
+    if let Some((content_type, body)) = super::home_seo::discovery(&path, &assets.origin) {
+        return (
+            [
+                (header::CONTENT_TYPE, content_type),
+                (header::CACHE_CONTROL, "public, max-age=300"),
+            ],
+            if request.method() == Method::HEAD {
+                String::new()
+            } else {
+                body
+            },
         )
             .into_response();
     }
@@ -74,7 +93,7 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
         let body = if head {
             String::new()
         } else {
-            let template = match tokio::fs::read_to_string(&assets.index).await {
+            let mut template = match tokio::fs::read_to_string(&assets.index).await {
                 Ok(t) => t,
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             };
@@ -87,7 +106,29 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
             } else {
                 (assets.prepare)(request.headers().clone()).await
             };
+            if entry
+                && matches!(
+                    bootstrap.result,
+                    orbit_application::BootstrapResult::Anonymous
+                )
+            {
+                // Older/custom asset builds retain the regular entry as a safe fallback.
+                match tokio::fs::read_to_string(&assets.homepage).await {
+                    Ok(homepage) => template = homepage,
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+                }
+            }
             match render_bootstrap_html(&template, &bootstrap) {
+                Ok(html)
+                    if entry
+                        && matches!(
+                            bootstrap.result,
+                            orbit_application::BootstrapResult::Anonymous
+                        ) =>
+                {
+                    super::home_seo::decorate(html, &assets.origin)
+                }
                 Ok(html) => html,
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             }
@@ -101,6 +142,11 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
             Body::from(body),
         )
             .into_response();
+        if !entry {
+            response
+                .headers_mut()
+                .insert("x-robots-tag", "noindex".parse().unwrap());
+        }
         if public_document {
             response.headers_mut().insert(
                 "x-robots-tag",
@@ -134,10 +180,180 @@ mod tests {
     const INDEX: &str = "<!doctype html><html><body>Orbit UI<script id=\"orbit-bootstrap\" type=\"application/json\"></script></body></html>";
 
     #[tokio::test]
+    async fn discovery_files_never_authenticate_and_only_list_the_public_homepage() {
+        let assets = Assets::new();
+        let app = router_with(
+            assets.0.to_string_lossy().into_owned(),
+            "https://community.example".into(),
+            Arc::new(|_| panic!("discovery must not initialize sessions")),
+        );
+        for (path, content_type) in [
+            ("/robots.txt", "text/plain; charset=utf-8"),
+            ("/sitemap.xml", "application/xml; charset=utf-8"),
+        ] {
+            for method in [Method::GET, Method::HEAD] {
+                let response = app
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .method(method.clone())
+                            .uri(path)
+                            .header("host", "attacker.example")
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+                assert_eq!(response.headers()[header::CONTENT_TYPE], content_type);
+                assert_eq!(
+                    response.headers()[header::CACHE_CONTROL],
+                    "public, max-age=300"
+                );
+                assert!(response.headers().get(header::SET_COOKIE).is_none());
+                let body =
+                    String::from_utf8(to_bytes(response.into_body(), 8192).await.unwrap().to_vec())
+                        .unwrap();
+                if method == Method::HEAD {
+                    assert!(body.is_empty());
+                    continue;
+                }
+                assert!(body.contains("https://community.example/"));
+                assert!(!body.contains("attacker.example"));
+                assert!(!body.contains("/login"));
+                assert!(!body.contains("/u/"));
+                if path == "/robots.txt" {
+                    assert!(body.contains("Allow: /"));
+                    assert!(body.contains("Sitemap: https://community.example/sitemap.xml"));
+                } else {
+                    assert_eq!(body.matches("<loc>").count(), 1);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn only_anonymous_home_requests_use_the_lightweight_entry() {
+        use orbit_application::{
+            AccountId, AuthenticatedSession, BootstrapError, BootstrapGame, BootstrapResult,
+        };
+        let assets = Assets::new();
+        std::fs::write(
+            assets.0.join("homepage.html"),
+            format!("<title>Orbit Imperium</title>LIGHTWEIGHT{INDEX}"),
+        )
+        .unwrap();
+        for result in [
+            BootstrapResult::Anonymous,
+            BootstrapResult::Unavailable {
+                code: BootstrapError::Unavailable,
+            },
+            BootstrapResult::Authenticated {
+                session: AuthenticatedSession {
+                    account: AccountId(uuid::Uuid::nil()),
+                    csrf: "csrf".into(),
+                    expires_at: 0,
+                    memberships: vec![],
+                },
+                game: BootstrapGame::NoMembership,
+            },
+        ] {
+            let anonymous = matches!(result, BootstrapResult::Anonymous);
+            let app = router_with(
+                assets.0.to_string_lossy().into_owned(),
+                "https://community.example".into(),
+                Arc::new(move |_| {
+                    let result = result.clone();
+                    Box::pin(async {
+                        Bootstrap {
+                            version: 1,
+                            signup_enabled: true,
+                            result,
+                        }
+                    })
+                }),
+            );
+            for path in ["/", "/index.html", "/login", "/u/demo/overview"] {
+                let response = app
+                    .clone()
+                    .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+                let body = String::from_utf8(
+                    to_bytes(response.into_body(), 16384)
+                        .await
+                        .unwrap()
+                        .to_vec(),
+                )
+                .unwrap();
+                assert_eq!(
+                    body.contains("LIGHTWEIGHT"),
+                    anonymous && matches!(path, "/" | "/index.html"),
+                    "{path}"
+                );
+            }
+        }
+        let response = assets
+            .router()
+            .oneshot(Request::get("/homepage.html").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn homepage_metadata_is_in_the_initial_response_and_not_on_app_routes() {
+        let assets = Assets::new();
+        std::fs::write(
+            assets.0.join("index.html"),
+            format!("<html><head><title>Orbit Imperium</title></head><body>{INDEX}</body></html>"),
+        )
+        .unwrap();
+        for path in [
+            "/",
+            "/?utm_source=example",
+            "/index.html",
+            "/login",
+            "/signup",
+            "/u/demo/overview",
+            "/unknown",
+        ] {
+            let response = assets
+                .router()
+                .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            let home = path == "/" || path.starts_with("/?") || path == "/index.html";
+            assert_eq!(
+                response.headers().get("x-robots-tag").is_some(),
+                !home,
+                "{path}"
+            );
+            let body = String::from_utf8(
+                to_bytes(response.into_body(), 16384)
+                    .await
+                    .unwrap()
+                    .to_vec(),
+            )
+            .unwrap();
+            assert_eq!(body.contains("rel=\"canonical\""), home, "{path}");
+            assert_eq!(body.contains("application/ld+json"), home, "{path}");
+            assert_eq!(body.matches("<title").count(), 1, "{path}");
+            if home {
+                assert!(body.contains("href=\"https://community.example/\""));
+                assert!(!body.contains("utm_source"));
+                assert!(body.contains("property=\"og:image\""));
+            }
+        }
+    }
+
+    #[tokio::test]
     async fn public_documents_never_bootstrap_a_session_and_discourage_indexing() {
         let assets = Assets::new();
         let app = router_with(
             assets.0.to_string_lossy().into_owned(),
+            "https://community.example".into(),
             Arc::new(|_| panic!("public document must not initialize the reader's game")),
         );
         for path in [
@@ -205,6 +421,7 @@ mod tests {
         fn router(&self) -> Router {
             router_with(
                 self.0.to_str().unwrap().to_owned(),
+                "https://community.example".into(),
                 Arc::new(|_| Box::pin(async { guest() })),
             )
         }
@@ -304,6 +521,7 @@ mod tests {
             "/assets/missing",
             "/favicon.ico",
             "/missing.json",
+            "/homepage.html",
             "/nested/missing.js",
             "/missing.js/",
             "/missing%2Ejs",
@@ -347,6 +565,8 @@ mod tests {
             for path in [
                 "/login",
                 "/u/demo/overview",
+                "/robots.txt",
+                "/sitemap.xml",
                 "/",
                 "/index.html",
                 "/assets/app.js",
@@ -435,6 +655,7 @@ mod tests {
         let assets = Assets::new();
         let app = router_with(
             assets.0.to_string_lossy().into_owned(),
+            "https://community.example".into(),
             Arc::new(|_| panic!("must not authenticate")),
         );
         for (method, path) in [
@@ -464,6 +685,7 @@ mod tests {
         std::fs::write(assets.0.join("manifest"), "asset bytes").unwrap();
         let app = router_with(
             assets.0.to_string_lossy().into_owned(),
+            "https://community.example".into(),
             Arc::new(|_| panic!("asset must not authenticate")),
         );
         let response = app
