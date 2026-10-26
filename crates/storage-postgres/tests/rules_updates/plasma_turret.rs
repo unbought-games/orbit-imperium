@@ -166,14 +166,17 @@ async fn plasma_turrets_activate_build_and_finish_after_disable_and_restart_in_b
                 .count,
             2
         );
-        assert_eq!(
-            after.state.manufacturing_batches[&batch.id].status,
-            ManufacturingStatus::Completed
-        );
-        assert_eq!(
-            after.state.manufacturing_batches[&batch.id].commitment,
-            batch.commitment
-        );
+        // The bound view contains active work only; inspect the retained completed record.
+        let completed: sqlx::types::Json<ManufacturingBatch> = sqlx::query_scalar(
+            "SELECT data FROM manufacturing_batches WHERE universe=$1 AND id=$2",
+        )
+        .bind(universe.0)
+        .bind(batch.id.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(completed.status, ManufacturingStatus::Completed);
+        assert_eq!(completed.commitment, batch.commitment);
         let quote = inspect_progression(
             &after.state,
             Actor::Player(binding.player),
