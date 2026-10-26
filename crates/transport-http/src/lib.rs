@@ -36,7 +36,6 @@ use tokio::sync::{Mutex, Semaphore};
 #[derive(Clone)]
 pub struct HttpConfig {
     pub origin: String,
-    pub secure_cookies: bool,
     pub assets: String,
     pub login_per_minute: u32,
     pub signup: Option<SignupPolicy>,
@@ -45,6 +44,18 @@ pub struct HttpConfig {
     pub legacy_signup_enabled: bool,
     pub wake: Option<Arc<tokio::sync::Notify>>,
     pub observer: Option<Arc<dyn RuntimeObserver>>,
+}
+impl HttpConfig {
+    fn session_cookie(&self, name: &str, value: &str, age: u32) -> String {
+        // The server validates this browser-facing origin at startup. The
+        // internal connection and forwarded request headers are not inputs.
+        let secure = if self.origin.starts_with("https://") {
+            "; Secure"
+        } else {
+            ""
+        };
+        format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={age}{secure}")
+    }
 }
 struct HttpState<S> {
     profiles: Option<AccountProfiles>,
@@ -406,14 +417,7 @@ async fn authenticate<S: IdentityStore>(
     Ok(session)
 }
 fn cookie<S>(s: &HttpState<S>, value: &str, age: u32) -> String {
-    format!(
-        "orbit_session={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={age}{}",
-        if s.config.secure_cookies {
-            "; Secure"
-        } else {
-            ""
-        }
-    )
+    s.config.session_cookie("orbit_session", value, age)
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

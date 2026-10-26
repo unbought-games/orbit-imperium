@@ -118,7 +118,6 @@ async fn public_profiles_are_view_scoped_private_and_independent_of_other_player
     );
     let config = HttpConfig {
         origin: "https://game.test".into(),
-        secure_cookies: true,
         assets: "missing".into(),
         login_per_minute: 30,
         signup: None,

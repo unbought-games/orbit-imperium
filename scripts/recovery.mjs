@@ -59,7 +59,7 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
     writeFileSync(secret, passwords.join('\n'), { mode: 0o600 })
     const url = `postgres://orbit:${encodeURIComponent(password)}@127.0.0.1:${process.env.ORBIT_TEST_DB_PORT ?? '55432'}/${database}`
     const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('ORBIT_')))
-    const env = { ...inherited, DATABASE_URL: url, ORBIT_SPEED: '1', ORBIT_TEST_SEEDED: '1', ORBIT_ORIGIN: base, ORBIT_LOCAL_INSECURE: '1', ORBIT_SEED_PASSWORD_FILE: secret, ORBIT_DRAIN_MS: '1000', ORBIT_POOL_CONTROL: '4' }
+    const env = { ...inherited, DATABASE_URL: url, ORBIT_SPEED: '1', ORBIT_TEST_SEEDED: '1', ORBIT_ORIGIN: base, ORBIT_ALLOW_INSECURE_HTTP: '1', ORBIT_SEED_PASSWORD_FILE: secret, ORBIT_DRAIN_MS: '1000', ORBIT_POOL_CONTROL: '4' }
     delete env.ORBIT_METRICS_BIND
     const cli = args => execFileSync('target/debug/orbit', args, { env, stdio: 'pipe' })
     cli(['dev-seed', '--universe', universe, '--at', '1000000'])

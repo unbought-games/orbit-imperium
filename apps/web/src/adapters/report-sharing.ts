@@ -1,3 +1,4 @@
+import { commandId } from './command-id'
 import { request } from './http'
 import { validate } from '../client-model/schema'
 import type { components } from '../contracts'
@@ -17,7 +18,7 @@ export async function reportSharing(
     await request(
       `/api/v4/universes/${binding.universe}/reports/${report}/share`,
       'POST',
-      { context: { binding, request_id: crypto.randomUUID() }, action },
+      { context: { binding, request_id: commandId(crypto) }, action },
       csrf,
     ),
   )

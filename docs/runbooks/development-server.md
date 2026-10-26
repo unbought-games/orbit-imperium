@@ -23,6 +23,8 @@ The earlier fresh-baseline release squashed the previous migration chain into `0
 
 ## Hosted server operation
 
+Set `ORBIT_ORIGIN` to the browser-facing origin. HTTPS always uses Secure cookies, including behind a TLS-terminating proxy. HTTP requires `ORBIT_ALLOW_INSECURE_HTTP=1`; remove the retired `ORBIT_LOCAL_INSECURE` key. See the [origin and migration guidance](../architecture/deployment.md#browser-origin-http-and-https).
+
 Use the [deployment guide](../architecture/deployment.md) for hosting requirements and the [universe configuration guide](../operations/universe-configuration.md) for explicit database initialization and world creation. Ordinary deploys never reseed or reset a universe.
 
 Keep the scheduler running when all browsers close. Start the database before the application. Stopping does not pause logical time; on restart, workers process overdue work in canonical order while APIs serve committed snapshots.

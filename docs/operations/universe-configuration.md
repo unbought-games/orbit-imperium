@@ -32,7 +32,7 @@ make build-universe-final
 export ORBIT_ASSETS=apps/web/dist
 export ORBIT_BIND=127.0.0.1:8080
 export ORBIT_ORIGIN=http://localhost:8080
-export ORBIT_LOCAL_INSECURE=1 # localhost only
+export ORBIT_ALLOW_INSECURE_HTTP=1 # explicit opt-in for this HTTP origin
 export ORBIT_UNIVERSE_ID=00000000-0000-4000-8000-000000000001
 
 target/universe-final/release/orbit db-init

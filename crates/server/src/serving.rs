@@ -87,7 +87,6 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
         let private_drain = drain_rx.clone();
         let config = HttpConfig {
             origin: serve.origin,
-            secure_cookies: serve.secure_cookies,
             assets: serve.assets,
             signup: prepared.signup,
             signup_per_minute: prepared.legacy_signup_per_minute,

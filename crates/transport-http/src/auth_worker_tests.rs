@@ -248,7 +248,6 @@ async fn cancelled_login_and_signup_keep_the_shared_worker_limit_until_completio
         },
         HttpConfig {
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 100,
             signup: Some(SignupPolicy {
@@ -320,7 +319,6 @@ async fn registration_observes_policy_changes_and_fails_closed_without_restart()
         store,
         HttpConfig {
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 30,
             signup: Some(SignupPolicy {
@@ -460,7 +458,6 @@ async fn blocked_policy_reads_are_bounded_for_registration_and_signup() {
         store,
         HttpConfig {
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 30,
             signup: Some(SignupPolicy {
@@ -517,7 +514,6 @@ async fn oidc_enrollment_obeys_live_policy_and_retries_after_admissions_close() 
         },
         HttpConfig {
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 30,
             signup: None,
@@ -704,77 +700,91 @@ async fn oidc_enrollment_obeys_live_policy_and_retries_after_admissions_close() 
 
 #[tokio::test]
 async fn activity_renewal_requires_origin_csrf_and_cookie_and_only_sets_cookie_on_success() {
-    let (entered, mut calls) = mpsc::unbounded_channel();
-    let status = Arc::new(StdMutex::new(0));
-    let app = router(
-        GatedStore {
-            hold_policy: false,
-            oidc_status: status.clone(),
-            memberships: Arc::default(),
-            entered,
-            login: Arc::default(),
-            signup: Arc::default(),
-            policy: Arc::new(StdMutex::new(Ok(None))),
-        },
-        HttpConfig {
-            origin: "https://game.test".into(),
-            secure_cookies: true,
-            assets: "absent".into(),
-            login_per_minute: 100,
-            signup: None,
-            signup_per_minute: 100,
-            legacy_signup_enabled: false,
-            wake: None,
-            observer: None,
-        },
-    );
-    for (origin, csrf, cookie, expected) in [
-        ("https://evil.test", "csrf", true, StatusCode::FORBIDDEN),
-        ("https://game.test", "wrong", true, StatusCode::FORBIDDEN),
-        ("https://game.test", "csrf", false, StatusCode::UNAUTHORIZED),
-    ] {
-        let mut request = Request::post("/api/v1/session/renew")
-            .header(header::ORIGIN, origin)
-            .header("x-csrf-token", csrf);
-        if cookie {
-            request = request.header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)));
-        }
-        let response = app
-            .clone()
-            .oneshot(request.body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(response.status(), expected);
-        assert!(!response.headers().contains_key(header::SET_COOKIE));
-        assert!(calls.try_recv().is_err());
-    }
-    for (provider, expected) in [
-        (503, StatusCode::SERVICE_UNAVAILABLE),
-        (401, StatusCode::UNAUTHORIZED),
-        (0, StatusCode::NO_CONTENT),
-    ] {
-        *status.lock().unwrap() = provider;
-        let response = app
-            .clone()
-            .oneshot(
-                Request::post("/api/v1/session/renew")
-                    .header(header::ORIGIN, "https://game.test")
-                    .header("x-csrf-token", "csrf")
-                    .header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)))
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), expected);
-        assert_eq!(calls.try_recv().unwrap(), "renew");
-        if provider == 0 {
-            let cookie = response.headers()[header::SET_COOKIE].to_str().unwrap();
-            assert!(cookie.contains("Max-Age=2592000"));
-            assert!(cookie.contains("HttpOnly; SameSite=Lax"));
-            assert!(cookie.ends_with("; Secure"));
-        } else {
+    for configured_origin in ["https://game.test", "http://game.test"] {
+        let (entered, mut calls) = mpsc::unbounded_channel();
+        let status = Arc::new(StdMutex::new(0));
+        let app = router(
+            GatedStore {
+                hold_policy: false,
+                oidc_status: status.clone(),
+                memberships: Arc::default(),
+                entered,
+                login: Arc::default(),
+                signup: Arc::default(),
+                policy: Arc::new(StdMutex::new(Ok(None))),
+            },
+            HttpConfig {
+                origin: configured_origin.into(),
+                assets: "absent".into(),
+                login_per_minute: 100,
+                signup: None,
+                signup_per_minute: 100,
+                legacy_signup_enabled: false,
+                wake: None,
+                observer: None,
+            },
+        );
+        for (origin, csrf, cookie, expected) in [
+            ("https://evil.test", "csrf", true, StatusCode::FORBIDDEN),
+            (configured_origin, "wrong", true, StatusCode::FORBIDDEN),
+            (configured_origin, "csrf", false, StatusCode::UNAUTHORIZED),
+        ] {
+            let mut request = Request::post("/api/v1/session/renew")
+                .header(header::ORIGIN, origin)
+                .header("x-csrf-token", csrf);
+            if cookie {
+                request =
+                    request.header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)));
+            }
+            let response = app
+                .clone()
+                .oneshot(request.body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), expected);
             assert!(!response.headers().contains_key(header::SET_COOKIE));
+            assert!(calls.try_recv().is_err());
+        }
+        for (provider, expected) in [
+            (503, StatusCode::SERVICE_UNAVAILABLE),
+            (401, StatusCode::UNAUTHORIZED),
+            (0, StatusCode::NO_CONTENT),
+        ] {
+            *status.lock().unwrap() = provider;
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::post("/api/v1/session/renew")
+                        .header(header::ORIGIN, configured_origin)
+                        .header(
+                            "x-forwarded-proto",
+                            if configured_origin.starts_with("https:") {
+                                "http"
+                            } else {
+                                "https"
+                            },
+                        )
+                        .header("forwarded", "proto=https;host=evil.test")
+                        .header("x-csrf-token", "csrf")
+                        .header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), expected);
+            assert_eq!(calls.try_recv().unwrap(), "renew");
+            if provider == 0 {
+                let cookie = response.headers()[header::SET_COOKIE].to_str().unwrap();
+                assert!(cookie.contains("Max-Age=2592000"));
+                assert!(cookie.contains("HttpOnly; SameSite=Lax"));
+                assert_eq!(
+                    cookie.ends_with("; Secure"),
+                    configured_origin.starts_with("https:")
+                );
+            } else {
+                assert!(!response.headers().contains_key(header::SET_COOKIE));
+            }
         }
     }
 }
@@ -795,7 +805,6 @@ async fn public_reports_need_no_session_but_sharing_management_requires_auth_ori
         store,
         HttpConfig {
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 100,
             signup: None,
@@ -862,6 +871,35 @@ async fn public_reports_need_no_session_but_sharing_management_requires_auth_ori
                     .unwrap()
                     .status(),
                 expected
+            );
+        }
+    }
+}
+
+#[test]
+fn session_and_oidc_cookies_derive_all_attributes_from_browser_origin() {
+    for (origin, secure) in [
+        ("https://game.example", "; Secure"),
+        ("http://game.example", ""),
+    ] {
+        let config = HttpConfig {
+            origin: origin.into(),
+            assets: "absent".into(),
+            login_per_minute: 30,
+            signup: None,
+            signup_per_minute: 5,
+            legacy_signup_enabled: false,
+            wake: None,
+            observer: None,
+        };
+        for (name, age) in [
+            ("orbit_session", SESSION_IDLE_SECONDS),
+            ("orbit_session", 0),
+            ("orbit_oidc", 600),
+        ] {
+            assert_eq!(
+                config.session_cookie(name, "secret", age),
+                format!("{name}=secret; Path=/; HttpOnly; SameSite=Lax; Max-Age={age}{secure}")
             );
         }
     }

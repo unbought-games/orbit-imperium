@@ -1,3 +1,4 @@
+import { commandId } from '../../adapters/command-id'
 import {
   useProfilePlayers,
   useRefreshPlayerProfiles,
@@ -66,7 +67,7 @@ function AllianceWorkspace({
       new AlliancesController({
         read: (query) => model.allianceQuery(query),
         command: (request) => model.allianceCommand(request),
-        newId: () => crypto.randomUUID(),
+        newId: () => commandId(crypto),
         onAccessLost: drafts.clear,
       }),
   )

@@ -33,7 +33,6 @@ async fn negative_http_inputs_foreign_operations_and_hidden_revisions() {
             signup_per_minute: 5,
             legacy_signup_enabled: true,
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 3,
             wake: None,

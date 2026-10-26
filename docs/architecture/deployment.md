@@ -2,11 +2,79 @@
 
 The server runs as a container or release binary with PostgreSQL. It manages backward-compatible schema migrations during startup and supports rolling deployments.
 
+## Browser origin, HTTP and HTTPS
+
+Set `ORBIT_ORIGIN` to the URL players open, as an absolute `http://` or `https://`
+origin: hostname or IPv4/bracketed IPv6 address, with an optional nonzero port.
+Do not include credentials, a trailing slash, a path, a query, or a fragment.
+Startup rejects malformed origins. Host casing, internationalized hostnames and
+default ports are normalized to the browser's origin representation. This same
+origin controls request-origin checks, shared-link URLs and OIDC callbacks.
+
+| Browser-facing configuration | Cookie behavior |
+| --- | --- |
+| `ORBIT_ORIGIN=https://game.example` | Secure cookies; no HTTP opt-in needed |
+| `ORBIT_ORIGIN=http://game.example` and `ORBIT_ALLOW_INSECURE_HTTP=1` | Cookies without Secure |
+| `ORBIT_ORIGIN=http://192.168.50.48:8080` and `ORBIT_ALLOW_INSECURE_HTTP=1` | Cookies without Secure |
+| `ORBIT_ORIGIN=http://203.0.113.10` or `http://[2001:db8::10]:8080`, with `ORBIT_ALLOW_INSECURE_HTTP=1` | Cookies without Secure |
+| Any HTTP origin without the opt-in | Startup error |
+
+HTTP opt-in accepts exactly `1`; unset or `0` disables it, and other values fail
+startup. It supports public and private hosts without a local-network allowlist
+or mandatory explicit port. HTTP sends browser traffic, including credentials
+and session cookies, without TLS encryption. HTTPS is recommended for public
+hosting and required for the official production service. An opt-in left set to
+`1` with an HTTPS origin never removes Secure.
+
+Orbit serves HTTP internally. The operator provides TLS, certificates and any
+reverse proxy. For HTTPS terminated at a proxy, keep
+`ORBIT_ORIGIN=https://game.example` even when the proxy connects to Orbit over
+HTTP. Neither the listener's connection nor `Forwarded`/`X-Forwarded-Proto`
+changes cookie security. `ORBIT_BIND` controls the listening address separately.
+Both the session and OIDC browser cookies retain `HttpOnly`, `SameSite=Lax`,
+`Path=/` and their existing lifetimes. Exact origin checks and CSRF-token checks
+remain enabled in HTTP mode.
+
+Local authentication supports either scheme. OIDC keeps the provider library's
+independent HTTPS requirement for both issuer and callback, with its existing
+loopback HTTP exception only (`localhost`, `127.0.0.1`, `[::1]`). HTTP opt-in does
+not relax that requirement or the Accounts profile API transport restrictions.
+Register callback URLs using the canonical origin.
+
+### Migration and local development
+
+`ORBIT_LOCAL_INSECURE` is retired, with no compatibility alias. API/combined
+processes reject it whenever present, including `0` or an empty value and even
+when the new flag is also supplied. Remove it from environment files, service
+settings and secret stores. For HTTP, replace it with
+`ORBIT_ALLOW_INSECURE_HTTP=1`; for HTTPS, remove it without a replacement.
+Worker-only processes ignore these unused HTTP settings.
+
+The fallback origin remains `http://localhost:8080`, but direct `orbit serve`
+now needs the explicit HTTP opt-in even for that default. `make dev` and the
+local wrapper supply the opt-in, preserving normal local/Vite/LAN development;
+explicit environment overrides still win. `.env.example` and test launchers use
+the new flag. Supply each binary's matching environment during a mixed-version
+rollout; do not pass the retired flag to the new API binary.
+
+### Official production implications
+
+Read-only inspection of the infrastructure repository's
+`services/production/runtime/deploy.py` shows that it constructs
+`ORBIT_ORIGIN=https://<orbit_hostname>` and routes Caddy to `orbit-api:8080` over
+HTTP. Its release example names `orbitimperium.com`; the Accounts registration
+uses `https://orbitimperium.com/api/auth/callback`. No application environment
+change is needed for that configuration, provided the merged runtime secrets do
+not contain `ORBIT_LOCAL_INSECURE`. If that retired key is present, remove it
+before upgrading the API. Leave the HTTPS origin and OIDC configuration intact;
+do not add an HTTP opt-in for the proxy's internal connection. This assessment
+uses checked-in deployment code, not a read of live secrets or a deployment.
+
 ## Process roles and configuration
 
 Production uses separately replicated API and worker OS processes sharing PostgreSQL, with scoped chronological ownership rather than one universe-wide gameplay writer. The same image supports `ORBIT_ROLE=api|worker|combined`; combined is the development default. Use the [concurrent runtime runbook](../operations/concurrent-runtime.md) for the retained-world cutover, connection budget, private metrics, and durability requirements.
 
-Package the same application image for local development and container hosts. Environment variables provide process configuration such as `ORBIT_BIND`; database credentials belong in deployment secrets. Universe creation and admission policy belong to the database and explicit CLI. Follow the [production signup setup](../operations/signup.md) and [universe configuration guide](../operations/universe-configuration.md) to initialize a database and create a world before serving. Put HTTPS in front of remote servers and set `ORBIT_ORIGIN` to the public browser origin.
+Package the same application image for local development and container hosts. Environment variables provide process configuration such as `ORBIT_BIND`; database credentials belong in deployment secrets. Universe creation and admission policy belong to the database and explicit CLI. Follow the [production signup setup](../operations/signup.md) and [universe configuration guide](../operations/universe-configuration.md) to initialize a database and create a world before serving. Set `ORBIT_ORIGIN` to the public browser origin using the HTTPS or explicit HTTP configuration above.
 
 ## Explicit server lifetime
 

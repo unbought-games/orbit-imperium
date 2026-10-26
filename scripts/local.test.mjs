@@ -17,7 +17,7 @@ function fixture(t) {
   mkdirSync(join(directory, 'target/debug'), { recursive: true })
   executable(
     join(directory, 'target/debug/orbit'),
-    `console.log(JSON.stringify({args: process.argv.slice(2), url: process.env.DATABASE_URL, insecure: process.env.ORBIT_LOCAL_INSECURE, passwords: process.env.ORBIT_SEED_PASSWORD_FILE}))`,
+    `console.log(JSON.stringify({args: process.argv.slice(2), url: process.env.DATABASE_URL, insecure: process.env.ORBIT_ALLOW_INSECURE_HTTP, passwords: process.env.ORBIT_SEED_PASSWORD_FILE}))`,
   )
   const env = { ...process.env }
   for (const key of [
@@ -27,7 +27,7 @@ function fixture(t) {
     'AT',
     'MAKEFLAGS',
     'MFLAGS',
-    'ORBIT_LOCAL_INSECURE',
+    'ORBIT_ALLOW_INSECURE_HTTP',
     'ORBIT_SEED_PASSWORD_FILE',
   ])
     delete env[key]
@@ -106,7 +106,7 @@ test('local defaults need no secret files and explicit environment values win', 
   assert.equal(existsSync(join(directory, '.secrets')), false)
   env.DATABASE_URL = 'postgres://test:password@example.test/custom'
   env.ORBIT_DB_PASSWORD = 'ignored'
-  env.ORBIT_LOCAL_INSECURE = '0'
+  env.ORBIT_ALLOW_INSECURE_HTTP = '0'
   env.ORBIT_SEED_PASSWORD_FILE = '/private/players'
   assert.deepEqual(await result('db-init'), {
     args: ['db-init'],
