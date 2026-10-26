@@ -44,7 +44,7 @@ export function DispatchDestinationPreview({
   const detail = !coordinates
     ? 'Enter valid coordinates or choose one of your planets.'
     : target
-      ? `${target.kind} · ${target.owner === player ? 'Your colony' : playerLabel(target.owner, playerNames)}`
+      ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? 'Your colony' : 'You (last observed)') : playerLabel(target.owner, playerNames)}`
       : kind === 'debris'
         ? 'Review verifies salvage at these coordinates.'
         : lookup === 'loading'

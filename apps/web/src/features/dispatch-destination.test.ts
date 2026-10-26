@@ -54,6 +54,19 @@ describe('dispatch destination identity', () => {
       )?.name,
     ).toBe('Renamed')
   })
+  it('distinguishes live ownership from a retained observation after a colony leaves the empire', () => {
+    expect(
+      destinationBody(
+        { ...view, bodies: [planet] },
+        coordinates,
+        'planet',
+        observation,
+      )?.source,
+    ).toBe('empire')
+    expect(
+      destinationBody(view, coordinates, 'planet', observation)?.source,
+    ).toBe('observation')
+  })
   it('never uses a planet identity for a moon, debris, partial input or a different system', () => {
     const owned = { ...view, bodies: [planet, moon] }
     expect(destinationBody(owned, coordinates, 'moon', observation)?.id).toBe(

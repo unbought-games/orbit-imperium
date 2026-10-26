@@ -60,7 +60,10 @@ export function useDispatchDestination(
   return {
     target,
     observation,
-    refreshing: !!currentRead && currentRead.revision !== revision,
+    refreshing:
+      !!currentRead &&
+      currentRead.revision !== revision &&
+      target?.source !== 'empire',
     planets,
     selectedPlanet,
     lookup: currentRead

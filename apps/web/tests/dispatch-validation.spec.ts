@@ -13,11 +13,7 @@ async function setup(page: Page) {
     id: id(6),
     coordinates: { galaxy: 1, system: 1, position: 2 },
   }
-  let revision = 1
-  await shellFixture(page, {
-    viewerRevision: () => String(revision),
-    protocol: 4,
-    bodies: [
+  const bodies = [
       {
         ...body,
         name: 'Aster Haven',
@@ -29,7 +25,12 @@ async function setup(page: Page) {
         ],
       },
       { ...colony, name: 'Haven Colony' },
-    ],
+    ]
+  let revision = 1
+  await shellFixture(page, {
+    viewerRevision: () => String(revision),
+    protocol: 4,
+    bodies,
     playerNames: { [binding.player]: 'Commander' },
     research: [{ research: 'Astrophysics', level: 8 }],
     extraCapabilities: [
@@ -65,6 +66,8 @@ async function setup(page: Page) {
     ],
   })
   const state = {
+    bodies,
+    ownedObservation: false,
     advanceRevision: () => { revision++ },
     blocker: null as S['GameError4'] | null,
     quoteError: null as S['GameError4'] | null,
@@ -96,7 +99,9 @@ async function setup(page: Page) {
             position: i + 1,
           },
           body:
-            i === 0 && state.observationAvailable
+            i === 1 && state.ownedObservation
+              ? { id: colony.id, kind: 'Planet', owner: binding.player, name: 'Haven Colony', activity: { type: 'None' }, inactivity: 'Active', vacation: false, espionage_eligible: false, attack_blocker: null }
+              : i === 0 && state.observationAvailable
               ? {
                   id: id(20),
                   kind: 'Planet',
@@ -1549,4 +1554,40 @@ test('confirmed empty destination coordinates offer colonization instead of body
   await expect(page.getByRole('menuitem', { name: 'Prepare colonize' })).toBeVisible()
   for (const action of ['attack', 'espionage', 'transport'])
     await expect(page.getByRole('menuitem', { name: `Prepare ${action}` })).toHaveCount(0)
+})
+
+
+test('a retained observation of a former colony is explicitly marked as updating', async ({ page }) => {
+  const state = await setup(page)
+  const preview = page.getByLabel('Destination preview')
+  await expect(preview).toContainText('Ember Watch')
+  state.ownedObservation = true
+  state.advanceRevision()
+  const observed = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
+  await refreshGame(page)
+  await observed
+  await expect(preview).not.toContainText('Updating')
+  await page.getByLabel('Your other planets').selectOption(id(6))
+  await expect(preview).toContainText('Haven Colony')
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  state.hold = async route => {
+    if (route.request().postDataJSON().type === 'Galaxy') { held = true; await gate }
+  }
+  state.bodies.splice(1, 1)
+  state.advanceRevision()
+  await refreshGame(page)
+  await expect.poll(() => held).toBe(true)
+  await expect(page.getByLabel('Your other planets')).toBeDisabled()
+  await expect(preview).toContainText('Haven Colony')
+  await expect(preview).toContainText('Last observation · Updating…')
+  await expect(preview).toContainText('You (last observed)')
+  await expect(preview).not.toContainText('Your colony')
+  state.ownedObservation = false
+  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
+  release()
+  await response
+  await expect(preview).toContainText('Empty position')
+  await expect(preview).not.toContainText('Haven Colony')
 })

@@ -20,7 +20,8 @@ export function destinationBody(
       body.coordinates.system === coordinates.system &&
       body.coordinates.position === coordinates.position,
   )
-  if (owned) return { ...owned, owner: view.binding.player }
+  if (owned)
+    return { ...owned, owner: view.binding.player, source: 'empire' as const }
   if (
     observation?.galaxy !== coordinates.galaxy ||
     observation.system !== coordinates.system
@@ -29,5 +30,7 @@ export function destinationBody(
   const body = observation.positions.find(
     (position) => position.coordinates.position === coordinates.position,
   )?.body
-  return body?.kind.toLowerCase() === kind ? body : undefined
+  return body?.kind.toLowerCase() === kind
+    ? { ...body, source: 'observation' as const }
+    : undefined
 }
