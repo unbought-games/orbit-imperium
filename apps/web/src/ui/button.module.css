@@ -70,9 +70,10 @@
   --button-highlight: #ffb4a416;
 }
 :where(.ghost) {
-  --button-ink: var(--link);
+  --button-ink: var(--text-muted);
   --button-min-size: 24px;
   --button-padding: 4px;
+  border-radius: var(--radius-control);
   font-weight: inherit;
 }
 :where(.small) {
@@ -113,12 +114,27 @@
     --button-face: var(--accent-hover);
   }
   :where(.ghost:not(:disabled):not([aria-disabled='true'])):hover {
-    color: var(--link-hover);
+    color: var(--text);
+    background: #ffffff14;
   }
+}
+:where(.ghost:not(:disabled):not([aria-disabled='true'])):is(
+  :focus-visible,
+  [aria-pressed='true'],
+  [aria-selected='true'],
+  [aria-expanded='true'],
+  [aria-current='page']
+) {
+  color: var(--text);
+  background: #ffffff14;
 }
 :where(.button:not(:disabled):not([aria-disabled='true'])):active {
   transform: translateY(1px);
   --button-highlight: #00000025;
+}
+:where(.ghost:not(:disabled):not([aria-disabled='true'])):active {
+  color: var(--text);
+  background: #ffffff24;
 }
 :where(
     .button:not(.ghost):not(:disabled):not([aria-disabled='true'])
@@ -137,13 +153,16 @@
   --button-highlight: transparent;
   cursor: not-allowed;
 }
+:where(.ghost:disabled, .ghost[aria-disabled='true']) {
+  opacity: 0.5;
+}
 @media (prefers-reduced-motion: reduce) {
   :where(.button):active {
     transform: none;
   }
 }
 @media (forced-colors: active) {
-  :where(.button) {
+  .button {
     border: 1px solid ButtonText;
     color: ButtonText;
     background: ButtonFace;
@@ -152,8 +171,10 @@
   :where(.button:not(.ghost))::after {
     display: none;
   }
-  :where(.button:disabled, .button[aria-disabled='true']) {
+  .button:disabled,
+  .button[aria-disabled='true'] {
     color: GrayText;
     border-color: GrayText;
+    opacity: 1;
   }
 }

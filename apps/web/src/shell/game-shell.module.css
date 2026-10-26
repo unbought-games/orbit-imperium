@@ -80,11 +80,10 @@
   align-items: center;
   padding: 8px;
   min-height: 44px;
-  color: var(--danger);
-  background: transparent;
-  border: 1px solid var(--border);
   font: inherit;
-  cursor: pointer;
+}
+.connection > * {
+  color: var(--danger);
 }
 .center {
   grid-area: content;
