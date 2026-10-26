@@ -259,6 +259,28 @@ test('empire shows every body, its own work and resources, and directional fleet
   expect(purchases()).toBe(0)
 })
 
+test('each empire card places Facilities below Open buildings', async ({ page }) => {
+  const options = empireFixture()
+  await shellFixture(page, options)
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const body of options.bodies) {
+      const { galaxy, system, position } = body.coordinates
+      const card = page.getByRole('article', { name: `${body.kind} [${galaxy}:${system}:${position}] dossier`, exact: true })
+      const buildings = card.getByRole('region', { name: 'Buildings', exact: true })
+      const open = buildings.getByRole('link', { name: 'Open buildings', exact: true })
+      const facilities = buildings.getByRole('link', { name: 'Facilities', exact: true })
+      await expect(facilities).toHaveAttribute('href', `/u/andromeda/b/${body.id}/facilities`)
+      await expect(card.getByRole('link', { name: 'Facilities', exact: true })).toHaveCount(1)
+      const openBox = (await open.boundingBox())!
+      const facilitiesBox = (await facilities.boundingBox())!
+      expect(facilitiesBox.y).toBeGreaterThanOrEqual(openBox.y + openBox.height)
+    }
+  }
+  await page.getByRole('article').first().getByRole('link', { name: 'Facilities', exact: true }).click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${options.bodies[0].id}/facilities`)
+})
+
 test('desktop and phone command views keep all information readable without horizontal scrolling', async ({
   page,
 }) => {

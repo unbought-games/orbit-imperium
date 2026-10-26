@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
+import {
+  acceptReportSharing,
+  reportShareStatus,
+} from '../client-model/report-sharing-state'
 import { bindingKey } from '../client-model/commands'
 import { reportSharing, type ShareAction } from '../adapters/report-sharing'
 export function useReportSharing(
@@ -10,7 +14,9 @@ export function useReportSharing(
 ) {
   const binding = useStore(model.store, (s) => s.binding)
   const scope = binding ? `${bindingKey(binding)}:${report}` : ''
-  const status = useStore(model.store, (s) => s.reportShares?.[scope])
+  const status = useStore(model.store, (s) =>
+    reportShareStatus(s, scope, report),
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const sequence = useRef(0)
@@ -22,15 +28,18 @@ export function useReportSharing(
     try {
       const result = await reportSharing(binding, csrf, report, action)
       const currentBinding = model.store.getState().binding
-      if (
-        request !== sequence.current ||
-        !currentBinding ||
-        bindingKey(currentBinding) !== bindingKey(binding)
-      )
+      if (!currentBinding || bindingKey(currentBinding) !== bindingKey(binding))
         return
-      model.store.setState((s) => ({
-        reportShares: { ...s.reportShares, [scope]: result },
-      }))
+      // A successful publication protects the report even if this dialog closed.
+      // Merge its complete header and link together at their server revision.
+      const accepted = acceptReportSharing(
+        model.store.getState(),
+        scope,
+        report,
+        result,
+      )
+      if (!accepted) throw new Error('Sharing response was superseded')
+      model.store.setState(accepted)
     } catch {
       if (request === sequence.current)
         setError(

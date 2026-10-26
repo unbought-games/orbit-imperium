@@ -138,6 +138,9 @@ pub struct ReportHeader4 {
     pub hidden: bool,
     #[serde(default)]
     pub starred: bool,
+    /// Derived from the current recipient publication, never stored separately.
+    #[serde(default)]
+    pub shared: bool,
     pub fleet_investment: Option<String>,
     pub defense_investment: Option<String>,
 }

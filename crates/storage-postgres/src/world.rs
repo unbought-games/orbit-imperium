@@ -933,7 +933,7 @@ impl PgStore {
         } else {
             (head, None, None)
         };
-        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let rows=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,EXISTS(SELECT 1 FROM mission_report_shares s WHERE s.report=r.id AND s.recipient=p.recipient AND s.epoch=(SELECT epoch FROM universes WHERE id=r.universe)) AS shared,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND p.recipient=$2 AND p.created_revision<=$3 AND ($4::text IS NULL OR r.kind=$4) AND ($5 OR NOT p.hidden) AND ($6::bigint IS NULL OR (r.at_ms,r.id)<($6,$7)) ORDER BY r.at_ms DESC,r.id DESC LIMIT $8").bind(b.universe.0).bind(b.player.0).bind(cut).bind(&q.kind).bind(q.include_hidden).bind(last_at).bind(last_id).bind(i64::from(q.limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
         let rules = crate::facts::rules(&mut tx, b.universe).await?;
         let has_more = rows.len() > q.limit as usize;
         let items = rows
@@ -987,7 +987,7 @@ impl PgStore {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
         let at = crate::snapshots::safe_time(&mut tx, b.universe, b.player).await?;
-        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
+        let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,EXISTS(SELECT 1 FROM mission_report_shares s WHERE s.report=r.id AND s.recipient=p.recipient AND s.epoch=(SELECT epoch FROM universes WHERE id=r.universe)) AS shared,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;
         let rules = crate::facts::rules(&mut tx, b.universe).await?;
         let identities: PublicPlayerAlliances =
@@ -1020,7 +1020,10 @@ impl PgStore {
         Ok(snapshot)
     }
 }
-fn header(row: &sqlx::postgres::PgRow, rules: &Ruleset) -> Result<ReportHeader4, StoreError> {
+pub(crate) fn header(
+    row: &sqlx::postgres::PgRow,
+    rules: &Ruleset,
+) -> Result<ReportHeader4, StoreError> {
     let payload: serde_json::Value = row.try_get("preview_payload").map_err(db_error)?;
     if !payload.is_object() {
         return Err(StoreError::CorruptData);
@@ -1042,5 +1045,6 @@ fn header(row: &sqlx::postgres::PgRow, rules: &Ruleset) -> Result<ReportHeader4,
         read: row.try_get("read").map_err(db_error)?,
         hidden: row.try_get("hidden").map_err(db_error)?,
         starred: row.try_get("starred").map_err(db_error)?,
+        shared: row.try_get("shared").map_err(db_error)?,
     })
 }

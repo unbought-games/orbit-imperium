@@ -43,9 +43,6 @@ export function resolveCatalogItem(
   if (key) return key.id
   // Resource catalogs also expose unavailable buildings for inspection in older worlds.
   if (page === 'resources')
-    return (
-      [...resources, 'SolarSatellite'].find((id) => catalogSlug(id) === slug) ??
-      null
-    )
+    return resources.find((id) => catalogSlug(id) === slug) ?? null
   return null
 }

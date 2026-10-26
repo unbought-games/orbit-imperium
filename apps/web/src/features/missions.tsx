@@ -1,4 +1,5 @@
 import { CoordinateLink } from './coordinate-link'
+import { ArrowUp } from 'lucide-react'
 import { useAtomValue } from 'jotai'
 import { copiedLocationAtom } from './coordinate-memory'
 import { CoordinateInput } from '../ui/coordinate-input'
@@ -81,6 +82,7 @@ export function Dispatch({
     cargo,
     setCargo,
     addAllCargo,
+    maxCargo,
     quote,
     setQuote,
     error,
@@ -227,23 +229,6 @@ export function Dispatch({
                 <option value="debris">Debris field</option>
               </Select>
             </Field>
-            <Field>
-              Speed
-              <Select
-                aria-label="Speed"
-                value={speed}
-                onChange={(e) => {
-                  setSpeed(Number(e.target.value))
-                  clear()
-                }}
-              >
-                {Array.from({ length: 10 }, (_, i) => (
-                  <option key={i} value={(i + 1) * 10}>
-                    {(i + 1) * 10}%
-                  </option>
-                ))}
-              </Select>
-            </Field>
             {coordinatesValid && (
               <Text role="status">
                 {targetKind === 'debris'
@@ -272,7 +257,6 @@ export function Dispatch({
                 </Button>
               </Text>
             )}
-            <DispatchTiming terms={timing} now={now} message={timingMessage} />
             {mission === 'Attack' && !targetProblem && !attackWarning && (
               <Text className={styles.destinationNotice}>
                 Beginner protection can prevent attacks between players of
@@ -329,39 +313,78 @@ export function Dispatch({
             </div>
             <div className={styles.cargoInputs}>
               {resourceNames.map((resource, i) => (
-                <Field
-                  key={resource}
-                  title={resource[0].toUpperCase() + resource.slice(1)}
-                >
-                  <ResourceMark resource={resource} />
-                  <NumberInput
-                    aria-label={resource[0].toUpperCase() + resource.slice(1)}
-                    value={cargo[i]}
-                    placeholder="0"
-                    onBlur={(e) => {
-                      if (!e.target.value.trim())
-                        setCargo(cargo.map((n, j) => (i === j ? '0' : n)))
-                    }}
-                    onChange={(e) => {
-                      setCargo(
-                        cargo.map((n, j) => (i === j ? e.target.value : n)),
-                      )
-                      clear()
-                    }}
-                  />
-                </Field>
+                <div className={styles.cargoInput} key={resource}>
+                  <Field title={resource[0].toUpperCase() + resource.slice(1)}>
+                    <ResourceMark resource={resource} />
+                    <NumberInput
+                      aria-label={resource[0].toUpperCase() + resource.slice(1)}
+                      value={cargo[i]}
+                      placeholder="0"
+                      onBlur={(e) => {
+                        if (!e.target.value.trim())
+                          setCargo(cargo.map((n, j) => (i === j ? '0' : n)))
+                      }}
+                      onChange={(e) => {
+                        setCargo(
+                          cargo.map((n, j) => (i === j ? e.target.value : n)),
+                        )
+                        clear()
+                      }}
+                    />
+                  </Field>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-small"
+                    className={styles.maxCargo}
+                    aria-label={`Max ${resource}`}
+                    title={`Max ${resource}, reserving space for other cargo and fuel`}
+                    disabled={busy || !coordinatesValid || !!targetProblem}
+                    onClick={() => void maxCargo(resource)}
+                  >
+                    <ArrowUp size={18} aria-hidden="true" />
+                  </Button>
+                </div>
               ))}
               <Button
                 type="button"
                 variant="secondary"
                 size="small"
                 disabled={busy || !coordinatesValid || !!targetProblem}
-                title="Fill available cargo space, reserving deuterium for fuel"
+                title="Keep entered cargo and split remaining space evenly, reserving deuterium for fuel"
                 onClick={() => void addAllCargo()}
               >
                 Add all
               </Button>
             </div>
+          </fieldset>
+          <fieldset
+            className={styles.flightSettings}
+            aria-label="Speed and flight estimates"
+          >
+            <Field>
+              Speed
+              <Select
+                aria-label="Speed"
+                value={speed}
+                onChange={(e) => {
+                  setSpeed(Number(e.target.value))
+                  clear()
+                }}
+              >
+                {Array.from({ length: 10 }, (_, i) => (
+                  <option key={i} value={(i + 1) * 10}>
+                    {(i + 1) * 10}%
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <DispatchTiming
+              terms={timing}
+              mission={mission}
+              now={now}
+              message={timingMessage}
+            />
           </fieldset>
           {error && (
             <Text tone="danger" role="alert">

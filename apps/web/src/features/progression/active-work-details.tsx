@@ -46,7 +46,7 @@ export function ActiveWorkDetails({
   children,
 }: {
   label: string
-  title: string
+  title: ReactNode
   accessibleTitle: string
   secondsRemaining: number | null
   dueAt: number

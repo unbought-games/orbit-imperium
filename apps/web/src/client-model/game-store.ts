@@ -13,7 +13,10 @@ export type GameState = {
   binding: Binding | null
   view: BoundView | null
   settings: BoundSettings | null
-  reportShares?: Record<string, components['schemas']['ReportShareStatus']>
+  reportShares?: Record<
+    string,
+    Omit<components['schemas']['ReportShareStatus'], 'header'>
+  >
   reportHeaders: ReportHeaders
   attempts: AttemptLedger
   intents: Map<string, SubmittedIntent>

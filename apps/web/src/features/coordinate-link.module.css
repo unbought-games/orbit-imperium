@@ -13,16 +13,6 @@
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
-.control {
-  border-radius: 4px;
-  color: inherit;
-  opacity: 0.65;
-}
-.control:hover,
-.control:focus-visible {
-  opacity: 1;
-  background: #ffffff14;
-}
 .positioner {
   z-index: 100;
 }

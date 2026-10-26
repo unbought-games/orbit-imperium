@@ -13,24 +13,26 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
   { key: { kind: 'Defense', id: 'HeavyLaser' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: { ...technicalData, combat: { ...technicalData.combat, attack_ticks: '25000000', shield_ticks: '10000000', hull_ticks: '80000000' } } },
 ]
 for (const hidden of [false, true]) test(`prefills report simulation with ${hidden ? 'unknown' : 'observed'} intelligence`, async ({ page }) => {
-  await installGameFixture(page, { protocol: 4, catalog, extraCapabilities: ['Reports'] })
+  await installGameFixture(page, { protocol: 4, catalog, bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }, { ...body, id: id(6), inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '99' }] }], extraCapabilities: ['Reports'] })
   const header = { id: id(63), kind: 'Espionage', observed_at: 6000, read: true, hidden: false }
   await page.route('**/api/**/reports/**', async route => {
     const context = route.request().postDataJSON()
-    await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { header, payload: { ...observation, defenses: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Defense', id: 'HeavyLaser' }, count: '7' }] }, fleet: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '12' }] }, research: hidden ? { visibility: 'Unknown' } : observation.research } } } })
+    await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { header, payload: { ...observation, resources: hidden ? { visibility: 'Unknown' } : observation.resources, defenses: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Defense', id: 'HeavyLaser' }, count: '7' }] }, fleet: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '12' }] }, research: hidden ? { visibility: 'Unknown' } : observation.research } } } })
   })
   let submitted: any = null
   let attempts = 0
   await page.route('**/combat-simulation', async route => {
     submitted = route.request().postDataJSON()
     if (hidden && attempts++ === 0) { await route.fulfill({ status: 503, json: { code: 'Unavailable' } }); return }
-    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }], defender: [] })) } })
+    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, surviving_cargo_capacity: '400000000', estimated_loot: hidden ? null : { metal: '133000000', crystal: '133000000', deuterium: '134000000' }, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }], defender: [] })) } })
   })
   await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
   const trigger = page.getByRole('button', { name: 'Simulate combat', exact: true })
   await trigger.click()
   const dialog = page.getByRole('dialog', { name: 'Combat simulation' })
   await expect(dialog).toContainText('historical snapshot')
+  await expect(dialog).toContainText('Light Fighter (3 available)')
+  await expect(dialog).toContainText('hypothetical quantities are allowed')
   await expect(dialog.getByLabel('Defender Light Fighter', { exact: true })).toHaveValue(hidden ? '' : '12')
   await expect(dialog.getByLabel('Defender Rocket Launcher', { exact: true })).toHaveValue(hidden ? '' : '0')
   await expect(dialog.getByLabel('Defender Heavy Laser', { exact: true })).toHaveValue(hidden ? '' : '7')
@@ -52,6 +54,20 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     await dialog.getByRole('button', { name: 'Run 10 battles' }).click()
   }
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toBeVisible()
+  const results = dialog.getByRole('region', { name: 'Simulation results' })
+  await expect(results).toContainText('2 lost · 8 surviving')
+  await expect(results).toContainText('Surviving cargo capacity: 400 average')
+  await expect(results).toContainText(hidden ? 'resources were not observed' : 'Estimated loot: 400 average')
+  if (!hidden) {
+    for (const name of ['Metal', 'Crystal', 'Deuterium']) await expect(results.getByRole('img', { name, exact: true }).first()).toBeVisible()
+    expect(submitted.inputs.observed_resources).toEqual(observation.resources.value)
+  } else expect(submitted.inputs.observed_resources).toBeUndefined()
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await results.scrollIntoViewIfNeeded()
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/simulation-results-${hidden}-${width}.png`, fullPage: true })
+  }
   expect(submitted.inputs.defender.units).toEqual(hidden ? [] : [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 12 }, { item: { kind: 'Defense', id: 'HeavyLaser' }, count: 7 }])
   expect(Object.keys(submitted).sort()).toEqual(['context', 'inputs'])
   await dialog.getByLabel('Attacker Light Fighter', { exact: true }).fill('20')

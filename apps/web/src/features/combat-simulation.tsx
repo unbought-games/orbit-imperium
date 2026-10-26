@@ -5,13 +5,17 @@ import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
-import { label } from '../ui/format'
+import { bodyName, coordinates, label } from '../ui/format'
+import { formatWholeNumber } from '../ui/whole-number'
+import { useGameScreen } from '../shell/screen-context'
+import { SimulationPlanning } from './combat-simulation-planning'
 import {
   simulationFields,
   unknownAssumptions,
   simulationInputs,
   simulationSummary,
   averageSurvivors,
+  attackerLosses,
   unsupportedReportUnits,
   type Espionage,
 } from './combat-simulation-model'
@@ -84,10 +88,13 @@ function SimulationForm({
   const dialog = useRef<HTMLDialogElement>(null)
   const view = useStore(model.store, (s) => s.view)
   const now = useStore(model.store, currentServerTime)
+  const { body } = useGameScreen()
+  const stale = useStore(model.store, (s) => s.stale)
   const fields = simulationFields(
     report,
     view?.catalog ?? [],
     view?.research ?? [],
+    body?.inventories,
   )
   const scope = JSON.stringify([report, view?.research, view?.profile_hash])
   const { edits, result, error, running, edit, run } = useCombatSimulation(
@@ -95,7 +102,7 @@ function SimulationForm({
     scope,
   )
   const assumptions = unknownAssumptions(fields, edits)
-  const prepared = simulationInputs(fields, edits)
+  const prepared = simulationInputs(fields, edits, report.resources)
   const unsupported = unsupportedReportUnits(report, fields)
   useEffect(() => {
     const element = dialog.current!
@@ -126,9 +133,9 @@ function SimulationForm({
           ({reportAge(report.observed_at, now)}).
         </p>
         <p>
-          This is a historical snapshot. Fleets, defenses and research may have
-          changed. Unknown is not zero. Player edits are assumptions; the target
-          is never refreshed.
+          This is a historical snapshot. Resources, fleets, defenses and
+          research may have changed. Unknown is not zero. Player edits are
+          assumptions; the target is never refreshed.
         </p>
         <form
           onSubmit={(event) => {
@@ -141,6 +148,15 @@ function SimulationForm({
             {(['attacker', 'defender'] as const).map((side) => (
               <fieldset key={side} disabled={running}>
                 <legend>{sideNames[side]}</legend>
+                {side === 'attacker' && (
+                  <p>
+                    {body
+                      ? `Stationed on ${bodyName(body)} ${coordinates(body)}${stale ? ' · last known inventory (reconnecting)' : ''}.`
+                      : 'Select a planet to see stationed ship availability.'}{' '}
+                    Availability is a reference; hypothetical quantities are
+                    allowed.
+                  </p>
+                )}
                 {side === 'defender' && Object.keys(assumptions).length > 0 && (
                   <Button
                     type="button"
@@ -156,6 +172,12 @@ function SimulationForm({
                     <label key={field.key} className={styles.field}>
                       <span>
                         {label(field.label)}
+                        {field.available !== undefined && (
+                          <span title="Ships currently stationed on the selected planet">
+                            {' '}
+                            ({formatWholeNumber(field.available)} available)
+                          </span>
+                        )}
                         <small>
                           {edits[field.key] !== undefined
                             ? `Player assumption${field.value !== null ? ` · ${field.source.toLowerCase()}: ${field.value}` : ' · not observed'}`
@@ -180,7 +202,7 @@ function SimulationForm({
           <p>
             Ten randomized battles using this universe’s current combat rules.
             Limit: 2,000 units combined; technology 0–100. Missiles, defense
-            repairs, debris recovery, loot and fuel are excluded.
+            repairs and debris recovery are excluded.
           </p>
           {unsupported.length > 0 && (
             <p role="alert">
@@ -213,7 +235,11 @@ function SimulationForm({
             </div>
             {(['attacker', 'defender'] as const).map((side) => (
               <div key={side}>
-                <h4>{sideNames[side]} · average survivors before repairs</h4>
+                <h4>
+                  {side === 'attacker'
+                    ? 'Attacker · average losses and survivors'
+                    : 'Defender · average survivors before repairs'}
+                </h4>
                 <dl className={styles.survivors}>
                   {fields
                     .filter(
@@ -226,6 +252,17 @@ function SimulationForm({
                       <div key={f.key}>
                         <dt>{label(f.label)}</dt>
                         <dd>
+                          {side === 'attacker' && (
+                            <strong>
+                              {attackerLosses(result, {
+                                item: f.item!,
+                                count: Number(edits[f.key] ?? f.value),
+                              }).toLocaleString(undefined, {
+                                maximumFractionDigits: 1,
+                              })}{' '}
+                              lost ·{' '}
+                            </strong>
+                          )}
                           {averageSurvivors(
                             result,
                             side,
@@ -233,12 +270,14 @@ function SimulationForm({
                           ).toLocaleString(undefined, {
                             maximumFractionDigits: 1,
                           })}
+                          {side === 'attacker' ? ' surviving' : ''}
                         </dd>
                       </div>
                     ))}
                 </dl>
               </div>
             ))}
+            <SimulationPlanning result={result} />
           </section>
         )}
       </div>

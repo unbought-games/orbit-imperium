@@ -367,9 +367,10 @@
 }
 
 .cargoFields {
+  container-type: inline-size;
   min-width: 0;
   width: 100%;
-  max-width: 600px;
+  max-width: 760px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -381,14 +382,14 @@
 }
 .cargoInputs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: 1fr;
   gap: 8px;
 }
-.cargoInputs > label {
+.cargoInput {
   position: relative;
   min-width: 0;
 }
-.cargoInputs svg {
+.cargoInput > label > svg {
   position: absolute;
   left: 8px;
   top: 12px;
@@ -399,10 +400,32 @@
 .cargoInputs input {
   height: 44px;
   min-width: 0;
-  padding: 6px 6px 6px 32px;
+  padding: 6px 40px 6px 32px;
   font-size: 1rem;
 }
+.maxCargo {
+  --button-min-size: 36px;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+}
+@container (min-width: 520px) {
+  .cargoInputs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+}
 
+.flightSettings {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 12px;
+}
+.flightSettings > label {
+  width: min(100%, 10rem);
+}
 .flightTiming {
   grid-column: 1 / -1;
   min-width: 0;
@@ -410,7 +433,7 @@
 }
 .flightTiming dl {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   gap: 8px;
   margin: 0;
 }
@@ -421,11 +444,15 @@
 }
 .flightTiming dd {
   margin: 0;
+  min-height: 2.8em;
+  line-height: 1.4;
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
 .flightTiming p {
   margin: 0;
+  min-height: 2.8em;
+  line-height: 1.4;
   color: var(--text-muted);
   font-size: 0.75rem;
 }

@@ -148,3 +148,25 @@ it('a confirmed star clears only earlier star failures, leaving deletion failure
     'star-failure',
   ])
 })
+
+// Sharing is committed outside the command stream but advances the same viewer
+// revision used by report reads, including bulk cleanup's authoritative headers.
+it('keeps publication protection when an older report response arrives later', () => {
+  const shared = { ...header, starred: true, shared: true }
+  const published = mergeReportHeaders(headers, [shared], '3')
+  const lateRead = mergeReportHeaders(
+    published,
+    [{ ...header, starred: false, shared: false }],
+    '2',
+  )
+  expect(projectedReportHeader(lateRead, [], header.id)).toEqual(shared)
+  const revoked = mergeReportHeaders(
+    lateRead,
+    [{ ...shared, shared: false }],
+    '4',
+  )
+  expect(projectedReportHeader(revoked, [], header.id)).toEqual({
+    ...shared,
+    shared: false,
+  })
+})

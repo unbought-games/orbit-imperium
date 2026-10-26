@@ -41,6 +41,7 @@ export function Navigation({
   body,
   page,
   detail = false,
+  activity,
   onVisit,
   onLogout,
   children,
@@ -49,6 +50,7 @@ export function Navigation({
   body: string | undefined
   page: Page
   detail?: boolean
+  activity: ReadonlySet<Page>
   onVisit?: (page: Page) => void
   onLogout: () => void
   children: (navigation: ReactNode) => ReactNode
@@ -76,6 +78,7 @@ export function Navigation({
     Icon?: typeof Orbit,
     primary = false,
   ) => {
+    const working = !primary && activity.has(p)
     const available = resolveDestination(
       { universe: view.binding.universe, page: p, body },
       view,
@@ -84,6 +87,9 @@ export function Navigation({
       <>
         {Icon && <Icon size={21} aria-hidden="true" />}
         <span>{title}</span>
+        {working && (
+          <span className={styles.activityBadge} aria-hidden="true" />
+        )}
         {p === 'reports' && hasUnreadReports && (
           <span className={styles.unreadBadge} aria-label="Unread reports">
             <Mail size={16} aria-hidden="true" />
@@ -102,6 +108,8 @@ export function Navigation({
             : undefined
         }
         preload="intent"
+        aria-description={working ? 'Work in progress' : undefined}
+        title={working ? 'Work in progress' : undefined}
         data-analytics={`navigate_${p}`}
         key={p}
         {...routeTarget(universeName, p, body)}

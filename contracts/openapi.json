@@ -11490,6 +11490,10 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/AllianceIdentity"
             }
+          },
+          "shared": {
+            "type": "boolean",
+            "description": "Whether this recipient has an active shared link; derived from publication state."
           }
         },
         "required": [
@@ -14417,6 +14421,10 @@
           },
           "defender": {
             "$ref": "#/components/schemas/SimulationSide"
+          },
+          "observed_resources": {
+            "$ref": "#/components/schemas/Resources",
+            "description": "Historical report-observed resources in micro-units. Omission means unknown."
           }
         },
         "required": [
@@ -14468,13 +14476,28 @@
             "items": {
               "$ref": "#/components/schemas/SimulationUnit"
             }
+          },
+          "surviving_cargo_capacity": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "estimated_loot": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Resources"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "outcome",
           "rounds",
           "attacker",
-          "defender"
+          "defender",
+          "surviving_cargo_capacity",
+          "estimated_loot"
         ],
         "additionalProperties": false
       },
@@ -14498,13 +14521,17 @@
             },
             "minItems": 10,
             "maxItems": 10
+          },
+          "loot_rules_enabled": {
+            "type": "boolean"
           }
         },
         "required": [
           "binding",
           "request_id",
           "profile_hash",
-          "samples"
+          "samples",
+          "loot_rules_enabled"
         ],
         "additionalProperties": false
       },
@@ -14543,11 +14570,20 @@
                 "type": "null"
               }
             ]
+          },
+          "header": {
+            "$ref": "#/components/schemas/ReportHeader4"
+          },
+          "viewer_revision": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
           }
         },
         "required": [
           "token",
-          "options"
+          "options",
+          "header",
+          "viewer_revision"
         ],
         "additionalProperties": false
       },

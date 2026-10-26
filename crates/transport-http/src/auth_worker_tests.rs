@@ -1,5 +1,8 @@
 use super::*;
-use axum::{body::Body, http::Request};
+use axum::{
+    body::{Body, to_bytes},
+    http::{Method, Request},
+};
 use orbit_engine::{InvariantError, Ruleset, TransitionResult};
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
@@ -805,7 +808,7 @@ async fn public_reports_need_no_session_but_sharing_management_requires_auth_ori
         store,
         HttpConfig {
             origin: "https://game.test".into(),
-            assets: "absent".into(),
+            assets: concat!(env!("CARGO_MANIFEST_DIR"), "/../../apps/web").into(),
             login_per_minute: 100,
             signup: None,
             signup_per_minute: 100,
@@ -814,6 +817,58 @@ async fn public_reports_need_no_session_but_sharing_management_requires_auth_ori
             observer: None,
         },
     );
+    for (token, expected, text) in [
+        (
+            "00000000-0000-0000-0000-000000000000",
+            StatusCode::OK,
+            "Contact lost",
+        ),
+        (
+            "00000000-0000-4000-8000-000000000001",
+            StatusCode::NOT_FOUND,
+            "Shared report unavailable",
+        ),
+        (
+            "invalid",
+            StatusCode::NOT_FOUND,
+            "Shared report unavailable",
+        ),
+    ] {
+        for method in [Method::GET, Method::HEAD] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method(method.clone())
+                        .uri(format!("/reports/shared/{token}"))
+                        .header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), expected);
+            assert_eq!(
+                response.headers()[header::CACHE_CONTROL],
+                "private, no-store"
+            );
+            assert_eq!(
+                response.headers()["x-robots-tag"],
+                "noindex, nofollow, noarchive"
+            );
+            assert_eq!(response.headers()["referrer-policy"], "no-referrer");
+            let body = to_bytes(response.into_body(), 65536).await.unwrap();
+            if method == Method::HEAD {
+                assert!(body.is_empty());
+            } else {
+                let html = String::from_utf8(body.to_vec()).unwrap();
+                assert!(html.contains(text));
+                assert!(html.contains("og:description"));
+                assert!(!html.contains("Build planets"));
+                assert!(html.contains("anonymous"));
+            }
+        }
+    }
     let public = "/api/v4/shared-reports/00000000-0000-0000-0000-000000000000";
     let response = app
         .clone()

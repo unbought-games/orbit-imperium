@@ -545,6 +545,7 @@
   gap: 10px;
   align-items: center;
   min-height: 125px;
+  padding-block: 16px;
 }
 .cardArt {
   width: 100px;
@@ -735,7 +736,7 @@
 }
 .cardFooter {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
 }
 .cardFooter a {
