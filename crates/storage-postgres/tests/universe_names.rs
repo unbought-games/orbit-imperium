@@ -133,7 +133,6 @@ async fn creation_update_and_sessions_share_unique_authoritative_names() {
             }),
             signup_per_minute: 5,
             legacy_signup_enabled: false,
-            trusted_fly_proxies: vec![],
             wake: None,
             observer: None,
         },

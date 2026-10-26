@@ -458,7 +458,6 @@ async fn universe_policy_two_http_instances_refresh_and_fail_closed() {
         }),
         signup_per_minute: 1,
         legacy_signup_enabled: false,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

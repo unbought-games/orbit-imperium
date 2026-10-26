@@ -37,7 +37,6 @@ async fn bootstrap_authentication_privacy_and_legacy_compatibility() {
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: true,
-            trusted_fly_proxies: vec![],
             wake: None,
             observer: None,
         },
@@ -219,7 +218,6 @@ async fn bootstrap_signup_and_expiry_keep_auth_outcomes_distinct() {
         }),
         signup_per_minute: 10,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

@@ -93,7 +93,6 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
             signup_per_minute: prepared.legacy_signup_per_minute,
             legacy_signup_enabled: prepared.legacy_enabled,
             login_per_minute: serve.login_per_minute,
-            trusted_fly_proxies: serve.trusted_fly_proxies,
             wake: Some(wake),
             observer: Some(metrics),
         };

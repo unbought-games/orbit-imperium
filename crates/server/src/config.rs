@@ -94,7 +94,6 @@ mod universe_config_tests {
             "ORBIT_ROLE" => Some("worker".into()),
             "ORBIT_UNIVERSE_ID" => Some("not-a-uuid".into()),
             "ORBIT_LOGIN_PER_MINUTE" => Some("not-a-number".into()),
-            "ORBIT_TRUSTED_FLY_PROXIES" => Some("not-an-ip".into()),
             "ORBIT_LOCAL_INSECURE" => Some("1".into()),
             "ORBIT_ORIGIN" => Some("https://game.example".into()),
             _ => None,
@@ -137,7 +136,6 @@ pub struct ServeConfig {
     pub secure_cookies: bool,
     pub assets: String,
     pub login_per_minute: u32,
-    pub trusted_fly_proxies: Vec<IpAddr>,
 }
 
 impl ServeConfig {
@@ -172,7 +170,6 @@ impl ServeConfig {
                     key,
                     "ORBIT_UNIVERSE_ID"
                         | "ORBIT_LOGIN_PER_MINUTE"
-                        | "ORBIT_TRUSTED_FLY_PROXIES"
                         | "ORBIT_LOCAL_INSECURE"
                         | "ORBIT_ORIGIN"
                         | "ORBIT_BIND"
@@ -333,13 +330,6 @@ impl ServeConfig {
                 .unwrap_or_else(|| "30".into())
                 .parse::<u32>()
                 .map_err(|e| e.to_string())?,
-            trusted_fly_proxies: get("ORBIT_TRUSTED_FLY_PROXIES")
-                .unwrap_or_default()
-                .split(',')
-                .filter(|v| !v.is_empty())
-                .map(str::parse)
-                .collect::<Result<Vec<IpAddr>, _>>()
-                .map_err(|e| e.to_string())?,
         })
     }
 }
@@ -466,7 +456,6 @@ mod serve_tests {
         assert_eq!(config.assets, "apps/web/dist");
         assert!(config.secure_cookies);
         assert_eq!(config.login_per_minute, 30);
-        assert!(config.trusted_fly_proxies.is_empty());
         assert_eq!(config.speed, None);
         assert!(config.fixture);
         assert!(config.signup.enabled);
@@ -592,42 +581,6 @@ mod serve_tests {
                     assert_eq!(config.secure_cookies, flag != "1");
                 }
             }
-        }
-    }
-
-    #[test]
-    fn proxy_lists_accept_ip_addresses_and_skip_only_empty_entries() {
-        for (value, expected) in [
-            ("", vec![]),
-            (",,,", vec![]),
-            ("127.0.0.1", vec!["127.0.0.1"]),
-            (
-                ",127.0.0.1,,::1,127.0.0.1,",
-                vec!["127.0.0.1", "::1", "127.0.0.1"],
-            ),
-        ] {
-            let config = parse(&[("ORBIT_TRUSTED_FLY_PROXIES", value)]).unwrap();
-            assert_eq!(
-                config
-                    .trusted_fly_proxies
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>(),
-                expected
-            );
-        }
-        for value in [
-            "localhost",
-            "127.0.0.1, ::1",
-            "127.0.0.1/32",
-            "127.0.0.1:80",
-            "[::1]",
-            " ",
-        ] {
-            assert!(
-                parse(&[("ORBIT_TRUSTED_FLY_PROXIES", value)]).is_err(),
-                "{value}"
-            );
         }
     }
 

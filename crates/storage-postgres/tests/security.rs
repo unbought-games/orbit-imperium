@@ -36,7 +36,6 @@ async fn negative_http_inputs_foreign_operations_and_hidden_revisions() {
             secure_cookies: true,
             assets: "absent".into(),
             login_per_minute: 3,
-            trusted_fly_proxies: Vec::new(),
             wake: None,
             observer: None,
         },

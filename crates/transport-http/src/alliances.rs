@@ -31,15 +31,10 @@ pub(super) async fn command<S: GameStore + IdentityStore>(
 }
 pub(super) async fn public<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
-    h: HeaderMap,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     Path((universe, id)): Path<(uuid::Uuid, uuid::Uuid)>,
 ) -> Result<Response, Problem> {
-    let source = login_source(
-        peer.map(|Extension(ConnectInfo(address))| address),
-        &h,
-        &s.config.trusted_fly_proxies,
-    );
+    let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     if let Err(retry) = s.alliance_public_budget.lock().await.admit(
         source,
         &source.to_string(),

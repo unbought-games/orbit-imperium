@@ -1,34 +1,20 @@
-# Development deployment and Fly.io
+# Deployment
 
-This guide describes the repository’s Fly.io deployment examples and the server’s hosting requirements. The server manages backward-compatible schema migrations during startup and supports rolling deployments. The game also runs on other container hosts with PostgreSQL; these examples do not prescribe the official hosting platform.
+The server runs as a container or release binary with PostgreSQL. It manages backward-compatible schema migrations during startup and supports rolling deployments.
 
-## Production and development roles
+## Process roles and configuration
 
-Production uses separately replicated API and worker OS processes sharing PostgreSQL, with scoped chronological ownership rather than one universe-wide gameplay writer. The same image supports `ORBIT_ROLE=api|worker|combined`; combined is the development default. Use the [concurrent runtime runbook](../operations/concurrent-runtime.md) for the retained-world cutover, connection budget, private metrics, and durability requirements. The example production templates are configuration, not a measured capacity claim or provisioned resources.
+Production uses separately replicated API and worker OS processes sharing PostgreSQL, with scoped chronological ownership rather than one universe-wide gameplay writer. The same image supports `ORBIT_ROLE=api|worker|combined`; combined is the development default. Use the [concurrent runtime runbook](../operations/concurrent-runtime.md) for the retained-world cutover, connection budget, private metrics, and durability requirements.
 
-Fly Managed Postgres is the simplest supported Fly database option operationally; it offers backups, recovery and high availability. Provisioning and costs are separate from the application. Select the database plan at deployment time; no resources have been provisioned by this document. A disposable self-managed PostgreSQL container with a persistent Fly Volume is an alternative for development if lower running cost is more important than managed operations. Standard PostgreSQL connectivity keeps that choice outside the engine. [Managed Postgres](https://fly.io/docs/mpg/)
-
-Package the same application image for local development, Fly and other container hosts. Fly-specific configuration belongs in deployment files, not engine rules, database entities or public protocol types. Environment variables provide process configuration such as `ORBIT_BIND`; database credentials belong in deployment secrets. Universe creation and admission policy belong to the database and explicit CLI. See the [configuration rollout](../operations/universe-configuration.md) before upgrading retained worlds. Supply a health/readiness endpoint and graceful shutdown that stops admission and safely finishes or abandons the active claim.
+Package the same application image for local development and container hosts. Environment variables provide process configuration such as `ORBIT_BIND`; database credentials belong in deployment secrets. Universe creation and admission policy belong to the database and explicit CLI. Follow the [production signup setup](../operations/signup.md) and [universe configuration guide](../operations/universe-configuration.md) to initialize a database and create a world before serving. Put HTTPS in front of remote servers and set `ORBIT_ORIGIN` to the public browser origin.
 
 ## Explicit server lifetime
 
-From the `orbit-imperium` directory, use:
-
-```sh
-make fly-launch FLY_APP=your-game-app FLY_ORG=your-org FLY_REGION=your-region
-make fly-deploy FLY_APP=your-game-app
-make fly-destroy FLY_APP=your-game-app
-```
-
-Launch creates the app and deploys it; deploy updates an existing app. Both use `Dockerfile` and `deploy/fly.toml`. Launch does not automatically provision PostgreSQL or other add-ons. Configure the separate database and required app secrets before a healthy game deployment is possible. The development template defaults to `FLY_HA=false` and rolling replacement. The marked API/worker production templates require `FLY_HA=true`, which permits spare Machines; verify actual replica counts. Multiple existing hosts can retain availability during deployment, while a single host still has a restart window. `FLY_ORG` and `FLY_REGION` are optional launch arguments; `FLY_APP` is always required.
-
-Destroy permanently deletes the explicitly named Fly app and its app-owned resources without an additional prompt. It is not a stop command. A separate PostgreSQL app or managed database is not deleted; it must be managed separately. For an ordinary development shutdown, stop the app's Machines instead of destroying the app. The `FLY` and `FLY_CONFIG` variables can override the CLI executable and config path.
-
-For a combined API/scheduler Machine, use `auto_stop_machines = "off"` and `auto_start_machines = false`. Operate it explicitly with start/stop commands during testing. Request-driven sleeping is unsuitable for an active universe: due events must resolve without a browser request. Fly's default launch configuration enables traffic-based stopping, so override it deliberately. [Autostop and autostart](https://fly.io/docs/launch/autostop-autostart/)
+Keep workers running while the universe is active: due events must resolve without a browser request. Use explicit start/stop operations instead of request-driven sleeping. Configure readiness checks and graceful shutdown that stops admission and safely finishes or abandons the active claim. Multiple existing hosts can retain availability during deployment, while a single host still has a restart window.
 
 Stopping an app process does not implicitly pause game time or reset the database. If retained state is resumed, serve committed snapshots immediately while workers process overdue work in canonical order. Starting a new test run can instead explicitly recreate and seed a disposable universe. A deliberate test pause, if later needed, must be an explicit test-clock feature; do not infer it from process downtime or carry it into competitive play.
 
-Store durable data in PostgreSQL, not the app Machine's ephemeral root filesystem. Self-managed PostgreSQL requires persistent storage. Fly Volumes are local to a host and do not provide database replication by themselves. [Volumes](https://fly.io/docs/volumes/overview/)
+Store durable data in PostgreSQL, not the application container's ephemeral filesystem. Self-managed PostgreSQL requires persistent storage and a backup/restore procedure. A persistent volume alone does not provide database replication. Stop/start and database deletion are separate operations; back up retained player progress before deliberately removing database storage.
 
 ## Development schema and rules changes
 
