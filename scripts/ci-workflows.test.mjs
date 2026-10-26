@@ -216,12 +216,12 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
 test('browser shards run independently and Make forwards their native Playwright selector', () => {
   const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
   assert.equal(browser.strategy['fail-fast'], false)
-  assert.equal(browser.strategy['max-parallel'], 4)
-  assert.deepEqual(browser.strategy.matrix.shard, [1, 2, 3, 4])
+  assert.equal(browser.strategy['max-parallel'], 3)
+  assert.deepEqual(browser.strategy.matrix.shard, [1, 2, 3])
   const run = browser.steps.find((step) => step.run === 'make test-ui')
   assert.equal(run.env.UI_SHARD, '${{ matrix.shard }}/${{ strategy.job-total }}')
   const root = new URL('../', import.meta.url)
-  for (const shard of ['', '1/4', '2/4', '3/4', '4/4']) {
+  for (const shard of ['', '1/3', '2/3', '3/3']) {
     const dryRun = spawnSync('make', ['--no-print-directory', '-n', 'test-ui', `UI_SHARD=${shard}`], {
       cwd: root,
       encoding: 'utf8',

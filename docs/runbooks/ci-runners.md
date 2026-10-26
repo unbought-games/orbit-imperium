@@ -5,7 +5,7 @@ run on GitHub-hosted `ubuntu-24.04` VMs. Each job gets a disposable host, includ
 Docker and Chromium's Linux dependencies. Explicit suites remain opt-in with
 generous preparation and execution guards.
 
-Routine fixture-browser tests run in four Playwright shards on separate VMs,
+Routine fixture-browser tests run in three Playwright shards on separate VMs,
 in parallel with the native build/lint/unit and database job, after a short
 changed-path selection job. This gives browser feedback without waiting for
 Rust compilation or sharing its CPU
@@ -24,7 +24,7 @@ suite deadline. GitHub-hosted jobs retain the platform's six-hour cap. Functiona
 network timeouts and assertions about timeout behavior remain unchanged.
 Each browser shard uses at most three workers, bounded by available CPUs.
 Playwright's `fullyParallel` mode partitions individual tests across shards.
-`make test-ui` still runs the whole suite locally; use `make test-ui UI_SHARD=2/4`
+`make test-ui` still runs the whole suite locally; use `make test-ui UI_SHARD=2/3`
 to reproduce one CI shard. No test selection or assertion changes with sharding.
 Responsive catalog checks keep routes mounted across viewport changes to avoid redundant
 application startup while retaining every viewport and control assertion.
