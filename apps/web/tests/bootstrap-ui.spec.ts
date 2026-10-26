@@ -130,7 +130,7 @@ test('OIDC sign-in offers one prominent account action and retains the destinati
     }
     await diagnosticScreenshot(page, { path: `test-results/oidc-sign-in-${width}.png`, fullPage: true })
   }
-  await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
+  await expect(page.getByRole('region', { name: 'Open Beta' })).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
   await expect(page.getByRole('navigation', { name: 'Policies and support' })).toBeVisible()
   await expect(page.getByLabel('Password')).toHaveCount(0)
   await expect(
@@ -911,11 +911,11 @@ test('homepage centers policies and highlights news, GitHub, and Discord', async
     await expect(discord).toBeVisible()
     await expect(discord.locator('svg')).toBeVisible()
     await expect(discord.locator('svg')).toHaveCSS('color', 'rgb(88, 101, 242)')
-    const statementBounds = (await page.getByText('Every advantage is earned.', { exact: true }).boundingBox())!
+    const heroActionsBounds = (await page.getByRole('navigation', { name: 'Get started' }).boundingBox())!
     const newsBounds = (await news.boundingBox())!
     const repositoryBounds = (await repository.boundingBox())!
     const discordBounds = (await discord.boundingBox())!
-    expect(newsBounds.y).toBeGreaterThanOrEqual(statementBounds.y + statementBounds.height)
+    expect(newsBounds.y).toBeGreaterThanOrEqual(heroActionsBounds.y + heroActionsBounds.height)
     expect(repositoryBounds.y).toBeGreaterThanOrEqual(newsBounds.y + newsBounds.height)
     expect(discordBounds.y).toBeGreaterThanOrEqual(repositoryBounds.y + repositoryBounds.height)
     expect(await news.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
@@ -926,16 +926,21 @@ test('homepage centers policies and highlights news, GitHub, and Discord', async
   }
 })
 
-test('starting beta and reset notice appear before public enrollment with approved policy links', async ({ page }) => {
+test('open beta notice appears before public enrollment with approved policy links', async ({ page }) => {
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
     version: 1, signup_enabled: true, result: { status: 'anonymous' },
   } }))
   await page.setViewportSize({ width: 390, height: 844 })
   for (const path of ['/', '/login', '/signup']) {
     await page.goto(path)
-    const notice = page.getByRole('region', { name: 'Starting open beta' })
-    await expect(notice).toContainText('The game is incomplete, with more content to come.')
-    await expect(notice).toContainText('We reserve the right to reset the universe and its progress before full public launch.')
+    const notice = page.getByRole('region', { name: 'Open Beta' })
+    await expect(notice).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
+    await expect(notice).not.toContainText('reset')
+    if (path === '/') {
+      const actions = page.getByRole('navigation', { name: 'Get started' })
+      const noticeBounds = (await notice.boundingBox())!
+      expect(noticeBounds.y + noticeBounds.height).toBeLessThanOrEqual((await actions.boundingBox())!.y)
+    }
     const policies = page.getByRole('navigation', { name: 'Policies and support' })
     for (const [name, destination] of [['Terms', 'terms'], ['Privacy', 'privacy'], ['Conduct', 'conduct']])
       await expect(policies.getByRole('link', { name, exact: true })).toHaveAttribute('href', `https://unbought.games/${destination}/`)
@@ -953,7 +958,7 @@ test('signed-in settings retain the beta notice and best-effort support target',
   await shellFixture(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(`/u/andromeda/settings?body=${body.id}`)
-  await expect(page.getByRole('region', { name: 'Starting open beta' })).toContainText('reset the universe and its progress before full public launch')
+  await expect(page.getByRole('region', { name: 'Open Beta' })).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
   const help = page.getByRole('region', { name: 'Help and conduct reports' })
   await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
   await expect(help.getByRole('link', { name: 'support@unbought.games' })).toHaveAttribute('href', 'mailto:support@unbought.games')
