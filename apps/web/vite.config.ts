@@ -8,6 +8,9 @@ export default defineConfig({
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),
   ],
+  // Browser fixtures run before a production build creates homepage.html.
+  // Scan the actual source entries so a clean checkout can pre-bundle normally.
+  optimizeDeps: { entries: ['index.html', 'src/landing-main.tsx'] },
   server: {
     host: '127.0.0.1',
     port: 5173,
