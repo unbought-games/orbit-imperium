@@ -44,14 +44,19 @@ export function ReportListRow({
   onSelect?: (checked: boolean) => void
 }) {
   const preview = reportPreview(report.preview, model.binding?.player)
-  const outcome = reportListTitle(report, model.binding?.player)
+  const outcome =
+    report.preview?.kind === 'Combat' && report.preview.outcome
+      ? reportListTitle(report, model.binding?.player)
+      : undefined
   const identity = reportListIdentity(
     report.preview,
     model.binding?.player,
     playerNames,
     report.player_alliances,
   )
-  const title = [outcome.title, identity].filter(Boolean).join(' · ')
+  const title = [label(report.kind), outcome?.title, identity]
+    .filter(Boolean)
+    .join(' · ')
   return (
     <Panel
       as="article"
@@ -77,14 +82,17 @@ export function ReportListRow({
             onClick={() => void model.recordPresence('AccountVisit', null)}
             {...routeTarget(universe, 'reports', origin, report.id)}
           >
-            <strong
-              className={outcome.symbol ? styles[outcome.tone] : undefined}
-            >
-              {outcome.symbol && (
-                <span aria-hidden="true">{outcome.symbol} </span>
-              )}
-              {outcome.title}
+            <strong className={styles.reportType} data-kind={report.kind}>
+              {label(report.kind)}
             </strong>
+            {outcome && (
+              <span className={styles[outcome.tone]}>
+                {outcome.symbol && (
+                  <span aria-hidden="true">{outcome.symbol} </span>
+                )}
+                {outcome.title}
+              </span>
+            )}
             {!report.read && (
               <span
                 className={styles.unread}

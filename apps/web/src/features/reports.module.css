@@ -9,6 +9,8 @@
   margin-block: 8px;
 }
 .reportRow {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -33,6 +35,44 @@
   min-height: 44px;
   color: var(--text-primary);
   text-decoration: none;
+}
+/* Stretch the native link over the row without nesting its other controls. */
+.reportLink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.reportLink:focus-visible {
+  outline: none;
+}
+.reportLink:focus-visible::after {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+/* Keep controls and native tooltips above the link's empty hit area. */
+.selection,
+.reportMain .location,
+.rowActions,
+.reportLink > *,
+.resourceValue,
+.rowTime {
+  position: relative;
+  z-index: 2;
+}
+.reportType {
+  color: var(--text-primary);
+}
+.reportType[data-kind='Combat'],
+.reportType[data-kind='ContactLost'] {
+  color: #e39885;
+}
+.reportType[data-kind='Delivered'] {
+  color: #91c9ac;
+}
+.reportType[data-kind='Espionage'],
+.reportType[data-kind='SpyContact'] {
+  color: #94bfe5;
 }
 .reportLink:hover strong {
   text-decoration: underline;
