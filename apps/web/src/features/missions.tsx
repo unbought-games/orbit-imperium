@@ -220,7 +220,7 @@ export function Dispatch({
                   setTargetKind(kind)
                   if (kind === 'debris') setMission('Harvest')
                   else if (mission === 'Harvest') setMission('Transport')
-                } else if (mission !== 'Harvest') setTargetKind('planet')
+                }
                 clear()
               }}
             />

@@ -704,3 +704,11 @@
   text-underline-offset: 4px;
   text-decoration-color: #9acfe680;
 }
+
+.destinationOption > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.destinationOptionArt {
+  flex-shrink: 0;
+}

@@ -1623,16 +1623,10 @@ test('unified destination supports keyboard planet selection, dismissal and coor
 })
 
 
-test('manual coordinate edits default to a planet while Harvest keeps debris intent', async ({ page }) => {
+test('ordinary coordinate entry defaults to Planet and Harvest keeps debris intent', async ({ page }) => {
   await setup(page)
   const input = page.getByLabel('Destination coordinates', { exact: true })
   const preview = page.getByLabel('Destination preview')
-  await input.evaluate(element => {
-    const data = new DataTransfer()
-    data.setData('text/plain', `${location.origin}/u/andromeda/location/1:1:1?target=moon`)
-    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
-  })
-  await expect(preview).toContainText('Moon not observed')
   await input.fill('1:1:3')
   await expect(preview).toContainText('Empty position')
   await input.fill('1:1:1')
@@ -1643,4 +1637,49 @@ test('manual coordinate edits default to a planet while Harvest keeps debris int
   await mission(page).selectOption('Transport')
   await input.fill('1:1:1')
   await expect(preview).toContainText('Planet · Stargazer')
+})
+
+test('explicit moon links retain their body intent through coordinate edits and review', async ({ page }) => {
+  const state = await setup(page)
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  const preview = page.getByLabel('Destination preview')
+  await input.evaluate(element => {
+    const data = new DataTransfer()
+    data.setData('text/plain', `${location.origin}/u/andromeda/location/1:1:1?target=moon`)
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  })
+  await expect(preview).toContainText('Moon not observed')
+  await input.fill('1')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('1 3')
+  await expect(input).toHaveValue('1:1:3')
+  await expect(preview).toContainText('Moon not observed')
+  state.destination = { type: 'Body', id: id(91), expected_owner: id(30), expected_kind: 'Moon' }
+  const resolved = page.waitForRequest(r => r.url().endsWith('/world') && r.postDataJSON().type === 'ResolveDestination')
+  await review(page).click()
+  expect((await resolved).postDataJSON().selection).toEqual({ type: 'BodyAt', coordinates: { galaxy: 1, system: 1, position: 3 }, kind: 'Moon' })
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Unknown moon')
+  await page.getByRole('button', { name: 'Edit mission' }).click()
+  await selectDestinationPlanet(page, id(6))
+  await expect(preview).toContainText('Planet · Your colony')
+})
+
+
+test('long planet names remain readable in the narrow destination list', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 })
+  const state = await setup(page)
+  const name = 'M'.repeat(40)
+  state.bodies[1].name = name
+  state.advanceRevision()
+  await refreshGame(page)
+  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  await picker.click()
+  const list = page.getByRole('listbox', { name: 'Your other planets' })
+  await expect(list).toContainText(name)
+  expect(await list.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await page.getByRole('option').and(page.locator(`[data-value="${id(6)}"]`)).click()
+  await expect(picker).toContainText(name)
+  await expect(picker.locator('strong')).toHaveAttribute('title', name)
+  expect((await page.getByLabel('Destination preview').boundingBox())!.height).toBeLessThanOrEqual(120)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
