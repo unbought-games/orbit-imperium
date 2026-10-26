@@ -2,6 +2,7 @@ mod alliances;
 mod bootstrap;
 mod bootstrap_html;
 mod bound_api;
+mod home_seo;
 mod location_card;
 mod location_preview;
 mod oidc;

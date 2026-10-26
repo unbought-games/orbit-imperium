@@ -210,3 +210,9 @@ test-speed-updates: test-runtime
 
 run-speed-updates:
 	$(TIMEOUT) full-system node scripts/speed-updates-e2e.mjs
+
+.PHONY: test-homepage
+test-homepage:
+	cargo nextest run -p orbit-transport-http --lib -E 'test(home_seo::) | test(static_assets::)'
+	npm test -- anonymous-landing
+	npm run test:ui -- home.spec.ts
