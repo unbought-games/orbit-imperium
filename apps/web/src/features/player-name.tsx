@@ -15,12 +15,14 @@ export function PlayerName({
   names,
   alliance,
   linkAlliance = true,
+  badgeTooltip = false,
 }: {
   player: string
   fallback?: string
   names?: PlayerNames
   alliance?: AllianceIdentity | null
   linkAlliance?: boolean
+  badgeTooltip?: boolean
 }) {
   const profile = usePlayerDisplay(player)
   const historical = useContext(HistoricalAlliances)
@@ -35,6 +37,7 @@ export function PlayerName({
       <SupporterIdentity
         name={profile?.username ?? fallback ?? playerLabel(player, names)}
         tier={profile?.supporter_tier}
+        badgeTooltip={badgeTooltip}
       />
       {affiliation && (
         <>

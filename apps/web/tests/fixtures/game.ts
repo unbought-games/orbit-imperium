@@ -61,11 +61,19 @@ export async function installGameFixture(
     destinations?: components['schemas']['Destination'][]
     commandReferences?: boolean
     manufacturing?: components['schemas']['ManufacturingBatchDto'][]
-    sampledAt?: number
+    sampledAt?: number | (() => number)
     production?: components['schemas']['ProductionDto'][]
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
-    extraCapabilities?: Array<'Attack' | 'Espionage' | 'Harvest' | 'Transport' | 'Reports' | 'Colonize' | 'Deploy'>
+    extraCapabilities?: Array<
+      | 'Attack'
+      | 'Espionage'
+      | 'Harvest'
+      | 'Transport'
+      | 'Reports'
+      | 'Colonize'
+      | 'Deploy'
+    >
   } = {},
 ) {
   const protocol = options.protocol ?? 3
@@ -86,6 +94,10 @@ export async function installGameFixture(
   await page.route('**/api/**', async (route) => {
     const request = route.request(),
       url = new URL(request.url())
+    const sampledAt =
+      typeof options.sampledAt === 'function'
+        ? options.sampledAt()
+        : (options.sampledAt ?? Date.now())
     if (url.pathname === '/api/auth/config')
       return route.fulfill({
         json: {
@@ -138,7 +150,7 @@ export async function installGameFixture(
           protocol,
           binding,
           request_id: common.request_id,
-          sampled_at: options.sampledAt ?? Date.now(),
+          sampled_at: sampledAt,
         },
       })
     const settings = {
@@ -160,14 +172,14 @@ export async function installGameFixture(
       ...common,
       viewer_revision: options.viewerRevision?.() ?? '1',
       progress: {
-        sampled_at: options.sampledAt ?? Date.now(),
+        sampled_at: sampledAt,
         scopes: [],
         minimum_revision_pending: false,
         projection_limit: null,
         command_references: options.commandReferences ?? false,
       },
-      sampled_at: options.sampledAt ?? Date.now(),
-      as_of_ms: options.sampledAt ?? Date.now(),
+      sampled_at: sampledAt,
+      as_of_ms: sampledAt,
       speed: 1,
       bodies: (
         options.bodies ?? [
@@ -272,7 +284,7 @@ export async function installGameFixture(
                   protocol,
                   binding,
                   request_id: common.request_id,
-                  sampled_at: options.sampledAt ?? Date.now(),
+                  sampled_at: sampledAt,
                 },
                 view,
                 settings,
@@ -299,12 +311,22 @@ export async function installGameFixture(
           minimum_viewer_revision: options.viewerRevision?.() ?? '1',
         },
       })
-    if (url.pathname.endsWith('/commands') && context?.gameplay?.command?.action?.type === 'MarkReportRead')
-      return route.fulfill({ json: {
-        protocol: 4, binding, command_id: context.gameplay.command_id,
-        admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed',
-        result_ids: [], minimum_viewer_revision: options.viewerRevision?.() ?? '1',
-      } })
+    if (
+      url.pathname.endsWith('/commands') &&
+      context?.gameplay?.command?.action?.type === 'MarkReportRead'
+    )
+      return route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          command_id: context.gameplay.command_id,
+          admitted_at: Date.now(),
+          executed_at: Date.now(),
+          status: 'Committed',
+          result_ids: [],
+          minimum_viewer_revision: options.viewerRevision?.() ?? '1',
+        },
+      })
     if (url.pathname.endsWith('/commands')) purchases++
     return route.fulfill({ status: 404, json: { code: 'NotFound' } })
   })
