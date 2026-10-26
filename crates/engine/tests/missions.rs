@@ -2655,3 +2655,92 @@ fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
 mod large_cargo;
 #[path = "missions/solar_satellite.rs"]
 mod solar_satellite;
+
+#[test]
+fn large_shield_dome_raid_reports_destruction_and_recovery_without_defense_debris() {
+    for recover in [0, 1] {
+        let (mut s, old, p, b, target) = raid_fixture();
+        let mut artifact = common::large_shield_dome_rules(&old).artifact;
+        artifact
+            .world
+            .as_mut()
+            .unwrap()
+            .combat
+            .defense_recovery_probability = [recover, 1];
+        // Stronger fixture weapons penetrate the dome; the combat tests cover standard stats.
+        artifact
+            .world
+            .as_mut()
+            .unwrap()
+            .combat
+            .units
+            .iter_mut()
+            .find(|u| u.item == ManufacturedItem::Ship(ShipType::LightFighter))
+            .unwrap()
+            .attack_hundredths = 50000;
+        let r = Ruleset::from_artifact(artifact, old.speed).unwrap();
+        s.profile_hash = r.hash.clone();
+        for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
+            policy.policy_hash = r.hash.clone();
+        }
+        for body in [b, target] {
+            set_units(
+                &mut s,
+                &r,
+                body,
+                ManufacturedItem::Ship(ShipType::LightFighter),
+                1000,
+            );
+        }
+        let mut intent = intent(&s, p, b, target);
+        intent.mission = Mission::Attack;
+        intent.cargo = Resources::default();
+        intent.ships.push(ManifestStack {
+            owner: p,
+            ship_type: ShipType::LightFighter,
+            count: 1000,
+        });
+        let event = launch_raid(&mut s, &r, p, b, intent, 1000, 19000);
+        clear_units(&mut s, target);
+        let dome = ManufacturedItem::Defense(DefenseId::LargeShieldDome);
+        set_units(&mut s, &r, target, dome, 1);
+        let result = run(&mut s, &r, p, b, event.at, 19001, Input::Event(event.event));
+        apply(&mut s, result);
+        assert_eq!(
+            s.inventories
+                .iter()
+                .find(|v| v.body == target && v.item == dome)
+                .map_or(0, |v| v.count),
+            recover as i64
+        );
+        let report = &s
+            .world
+            .as_ref()
+            .unwrap()
+            .records
+            .reports
+            .values()
+            .find(|r| r.event == InputId(Uuid::from_u128(19001)))
+            .unwrap()
+            .payloads[&s.bodies[&target].owner];
+        let counts = |field: &str| {
+            report[field]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|v| v["side"] == "Defender")
+                .unwrap()["units"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|u| u["item"]["id"] == "LargeShieldDome")
+                .map_or("0", |u| u["count"].as_str().unwrap())
+                .to_string()
+        };
+        assert_eq!(counts("gross_losses"), "1");
+        assert_eq!(counts("recovered"), recover.to_string());
+        assert_eq!(report["debris"]["metal"], "0");
+        assert_eq!(report["debris"]["crystal"], "0");
+        validate_asset_lineage(&s).unwrap();
+    }
+}
