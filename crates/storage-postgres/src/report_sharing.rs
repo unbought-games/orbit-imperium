@@ -142,34 +142,19 @@ impl PgStore {
     ) -> Result<SharedReport, StoreError> {
         let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE s.token=$1 AND NOT p.hidden")
             .bind(token).fetch_optional(self.read_pool()?).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
-        let mut result = project_shared_report_with_alliances(
-            ReportId(row.try_get("report").map_err(db_error)?),
-            row.try_get("at_ms").map_err(db_error)?,
-            &row.try_get::<serde_json::Value, _>("payload")
-                .map_err(db_error)?,
-            &row.try_get::<sqlx::types::Json<PublicPlayerNames>, _>("names_at_publication")
-                .map_err(db_error)?
-                .0,
-            &row.try_get::<sqlx::types::Json<PublicPlayerAlliances>, _>("alliance_identities")
-                .map_err(db_error)?
-                .0,
-            row.try_get::<sqlx::types::Json<ReportShareOptions>, _>("options")
-                .map_err(db_error)?
-                .0,
-        )?;
-        let players: Vec<uuid::Uuid> = result
-            .player_names
-            .keys()
-            .filter_map(|s| uuid::Uuid::parse_str(s).ok())
-            .collect();
-        let bots:Vec<uuid::Uuid>=sqlx::query_scalar("SELECT b.player FROM bot_participation b JOIN mission_reports r ON r.universe=b.universe WHERE r.id=$1 AND b.player=ANY($2)").bind(result.report.0).bind(players).fetch_all(self.read_pool()?).await.map_err(db_error)?;
-        result.player_kinds = result
-            .player_names
+        let names = row
+            .try_get::<sqlx::types::Json<PublicPlayerNames>, _>("names_at_publication")
+            .map_err(db_error)?
+            .0;
+        let players: Vec<_> = names.keys().map(|p| p.0).collect();
+        let report = ReportId(row.try_get("report").map_err(db_error)?);
+        let bots:Vec<uuid::Uuid>=sqlx::query_scalar("SELECT b.player FROM bot_participation b JOIN mission_reports r ON r.universe=b.universe WHERE r.id=$1 AND b.player=ANY($2)").bind(report.0).bind(players).fetch_all(self.read_pool()?).await.map_err(db_error)?;
+        let kinds = names
             .keys()
             .map(|p| {
                 (
-                    p.clone(),
-                    if bots.iter().any(|b| b.to_string() == *p) {
+                    *p,
+                    if bots.contains(&p.0) {
                         PlayerKind::Bot
                     } else {
                         PlayerKind::Human
@@ -177,6 +162,19 @@ impl PgStore {
                 )
             })
             .collect();
-        Ok(result)
+        project_shared_report_with_identity(
+            report,
+            row.try_get("at_ms").map_err(db_error)?,
+            &row.try_get::<serde_json::Value, _>("payload")
+                .map_err(db_error)?,
+            &names,
+            &row.try_get::<sqlx::types::Json<PublicPlayerAlliances>, _>("alliance_identities")
+                .map_err(db_error)?
+                .0,
+            &kinds,
+            row.try_get::<sqlx::types::Json<ReportShareOptions>, _>("options")
+                .map_err(db_error)?
+                .0,
+        )
     }
 }

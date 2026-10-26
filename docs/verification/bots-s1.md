@@ -118,3 +118,30 @@ scenario 9.042 s and cleanup completed at 9.073 s. The disposable database
 with worktree SHA-256 `72f9cff6ce6e6dd398e93a64ef65cb8fc43835dfdcf6f500079b7e32875e9eb7`;
 this evidence paragraph was added afterward. Remote CI will validate the pushed
 merge commit and the merge queue's integration revision separately.
+
+## PR review repairs
+
+Validated Bugbot threads `PRRT_kwDOVRgPYs6wV8tC` and
+`PRRT_kwDOVRgPYs6wV8tN` against head `b0aedf0747fd7a655f009dde1795a3c70995e258`.
+Shared-report kinds were incorrectly looked up after UUIDs had become local aliases;
+the projection now localizes kinds with names and omits kinds when identity is
+redacted. Human world reads unnecessarily entered the admission pool; classification
+now uses the read pool, while the actual unmetered snapshot rejects a newly marked
+bot's tactical read. Metered reads retain atomic admission and replay semantics.
+
+Repair validation: 107 application/HTTP tests passed in 9.516 s, all eight focused
+bot database tests passed in 6.324 s, report-sharing integration passed in 3.784 s,
+and workspace Clippy passed. Tests explicitly cover an unavailable admission pool,
+a held policy write lock, marking between classification and the actual snapshot,
+shared-report alias joins and identity redaction. The tested diff SHA-256 was
+`a9ed841067bae991f0ce729236808abf539e59c7d1d7d5dfd412fd35f30d7603` before this
+paragraph was added.
+
+The first local database attempt could not create its disposable database because
+the shared Docker disk was full. Validation instead used the existing PostgreSQL
+image in project `orbit-bot-pr163-review` with an isolated tmpfs data directory.
+Both test databases, the container and its network were removed afterward; other
+projects' images, volumes and data were untouched. Separately, CI's first browser
+shard 2 runner shut down after 42 passing tests without an assertion failure; a
+single-job retry was requested after the workflow finished. The repair push requires
+fresh CI and review on its new revision before queue enrollment.

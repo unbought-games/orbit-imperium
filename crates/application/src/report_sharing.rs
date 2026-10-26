@@ -194,6 +194,26 @@ pub fn project_shared_report_with_alliances(
     alliances: &PublicPlayerAlliances,
     options: ReportShareOptions,
 ) -> Result<SharedReport, StoreError> {
+    project_shared_report_with_identity(
+        report,
+        observed_at,
+        source,
+        names,
+        alliances,
+        &Default::default(),
+        options,
+    )
+}
+
+pub fn project_shared_report_with_identity(
+    report: ReportId,
+    observed_at: i64,
+    source: &Value,
+    names: &PublicPlayerNames,
+    alliances: &PublicPlayerAlliances,
+    kinds: &BTreeMap<PlayerId, PlayerKind>,
+    options: ReportShareOptions,
+) -> Result<SharedReport, StoreError> {
     let kind = source["kind"].as_str().ok_or(StoreError::CorruptData)?;
     let mut payload = fields(source, &["kind", "at", "observed_at"]);
     match kind {
@@ -274,8 +294,21 @@ pub fn project_shared_report_with_alliances(
     } else {
         BTreeMap::new()
     };
+    let player_kinds = if options.include_identity {
+        ids.iter()
+            .filter_map(|(original, local)| {
+                if !player_names.contains_key(local) {
+                    return None;
+                }
+                let player = PlayerId(uuid::Uuid::parse_str(original).ok()?);
+                kinds.get(&player).map(|kind| (local.clone(), *kind))
+            })
+            .collect()
+    } else {
+        BTreeMap::new()
+    };
     Ok(SharedReport {
-        player_kinds: Default::default(),
+        player_kinds,
         report,
         observed_at,
         options,

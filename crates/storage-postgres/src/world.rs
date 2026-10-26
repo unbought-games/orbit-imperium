@@ -885,6 +885,9 @@ impl PgStore {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
         crate::bots::observe(&mut tx, b).await?;
+        if let Some(q) = query {
+            crate::bots::unmetered_world_query(&mut tx, b, q).await?;
+        }
         let snapshot = self.world_snapshot_in_tx(&mut tx, b, query).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(snapshot)

@@ -707,3 +707,179 @@ async fn scoped_replicas_share_last_unit_and_retirement_preserves_admitted_work(
         1
     );
 }
+
+#[tokio::test]
+async fn human_world_reads_do_not_use_admission_and_marking_cannot_skip_metering() {
+    let (store, pool, u) = setup(5).await;
+    let human = SessionService::new(store.clone())
+        .signup(
+            "reader",
+            "password",
+            SignupPolicy {
+                universe: u,
+                max_players: 100,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let b = store
+        .current_binding(human.session.account, u)
+        .await
+        .unwrap()
+        .0;
+    let reader = PgStore::connect_with_limits(
+        &std::env::var("TEST_DATABASE_URL").unwrap(),
+        orbit_storage_postgres::PoolLimits {
+            admission: 0,
+            reads: 2,
+            worker: 0,
+            control: 2,
+            refresh: 0,
+        },
+    )
+    .await
+    .unwrap();
+    let game = GameService::new(reader.clone());
+    let mut policy_lock = pool.begin().await.unwrap();
+    sqlx::query("SELECT universe FROM universe_policies_v2 WHERE universe=$1 FOR UPDATE")
+        .bind(u.0)
+        .fetch_one(&mut *policy_lock)
+        .await
+        .unwrap();
+    tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        game.world_query(principal(b), galaxy(b)),
+    )
+    .await
+    .expect("human read must not wait on policy lock")
+    .unwrap();
+    policy_lock.rollback().await.unwrap();
+    // Exercise the classification/snapshot boundary explicitly: a mark after a
+    // human routing result must reject the unmetered snapshot, not leak new facts.
+    assert!(reader.bot_world_query(galaxy(b)).await.unwrap().is_none());
+    store.mark_bot(u, b.player, 0).await.unwrap();
+    assert!(matches!(
+        reader
+            .bound_world_query(
+                b,
+                WorldQueryKind::Galaxy {
+                    galaxy: 1,
+                    system: 1
+                }
+            )
+            .await,
+        Err(StoreError::SnapshotRetry)
+    ));
+    assert_eq!(
+        store.bot_status(principal(b)).await.unwrap().allowance_used,
+        0
+    );
+    GameService::new(store.clone())
+        .world_query(principal(b), galaxy(b))
+        .await
+        .unwrap();
+    assert_eq!(
+        store.bot_status(principal(b)).await.unwrap().allowance_used,
+        1
+    );
+}
+
+#[tokio::test]
+async fn shared_report_bot_kinds_follow_redacted_ids_and_identity_option() {
+    use serde_json::json;
+    let (store, pool, u) = setup(5).await;
+    let bot = store.create_bot(u, "MachineTarget", 0).await.unwrap();
+    let auth = SessionService::new(store.clone())
+        .signup(
+            "publisher",
+            "password",
+            SignupPolicy {
+                universe: u,
+                max_players: 100,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let b = store
+        .current_binding(auth.session.account, u)
+        .await
+        .unwrap()
+        .0;
+    let game = GameService::new(store.clone());
+    let id = ReportId(Uuid::new_v4());
+    let event = InputId(Uuid::new_v4());
+    let payload = json!({"kind":"Combat","at":1000,"participants":[{"owner":bot.player,"origin":{"Fleet":Uuid::new_v4()},"side":"Defender","units":[],"technology":[0,0,0]}],"outcome":"Draw"});
+    let report = orbit_engine::MissionReport {
+        id,
+        event,
+        kind: "Combat".into(),
+        at: 1000,
+        fleet: None,
+        rules_hash: store.load_rules(u).await.unwrap().hash,
+        payloads: std::collections::BTreeMap::from([(b.player, payload)]),
+    };
+    sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) VALUES($1,$2,$3,'Combat',1000,$4)").bind(u.0).bind(id.0).bind(event.0).bind(sqlx::types::Json(report)).execute(&pool).await.unwrap();
+    sqlx::query(
+        "INSERT INTO mission_report_recipients(report,recipient,created_revision) VALUES($1,$2,1)",
+    )
+    .bind(id.0)
+    .bind(b.player.0)
+    .execute(&pool)
+    .await
+    .unwrap();
+    for visible in [true, false] {
+        let token = game
+            .report_share(
+                principal(b),
+                id,
+                ReportShareRequest {
+                    context: context(b),
+                    action: ReportShareAction::Create {
+                        options: ReportShareOptions {
+                            include_identity: visible,
+                            include_coordinates: false,
+                        },
+                    },
+                },
+            )
+            .await
+            .unwrap()
+            .token
+            .unwrap();
+        let shared = game.shared_report(token).await.unwrap();
+        let local = shared.payload["participants"][0]["owner"].as_str().unwrap();
+        assert!(local.starts_with("participant-"));
+        assert!(
+            !serde_json::to_string(&shared)
+                .unwrap()
+                .contains(&bot.player.to_string())
+        );
+        if visible {
+            assert_eq!(shared.player_kinds.get(local), Some(&PlayerKind::Bot));
+            assert_eq!(
+                shared.player_names.get(local).map(String::as_str),
+                Some("machinetarget")
+            );
+        } else {
+            assert!(shared.player_kinds.is_empty());
+            assert!(
+                !shared
+                    .player_names
+                    .values()
+                    .any(|name| name == "machinetarget")
+            );
+        }
+        game.report_share(
+            principal(b),
+            id,
+            ReportShareRequest {
+                context: context(b),
+                action: ReportShareAction::Revoke,
+            },
+        )
+        .await
+        .unwrap();
+    }
+}

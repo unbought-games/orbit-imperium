@@ -379,6 +379,15 @@ impl PgStore {
         &self,
         q: WorldQuery,
     ) -> Result<Option<ReadSnapshot<BoundWorld<serde_json::Value>>>, StoreError> {
+        // Classification reads belong to the read pool. The actual unmetered
+        // snapshot rechecks identity, so concurrent marking cannot bypass charging.
+        let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
+        crate::binding::check_read(&mut tx, q.context.binding).await?;
+        let bot = is_bot(&mut tx, q.context.binding).await?;
+        if !bot || matches!(q.query, WorldQueryKind::FleetQuote { .. }) {
+            return Ok(None);
+        }
+        tx.commit().await.map_err(db_error)?;
         for _ in 0..8 {
             match self.machine_world_query_once(q.clone()).await {
                 Err(StoreError::SnapshotRetry) => continue,
@@ -402,12 +411,6 @@ impl PgStore {
             return Ok(None);
         }
         observe(&mut tx, b).await?;
-        if let WorldQueryKind::FleetQuote { ref intent } = q.query {
-            require_destination_observation(&mut tx, b, &intent.destination).await?;
-        }
-        if matches!(q.query, WorldQueryKind::FleetQuote { .. }) {
-            return Ok(None);
-        }
         let intent = orbit_engine::hash(&q).0;
         if let Some(row)=sqlx::query("SELECT intent_hash,response FROM bot_observations WHERE universe=$1 AND player=$2 AND epoch=$3 AND request_id=$4").bind(b.universe.0).bind(b.player.0).bind(b.epoch.0).bind(q.context.request_id).fetch_optional(&mut *tx).await.map_err(db_error)? {
             if row.try_get::<String,_>("intent_hash").map_err(db_error)?!=intent {return Err(StoreError::Conflict);}
@@ -534,5 +537,34 @@ pub(crate) async fn participation_body(
         Command::CancelResearch{operation}=>sqlx::query_scalar::<_,uuid::Uuid>("SELECT body FROM research_operations WHERE universe=$1 AND id=$2 AND owner=$3").bind(b.universe.0).bind(operation.0).bind(b.player.0).fetch_optional(&mut **tx).await.map(|id|id.map(BodyId)).map_err(db_error),
         Command::World{action:WorldAction::RecallMission{fleet}}=>sqlx::query_scalar::<_,serde_json::Value>("SELECT data->'intent'->'origin' FROM mission_fleets WHERE universe=$1 AND id=$2 AND owner=$3").bind(b.universe.0).bind(fleet.0).bind(b.player.0).fetch_optional(&mut **tx).await.map_err(db_error)?.map(crate::ordering::decode).transpose(),
         _=>Ok(None)
+    }
+}
+
+pub(crate) async fn is_bot(tx: &mut Tx<'_>, b: Binding) -> Result<bool, StoreError> {
+    sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM bot_participation WHERE universe=$1 AND player=$2)",
+    )
+    .bind(b.universe.0)
+    .bind(b.player.0)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(db_error)
+}
+/// Recheck inside the actual read snapshot, not merely during routing preflight.
+pub(crate) async fn unmetered_world_query(
+    tx: &mut Tx<'_>,
+    b: Binding,
+    q: &WorldQueryKind,
+) -> Result<(), StoreError> {
+    if !is_bot(tx, b).await? {
+        return Ok(());
+    }
+    match q {
+        WorldQueryKind::FleetQuote { intent } => {
+            require_destination_observation(tx, b, &intent.destination).await
+        }
+        WorldQueryKind::Galaxy { .. } | WorldQueryKind::ResolveDestination { .. } => {
+            Err(StoreError::SnapshotRetry)
+        }
     }
 }
