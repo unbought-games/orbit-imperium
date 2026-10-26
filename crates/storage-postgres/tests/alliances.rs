@@ -610,13 +610,11 @@ async fn http_authentication_csrf_origin_scope_and_anonymous_privacy() {
     let u = f.bindings[0].universe;
     let config = orbit_transport_http::HttpConfig {
         origin: "https://game.test".into(),
-        secure_cookies: true,
         assets: "missing".into(),
         login_per_minute: 30,
         signup: None,
         signup_per_minute: 5,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

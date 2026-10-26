@@ -106,11 +106,52 @@ orbit rules export --universe <id> --out rules-before.json
 cp rules-before.json rules.json
 ```
 
-The document contains `universe`, `base_revision`, `artifact`, and `speed`. Edit `artifact` for the intended content, costs, production, or combat values. Preserve `universe` and `base_revision`; they identify the universe and the configuration you started editing. Do not calculate or edit a rules hash.
+The document contains `universe`, `base_revision`, `artifact`, and `speed`. Edit `artifact` for the intended content, costs, production, or combat values, or `speed` for a universe speed change. Preserve `universe` and `base_revision`; they identify the universe and the configuration you started editing. Do not calculate or edit a rules hash.
 
 Enabled content needs complete definitions and prerequisites. A binary recognizing a content name does not mean its specialized mechanics are implemented. The validator rejects unsupported content and invalid references. Disabling a catalog entry prevents new production/research of it; retain definitions needed by owned assets and pending work.
 
-This initial update command preserves speed, topology, resource units, and protocol family. It does not perform destructive structural conversions or remove definitions still needed by the game. Specialized new features supply their initialization with their implementation.
+This update command preserves topology, resource units, and protocol family. It does not perform destructive structural conversions or remove definitions still needed by the game. Specialized new features supply their initialization with their implementation.
+
+## Changing universe speed
+
+Deploy the supporting release to every API and worker before activation. Older
+workers reject speed changes when processing a scoped activation. For a current
+signup universe, export a fresh rules document and change only `speed`:
+
+```sh
+orbit rules export --universe <id> --out rules-before.json
+node --input-type=module -e 'import fs from "node:fs"; const d=JSON.parse(fs.readFileSync("rules-before.json")); d.speed=3; fs.writeFileSync("rules.json",JSON.stringify(d,null,2)+"\n")'
+orbit rules diff --universe <id> --file rules.json
+orbit rules apply --universe <id> --file rules.json
+orbit universe show --universe <id>
+```
+
+For a 5× to 3× change, the diff must contain only `/speed: 5 → 3`, with no
+catalog initialization. Speed accepts integers 1–100. Pinned historical MVP
+fixtures remain at 10×. Do not edit `universes.speed` or rules JSON directly in
+SQL: the saved speed and rules hash must agree, and accrued production must be
+settled at the old rate before changing either.
+
+Existing building/research work, entire paid manufacturing batches and flight
+travel/return/recall commitments keep their timing and payments. New work uses
+3×, and production changes to 60% of the former rate after activation. New
+travel/research/manufacturing durations are approximately 5/3 of their former
+values; minimums, rounding and the building-duration adjustment still apply.
+The epoch, players, admission policies and other universes stay unchanged.
+
+After activation, verify both server roles remain ready and refreshed game
+settings show 3×. A lost response is handled by retrying the same document;
+an already-active retry does not settle twice. A stale competing edit needs a
+fresh export. Keep the original export as evidence; reversing speed requires a
+fresh export and another forward activation, not replaying that stale document.
+Policy exports made before the change must also be refreshed. Never reconnect an
+older worker while a speed activation remains pending.
+
+Local validation: `make test-speed-updates` runs the real CLI, HTTP server,
+workers and browser against a disposable database with controlled time and paid
+work across a 5× → 3× cutover. PostgreSQL `rules_speed` tests cover serial and
+scoped atomicity, rollback, production settlement and restart. This full-system
+suite is explicit-only, not part of routine CI.
 
 ## Review and apply
 

@@ -53,6 +53,17 @@ official universe may be reset before the full public launch.
 Read **What's new** in the game for updates, or browse the
 [release notes](docs/news/releases/). Self-hosters can find the latest numbered
 release on [GitHub Releases](https://github.com/unbought-games/orbit-imperium/releases/latest).
+Pull a numbered container for Linux amd64 or arm64 (Docker selects your architecture):
+
+```sh
+docker pull ghcr.io/unbought-games/orbit-imperium:0.4.0
+```
+
+The release's `container-image.json` records immutable index and platform digests.
+Downloadable amd64 archives and checksums remain available on GitHub Releases.
+See [release distribution](docs/operations/open-source-releases.md) for recovery,
+digest pinning, and package visibility setup.
+
 Numbered releases and updates to the official server are published separately;
 available features also depend on the universe's active rules.
 

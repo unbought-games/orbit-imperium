@@ -33,7 +33,7 @@ try {
   const env = { ...process.env }
   env.DATABASE_URL ??= `postgres://orbit:${encodeURIComponent(env.ORBIT_DB_PASSWORD || 'orbit')}@127.0.0.1:55432/orbit`
   env.ORBIT_SEED_PASSWORD_FILE ??= '.secrets/players'
-  env.ORBIT_LOCAL_INSECURE ??= '1'
+  env.ORBIT_ALLOW_INSECURE_HTTP ??= '1'
   process.execve('target/debug/orbit', ['orbit', ...args], env)
 } catch (error) {
   console.error(error.message)

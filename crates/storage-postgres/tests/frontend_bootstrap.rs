@@ -31,13 +31,11 @@ async fn bootstrap_authentication_privacy_and_legacy_compatibility() {
         store.clone(),
         HttpConfig {
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: assets.to_string_lossy().into_owned(),
             login_per_minute: 30,
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: true,
-            trusted_fly_proxies: vec![],
             wake: None,
             observer: None,
         },
@@ -210,7 +208,6 @@ async fn bootstrap_signup_and_expiry_keep_auth_outcomes_distinct() {
         .universe;
     let config = HttpConfig {
         origin: "https://game.test".into(),
-        secure_cookies: true,
         assets: "missing".into(),
         login_per_minute: 30,
         signup: Some(SignupPolicy {
@@ -219,7 +216,6 @@ async fn bootstrap_signup_and_expiry_keep_auth_outcomes_distinct() {
         }),
         signup_per_minute: 10,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

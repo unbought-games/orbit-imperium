@@ -1,8 +1,14 @@
-import { afterEach, expect, it, vi } from 'vitest'
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { playerProfilesApi } from './player-profiles'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const binding = { account: id(1), player: id(2), universe: id(3), epoch: id(4) }
+// Model an HTTP page: cryptographic random bytes exist, randomUUID does not.
+beforeEach(() => {
+  vi.stubGlobal('crypto', {
+    getRandomValues: (bytes: Uint8Array) => bytes.fill(0xaa),
+  })
+})
 afterEach(() => vi.unstubAllGlobals())
 it('sends a bound view source and CSRF, never a subject or credential', async () => {
   const fetch = vi.fn().mockImplementation(async (_, options) => {

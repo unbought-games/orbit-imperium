@@ -41,10 +41,8 @@ async fn real_http_origin_csrf_cookie_and_privacy() {
         signup_per_minute: 5,
         legacy_signup_enabled: true,
         origin: "https://game.test".into(),
-        secure_cookies: true,
         assets: "missing-assets".into(),
         login_per_minute: 30,
-        trusted_fly_proxies: Vec::new(),
         wake: None,
         observer: Some(observations.clone()),
     };

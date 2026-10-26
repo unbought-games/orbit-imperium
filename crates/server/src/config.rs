@@ -1,23 +1,36 @@
 use orbit_engine::{UniverseId, UniverseOptions, parse_speed};
-use std::net::IpAddr;
 use uuid::Uuid;
 
-fn local_http_origin(origin: &str) -> bool {
-    let Some(authority) = origin.strip_prefix("http://") else {
-        return false;
+/// Validate an origin before using it for browser checks, links, or callbacks.
+fn browser_origin(origin: &str, allow_http: Option<&str>) -> Result<String, String> {
+    let allow_http = match allow_http {
+        None | Some("0") => false,
+        Some("1") => true,
+        _ => return Err("ORBIT_ALLOW_INSECURE_HTTP must be 0 or 1".into()),
     };
-    if let Some(port) = authority.strip_prefix("localhost:") {
-        return port.parse::<u16>().is_ok_and(|port| port > 0);
+    let invalid = "ORBIT_ORIGIN must be an absolute HTTP(S) origin with a host and optional nonzero port, without credentials, path, query, or fragment";
+    // Reject URL parser repairs (whitespace, backslashes, extra slashes) and
+    // URL components that are not part of an origin, including an empty userinfo.
+    let (_, authority) = origin.split_once("://").ok_or(invalid)?;
+    if authority.is_empty()
+        || authority.contains(['/', '?', '#', '@', '\\'])
+        || origin.chars().any(|c| c.is_whitespace() || c.is_control())
+        || authority.ends_with(':')
+    {
+        return Err(invalid.into());
     }
-    authority
-        .parse::<std::net::SocketAddr>()
-        .is_ok_and(|address| {
-            address.port() > 0
-                && match address.ip() {
-                    IpAddr::V4(ip) => ip.is_loopback() || ip.is_private(),
-                    IpAddr::V6(ip) => ip.is_loopback() || ip.is_unique_local(),
-                }
-        })
+    let url = reqwest::Url::parse(origin).map_err(|_| invalid)?;
+    if !matches!(url.scheme(), "http" | "https")
+        || url.host_str().is_none()
+        || url.port() == Some(0)
+    {
+        return Err(invalid.into());
+    }
+    if url.scheme() == "http" && !allow_http {
+        return Err("HTTP ORBIT_ORIGIN requires ORBIT_ALLOW_INSECURE_HTTP=1; use HTTPS for encrypted browser traffic".into());
+    }
+    // Match the browser's Origin serialization (case, IDNA, default ports).
+    Ok(url.origin().ascii_serialization())
 }
 
 #[cfg(all(test, not(feature = "universe-config-bridge")))]
@@ -26,21 +39,31 @@ mod universe_config_tests {
 
     #[test]
     fn profile_credentials_are_optional_scoped_to_oidc_and_unused_on_workers() {
-        assert!(ServeConfig::parse(|_| None).unwrap().profiles.is_none());
         assert!(
-            ServeConfig::parse(
-                |k| (k == "ORBIT_ACCOUNTS_PROFILE_CREDENTIAL").then(|| "secret".into())
-            )
+            ServeConfig::parse(|k| (k == "ORBIT_ALLOW_INSECURE_HTTP").then(|| "1".into()))
+                .unwrap()
+                .profiles
+                .is_none()
+        );
+        assert!(
+            ServeConfig::parse(|k| match k {
+                "ORBIT_ALLOW_INSECURE_HTTP" => Some("1".into()),
+                "ORBIT_ACCOUNTS_PROFILE_CREDENTIAL" => Some("secret".into()),
+                _ => None,
+            })
             .is_err()
         );
         assert!(
-            ServeConfig::parse(
-                |k| (k == "ORBIT_ACCOUNTS_API_URL").then(|| "https://accounts.test".into())
-            )
+            ServeConfig::parse(|k| match k {
+                "ORBIT_ALLOW_INSECURE_HTTP" => Some("1".into()),
+                "ORBIT_ACCOUNTS_API_URL" => Some("https://accounts.test".into()),
+                _ => None,
+            })
             .is_err()
         );
         let parse = |base: &str| {
             ServeConfig::parse(|k| match k {
+                "ORBIT_ALLOW_INSECURE_HTTP" => Some("1".into()),
                 "ORBIT_AUTH_MODE" => Some("oidc".into()),
                 "ORBIT_OIDC_ISSUER" => Some("https://accounts.unbought.games/api/auth".into()),
                 "ORBIT_OIDC_CLIENT_ID" => Some("orbit".into()),
@@ -94,9 +117,9 @@ mod universe_config_tests {
             "ORBIT_ROLE" => Some("worker".into()),
             "ORBIT_UNIVERSE_ID" => Some("not-a-uuid".into()),
             "ORBIT_LOGIN_PER_MINUTE" => Some("not-a-number".into()),
-            "ORBIT_TRUSTED_FLY_PROXIES" => Some("not-an-ip".into()),
             "ORBIT_LOCAL_INSECURE" => Some("1".into()),
-            "ORBIT_ORIGIN" => Some("https://game.example".into()),
+            "ORBIT_ALLOW_INSECURE_HTTP" => Some("invalid".into()),
+            "ORBIT_ORIGIN" => Some("invalid".into()),
             _ => None,
         });
         assert!(result.is_ok(), "{}", result.err().unwrap());
@@ -134,10 +157,8 @@ pub struct ServeConfig {
     pub fixture: bool,
     pub bind: String,
     pub origin: String,
-    pub secure_cookies: bool,
     pub assets: String,
     pub login_per_minute: u32,
-    pub trusted_fly_proxies: Vec<IpAddr>,
 }
 
 impl ServeConfig {
@@ -172,8 +193,8 @@ impl ServeConfig {
                     key,
                     "ORBIT_UNIVERSE_ID"
                         | "ORBIT_LOGIN_PER_MINUTE"
-                        | "ORBIT_TRUSTED_FLY_PROXIES"
                         | "ORBIT_LOCAL_INSECURE"
+                        | "ORBIT_ALLOW_INSECURE_HTTP"
                         | "ORBIT_ORIGIN"
                         | "ORBIT_BIND"
                         | "ORBIT_ASSETS"
@@ -256,13 +277,14 @@ impl ServeConfig {
         // Preserve the address text: resolution is a separate startup effect.
         let bind = get("ORBIT_BIND").unwrap_or_else(|| "127.0.0.1:8080".into());
         let origin = get("ORBIT_ORIGIN").unwrap_or_else(|| "http://localhost:8080".into());
-        let secure_cookies = !get("ORBIT_LOCAL_INSECURE").is_some_and(|v| v == "1");
-        if !secure_cookies && !local_http_origin(&origin) {
-            return Err(
-                "insecure cookies require a loopback or private-network HTTP origin with a port"
-                    .into(),
-            );
-        }
+        let origin = if api {
+            if get("ORBIT_LOCAL_INSECURE").is_some() {
+                return Err("ORBIT_LOCAL_INSECURE is retired: remove it; HTTP origins require ORBIT_ALLOW_INSECURE_HTTP=1, HTTPS always uses Secure cookies".into());
+            }
+            browser_origin(&origin, get("ORBIT_ALLOW_INSECURE_HTTP").as_deref())?
+        } else {
+            origin
+        };
         let oidc = if role.serves_api() {
             match get("ORBIT_AUTH_MODE").as_deref().unwrap_or("local") {
                 "local" => None,
@@ -327,18 +349,10 @@ impl ServeConfig {
             fixture,
             bind,
             origin,
-            secure_cookies,
             assets: get("ORBIT_ASSETS").unwrap_or_else(|| "apps/web/dist".into()),
             login_per_minute: get("ORBIT_LOGIN_PER_MINUTE")
                 .unwrap_or_else(|| "30".into())
                 .parse::<u32>()
-                .map_err(|e| e.to_string())?,
-            trusted_fly_proxies: get("ORBIT_TRUSTED_FLY_PROXIES")
-                .unwrap_or_default()
-                .split(',')
-                .filter(|v| !v.is_empty())
-                .map(str::parse)
-                .collect::<Result<Vec<IpAddr>, _>>()
                 .map_err(|e| e.to_string())?,
         })
     }
@@ -448,6 +462,9 @@ mod serve_tests {
 
     fn parse(values: &[(&str, &str)]) -> Result<ServeConfig, String> {
         ServeConfig::parse(|key| {
+            if key == "ORBIT_ALLOW_INSECURE_HTTP" {
+                return Some("1".into());
+            }
             if key == "ORBIT_TEST_SEEDED" && !values.iter().any(|(k, _)| *k == key) {
                 return Some("1".into());
             }
@@ -464,9 +481,7 @@ mod serve_tests {
         assert_eq!(config.bind, "127.0.0.1:8080");
         assert_eq!(config.origin, "http://localhost:8080");
         assert_eq!(config.assets, "apps/web/dist");
-        assert!(config.secure_cookies);
         assert_eq!(config.login_per_minute, 30);
-        assert!(config.trusted_fly_proxies.is_empty());
         assert_eq!(config.speed, None);
         assert!(config.fixture);
         assert!(config.signup.enabled);
@@ -560,78 +575,6 @@ mod serve_tests {
     }
 
     #[test]
-    fn insecure_cookies_require_a_loopback_or_private_network_origin() {
-        for (origin, allowed) in [
-            ("http://localhost:8080", true),
-            ("http://127.0.0.1:9090", true),
-            ("http://localhost", false),
-            ("http://[::1]:8080", true),
-            ("http://192.168.50.48:5173", true),
-            ("http://10.0.0.2:5173", true),
-            ("http://172.16.0.2:5173", true),
-            ("http://172.31.255.254:5173", true),
-            ("http://[fd00::1]:5173", true),
-            ("http://172.32.0.1:5173", false),
-            ("http://8.8.8.8:5173", false),
-            ("http://0.0.0.0:5173", false),
-            ("http://[::]:5173", false),
-            ("http://192.168.50.48", false),
-            ("http://192.168.50.48:0", false),
-            ("http://localhost:5173@evil.example", false),
-            ("http://192.168.50.48:5173/path", false),
-            ("http://192.168.50.48:5173?query", false),
-            ("https://localhost:8080", false),
-            ("http://localhost.example:8080", false),
-            ("https://game.example", false),
-            ("", false),
-        ] {
-            for flag in ["1", "0", "true", "", "01"] {
-                let result = parse(&[("ORBIT_ORIGIN", origin), ("ORBIT_LOCAL_INSECURE", flag)]);
-                assert_eq!(result.is_ok(), flag != "1" || allowed, "{origin}, {flag}");
-                if let Ok(config) = result {
-                    assert_eq!(config.secure_cookies, flag != "1");
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn proxy_lists_accept_ip_addresses_and_skip_only_empty_entries() {
-        for (value, expected) in [
-            ("", vec![]),
-            (",,,", vec![]),
-            ("127.0.0.1", vec!["127.0.0.1"]),
-            (
-                ",127.0.0.1,,::1,127.0.0.1,",
-                vec!["127.0.0.1", "::1", "127.0.0.1"],
-            ),
-        ] {
-            let config = parse(&[("ORBIT_TRUSTED_FLY_PROXIES", value)]).unwrap();
-            assert_eq!(
-                config
-                    .trusted_fly_proxies
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>(),
-                expected
-            );
-        }
-        for value in [
-            "localhost",
-            "127.0.0.1, ::1",
-            "127.0.0.1/32",
-            "127.0.0.1:80",
-            "[::1]",
-            " ",
-        ] {
-            assert!(
-                parse(&[("ORBIT_TRUSTED_FLY_PROXIES", value)]).is_err(),
-                "{value}"
-            );
-        }
-    }
-
-    #[test]
     fn login_limits_keep_existing_unsigned_integer_parsing() {
         for (value, expected) in [
             ("0", 0),
@@ -688,6 +631,9 @@ mod runtime_tests {
     fn runtime_roles_reserve_only_their_pools_and_reject_invalid_limits() {
         let config = |pairs: &[(&str, &str)]| {
             ServeConfig::parse(|key| {
+                if key == "ORBIT_ALLOW_INSECURE_HTTP" {
+                    return Some("1".into());
+                }
                 pairs
                     .iter()
                     .find(|(k, _)| *k == key)
@@ -740,13 +686,203 @@ mod bridge_tests {
     use super::*;
     #[test]
     fn legacy_values_are_not_parsed_until_missing_database_policy_is_known() {
-        let config =
-            ServeConfig::parse(|key| (key == "ORBIT_SPEED").then(|| "old-invalid-value".into()))
-                .unwrap();
+        let config = ServeConfig::parse(|key| match key {
+            "ORBIT_SPEED" => Some("old-invalid-value".into()),
+            "ORBIT_ORIGIN" => Some("https://game.example".into()),
+            _ => None,
+        })
+        .unwrap();
         assert_eq!(config.speed, None);
         assert_eq!(
             config.legacy_env.get("ORBIT_SPEED").unwrap(),
             "old-invalid-value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod origin_tests {
+    use super::*;
+
+    fn parse(values: &[(&str, &str)]) -> Result<ServeConfig, String> {
+        ServeConfig::parse(|key| {
+            values
+                .iter()
+                .find(|(k, _)| *k == key)
+                .map(|(_, v)| (*v).into())
+        })
+    }
+
+    #[test]
+    fn http_on_any_host_requires_explicit_opt_in_including_the_default() {
+        assert!(
+            parse(&[])
+                .err()
+                .unwrap()
+                .contains("ORBIT_ALLOW_INSECURE_HTTP=1")
+        );
+        assert_eq!(
+            parse(&[("ORBIT_ALLOW_INSECURE_HTTP", "1")]).unwrap().origin,
+            "http://localhost:8080"
+        );
+        for host in [
+            "localhost",
+            "127.0.0.1:9090",
+            "[::1]",
+            "192.168.50.48",
+            "10.0.0.2:5173",
+            "172.31.255.254",
+            "[fd00::1]:5173",
+            "203.0.113.10",
+            "[2001:db8::1]",
+            "game.example",
+            "game.lan:8080",
+        ] {
+            let origin = format!("http://{host}");
+            assert_eq!(
+                parse(&[
+                    ("ORBIT_ORIGIN", &origin),
+                    ("ORBIT_ALLOW_INSECURE_HTTP", "1")
+                ])
+                .unwrap()
+                .origin,
+                origin
+            );
+            for flag in [None, Some("0")] {
+                assert!(
+                    browser_origin(&origin, flag)
+                        .unwrap_err()
+                        .contains("ORBIT_ALLOW_INSECURE_HTTP=1")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn https_needs_no_opt_in_and_valid_origins_use_browser_serialization() {
+        for flag in [None, Some("0"), Some("1")] {
+            assert_eq!(
+                browser_origin("https://GAME.example:443", flag).unwrap(),
+                "https://game.example"
+            );
+            assert_eq!(
+                browser_origin("https://[2001:db8::1]:8443", flag).unwrap(),
+                "https://[2001:db8::1]:8443"
+            );
+        }
+        assert_eq!(
+            browser_origin("http://game.example:80", Some("1")).unwrap(),
+            "http://game.example"
+        );
+        assert_eq!(
+            browser_origin("https://bücher.example", None).unwrap(),
+            "https://xn--bcher-kva.example"
+        );
+        assert!(parse(&[("ORBIT_ORIGIN", "https://game.example")]).is_ok());
+    }
+
+    #[test]
+    fn malformed_origins_and_flags_fail_closed_on_both_schemes() {
+        for value in [
+            "",
+            "game.example",
+            "//game.example",
+            "ftp://game.example",
+            "http://",
+            "https:///game.example",
+            "http://user:pass@game.example",
+            "https://@game.example",
+            "http://game.example/",
+            "https://game.example/path",
+            "https://game.example?",
+            "http://game.example#fragment",
+            "http://game.example:0",
+            "https://game.example:65536",
+            "https://game.example:",
+            "http://game.example:bad",
+            "http://::1",
+            "http://[::1",
+            "https://game.example\\evil",
+            " https://game.example",
+            "https://game.example\n",
+            "https://ga\tme.example",
+        ] {
+            assert!(
+                browser_origin(value, Some("1")).is_err(),
+                "accepted {value:?}"
+            );
+        }
+        for scheme in ["http", "https"] {
+            for flag in ["", "true", "false", "01", "yes", " 1"] {
+                let error =
+                    browser_origin(&format!("{scheme}://game.example"), Some(flag)).unwrap_err();
+                assert!(error.contains("ORBIT_ALLOW_INSECURE_HTTP"));
+            }
+        }
+    }
+
+    #[test]
+    fn retired_flag_is_rejected_even_when_false_or_combined_with_new_flag() {
+        for origin in ["http://game.example", "https://game.example"] {
+            for old in ["1", "0", "", "true"] {
+                for new in [None, Some("1"), Some("0")] {
+                    let mut values = vec![("ORBIT_ORIGIN", origin), ("ORBIT_LOCAL_INSECURE", old)];
+                    if let Some(new) = new {
+                        values.push(("ORBIT_ALLOW_INSECURE_HTTP", new));
+                    }
+                    let error = parse(&values).err().unwrap();
+                    assert!(error.contains("ORBIT_LOCAL_INSECURE is retired"), "{error}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn oidc_callbacks_use_canonical_origin_and_keep_provider_transport_requirements() {
+        for (origin, issuer, accepted) in [
+            (
+                "https://GAME.example:443",
+                "https://accounts.example/api/auth",
+                true,
+            ),
+            (
+                "http://localhost:8080",
+                "http://localhost:3000/api/auth",
+                true,
+            ),
+            (
+                "http://game.example",
+                "https://accounts.example/api/auth",
+                false,
+            ),
+            (
+                "https://game.example",
+                "http://accounts.example/api/auth",
+                false,
+            ),
+        ] {
+            let config = parse(&[
+                ("ORBIT_ORIGIN", origin),
+                ("ORBIT_ALLOW_INSECURE_HTTP", "1"),
+                ("ORBIT_AUTH_MODE", "oidc"),
+                ("ORBIT_OIDC_ISSUER", issuer),
+                ("ORBIT_OIDC_CLIENT_ID", "orbit"),
+                ("ORBIT_OIDC_CLIENT_SECRET", "test-secret"),
+            ])
+            .unwrap();
+            let oidc = config.oidc.unwrap();
+            assert_eq!(
+                oidc.redirect_uri,
+                format!("{}/api/auth/callback", config.origin)
+            );
+            assert_eq!(unbought_auth::RelyingParty::new(oidc).is_ok(), accepted);
+        }
+        // Normalization must not bypass the official issuer requirement.
+        assert!(
+            parse(&[("ORBIT_ORIGIN", "https://ORBITIMPERIUM.COM:443")])
+                .err()
+                .unwrap()
+                .contains("Official Orbit")
         );
     }
 }

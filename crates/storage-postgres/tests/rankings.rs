@@ -122,13 +122,11 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
         .unwrap();
     let config = HttpConfig {
         origin: "https://game.test".into(),
-        secure_cookies: true,
         assets: "missing".into(),
         login_per_minute: 30,
         signup: None,
         signup_per_minute: 5,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

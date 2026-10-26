@@ -195,13 +195,19 @@ async fn stale_proposal_and_custom_content_fail_without_activation() {
     let plan = service.prepare_upgrade(universe).await.unwrap();
     let mut other_edit = service.export(universe).await.unwrap();
     other_edit.artifact.base_income[0] = 46;
+    other_edit.speed = 3;
     service.apply(&other_edit).await.unwrap();
     assert!(matches!(
         service.apply(&plan.document).await,
         Err(RulesUpdateError::Stale { .. })
     ));
     let next = service.prepare_upgrade(universe).await.unwrap();
+    assert_eq!(
+        next.document.speed, 3,
+        "upgrade preserves a live speed change"
+    );
     service.apply(&next.document).await.unwrap();
+    assert_eq!(store.load_rules(universe).await.unwrap().speed, 3);
     let mut custom = service.export(universe).await.unwrap();
     custom
         .artifact

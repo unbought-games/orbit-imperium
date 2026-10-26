@@ -300,7 +300,6 @@ async fn signup_http_origin_cookie_disabled_and_rate_limit() {
         .universe;
     let config = HttpConfig {
         origin: "https://game.example".into(),
-        secure_cookies: true,
         assets: "missing".into(),
         login_per_minute: 30,
         signup: Some(SignupPolicy {
@@ -309,7 +308,6 @@ async fn signup_http_origin_cookie_disabled_and_rate_limit() {
         }),
         signup_per_minute: 2,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

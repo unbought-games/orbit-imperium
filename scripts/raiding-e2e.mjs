@@ -18,7 +18,7 @@ const url=`postgres://orbit:${encodeURIComponent(password)}@127.0.0.1:${process.
 const admin=new pg.Client({connectionString:url+'orbit'});await admin.connect();
 const accounts=Array.from({length:5},(_,i)=>({name:`player${i+1}`,password:randomUUID()}));
 const accountFile=`${process.env.ORBIT_TEST_SECRET_DIR??'.secrets'}/${db}.json`,seedFile=`${process.env.ORBIT_TEST_SECRET_DIR??'.secrets'}/${db}.seed`;
-const env={...process.env,ORBIT_TEST_SEEDED:"1",DATABASE_URL:url+db,ORBIT_MVP_ACCOUNTS_FILE:accountFile,ORBIT_MVP_SEED_FILE:seedFile,ORBIT_BIND:`127.0.0.1:${port}`,ORBIT_ORIGIN:base,ORBIT_LOCAL_INSECURE:'1',ORBIT_TEST_BASE_URL:base,ORBIT_RAIDING_E2E:'1',TEST_DB_NAME:db};
+const env={...process.env,ORBIT_TEST_SEEDED:"1",DATABASE_URL:url+db,ORBIT_MVP_ACCOUNTS_FILE:accountFile,ORBIT_MVP_SEED_FILE:seedFile,ORBIT_BIND:`127.0.0.1:${port}`,ORBIT_ORIGIN:base,ORBIT_ALLOW_INSECURE_HTTP:'1',ORBIT_TEST_BASE_URL:base,ORBIT_RAIDING_E2E:'1',TEST_DB_NAME:db};
 delete env.ORBIT_SPEED;delete env.ORBIT_MVP_E2E;
 let server,client,at=1_000_000;
 const cli=(args,extra={})=>execFileSync('target/debug/orbit',args,{env:{...env,...extra},stdio:'pipe'});

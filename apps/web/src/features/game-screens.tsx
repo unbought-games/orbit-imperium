@@ -128,7 +128,7 @@ export function OperationsScreen({
     <>
       <Text aria-label="Universe settings">
         {settings
-          ? `Universe speed: ${settings.speed}× — fixed for this universe. ${settings.galaxies} galaxy · ${settings.systems_per_galaxy} solar systems per galaxy · ${settings.positions_per_system} planet positions per system.`
+          ? `Universe speed: ${settings.speed}×. ${settings.galaxies} galaxy · ${settings.systems_per_galaxy} solar systems per galaxy · ${settings.positions_per_system} planet positions per system.`
           : ''}
       </Text>
       {route.page === 'overview' && (

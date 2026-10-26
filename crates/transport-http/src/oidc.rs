@@ -106,14 +106,7 @@ pub(super) async fn login<S: IdentityStore>(
         )
         .await
         .map_err(provider_error)?;
-    let cookie = format!(
-        "orbit_oidc={secret}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600{}",
-        if s.config.secure_cookies {
-            "; Secure"
-        } else {
-            ""
-        }
-    );
+    let cookie = s.config.session_cookie("orbit_oidc", &secret, 600);
     Ok((
         [
             (header::SET_COOKIE, cookie),
@@ -281,11 +274,7 @@ pub(super) async fn enroll<S: IdentityStore>(
         return Err(ServiceError::Forbidden.into());
     }
     let session = authenticate(&s, &h, true).await?;
-    let source = login_source(
-        peer.map(|Extension(ConnectInfo(address))| address),
-        &h,
-        &s.config.trusted_fly_proxies,
-    );
+    let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     oidc_enrollment::enroll(&s, session, UniverseId(body.universe), source).await
 }
 

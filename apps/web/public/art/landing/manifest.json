@@ -1,0 +1,43 @@
+{
+  "captured": "2026-10-25",
+  "revision": "b4b4d4242577c8ef592d20a5905113f90673b7e3",
+  "provenance": "Real Orbit UI rendered with fictional demonstration data. No live player data.",
+  "captures": [
+    {
+      "file": "empire-desktop-960.webp",
+      "width": 960,
+      "height": 855,
+      "bytes": 40172
+    },
+    {
+      "file": "empire-desktop-1920.webp",
+      "width": 1920,
+      "height": 1710,
+      "bytes": 109870
+    },
+    {
+      "file": "empire-mobile-390.webp",
+      "width": 390,
+      "height": 844,
+      "bytes": 30414
+    },
+    {
+      "file": "empire-mobile-780.webp",
+      "width": 780,
+      "height": 1688,
+      "bytes": 72322
+    },
+    {
+      "file": "research-mobile-390.webp",
+      "width": 390,
+      "height": 844,
+      "bytes": 29130
+    },
+    {
+      "file": "research-mobile-780.webp",
+      "width": 780,
+      "height": 1688,
+      "bytes": 70960
+    }
+  ]
+}

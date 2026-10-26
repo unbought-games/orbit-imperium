@@ -1,27 +1,14 @@
 .DEFAULT_GOAL := help
 
-FLY ?= flyctl
-FLY_CONFIG ?= deploy/fly.toml
-export FLY FLY_CONFIG FLY_APP FLY_ORG FLY_REGION FLY_HA
-
-.PHONY: help fly-launch fly-deploy fly-destroy
+.PHONY: help
 
 help:
 	@printf '%s\n' \
-	  'make fly-launch FLY_APP=<name>   Create and deploy the game app' \
-	  'make fly-deploy FLY_APP=<name>   Deploy an existing game app' \
-	  'make fly-destroy FLY_APP=<name>  Permanently delete the named app' \
-	  'Optional launch settings: FLY_ORG=<slug> FLY_REGION=<region>' \
-	  'The separate PostgreSQL database is not provisioned or deleted.'
-
-fly-launch:
-	@sh scripts/fly.sh launch
-
-fly-deploy:
-	@sh scripts/fly.sh deploy
-
-fly-destroy:
-	@sh scripts/fly.sh destroy
+	  'make dev-setup UNIVERSE=<uuid>  Create a local development universe once' \
+	  'make dev                        Build and run the local game' \
+	  'make check                      Run routine tests and static checks' \
+	  'make build-universe-final       Build the release server binary' \
+	  'See docs/development.md for setup and deployment requirements.'
 
 # Routine runners have no execution deadlines; Make owns preparation and parallelism.
 # Explicit launch validation retains generous preparation and execution guards.
@@ -105,14 +92,22 @@ build-universe-bridge:
 	cargo build --locked --release -p orbit-server --features universe-config-bridge --target-dir target/universe-bridge
 
 # Artifact inspection only; full-system/container acceptance remains explicit.
-.PHONY: release-image inspect-release-image
+.PHONY: release-image inspect-release-image publish-release-manifest verify-release-registry
+ORBIT_RELEASE_PLATFORM ?= linux/amd64
+ORBIT_RELEASE_SOURCE ?= .
 release-image:
 	test -n "$(ORBIT_RELEASE_IMAGE)" && test -n "$(ORBIT_RELEASE_SHA)"
-	node scripts/news-history.mjs
-	docker build --platform linux/amd64 --label "org.opencontainers.image.revision=$(ORBIT_RELEASE_SHA)" --label "org.opencontainers.image.source=https://github.com/unbought-games/orbit-imperium" -t "$(ORBIT_RELEASE_IMAGE)" .
+	cd "$(ORBIT_RELEASE_SOURCE)" && node scripts/news-history.mjs
+	docker build --platform "$(ORBIT_RELEASE_PLATFORM)" --label "org.opencontainers.image.revision=$(ORBIT_RELEASE_SHA)" --label "org.opencontainers.image.source=https://github.com/unbought-games/orbit-imperium" $(if $(ORBIT_RELEASE_VERSION),--label "org.opencontainers.image.version=$(ORBIT_RELEASE_VERSION)") -t "$(ORBIT_RELEASE_IMAGE)" "$(ORBIT_RELEASE_SOURCE)"
 
 inspect-release-image:
 	node scripts/inspect-release-image.mjs
+
+publish-release-manifest:
+	node scripts/release-registry.mjs --publish
+
+verify-release-registry:
+	node scripts/release-registry.mjs
 
 dev: db-up
 	cargo build -p orbit-server
@@ -126,7 +121,7 @@ EXPLICIT_SUITES = core mvp progression missions raiding recovery migrations sign
 .PHONY: test-explicit test-acceptance test-container _container test-runtime prepare-explicit prepare-migrations prepare-signup _acceptance $(addprefix run-,$(EXPLICIT_SUITES)) $(addprefix test-,$(EXPLICIT_SUITES)) test-e2e
 
 test-explicit:
-	@case "$(SUITE)" in all) $(MAKE) test-acceptance && $(MAKE) test-container ;; acceptance|container|core|mvp|progression|missions|raiding|recovery|migrations|signup|rules-updates) $(MAKE) test-$(SUITE) ;; *) echo 'Unknown explicit suite' >&2; exit 2 ;; esac
+	@case "$(SUITE)" in all) $(MAKE) test-acceptance && $(MAKE) test-container ;; acceptance|container|core|mvp|progression|missions|raiding|recovery|migrations|signup|rules-updates|speed-updates) $(MAKE) test-$(SUITE) ;; *) echo 'Unknown explicit suite' >&2; exit 2 ;; esac
 
 test-runtime:
 	$(TIMEOUT) compile cargo build -p orbit-server --features orbit-server/test-support
@@ -208,3 +203,10 @@ test-combat:
 .PHONY: test-colonization
 test-colonization:
 	cargo nextest run -p orbit-engine --test colonization --test missions
+
+.PHONY: test-speed-updates run-speed-updates
+test-speed-updates: test-runtime
+	$(MAKE) run-speed-updates
+
+run-speed-updates:
+	$(TIMEOUT) full-system node scripts/speed-updates-e2e.mjs

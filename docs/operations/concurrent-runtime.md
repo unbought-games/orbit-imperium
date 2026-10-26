@@ -26,7 +26,7 @@ One PostgreSQL listener per API process wakes recipient-specific stream subscrib
 
 ## Configuration and connection budget
 
-| Setting | API template | Worker template | Meaning |
+| Setting | API example | Worker example | Meaning |
 |---|---:|---:|---|
 | `ORBIT_ROLE` | `api` | `worker` | Process responsibility |
 | `ORBIT_POOL_ADMISSION` | 8 | 0 | Command/session writes and enrollment |
@@ -39,13 +39,11 @@ One PostgreSQL listener per API process wakes recipient-specific stream subscrib
 | `ORBIT_DRAIN_MS` | 25000 | 25000 | Grace for finishing work before release/fencing |
 | `ORBIT_METRICS_BIND` | `0.0.0.0:9091` | `0.0.0.0:9091` | Private operational listener, not an internet service |
 
-Configure `DATABASE_URL` on both applications through the deployment secret manager. Set `ORBIT_ORIGIN` to the exact canonical browser origin (for example `https://your-game.example`) on API/combined processes; the localhost default is not a production origin. Set `ORBIT_UNIVERSE_ID` consistently when the database contains multiple universes. Verify the trusted proxy address for the actual deployment before enabling forwarded client addresses.
+Configure `DATABASE_URL` on both applications through the deployment secret manager. Set `ORBIT_ORIGIN` to the exact canonical browser origin (for example `https://your-game.example`) on API/combined processes; the localhost default is not a production origin. Set `ORBIT_UNIVERSE_ID` consistently when the database contains multiple universes. Request rate limits use the connection peer IP; clients behind a reverse proxy share its IP-based budget.
 
 Pools connect lazily. Fresh OIDC identities use the read pool. Stale identities use only the refresh pool, with a ten-second deadline covering acquisition through commit and a nonblocking transaction advisory lock per session across replicas. Concurrent refresh attempts fail closed with a recoverable unavailable response. Logout remains free to revoke a session during refresh; a late response cannot recreate it. Local authentication never opens the refresh pool. A zero workload pool is disabled; it cannot borrow another workload's reservation. Every process retains one control connection for the operator guard. API processes retain another for `LISTEN`; API control capacity must be at least three, worker control capacity at least two. Their retained sessions are included in the table, not extra connections.
 
 Two API instances plus two workers reserve **60** connections. One additional instance of each during overlapping rollout raises that to **90**. Budget administration, migrations, monitoring, and PostgreSQL's reserved connections separately. Recalculate before scaling any replica count or pool limit; a 100-connection primary is only an illustrative budget, not a capacity recommendation. Use a direct primary endpoint or session pooling: the retained advisory guard and `LISTEN` require stable database sessions. See the [PgBouncer compatibility table](https://www.pgbouncer.org/features.html).
-
-The development Fly template reserves 15 connections per combined instance, so two overlapping development instances plus operator headroom fit the disposable database's 40-connection limit. The production templates must not be pointed at that disposable database as a production HA substitute.
 
 ## Retained-world rollout
 
@@ -73,21 +71,12 @@ The development Fly template reserves 15 connections per combined instance, so t
    ```
 
    Activation waits outside SQL for the active serial attempt, verifies pending declarations, initializes the native ordering sequence, and atomically fences the serial executor. Accepted inputs, identities, epochs, and event times remain intact. An incomplete preparation must be completed; never bypass the check by editing the mode directly.
-7. Roll out the separate role applications with the same final image and database. Verify at least two healthy API Machines and two workers, with sufficient capacity while one is draining. Examples for an authorized deployment:
-
-   ```sh
-   make fly-deploy FLY_APP=your-api-app FLY_CONFIG=deploy/fly.api.toml FLY_HA=true
-   make fly-deploy FLY_APP=your-worker-app FLY_CONFIG=deploy/fly.worker.toml FLY_HA=true
-   fly scale count 2 --app your-api-app
-   fly scale count 2 --app your-worker-app
-   ```
-
-   These commands are examples, not actions performed by this change. The wrapper requires an explicit app and refuses `FLY_HA=false` for marked production templates. `--ha=true` permits spare Machines; verify actual worker counts rather than assuming a template provisions them. Fly documents [HA deployment flags](https://fly.io/docs/flyctl/deploy/) and [service-independent worker checks](https://fly.io/docs/reference/configuration/#the-checks-section).
+7. Roll out separate API and worker processes with the same final image and database, using `ORBIT_ROLE=api` and `ORBIT_ROLE=worker`. For a redundant deployment, verify at least two healthy API processes and two workers, with sufficient capacity while one is draining. Verify actual replica counts and readiness through the host's process manager.
 8. Only after every active process supports the intended vocabulary should an operator activate new rules/content. Subsequent compatible rolling deployments retain the scoped mode and restore epoch. Keep enough old healthy API capacity until replacements pass readiness.
 
-The configured 45-second stop allowance exceeds application grace plus release/runtime shutdown allowances. Host stop allowances are best-effort; abrupt death is recovered through durable claims, not a promise that shutdown always finishes. See [Fly lifecycle configuration](https://fly.io/docs/reference/configuration/#runtime-options).
+Configure the host's stop allowance to exceed application drain grace plus release/runtime shutdown allowances. Host stop allowances are best-effort; abrupt death is recovered through durable claims, not a promise that shutdown always finishes.
 
-A larger player population also needs an appropriately created universe. These templates deliberately omit topology/capacity creation overrides so they do not conflict with a retained world's rules. A retained 45-slot development universe stays 45 slots. Do not change its topology or reset it to simulate scaling.
+A larger player population also needs an appropriately created universe. Process configuration does not change a retained world's rules. A retained 45-slot development universe stays 45 slots. Do not change its topology or reset it to simulate scaling.
 
 ## Durability at the database boundary
 
@@ -95,11 +84,11 @@ Worker recovery tests prove application-process durability. They do not prove da
 
 Verify `fsync`, synchronous standby membership, `synchronous_commit`, and the provider's actual promotion policy. PostgreSQL `synchronous_commit=on` with configured synchronous standbys waits for durable standby flush; `remote_apply` additionally waits for replay. `remote_write`, asynchronous replication, a volume, and backups alone do not establish zero loss of acknowledged orders. See [PostgreSQL WAL acknowledgement settings](https://www.postgresql.org/docs/16/runtime-config-wal.html) and [synchronous replication](https://www.postgresql.org/docs/16/warm-standby.html#SYNCHRONOUS-REPLICATION).
 
-Record the verified settings and failover evidence in the validation matrix. During loss of the required durability quorum, an unknown HTTP response remains unknown and is retried with the same ID; the API must not claim acceptance without durable acknowledgement. The development `deploy/postgres.fly.toml` is explicitly a single disposable database, unchanged by this work.
+Record the verified settings and failover evidence in the validation matrix. During loss of the required durability quorum, an unknown HTTP response remains unknown and is retried with the same ID; the API must not claim acceptance without durable acknowledgement.
 
 ## Observe lag without withdrawing healthy APIs
 
-`ORBIT_METRICS_BIND` exposes `/metrics`, `/health/live`, and `/health/ready` on a separate listener. The Fly templates scrape port 9091 privately and publish only the API's port 8080. Do not configure a public service for the metrics port. `/health/ready` checks structural compatibility and storage access, not zero backlog or unblocked simulation scopes.
+`ORBIT_METRICS_BIND` exposes `/metrics`, `/health/live`, and `/health/ready` on a separate listener. Scrape the metrics listener privately and expose only the game listener publicly. Do not configure a public service for the metrics port. `/health/ready` checks structural compatibility and storage access, not zero backlog or unblocked simulation scopes.
 
 Metrics use bounded stage/event labels and universe-level gauges, never player IDs or payloads:
 

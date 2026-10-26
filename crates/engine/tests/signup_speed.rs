@@ -90,7 +90,7 @@ fn all_production_speeds_preserve_economy_energy_storage_and_travel_rounding() {
         assert_eq!(terms.capacity, 10_000 * SCALE);
         assert_eq!(terms.maximum_payload, 9997 * SCALE);
         // Unspeeded adjacent travel is 4741.182823... seconds. Half-up rounding
-        // must remain within half a second for every lifetime speed.
+        // must remain within half a second for every supported speed.
         assert!((terms.duration * scale - 4_741_183).abs() <= 500 * scale);
     }
     for (speed, milliseconds) in [(1, 4_741_000), (5, 948_000), (10, 474_000), (100, 47_000)] {
@@ -163,7 +163,7 @@ fn all_enabled_build_research_and_manufacture_terms_scale_at_each_speed() {
 }
 
 #[test]
-fn catalog_updates_at_non_ten_speeds_retain_lifetime_settings() {
+fn catalog_and_speed_updates_preserve_topology() {
     for speed in [1, 5, 100] {
         let current = rules(speed);
         let mut artifact = current.artifact.clone();
@@ -183,7 +183,7 @@ fn catalog_updates_at_non_ten_speeds_retain_lifetime_settings() {
                     .with_speed(if speed == 1 { 5 } else { 1 })
                     .unwrap()
             )
-            .is_err()
+            .is_ok()
         );
         let mut topology = next.artifact.clone();
         topology.universe.as_mut().unwrap().galaxies = 2;

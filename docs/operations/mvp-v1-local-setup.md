@@ -2,7 +2,7 @@
 
 # MVP v1 local setup
 
-This creates one private five-player development universe. It does not deploy Fly or alter an existing world. This is a historical test-support fixture guide; use the [development guide](../development.md) for normal local setup.
+This creates one private five-player development universe. It does not deploy a hosted server or alter an existing world. This is a historical test-support fixture guide; use the [development guide](../development.md) for normal local setup.
 
 ## Profile and retained-world boundary
 
@@ -79,7 +79,7 @@ The seed file is 32 raw bytes. It is generation material, not an authentication 
 unset ORBIT_GALAXIES ORBIT_SYSTEMS_PER_GALAXY ORBIT_POSITIONS_PER_SYSTEM
 export ORBIT_BIND=127.0.0.1:18187
 export ORBIT_ORIGIN=http://localhost:18187
-export ORBIT_LOCAL_INSECURE=1
+export ORBIT_ALLOW_INSECURE_HTTP=1
 export ORBIT_TEST_SEEDED=1 # historical fixture mode; requires test-support build
 export ORBIT_ASSETS="$PWD/apps/web/dist"
 target/release/orbit serve
@@ -119,7 +119,7 @@ make test-container
 
 Keep frontend-build suites sequential because they share `apps/web/dist`. These port overrides preserve CI defaults and do not change runner infrastructure. Test commands create/remove their own randomly named databases. They do not touch `orbit_mvp_v1_progression_local`. `test-mvp` generates disposable credentials and verifies five browser logins, construction, fixture transport/recall, cross-account privacy, process kill/restart and bootstrap reruns.
 
-Fly launch, hosted HTTPS/access configuration, hosted acceptance and final five-person playthrough belong to Slice 6. No Fly deployment, backup machinery, automated monitoring or admin portal is included here.
+Hosted HTTPS/access configuration, hosted acceptance and final five-person playthrough belong to Slice 6. No hosted deployment, backup machinery, automated monitoring or admin portal is included here.
 
 ## Progression manual checks
 
@@ -144,7 +144,7 @@ target/release/orbit mvp-fleets-bootstrap \
   --at "$(node -e 'process.stdout.write(String(Date.now()))')"
 export ORBIT_BIND=127.0.0.1:18217
 export ORBIT_ORIGIN=http://localhost:18217
-export ORBIT_LOCAL_INSECURE=1
+export ORBIT_ALLOW_INSECURE_HTTP=1
 export ORBIT_TEST_SEEDED=1 # historical fixture mode; requires test-support build
 export ORBIT_ASSETS="$PWD/apps/web/dist"
 target/release/orbit serve
@@ -172,7 +172,7 @@ make test-progression
 make test-container
 ```
 
-`ORBIT_TEST_MISSIONS_PORT` overrides the fleet acceptance HTTP port (default 18212); existing database/HTTP/recovery/container overrides remain available. Run browser/build suites sequentially because they share `apps/web/dist` and Playwright output. The test binary's input-specific random evidence and commit fault tables are compiled out of production. Fly deployment and complete MVP launch remain later slices.
+`ORBIT_TEST_MISSIONS_PORT` overrides the fleet acceptance HTTP port (default 18212); existing database/HTTP/recovery/container overrides remain available. Run browser/build suites sequentially because they share `apps/web/dist` and Playwright output. The test binary's input-specific random evidence and commit fault tables are compiled out of production. Hosted deployment and complete MVP launch remain later slices.
 
 ## Slice 5 fresh attack profile
 
@@ -190,7 +190,7 @@ target/release/orbit mvp-raids-bootstrap \
   --at "$(node -e 'process.stdout.write(String(Date.now()))')"
 export ORBIT_BIND=127.0.0.1:18317
 export ORBIT_ORIGIN=http://localhost:18317
-export ORBIT_LOCAL_INSECURE=1
+export ORBIT_ALLOW_INSECURE_HTTP=1
 export ORBIT_TEST_SEEDED=1 # historical fixture mode; requires test-support build
 export ORBIT_ASSETS="$PWD/apps/web/dist"
 target/release/orbit serve
@@ -204,4 +204,4 @@ On the defender account inspect Fleets for incoming Attack with Espionage 2/4/8 
 
 Settings publishes the six qualifying contacts/rolling 24-hour active-target conduct rule. The seventh contact still resolves; no automatic sanctions or monitoring UI exist. Hidden reports cannot erase private evidence. Sign out/in, reload a detail route, test back/forward/new tabs and phone keyboard navigation. Physical touch and VoiceOver/Safari/NVDA checks remain Slice 6 release checks.
 
-Run `make test-raiding` in addition to every earlier acceptance command. It creates a randomly named disposable database, normally removes it, and uses only test-build controlled time/faults. `ORBIT_TEST_RAIDING_PORT` sets its HTTP port (default 18222); `ORBIT_RAIDING_RETAIN=1` deliberately retains only that disposable test database and its temporary private seed/account files for debugging. It never grants assets in the earned journey or exposes a production clock/RNG/cheat route. Production container smoke now also exercises the raids profile. No Fly deployment is performed.
+Run `make test-raiding` in addition to every earlier acceptance command. It creates a randomly named disposable database, normally removes it, and uses only test-build controlled time/faults. `ORBIT_TEST_RAIDING_PORT` sets its HTTP port (default 18222); `ORBIT_RAIDING_RETAIN=1` deliberately retains only that disposable test database and its temporary private seed/account files for debugging. It never grants assets in the earned journey or exposes a production clock/RNG/cheat route. Production container smoke now also exercises the raids profile. No hosted deployment is performed.

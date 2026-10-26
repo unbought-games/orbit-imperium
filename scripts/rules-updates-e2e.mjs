@@ -23,7 +23,7 @@ const compose = (...args) => execFileSync('docker', ['compose', ...args], { stdi
 const safe = text => String(text).replaceAll(password === 'orbit' ? '\0' : password, '[redacted]')
 const children = [], leases = []
 let db, browser, active, auth, binding, body, at = 1000000
-const env = { ...process.env, DATABASE_URL: url, ORBIT_ASSETS: resolve('apps/web/dist'), ORBIT_UNIVERSE_ID: universe, ORBIT_LOCAL_INSECURE: '1' }
+const env = { ...process.env, DATABASE_URL: url, ORBIT_ASSETS: resolve('apps/web/dist'), ORBIT_UNIVERSE_ID: universe, ORBIT_ALLOW_INSECURE_HTTP: '1' }
 delete env.ORBIT_TEST_SEEDED
 for (const key of ['ORBIT_SPEED', 'ORBIT_GALAXIES', 'ORBIT_SYSTEMS_PER_GALAXY', 'ORBIT_POSITIONS_PER_SYSTEM', 'ORBIT_MAX_PLAYERS', 'ORBIT_SIGNUP_ENABLED', 'ORBIT_SIGNUP_PER_MINUTE', 'ORBIT_COMMANDS_PER_MINUTE']) delete env[key]
 const accounts = Array.from({ length: 5 }, (_, i) => ({ name: `rulesplayer${i}`, password: randomUUID() }))

@@ -20,7 +20,7 @@ const common=['--network',`${project}_default`,'--env-file',envFile];
 const ready=async()=>{for(let i=0;i<100;i++){try{if((await fetch(base+'/health/ready')).ok)return;}catch{}await new Promise(r=>setTimeout(r,100))}throw new Error('container readiness timeout')};
 try{
  compose('exec','-T','db','createdb','-U','orbit',db);
- writeFileSync(envFile,`DATABASE_URL=postgres://orbit:${encodeURIComponent(process.env.ORBIT_DB_PASSWORD || 'orbit')}@db:5432/${db}\nORBIT_ORIGIN=${base}\nORBIT_LOCAL_INSECURE=1\n`,{mode:0o600});
+ writeFileSync(envFile,`DATABASE_URL=postgres://orbit:${encodeURIComponent(process.env.ORBIT_DB_PASSWORD || 'orbit')}@db:5432/${db}\nORBIT_ORIGIN=${base}\nORBIT_ALLOW_INSECURE_HTTP=1\n`,{mode:0o600});
  run(['run','--rm',...common,image,'db-init']);
  run(['run','--rm',...common,image,'universe','create','--universe',randomUUID()]);
  await portLease.release();

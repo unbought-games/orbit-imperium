@@ -1,3 +1,4 @@
+import { commandId } from './command-id'
 import type { components } from '../contracts'
 import type { Binding } from '../client-model/commands'
 import { validate } from '../client-model/schema'
@@ -7,7 +8,7 @@ export async function allianceQuery(
   binding: Binding,
   csrf: string,
   query: S['AllianceQuery'],
-  request_id: string = crypto.randomUUID(),
+  request_id: string = commandId(crypto),
 ): Promise<S['AllianceView']> {
   const result = validate<S['AllianceView']>(
     'AllianceView',
@@ -38,7 +39,7 @@ export async function allianceCommand(
     await request(
       `/api/v4/universes/${binding.universe}/alliances/commands`,
       'POST',
-      { context: { binding, request_id: crypto.randomUUID() }, ...command },
+      { context: { binding, request_id: commandId(crypto) }, ...command },
       csrf,
     ),
   )

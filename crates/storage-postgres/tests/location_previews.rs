@@ -103,13 +103,11 @@ async fn anonymous_previews_expose_only_appearance_and_deleted_slots_remain_addr
         store.clone(),
         HttpConfig {
             origin: "https://game.test".into(),
-            secure_cookies: true,
             assets: temp.to_string_lossy().into_owned(),
             login_per_minute: 30,
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: false,
-            trusted_fly_proxies: vec![],
             wake: None,
             observer: None,
         },

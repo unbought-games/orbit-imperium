@@ -1,0 +1,29 @@
+{
+  "source": "source/orbital-capital-v1.png",
+  "source_sha256": "d0c00098b805195619182122d9cfa03a1d146aa63902bb091ce2a7a6f6950bc1",
+  "date": "2026-10-25",
+  "treatment": "Responsive WebP exports; no crop, text or retouching.",
+  "exports": [
+    {
+      "file": "orbital-capital-768.webp",
+      "width": 768,
+      "height": 432,
+      "bytes": 59848,
+      "sha256": "0f3b8dafe6a7d83d4d7bc9b3fdd73693b50083c6caf1c9782f69993219983ef3"
+    },
+    {
+      "file": "orbital-capital-1200.webp",
+      "width": 1200,
+      "height": 675,
+      "bytes": 131192,
+      "sha256": "75466a22e24834ba4c50f4dcef0b24fdda474ab505bff1b42fdeffb978051530"
+    },
+    {
+      "file": "orbital-capital-1672.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 214216,
+      "sha256": "bd0b9dda790c58e1f870640b3e57bfd6836eec2648a6d0f92d607210d830cb5f"
+    }
+  ]
+}

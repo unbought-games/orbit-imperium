@@ -36,16 +36,26 @@ use tokio::sync::{Mutex, Semaphore};
 #[derive(Clone)]
 pub struct HttpConfig {
     pub origin: String,
-    pub secure_cookies: bool,
     pub assets: String,
     pub login_per_minute: u32,
     pub signup: Option<SignupPolicy>,
     pub signup_per_minute: u32,
     /// Only used when the storage adapter explicitly permits legacy fallback.
     pub legacy_signup_enabled: bool,
-    pub trusted_fly_proxies: Vec<IpAddr>,
     pub wake: Option<Arc<tokio::sync::Notify>>,
     pub observer: Option<Arc<dyn RuntimeObserver>>,
+}
+impl HttpConfig {
+    fn session_cookie(&self, name: &str, value: &str, age: u32) -> String {
+        // The server validates this browser-facing origin at startup. The
+        // internal connection and forwarded request headers are not inputs.
+        let secure = if self.origin.starts_with("https://") {
+            "; Secure"
+        } else {
+            ""
+        };
+        format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={age}{secure}")
+    }
 }
 struct HttpState<S> {
     profiles: Option<AccountProfiles>,
@@ -407,14 +417,7 @@ async fn authenticate<S: IdentityStore>(
     Ok(session)
 }
 fn cookie<S>(s: &HttpState<S>, value: &str, age: u32) -> String {
-    format!(
-        "orbit_session={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={age}{}",
-        if s.config.secure_cookies {
-            "; Secure"
-        } else {
-            ""
-        }
-    )
+    s.config.session_cookie("orbit_session", value, age)
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -440,11 +443,7 @@ async fn login<S: GameStore + IdentityStore + Clone + 'static>(
     if request.name.len() > 80 || request.password.len() > 1024 {
         return Err(ServiceError::Unauthenticated.into());
     }
-    let source = login_source(
-        peer.map(|Extension(ConnectInfo(address))| address),
-        &h,
-        &s.config.trusted_fly_proxies,
-    );
+    let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     let name = request.name.trim().to_lowercase();
     if let Err(retry) =
         s.login_budget
@@ -518,11 +517,7 @@ async fn signup<S: GameStore + IdentityStore + Clone + 'static>(
     if request.name.len() > 80 || request.password.len() > 1024 {
         return Err(ServiceError::Malformed.into());
     }
-    let source = login_source(
-        peer.map(|Extension(ConnectInfo(address))| address),
-        &h,
-        &s.config.trusted_fly_proxies,
-    );
+    let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     let name = request.name.trim().to_lowercase();
     if let Err(retry) =
         s.signup_budget
@@ -657,43 +652,27 @@ fn rate_limited(seconds: u64) -> Response {
     )
         .into_response()
 }
-fn login_source(
-    peer: Option<SocketAddr>,
-    headers: &HeaderMap,
-    trusted_fly_proxies: &[IpAddr],
-) -> IpAddr {
-    let peer = peer
-        .map(|p| p.ip())
-        .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
-    // Explicit deployment allowlist: Fly overwrites Fly-Client-IP at the edge.
-    // Direct peers and arbitrary forwarded headers are never trusted by default.
-    if trusted_fly_proxies.contains(&peer)
-        && let Some(client) = headers
-            .get("fly-client-ip")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse().ok())
-    {
-        return client;
-    }
-    peer
+fn login_source(peer: Option<SocketAddr>) -> IpAddr {
+    peer.map(|p| p.ip())
+        .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
 }
 #[cfg(test)]
 mod source_tests {
     use super::*;
+
     #[test]
-    fn proxy_headers_require_opt_in_and_a_trusted_peer() {
-        let mut headers = HeaderMap::new();
-        headers.insert("fly-client-ip", "198.51.100.1".parse().unwrap());
-        let public = "203.0.113.1:1234".parse::<SocketAddr>().unwrap();
-        let local = "127.0.0.1:1234".parse::<SocketAddr>().unwrap();
+    fn source_uses_the_connection_peer_without_its_port() {
+        for address in ["203.0.113.1:1234", "127.0.0.1:4321", "[2001:db8::1]:1234"] {
+            let peer = address.parse::<SocketAddr>().unwrap();
+            assert_eq!(login_source(Some(peer)), peer.ip());
+        }
+    }
+
+    #[test]
+    fn missing_peer_uses_one_shared_source() {
         assert_eq!(
-            login_source(Some(public), &headers, &[local.ip()]),
-            public.ip()
-        );
-        assert_eq!(login_source(Some(local), &headers, &[]), local.ip());
-        assert_eq!(
-            login_source(Some(local), &headers, &[local.ip()]),
-            "198.51.100.1".parse::<IpAddr>().unwrap()
+            login_source(None),
+            IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
         );
     }
 }
