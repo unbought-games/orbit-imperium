@@ -54,43 +54,6 @@ export function HomeDetails({
   return (
     <div className={styles.details}>
       <section
-        id="mobile"
-        className={styles.mobile}
-        aria-labelledby="mobile-title"
-      >
-        <div className={styles.mobileCopy}>
-          <p className={styles.eyebrow}>Desktop & mobile</p>
-          <h2 id="mobile-title">Play on your phone.</h2>
-          <p>
-            Check your planets, choose your next research, and manage your
-            fleets from your mobile browser. Pick up on your computer with the
-            same account and the same universe.
-          </p>
-          <p>
-            The game fits the screen you’re using. No separate mobile version,
-            no app store, and no download required.
-          </p>
-          <a href="#gameplay" className={styles.textLink}>
-            Explore the strategy <span aria-hidden="true">↓</span>
-          </a>
-        </div>
-        <div className={styles.phones}>
-          <Screenshot
-            name="empire-mobile"
-            mobile
-            alt="Orbit’s mobile Empire screen with planet resources, construction and fleet activity above the bottom navigation."
-            caption="Empire overview · Mobile"
-          />
-          <Screenshot
-            name="research-mobile"
-            mobile
-            alt="Orbit’s mobile Research screen showing technology levels and an active Energy Technology upgrade."
-            caption="Research · Mobile"
-          />
-        </div>
-      </section>
-
-      <section
         id="gameplay"
         className={styles.gameplay}
         aria-labelledby="gameplay-title"
@@ -109,10 +72,6 @@ export function HomeDetails({
           alt="Orbit’s desktop Empire overview showing two planets, their resources, construction, research and a transport fleet."
           caption="Empire overview · Desktop"
         />
-        <p className={styles.captureNote}>
-          Actual game screens, shown with a demonstration universe. Select a
-          screenshot to see it at full size.
-        </p>
         <div className={styles.strategy}>
           <article>
             <span className={styles.number} aria-hidden="true">
@@ -149,6 +108,40 @@ export function HomeDetails({
         </div>
       </section>
 
+      <section
+        id="mobile"
+        className={styles.mobile}
+        aria-labelledby="mobile-title"
+      >
+        <div className={styles.mobileCopy}>
+          <p className={styles.eyebrow}>Desktop & mobile</p>
+          <h2 id="mobile-title">Play on your phone.</h2>
+          <p>
+            Check your planets, choose your next research, and manage your
+            fleets from your mobile browser. Pick up on your computer with the
+            same account and the same universe.
+          </p>
+          <p>
+            The game fits the screen you’re using. No separate mobile version,
+            no app store, and no download required.
+          </p>
+        </div>
+        <div className={styles.phones}>
+          <Screenshot
+            name="empire-mobile"
+            mobile
+            alt="Orbit’s mobile Empire screen with planet resources, construction and fleet activity above the bottom navigation."
+            caption="Empire overview · Mobile"
+          />
+          <Screenshot
+            name="research-mobile"
+            mobile
+            alt="Orbit’s mobile Research screen showing technology levels and an active Energy Technology upgrade."
+            caption="Research · Mobile"
+          />
+        </div>
+      </section>
+
       <section className={styles.fairPlay} aria-labelledby="fair-play-title">
         <div>
           <p className={styles.eyebrow}>By unbought games</p>
@@ -165,11 +158,17 @@ export function HomeDetails({
             Orbit is open source. Read the code, follow development, contribute,
             or run an independent universe for your own community.
           </p>
-          <a
-            className={styles.textLink}
-            href={`${repository}#run-your-own-universe`}
-          >
-            Explore the project <span aria-hidden="true">↗</span>
+          <a className={styles.githubButton} href={repository}>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="currentColor"
+            >
+              <path d="M12 .75a11.25 11.25 0 0 0-3.558 21.923c.563.104.768-.244.768-.542 0-.267-.01-.974-.015-1.912-3.13.68-3.791-1.508-3.791-1.508-.512-1.3-1.25-1.646-1.25-1.646-1.023-.7.077-.686.077-.686 1.13.08 1.724 1.16 1.724 1.16 1.006 1.724 2.64 1.226 3.282.938.102-.73.394-1.226.716-1.508-2.498-.284-5.124-1.25-5.124-5.565 0-1.23.44-2.232 1.16-3.02-.116-.285-.503-1.43.11-2.98 0 0 .945-.303 3.094 1.153A10.8 10.8 0 0 1 12 6.18c.956.004 1.918.13 2.817.378 2.148-1.456 3.092-1.153 3.092-1.153.615 1.55.228 2.695.112 2.98.722.788 1.158 1.79 1.158 3.02 0 4.327-2.63 5.278-5.136 5.557.404.35.764 1.042.764 2.1 0 1.516-.014 2.738-.014 3.11 0 .3.203.65.774.54A11.25 11.25 0 0 0 12 .75Z" />
+            </svg>
+            View on GitHub
           </a>
         </div>
       </section>
@@ -189,10 +188,6 @@ export function HomeDetails({
               <span aria-hidden="true">→</span>
             </ButtonLink>
           </div>
-          <p className={styles.betaNote}>
-            This is an incomplete game. We may reset the universe and its
-            progress before full public launch.
-          </p>
         </div>
         <div className={styles.community}>{children}</div>
       </section>

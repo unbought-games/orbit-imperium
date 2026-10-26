@@ -23,29 +23,24 @@
   font-size: clamp(3rem, 5.6vw, 5.5rem);
   margin-top: 20px;
 }
-.promise {
-  color: var(--champagne);
-  font-family: var(--font-editorial);
-  line-height: 1.6;
-  margin-top: 28px;
+.beta {
+  margin-top: 24px;
 }
-.details a,
-.explore a {
+.beta > section {
+  font-size: var(--font-size-xs);
+  max-width: 50ch;
+  padding-block: 4px;
+  margin-bottom: 0;
+}
+.details a {
   color: var(--link);
 }
-.details a:hover,
-.explore a:hover {
+.details a:hover {
   color: var(--link-hover);
 }
-.details a:focus-visible,
-.explore a:focus-visible {
+.details a:focus-visible {
   outline: var(--focus-ring);
   outline-offset: 4px;
-}
-.explore a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
 }
 .details section {
   padding-block: clamp(56px, 7vw, 104px);
@@ -135,11 +130,6 @@
 .sectionIntro {
   margin-bottom: 36px;
 }
-.details .captureNote {
-  max-width: none;
-  font-size: var(--font-size-xs);
-  margin-top: 12px;
-}
 .strategy {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -164,11 +154,28 @@
   padding-left: 32px;
   border-left: 1px solid var(--border-accent);
 }
-.textLink {
+.details .githubButton {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border: 1px solid #353535;
+  border-radius: 6px;
+  background: #0a0a0a;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.details .githubButton:hover {
+  background: #202020;
+  border-color: #666;
+  color: #fff;
+}
+.githubButton svg {
+  flex-shrink: 0;
 }
 .joinAction {
   margin: 28px 0 20px;
@@ -182,14 +189,14 @@
 .joinAction a:hover {
   color: var(--text-on-accent);
 }
-.details .betaNote {
-  font-size: var(--font-size-sm);
-}
 .community {
   border-left: 1px solid var(--border-accent);
   padding-left: 32px;
 }
 @media (max-width: 767px) {
+  .desktop figcaption {
+    text-align: center;
+  }
   .heroTitle {
     font-size: clamp(2.6rem, 12vw, 4.2rem);
   }

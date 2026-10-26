@@ -117,15 +117,6 @@
   padding: 64px var(--page-gutter) 40px clamp(24px, 4vw, 64px);
   max-width: 720px;
 }
-.beta {
-  margin-top: 32px;
-}
-.beta > section {
-  font-size: var(--font-size-xs);
-  max-width: 50ch;
-  padding-block: 4px;
-  margin-bottom: 0;
-}
 .footer {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -214,24 +205,25 @@
     display: none;
   }
   .landing .content {
-    padding: 292px var(--page-gutter) 48px;
+    padding: 216px var(--page-gutter) 48px;
     max-width: none;
   }
   .landing .composition {
     min-height: 0;
   }
   .capital {
-    height: 340px;
+    height: 420px;
   }
   .capital img {
     object-position: 18% center;
   }
   .capital::after {
     background: linear-gradient(
-      0deg,
-      var(--surface-page),
-      #07162033 30%,
-      transparent 58%
+      180deg,
+      transparent 24%,
+      #07162080 48%,
+      #071620db 76%,
+      var(--surface-page) 100%
     );
   }
 }

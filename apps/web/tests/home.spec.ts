@@ -150,9 +150,9 @@ for (const width of [320, 390, 768, 1440]) {
       )
       .toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/hero-${width}.png` })
-    await page.getByRole('link', { name: 'See it on mobile' }).focus()
-    await page.keyboard.press('Enter')
-    await expect(page).toHaveURL(/#mobile$/)
+    await page
+      .getByRole('heading', { name: 'Play on your phone.' })
+      .scrollIntoViewIfNeeded()
     await expect(
       page.getByRole('heading', { name: 'Play on your phone.' }),
     ).toBeInViewport()
@@ -197,8 +197,8 @@ for (const width of [320, 390, 768, 1440]) {
       .click()
     await expect(page).toHaveURL(/\/signup$/)
     await expect(
-      page.getByRole('region', { name: 'Starting open beta' }),
-    ).toContainText('reset the universe')
+      page.getByRole('region', { name: 'Open Beta' }),
+    ).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
     // The expanded marketing sections are confined to the landing route.
     await expect(page.locator('#mobile')).toHaveCount(0)
   })

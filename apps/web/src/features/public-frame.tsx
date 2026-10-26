@@ -93,11 +93,6 @@ export function PublicFrame({
         <section className={styles.content}>
           {variant !== 'landing' && <BetaNotice />}
           {children}
-          {variant === 'landing' && (
-            <div className={styles.beta}>
-              <BetaNotice />
-            </div>
-          )}
         </section>
       </div>
       {afterHero}

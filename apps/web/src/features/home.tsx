@@ -4,6 +4,7 @@ import { DefaultDestination } from '../shell/default-destination'
 import { PublicFrame } from './public-frame'
 import { Link } from '../ui/link'
 import { ButtonLink } from '../ui/button'
+import { BetaNotice } from '../ui/beta-notice'
 import { Heading, Text, Eyebrow } from '../ui/typography'
 import styles from './login.module.css'
 import { HomeDetails } from './home-details'
@@ -81,10 +82,13 @@ export function Home() {
         for sale.
       </Heading>
       <Text className={styles.introduction}>
-        Develop your planets, research new technologies, and send fleets across
-        a shared universe. Play in your browser, on desktop or mobile. There’s
-        nothing to download.
+        Build an empire by developing your planets, researching technologies,
+        and sending your fleets across the shared universe. Play in your browser
+        across desktop and mobile.
       </Text>
+      <div className={landingStyles.beta}>
+        <BetaNotice />
+      </div>
       <nav aria-label="Get started" className={styles.actions}>
         {runtime.signupEnabled && (
           <ButtonLink className={styles.primary} to="/signup">
@@ -101,20 +105,6 @@ export function Home() {
           </ButtonLink>
         )}
       </nav>
-      <nav
-        aria-label="Explore the game"
-        className={`${styles.actions} ${landingStyles.explore}`}
-      >
-        <a href="#gameplay">
-          See the game <span aria-hidden="true">↓</span>
-        </a>
-        <a href="#mobile">
-          See it on mobile <span aria-hidden="true">↓</span>
-        </a>
-      </nav>
-      <p className={landingStyles.promise}>
-        Games worth playing. Victory worth earning.
-      </p>
     </PublicFrame>
   )
 }
