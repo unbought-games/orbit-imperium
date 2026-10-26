@@ -51,6 +51,9 @@ export function CoordinateInput({
           title={embedded ? 'Type or paste destination coordinates' : undefined}
           aria-invalid={!!(error || pasteError)}
           aria-describedby={`${id}-hint ${id}-error`}
+          // Rejected pastes leave the value intact; their notice belongs to
+          // this edit, not a later selection made elsewhere in the control.
+          onBlur={() => setPasteError('')}
           onChange={(event) => {
             setPasteError('')
             onChange(event.target.value)
