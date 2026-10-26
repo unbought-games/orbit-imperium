@@ -371,11 +371,7 @@ mod tests {
         );
         let combat = data(&r, CatalogKey::Research(ResearchId::WeaponsTechnology));
         assert!(combat.bonuses.is_empty());
-        for tech in [
-            ResearchId::LaserTechnology,
-            ResearchId::IonTechnology,
-            ResearchId::PlasmaTechnology,
-        ] {
+        for tech in [ResearchId::LaserTechnology, ResearchId::IonTechnology] {
             let projected = data(&r, CatalogKey::Research(tech));
             assert!(projected.bonuses.is_empty());
             assert!(
@@ -397,6 +393,19 @@ mod tests {
                 .bonuses
                 .iter()
                 .any(|b| b.subject == Some(CatalogKey::Ship(ShipType::SmallCargo)))
+        );
+    }
+    #[test]
+    fn standard_plasma_projects_no_per_level_bonuses() {
+        let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+        let projected = data(&r, CatalogKey::Research(ResearchId::PlasmaTechnology));
+        assert!(projected.bonuses.is_empty());
+        assert!(projected.combat.is_none());
+        assert!(
+            projected
+                .facts
+                .iter()
+                .any(|f| f.value.contains("No additional per-level"))
         );
     }
     #[test]
