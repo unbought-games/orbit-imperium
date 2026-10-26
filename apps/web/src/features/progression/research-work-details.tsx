@@ -1,10 +1,12 @@
 import type { Coordinator } from '../../client-model/coordinator'
+import { AlertTriangle } from 'lucide-react'
 import type { researchProgress } from '../../client-model/research-progress'
 import { WorkCancellationButton } from '../work-cancellation-button'
 import { label } from '../../ui/format'
 import { ActiveWorkDetails, RefundAmounts } from './active-work-details'
 import { DetailRow } from './detail-layout'
 import styles from './detail-layout.module.css'
+import noticeStyles from './quote-review.module.css'
 
 export function ResearchWorkDetails({
   research,
@@ -18,8 +20,18 @@ export function ResearchWorkDetails({
   return (
     <ActiveWorkDetails
       label="Active research"
-      title={`${verb} to level ${research.targetLevel}`}
-      accessibleTitle={target}
+      title={
+        <span className={noticeStyles.notice}>
+          <AlertTriangle size={19} aria-hidden="true" />
+          <span>
+            Research Active
+            <small className={noticeStyles.noticeDetail}>
+              {label(research.research)} level {research.targetLevel}
+            </small>
+          </span>
+        </span>
+      }
+      accessibleTitle={`Research Active: ${target}`}
       secondsRemaining={research.secondsRemaining}
       dueAt={research.dueAt}
       status={research.status}

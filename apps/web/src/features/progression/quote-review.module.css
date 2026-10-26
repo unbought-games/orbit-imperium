@@ -1,11 +1,14 @@
-.blockers {
+.blockers,
+.notice {
   padding: 0;
   margin: 0;
   list-style: none;
   color: var(--champagne-light);
   font-size: 0.8125rem;
+  font-weight: 400;
 }
-.blockers li {
+.blockers li,
+.notice {
   display: flex;
   align-items: start;
   gap: 10px;
@@ -14,13 +17,18 @@
   border: 1px solid var(--border-accent);
   background: color-mix(in srgb, var(--accent) 7%, transparent);
 }
-.blockers svg {
+.blockers svg,
+.notice svg {
   flex-shrink: 0;
   color: var(--accent);
 }
-.blockers span {
+.blockers span,
+.notice span {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.noticeDetail {
+  display: block;
 }
 
 .prerequisiteLink {
