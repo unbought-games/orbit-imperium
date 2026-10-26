@@ -97,7 +97,7 @@ test('coordinates are one tab stop with colon and space advancement', async ({
   await input.pressSequentially('1:45 5')
   await expect(input).toHaveValue('1:45:5')
   await input.press('Tab')
-  await expect(page.getByLabel('Destination type')).toBeFocused()
+  await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   await expect(input).toBeFocused()
   await input.press('ArrowRight')

@@ -166,10 +166,12 @@ test('authoritative colony quote rejection explains the position research requir
   await expect.poll(() => requests).toEqual(['Galaxy'])
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
   await setDestination(page, { position: '3' })
+  // The unified control refreshes its system preview for the new mission.
+  await expect.poll(() => requests).toEqual(['Galaxy', 'Galaxy'])
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Astrophysics level 4 is required for this position.')
   await expect(page.getByRole('alert')).not.toContainText('connection')
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(requests).toEqual(['Galaxy', 'ResolveDestination', 'FleetQuote'])
+  expect(requests).toEqual(['Galaxy', 'Galaxy', 'ResolveDestination', 'FleetQuote'])
 })

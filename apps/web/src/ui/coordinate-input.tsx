@@ -13,12 +13,14 @@ export function CoordinateInput({
   universe,
   error,
   label = 'Destination coordinates',
+  embedded = false,
 }: {
   value: string
   onChange: (value: string, target?: LocationKind) => void
   universe: string
   error?: string
   label?: string
+  embedded?: boolean
 }) {
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
@@ -33,7 +35,7 @@ export function CoordinateInput({
     input.current?.setSelectionRange(result.caret, result.caret)
   }
   return (
-    <div className={styles.field}>
+    <div className={`${styles.field} ${embedded ? styles.embedded : ''}`}>
       <label htmlFor={id}>{label}</label>
       <div className={styles.control}>
         <input
@@ -46,8 +48,12 @@ export function CoordinateInput({
           spellCheck={false}
           value={value}
           placeholder="galaxy:system:slot"
+          title={embedded ? 'Type or paste destination coordinates' : undefined}
           aria-invalid={!!(error || pasteError)}
           aria-describedby={`${id}-hint ${id}-error`}
+          // Rejected pastes leave the value intact; their notice belongs to
+          // this edit, not a later selection made elsewhere in the control.
+          onBlur={() => setPasteError('')}
           onChange={(event) => {
             setPasteError('')
             onChange(event.target.value)
@@ -94,7 +100,10 @@ export function CoordinateInput({
           <ChevronRight size={18} />
         </button>
       </div>
-      <small id={`${id}-hint`}>
+      <small
+        id={`${id}-hint`}
+        className={embedded ? styles.silentHint : undefined}
+      >
         Galaxy : system : slot. Colon or Space advances; Tab leaves the field.
       </small>
       <small

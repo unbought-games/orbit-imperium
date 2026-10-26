@@ -18,8 +18,16 @@ export function RichSelect({
   children,
   className,
   onValueChange,
+  disabled = false,
+  anchor,
+  title,
+  popupClassName,
 }: {
   label: string
+  disabled?: boolean
+  anchor?: Select.Positioner.Props['anchor']
+  title?: string
+  popupClassName?: string
   value?: string
   options: RichSelectOption[]
   children: ReactNode
@@ -28,6 +36,7 @@ export function RichSelect({
 }) {
   return (
     <Select.Root
+      disabled={disabled}
       value={value ?? null}
       items={options}
       onValueChange={(next) => {
@@ -36,6 +45,7 @@ export function RichSelect({
     >
       <Select.Trigger
         aria-label={label}
+        title={title}
         data-value={value}
         className={classes(styles.trigger, className)}
       >
@@ -46,13 +56,14 @@ export function RichSelect({
       </Select.Trigger>
       <Select.Portal>
         <Select.Positioner
+          anchor={anchor}
           align="start"
           sideOffset={6}
           collisionPadding={8}
           alignItemWithTrigger={false}
           className={styles.positioner}
         >
-          <Select.Popup className={styles.popup}>
+          <Select.Popup className={classes(styles.popup, popupClassName)}>
             <Select.List className={styles.list} aria-label={label}>
               {options.map((option) => (
                 <Select.Item
