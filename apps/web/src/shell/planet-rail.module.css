@@ -26,20 +26,8 @@
   align-items: center;
   gap: 1px;
   padding: 12px 4px;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  background: transparent;
-  color: #9eb7cb;
-  cursor: pointer;
   font: inherit;
   font-size: 0.75rem;
-}
-.bodies button:hover {
-  background: #304c6277;
-}
-.bodies button[aria-pressed='true'] {
-  border-color: #50748b88;
-  background: #10233499;
 }
 .bodies strong {
   color: #8cbddd;

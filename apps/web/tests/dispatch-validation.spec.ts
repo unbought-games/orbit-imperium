@@ -69,6 +69,7 @@ async function setup(page: Page) {
     destination: null as S['MissionDestination4'] | null,
     observationAvailable: true,
     duration: 100000,
+    fuel: '1000000',
     resolves: 0,
     quotes: 0,
     launches: 0,
@@ -144,7 +145,7 @@ async function setup(page: Page) {
         distance: 1000,
         speeds: [],
         duration_ms: (state.duration * 100) / query.intent.speed_percent,
-        fuel: '1000000',
+        fuel: state.fuel,
         capacity: '5000000000',
         maximum_payload: '4999000000',
         slot_limit: '1',
@@ -362,7 +363,7 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
   state.launchError = null
   const ship = page.getByLabel('Small Cargo · 2 available')
   const cargo = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByLabel(name, { exact: true }),
+    page.getByRole('textbox', { name, exact: true }),
   )
   for (const field of cargo) await field.fill('42')
   await review(page).click()
@@ -378,7 +379,7 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
   await expect(ship).toHaveValue('0')
   await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue('0')
   for (const field of cargo) await expect(field).toHaveValue('0')
-  await expect(page.getByRole('region', { name: 'Flight timing' })).toHaveText(
+  await expect(page.getByRole('region', { name: 'Flight timing' }).locator('p')).toHaveText(
     'Select ships to see flight times.',
   )
   expect(state.launches).toBe(1)
@@ -557,11 +558,18 @@ test('flight timing updates with speed and selected ships without opening review
   const state = await setup(page)
   const timing = page.getByRole('region', { name: 'Flight timing' })
   const ship = page.getByLabel('Small Cargo · 2 available')
-  await ship.fill('')
-  await expect(timing).toHaveText('Select ships to see flight times.')
+  await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
+  await ship.click()
+  const initialShipPosition = (await ship.boundingBox())!.y
+  await ship.press('Backspace')
+  await expect(ship).toHaveValue('')
+  await expect(timing.locator('dd')).toHaveText(['—', '—', '—', '—'])
+  expect((await ship.boundingBox())!.y).toBe(initialShipPosition)
+  await expect(timing.locator('p')).toHaveText('Select ships to see flight times.')
   await ship.fill('1')
   await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
   await expect(timing.locator('dd').nth(2)).toHaveText('3m 20s')
+  expect((await ship.boundingBox())!.y).toBe(initialShipPosition)
   const firstReturn = Date.parse(
     (await timing.locator('time').getAttribute('datetime'))!,
   )
@@ -591,6 +599,43 @@ test('flight timing updates with speed and selected ships without opening review
     path: 'test-results/dispatch-flight-timing-390.png',
   })
 })
+
+for (const width of [320, 390, 1280]) {
+  test(`dispatch groups speed, timing and fuel below cargo at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 })
+    const state = await setup(page)
+    const settings = page.getByRole('group', { name: 'Speed and flight estimates' })
+    const speed = settings.getByRole('combobox', { name: 'Speed', exact: true })
+    const timing = settings.getByRole('region', { name: 'Flight timing' })
+    const fuel = timing.locator('div').filter({ has: page.locator('dt').getByText('Deuterium consumed', { exact: true }) })
+    await expect(timing.locator('dt')).toHaveText(['To destination', 'Back at', 'Total flight', 'Deuterium consumed'])
+    await expect(fuel.locator('dd')).toHaveText('1')
+    await expect(fuel.getByRole('img', { name: 'Deuterium', exact: true })).toBeVisible()
+    const cargoBox = (await page.getByRole('group', { name: 'Cargo', exact: true }).boundingBox())!
+    const speedBox = (await speed.boundingBox())!
+    const timingBox = (await timing.boundingBox())!
+    expect(speedBox.y).toBeGreaterThanOrEqual(cargoBox.y + cargoBox.height)
+    expect(timingBox.y).toBeGreaterThanOrEqual(speedBox.y + speedBox.height)
+    expect((await review(page).boundingBox())!.y).toBeGreaterThanOrEqual(timingBox.y + timingBox.height)
+    state.fuel = '250000000'
+    await speed.selectOption('50')
+    await expect(fuel.locator('dd')).toHaveText('250')
+    await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
+    await mission(page).selectOption('Deploy')
+    await setDestination(page, { position: '2' })
+    await expect(timing.locator('dt')).toHaveText(['To destination', 'Total flight', 'Deuterium consumed'])
+    await expect(timing.locator('time')).toHaveCount(0)
+    await expect(timing.getByText('One-way', { exact: true })).toHaveCount(0)
+    await expect(timing.locator('dd').nth(1)).toHaveText('3m 20s')
+    await expect(fuel.locator('dd')).toHaveText('250')
+    await diagnosticScreenshot(settings, { path: `test-results/dispatch-speed-fuel-${width}.png` })
+    await page.getByLabel('Small Cargo · 2 available').fill('')
+    await expect(timing.locator('dd')).toHaveText(['—', '—', '—'])
+    await expect(timing.getByText('Back at', { exact: true })).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    expect(state.launches).toBe(0)
+  })
+}
 
 test('late timing replies cannot replace a newer speed and failed estimates clear obsolete times', async ({
   page,
@@ -635,11 +680,12 @@ test('Add all fills the fleet capacity without opening review or consuming fuel 
 }) => {
   const state = await setup(page)
   const fields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByLabel(name, { exact: true }),
+    page.getByRole('textbox', { name, exact: true }),
   )
-  await fields[0].fill('invalid')
   await page.getByRole('button', { name: 'Add all', exact: true }).click()
-  await expect(fields[0]).toHaveValue(/^\d+$/)
+  await expect(fields[0]).toHaveValue('1667')
+  await expect(fields[1]).toHaveValue('1666')
+  await expect(fields[2]).toHaveValue('1666')
   const amounts = await Promise.all(
     fields.map(async (field) => BigInt(await field.inputValue())),
   )
@@ -657,34 +703,83 @@ test('Add all fills the fleet capacity without opening review or consuming fuel 
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
 })
 
-test('an edited cargo amount wins over a delayed Add all response', async ({
+for (const action of ['Add all', 'Max deuterium']) {
+  test(`an edited cargo amount wins over a delayed ${action} response`, async ({
+    page,
+  }) => {
+    const state = await setup(page)
+    let release!: () => void
+    let held = false
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    state.hold = async (route) => {
+      if (route.request().postDataJSON().type === 'FleetQuote') {
+        held = true
+        await gate
+      }
+    }
+    await page.getByRole('button', { name: action, exact: true }).click()
+    await expect.poll(() => held).toBe(true)
+    await page.getByLabel('Metal', { exact: true }).fill('42')
+    const response = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/world') &&
+        response.request().postDataJSON().type === 'FleetQuote',
+    )
+    release()
+    await response
+    await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
+    await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
+    await expect(page.getByLabel('Deuterium', { exact: true })).toHaveValue('0')
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
+      0,
+    )
+  })
+}
+
+test('max deuterium keeps other cargo and Add all evenly fills the remaining space', async ({
   page,
 }) => {
   const state = await setup(page)
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  state.hold = async (route) => {
-    if (route.request().postDataJSON().type === 'FleetQuote') {
-      held = true
-      await gate
-    }
-  }
+  const metal = page.getByLabel('Metal', { exact: true })
+  const crystal = page.getByLabel('Crystal', { exact: true })
+  const deuterium = page.getByLabel('Deuterium', { exact: true })
+  await metal.fill('100')
+  await page.getByRole('button', { name: 'Max deuterium', exact: true }).click()
+  const fuelReserved = BigInt(body.amounts.deuterium) / 1000000n - 1n
+  await expect(deuterium).toHaveValue(String(fuelReserved))
+  await expect(metal).toHaveValue('100')
+  await expect(crystal).toHaveValue('0')
   await page.getByRole('button', { name: 'Add all', exact: true }).click()
-  await expect.poll(() => held).toBe(true)
-  await page.getByLabel('Metal', { exact: true }).fill('42')
-  const response = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/world') &&
-      response.request().postDataJSON().type === 'FleetQuote',
-  )
-  release()
-  await response
-  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
-  await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
+  const remaining = 4999n - fuelReserved - 100n
+  await expect(metal).toHaveValue(String(100n + (remaining + 1n) / 2n))
+  await expect(crystal).toHaveValue(String(remaining / 2n))
+  await expect(deuterium).toHaveValue(String(fuelReserved))
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/dispatch-cargo-max.png',
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page
+    .getByRole('group', { name: 'Cargo', exact: true })
+    .scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, {
+    path: 'test-results/dispatch-cargo-max-390.png',
+  })
+})
+
+test('Add all leaves invalid cargo untouched and explains the problem', async ({
+  page,
+}) => {
+  await setup(page)
+  const metal = page.getByLabel('Metal', { exact: true })
+  await metal.fill('invalid')
+  await page.getByRole('button', { name: 'Add all', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('whole nonnegative')
+  await expect(metal).toHaveValue('invalid')
+  await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
 })
 
 test('mission changes keep the same destination visible during refresh but never reuse it for other coordinates', async ({
@@ -736,7 +831,7 @@ test('cleared ship and cargo amounts display zero and submit as zero even before
 }) => {
   await setup(page)
   const cargoFields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByLabel(name, { exact: true }),
+    page.getByRole('textbox', { name, exact: true }),
   )
   const unusedShip = page.getByLabel('Light Fighter · 0 available')
   for (const field of [...cargoFields, unusedShip]) {
@@ -1068,7 +1163,10 @@ for (const width of [320, 390, 1280]) {
       .evaluateAll((elements) =>
         elements.map((element) => element.getBoundingClientRect().height),
       )
-    expect(selectors).toEqual([44, 44, 44])
+    expect(selectors).toEqual([44, 44])
+    const speed = page.getByRole('group', { name: 'Speed and flight estimates' })
+      .getByRole('combobox', { name: 'Speed', exact: true })
+    expect((await speed.boundingBox())!.height).toBe(44)
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width)
@@ -1077,19 +1175,30 @@ for (const width of [320, 390, 1280]) {
     })
     const cargo = page.getByRole('group', { name: 'Cargo', exact: true })
     const cargoBoxes = await cargo
-      .locator('input, button')
+      .locator('input, button:not([aria-label])')
       .evaluateAll((elements) =>
         elements.map((element) => {
-          const { y, height } = element.getBoundingClientRect()
-          return { y, height }
+          const { x, y, width, height } = element.getBoundingClientRect()
+          return { x, y, width, height }
         }),
       )
     expect(cargoBoxes).toHaveLength(4)
-    for (const box of cargoBoxes) {
-      expect(box!.y).toBe(cargoBoxes[0]!.y)
-      expect(box!.height).toBe(44)
+    const wideCargo = (await cargo.boundingBox())!.width >= 520
+    for (const [i, box] of cargoBoxes.entries()) {
+      expect(box.y).toBe(cargoBoxes[0].y + (wideCargo ? 0 : i * 52))
+      expect(box.height).toBe(44)
     }
-    expect((await cargo.boundingBox())!.height).toBeLessThanOrEqual(75)
+    expect((await cargo.boundingBox())!.height).toBeLessThanOrEqual(wideCargo ? 75 : 231)
+    const maxButtons = cargo.getByRole('button', { name: /^Max / })
+    await expect(maxButtons).toHaveCount(3)
+    for (let i = 0; i < 3; i++) {
+      const button = (await maxButtons.nth(i).boundingBox())!
+      const input = cargoBoxes[i]
+      expect(button.x + button.width).toBe(input.x + input.width - 4)
+      expect(button.y).toBe(input.y + 4)
+      expect(button.height).toBe(36)
+      expect(input.width - button.width - 36).toBeGreaterThan(60)
+    }
     const colors = await cargo
       .locator('svg[data-resource]')
       .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).color))

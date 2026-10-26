@@ -302,89 +302,114 @@ function EnergyDetails({
   )
 }
 
+type DecisionCostProps = {
+  cost: components['schemas']['Resources']
+  available: components['schemas']['Resources']
+  forecast: ReturnType<typeof affordabilityForecast>
+}
+
+export function DecisionCostAvailability({
+  cost,
+  available,
+  forecast,
+}: DecisionCostProps) {
+  const missing = resourceShortfalls(cost, available)
+  return (
+    missing.length > 0 && (
+      <span aria-label="Missing resources">
+        <Popover
+          label="Resource availability"
+          className={`${styles.metricTrigger} ${styles.shortfallSummary}`}
+          trigger={
+            <>
+              <span>Missing</span>
+              {missing.map(({ resource, amount }) => (
+                <DetailResourceValue key={resource} resource={resource}>
+                  <ResourceShortfall value={amount} />
+                </DetailResourceValue>
+              ))}
+              <span className={styles.shortfallTime}>
+                {affordabilitySummary(forecast) ??
+                  `Ready in ~${formatDuration(forecast.wait ?? 0)}`}
+              </span>
+            </>
+          }
+        >
+          {missing.map(({ resource, amount }) => (
+            <p key={resource}>
+              {label(resource)}:{' '}
+              <DetailResourceValue resource={resource}>
+                <ResourceShortfall value={amount} />
+              </DetailResourceValue>{' '}
+              more needed.
+            </p>
+          ))}
+          {forecast.blockers.map(({ resource, reason, capacity }) => (
+            <p key={resource}>
+              {label(resource)}:{' '}
+              {reason === 'capacity' ? (
+                <>
+                  cost exceeds storage capacity of{' '}
+                  <DetailResourceValue resource={resource}>
+                    <ResourceNumber value={capacity} />
+                  </DetailResourceValue>
+                  . Upgrade{' '}
+                  {label(
+                    resource === 'deuterium'
+                      ? 'DeuteriumTank'
+                      : resource === 'metal'
+                        ? 'MetalStorage'
+                        : 'CrystalStorage',
+                  )}{' '}
+                  or deliver the missing resources.
+                </>
+              ) : reason === 'draining' ? (
+                'Net production is negative. Increase production, reduce fuel consumption, or deliver resources.'
+              ) : reason === 'no-production' ? (
+                'No net production. Increase production or deliver resources.'
+              ) : (
+                'Current production cannot provide a reliable wait estimate.'
+              )}
+            </p>
+          ))}
+          {forecast.wait !== null && (
+            <p>
+              These resources should be available in about{' '}
+              {formatDuration(forecast.wait)} at current production, if nothing
+              else is spent.
+            </p>
+          )}
+          <p>Other requirements still apply.</p>
+        </Popover>
+      </span>
+    )
+  )
+}
+
 export function DecisionCosts({
   cost,
   available,
   forecast,
   title = 'Cost',
-}: {
-  cost: components['schemas']['Resources']
-  available: components['schemas']['Resources']
-  forecast: ReturnType<typeof affordabilityForecast>
+  placeholder = false,
+  showAvailability = true,
+}: DecisionCostProps & {
   title?: string
+  placeholder?: boolean
+  showAvailability?: boolean
 }) {
-  const missing = resourceShortfalls(cost, available)
   return (
     <DetailRow
       label={title}
       hint={
-        missing.length > 0 && (
-          <span aria-label="Missing resources">
-            <Popover
-              label="Resource availability"
-              className={`${styles.metricTrigger} ${styles.shortfallSummary}`}
-              trigger={
-                <>
-                  <span>Missing</span>
-                  {missing.map(({ resource, amount }) => (
-                    <DetailResourceValue key={resource} resource={resource}>
-                      <ResourceShortfall value={amount} />
-                    </DetailResourceValue>
-                  ))}
-                  <span className={styles.shortfallTime}>
-                    {affordabilitySummary(forecast) ??
-                      `Ready in ~${formatDuration(forecast.wait ?? 0)}`}
-                  </span>
-                </>
-              }
-            >
-              {missing.map(({ resource, amount }) => (
-                <p key={resource}>
-                  {label(resource)}:{' '}
-                  <DetailResourceValue resource={resource}>
-                    <ResourceShortfall value={amount} />
-                  </DetailResourceValue>{' '}
-                  more needed.
-                </p>
-              ))}
-              {forecast.blockers.map(({ resource, reason, capacity }) => (
-                <p key={resource}>
-                  {label(resource)}:{' '}
-                  {reason === 'capacity' ? (
-                    <>
-                      cost exceeds storage capacity of{' '}
-                      <DetailResourceValue resource={resource}>
-                        <ResourceNumber value={capacity} />
-                      </DetailResourceValue>
-                      . Upgrade{' '}
-                      {label(
-                        resource === 'deuterium'
-                          ? 'DeuteriumTank'
-                          : resource === 'metal'
-                            ? 'MetalStorage'
-                            : 'CrystalStorage',
-                      )}{' '}
-                      or deliver the missing resources.
-                    </>
-                  ) : reason === 'draining' ? (
-                    'Net production is negative. Increase production, reduce fuel consumption, or deliver resources.'
-                  ) : reason === 'no-production' ? (
-                    'No net production. Increase production or deliver resources.'
-                  ) : (
-                    'Current production cannot provide a reliable wait estimate.'
-                  )}
-                </p>
-              ))}
-              {forecast.wait !== null && (
-                <p>
-                  These resources should be available in about{' '}
-                  {formatDuration(forecast.wait)} at current production, if
-                  nothing else is spent.
-                </p>
-              )}
-              <p>Other requirements still apply.</p>
-            </Popover>
-          </span>
+        !placeholder &&
+        showAvailability &&
+        resourceShortfalls(cost, available).length > 0 && (
+          <DecisionCostAvailability
+            cost={cost}
+            available={available}
+            forecast={forecast}
+          />
         )
       }
     >
@@ -392,6 +417,7 @@ export function DecisionCosts({
         cost={cost}
         available={available}
         compact
+        placeholder={placeholder}
         showShortfalls={false}
       />
     </DetailRow>

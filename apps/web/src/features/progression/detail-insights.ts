@@ -176,7 +176,7 @@ export function buildingInsights(
               : 'Mine potential at 100% output and full power; planet estimate unavailable'
             : benefit.kind === 'Energy'
               ? production
-                ? 'At saved production settings'
+                ? null
                 : 'At 100% output'
               : null,
         }

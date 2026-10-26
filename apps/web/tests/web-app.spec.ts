@@ -68,6 +68,8 @@ test('iOS installed app keeps scrolling, fixed navigation and menu taps after re
   await shellFixture(page, { protocol: 4 })
   const dock = page.getByRole('navigation', { name: 'Main navigation', exact: true })
   await dock.getByRole('link', { name: 'Develop', exact: true }).tap()
+  await expect(page.locator('main h1')).toHaveText('Resources')
+  let exercisedScroll = false
   for (const height of [844, 640, 844]) {
     await page.setViewportSize({ width: 390, height })
     for (const y of [0, 250, 100000]) {
@@ -77,9 +79,15 @@ test('iOS installed app keeps scrolling, fixed navigation and menu taps after re
         return box.y + box.height
       }).toBe(height)
       expect((await page.getByRole('group', { name: 'Planet and resources' }).boundingBox())!.y).toBe(0)
-      if (y > 0) expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0)
+      // The shorter resource catalog can fit in the tall viewport. Verify the
+      // exact reachable scroll position, and require real scrolling below.
+      const limit = await page.evaluate(() => Math.max(0, document.documentElement.scrollHeight - innerHeight))
+      const expected = Math.min(y, limit)
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(expected)
+      exercisedScroll ||= expected > 0
     }
   }
+  expect(exercisedScroll).toBe(true)
   await dock.getByRole('button', { name: 'Menu', exact: true }).tap()
   const menu = page.getByRole('dialog', { name: 'Navigation', exact: true })
   await expect(menu).toBeVisible()

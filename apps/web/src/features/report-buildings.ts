@@ -17,11 +17,7 @@ export function groupReportBuildings(value: Record<string, unknown>) {
   return [
     {
       title: 'Resource buildings',
-      rows: take(
-        resourceBuildings
-          .filter((building) => building.id !== 'SolarSatellite')
-          .map((building) => building.id),
-      ),
+      rows: take(resourceBuildings.map((building) => building.id)),
     },
     { title: 'Facility buildings', rows: take(facilityIds) },
     {

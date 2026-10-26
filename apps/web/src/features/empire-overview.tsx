@@ -487,9 +487,6 @@ function PlanetDossier({
         </section>
       </details>
       <div className={styles.cardFooter}>
-        <Destination view={view} body={body.id} page="facilities">
-          Facilities <ArrowUpRight size={13} />
-        </Destination>
         <Destination view={view} body={body.id} page="dispatch">
           Dispatch fleet <ArrowUpRight size={13} />
         </Destination>

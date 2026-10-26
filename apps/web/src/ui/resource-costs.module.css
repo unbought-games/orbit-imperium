@@ -40,10 +40,6 @@
   min-height: 44px;
   width: 100%;
   text-align: left;
-  background: transparent;
-  border: 0;
-  color: var(--text);
-  cursor: pointer;
   font: inherit;
 }
 .material svg {
@@ -59,10 +55,6 @@
 }
 .material strong {
   font-weight: 400;
-}
-.material:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
 }
 .shortfall {
   color: var(--danger);
@@ -179,14 +171,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: inherit;
-  background: none;
-  border: 0;
   padding: 0;
   min-height: 44px;
   text-align: left;
   font: inherit;
-  cursor: pointer;
 }
 .compactMaterial svg {
   flex-shrink: 0;

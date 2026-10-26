@@ -1,11 +1,7 @@
 .resource {
   min-width: 0;
-  border: 0;
   padding: 0 0 4px;
-  color: #b9cedd;
   font: inherit;
-  background: none;
-  cursor: pointer;
   text-align: center;
   text-decoration: none;
   font-variant-numeric: tabular-nums;
@@ -55,11 +51,10 @@
   outline-color: #9bd1ee;
   filter: brightness(1.2);
 }
-.resource:focus-visible {
+.resource:not([data-button-variant]):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 4px;
 }
-.warning,
 .warning strong {
   color: var(--danger);
 }
@@ -103,16 +98,11 @@
   height: 24px;
   flex-shrink: 0;
 }
-.stock.warning,
 .stock.warning strong {
   color: var(--accent);
 }
-.stock.energy.warning,
 .stock.energy.warning strong {
   color: var(--danger);
-}
-.stock:hover {
-  background: #ffffff04;
 }
 .compactAmount {
   white-space: nowrap;
@@ -135,15 +125,5 @@
     font-size: 0.75rem;
     font-weight: 600;
     overflow-wrap: normal;
-  }
-}
-@media (max-width: 359px) {
-  .stock {
-    gap: 4px;
-    padding-inline: 0;
-  }
-  .stock .symbol {
-    width: 14px;
-    height: 14px;
   }
 }

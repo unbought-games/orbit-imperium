@@ -157,7 +157,6 @@ export function CoordinateLink({
             size="icon"
             padding="compact"
             type="button"
-            className={styles.control}
             onClick={() => void copy(false)}
             aria-label={`Copy coordinates ${text}`}
             title={feedback || 'Copy coordinates'}
@@ -171,7 +170,6 @@ export function CoordinateLink({
           <Menu.Root onOpenChange={() => setFeedback('')}>
             <Menu.Trigger
               render={<Button variant="ghost" size="icon" padding="compact" />}
-              className={styles.control}
               aria-label={`Location actions for ${text}`}
               title="Location actions"
             >

@@ -36,16 +36,7 @@
   flex: 1;
   padding: 10px 6px;
   min-height: 44px;
-  background: transparent;
-  color: var(--text-muted);
-  border: 0;
-  border-bottom: 1px solid var(--border);
   font: inherit;
-  cursor: pointer;
-}
-.tabs [aria-selected='true'] {
-  color: var(--accent);
-  border-color: var(--accent);
 }
 .content {
   min-height: 360px;
