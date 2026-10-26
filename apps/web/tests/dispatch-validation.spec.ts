@@ -637,9 +637,10 @@ test('Add all fills the fleet capacity without opening review or consuming fuel 
   const fields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
     page.getByLabel(name, { exact: true }),
   )
-  await fields[0].fill('invalid')
   await page.getByRole('button', { name: 'Add all', exact: true }).click()
-  await expect(fields[0]).toHaveValue(/^\d+$/)
+  await expect(fields[0]).toHaveValue('1667')
+  await expect(fields[1]).toHaveValue('1666')
+  await expect(fields[2]).toHaveValue('1666')
   const amounts = await Promise.all(
     fields.map(async (field) => BigInt(await field.inputValue())),
   )
@@ -657,34 +658,83 @@ test('Add all fills the fleet capacity without opening review or consuming fuel 
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
 })
 
-test('an edited cargo amount wins over a delayed Add all response', async ({
+for (const action of ['Add all', 'Max deuterium']) {
+  test(`an edited cargo amount wins over a delayed ${action} response`, async ({
+    page,
+  }) => {
+    const state = await setup(page)
+    let release!: () => void
+    let held = false
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    state.hold = async (route) => {
+      if (route.request().postDataJSON().type === 'FleetQuote') {
+        held = true
+        await gate
+      }
+    }
+    await page.getByRole('button', { name: action, exact: true }).click()
+    await expect.poll(() => held).toBe(true)
+    await page.getByLabel('Metal', { exact: true }).fill('42')
+    const response = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/world') &&
+        response.request().postDataJSON().type === 'FleetQuote',
+    )
+    release()
+    await response
+    await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
+    await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
+    await expect(page.getByLabel('Deuterium', { exact: true })).toHaveValue('0')
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
+      0,
+    )
+  })
+}
+
+test('max deuterium keeps other cargo and Add all evenly fills the remaining space', async ({
   page,
 }) => {
   const state = await setup(page)
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  state.hold = async (route) => {
-    if (route.request().postDataJSON().type === 'FleetQuote') {
-      held = true
-      await gate
-    }
-  }
+  const metal = page.getByLabel('Metal', { exact: true })
+  const crystal = page.getByLabel('Crystal', { exact: true })
+  const deuterium = page.getByLabel('Deuterium', { exact: true })
+  await metal.fill('100')
+  await page.getByRole('button', { name: 'Max deuterium', exact: true }).click()
+  const fuelReserved = BigInt(body.amounts.deuterium) / 1000000n - 1n
+  await expect(deuterium).toHaveValue(String(fuelReserved))
+  await expect(metal).toHaveValue('100')
+  await expect(crystal).toHaveValue('0')
   await page.getByRole('button', { name: 'Add all', exact: true }).click()
-  await expect.poll(() => held).toBe(true)
-  await page.getByLabel('Metal', { exact: true }).fill('42')
-  const response = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/world') &&
-      response.request().postDataJSON().type === 'FleetQuote',
-  )
-  release()
-  await response
-  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
-  await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
+  const remaining = 4999n - fuelReserved - 100n
+  await expect(metal).toHaveValue(String(100n + (remaining + 1n) / 2n))
+  await expect(crystal).toHaveValue(String(remaining / 2n))
+  await expect(deuterium).toHaveValue(String(fuelReserved))
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/dispatch-cargo-max.png',
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page
+    .getByRole('group', { name: 'Cargo', exact: true })
+    .scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, {
+    path: 'test-results/dispatch-cargo-max-390.png',
+  })
+})
+
+test('Add all leaves invalid cargo untouched and explains the problem', async ({
+  page,
+}) => {
+  await setup(page)
+  const metal = page.getByLabel('Metal', { exact: true })
+  await metal.fill('invalid')
+  await page.getByRole('button', { name: 'Add all', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('whole nonnegative')
+  await expect(metal).toHaveValue('invalid')
+  await expect(page.getByLabel('Crystal', { exact: true })).toHaveValue('0')
 })
 
 test('mission changes keep the same destination visible during refresh but never reuse it for other coordinates', async ({
@@ -1077,19 +1127,30 @@ for (const width of [320, 390, 1280]) {
     })
     const cargo = page.getByRole('group', { name: 'Cargo', exact: true })
     const cargoBoxes = await cargo
-      .locator('input, button')
+      .locator('input, button:not([aria-label])')
       .evaluateAll((elements) =>
         elements.map((element) => {
-          const { y, height } = element.getBoundingClientRect()
-          return { y, height }
+          const { x, y, width, height } = element.getBoundingClientRect()
+          return { x, y, width, height }
         }),
       )
     expect(cargoBoxes).toHaveLength(4)
-    for (const box of cargoBoxes) {
-      expect(box!.y).toBe(cargoBoxes[0]!.y)
-      expect(box!.height).toBe(44)
+    const wideCargo = (await cargo.boundingBox())!.width >= 520
+    for (const [i, box] of cargoBoxes.entries()) {
+      expect(box.y).toBe(cargoBoxes[0].y + (wideCargo ? 0 : i * 52))
+      expect(box.height).toBe(44)
     }
-    expect((await cargo.boundingBox())!.height).toBeLessThanOrEqual(75)
+    expect((await cargo.boundingBox())!.height).toBeLessThanOrEqual(wideCargo ? 75 : 231)
+    const maxButtons = cargo.getByRole('button', { name: /^Max / })
+    await expect(maxButtons).toHaveCount(3)
+    for (let i = 0; i < 3; i++) {
+      const button = (await maxButtons.nth(i).boundingBox())!
+      const input = cargoBoxes[i]
+      expect(button.x + button.width).toBe(input.x + input.width - 4)
+      expect(button.y).toBe(input.y + 4)
+      expect(button.height).toBe(36)
+      expect(input.width - button.width - 36).toBeGreaterThan(60)
+    }
     const colors = await cargo
       .locator('svg[data-resource]')
       .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).color))

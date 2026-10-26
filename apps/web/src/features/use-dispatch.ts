@@ -10,7 +10,11 @@ import {
   currentServerTime,
   projectGameView,
 } from '../client-model/game-projection'
-import { allDispatchCargo } from '../client-model/dispatch-cargo'
+import {
+  allDispatchCargo,
+  maxDispatchCargo,
+} from '../client-model/dispatch-cargo'
+import { resourceNames } from '../client-model/resources'
 import {
   dispatchShips,
   dispatchSelection,
@@ -273,7 +277,7 @@ export function useDispatch({
     const id = await sending
     if (!id && requestGeneration === generation.current) setSubmitted(null)
   }
-  async function review(addAllCargo = false) {
+  async function review(fillCargo?: 'all' | (typeof resourceNames)[number]) {
     const requestGeneration = ++generation.current
     setSubmitted(null)
     setError('')
@@ -326,7 +330,7 @@ export function useDispatch({
         destination,
       )
       if (observationProblem) throw Error(observationProblem)
-      const cargoAmounts = addAllCargo
+      const cargoAmounts = fillCargo
         ? ['0', '0', '0']
         : cargo.map(dispatchQuantity)
       const intent: S['FleetIntent4'] = {
@@ -351,13 +355,26 @@ export function useDispatch({
         throw Error(
           'Unable to confirm this fleet quote. Review it again after reconnecting.',
         )
-      if (addAllCargo) {
+      if (fillCargo) {
         const origin = projectGameView(model.store.getState())?.bodies.find(
           (candidate) => candidate.id === body.id,
         )
         if (!origin) return
         setCargo(
-          allDispatchCargo(origin.amounts, terms.maximum_payload, terms.fuel),
+          fillCargo === 'all'
+            ? allDispatchCargo(
+                origin.amounts,
+                terms.maximum_payload,
+                terms.fuel,
+                cargo,
+              )
+            : maxDispatchCargo(
+                origin.amounts,
+                terms.maximum_payload,
+                terms.fuel,
+                cargo,
+                fillCargo,
+              ),
         )
       } else setQuote(terms)
     } catch (e) {
@@ -381,7 +398,8 @@ export function useDispatch({
         (timingShips.length === 0
           ? 'Select ships to see flight times.'
           : timing?.error),
-    addAllCargo: () => review(true),
+    addAllCargo: () => review('all'),
+    maxCargo: (resource: (typeof resourceNames)[number]) => review(resource),
     destinationText,
     setDestinationText,
     targetKind,
