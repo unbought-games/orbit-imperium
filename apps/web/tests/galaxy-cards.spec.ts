@@ -628,6 +628,8 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   let revision = 1
   const missions: components['schemas']['MissionView4'] = { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '3' }
   await setup(page, null, { missions, viewerRevision: () => String(revision) })
+  const slots = page.getByText(/^Fleet slots: \d+ used \/ 3 total$/)
+  await expect(slots).toHaveText('Fleet slots: 0 used / 3 total')
   let quotes = 0, launches = 0
   let releaseQuote!: () => void, releaseLaunch!: () => void
   const quoteGate = new Promise<void>(resolve => { releaseQuote = resolve })
@@ -681,9 +683,11 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   releaseQuote()
   await expect.poll(() => launches).toBe(1)
   await expect(target.getByRole('status')).toContainText('Espionage departure pending')
+  await expect(slots).toHaveText('Fleet slots: 1 used / 3 total')
   expect(intents[0]).toEqual({ origin: body.id, destination: { type: 'Body', id: id(21), expected_owner: id(31), expected_kind: 'Planet' }, mission: 'Espionage', ships: [{ owner: binding.player, ship_type: 'EspionageProbe', count: '1' }], cargo: { metal: '0', crystal: '0', deuterium: '0' }, speed_percent: 100 })
   releaseLaunch()
   await finishRefresh(1)
+  await expect(slots).toHaveText('Fleet slots: 1 used / 3 total')
   await expect(target.getByRole('status')).toHaveText(/Espionage en route · \d/)
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
@@ -693,6 +697,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   missions.fleets[0].leg = 'Returning'; revision++
   await refreshGame(page)
   await finishRefresh(2)
+  await expect(slots).toHaveText('Fleet slots: 1 used / 3 total')
   await expect(target.locator('summary')).toBeFocused()
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollY)
   await expect(target.getByRole('status')).toHaveCount(0)
@@ -700,6 +705,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   missions.fleets = []; revision++
   await refreshGame(page)
   await finishRefresh(3)
+  await expect(slots).toHaveText('Fleet slots: 0 used / 3 total')
   await expect(target.locator('summary')).toBeFocused()
   await expect(rows.first().getByRole('status')).toHaveCount(0)
   expect(quotes).toBe(1)

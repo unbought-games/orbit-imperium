@@ -8,7 +8,7 @@ import { Link } from '../ui/link'
 import { bodyName, label } from '../ui/format'
 import { NumberValue } from '../ui/number-value'
 import { Heading, Text } from '../ui/typography'
-import { unitCounts } from './progression/unit-counts'
+import { fleetInventoryRows } from './fleet-inventory-model'
 import styles from './fleet-inventory.module.css'
 
 export function FleetInventory({
@@ -24,7 +24,8 @@ export function FleetInventory({
   if (!view || view.protocol === 2) return null
   const body = view.bodies.find((candidate) => candidate.id === origin)
   if (!body) return null
-  const ships = view.catalog.filter((entry) => entry.key.kind === 'Ship')
+  const ships = fleetInventoryRows(view, body)
+  const hasCatalog = view.catalog.some((entry) => entry.key.kind === 'Ship')
   const empty = !body.inventories.some(
     (inventory) =>
       inventory.item.kind === 'Ship' && BigInt(inventory.count) > 0n,
@@ -60,53 +61,76 @@ export function FleetInventory({
           wait for a fleet to return.
         </Text>
       )}
-      <ul className={styles.ships}>
-        {ships.map((entry) => {
-          const counts = unitCounts(view, body, entry)
-          const name = label(entry.key.id)
-          return (
-            <li key={entry.key.id} aria-label={name} className={styles.ship}>
-              <Heading level={3}>{name}</Heading>
-              <dl className={styles.counts}>
-                <div>
-                  <dt>Stationed</dt>
-                  <dd>
-                    <NumberValue value={counts.stationed} />
-                  </dd>
-                </div>
-                <div>
-                  <dt>Flying</dt>
-                  <dd>
-                    {counts.flying === null ? (
-                      entry.mobile ? (
-                        'Unknown'
+      {ships.length > 0 && (
+        <div
+          className={styles.tableScroll}
+          role="region"
+          aria-label="Ship inventory table"
+          tabIndex={0}
+        >
+          <table className={styles.ships} aria-label="Ship inventory">
+            <thead>
+              <tr>
+                <th scope="col">Ship</th>
+                <th scope="col">Stationed</th>
+                <th scope="col">Flying</th>
+                <th scope="col">Queued</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ships.map(({ entry, counts }) => {
+                const name = label(entry.key.id)
+                return (
+                  <tr key={entry.key.id}>
+                    <th scope="row">
+                      <Link
+                        {...routeTarget(
+                          universe,
+                          'shipyard',
+                          body.id,
+                          entry.key.id,
+                        )}
+                        aria-label={`Build more ${name} in Shipyard`}
+                        title={`Build more ${name} in Shipyard`}
+                        className={styles.build}
+                      >
+                        {name}
+                      </Link>
+                    </th>
+                    <td>
+                      <NumberValue value={counts.stationed} />
+                    </td>
+                    <td>
+                      {counts.flying === null ? (
+                        entry.mobile ? (
+                          'Unknown'
+                        ) : (
+                          '—'
+                        )
                       ) : (
-                        'Stationary'
-                      )
-                    ) : (
-                      <NumberValue value={counts.flying} />
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Queued</dt>
-                  <dd>
-                    <NumberValue value={counts.ordered} />
-                  </dd>
-                </div>
-              </dl>
-              <Link
-                {...routeTarget(universe, 'shipyard', body.id, entry.key.id)}
-                aria-label={`Build more ${name} in Shipyard`}
-                className={styles.build}
-              >
-                Build more in Shipyard
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
-      {!ships.length && (
+                        <NumberValue value={counts.flying} />
+                      )}
+                      {counts.flying === null && !entry.mobile && (
+                        <span className={styles.srOnly}>Stationary</span>
+                      )}
+                    </td>
+                    <td>
+                      <NumberValue value={counts.ordered} />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {hasCatalog && (
+        <Text>
+          Ship types with no stationed, flying or queued ships are hidden.
+          Select a ship to open it in the Shipyard.
+        </Text>
+      )}
+      {!hasCatalog && (
         <Text>
           Ship details are unavailable. Open the Shipyard to check this world's
           catalog.

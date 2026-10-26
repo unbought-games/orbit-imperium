@@ -1256,3 +1256,26 @@ test('historical review tucks observation context into accessible flight details
   await expect(context).toBeVisible()
   await expect(context).toContainText('historical information')
 })
+
+for (const width of [320, 390, 1280]) {
+  test(`dispatch review keeps each ship and count on its own row at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await setup(page)
+    await page.getByLabel('Recycler · 1 available').fill('1')
+    await page.getByLabel('Colony Ship · 1 available').fill('1')
+    await review(page).click()
+    const quote = page.getByRole('region', { name: 'Fleet quote' })
+    const ships = quote.getByRole('list', { name: 'Ship composition' })
+    await expect(ships.getByRole('listitem')).toHaveText(['Recycler 1', 'Colony Ship 1', 'Small Cargo 1'])
+    const rows = await ships.getByRole('listitem').evaluateAll(elements => elements.map(element => {
+      const [name, count] = Array.from(element.children).map(child => child.getBoundingClientRect())
+      return { nameTop: name.top, countTop: count.top, bottom: element.getBoundingClientRect().bottom, top: element.getBoundingClientRect().top }
+    }))
+    for (const [index, row] of rows.entries()) {
+      expect(row.nameTop).toBe(row.countTop)
+      if (index > 0) expect(row.top).toBeGreaterThanOrEqual(rows[index - 1].bottom)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-composition-${width}.png`, fullPage: true })
+  })
+}

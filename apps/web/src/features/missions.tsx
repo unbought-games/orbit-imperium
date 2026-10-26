@@ -6,6 +6,7 @@ import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useUniverseName } from '../shell/session-context'
 import { DispatchReview } from './dispatch-review'
 import { useStore } from 'zustand'
+import { FleetSlots } from './fleet-slots'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { useDispatch } from './use-dispatch'
 import { canSubmitQuote } from '../client-model/game-projection'
@@ -108,8 +109,11 @@ export function Dispatch({
           <TaskHeader>
             <span>
               Origin {bodyName(body)}{' '}
-              <CoordinateLink at={body.coordinates} label="origin" /> · Fleet
-              slots: {occupiedSlots} / {view.missions.fleet_slots}
+              <CoordinateLink at={body.coordinates} label="origin" /> ·{' '}
+              <FleetSlots
+                used={occupiedSlots}
+                total={view.missions.fleet_slots}
+              />
             </span>
           </TaskHeader>
           {targetName && (
@@ -387,8 +391,11 @@ export function Dispatch({
             <CoordinateLink at={body.coordinates} label="origin" />
           </Heading>
           <Text>
-            Fleet slots: {occupiedSlots} / {view.missions.fleet_slots}.
-            Returning fleets occupy a slot.
+            <FleetSlots
+              used={occupiedSlots}
+              total={view.missions.fleet_slots}
+            />
+            . Returning fleets occupy a slot.
           </Text>
           <Text>
             Review checks the current destination, fuel, capacity and mission

@@ -1422,7 +1422,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   })
   await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   const mission = page.getByRole('article', { name: 'Transport fleet' })
-  await expect(mission).toContainText('4 Small Cargo')
+  await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
   await expect(mission).toContainText('6m')
   await expect(mission).toContainText(/6m \d+s/)
   await expect(mission.locator('time')).toHaveAttribute(
@@ -1440,7 +1440,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await selectBody(page, id(6))
   await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets/${fleet.id}`)
   await page.reload()
-  await expect(mission).toContainText('4 Small Cargo')
+  await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
   await page.goto(`/u/andromeda/fleets/${fleet.id}?body=${body.id}`)
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   await expect(mission).toContainText('2,000')
@@ -1519,8 +1519,9 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await page.route('**/art/**', (route) => route.abort())
   await page.reload()
   await expect(
-    page.getByRole('article', { name: 'Transport fleet' }),
-  ).toContainText('4 Small Cargo')
+    page.getByRole('article', { name: 'Transport fleet' })
+      .getByRole('list', { name: 'Ship composition' }).getByRole('listitem'),
+  ).toHaveText(['Small Cargo 4'])
   await page.getByRole('button', { name: 'Review recall', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Review recall' }),
@@ -1865,7 +1866,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue('1')
   await expect(
     page.getByRole('complementary', { name: 'Departure context' }),
-  ).toContainText('Fleet slots: 1 / 5')
+  ).toContainText('Fleet slots: 1 used / 5 total')
   const recovery = page.getByLabel('Action needs attention')
   // Exercise recovery explicitly so this assertion does not depend on whether
   // the background receipt poll runs before the layout checks finish.
@@ -1885,7 +1886,8 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     ).toBe('static')
     const noticeBox = await recovery.boundingBox()
     const intro = await page
-      .getByText(/Origin .*Fleet slots:/)
+      .getByText(/^Fleet slots: .* used \/ .* total$/)
+      .first()
       .boundingBox()
     expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
     for (const control of [

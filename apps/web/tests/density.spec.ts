@@ -408,7 +408,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByText(/Fleet slots:/)).toBeVisible()
       }
       if (route === 'dispatch') {
-        await expect(page.getByText(/Origin .*Fleet slots:/)).toBeVisible()
+        await expect(page.getByText(/^Fleet slots: .* used \/ .* total$/).first()).toBeVisible()
         await expect(page.getByRole('group', { name: 'Mission and destination' })).toBeVisible()
       }
     }
@@ -537,7 +537,7 @@ for (const width of [320, 390, 1440]) {
     await expect(attack).toContainText('Ship composition unknown')
     await expect(spy).toContainText('3 ships · Types unknown')
     await expect(transport).toContainText('8 ships · Small Cargo, Large Cargo')
-    await expect(deploy).toContainText('2 Light Fighter')
+    await expect(deploy.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Light Fighter 2'])
     await expect(attack).not.toContainText('Small Cargo')
     await expect(spy).not.toContainText('Espionage Probe')
     const danger = await page

@@ -298,7 +298,7 @@ test('Cruisers can be selected, quoted and launched in an attack fleet', async (
   await page.getByRole('textbox', { name: 'Cruiser · 2 available' }).fill('2')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
-  await expect(quote).toContainText('2 Cruiser')
+  await expect(quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Cruiser 2'])
   await quote.getByRole('button', { name: /^Attack with / }).click()
   await expect
     .poll(() => sent)
