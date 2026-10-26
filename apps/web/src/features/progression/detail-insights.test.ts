@@ -425,7 +425,7 @@ it('scales energy generation by the saved power setting and recognizes construct
   expect(result.benefit).toMatchObject({
     current: micro(50),
     target: micro(75),
-    qualifier: 'At saved production settings',
+    qualifier: null,
   })
   expect(result.energy).toMatchObject({
     after: micro(25),

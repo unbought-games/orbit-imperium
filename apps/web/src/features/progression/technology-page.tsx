@@ -98,9 +98,6 @@ export function TechnologyPage(props: ProgressionProps) {
   }
   return (
     <>
-      {page === 'shipyard' && (
-        <ShipComparison catalog={view.catalog} research={view.research} />
-      )}
       <WorkSummaries
         view={view}
         body={body}
@@ -197,6 +194,9 @@ export function TechnologyPage(props: ProgressionProps) {
         ))}
       </div>
       {!entries.length && <p>No catalog is available for this planet.</p>}
+      {page === 'shipyard' && (
+        <ShipComparison catalog={view.catalog} research={view.research} />
+      )}
     </>
   )
 }
@@ -233,12 +233,6 @@ function TechnologyInspector({
     error: requestError,
     retry,
   } = useProgressionOptions(model, view, request)
-  const error =
-    quantity !== '0' &&
-    !technologyRequest(selected.key, body.id, action, quantity) &&
-    (selected.key.kind === 'Ship' || selected.key.kind === 'Defense')
-      ? 'Enter a positive whole quantity within the supported range.'
-      : requestError
   function inspect(nextAction: 'Upgrade' | 'Demolition' = 'Upgrade') {
     setAction(nextAction)
     retry()
@@ -253,7 +247,7 @@ function TechnologyInspector({
             level={Number(count)}
             proposal={proposal}
             loading={loading}
-            error={error}
+            error={requestError}
             action={action}
             onInspect={inspect}
           />
@@ -273,7 +267,7 @@ function TechnologyInspector({
           count={count}
           proposal={proposal}
           loading={loading}
-          error={error}
+          error={requestError}
           quantity={quantity}
           onQuantity={setQuantity}
           onInspect={() => inspect()}

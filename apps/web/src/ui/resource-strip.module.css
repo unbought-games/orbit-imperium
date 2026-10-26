@@ -9,11 +9,13 @@
 @media (max-width: 767px) {
   .resources {
     display: flex;
-    flex-wrap: wrap;
+    width: max-content;
+    justify-content: flex-end;
+    gap: 4px;
   }
   .resources > button,
   .resources > a {
-    flex: 1 0 auto;
-    min-width: min(100%, 3rem);
+    flex: 0 0 auto;
+    min-width: 3rem;
   }
 }

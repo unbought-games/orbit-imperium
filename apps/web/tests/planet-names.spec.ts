@@ -394,3 +394,96 @@ test('completed rename stays closed after its command leaves recent history', as
     0,
   )
 })
+
+test('ghost controls share default, hover, focus, pressed and disabled styles', async ({
+  page,
+}) => {
+  await shellFixture(page, {
+    protocol: 4,
+    bodies: [{ ...body, name: 'Terra' }],
+  })
+  const rename = page.getByRole('button', { name: 'Rename planet [1:371:12]' })
+  const dossier = page.getByRole('article', {
+    name: 'Terra [1:371:12] dossier',
+    exact: true,
+  })
+  const copy = dossier.getByRole('button', {
+    name: 'Copy coordinates [1:371:12]',
+    exact: true,
+  })
+  const menu = dossier.getByRole('button', {
+    name: 'Location actions for [1:371:12]',
+    exact: true,
+  })
+  const gray = 'rgb(182, 198, 214)'
+  const foreground = 'rgb(232, 230, 223)'
+  const hoverBackground = 'rgba(255, 255, 255, 0.08)'
+  await rename.click()
+  const save = page.getByRole('button', { name: 'Save name', exact: true })
+  const cancel = page.getByRole('button', { name: 'Cancel', exact: true })
+  await expect(save).toBeDisabled()
+  await save.hover({ force: true })
+  await expect(save).toHaveCSS('opacity', '0.5')
+  await expect(save).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(save).toHaveCSS('cursor', 'not-allowed')
+  await page.getByRole('textbox', { name: 'Planet name' }).fill('New Terra')
+  await expect(save).toBeEnabled()
+
+  for (const control of [
+    save,
+    cancel,
+    copy,
+    menu,
+    page.getByRole('button', { name: 'Menu', exact: true }),
+  ]) {
+    await page.mouse.move(0, 0)
+    await control.blur()
+    await expect(control).toHaveCSS('color', gray)
+    await expect(control).toHaveCSS('opacity', '1')
+    await expect(control).toHaveCSS('border-radius', '5px')
+    await expect(control).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    await control.hover()
+    await expect(control).toHaveCSS('color', foreground)
+    await expect(control).toHaveCSS('background-color', hoverBackground)
+    await page.mouse.move(0, 0)
+    await page.keyboard.press('Tab')
+    await control.focus()
+    await expect(control).toBeFocused()
+    await expect(control).toHaveCSS('outline-style', 'solid')
+    await expect(control).toHaveCSS('outline-width', '3px')
+    await expect(control).toHaveCSS('background-color', hoverBackground)
+    await control.blur()
+  }
+
+  await cancel.hover()
+  await page.mouse.down()
+  await expect(cancel).toHaveCSS(
+    'background-color',
+    'rgba(255, 255, 255, 0.14)',
+  )
+  await page.mouse.move(0, 0)
+  await page.mouse.up()
+  await menu.click()
+  await page.mouse.move(0, 0)
+  await expect(menu).toHaveAttribute('aria-expanded', 'true')
+  await expect(menu).toHaveCSS('background-color', hoverBackground)
+  await page.keyboard.press('Escape')
+  await cancel.click()
+  await rename.blur()
+  await expect(rename).toHaveCSS('color', gray)
+
+  await page.emulateMedia({ forcedColors: 'active' })
+  await copy.hover()
+  const systemColors = await page.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'ButtonText'
+    probe.style.backgroundColor = 'ButtonFace'
+    document.body.append(probe)
+    const style = getComputedStyle(probe)
+    const colors = { color: style.color, background: style.backgroundColor }
+    probe.remove()
+    return colors
+  })
+  await expect(copy).toHaveCSS('color', systemColors.color)
+  await expect(copy).toHaveCSS('background-color', systemColors.background)
+})

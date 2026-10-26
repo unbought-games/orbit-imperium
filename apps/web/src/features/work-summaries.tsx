@@ -345,6 +345,22 @@ export function WorkSummaries({
                         Unavailable in this universe
                       </span>
                     ))}
+                  {category === 'buildings' &&
+                    currentPage === 'overview' &&
+                    resolveDestination(
+                      {
+                        universe: view.binding.universe,
+                        page: 'facilities',
+                        body: body.id,
+                      },
+                      view,
+                    ).available && (
+                      <Link
+                        {...routeTarget(universeName, 'facilities', body.id)}
+                      >
+                        Facilities <ArrowRight size={12} aria-hidden="true" />
+                      </Link>
+                    )}
                   {category === 'manufacturing' &&
                     currentPage !== 'defense' &&
                     resolveDestination(

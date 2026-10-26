@@ -327,6 +327,41 @@ test('mobile resource stock uses icons and compact balances with capacity detail
   await expect(details).toContainText('Above capacity')
 })
 
+test('mobile planet selector grows into free space while resource widths stay fixed', async ({ page }) => {
+  const name = 'Nova Roma Research Colony'
+  await page.setViewportSize({ width: 390, height: 844 })
+  await shellFixture(page, {
+    bodies: [{ ...body, name }],
+  })
+  const selector = page.getByRole('combobox', { name: 'Selected body' })
+  const label = selector.getByText(name, { exact: true })
+  const ledger = page.getByLabel('Current resources')
+  const widths = async () => Promise.all(
+    (await ledger.locator(':scope > button, :scope > a').all()).map(async resource =>
+      (await resource.boundingBox())!.width,
+    ),
+  )
+  const baseline = await widths()
+  const compact = (await selector.boundingBox())!
+  expect(await label.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
+  for (const width of [440, 767, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    const planet = (await selector.boundingBox())!
+    const stock = (await ledger.boundingBox())!
+    const gutter = width < 360 ? 8 : 18
+    expect(planet.x).toBe(gutter)
+    expect(stock.x + stock.width).toBeCloseTo(width - gutter, 1)
+    expect(planet.x + planet.width).toBeCloseTo(stock.x - 4, 1)
+    expect(await widths()).toEqual(baseline)
+    expect(stock.height).toBe(44)
+    if (width === 767) {
+      expect(planet.width - compact.width).toBeCloseTo(767 - 390, 1)
+      expect(await label.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+})
+
 test('mobile top bar stays pinned while content scrolls beneath it and details remain usable', async ({
   page,
 }) => {
@@ -1883,11 +1918,18 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expect(
       await recovery.evaluate((element) => getComputedStyle(element).position),
     ).toBe('static')
-    const noticeBox = await recovery.boundingBox()
-    const intro = await page
+    // Read both boxes in one frame: resize and focus restoration can change
+    // scroll/header offsets between separate browser round trips.
+    const bounds = await page
       .getByText(/Origin .*Fleet slots:/)
-      .boundingBox()
-    expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
+      .evaluate((intro) => {
+        const notice = document.querySelector('aside[aria-label="Action needs attention"]')!
+        return {
+          noticeBottom: notice.getBoundingClientRect().bottom,
+          introTop: intro.getBoundingClientRect().top,
+        }
+      })
+    expect(bounds.noticeBottom).toBeLessThanOrEqual(bounds.introTop)
     for (const control of [
       page.getByRole('combobox', { name: 'Selected body' }),
       page.getByRole('button', { name: 'Menu', exact: true }),
@@ -2870,5 +2912,63 @@ for (const mission of ['Attack', 'Espionage'] as const) {
     await expect(bar.getByRole('status')).toHaveText('')
     await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(133, 115, 84)')
     expect((await overlay()).content).toBe('none')
+  })
+}
+
+for (const width of [390, 1440]) {
+  test(`Develop activity badges follow each planet and account-wide research at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    let revision = 1
+    const options: NonNullable<Parameters<typeof shellFixture>[1]> = {
+      protocol: 4,
+      bodies: [body, { ...body, id: id(6), coordinates: { galaxy: 1, system: 1, position: 8 } }],
+      constructions: [], manufacturing: [], researchOperation: null,
+      viewerRevision: () => String(revision),
+    }
+    await shellFixture(page, options)
+    await navigate(page, 'Resources')
+    const nav = page.getByRole('navigation', { name: 'Develop navigation' })
+    const titles = ['Resources', 'Facilities', 'Research', 'Shipyard', 'Defense']
+    const badges = async (working: string[]) => {
+      for (const title of titles) {
+        const tab = nav.getByRole('link', { name: title, exact: true })
+        if (working.includes(title)) {
+          await expect(tab).toHaveAttribute('aria-description', 'Work in progress')
+          await expect(tab).toHaveAttribute('title', 'Work in progress')
+          await expect(tab.locator('span[aria-hidden="true"]')).toBeVisible()
+        } else {
+          await expect(tab).not.toHaveAttribute('aria-description')
+          await expect(tab.locator('span[aria-hidden="true"]')).toHaveCount(0)
+        }
+      }
+    }
+    await badges([])
+    const now = Date.now()
+    options.constructions = [
+      { id: id(20), body: body.id, building: 'MetalMine', target_level: 2, paid: resources, due_at: now + 60000 },
+      { id: id(21), body: id(6), building: 'ResearchLab', target_level: 1, paid: resources, due_at: now + 60000 },
+    ]
+    options.researchOperation = {
+      id: id(22), host: id(6), research: 'EnergyTechnology', source_level: 1, target_level: 2,
+      paid: resources, started_at: now, due_at: now + 60000, labs: [], effective_lab: '1', can_cancel: true,
+    }
+    const batch = { body: body.id, quantity: '2', completed_prefix: '0', remaining: '2', paid: resources,
+      accepted_at: now, first_start_at: now, next_due_at: now + 30000, final_due_at: now + 60000, unit_duration_ms: 30000, can_cancel: false as const }
+    options.manufacturing = [
+      { ...batch, id: id(23), item: { kind: 'Ship', id: 'SmallCargo' }, state: 'Producing' },
+      { ...batch, id: id(24), item: { kind: 'Defense', id: 'RocketLauncher' }, state: 'PaidQueued' },
+    ]
+    revision++
+    await refreshGame(page)
+    await badges(['Resources', 'Research', 'Shipyard', 'Defense'])
+    await diagnosticScreenshot(nav, { path: `test-results/develop-activity-${width}.png` })
+    await selectBody(page, id(6))
+    await badges(['Facilities', 'Research'])
+    options.constructions = []
+    options.manufacturing = []
+    options.researchOperation = null
+    revision++
+    await refreshGame(page)
+    await badges([])
   })
 }

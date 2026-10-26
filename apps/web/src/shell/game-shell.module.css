@@ -80,11 +80,10 @@
   align-items: center;
   padding: 8px;
   min-height: 44px;
-  color: var(--danger);
-  background: transparent;
-  border: 1px solid var(--border);
   font: inherit;
-  cursor: pointer;
+}
+.connection > * {
+  color: var(--danger);
 }
 .center {
   grid-area: content;
@@ -142,7 +141,7 @@
     display: none;
   }
   .worldBar {
-    grid-template-columns: minmax(0, 104px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-rows: auto;
     grid-template-areas: 'context resources';
     gap: 0 4px;
@@ -196,6 +195,8 @@
   .masthead {
     border: 0;
     min-height: 46px;
+    max-width: calc(100vw - 2 * var(--shell-inline-gutter) - 48px);
+    overflow-x: auto;
   }
   .page-heading {
     margin-block: 12px 24px;
@@ -244,8 +245,5 @@
   .game-shell {
     --shell-inline-gutter: 8px;
     padding-inline: 8px;
-  }
-  .worldBar {
-    grid-template-columns: minmax(0, 76px) minmax(0, 1fr);
   }
 }

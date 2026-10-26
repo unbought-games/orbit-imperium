@@ -184,6 +184,9 @@ test('satellites require Shipyard 1 and show stationary statistics and local ene
   page,
 }) => {
   await setup(page, 0)
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await expect(page.getByRole('heading', { name: 'Resource buildings', exact: true })).toBeVisible()
+  await expect(page.locator('main').getByText('Solar Satellite', { exact: true })).toHaveCount(0)
   await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
   await page
     .getByRole('link', { name: 'Build Solar Satellite', exact: true })

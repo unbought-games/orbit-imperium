@@ -540,9 +540,8 @@ for (const width of [1440, 390, 320]) {
         await expect(page.locator('main').getByText(/^Planet \[.*\]$/)).toHaveCount(0)
         const queue = page.getByRole('region', { name: tab === 'Research' ? 'Research' : 'Shipyard & defense', exact: true })
         await expect(queue).toBeVisible()
-        // Shipyard starts with its comparison control; other catalogs start with work.
-        const firstSection = tab === 'Shipyard' ? page.locator('main details') : queue
-        const queueBounds = (await firstSection.boundingBox())!
+        // Every catalog starts with work; ship comparison follows the ship tiles.
+        const queueBounds = (await queue.boundingBox())!
         const tabs = (await page.getByRole('navigation', { name: 'Develop navigation' }).boundingBox())!
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeGreaterThanOrEqual(0)
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeLessThanOrEqual(20)
@@ -660,7 +659,7 @@ test('manufacturing updates totals locally and Build validates without dismissin
   await page.getByLabel('Defenses quantity').fill('0')
 
   await expect(page.getByRole('alert')).toHaveCount(0)
-  await expect(pane).toContainText('Enter a quantity to see the total cost.')
+  await expect(pane).not.toContainText('Enter a quantity to see the total cost.')
   await expect(
     page.getByRole('button', { name: 'Build', exact: true }),
   ).toBeDisabled()
@@ -675,6 +674,55 @@ test('manufacturing updates totals locally and Build validates without dismissin
   })
   await expect(pane).toBeVisible()
 })
+
+for (const width of [390, 1280]) {
+  test(`manufacturing keeps its form anchored through blank and invalid quantities at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 })
+    const { sent, inspections } = await setup(page)
+    for (const [pageName, itemName, quantityLabel] of [
+      ['Shipyard', 'Small Cargo', 'Shipyard quantity'],
+      ['Defense', 'Rocket Launcher', 'Defenses quantity'],
+    ]) {
+      await navigate(page, pageName as 'Shipyard' | 'Defense')
+      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
+      const order = page.getByRole('region', { name: 'New order', exact: true })
+      const input = order.getByRole('textbox', { name: quantityLabel })
+      const build = order.getByRole('button', { name: 'Build', exact: true })
+      await expect(build).toBeEnabled()
+      await input.scrollIntoViewIfNeeded()
+      await input.click()
+      const position = async () => input.evaluate(el => {
+        const rect = el.getBoundingClientRect()
+        return { top: rect.top + window.scrollY, height: rect.height }
+      })
+      const before = await position()
+      const initialInspections = inspections.length
+      const labels = ['Production duration per unit', 'Order', 'Estimated start', 'Order complete', 'New order cost']
+      await input.press('Backspace')
+      await expect(input).toHaveValue('')
+      for (const value of ['', '0', '-1', '1.5', 'abc', '9223372036854775808']) {
+        if (value) await input.fill(value)
+        await expect(input).toBeFocused()
+        await expect(order.locator('dt')).toHaveText(labels)
+        await expect(build).toBeDisabled()
+        await expect(order.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
+        await expect(order.locator('dt').filter({ hasText: /^Order$/ }).locator('..')).toHaveText('Order—')
+        expect(await position()).toEqual(before)
+        if (value === '') await diagnosticScreenshot(order, { path: `test-results/quantity-edit-${pageName}-${width}.png` })
+      }
+      await input.fill('2')
+      await expect(build).toBeEnabled()
+      await expect(order).toContainText(`2 × ${itemName}`)
+      expect(await position()).toEqual(before)
+      await input.fill('999999')
+      await expect(build).toBeDisabled()
+      await expect(page.getByLabel('Missing resources')).toBeVisible()
+      expect(await position()).toEqual(before)
+      expect(inspections.length).toBe(initialInspections)
+      expect(sent).toHaveLength(0)
+    }
+  })
+}
 
 for (const action of ['edit', 'dismiss', 'reopen']) {
   test(`manufacturing ignores delayed validation after ${action}`, async ({
@@ -2260,6 +2308,12 @@ for (const width of [1280, 390]) {
     await shellFixture(page, options)
     await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
     const summary = page.locator('summary').filter({ hasText: 'Compare ships' })
+    const comparisonBox = (await summary.boundingBox())!
+    for (const name of ['Build Light Fighter', 'Build Heavy Fighter']) {
+      const ship = page.getByRole('link', { name, exact: true })
+      const shipBox = (await ship.boundingBox())!
+      expect(comparisonBox.y).toBeGreaterThan(shipBox.y + shipBox.height)
+    }
     await summary.focus()
     await page.keyboard.press('Enter')
     const table = page.getByRole('table', {
