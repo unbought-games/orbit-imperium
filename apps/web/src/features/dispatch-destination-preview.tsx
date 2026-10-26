@@ -12,6 +12,7 @@ export function DispatchDestinationPreview({
   kind,
   target,
   lookup,
+  refreshing,
   player,
   playerNames,
   partial,
@@ -20,6 +21,7 @@ export function DispatchDestinationPreview({
   kind: LocationKind
   target: ReturnType<typeof destinationBody>
   lookup: 'loading' | 'ready' | 'unavailable'
+  refreshing: boolean
   player: string
   playerNames: PlayerNames
   partial: boolean
@@ -80,10 +82,18 @@ export function DispatchDestinationPreview({
             at={coordinates}
             target={kind}
             compact
-            known={{ owner: target?.owner }}
+            known={{
+              owner: target?.owner,
+              empty: kind === 'planet' && lookup === 'ready' && !target,
+            }}
           />
         )}
         <span className={styles.destinationDetail}>{detail}</span>
+        {refreshing && (
+          <span className={styles.destinationDetail}>
+            Last observation · Updating…
+          </span>
+        )}
       </div>
     </div>
   )

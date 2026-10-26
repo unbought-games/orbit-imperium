@@ -258,6 +258,9 @@ export function Dispatch({
               kind={targetKind}
               target={target}
               lookup={destination.lookup}
+              refreshing={
+                destination.refreshing && target?.owner !== view.binding.player
+              }
               player={view.binding.player}
               playerNames={playerNames}
               partial={!!destinationText.trim()}

@@ -13,7 +13,9 @@ async function setup(page: Page) {
     id: id(6),
     coordinates: { galaxy: 1, system: 1, position: 2 },
   }
+  let revision = 1
   await shellFixture(page, {
+    viewerRevision: () => String(revision),
     protocol: 4,
     bodies: [
       {
@@ -63,6 +65,7 @@ async function setup(page: Page) {
     ],
   })
   const state = {
+    advanceRevision: () => { revision++ },
     blocker: null as S['GameError4'] | null,
     quoteError: null as S['GameError4'] | null,
     launchError: 'BeginnerProtected' as S['GameError4'] | null,
@@ -1508,4 +1511,42 @@ test('selecting a planet invalidates an in-flight review for manual coordinates'
   state.hold = null
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Haven Colony')
+})
+
+
+test('destination retains its last observation while refreshing the same system', async ({ page }) => {
+  const state = await setup(page)
+  const preview = page.getByLabel('Destination preview')
+  await mission(page).selectOption('Attack')
+  await expect(preview).toContainText('Ember Watch')
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  state.hold = async route => {
+    if (route.request().postDataJSON().type === 'Galaxy') { held = true; await gate }
+  }
+  state.advanceRevision()
+  await refreshGame(page)
+  await expect.poll(() => held).toBe(true)
+  await expect(preview).toContainText('Ember Watch')
+  await expect(preview).toContainText('Last observation · Updating…')
+  await expect(preview.locator('img')).toHaveCount(1)
+  state.observationAvailable = false
+  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
+  release()
+  await response
+  await expect(preview).toContainText('Empty position')
+  await expect(preview).not.toContainText('Ember Watch')
+  await expect(preview).not.toContainText('Updating')
+})
+
+test('confirmed empty destination coordinates offer colonization instead of body missions', async ({ page }) => {
+  await setup(page)
+  await setDestination(page, { position: '3' })
+  const preview = page.getByLabel('Destination preview')
+  await expect(preview).toContainText('Empty position')
+  await preview.getByRole('button', { name: 'Location actions for [1:1:3]' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Prepare colonize' })).toBeVisible()
+  for (const action of ['attack', 'espionage', 'transport'])
+    await expect(page.getByRole('menuitem', { name: `Prepare ${action}` })).toHaveCount(0)
 })

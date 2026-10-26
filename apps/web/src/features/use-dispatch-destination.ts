@@ -22,9 +22,10 @@ export function useDispatchDestination(
   const [read, setRead] = useState<{
     model: Coordinator
     key: string
+    revision: string
     observation?: S['GalaxySystem4']
   } | null>(null)
-  const key = `${galaxy}:${system}:${revision}`
+  const key = `${galaxy}:${system}`
   const enabled = !!coordinates && kind !== 'debris'
   useEffect(() => {
     if (!enabled || galaxy === undefined || system === undefined) return
@@ -36,11 +37,12 @@ export function useDispatchDestination(
             setRead({
               model,
               key,
+              revision,
               observation: result && 'positions' in result ? result : undefined,
             })
         },
         () => {
-          if (current) setRead({ model, key })
+          if (current) setRead({ model, key, revision })
         },
       )
     }, 250)
@@ -48,7 +50,7 @@ export function useDispatchDestination(
       current = false
       clearTimeout(timer)
     }
-  }, [model, key, galaxy, system, enabled])
+  }, [model, key, galaxy, system, enabled, revision])
   const currentRead =
     enabled && read?.model === model && read.key === key ? read : null
   const observation = currentRead?.observation
@@ -58,6 +60,7 @@ export function useDispatchDestination(
   return {
     target,
     observation,
+    refreshing: !!currentRead && currentRead.revision !== revision,
     planets,
     selectedPlanet,
     lookup: currentRead
