@@ -2907,3 +2907,61 @@ for (const mission of ['Attack', 'Espionage'] as const) {
     expect((await overlay()).content).toBe('none')
   })
 }
+
+for (const width of [390, 1440]) {
+  test(`Develop activity badges follow each planet and account-wide research at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    let revision = 1
+    const options: NonNullable<Parameters<typeof shellFixture>[1]> = {
+      protocol: 4,
+      bodies: [body, { ...body, id: id(6), coordinates: { galaxy: 1, system: 1, position: 8 } }],
+      constructions: [], manufacturing: [], researchOperation: null,
+      viewerRevision: () => String(revision),
+    }
+    await shellFixture(page, options)
+    await navigate(page, 'Resources')
+    const nav = page.getByRole('navigation', { name: 'Develop navigation' })
+    const titles = ['Resources', 'Facilities', 'Research', 'Shipyard', 'Defense']
+    const badges = async (working: string[]) => {
+      for (const title of titles) {
+        const tab = nav.getByRole('link', { name: title, exact: true })
+        if (working.includes(title)) {
+          await expect(tab).toHaveAttribute('aria-description', 'Work in progress')
+          await expect(tab).toHaveAttribute('title', 'Work in progress')
+          await expect(tab.locator('span[aria-hidden="true"]')).toBeVisible()
+        } else {
+          await expect(tab).not.toHaveAttribute('aria-description')
+          await expect(tab.locator('span[aria-hidden="true"]')).toHaveCount(0)
+        }
+      }
+    }
+    await badges([])
+    const now = Date.now()
+    options.constructions = [
+      { id: id(20), body: body.id, building: 'MetalMine', target_level: 2, paid: resources, due_at: now + 60000 },
+      { id: id(21), body: id(6), building: 'ResearchLab', target_level: 1, paid: resources, due_at: now + 60000 },
+    ]
+    options.researchOperation = {
+      id: id(22), host: id(6), research: 'EnergyTechnology', source_level: 1, target_level: 2,
+      paid: resources, started_at: now, due_at: now + 60000, labs: [], effective_lab: '1', can_cancel: true,
+    }
+    const batch = { body: body.id, quantity: '2', completed_prefix: '0', remaining: '2', paid: resources,
+      accepted_at: now, first_start_at: now, next_due_at: now + 30000, final_due_at: now + 60000, unit_duration_ms: 30000, can_cancel: false as const }
+    options.manufacturing = [
+      { ...batch, id: id(23), item: { kind: 'Ship', id: 'SmallCargo' }, state: 'Producing' },
+      { ...batch, id: id(24), item: { kind: 'Defense', id: 'RocketLauncher' }, state: 'PaidQueued' },
+    ]
+    revision++
+    await refreshGame(page)
+    await badges(['Resources', 'Research', 'Shipyard', 'Defense'])
+    await diagnosticScreenshot(nav, { path: `test-results/develop-activity-${width}.png` })
+    await selectBody(page, id(6))
+    await badges(['Facilities', 'Research'])
+    options.constructions = []
+    options.manufacturing = []
+    options.researchOperation = null
+    revision++
+    await refreshGame(page)
+    await badges([])
+  })
+}

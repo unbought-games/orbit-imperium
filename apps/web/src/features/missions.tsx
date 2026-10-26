@@ -227,23 +227,6 @@ export function Dispatch({
                 <option value="debris">Debris field</option>
               </Select>
             </Field>
-            <Field>
-              Speed
-              <Select
-                aria-label="Speed"
-                value={speed}
-                onChange={(e) => {
-                  setSpeed(Number(e.target.value))
-                  clear()
-                }}
-              >
-                {Array.from({ length: 10 }, (_, i) => (
-                  <option key={i} value={(i + 1) * 10}>
-                    {(i + 1) * 10}%
-                  </option>
-                ))}
-              </Select>
-            </Field>
             {coordinatesValid && (
               <Text role="status">
                 {targetKind === 'debris'
@@ -272,12 +255,6 @@ export function Dispatch({
                 </Button>
               </Text>
             )}
-            <DispatchTiming
-              terms={timing}
-              mission={mission}
-              now={now}
-              message={timingMessage}
-            />
             {mission === 'Attack' && !targetProblem && !attackWarning && (
               <Text className={styles.destinationNotice}>
                 Beginner protection can prevent attacks between players of
@@ -367,6 +344,34 @@ export function Dispatch({
                 Add all
               </Button>
             </div>
+          </fieldset>
+          <fieldset
+            className={styles.flightSettings}
+            aria-label="Speed and flight estimates"
+          >
+            <Field>
+              Speed
+              <Select
+                aria-label="Speed"
+                value={speed}
+                onChange={(e) => {
+                  setSpeed(Number(e.target.value))
+                  clear()
+                }}
+              >
+                {Array.from({ length: 10 }, (_, i) => (
+                  <option key={i} value={(i + 1) * 10}>
+                    {(i + 1) * 10}%
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <DispatchTiming
+              terms={timing}
+              mission={mission}
+              now={now}
+              message={timingMessage}
+            />
           </fieldset>
           {error && (
             <Text tone="danger" role="alert">

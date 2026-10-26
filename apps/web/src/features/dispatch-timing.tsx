@@ -1,3 +1,4 @@
+import { ResourceQuantity } from '../ui/number-value'
 import type { components } from '../contracts'
 import { flightDuration, flightSchedule } from '../client-model/dispatch-timing'
 import { exactTime } from './mission-presentation'
@@ -37,28 +38,40 @@ export function DispatchTiming({
             {terms ? flightDuration(terms.duration_ms) : '—'}
           </dd>
         </div>
-        <div>
-          <dt>{mission === 'Colonize' ? 'Back if needed' : 'Back at'}</dt>
-          <dd>
-            {schedule ? (
-              schedule.returnAt === null ? (
-                'One-way'
+        {mission !== 'Deploy' && (
+          <div>
+            <dt>{mission === 'Colonize' ? 'Back if needed' : 'Back at'}</dt>
+            <dd>
+              {schedule ? (
+                schedule.returnAt === null ? (
+                  'One-way'
+                ) : (
+                  <time
+                    dateTime={new Date(schedule.returnAt).toISOString()}
+                    title={exactTime(schedule.returnAt)}
+                  >
+                    {returnTime.format(schedule.returnAt)}
+                  </time>
+                )
               ) : (
-                <time
-                  dateTime={new Date(schedule.returnAt).toISOString()}
-                  title={exactTime(schedule.returnAt)}
-                >
-                  {returnTime.format(schedule.returnAt)}
-                </time>
-              )
+                '—'
+              )}
+            </dd>
+          </div>
+        )}
+        <div>
+          <dt>Total flight</dt>
+          <dd>{schedule ? flightDuration(schedule.total) : '—'}</dd>
+        </div>
+        <div>
+          <dt>Deuterium consumed</dt>
+          <dd>
+            {terms ? (
+              <ResourceQuantity resource="deuterium" value={terms.fuel} />
             ) : (
               '—'
             )}
           </dd>
-        </div>
-        <div>
-          <dt>Total flight</dt>
-          <dd>{schedule ? flightDuration(schedule.total) : '—'}</dd>
         </div>
       </dl>
       <p>{terms ? '' : (message ?? 'Updating flight times…')}</p>

@@ -403,6 +403,17 @@
   font-size: 1rem;
 }
 
+.flightSettings {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 12px;
+}
+.flightSettings > label {
+  width: min(100%, 10rem);
+}
 .flightTiming {
   grid-column: 1 / -1;
   min-width: 0;
@@ -410,7 +421,7 @@
 }
 .flightTiming dl {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   gap: 8px;
   margin: 0;
 }

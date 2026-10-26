@@ -31,6 +31,7 @@ import { Popover } from '../ui/popover'
 import { WifiOff } from 'lucide-react'
 import { usePinnedHeader } from './use-pinned-header'
 import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
+import { developmentActivity } from './navigation-activity'
 export function GameShell() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
@@ -187,6 +188,7 @@ export function GameShell() {
             </span>
           </header>
           <Navigation
+            activity={developmentActivity(model.store.getState(), body?.id)}
             view={view}
             body={body?.id}
             page={page}
