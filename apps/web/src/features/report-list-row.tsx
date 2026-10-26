@@ -1,3 +1,4 @@
+import { usePlayerDisplays } from '../shell/player-profiles-context'
 import { reportMetric, type ReportSort } from './report-triage'
 import { ReportStarButton } from './report-star-button'
 import { CoordinateLink } from './coordinate-link'
@@ -43,6 +44,7 @@ export function ReportListRow({
   selected?: boolean
   onSelect?: (checked: boolean) => void
 }) {
+  const profiles = usePlayerDisplays()
   const preview = reportPreview(report.preview, model.binding?.player)
   const outcome =
     report.preview?.kind === 'Combat' && report.preview.outcome
@@ -53,6 +55,7 @@ export function ReportListRow({
     model.binding?.player,
     playerNames,
     report.player_alliances,
+    profiles,
   )
   const title = [label(report.kind), outcome?.title, identity]
     .filter(Boolean)

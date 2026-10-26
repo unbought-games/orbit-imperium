@@ -66,6 +66,7 @@ pub struct Rankings {
 impl<S: GameStore> GameService<S> {
     pub async fn rankings(&self, p: Principal, c: QueryContext) -> Result<Rankings, ServiceError> {
         Self::principal(p, c.binding)?;
+        self.store.bot_observe(c.binding).await?;
         let facts = self.store.ranking_facts(c.binding).await?;
         let baseline_at = facts.baseline.as_ref().map(|b| b.sampled_at);
         let alliance_baseline_at = alliance_baseline_at(facts.baseline.as_ref());

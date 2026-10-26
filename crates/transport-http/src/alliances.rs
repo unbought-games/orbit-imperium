@@ -31,9 +31,11 @@ pub(super) async fn command<S: GameStore + IdentityStore>(
 }
 pub(super) async fn public<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     Path((universe, id)): Path<(uuid::Uuid, uuid::Uuid)>,
 ) -> Result<Response, Problem> {
+    super::bots::public_access(&s, &h, Some(UniverseId(universe))).await?;
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     if let Err(retry) = s.alliance_public_budget.lock().await.admit(
         source,

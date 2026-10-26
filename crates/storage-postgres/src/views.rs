@@ -82,6 +82,36 @@ pub(crate) async fn public_destinations(
     Ok(destinations)
 }
 impl GameStore for PgStore {
+    async fn shared_report_universe(
+        &self,
+        token: uuid::Uuid,
+    ) -> Result<Option<UniverseId>, StoreError> {
+        sqlx::query_scalar::<_,uuid::Uuid>("SELECT r.universe FROM mission_report_shares s JOIN mission_reports r ON r.id=s.report WHERE s.token=$1").bind(token).fetch_optional(self.read_pool()?).await.map(|u|u.map(UniverseId)).map_err(db_error)
+    }
+
+    async fn bound_machine_admit4(&self, e: CommandEnvelopeV4) -> Result<BoundReceipt, StoreError> {
+        self.admit_machine(e).await
+    }
+
+    async fn bot_observe(&self, b: Binding) -> Result<(), StoreError> {
+        let mut tx = self.begin_tx(self.read_pool()?).await?;
+        crate::binding::check_read(&mut tx, b).await?;
+        crate::bots::observe(&mut tx, b).await
+    }
+    async fn bot_world_query(
+        &self,
+        q: WorldQuery,
+    ) -> Result<Option<ReadSnapshot<BoundWorld<serde_json::Value>>>, StoreError> {
+        self.machine_world_query(q).await
+    }
+    async fn report_share_request(
+        &self,
+        report: ReportId,
+        q: ReportShareRequest,
+    ) -> Result<ReportShareStatus, StoreError> {
+        self.manage_report_share_request(report, q).await
+    }
+
     async fn alliance_query(&self, q: AllianceQueryRequest) -> Result<AllianceView, StoreError> {
         self.read_alliances(q).await
     }

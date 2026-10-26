@@ -54,6 +54,7 @@ pub(super) fn parse_for_mode(
             positions_per_system: number(&mut values, "--positions-per-system", 15)?,
         };
         let policy = UniversePolicy {
+            bots: Default::default(),
             signup_enabled: boolean(
                 values
                     .remove("--signup-enabled")
@@ -143,6 +144,7 @@ pub(super) fn parse_for_mode(
                 .parse::<u32>()
                 .map_err(|_| "ORBIT_COMMANDS_PER_MINUTE must be an integer")?;
             let policy = UniversePolicy {
+                bots: Default::default(),
                 signup_enabled,
                 max_players,
                 signup_per_minute,

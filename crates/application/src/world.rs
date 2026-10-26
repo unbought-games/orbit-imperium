@@ -192,6 +192,15 @@ impl<S: GameStore> GameService<S> {
         Ok(self.store.bound_presence4(e).await?)
     }
 
+    pub async fn machine_submit(
+        &self,
+        p: Principal,
+        e: CommandEnvelopeV4,
+    ) -> Result<BoundReceipt, ServiceError> {
+        Self::principal(p, e.binding)?;
+        machine_action(e.clone())?;
+        Ok(self.store.bound_machine_admit4(e).await?)
+    }
     pub async fn world_submit(
         &self,
         p: Principal,
@@ -207,6 +216,10 @@ impl<S: GameStore> GameService<S> {
         q: WorldQuery,
     ) -> Result<ReadSnapshot<BoundWorld<serde_json::Value>>, ServiceError> {
         Self::principal(p, q.context.binding)?;
+        self.store.bot_observe(q.context.binding).await?;
+        if let Some(result) = self.store.bot_world_query(q.clone()).await? {
+            return Ok(result);
+        }
         let ReadSnapshot {
             facts: (facts, rev),
             progress,
@@ -265,6 +278,7 @@ impl<S: GameStore> GameService<S> {
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView4>, ServiceError> {
         Self::principal(p, c.binding)?;
+        self.store.bot_observe(c.binding).await?;
         let binding = c.binding;
         let snapshot = self.store.bound_view(binding).await?;
         let mut projected =
@@ -314,6 +328,7 @@ impl<S: GameStore> GameService<S> {
         q: ReportsQuery4,
     ) -> Result<ReadSnapshot<BoundWorld<ReportsPage4>>, ServiceError> {
         Self::principal(p, q.context.binding)?;
+        self.store.bot_observe(q.context.binding).await?;
         if !(1..=100).contains(&q.limit) {
             return Err(ServiceError::Malformed);
         }
@@ -351,6 +366,7 @@ impl<S: GameStore> GameService<S> {
         id: ReportId,
     ) -> Result<ReadSnapshot<BoundWorld<ReportDetail4>>, ServiceError> {
         Self::principal(p, c.binding)?;
+        self.store.bot_observe(c.binding).await?;
         let ReadSnapshot {
             facts: (mut detail, at, rev),
             progress,

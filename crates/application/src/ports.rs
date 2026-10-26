@@ -1,5 +1,26 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn authenticate_machine(
+        &self,
+        _digest: &str,
+    ) -> impl std::future::Future<Output = Result<Option<AuthenticatedSession>, StoreError>> + Send
+    {
+        async { Ok(None) }
+    }
+    fn bot_status(
+        &self,
+        _principal: Principal,
+    ) -> impl std::future::Future<Output = Result<BotStatus, StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
+    fn retire_bot(
+        &self,
+        _principal: Principal,
+        _reason: &str,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
+
     fn player_identities(
         &self,
         _universe: UniverseId,
@@ -103,6 +124,42 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send;
 }
 pub trait GameStore: Send + Sync {
+    fn shared_report_universe(
+        &self,
+        _token: uuid::Uuid,
+    ) -> impl std::future::Future<Output = Result<Option<UniverseId>, StoreError>> + Send {
+        async { Ok(None) }
+    }
+
+    fn bound_machine_admit4(
+        &self,
+        _e: CommandEnvelopeV4,
+    ) -> impl std::future::Future<Output = Result<BoundReceipt, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
+
+    fn bot_world_query(
+        &self,
+        _q: WorldQuery,
+    ) -> impl std::future::Future<
+        Output = Result<Option<ReadSnapshot<BoundWorld<serde_json::Value>>>, StoreError>,
+    > + Send {
+        async { Ok(None) }
+    }
+    fn bot_observe(
+        &self,
+        _b: Binding,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Ok(()) }
+    }
+    fn report_share_request(
+        &self,
+        report: ReportId,
+        q: ReportShareRequest,
+    ) -> impl std::future::Future<Output = Result<ReportShareStatus, StoreError>> + Send {
+        self.report_share(q.context.binding, report, q.action)
+    }
+
     fn alliance_query(
         &self,
         _q: AllianceQueryRequest,

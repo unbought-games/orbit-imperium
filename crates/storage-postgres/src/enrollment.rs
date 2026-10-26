@@ -90,6 +90,21 @@ impl PgStore {
         request: Registration,
         existing: Option<AccountId>,
     ) -> Result<AuthenticatedSession, StoreError> {
+        self.enroll_inner(request, existing, None).await
+    }
+    pub(crate) async fn enroll_machine(
+        &self,
+        request: Registration,
+        sleep: u16,
+    ) -> Result<AuthenticatedSession, StoreError> {
+        self.enroll_inner(request, None, Some(sleep)).await
+    }
+    async fn enroll_inner(
+        &self,
+        request: Registration,
+        existing: Option<AccountId>,
+        machine_sleep: Option<u16>,
+    ) -> Result<AuthenticatedSession, StoreError> {
         let Registration {
             name,
             password_hash,
@@ -101,6 +116,10 @@ impl PgStore {
         let u = policy.universe;
         loop {
             let (mut tx, scoped) = self.begin_enrollment(u).await?;
+            if machine_sleep.is_some() {
+                crate::bots::admission(&mut tx, u).await?;
+            }
+            self.read_policy(&mut tx, u, true).await?;
             let floor: i64 = sqlx::query_scalar(
                 "SELECT greatest(frontier,ordering_floor) FROM universe_runtime WHERE universe=$1",
             )
@@ -230,7 +249,7 @@ impl PgStore {
             }
             let current = self.read_policy(&mut tx, u, true).await?;
             let max_players = if let Some(current) = current {
-                if !current.policy.signup_enabled {
+                if machine_sleep.is_none() && !current.policy.signup_enabled {
                     return Err(StoreError::SignupClosed);
                 }
                 current.policy.effective_max_players(&current.immutable)
@@ -242,6 +261,20 @@ impl PgStore {
             }
             insert_member(&mut tx, u, &member, &password_hash, at, &rules).await?;
             let account = AccountId(member.account);
+            if let Some(sleep) = machine_sleep {
+                crate::bots::enroll(
+                    &mut tx,
+                    Binding {
+                        account,
+                        player: PlayerId(member.player),
+                        universe: u,
+                        epoch: manifest.epoch,
+                    },
+                    sleep,
+                    at,
+                )
+                .await?;
+            }
             let player = PlayerId(member.player);
             manifest.members.push(member);
             sqlx::query("UPDATE mvp_bootstraps SET manifest=$2 WHERE universe=$1")
@@ -270,8 +303,12 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
             }
-            let expires_at: i64 = sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000) RETURNING expires_at")
-            .bind(digest).bind(account.0).bind(&csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
+            let expires_at: i64 = if machine_sleep.is_some() {
+                0
+            } else {
+                sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000) RETURNING expires_at")
+            .bind(digest).bind(account.0).bind(&csrf).fetch_one(&mut *tx).await.map_err(db_error)?
+            };
             let universe_name = sqlx::query_scalar("SELECT name FROM universes WHERE id=$1")
                 .bind(u.0)
                 .fetch_one(&mut *tx)

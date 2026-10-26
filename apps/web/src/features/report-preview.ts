@@ -154,6 +154,7 @@ export function reportListIdentity(
   viewer?: string,
   names?: PlayerNames,
   alliances?: PlayerAlliances,
+  profiles?: Readonly<Record<string, { kind?: 'human' | 'bot' }>>,
 ): string {
   if (!preview) return ''
   let owners: string[] = []
@@ -174,6 +175,7 @@ export function reportListIdentity(
       .map((owner) =>
         [
           playerLabel(owner, names),
+          profiles?.[owner]?.kind === 'bot' ? 'Bot' : '',
           alliances?.[owner] ? `[${alliances[owner].tag}]` : '',
         ]
           .filter(Boolean)

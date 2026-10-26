@@ -29,15 +29,30 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn authenticate_machine(
+        &self,
+        digest: &str,
+    ) -> Result<Option<AuthenticatedSession>, StoreError> {
+        self.machine_session(digest).await
+    }
+    async fn bot_status(&self, p: Principal) -> Result<BotStatus, StoreError> {
+        self.read_bot_status(p).await
+    }
+    async fn retire_bot(&self, p: Principal, reason: &str) -> Result<(), StoreError> {
+        self.read_bot_status(p).await?;
+        self.retire_bot_player(p.universe, p.player, reason).await
+    }
+
     async fn player_identities(
         &self,
         universe: UniverseId,
         players: Vec<PlayerId>,
     ) -> Result<Vec<PlayerIdentity>, StoreError> {
-        sqlx::query("SELECT m.player,a.name,i.issuer,i.subject FROM universe_memberships m JOIN accounts a ON a.id=m.account LEFT JOIN oidc_identity i ON i.account=a.id WHERE m.universe=$1 AND m.player=ANY($2)")
+        sqlx::query("SELECT m.player,a.name,i.issuer,i.subject,EXISTS(SELECT 1 FROM bot_participation b WHERE b.universe=m.universe AND b.player=m.player) AS bot FROM universe_memberships m JOIN accounts a ON a.id=m.account LEFT JOIN oidc_identity i ON i.account=a.id WHERE m.universe=$1 AND m.player=ANY($2)")
             .bind(universe.0).bind(players.iter().map(|p|p.0).collect::<Vec<_>>())
             .fetch_all(self.read_pool()?).await.map_err(db_error)?
             .into_iter().map(|row| Ok(PlayerIdentity {
+                kind: if row.try_get::<bool,_>("bot").map_err(db_error)? {PlayerKind::Bot}else{PlayerKind::Human},
                 player: PlayerId(row.try_get("player").map_err(db_error)?),
                 username: row.try_get("name").map_err(db_error)?,
                 issuer: row.try_get("issuer").map_err(db_error)?,
@@ -45,7 +60,7 @@ impl IdentityStore for PgStore {
             })).collect()
     }
     async fn universe_summaries(&self) -> Result<Vec<UniverseSummary>, StoreError> {
-        sqlx::query("SELECT universe, u.name FROM universe_policies p JOIN universes u ON u.id=p.universe ORDER BY u.name")
+        sqlx::query("SELECT universe, u.name FROM universe_policies_v2 p JOIN universes u ON u.id=p.universe ORDER BY u.name")
             .fetch_all(self.read_pool()?).await.map_err(db_error)?
             .into_iter().map(|r| Ok(UniverseSummary {
                 universe: UniverseId(r.try_get("universe").map_err(db_error)?),
@@ -155,7 +170,7 @@ impl IdentityStore for PgStore {
     async fn find_credentials(&self, name: &str) -> Result<Option<Credentials>, StoreError> {
         let mut connection = self.acquire_pool(self.read_pool()?).await?;
         sqlx::query(
-            "SELECT id,password_hash FROM accounts WHERE name=$1 AND password_hash <> '!oidc'",
+            "SELECT id,password_hash FROM accounts WHERE name=$1 AND password_hash NOT LIKE '!%'",
         )
         .bind(name)
         .fetch_optional(&mut *connection)

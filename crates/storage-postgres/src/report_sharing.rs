@@ -10,8 +10,44 @@ impl PgStore {
         report: ReportId,
         action: ReportShareAction,
     ) -> Result<ReportShareStatus, StoreError> {
+        self.manage_report_share_request(
+            report,
+            ReportShareRequest {
+                context: QueryContext {
+                    binding: b,
+                    request_id: uuid::Uuid::new_v4(),
+                },
+                action,
+            },
+        )
+        .await
+    }
+    pub(crate) async fn manage_report_share_request(
+        &self,
+        report: ReportId,
+        q: ReportShareRequest,
+    ) -> Result<ReportShareStatus, StoreError> {
+        let b = q.context.binding;
+        let action = q.action.clone();
         let mut tx = self.admission_pool()?.begin().await.map_err(db_error)?;
         crate::binding::check_read(&mut tx, b).await?;
+        let bot = crate::bots::lock_bot(&mut tx, b.universe, b.player)
+            .await?
+            .is_some();
+        let intent = orbit_engine::hash(&serde_json::json!({"report":report,"request":q})).0;
+        if bot && !matches!(action, ReportShareAction::Status)
+            && let Some(row)=sqlx::query("SELECT intent_hash,response FROM bot_social_receipts WHERE universe=$1 AND player=$2 AND epoch=$3 AND request_id=$4").bind(b.universe.0).bind(b.player.0).bind(b.epoch.0).bind(q.context.request_id).fetch_optional(&mut *tx).await.map_err(db_error)? {
+                if row.try_get::<String,_>("intent_hash").map_err(db_error)?!=intent {return Err(StoreError::Conflict);}
+                return Ok(row.try_get::<sqlx::types::Json<ReportShareStatus>,_>("response").map_err(db_error)?.0);
+        }
+        crate::bots::charge(
+            &mut tx,
+            b,
+            "report_share",
+            q.context.request_id,
+            !matches!(action, ReportShareAction::Status),
+        )
+        .await?;
         // Serialize creation/revocation with deletion for this recipient. Never use
         // another recipient's observation, even when both received this battle.
         let row = sqlx::query("SELECT r.data->'payloads'->(p.recipient::text) AS payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3 AND NOT p.hidden FOR UPDATE OF p")
@@ -94,6 +130,9 @@ impl PgStore {
             header: crate::world::header(&header_row, &rules)?,
             viewer_revision: viewer_revision.to_string(),
         };
+        if bot && mutating {
+            sqlx::query("INSERT INTO bot_social_receipts(universe,player,epoch,request_id,intent_hash,response) VALUES($1,$2,$3,$4,$5,$6)").bind(b.universe.0).bind(b.player.0).bind(b.epoch.0).bind(q.context.request_id).bind(intent).bind(sqlx::types::Json(&status)).execute(&mut *tx).await.map_err(db_error)?;
+        }
         tx.commit().await.map_err(db_error)?;
         Ok(status)
     }
@@ -103,7 +142,7 @@ impl PgStore {
     ) -> Result<SharedReport, StoreError> {
         let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE s.token=$1 AND NOT p.hidden")
             .bind(token).fetch_optional(self.read_pool()?).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
-        project_shared_report_with_alliances(
+        let mut result = project_shared_report_with_alliances(
             ReportId(row.try_get("report").map_err(db_error)?),
             row.try_get("at_ms").map_err(db_error)?,
             &row.try_get::<serde_json::Value, _>("payload")
@@ -117,6 +156,27 @@ impl PgStore {
             row.try_get::<sqlx::types::Json<ReportShareOptions>, _>("options")
                 .map_err(db_error)?
                 .0,
-        )
+        )?;
+        let players: Vec<uuid::Uuid> = result
+            .player_names
+            .keys()
+            .filter_map(|s| uuid::Uuid::parse_str(s).ok())
+            .collect();
+        let bots:Vec<uuid::Uuid>=sqlx::query_scalar("SELECT b.player FROM bot_participation b JOIN mission_reports r ON r.universe=b.universe WHERE r.id=$1 AND b.player=ANY($2)").bind(result.report.0).bind(players).fetch_all(self.read_pool()?).await.map_err(db_error)?;
+        result.player_kinds = result
+            .player_names
+            .keys()
+            .map(|p| {
+                (
+                    p.clone(),
+                    if bots.iter().any(|b| b.to_string() == *p) {
+                        PlayerKind::Bot
+                    } else {
+                        PlayerKind::Human
+                    },
+                )
+            })
+            .collect();
+        Ok(result)
     }
 }

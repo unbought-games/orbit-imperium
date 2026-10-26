@@ -182,3 +182,14 @@ docker run -d --name orbit-game --network GAME_NETWORK --env-file /private/orbit
 After policy activation, binary-only rollback supports the retained **configuration bridge**, using the same database and revisions. Replace final processes with `target/universe-bridge/release/orbit serve` under the same process configuration; database policies remain authoritative. Do not reconnect a pre-bridge binary. Returning to a pre-bridge release requires stopping all writers and restoring its matching pre-activation database backup and binary together through the deployment's restore procedure. That recovery loses later writes; it is not a policy-table deletion or manual SQL downgrade.
 
 The routine server, PostgreSQL and fixture-browser classes cover the contracts. `make test-signup`, `make test-container` and `make test-rules-updates` remain explicit-only full-system validation. The rolling harness requires a configuration-aware bridge built with `test-support,universe-config-bridge`; use `ORBIT_RULES_PREVIOUS_REF=COMMIT make test-rules-updates` or supply `ORBIT_PREVIOUS_SERVER` explicitly. The same source revision can produce distinct bridge/final binaries, but identical binaries are refused. No rollout or explicit-only validation is implied by these instructions.
+
+## Machine participation policy (S1)
+
+The complete revision-checked policy also requires a typed `bots` extension:
+`{"version":1,"enabled":false,"max_active":0,"action_units_per_24h":null}`.
+Existing worlds migrate to disabled policy without account classification. Enabling
+requires an explicit positive active cap and rolling 24-hour allowance. Disabling
+blocks new participation immediately; lowering the cap terminally retires the
+newest excess admissions and records identities/reasons with the policy revision.
+Existing accepted work continues. See [bot operations](bots.md) for provisioning,
+accounting, retirement and the required coordinated pre-S1 upgrade/rollback procedure.

@@ -89,7 +89,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @deprecated */
+        /**
+         * @deprecated
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -104,6 +107,15 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
                 /** @description Protocol 1 game routes retired; use v2 binding bootstrap. */
                 426: {
                     headers: {
@@ -130,7 +142,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @deprecated */
+        /**
+         * @deprecated
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -149,6 +164,15 @@ export interface paths {
                 };
             };
             responses: {
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
                 /** @description Protocol 1 game routes retired; use v2 binding bootstrap. */
                 426: {
                     headers: {
@@ -173,7 +197,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @deprecated */
+        /**
+         * @deprecated
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -189,6 +216,15 @@ export interface paths {
                 };
             };
             responses: {
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
                 /** @description Protocol 1 game routes retired; use v2 binding bootstrap. */
                 426: {
                     headers: {
@@ -211,7 +247,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @deprecated */
+        /**
+         * @deprecated
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -224,6 +263,15 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
                 /** @description Protocol 1 game routes retired; use v2 binding bootstrap. */
                 426: {
                     headers: {
@@ -248,6 +296,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query: {
@@ -288,13 +337,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -379,6 +428,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -424,13 +474,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -513,6 +563,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -558,13 +609,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -647,6 +698,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -689,13 +741,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -776,6 +828,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query: {
@@ -817,13 +870,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -908,6 +961,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -950,13 +1004,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1037,6 +1091,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query: {
@@ -1077,13 +1132,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem3"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem3"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1168,6 +1223,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -1213,13 +1269,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem3"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem3"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1302,6 +1358,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -1347,13 +1404,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem3"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem3"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1436,6 +1493,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -1478,13 +1536,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem3"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem3"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1565,6 +1623,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query: {
@@ -1606,13 +1665,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem3"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem3"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1697,6 +1756,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -1739,13 +1799,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem3"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem3"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1828,6 +1888,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -1873,13 +1934,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem3"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem3"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -1960,6 +2021,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query: {
@@ -2000,13 +2062,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -2091,6 +2153,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -2136,13 +2199,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -2225,6 +2288,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -2270,13 +2334,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -2359,6 +2423,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -2401,13 +2466,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -2488,6 +2553,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query: {
@@ -2529,13 +2595,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -2620,6 +2686,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -2662,13 +2729,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -2751,6 +2818,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -2796,13 +2864,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -2885,6 +2953,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -2930,13 +2999,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -3019,6 +3088,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -3064,13 +3134,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -3153,6 +3223,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -3198,13 +3269,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -3287,6 +3358,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -3329,13 +3401,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -3566,6 +3638,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query: {
@@ -3608,13 +3681,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -3699,7 +3772,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Current public identities from an authorized game view */
+        /**
+         * Current public identities from an authorized game view
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3742,13 +3818,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -3889,7 +3965,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Read a complete universe total-score ranking from one committed snapshot. Search and pagination retain that response until explicit refresh. Does not advance gameplay. */
+        /** @description Read a complete universe total-score ranking from one committed snapshot. Search and pagination retain that response until explicit refresh. Does not advance gameplay. Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -3932,13 +4008,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -4021,6 +4097,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -4063,13 +4140,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -4152,6 +4229,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: operations["manageReportShare"];
         delete?: never;
         options?: never;
@@ -4184,6 +4262,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -4226,13 +4305,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -4315,6 +4394,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         post: {
             parameters: {
                 query?: never;
@@ -4357,13 +4437,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -4444,6 +4524,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
         get: {
             parameters: {
                 query?: never;
@@ -4483,13 +4564,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem4"];
                     };
                 };
-                /** @description Typed service problem */
+                /** @description Access or bot participation denied */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["Problem4"];
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description Typed service problem */
@@ -4559,6 +4640,86 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/machine/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit ordinary gameplay with server-generated machine participation
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
+        post: operations["machineCommand4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/bot-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read bot policy and eligibility without presence
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
+        get: operations["botStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/bot-retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Permanently retire the authenticated bot; idempotent and unmetered
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
+        post: operations["retireBot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read active catalog metadata without gameplay observations
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
+        post: operations["catalog4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6530,6 +6691,7 @@ export interface components {
             observed_at: number;
             expires_at: number;
             alliance?: components["schemas"]["AllianceIdentity"];
+            kind?: components["schemas"]["PlayerKind"];
         };
         PlayerProfiles: {
             binding: components["schemas"]["Binding"];
@@ -6798,6 +6960,9 @@ export interface components {
             };
             player_alliances?: {
                 [key: string]: components["schemas"]["AllianceIdentity"];
+            };
+            player_kinds?: {
+                [key: string]: components["schemas"]["PlayerKind"];
             };
         };
         /** @enum {string} */
@@ -7074,6 +7239,42 @@ export interface components {
             rank: number;
             previous_rank: number | null;
         };
+        /** @enum {string} */
+        PlayerKind: "human" | "bot";
+        BotPolicy: {
+            /** @constant */
+            version: 1;
+            enabled: boolean;
+            max_active: number;
+            action_units_per_24h: number | null;
+        };
+        BotStatus: {
+            binding: components["schemas"]["Binding"];
+            policy_revision: number;
+            policy: components["schemas"]["BotPolicy"];
+            /** @enum {unknown} */
+            state: "active" | "retired";
+            retired_at: number | null;
+            retirement_reason: string | null;
+            sleep_start_utc_minute: number;
+            sleep_start: number;
+            sleep_end: number;
+            allowance_used: number;
+            allowance_available: number;
+            next_eligible_at: number | null;
+        };
+        BotDenial: {
+            /** @enum {unknown} */
+            code: "BotsDisabled" | "BotSleeping" | "BotBudgetExhausted" | "BotRetired" | "BotCapacityReached";
+            next_eligible_at: number | null;
+        };
+        BoundCatalog: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            profile_hash: string;
+            catalog: components["schemas"]["CatalogEntry"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -7128,13 +7329,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem4"];
                 };
             };
-            /** @description Typed service problem */
+            /** @description Access or bot participation denied */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem4"];
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
                 };
             };
             /** @description Typed service problem */
@@ -7228,6 +7429,304 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    machineCommand4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommandEnvelopeV4"];
+            };
+        };
+        responses: {
+            /** @description Bound response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoundReceipt4"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+        };
+    };
+    botStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current derived status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotStatus"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    retireBot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Retired */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    catalog4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueryContext"];
+            };
+        };
+        responses: {
+            /** @description Bound response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoundCatalog"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
             };
         };
     };

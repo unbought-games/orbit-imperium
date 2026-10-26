@@ -695,7 +695,21 @@ impl PgStore {
         &self,
         pair: ForegroundAction,
     ) -> Result<BoundReceipt, StoreError> {
-        let (p, mut g) = pair.validate().map_err(|_| StoreError::Conflict)?;
+        self.admit_pair_inner(pair, false).await
+    }
+    pub(crate) async fn admit_machine(
+        &self,
+        e: CommandEnvelopeV4,
+    ) -> Result<BoundReceipt, StoreError> {
+        let pair = machine_action(e).map_err(|_| StoreError::Conflict)?;
+        self.admit_pair_inner(pair, true).await
+    }
+    async fn admit_pair_inner(
+        &self,
+        pair: ForegroundAction,
+        machine: bool,
+    ) -> Result<BoundReceipt, StoreError> {
+        let (mut p, mut g) = pair.validate().map_err(|_| StoreError::Conflict)?;
         let b = pair.gameplay.binding;
         let (mut tx, scoped) = self.begin_admission(b.universe).await?;
         crate::binding::check_read(&mut tx, b).await?;
@@ -703,9 +717,22 @@ impl PgStore {
         if !rules.world() {
             return Err(StoreError::UnsupportedProtocol);
         }
+        crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
         let pair_hash = hash(&pair);
         if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
             return Ok(receipt);
+        }
+        if machine {
+            let body = crate::bots::participation_body(&mut tx, b, &g).await?;
+            if let Command::World {
+                action:
+                    WorldAction::RecordForegroundPresence {
+                        body: ref mut slot, ..
+                    },
+            } = p
+            {
+                *slot = body;
+            }
         }
         let runtime = runtime(&mut tx, b.universe).await?;
         let indexed = scoped
@@ -763,6 +790,7 @@ impl PgStore {
         if recent >= 2 * limit {
             return Err(StoreError::RateLimited);
         }
+        crate::bots::charge(&mut tx, b, "command", pair.gameplay.command_id.0, true).await?;
         let pi = InputId(uuid::Uuid::new_v4());
         let gi = InputId(uuid::Uuid::new_v4());
         let body = if let Command::World {
@@ -856,17 +884,28 @@ impl PgStore {
     ) -> Result<ReadSnapshot<(QuoteSnapshot, i64)>, StoreError> {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
+        crate::bots::observe(&mut tx, b).await?;
+        let snapshot = self.world_snapshot_in_tx(&mut tx, b, query).await?;
+        tx.commit().await.map_err(db_error)?;
+        Ok(snapshot)
+    }
+    pub(crate) async fn world_snapshot_in_tx(
+        &self,
+        tx: &mut Tx<'_>,
+        b: Binding,
+        query: Option<&WorldQueryKind>,
+    ) -> Result<ReadSnapshot<(QuoteSnapshot, i64)>, StoreError> {
         let at = if query.is_some() {
-            crate::snapshots::estimate_time(&mut tx, b.universe, b.player).await?
+            crate::snapshots::estimate_time(tx, b.universe, b.player).await?
         } else {
-            crate::snapshots::safe_time(&mut tx, b.universe, b.player).await?
+            crate::snapshots::safe_time(tx, b.universe, b.player).await?
         };
-        let rules = crate::facts::rules(&mut tx, b.universe).await?;
+        let rules = crate::facts::rules(tx, b.universe).await?;
         if !rules.world() {
             return Err(StoreError::UnsupportedProtocol);
         }
         let selected = if let Some(query) = query {
-            crate::scoped_facts::select_query(&mut tx, b, query, &rules).await?
+            crate::scoped_facts::select_query(tx, b, query, &rules).await?
         } else {
             crate::scoped_facts::Selection {
                 owners: BTreeSet::from([b.player]),
@@ -875,7 +914,7 @@ impl PgStore {
             }
         };
         let state = load_selected(
-            &mut tx,
+            tx,
             b.universe,
             b.epoch,
             &rules,
@@ -890,17 +929,16 @@ impl PgStore {
             sqlx::query_scalar("SELECT revision FROM viewer_heads WHERE universe=$1 AND player=$2")
                 .bind(b.universe.0)
                 .bind(b.player.0)
-                .fetch_one(&mut *tx)
+                .fetch_one(&mut **tx)
                 .await
                 .map_err(db_error)?;
         let snapshot = crate::snapshots::wrap(
-            &mut tx,
+            tx,
             b.universe,
             b.player,
             (QuoteSnapshot { state, rules, at }, rev),
         )
         .await?;
-        tx.commit().await.map_err(db_error)?;
         Ok(snapshot)
     }
     pub(crate) async fn report_page(
@@ -913,6 +951,7 @@ impl PgStore {
         let b = q.context.binding;
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
+        crate::bots::observe(&mut tx, b).await?;
         let at = crate::snapshots::safe_time(&mut tx, b.universe, b.player).await?;
         let head: i64 = sqlx::query_scalar(
             "SELECT revision FROM mission_report_heads WHERE universe=$1 AND recipient=$2",
@@ -986,6 +1025,7 @@ impl PgStore {
     ) -> Result<ReadSnapshot<(ReportDetail4, i64, i64)>, StoreError> {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
+        crate::bots::observe(&mut tx, b).await?;
         let at = crate::snapshots::safe_time(&mut tx, b.universe, b.player).await?;
         let row=sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,EXISTS(SELECT 1 FROM mission_report_shares s WHERE s.report=r.id AND s.recipient=p.recipient AND s.epoch=(SELECT epoch FROM universes WHERE id=r.universe)) AS shared,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3").bind(b.universe.0).bind(id.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let r: MissionReport = decode(row.try_get("data").map_err(db_error)?)?;

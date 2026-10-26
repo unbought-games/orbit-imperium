@@ -32,6 +32,8 @@ pub struct ReportShareStatus {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SharedReport {
+    #[serde(default)]
+    pub player_kinds: BTreeMap<String, PlayerKind>,
     pub report: ReportId,
     pub observed_at: i64,
     pub options: ReportShareOptions,
@@ -49,7 +51,7 @@ impl<S: GameStore> GameService<S> {
     ) -> Result<ReportShareStatus, ServiceError> {
         Self::principal(principal, request.context.binding)?;
         self.store
-            .report_share(request.context.binding, report, request.action)
+            .report_share_request(report, request)
             .await
             .map_err(Into::into)
     }
@@ -273,6 +275,7 @@ pub fn project_shared_report_with_alliances(
         BTreeMap::new()
     };
     Ok(SharedReport {
+        player_kinds: Default::default(),
         report,
         observed_at,
         options,

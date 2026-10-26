@@ -230,7 +230,9 @@ pub(super) async fn report_share<S: GameStore + IdentityStore>(
 pub(super) async fn shared_report<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     Path(token): Path<uuid::Uuid>,
+    h: HeaderMap,
 ) -> Result<Response, Problem> {
+    super::bots::public_report_access(&s, &h, token).await?;
     let mut response = no_store_json(s.game.shared_report(token).await?);
     response.headers_mut().insert(
         "x-robots-tag",
@@ -240,4 +242,19 @@ pub(super) async fn shared_report<S: GameStore + IdentityStore>(
         .headers_mut()
         .insert("referrer-policy", HeaderValue::from_static("no-referrer"));
     Ok(response)
+}
+
+pub(super) async fn catalog<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(c): ApiJson<QueryContext>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    path_binding(u, c.binding)?;
+    s.game.require_protocol(session.account, u, 4).await?;
+    Ok(no_store_json(
+        s.game.bound_catalog(principal(&session, u)?, c).await?,
+    ))
 }

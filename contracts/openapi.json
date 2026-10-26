@@ -76,6 +76,23 @@
         "responses": {
           "426": {
             "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -108,7 +125,9 @@
             }
           }
         ],
-        "deprecated": true
+        "deprecated": true,
+        "x-bot-category": "retired",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v1/universes/{id}/quotes": {
@@ -116,6 +135,23 @@
         "responses": {
           "426": {
             "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -158,7 +194,9 @@
             }
           }
         ],
-        "deprecated": true
+        "deprecated": true,
+        "x-bot-category": "retired",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v1/universes/{id}/commands": {
@@ -166,6 +204,23 @@
         "responses": {
           "426": {
             "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -189,7 +244,9 @@
             }
           }
         ],
-        "deprecated": true
+        "deprecated": true,
+        "x-bot-category": "retired",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v1/universes/{id}/commands/{commandId}": {
@@ -197,6 +254,23 @@
         "responses": {
           "426": {
             "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -219,7 +293,9 @@
             }
           }
         ],
-        "deprecated": true
+        "deprecated": true,
+        "x-bot-category": "retired",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v2/universes/{universe}/binding": {
@@ -276,11 +352,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -355,7 +438,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v2/universes/{universe}/overview": {
@@ -422,11 +515,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -511,7 +611,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v2/universes/{universe}/quotes": {
@@ -578,11 +688,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -667,7 +784,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v2/universes/{universe}/commands": {
@@ -715,11 +842,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -804,7 +938,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "admission",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v2/universes/{universe}/commands/{command_id}": {
@@ -870,11 +1014,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -949,7 +1100,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v2/universes/{universe}/settings": {
@@ -997,11 +1158,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -1086,7 +1254,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v3/universes/{universe}/binding": {
@@ -1143,11 +1321,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem3"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -1222,7 +1407,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v3/universes/{universe}/overview": {
@@ -1289,11 +1484,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem3"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -1378,7 +1580,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v3/universes/{universe}/quotes": {
@@ -1445,11 +1657,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem3"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -1534,7 +1753,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v3/universes/{universe}/commands": {
@@ -1582,11 +1811,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem3"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -1671,7 +1907,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "admission",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v3/universes/{universe}/commands/{command_id}": {
@@ -1737,11 +1983,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem3"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -1816,7 +2069,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v3/universes/{universe}/settings": {
@@ -1864,11 +2127,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem3"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -1953,7 +2223,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v3/universes/{universe}/progression-options": {
@@ -2020,11 +2300,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem3"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -2109,7 +2396,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/binding": {
@@ -2166,11 +2463,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -2245,7 +2549,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/overview": {
@@ -2312,11 +2626,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -2401,7 +2722,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/quotes": {
@@ -2468,11 +2799,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -2557,7 +2895,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/commands": {
@@ -2605,11 +2953,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -2694,7 +3049,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "admission",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/commands/{command_id}": {
@@ -2760,11 +3125,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -2839,7 +3211,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/settings": {
@@ -2887,11 +3269,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -2976,7 +3365,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/progression-options": {
@@ -3043,11 +3442,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -3132,7 +3538,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/world": {
@@ -3199,11 +3615,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -3288,7 +3711,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "tactical-or-quote",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/reports": {
@@ -3355,11 +3788,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -3444,7 +3884,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/reports/{report}": {
@@ -3511,11 +3961,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -3600,7 +4057,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/presence": {
@@ -3648,11 +4115,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -3737,7 +4211,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "admission",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v1/registration": {
@@ -3928,11 +4412,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4017,7 +4508,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v1/universes/{universe}/player-profiles": {
@@ -4065,11 +4566,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4155,7 +4663,17 @@
             }
           }
         },
-        "summary": "Current public identities from an authorized game view"
+        "summary": "Current public identities from an authorized game view",
+        "x-bot-category": "profile-or-tactical",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v1/session/renew": {
@@ -4240,11 +4758,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4330,7 +4855,16 @@
             }
           }
         },
-        "description": "Read a complete universe total-score ranking from one committed snapshot. Search and pagination retain that response until explicit refresh. Does not advance gameplay."
+        "description": "Read a complete universe total-score ranking from one committed snapshot. Search and pagination retain that response until explicit refresh. Does not advance gameplay. Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.",
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ]
       }
     },
     "/api/v4/universes/{universe}/combat-simulation": {
@@ -4378,11 +4912,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4467,7 +5008,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "caller-supplied-simulation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/reports/{report}/share": {
@@ -4532,11 +5083,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4622,7 +5180,17 @@
             }
           }
         },
-        "operationId": "manageReportShare"
+        "operationId": "manageReportShare",
+        "x-bot-category": "social-or-status",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/shared-reports/{token}": {
@@ -4702,11 +5270,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4791,7 +5366,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/alliances/commands": {
@@ -4839,11 +5424,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4928,7 +5520,17 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "free-observation",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
     "/api/v4/universes/{universe}/alliances/{alliance}": {
@@ -4985,11 +5587,18 @@
             }
           },
           "403": {
-            "description": "Typed service problem",
+            "description": "Access or bot participation denied",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem4"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -5064,7 +5673,447 @@
               }
             }
           }
-        }
+        },
+        "x-bot-category": "public",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
+      }
+    },
+    "/api/v4/universes/{universe}/machine/commands": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoundReceipt4"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandEnvelopeV4"
+              }
+            }
+          }
+        },
+        "summary": "Submit ordinary gameplay with server-generated machine participation",
+        "operationId": "machineCommand4",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "x-bot-category": "free-observation",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
+      }
+    },
+    "/api/v4/universes/{universe}/bot-status": {
+      "get": {
+        "operationId": "botStatus",
+        "summary": "Read bot policy and eligibility without presence",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current derived status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
+      }
+    },
+    "/api/v4/universes/{universe}/bot-retire": {
+      "post": {
+        "operationId": "retireBot",
+        "summary": "Permanently retire the authenticated bot; idempotent and unmetered",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Retired"
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
+      }
+    },
+    "/api/v4/universes/{universe}/catalog": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoundCatalog"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryContext"
+              }
+            }
+          }
+        },
+        "x-bot-category": "recovery-or-metadata",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.",
+        "operationId": "catalog4",
+        "summary": "Read active catalog metadata without gameplay observations"
       }
     }
   },
@@ -13511,6 +14560,9 @@
           },
           "alliance": {
             "$ref": "#/components/schemas/AllianceIdentity"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PlayerKind"
           }
         },
         "required": [
@@ -14688,6 +15740,12 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/AllianceIdentity"
             }
+          },
+          "player_kinds": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlayerKind"
+            }
           }
         },
         "required": [
@@ -15846,6 +16904,182 @@
           "rank",
           "previous_rank"
         ]
+      },
+      "PlayerKind": {
+        "type": "string",
+        "enum": [
+          "human",
+          "bot"
+        ]
+      },
+      "BotPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "enabled",
+          "max_active",
+          "action_units_per_24h"
+        ],
+        "properties": {
+          "version": {
+            "const": 1
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "max_active": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "action_units_per_24h": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        }
+      },
+      "BotStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "binding",
+          "policy_revision",
+          "policy",
+          "state",
+          "retired_at",
+          "retirement_reason",
+          "sleep_start_utc_minute",
+          "sleep_start",
+          "sleep_end",
+          "allowance_used",
+          "allowance_available",
+          "next_eligible_at"
+        ],
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "policy_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "policy": {
+            "$ref": "#/components/schemas/BotPolicy"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "retired"
+            ]
+          },
+          "retired_at": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "retirement_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sleep_start_utc_minute": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1439
+          },
+          "sleep_start": {
+            "type": "integer"
+          },
+          "sleep_end": {
+            "type": "integer"
+          },
+          "allowance_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "allowance_available": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "next_eligible_at": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "BotDenial": {
+        "type": "object",
+        "required": [
+          "code",
+          "next_eligible_at"
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "BotsDisabled",
+              "BotSleeping",
+              "BotBudgetExhausted",
+              "BotRetired",
+              "BotCapacityReached"
+            ]
+          },
+          "next_eligible_at": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "BoundCatalog": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "binding",
+          "request_id",
+          "profile_hash",
+          "catalog"
+        ],
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profile_hash": {
+            "type": "string"
+          },
+          "catalog": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "MachineBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Revocable token scoped to one account/player/universe. Never grants operator access."
+      },
+      "BrowserSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "orbit_session",
+        "description": "Browser mutations also require same-origin and X-CSRF-Token."
       }
     }
   }

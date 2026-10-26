@@ -48,6 +48,7 @@ impl PgStore {
         let b = q.context.binding;
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
+        crate::bots::observe(&mut tx, b).await?;
         let at = now(&mut tx).await?;
         let mut view = AllianceView {
             binding: b,

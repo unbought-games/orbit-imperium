@@ -1,3 +1,4 @@
+import { PlayerKinds } from './player-name'
 import { useEffect, useState } from 'react'
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
@@ -58,12 +59,14 @@ export function SharedReportPage({ token }: { token: string }) {
               : 'Target coordinates hidden.'}{' '}
             “Your” refers to the publishing player.
           </Text>
-          <ReportObservation
-            payload={report.payload}
-            playerNames={report.player_names}
-            playerAlliances={report.player_alliances}
-            shared
-          />
+          <PlayerKinds.Provider value={report.player_kinds ?? {}}>
+            <ReportObservation
+              payload={report.payload}
+              playerNames={report.player_names}
+              playerAlliances={report.player_alliances}
+              shared
+            />
+          </PlayerKinds.Provider>
         </>
       ) : (
         <Text role="status">Loading shared report…</Text>
