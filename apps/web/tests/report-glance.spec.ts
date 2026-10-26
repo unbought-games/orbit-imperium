@@ -135,6 +135,23 @@ test('report glances expose historical mission facts in compact rows on desktop 
     if (outcome === 'AttackerVictory' && side === 'Attacker') await expect(rows.nth(2)).toContainText('Loot:')
     else await expect(rows.nth(2)).not.toContainText('Loot:')
   }
+  // Historical reports may omit the viewer's side; their outcomes have no icon.
+  for (const [outcome, title] of [
+    ['AttackerVictory', 'Attacker victory'],
+    ['DefenderVictory', 'Defender victory'],
+  ] as const) {
+    combat.outcome = outcome
+    delete combat.participants
+    await page.reload()
+    await expect(rows.nth(2).locator('strong')).toHaveText('Combat')
+    await expect(rows.nth(2).locator('strong')).toHaveCSS('color', 'rgb(227, 152, 133)')
+    await expect(rows.nth(2).getByText(title, { exact: true })).toBeVisible()
+    await expect(rows.nth(2).getByRole('link', { name: `Combat · ${title} · Luna (Moon)`, exact: true })).toBeVisible()
+  }
+  delete combat.outcome
+  await page.reload()
+  await expect(rows.nth(2).getByRole('link', { name: 'Combat · Luna (Moon)', exact: true })).toBeVisible()
+  await expect(rows.nth(2)).not.toContainText('victory')
   // Type colors also work without previews and meet WCAG AA on the row surface.
   for (const [kind, color] of [
     ['Combat', 'rgb(227, 152, 133)'],

@@ -44,14 +44,17 @@ export function ReportListRow({
   onSelect?: (checked: boolean) => void
 }) {
   const preview = reportPreview(report.preview, model.binding?.player)
-  const outcome = reportListTitle(report, model.binding?.player)
+  const outcome =
+    report.preview?.kind === 'Combat' && report.preview.outcome
+      ? reportListTitle(report, model.binding?.player)
+      : undefined
   const identity = reportListIdentity(
     report.preview,
     model.binding?.player,
     playerNames,
     report.player_alliances,
   )
-  const title = [label(report.kind), outcome.symbol && outcome.title, identity]
+  const title = [label(report.kind), outcome?.title, identity]
     .filter(Boolean)
     .join(' · ')
   return (
@@ -82,9 +85,11 @@ export function ReportListRow({
             <strong className={styles.reportType} data-kind={report.kind}>
               {label(report.kind)}
             </strong>
-            {outcome.symbol && (
+            {outcome && (
               <span className={styles[outcome.tone]}>
-                <span aria-hidden="true">{outcome.symbol} </span>
+                {outcome.symbol && (
+                  <span aria-hidden="true">{outcome.symbol} </span>
+                )}
                 {outcome.title}
               </span>
             )}
