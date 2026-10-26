@@ -12,7 +12,7 @@ test('five private accounts see only their starter, build, and switch safely at 
   await page.setViewportSize({width:[320,390,1440,320,1440][i],height:900});
   await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[i].name);await page.getByLabel('Password').fill(accounts[i].password);await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible();
-  await expect(page.getByLabel('Universe settings')).toContainText('10× — fixed for this universe');
+  await expect(page.getByLabel('Universe settings')).toContainText('Universe speed: 10×.');
   await expect(page.getByLabel('Universe settings')).toContainText('5 solar systems per galaxy');
   const session=await(await page.request.get('/api/v1/session')).json(),u=session.memberships[0].universe;
   const candidate=await(await page.request.get(`/api/v2/universes/${u}/binding?request_id=${randomUUID()}`)).json();

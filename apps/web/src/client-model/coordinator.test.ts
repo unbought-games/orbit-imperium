@@ -1327,3 +1327,106 @@ it('alliance not-found and permission errors stay local to the screen', async ()
     expect(c.view).toBe(before)
   }
 })
+
+it('refreshes speed and settings atomically after a rules activation', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const oldSettings = port.settings
+  const originalView = port.view
+  let calls = 0
+  port.settings = async (context) => {
+    calls++
+    return {
+      ...(await oldSettings(context)),
+      profile_hash: 'b'.repeat(64),
+      speed: 3,
+    }
+  }
+  await c.refresh()
+  expect(calls).toBe(0)
+  port.view = async (context) => ({
+    ...(await originalView(context)),
+    viewer_revision: '1',
+    profile_hash: 'b'.repeat(64),
+    speed: 3,
+  })
+  const mismatches: boolean[] = []
+  const unsubscribe = c.store.subscribe(({ view, settings }) => {
+    if (view && settings)
+      mismatches.push(
+        view.profile_hash !== settings.profile_hash ||
+          view.speed !== settings.speed,
+      )
+  })
+  await c.refresh('1')
+  unsubscribe()
+  expect(calls).toBe(1)
+  expect(c.view?.speed).toBe(3)
+  expect(c.settings?.speed).toBe(3)
+  expect(mismatches).not.toContain(true)
+  expect(c.stale).toBe(false)
+})
+
+it('retains a coherent snapshot if rules change again between view and settings', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const oldView = c.view
+  const originalSettings = port.settings
+  port.view = async (context) => ({
+    ...view(context.request_id, '1'),
+    profile_hash: 'b'.repeat(64),
+    speed: 3,
+  })
+  port.settings = async (context) => ({
+    ...(await originalSettings(context)),
+    profile_hash: 'c'.repeat(64),
+    speed: 4,
+  })
+  await c.refresh('1')
+  expect(c.view).toBe(oldView)
+  expect(c.settings?.speed).toBe(1)
+  expect(c.stale).toBe(true)
+  port.settings = async (context) => ({
+    ...(await originalSettings(context)),
+    profile_hash: 'b'.repeat(64),
+    speed: 3,
+  })
+  await c.refresh('1')
+  expect(c.view?.speed).toBe(3)
+  expect(c.settings?.speed).toBe(3)
+  expect(c.stale).toBe(false)
+})
+
+it('discards a rules refresh whose settings finish after logout', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const originalSettings = port.settings
+  let release!: () => void
+  let requested!: () => void
+  const waiting = new Promise<void>((resolve) => {
+    requested = resolve
+  })
+  port.view = async (context) => ({
+    ...view(context.request_id, '1'),
+    profile_hash: 'b'.repeat(64),
+    speed: 3,
+  })
+  port.settings = async (context) => {
+    requested()
+    await new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return {
+      ...(await originalSettings(context)),
+      profile_hash: 'b'.repeat(64),
+      speed: 3,
+    }
+  }
+  const refreshing = c.refresh('1')
+  await waiting
+  await c.logout()
+  release()
+  await refreshing
+  expect(c.view).toBeNull()
+  expect(c.settings).toBeNull()
+})

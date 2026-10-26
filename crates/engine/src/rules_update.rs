@@ -15,7 +15,6 @@ pub fn validate_rules_update(
     next.validate()?;
     if !current.progression()
         || current.protocol() != next.protocol()
-        || current.speed != next.speed
         || current.artifact.universe != next.artifact.universe
         || current.artifact.resource_scale != next.artifact.resource_scale
         || current.artifact.hour_ms != next.artifact.hour_ms

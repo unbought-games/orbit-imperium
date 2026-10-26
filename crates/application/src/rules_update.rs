@@ -113,6 +113,12 @@ impl<S: RulesStore> RulesService<S> {
         let initialize = validate_rules_update(&current.rules, &next)?;
         let mut changes = vec![];
         difference(
+            "/speed",
+            Some(&serde_json::to_value(current.rules.speed).expect("speed serializes")),
+            Some(&serde_json::to_value(next.speed).expect("speed serializes")),
+            &mut changes,
+        );
+        difference(
             "",
             Some(&serde_json::to_value(&current.rules.artifact).expect("rules serialize")),
             Some(&serde_json::to_value(&next.artifact).expect("rules serialize")),
@@ -154,9 +160,6 @@ pub fn validate_rules_document_immutable(
     let invalid = |field| RulesUpdateError::Invalid {
         reason: format!("immutable.{field} cannot change after universe creation"),
     };
-    if current.speed != document.speed {
-        return Err(invalid("speed"));
-    }
     match (&current.artifact.universe, &document.artifact.universe) {
         (Some(current), Some(next)) => {
             for (field, changed) in [

@@ -260,10 +260,11 @@ pub(crate) async fn publish(
         .revision
         .checked_add(1)
         .ok_or(StoreError::CorruptData)?;
-    sqlx::query("UPDATE universes SET profile_hash=$2,rules_revision=$3 WHERE id=$1")
+    sqlx::query("UPDATE universes SET profile_hash=$2,rules_revision=$3,speed=$4 WHERE id=$1")
         .bind(universe.0)
         .bind(&next.hash.0)
         .bind(revision)
+        .bind(next.speed)
         .execute(&mut **tx)
         .await
         .map_err(db_error)?;

@@ -114,7 +114,7 @@ EXPLICIT_SUITES = core mvp progression missions raiding recovery migrations sign
 .PHONY: test-explicit test-acceptance test-container _container test-runtime prepare-explicit prepare-migrations prepare-signup _acceptance $(addprefix run-,$(EXPLICIT_SUITES)) $(addprefix test-,$(EXPLICIT_SUITES)) test-e2e
 
 test-explicit:
-	@case "$(SUITE)" in all) $(MAKE) test-acceptance && $(MAKE) test-container ;; acceptance|container|core|mvp|progression|missions|raiding|recovery|migrations|signup|rules-updates) $(MAKE) test-$(SUITE) ;; *) echo 'Unknown explicit suite' >&2; exit 2 ;; esac
+	@case "$(SUITE)" in all) $(MAKE) test-acceptance && $(MAKE) test-container ;; acceptance|container|core|mvp|progression|missions|raiding|recovery|migrations|signup|rules-updates|speed-updates) $(MAKE) test-$(SUITE) ;; *) echo 'Unknown explicit suite' >&2; exit 2 ;; esac
 
 test-runtime:
 	$(TIMEOUT) compile cargo build -p orbit-server --features orbit-server/test-support
@@ -196,3 +196,10 @@ test-combat:
 .PHONY: test-colonization
 test-colonization:
 	cargo nextest run -p orbit-engine --test colonization --test missions
+
+.PHONY: test-speed-updates run-speed-updates
+test-speed-updates: test-runtime
+	$(MAKE) run-speed-updates
+
+run-speed-updates:
+	$(TIMEOUT) full-system node scripts/speed-updates-e2e.mjs

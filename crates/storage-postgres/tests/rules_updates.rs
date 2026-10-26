@@ -319,6 +319,7 @@ async fn activation_waits_for_admitted_and_claimed_work() {
     store.activate_scoped_runtime(u).await.unwrap();
     let mut next = service.export(u).await.unwrap();
     next.artifact.base_income[0] = 41;
+    next.speed = 3;
     let game = GameService::new(store.clone());
     let presence = || CommandEnvelope {
         command_id: CommandId(Uuid::new_v4()),
