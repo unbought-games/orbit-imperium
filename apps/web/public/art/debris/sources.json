@@ -1,0 +1,38 @@
+{
+  "generator": "Built-in image_gen",
+  "date": "2026-10-26",
+  "description": "Simplified metal wreckage icons with distinct sparse, scattered, and dense silhouettes. 192px WebP exports preserve alpha.",
+  "prompts": {
+    "small": "Game UI icon of spacecraft wreckage for a serious dark space strategy game. Small readable pictogram rendered as simplified 3D metal shapes. Irregular asymmetric loose debris cloud, NOT a circle or ring. Gunmetal gray broken plates and short snapped beams, broad flat lighting and restrained silver edge highlights. Minimal geometry, smooth untextured surfaces, no internal machinery details. No outlines, no gemstones or crystals, no blue diamonds, no jewelry, no necklace, no rocks, no ring, no symmetrical arrangement, no frame, no text, no stars. The silhouette and negative space must read clearly at 40 pixels. Transparent alpha background. Square image, centered, about 15% clear padding. SMALL: only three disconnected pieces of bent spaceship scrap, one larger plate and two small beams. Sparse, lightweight silhouette.",
+    "medium": "Game UI icon of spacecraft wreckage for a serious dark space strategy game. Small readable pictogram rendered as simplified 3D metal shapes. Irregular asymmetric loose debris cloud, NOT a circle or ring. Gunmetal gray broken plates and short snapped beams, broad flat lighting and restrained silver edge highlights. Minimal geometry, smooth untextured surfaces, no internal machinery details. No outlines, no gemstones or crystals, no blue diamonds, no jewelry, no necklace, no rocks, no ring, no symmetrical arrangement, no frame, no text, no stars. The silhouette and negative space must read clearly at 40 pixels. Transparent alpha background. Square image, centered, about 15% clear padding. MEDIUM: seven disconnected pieces of bent spacecraft scrap in an uneven compact diagonal cloud, two main broken plates and five much smaller pieces. Asymmetrical scattered fragments filling the center, never surrounding a hole.",
+    "large": "Game UI icon of spacecraft wreckage for a serious dark space strategy game. Small readable pictogram rendered as simplified 3D metal shapes. Irregular asymmetric loose debris cloud, NOT a circle or ring. Gunmetal gray broken plates and short snapped beams, broad flat lighting and restrained silver edge highlights. Minimal geometry, smooth untextured surfaces, no internal machinery details. No outlines, no gemstones or crystals, no blue diamonds, no jewelry, no necklace, no rocks, no ring, no symmetrical arrangement, no frame, no text, no stars. The silhouette and negative space must read clearly at 40 pixels. Transparent alpha background. Square image, centered, about 15% clear padding. LARGE: a bulky torn wedge of spaceship hull surrounded by eight small separated broken plates and short beams, compact dense cluster, strong substantial silhouette. Largest piece resembles a demolished industrial spacecraft section, not an asteroid. Simple geometry only."
+  },
+  "selection": {
+    "small": "total metal + crystal < 10,000 whole units",
+    "medium": "10,000 to less than 1,000,000 whole units",
+    "large": "1,000,000 whole units or more"
+  },
+  "assets": [
+    {
+      "size": "small",
+      "master": "masters/debris-small.png",
+      "icon": "debris-small.webp",
+      "width": 192,
+      "height": 192
+    },
+    {
+      "size": "medium",
+      "master": "masters/debris-medium.png",
+      "icon": "debris-medium.webp",
+      "width": 192,
+      "height": 192
+    },
+    {
+      "size": "large",
+      "master": "masters/debris-large.png",
+      "icon": "debris-large.webp",
+      "width": 192,
+      "height": 192
+    }
+  ]
+}

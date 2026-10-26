@@ -581,7 +581,9 @@ for (const width of [320, 390, 1440]) {
     await page.route('**/api/**/overview', (route) =>
       route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
     )
-    await page.clock.runFor(453000)
+    // The one-second step above verifies ticking. Jump to expiry without
+    // replaying 7.5 minutes of animation frames and polling callbacks.
+    await page.clock.fastForward(453000)
     await expect(attack).toContainText('Awaiting confirmation')
     await expect(attack.getByRole('heading')).toHaveText(
       'Incoming attack · Hostile',

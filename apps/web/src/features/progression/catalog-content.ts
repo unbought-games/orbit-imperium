@@ -51,7 +51,9 @@ const content: Record<string, string> = {
   GaussCannon:
     'A stationary electromagnetic cannon with powerful attacks against enemy fleets. Requires Shipyard 6, Energy Technology 6, Weapons Technology 3 and Shielding Technology 1.',
   SmallShieldDome:
-    'A planetary shield that supports the defense of this planet. Only one small shield dome can be stationed or queued here.',
+    'A stationary dome whose shield protects itself, not other units. Only one small shield dome can be stationed or queued here; a large shield dome can coexist with it.',
+  LargeShieldDome:
+    'A stationary dome with five times the base shield strength of the Small Shield Dome. Its shield protects itself, not other units. Requires Shipyard 6 and Shielding Technology 6. Only one large shield dome can be stationed or queued here; a small shield dome can coexist with it.',
   LaserTechnology:
     'Unlocks concentrated energy weapons, including Light Lasers at level 3 and Heavy Lasers at level 6. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
   IonTechnology:

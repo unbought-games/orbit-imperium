@@ -26,16 +26,32 @@ file. `--universe UUID` selects an existing world. Without it, the command uses
 Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
 --help` works without a database. An empty database needs `orbit setup` first.
 
-The bundled content release is currently **0.4.0**. This is the content bundle's
+The bundled content release is currently **0.5.0**. This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
-Large Cargo, Solar Satellite, Heavy Laser and Gauss Cannon. The current development
-bundle also includes [Fusion Reactor](fusion-reactor.md), including fuel-aware
-production and level-zero initialization. The original signup
+Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon and Large Shield Dome.
+The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
+including fuel-aware production and level-zero initialization. The original signup
 baseline, fully activated v0.3.0 worlds and partial activations can all be upgraded.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
+
+Large Shield Dome requires Shipyard 6 on the planet and player Shielding Technology
+6. Its prerequisite chain (Robotics Factory 2, Research Lab 6 and Energy Technology
+3) is already supported. It costs 50,000 metal and 50,000 crystal, with base attack
+1, shield 10,000 and hull 10,000 before technology bonuses. One completed or queued
+dome of each type is allowed per planet; Small and Large Shield Domes coexist.
+Shields protect their own unit, reset each round and use the existing weak-shot
+bounce rule. Domes unlock no further technologies. Destroyed domes use the normal
+defense recovery policy; an unrecovered dome can be rebuilt.
+
+After deploying this binary to every API, worker and operator, use the same
+`orbit rules upgrade --dry-run` and `orbit rules upgrade` commands above. No
+per-content preparation script or manual database edit is needed. Fresh worlds
+include the dome automatically; existing worlds keep their current rules until
+explicit activation. Customized dome definitions produce conflicts, and an
+intentionally disabled dome with retained definitions is not silently re-enabled.
 
 The upgrade has an explicit list of owned fields: the named content's catalog
 entries, research/ship definitions, unit costs, combat entries, related rapid fire,

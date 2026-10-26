@@ -1,5 +1,6 @@
 import { useProfileSource } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
+import { playerLabel } from './player-label'
 import { Button } from '../ui/button'
 import { GalaxyNavigation } from './galaxy-navigation'
 import styles from './galaxy.module.css'
@@ -10,6 +11,7 @@ import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
 import { GalaxyPosition } from './galaxy-position'
+import { galaxyMissionCapabilities } from './galaxy-mission-actions'
 import { colonizationStatus } from '../client-model/colonization'
 import { FleetSlots } from './fleet-slots'
 import {
@@ -110,9 +112,7 @@ export function Galaxy({
       target?.scrollIntoView({ block: 'center' })
     }
   }, [loaded, galaxy, system, position])
-  const canAttack = model.view?.capabilities.some(
-    (c) => c.capability === 'Attack' && c.enabled,
-  )
+  const missions = galaxyMissionCapabilities(model.view)
   useProfileSource(
     data ? { type: 'Galaxy', galaxy: data.galaxy, system: data.system } : null,
     model.view?.viewer_revision,
@@ -180,18 +180,18 @@ export function Galaxy({
                   playerIdentity={
                     position.body ? (
                       <PlayerName
+                        badgeTooltip
                         player={position.body.owner}
                         names={data.player_names}
-                        fallback={
-                          position.body.owner === model.binding?.player
-                            ? 'You'
-                            : undefined
-                        }
+                        fallback={playerLabel(
+                          position.body.owner,
+                          data.player_names,
+                        )}
                       />
                     ) : undefined
                   }
                   player={model.binding?.player}
-                  canAttack={!!canAttack}
+                  missions={missions}
                   origin={origin}
                   colony={colonizationStatus(
                     model.view,

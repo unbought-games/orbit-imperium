@@ -3,6 +3,8 @@ import { BodyIdentity } from './body-identity'
 import { PlayerName } from './player-name'
 import type { PlayerNames } from './player-label'
 import { Heading } from '../ui/typography'
+import { Popover } from '../ui/popover'
+import { CircleHelp } from 'lucide-react'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import {
   combatInteger,
@@ -121,7 +123,28 @@ function Fire({ value }: { value: Observation }) {
         </dd>
       </div>
       <div>
-        <dt>Explosions caused</dt>
+        <dt>
+          <Popover
+            label="Explosions caused"
+            className={styles.explosionHelp}
+            trigger={
+              <>
+                Explosions caused <CircleHelp size={14} aria-hidden="true" />
+              </>
+            }
+          >
+            <p>
+              Counts successful random hull explosions. Units destroyed directly
+              by hull damage do not count, so losses can be higher even when
+              this is zero.
+            </p>
+            <p>
+              After a hit that does not bounce, a unit still alive at 70% hull
+              or less rolls for an explosion. The chance equals the percentage
+              of hull lost: 30% at 70% hull remaining, 60% at 40% remaining.
+            </p>
+          </Popover>
+        </dt>
         <dd>
           <Amount value={combatInteger(value.explosions)} />
         </dd>

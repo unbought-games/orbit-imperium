@@ -3269,3 +3269,274 @@ fn heavy_laser_paid_fifo_survives_disable_and_restart_without_duplicate_credit()
     assert_eq!(s.bodies[&b].checkpoint.amounts, paid);
     assert_eq!(s.bodies[&b].fields, fields);
 }
+
+fn large_shield_dome_fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
+    let (mut s, old, p, b) = prepared();
+    let r = common::large_shield_dome_rules(&old);
+    s.profile_hash = r.hash.clone();
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::Shipyard, 6);
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .insert(ResearchId::ShieldingTechnology, 6);
+    (s, r, p, b)
+}
+
+#[test]
+fn large_shield_dome_checks_completed_prerequisites_resources_and_bulk_orders() {
+    let (s, r, p, b) = large_shield_dome_fixture();
+    let request = QuoteRequest::Manufacture {
+        body: b,
+        item: ManufacturedItem::Defense(DefenseId::LargeShieldDome),
+        quantity: 1,
+    };
+    let cmd = command(&s, &r, p, 0, request.clone());
+    for gate in 0..4 {
+        let mut missing = s.clone();
+        let error = if gate < 2 {
+            GameError::PrerequisiteMissing
+        } else {
+            GameError::InsufficientResources
+        };
+        match gate {
+            0 => {
+                missing
+                    .bodies
+                    .get_mut(&b)
+                    .unwrap()
+                    .levels
+                    .insert(Building::Shipyard, 5);
+            }
+            1 => {
+                missing
+                    .research
+                    .get_mut(&p)
+                    .unwrap()
+                    .levels
+                    .insert(ResearchId::ShieldingTechnology, 5);
+            }
+            2 => {
+                missing.bodies.get_mut(&b).unwrap().checkpoint.amounts.metal = 50_000 * SCALE - 1;
+            }
+            _ => {
+                missing
+                    .bodies
+                    .get_mut(&b)
+                    .unwrap()
+                    .checkpoint
+                    .amounts
+                    .crystal = 50_000 * SCALE - 1;
+            }
+        }
+        blocked(&missing, &r, p, 0, request.clone(), error.clone());
+        let mut input = common::input(
+            &missing,
+            &r,
+            Actor::Player(p),
+            0,
+            11000,
+            Input::Command(cmd.clone()),
+        );
+        input.protocol = 3;
+        input.schema_version = 3;
+        assert_eq!(
+            transition(&missing, &input, &r),
+            TransitionResult::Rejected(if gate == 0 {
+                GameError::QuoteChanged // Shipyard changes also change the quoted duration.
+            } else {
+                error
+            })
+        );
+    }
+    let bulk = QuoteRequest::Manufacture {
+        body: b,
+        item: ManufacturedItem::Defense(DefenseId::LargeShieldDome),
+        quantity: 2,
+    };
+    blocked(&s, &r, p, 0, bulk.clone(), GameError::CapacityReserved);
+    let bulk_hash = inspect_progression(&s, Actor::Player(p), &bulk, 0, &r)
+        .unwrap()
+        .terms_hash
+        .unwrap();
+    let mut input = common::input(
+        &s,
+        &r,
+        Actor::Player(p),
+        0,
+        11001,
+        Input::Command(Command::StartManufacture {
+            body: b,
+            item: ManufacturedItem::Defense(DefenseId::LargeShieldDome),
+            quantity: 2,
+            expected_terms_hash: bulk_hash,
+        }),
+    );
+    input.protocol = 3;
+    input.schema_version = 3;
+    assert_eq!(
+        transition(&s, &input, &r),
+        TransitionResult::Rejected(GameError::CapacityReserved)
+    );
+}
+
+#[test]
+fn shield_domes_have_independent_capacity_and_paid_work_survives_restart_and_disable() {
+    let (mut s, r, p, b) = large_shield_dome_fixture();
+    let body = s.bodies.get_mut(&b).unwrap();
+    body.fields = body.levels.values().sum();
+    let fields = body.fields;
+    let before = body.checkpoint.amounts;
+    let mut events = Vec::new();
+    for (i, defense) in [DefenseId::SmallShieldDome, DefenseId::LargeShieldDome]
+        .into_iter()
+        .enumerate()
+    {
+        let request = QuoteRequest::Manufacture {
+            body: b,
+            item: ManufacturedItem::Defense(defense),
+            quantity: 1,
+        };
+        let cmd = command(&s, &r, p, 0, request.clone());
+        let changes = run(
+            &mut s,
+            &r,
+            Actor::Player(p),
+            0,
+            11100 + i as u128,
+            Input::Command(cmd.clone()),
+        );
+        events.push(changes.events[0].clone());
+        blocked(&s, &r, p, 0, request, GameError::CapacityReserved);
+        let mut input = common::input(
+            &s,
+            &r,
+            Actor::Player(p),
+            0,
+            11110 + i as u128,
+            Input::Command(cmd),
+        );
+        input.protocol = 3;
+        input.schema_version = 3;
+        assert_eq!(
+            transition(&s, &input, &r),
+            TransitionResult::Rejected(GameError::CapacityReserved)
+        );
+        validate_progression_collections(&s, &s.bodies[&b]).unwrap();
+    }
+    assert!(events[1].at > events[0].at);
+    assert_eq!(
+        s.bodies[&b].checkpoint.amounts,
+        Resources::from_values([
+            before.metal - 60_000 * SCALE,
+            before.crystal - 60_000 * SCALE,
+            before.deuterium,
+        ])
+    );
+    assert_eq!(reserved_fields(&s, b).unwrap(), 0);
+    let mut artifact = r.artifact.clone();
+    artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Defense(DefenseId::LargeShieldDome))
+        .unwrap()
+        .enabled = false;
+    let disabled = Ruleset::from_artifact(artifact, r.speed).unwrap();
+    validate_rules_update(&r, &disabled).unwrap();
+    s.profile_hash = disabled.hash.clone();
+    s = serde_json::from_slice(&serde_json::to_vec(&s).unwrap()).unwrap();
+    for (i, event) in events.iter().enumerate() {
+        run(
+            &mut s,
+            &disabled,
+            Actor::Scheduler,
+            event.at,
+            11200 + i as u128,
+            Input::Event(event.event.clone()),
+        );
+        let duplicate = run(
+            &mut s,
+            &disabled,
+            Actor::Scheduler,
+            event.at,
+            11210 + i as u128,
+            Input::Event(event.event.clone()),
+        );
+        assert!(duplicate.inventories.is_empty());
+    }
+    let at = events[1].at;
+    s.profile_hash = r.hash.clone();
+    for defense in [DefenseId::SmallShieldDome, DefenseId::LargeShieldDome] {
+        let item = ManufacturedItem::Defense(defense);
+        assert_eq!(
+            s.inventories.iter().find(|v| v.item == item).unwrap().count,
+            1
+        );
+        let request = QuoteRequest::Manufacture {
+            body: b,
+            item,
+            quantity: 1,
+        };
+        blocked(&s, &r, p, at, request.clone(), GameError::CapacityReserved);
+        // A destroyed, unrecovered dome frees only its own capacity.
+        s.inventories
+            .iter_mut()
+            .find(|v| v.item == item)
+            .unwrap()
+            .count = 0;
+        let cmd = command(&s, &r, p, at, request);
+        run(
+            &mut s,
+            &r,
+            Actor::Player(p),
+            at,
+            11300 + defense as u128,
+            Input::Command(cmd),
+        );
+    }
+    validate_progression_collections(&s, &s.bodies[&b]).unwrap();
+    assert_eq!(s.bodies[&b].fields, fields);
+}
+
+#[test]
+fn shield_dome_collection_validation_rejects_inventory_and_queue_overcapacity() {
+    for defense in [DefenseId::SmallShieldDome, DefenseId::LargeShieldDome] {
+        let (mut s, r, p, b) = large_shield_dome_fixture();
+        let item = ManufacturedItem::Defense(defense);
+        let cmd = command(
+            &s,
+            &r,
+            p,
+            0,
+            QuoteRequest::Manufacture {
+                body: b,
+                item,
+                quantity: 1,
+            },
+        );
+        let changes = run(&mut s, &r, Actor::Player(p), 0, 11400, Input::Command(cmd));
+        let event = &changes.events[0];
+        let queued = s.clone();
+        run(
+            &mut s,
+            &r,
+            Actor::Scheduler,
+            event.at,
+            11401,
+            Input::Event(event.event.clone()),
+        );
+        let mut overlap = queued;
+        overlap.inventories = s.inventories.clone();
+        assert!(validate_progression_collections(&overlap, &overlap.bodies[&b]).is_err());
+        s.inventories
+            .iter_mut()
+            .find(|v| v.item == item)
+            .unwrap()
+            .count = 2;
+        assert!(validate_progression_collections(&s, &s.bodies[&b]).is_err());
+    }
+}

@@ -83,18 +83,15 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
     'rgb(242, 187, 131)',
   ].entries()) {
     await expect(
-      cards.nth(i).getByRole('img', { name: /Supporter/ }),
+      cards.nth(i).getByRole('button', { name: /Supporter/ }),
     ).toBeVisible()
     await expect(
-      cards
-        .nth(i)
-        .getByRole('img', { name: /Supporter/ })
-        .locator('..'),
+      cards.nth(i).getByRole('button', { name: /Supporter/ }),
     ).toHaveCSS('color', color)
   }
   await expect(cards.nth(3)).toContainText('RegularCommander')
   await expect(
-    cards.nth(3).getByRole('img', { name: /Supporter/ }),
+    cards.nth(3).getByRole('button', { name: /Supporter/ }),
   ).toHaveCount(0)
   await page.getByRole('button', { name: 'Menu', exact: true }).click()
   await expect(page.getByLabel('Username', { exact: true })).toContainText(
@@ -121,12 +118,12 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
   tierTwo = undefined
   await page.clock.fastForward(60_000)
   await expect(
-    cards.nth(1).getByRole('img', { name: /Supporter/ }),
+    cards.nth(1).getByRole('button', { name: /Supporter/ }),
   ).toHaveCount(0)
   await expect(cards.nth(1)).toContainText('RoseCommander')
   unavailable = true
   await page.clock.fastForward(301_000)
-  await expect(page.getByRole('img', { name: /Supporter/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Supporter/ })).toHaveCount(0)
   await expect(cards).toHaveCount(15)
 })
 

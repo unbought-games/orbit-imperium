@@ -150,6 +150,15 @@ pub(super) fn patches() -> Vec<Patch> {
             "../../../../rules/content/gauss-cannon.json"
         )),
     );
+    // Next content bundle: existing worlds opt in through rules upgrade.
+    unit(
+        &mut out,
+        "Defense",
+        "LargeShieldDome",
+        &read(include_bytes!(
+            "../../../../rules/content/large-shield-dome.json"
+        )),
+    );
     // Only ships supported and enabled by this release. Future content is not activated.
     for id in [
         "SmallCargo",

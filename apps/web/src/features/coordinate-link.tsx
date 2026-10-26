@@ -23,8 +23,10 @@ export function CoordinateLink({
   className,
   target = 'planet',
   known,
+  compact = false,
 }: {
   at: unknown
+  compact?: boolean
   label?: string
   children?: ReactNode
   origin?: string
@@ -134,7 +136,23 @@ export function CoordinateLink({
         data-coordinate=""
         className={`${styles.coordinate} ${className ?? ''}`}
       >
-        {navigable ? (
+        {compact ? (
+          <Menu.Root onOpenChange={() => setFeedback('')}>
+            <Menu.Trigger
+              render={<Button variant="ghost" padding="compact" />}
+              className={styles.value}
+              aria-label={`Location actions for ${text}`}
+              title="Coordinates · copy, share or navigate"
+            >
+              {children ?? <span className={styles.address}>{text}</span>}
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner className={styles.positioner} sideOffset={4}>
+                <Menu.Popup className={styles.menu}>{items()}</Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        ) : navigable ? (
           <Link
             {...galaxyTarget(context.universeName, body, {
               ...location,
@@ -151,37 +169,41 @@ export function CoordinateLink({
             {children ?? <span className={styles.address}>{text}</span>}
           </span>
         )}
-        <span className={styles.tools}>
-          <Button
-            variant="ghost"
-            size="icon"
-            padding="compact"
-            type="button"
-            onClick={() => void copy(false)}
-            aria-label={`Copy coordinates ${text}`}
-            title={feedback || 'Copy coordinates'}
-          >
-            {feedback.startsWith('Coordinates copied') ? (
-              <Check size={14} />
-            ) : (
-              <Copy size={14} />
-            )}
-          </Button>
-          <Menu.Root onOpenChange={() => setFeedback('')}>
-            <Menu.Trigger
-              render={<Button variant="ghost" size="icon" padding="compact" />}
-              aria-label={`Location actions for ${text}`}
-              title="Location actions"
+        {!compact && (
+          <span className={styles.tools}>
+            <Button
+              variant="ghost"
+              size="icon"
+              padding="compact"
+              type="button"
+              onClick={() => void copy(false)}
+              aria-label={`Copy coordinates ${text}`}
+              title={feedback || 'Copy coordinates'}
             >
-              <Ellipsis size={16} />
-            </Menu.Trigger>
-            <Menu.Portal>
-              <Menu.Positioner className={styles.positioner} sideOffset={4}>
-                <Menu.Popup className={styles.menu}>{items()}</Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
-        </span>
+              {feedback.startsWith('Coordinates copied') ? (
+                <Check size={14} />
+              ) : (
+                <Copy size={14} />
+              )}
+            </Button>
+            <Menu.Root onOpenChange={() => setFeedback('')}>
+              <Menu.Trigger
+                render={
+                  <Button variant="ghost" size="icon" padding="compact" />
+                }
+                aria-label={`Location actions for ${text}`}
+                title="Location actions"
+              >
+                <Ellipsis size={16} />
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner className={styles.positioner} sideOffset={4}>
+                  <Menu.Popup className={styles.menu}>{items()}</Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
+          </span>
+        )}
         <span
           role={feedback ? 'status' : undefined}
           aria-live="polite"

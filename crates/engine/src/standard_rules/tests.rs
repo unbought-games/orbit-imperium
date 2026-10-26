@@ -41,6 +41,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
             CatalogKey::Defense(DefenseId::GaussCannon),
+            CatalogKey::Defense(DefenseId::LargeShieldDome),
         ] {
             assert!(
                 next.artifact
@@ -217,4 +218,110 @@ fn fusion_upgrade_conflicts_and_disabled_prerequisites_are_explicit() {
         upgrade_standard_rules(&disabled),
         Err(StandardRulesError::Conflicts(_))
     ));
+}
+
+#[test]
+fn large_shield_dome_upgrade_owns_complete_definitions_and_rejects_customizations() {
+    let old = retained(include_bytes!("../../../../rules/mvp-v1-slice-13.json"));
+    let next = upgrade_standard_rules(&old).unwrap();
+    let item = ManufacturedItem::Defense(DefenseId::LargeShieldDome);
+    let entry = next
+        .artifact
+        .catalog
+        .iter()
+        .find(|e| e.key == item.catalog_key())
+        .unwrap();
+    assert_eq!(
+        entry.requirements,
+        vec![
+            Requirement::BodyBuilding {
+                building: Building::Shipyard,
+                level: 6
+            },
+            Requirement::PlayerResearch {
+                research: ResearchId::ShieldingTechnology,
+                level: 6
+            },
+        ]
+    );
+    assert!(!entry.mobile);
+    let cost = next
+        .artifact
+        .progression
+        .as_ref()
+        .unwrap()
+        .unit_costs
+        .iter()
+        .find(|u| u.item == item)
+        .unwrap();
+    assert_eq!(cost.cost, Resources::from_values([50000, 50000, 0]));
+    let combat = &next.artifact.world.as_ref().unwrap().combat;
+    let unit = combat.units.iter().find(|u| u.item == item).unwrap();
+    assert_eq!(unit.cost, [50000, 50000, 0]);
+    assert_eq!(
+        combat_unit_stats(unit, [0; 3], combat).unwrap(),
+        (100000, 1000000000, 1000000000)
+    );
+    for field in ["disabled", "requirements", "cost", "combat"] {
+        let mut custom = next.artifact.clone();
+        match field {
+            "disabled" => {
+                custom
+                    .catalog
+                    .iter_mut()
+                    .find(|e| e.key == item.catalog_key())
+                    .unwrap()
+                    .enabled = false
+            }
+            "requirements" => custom
+                .catalog
+                .iter_mut()
+                .find(|e| e.key == item.catalog_key())
+                .unwrap()
+                .requirements
+                .clear(),
+            "cost" => {
+                custom
+                    .progression
+                    .as_mut()
+                    .unwrap()
+                    .unit_costs
+                    .iter_mut()
+                    .find(|u| u.item == item)
+                    .unwrap()
+                    .cost
+                    .metal = 60000;
+                custom
+                    .world
+                    .as_mut()
+                    .unwrap()
+                    .combat
+                    .units
+                    .iter_mut()
+                    .find(|u| u.item == item)
+                    .unwrap()
+                    .cost[0] = 60000;
+            }
+            _ => {
+                custom
+                    .world
+                    .as_mut()
+                    .unwrap()
+                    .combat
+                    .units
+                    .iter_mut()
+                    .find(|u| u.item == item)
+                    .unwrap()
+                    .shield_hundredths = 2000000
+            }
+        }
+        let custom = Ruleset::from_artifact(custom, next.speed).unwrap();
+        assert!(
+            matches!(
+                upgrade_standard_rules(&custom),
+                Err(StandardRulesError::Conflicts(_))
+            ),
+            "{field}"
+        );
+    }
 }

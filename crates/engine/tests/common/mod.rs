@@ -338,3 +338,36 @@ pub fn heavy_laser_rules(rules: &Ruleset) -> Ruleset {
     }
     Ruleset::from_artifact(artifact, rules.speed).unwrap()
 }
+
+#[allow(dead_code)]
+pub fn large_shield_dome_rules(rules: &Ruleset) -> Ruleset {
+    let mut artifact = rules.artifact.clone();
+    let content: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../../rules/content/large-shield-dome.json"
+    ))
+    .unwrap();
+    let item = ManufacturedItem::Defense(DefenseId::LargeShieldDome);
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == item.catalog_key())
+        .unwrap();
+    entry.enabled = true;
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .push(UnitCost {
+            item,
+            cost: serde_json::from_value(content["cost"].clone()).unwrap(),
+        });
+    if let Some(world) = artifact.world.as_mut() {
+        world
+            .combat
+            .units
+            .push(serde_json::from_value(content["combat"].clone()).unwrap());
+    }
+    Ruleset::from_artifact(artifact, rules.speed).unwrap()
+}

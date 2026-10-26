@@ -137,6 +137,7 @@ impl ProgressionRules {
                         k,
                         DefenseId::RocketLauncher
                             | DefenseId::SmallShieldDome
+                            | DefenseId::LargeShieldDome
                             | DefenseId::LightLaser
                             | DefenseId::HeavyLaser
                             | DefenseId::GaussCannon

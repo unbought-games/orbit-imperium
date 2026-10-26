@@ -16,6 +16,7 @@ import {
 } from './supporter-identity'
 import type { components } from '../contracts'
 import styles from './supporter-preview.module.css'
+import galaxyStyles from './galaxy.module.css'
 
 const players = ['Polaris', 'Cassiopeia', 'Solaris', 'Wayfarer']
 const positions: components['schemas']['GalaxyPosition4'][] = players.map(
@@ -194,31 +195,38 @@ export function SupporterPreview() {
                 <span>Planet / Commander</span>
                 <span>Debris</span>
               </div>
-              {positions.map((position, i) => (
-                <GalaxyPosition
-                  key={i}
-                  position={position}
-                  origin="preview-origin"
-                  colony={colonizationStatus(
-                    null,
-                    position.coordinates.position,
-                  )}
-                  player={undefined}
-                  canAttack
-                  playerIdentity={
-                    <SupporterIdentity
-                      {...identity}
-                      name={players[i]}
-                      tier={supporterTiers[i]}
-                    />
-                  }
-                  onDraft={(_, mission) =>
-                    setAction(
-                      `${mission} preview selected. No mission has been sent.`,
-                    )
-                  }
-                />
-              ))}
+              <div className={galaxyStyles.positionList}>
+                {positions.map((position, i) => (
+                  <GalaxyPosition
+                    key={i}
+                    position={position}
+                    origin="preview-origin"
+                    colony={colonizationStatus(
+                      null,
+                      position.coordinates.position,
+                    )}
+                    player={undefined}
+                    missions={{
+                      attack: true,
+                      transport: true,
+                      harvest: true,
+                      deploy: false,
+                    }}
+                    playerIdentity={
+                      <SupporterIdentity
+                        {...identity}
+                        name={players[i]}
+                        tier={supporterTiers[i]}
+                      />
+                    }
+                    onDraft={(_, mission) =>
+                      setAction(
+                        `${mission} preview selected. No mission has been sent.`,
+                      )
+                    }
+                  />
+                ))}
+              </div>
               <p className={styles.note}>
                 Monthly contributions in USD. Three supporters and a regular
                 player, at actual game size.

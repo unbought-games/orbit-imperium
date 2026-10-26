@@ -72,7 +72,7 @@ async function buildingFixture(page: Page, active = false) {
   })
   await page.route('**/progression-options', (route) => {
     const { context, request } = route.request().postDataJSON()
-    const building = request.building as keyof typeof planet.levels
+    const building = request.building as S['BuildingId3']
     const source = planet.levels[building]!
     const response: S['BoundProgressionOptions4'] = {
       protocol: 4,
@@ -288,13 +288,19 @@ for (const width of [320, 390, 1440]) {
       pane.getByRole('region', { name: 'Building requirements' }),
     ).toHaveCount(0)
     await expect(pane).not.toContainText('Construction possible')
-    const emptyBox = (await empty.boundingBox())!
-    const targetBox = (await target.boundingBox())!
-    const costBox = (await cost.boundingBox())!
-    expect(costBox.y).toBeGreaterThanOrEqual(targetBox.y)
     await expect(target.locator('dl > div').first()).toContainText('Build cost')
-    const benefitBox = (await target.locator('dl > div').filter({ has: page.getByText('Metal capacity', { exact: true }) }).boundingBox())!
-    const buttonBox = (await button.boundingBox())!
+    const benefit = target.locator('dl > div').filter({ has: page.getByText('Metal capacity', { exact: true }) })
+    // Read every rectangle in the same browser task: route-focus scrolling
+    // between separate boundingBox calls can mix viewport coordinate systems.
+    const [emptyBox, targetBox, costBox, benefitBox, buttonBox] = await page.evaluate(
+      elements => elements.map(element => {
+        if (!element) throw new Error('Missing storage layout element')
+        const { y, height } = element.getBoundingClientRect()
+        return { y, height }
+      }),
+      await Promise.all([empty, target, cost, benefit, button].map(locator => locator.elementHandle())),
+    )
+    expect(costBox.y).toBeGreaterThanOrEqual(targetBox.y)
     expect(emptyBox.y + emptyBox.height).toBeLessThan(costBox.y)
     expect(costBox.y + costBox.height).toBeLessThanOrEqual(benefitBox.y)
     expect(buttonBox.y).toBeGreaterThanOrEqual(benefitBox.y + benefitBox.height)
