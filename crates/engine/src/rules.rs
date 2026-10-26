@@ -138,10 +138,10 @@ impl Ruleset {
             || Building::ALL
                 .iter()
                 .any(|k| !artifact.buildings.contains_key(k))
-            || artifact
-                .buildings
-                .keys()
-                .any(|k| !Building::MVP.contains(k))
+            || artifact.buildings.keys().any(|k| {
+                !Building::MVP.contains(k)
+                    && (*k != Building::FusionReactor || artifact.progression.is_none())
+            })
         {
             return Err(RulesError::InvalidReference);
         }

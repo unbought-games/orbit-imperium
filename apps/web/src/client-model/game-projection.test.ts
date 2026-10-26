@@ -1409,3 +1409,20 @@ describe('galaxy fleet actions', () => {
     expect(model.send).not.toHaveBeenCalled()
   })
 })
+
+it('stops extrapolating every resource at a fusion fuel boundary', () => {
+  const s = state()
+  const view = s.view as S['BoundView4']
+  view.progression.production[0].fusion_reactor = {
+    energy_supply: '100',
+    projection_limit: 1500,
+  }
+  expect(nextWorkDelay(s)).toBe(500)
+  s.now = s.receivedAt + 10_000
+  const projected = projectGameView(s)!
+  expect(projected.bodies[0].amounts).toEqual({
+    metal: '1500',
+    crystal: '1250',
+    deuterium: '750',
+  })
+})

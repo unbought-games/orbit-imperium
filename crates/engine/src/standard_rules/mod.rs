@@ -56,6 +56,7 @@ pub fn upgrade_standard_rules(current: &Ruleset) -> Result<Ruleset, StandardRule
     // prerequisites must remain enabled; custom disabled base content is not re-enabled.
     for key in [
         CatalogKey::Building(Building::RoboticsFactory),
+        CatalogKey::Building(Building::DeuteriumSynthesizer),
         CatalogKey::Building(Building::ResearchLab),
         CatalogKey::Building(Building::Shipyard),
         CatalogKey::Ship(ShipType::SmallCargo),

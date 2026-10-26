@@ -166,5 +166,22 @@ pub(super) fn patches() -> Vec<Patch> {
             "factor":satellite["rapid_fire_from"][id],
         })));
     }
+    let fusion = read(include_bytes!(
+        "../../../../rules/content/fusion-reactor.json"
+    ));
+    out.push(Patch::field(
+        "/buildings/FusionReactor",
+        fusion["building"].clone(),
+    ));
+    out.push(Patch::field(
+        "/progression/fusion_reactor",
+        fusion["production"].clone(),
+    ));
+    out.push(catalog(
+        "Building",
+        "FusionReactor",
+        false,
+        fusion["requirements"].clone(),
+    ));
     out
 }

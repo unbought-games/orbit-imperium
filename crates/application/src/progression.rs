@@ -183,7 +183,14 @@ pub struct SatelliteProductionDto {
     pub energy_supply: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FusionProductionDto {
+    pub energy_supply: String,
+    pub projection_limit: Option<i64>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProductionDto {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fusion_reactor: Option<FusionProductionDto>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub solar_satellite: Option<SatelliteProductionDto>,
     pub body: BodyId,
@@ -390,10 +397,10 @@ pub(crate) fn progression_projection(
         let settings = &s.production_settings[&b.id];
         let satellites = solar_satellite_count(s, b, &facts.rules)
             .map_err(|_| ServiceError::InvariantFailure)?;
-        let energy = energy_with_settings(b, &settings.settings, satellites, &facts.rules)
-            .map_err(|_| ServiceError::InvariantFailure)?;
-        let rate = production_rates_with_settings(b, &settings.settings, satellites, &facts.rules)
-            .map_err(|_| ServiceError::InvariantFailure)?;
+        let economy =
+            body_economy(s, b, &facts.rules).map_err(|_| ServiceError::InvariantFailure)?;
+        let energy = &economy.energy;
+        let rate = economy.gross;
         bodies.push(BodyV3 {
             max_temperature: (b.kind == BodyKind::Planet).then_some(b.max_temperature),
             colony: None,
@@ -448,6 +455,13 @@ pub(crate) fn progression_projection(
             .transpose()?;
         let satellite_editable = solar_satellite.is_some();
         production.push(ProductionDto {
+            fusion_reactor: fusion_rule(&facts.rules).map(|_| FusionProductionDto {
+                energy_supply: economy.fusion_supply.to_string(),
+                projection_limit: economy
+                    .stable_for_ms
+                    .and_then(|dt| facts.at.checked_add(dt))
+                    .filter(|at| *at <= MAX_WIRE_MS),
+            }),
             solar_satellite,
             body: b.id,
             settings: settings.settings.clone(),
@@ -460,18 +474,24 @@ pub(crate) fn progression_projection(
             ]
             .into_iter()
             .chain(satellite_editable.then_some("solar_satellite"))
+            .chain(fusion_rule(&facts.rules).map(|_| "fusion_reactor"))
             .map(str::to_owned)
             .collect(),
             gross_per_hour: rate.into(),
-            fuel_deuterium_per_hour: "0".into(),
+            fuel_deuterium_per_hour: economy.fuel.to_string(),
             net_deuterium_per_hour: SignedRate {
-                sign: "Nonnegative".into(),
-                magnitude: rate.deuterium.to_string(),
+                sign: if economy.net_deuterium < 0 {
+                    "Negative"
+                } else {
+                    "Nonnegative"
+                }
+                .into(),
+                magnitude: economy.net_deuterium.unsigned_abs().to_string(),
             },
             energy_supply: energy.supply.to_string(),
             energy_demand: energy.demand.to_string(),
             utilization: energy.utilization.to_string(),
-            fuel_utilization: "0".into(),
+            fuel_utilization: economy.fuel_utilization.to_string(),
         });
     }
     let research_operation = s

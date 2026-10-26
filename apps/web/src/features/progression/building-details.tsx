@@ -204,6 +204,21 @@ export function BuildingDetails({
                     body={body}
                   />
                 )}
+                {insight.fuel &&
+                  (building.id === 'FusionReactor' ||
+                    insight.fuel.current !== insight.fuel.target) && (
+                    <DetailRow label="Deuterium fuel / hour">
+                      <ResourceQuantity
+                        resource="deuterium"
+                        value={insight.fuel.current}
+                      />
+                      {' → '}
+                      <ResourceQuantity
+                        resource="deuterium"
+                        value={insight.fuel.target}
+                      />
+                    </DetailRow>
+                  )}
                 <DetailRow label="Build time">
                   <DurationValue milliseconds={terms.duration_ms} />
                 </DetailRow>

@@ -15,7 +15,7 @@ const content: Record<string, string> = {
   ResearchLab:
     'Hosts research projects and unlocks new technologies. Laboratory construction and research cannot overlap.',
   EnergyTechnology:
-    'Advances energy technology and unlocks more advanced systems.',
+    'Improves Fusion Reactor energy output and unlocks more advanced systems.',
   ComputerTechnology:
     'Improves fleet coordination and increases the number of fleet missions you can operate.',
   EspionageTechnology:

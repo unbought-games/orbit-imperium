@@ -30,14 +30,16 @@ The bundled content release is currently **0.4.0**. This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
-Large Cargo, Solar Satellite, Heavy Laser and Gauss Cannon. The original signup
+Large Cargo, Solar Satellite, Heavy Laser and Gauss Cannon. The current development
+bundle also includes [Fusion Reactor](fusion-reactor.md), including fuel-aware
+production and level-zero initialization. The original signup
 baseline, fully activated v0.3.0 worlds and partial activations can all be upgraded.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
 
 The upgrade has an explicit list of owned fields: the named content's catalog
 entries, research/ship definitions, unit costs, combat entries, related rapid fire,
-Small Cargo's Impulse Drive alternative, colonization policy and satellite energy.
+Small Cargo's Impulse Drive alternative, colonization policy, satellite energy and Fusion Reactor building/production definitions.
 Each owned field or keyed entry must be absent, match its recognized older baseline,
 or already match the bundled value. Anything else produces a conflict with the
 path, current value, recognized older value and proposed value. All conflicts are

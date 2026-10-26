@@ -8,6 +8,8 @@ use std::collections::{BTreeMap, BTreeSet};
 #[serde(deny_unknown_fields)]
 pub struct ProgressionRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fusion_reactor: Option<FusionRule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub solar_satellite: Option<SolarSatelliteRule>,
     pub building_formula: String,
     pub demolition_formula: String,
@@ -67,6 +69,12 @@ impl ProgressionRules {
             if r.base.iter().any(|v| *v < 0) || r.growth != growth {
                 return Err(RulesError::Range);
             }
+        }
+        if a.buildings.contains_key(&Building::FusionReactor) != self.fusion_reactor.is_some() {
+            return Err(RulesError::InvalidReference);
+        }
+        if let Some(rule) = &self.fusion_reactor {
+            rule.validate()?;
         }
         if let Some(rule) = &self.solar_satellite {
             rule.validate()?;

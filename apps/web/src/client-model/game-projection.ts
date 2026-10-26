@@ -39,6 +39,11 @@ export function nextWorkDelay(state: GameState) {
       deadlines.push(view.progression.research_operation.due_at)
     deadlines.push(
       ...view.progression.manufacturing.map((work) => work.next_due_at),
+      ...view.progression.production.flatMap((p) =>
+        p.fusion_reactor?.projection_limit == null
+          ? []
+          : [p.fusion_reactor.projection_limit],
+      ),
     )
   }
   return Math.min(...deadlines) - currentServerTime(state)
@@ -643,6 +648,12 @@ export function projectGameView(state: GameState): BoundView | null {
           .map((work) => work.next_due_at),
       )
     }
+    if (view.protocol !== 2) {
+      const fuelLimit = view.progression.production.find(
+        (p) => p.body === body.id,
+      )?.fusion_reactor?.projection_limit
+      if (fuelLimit != null) deadlines.push(fuelLimit)
+    }
     let horizon = Math.max(
       view.as_of_ms,
       Math.min(
@@ -653,8 +664,14 @@ export function projectGameView(state: GameState): BoundView | null {
     )
     for (const { attempt, intent } of active)
       if (
-        attempt.envelope.command.type === 'SetProduction' &&
-        attempt.envelope.command.body === body.id
+        (attempt.envelope.command.type === 'SetProduction' &&
+          attempt.envelope.command.body === body.id) ||
+        (view.protocol !== 2 &&
+          view.progression.production.some(
+            (p) => p.body === body.id && p.fusion_reactor,
+          ) &&
+          payment(attempt.envelope.command, intent, view, state)?.body ===
+            body.id)
       )
         horizon = Math.min(horizon, intent.submittedAt)
     const rate = rawResourceRates(view, body)
