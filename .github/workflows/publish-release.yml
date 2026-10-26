@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to resume publishing
+        description: Existing version tag to resume or backfill using this workflow's tooling
         required: true
         type: string
 
@@ -21,10 +21,14 @@ concurrency:
   group: orbit-open-source-release
   cancel-in-progress: false
 
+env:
+  REGISTRY_IMAGE: ghcr.io/unbought-games/orbit-imperium
+
 jobs:
-  publish:
+  prepare:
     if: >-
       github.repository == 'unbought-games/orbit-imperium' &&
+      (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.event == 'push' &&
         github.event.workflow_run.conclusion == 'success' &&
@@ -32,19 +36,44 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    outputs:
+      release: ${{ steps.select.outputs.release }}
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
+      title: ${{ steps.release.outputs.title }}
+      published: ${{ steps.state.outputs.published }}
     steps:
+      # Tooling and release source are deliberately separate for historical backfills.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate recovery tag
+        env:
+          TAG: ${{ inputs.tag }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if test "$EVENT" = workflow_dispatch; then
+            [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            git ls-remote --exit-code --tags origin "refs/tags/$TAG"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.event.workflow_run.head_sha || github.sha }}
+          path: source
           fetch-depth: 0
           persist-credentials: false
       - name: Select prepared release
         id: select
+        working-directory: source
         env:
           EVENT: ${{ github.event_name }}
         run: |
           if test -f docs/news/release.json && { test "$EVENT" != workflow_run || git diff-tree --no-commit-id --name-only -r HEAD | grep -qx docs/news/release.json; }; then
             echo 'release=true' >> "$GITHUB_OUTPUT"
+          elif test "$EVENT" != workflow_run; then
+            echo 'Version tag has no release descriptor' >&2
+            exit 1
           fi
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: steps.select.outputs.release == 'true'
@@ -56,11 +85,12 @@ jobs:
       - name: Tag the prepared commit without moving existing tags
         if: steps.select.outputs.release == 'true'
         id: release
+        working-directory: source
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
-        run: node scripts/publish-release.mjs
-      - name: Inspect publication state
+        run: node ../scripts/publish-release.mjs
+      - name: Inspect GitHub release state independently of registry state
         if: steps.select.outputs.release == 'true'
         id: state
         env:
@@ -69,33 +99,127 @@ jobs:
         run: |
           state=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo missing)
           if test "$state" = false; then echo 'published=true' >> "$GITHUB_OUTPUT"; fi
-      - name: Build and inspect the versioned container
-        if: steps.select.outputs.release == 'true' && steps.state.outputs.published != 'true'
-        env:
-          ORBIT_RELEASE_SHA: ${{ steps.release.outputs.sha }}
-          ORBIT_RELEASE_IMAGE: orbit-release:${{ steps.release.outputs.sha }}
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+      packages: write
+    env:
+      ORBIT_RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+      ORBIT_RELEASE_PLATFORM: linux/${{ matrix.arch }}
+      ORBIT_RELEASE_SOURCE: source
+      TAG: ${{ needs.prepare.outputs.tag }}
+      ORBIT_RELEASE_IMAGE: ghcr.io/unbought-games/orbit-imperium:build-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Build and inspect on the native architecture
         run: |
+          test "$(git -C source rev-parse HEAD)" = "$ORBIT_RELEASE_SHA"
+          echo "ORBIT_RELEASE_VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          export ORBIT_RELEASE_VERSION="${TAG#v}"
           make release-image
           make inspect-release-image
-      - name: Publish prepared notes and downloadable container
-        if: steps.select.outputs.release == 'true' && steps.state.outputs.published != 'true'
+      - name: Push inspected architecture image
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$ORBIT_RELEASE_IMAGE"
+      - name: Preserve downloadable amd64 archive for new releases
+        if: matrix.arch == 'amd64' && needs.prepare.outputs.published != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.release.outputs.tag }}
-          SHA: ${{ steps.release.outputs.sha }}
-          TITLE: ${{ steps.release.outputs.title }}
+          TITLE: ${{ needs.prepare.outputs.title }}
         run: |
           mkdir -p release-assets
-          docker tag "orbit-release:$SHA" "orbit-imperium:${TAG#v}"
+          docker tag "$ORBIT_RELEASE_IMAGE" "orbit-imperium:${TAG#v}"
           docker save "orbit-imperium:${TAG#v}" | gzip > "release-assets/orbit-imperium-$TAG-linux-amd64.tar.gz"
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --verify-tag --draft --title "$TITLE" --notes-file release-notes.md
+            gh release create "$TAG" --verify-tag --draft --title "$TITLE"
           fi
           gh release upload "$TAG" release-assets/* --clobber
-          gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md --draft=false
+      - name: Clear registry credentials
+        if: always()
+        run: docker logout ghcr.io
+
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    env:
+      ORBIT_RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+      ORBIT_IMAGE_STAGING: build-${{ github.run_id }}-${{ github.run_attempt }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Publish or verify immutable multi-platform version
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          echo "ORBIT_RELEASE_VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          export ORBIT_RELEASE_VERSION="${TAG#v}"
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          make publish-release-manifest
+      - name: Publish prepared notes and record registry digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          TITLE: ${{ needs.prepare.outputs.title }}
+          PUBLISHED: ${{ needs.prepare.outputs.published }}
+        run: |
+          (cd source && node ../scripts/publish-release.mjs)
+          # Existing release notes and archives remain untouched on backfill/retry.
+          if test "$PUBLISHED" != true; then
+            gh release edit "$TAG" --title "$TITLE" --notes-file source/release-notes.md --draft=false
+          fi
+          if ! gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx container-image.json; then
+            gh release upload "$TAG" container-image.json
+          else
+            mkdir recorded
+            gh release download "$TAG" --pattern container-image.json --dir recorded
+            cmp container-image.json recorded/container-image.json
+          fi
       - name: Open the website publication checkout
-        if: steps.select.outputs.release == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: unbought-games/www
@@ -104,11 +228,14 @@ jobs:
           ssh-key: ${{ secrets.WWW_PUBLISH_KEY }}
           token: ${{ secrets.WWW_PUBLISH_TOKEN || github.token }}
       - name: Publish the release announcement on www
-        if: steps.select.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.release.outputs.tag }}
-          SHA: ${{ steps.release.outputs.sha }}
         run: |
           published=$(gh release view "$TAG" --repo unbought-games/orbit-imperium --json publishedAt --jq .publishedAt)
-          python3 website/scripts/record-publication.py --game orbit-imperium --kind release --commit "$SHA" --tag "$TAG" --published "$published"
+          python3 website/scripts/record-publication.py --game orbit-imperium --kind release --commit "$ORBIT_RELEASE_SHA" --tag "$TAG" --published "$published"
+      - name: Verify anonymous registry access
+        # No registry credentials are passed to this independent HTTP client.
+        run: make verify-release-registry
+      - name: Clear registry credentials
+        if: always()
+        run: docker logout ghcr.io

@@ -20,7 +20,13 @@ test('every workflow job uses an explicitly approved disposable runner', () => {
     for (const [name, job] of Object.entries(workflow.jobs)) {
       // Also rejects dynamic routing, runner groups and reusable workflows
       // whose execution environment has not been reviewed here.
-      assert.equal(job['runs-on'], 'ubuntu-24.04', `${file}: ${name}`)
+      if (file === 'publish-release.yml' && name === 'build') {
+        assert.equal(job['runs-on'], '${{ matrix.runner }}')
+        assert.deepEqual(job.strategy.matrix, { include: [
+          { arch: 'amd64', runner: 'ubuntu-24.04' },
+          { arch: 'arm64', runner: 'ubuntu-24.04-arm' },
+        ] })
+      } else assert.equal(job['runs-on'], 'ubuntu-24.04', `${file}: ${name}`)
     }
   }
 })

@@ -106,14 +106,22 @@ build-universe-bridge:
 	cargo build --locked --release -p orbit-server --features universe-config-bridge --target-dir target/universe-bridge
 
 # Artifact inspection only; full-system/container acceptance remains explicit.
-.PHONY: release-image inspect-release-image
+.PHONY: release-image inspect-release-image publish-release-manifest verify-release-registry
+ORBIT_RELEASE_PLATFORM ?= linux/amd64
+ORBIT_RELEASE_SOURCE ?= .
 release-image:
 	test -n "$(ORBIT_RELEASE_IMAGE)" && test -n "$(ORBIT_RELEASE_SHA)"
-	node scripts/news-history.mjs
-	docker build --platform linux/amd64 --label "org.opencontainers.image.revision=$(ORBIT_RELEASE_SHA)" --label "org.opencontainers.image.source=https://github.com/unbought-games/orbit-imperium" -t "$(ORBIT_RELEASE_IMAGE)" .
+	cd "$(ORBIT_RELEASE_SOURCE)" && node scripts/news-history.mjs
+	docker build --platform "$(ORBIT_RELEASE_PLATFORM)" --label "org.opencontainers.image.revision=$(ORBIT_RELEASE_SHA)" --label "org.opencontainers.image.source=https://github.com/unbought-games/orbit-imperium" $(if $(ORBIT_RELEASE_VERSION),--label "org.opencontainers.image.version=$(ORBIT_RELEASE_VERSION)") -t "$(ORBIT_RELEASE_IMAGE)" "$(ORBIT_RELEASE_SOURCE)"
 
 inspect-release-image:
 	node scripts/inspect-release-image.mjs
+
+publish-release-manifest:
+	node scripts/release-registry.mjs --publish
+
+verify-release-registry:
+	node scripts/release-registry.mjs
 
 dev: db-up
 	cargo build -p orbit-server

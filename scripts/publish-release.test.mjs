@@ -24,8 +24,16 @@ test('publication tags the prepared commit, retries idempotently, and rejects a 
     const publish=()=>spawnSync(process.execPath,[script],{cwd:repo,env,encoding:'utf8'})
     let result=publish();assert.equal(result.status,0,result.stderr);assert.match(readFileSync(env.GITHUB_OUTPUT,'utf8'),new RegExp(`sha=${sha}`));assert.equal(readFileSync(join(repo,'release-notes.md'),'utf8'),'Prepared editorial')
     result=publish();assert.equal(result.status,0,result.stderr)
+    // Current tooling can run outside a historical source checkout, including
+    // annotated version tags, without retagging the source or requiring a build bump.
+    git('tag','-a','v0.1.0','-m','Release 0.1.0');git('push','-q','--force','origin','refs/tags/v0.1.0')
+    env.GITHUB_EVENT_NAME='workflow_dispatch';env.RELEASE_TAG='v0.1.0'
+    result=publish();assert.equal(result.status,0,result.stderr)
+    env.RELEASE_TAG='v0.2.0';result=publish();assert.notEqual(result.status,0);assert.match(result.stderr,/Recovery tag disagrees/)
+    env.RELEASE_TAG=''
+
     writeFileSync(join(repo,'extra'),'later');git('add','extra');git('commit','-qm','fix: later change');env.GITHUB_EVENT_NAME='push';env.GITHUB_REF='refs/tags/v0.1.0'
     result=publish();assert.notEqual(result.status,0);assert.match(result.stderr,/Existing immutable tag names a different commit/)
-    assert.equal(execFileSync('git',['--git-dir',remote,'rev-parse','refs/tags/v0.1.0'],{encoding:'utf8'}).trim(),sha)
+    assert.equal(execFileSync('git',['--git-dir',remote,'rev-parse','refs/tags/v0.1.0^{}'],{encoding:'utf8'}).trim(),sha)
   }finally{rmSync(root,{recursive:true,force:true})}
 })

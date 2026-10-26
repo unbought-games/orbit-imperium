@@ -27,6 +27,8 @@ export function inspectReleaseImage(image, sha, root = process.cwd()) {
     execFileSync('docker', ['image', 'inspect', image], { encoding: 'utf8' }),
   )[0]
   assert.equal(config.Config.Labels['org.opencontainers.image.revision'], sha)
+  if (process.env.ORBIT_RELEASE_PLATFORM) assert.equal(`${config.Os}/${config.Architecture}`, process.env.ORBIT_RELEASE_PLATFORM)
+  if (process.env.ORBIT_RELEASE_VERSION) assert.equal(config.Config.Labels['org.opencontainers.image.version'], process.env.ORBIT_RELEASE_VERSION)
   assert.equal(config.Config.User, 'orbit')
   assert.deepEqual(config.Config.Entrypoint, ['orbit'])
   assert.deepEqual(config.Config.Cmd, ['serve'])
@@ -72,4 +74,5 @@ if (
   inspectReleaseImage(
     process.env.ORBIT_RELEASE_IMAGE,
     process.env.ORBIT_RELEASE_SHA,
+    process.env.ORBIT_RELEASE_SOURCE || process.cwd(),
   )
