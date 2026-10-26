@@ -362,9 +362,6 @@
 .destinationFields input[aria-invalid='true'] {
   border-color: var(--danger);
 }
-.destinationFields > label:nth-of-type(5) {
-  grid-column: 1;
-}
 
 .cargoFields {
   container-type: inline-size;
@@ -458,8 +455,7 @@
 }
 
 .destinationFields > div,
-.destinationFields > p,
-.destinationFields > label:first-child {
+.destinationFields > p {
   grid-column: 1 / -1;
 }
 
@@ -572,4 +568,69 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
   }
+}
+
+.destinationFields > .planetPicker {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+}
+.planetPicker small {
+  font-size: 0.75rem;
+}
+.destinationPreview {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 3vw, 24px);
+  min-width: 0;
+  margin-block: 12px 8px;
+  padding: clamp(12px, 3vw, 24px);
+  border: 1px solid #cbb68d45;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 0 50%, #41697930, transparent 65%), #0a1922;
+}
+.destinationArt {
+  flex: 0 0 clamp(64px, 12vw, 112px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid #cbb68d35;
+  border-radius: 50%;
+  padding: 5px;
+  color: var(--text-muted);
+  box-shadow: 0 0 32px #82c7dc12;
+}
+.destinationArt > svg {
+  width: 50%;
+  height: 50%;
+  stroke-width: 1;
+}
+.destinationWorld {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+}
+.destinationIdentity {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  min-width: 0;
+}
+.destinationEyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.destinationName {
+  font:
+    400 clamp(1.3rem, 3vw, 1.8rem) / 1.15 Georgia,
+    serif;
+  color: #efdfc4;
+}
+.destinationDetail {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
 }

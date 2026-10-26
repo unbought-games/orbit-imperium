@@ -1,3 +1,4 @@
+import { DispatchDestinationPreview } from './dispatch-destination-preview'
 import { CoordinateLink } from './coordinate-link'
 import { ArrowUp } from 'lucide-react'
 import { useAtomValue } from 'jotai'
@@ -63,19 +64,20 @@ export function Dispatch({
   const {
     coordinateProblems,
     coordinatesValid,
+    galaxy,
+    system,
+    position,
     targetProblem,
     attackWarning,
     mission,
     colony,
     setMission,
-    galaxy,
-    system,
-    position,
     destinationText,
     setDestinationText,
     targetKind,
     setTargetKind,
-    destinationDescription,
+    destination,
+    destinationCoordinates,
     speed,
     setSpeed,
     ships,
@@ -96,7 +98,6 @@ export function Dispatch({
     send,
     clear,
     review,
-    targetName,
     target,
     playerNames,
     timing,
@@ -118,19 +119,6 @@ export function Dispatch({
               />
             </span>
           </TaskHeader>
-          {targetName && (
-            <Text>
-              Destination: {targetName}{' '}
-              <CoordinateLink
-                at={{
-                  galaxy: Number(galaxy),
-                  system: Number(system),
-                  position: Number(position),
-                }}
-                label="destination"
-              />
-            </Text>
-          )}
           {mission === 'Colonize' && (
             <Text role="status">
               Planets: {colony.count} / {colony.capacity}.{' '}
@@ -201,20 +189,6 @@ export function Dispatch({
                   ))}
               </Select>
             </Field>
-            <CoordinateInput
-              value={destinationText}
-              universe={universeName}
-              error={Object.values(coordinateProblems).find(Boolean)}
-              onChange={(text, kind) => {
-                setDestinationText(text)
-                if (kind) {
-                  setTargetKind(kind)
-                  if (kind === 'debris') setMission('Harvest')
-                  else if (mission === 'Harvest') setMission('Transport')
-                }
-                clear()
-              }}
-            />
             <Field>
               Target
               <Select
@@ -233,13 +207,61 @@ export function Dispatch({
                 <option value="debris">Debris field</option>
               </Select>
             </Field>
-            {coordinatesValid && (
-              <Text role="status">
-                {targetKind === 'debris'
-                  ? 'Debris field'
-                  : destinationDescription}
-              </Text>
+            {(mission === 'Transport' || mission === 'Deploy') && (
+              <Field className={styles.planetPicker}>
+                Your other planets
+                <Select
+                  aria-label="Your other planets"
+                  value={destination.selectedPlanet?.id ?? ''}
+                  disabled={!destination.planets.length}
+                  onChange={(event) => {
+                    const planet = destination.planets.find(
+                      (candidate) => candidate.id === event.target.value,
+                    )
+                    if (!planet) return
+                    setDestinationText(coordinateText(planet.coordinates))
+                    setTargetKind('planet')
+                    clear()
+                  }}
+                >
+                  <option value="" disabled>
+                    {destination.planets.length
+                      ? 'Choose a planet…'
+                      : 'No other planets yet'}
+                  </option>
+                  {destination.planets.map((planet) => (
+                    <option key={planet.id} value={planet.id}>
+                      {bodyName(planet)} · [{coordinateText(planet.coordinates)}
+                      ]
+                    </option>
+                  ))}
+                </Select>
+                <small>Or enter coordinates below.</small>
+              </Field>
             )}
+            <CoordinateInput
+              value={destinationText}
+              universe={universeName}
+              error={Object.values(coordinateProblems).find(Boolean)}
+              onChange={(text, kind) => {
+                setDestinationText(text)
+                if (kind) {
+                  setTargetKind(kind)
+                  if (kind === 'debris') setMission('Harvest')
+                  else if (mission === 'Harvest') setMission('Transport')
+                }
+                clear()
+              }}
+            />
+            <DispatchDestinationPreview
+              coordinates={destinationCoordinates}
+              kind={targetKind}
+              target={target}
+              lookup={destination.lookup}
+              player={view.binding.player}
+              playerNames={playerNames}
+              partial={!!destinationText.trim()}
+            />
             {recentlyCopied && (
               <Text>
                 Recently copied in game: [
