@@ -281,11 +281,7 @@ pub(super) async fn enroll<S: IdentityStore>(
         return Err(ServiceError::Forbidden.into());
     }
     let session = authenticate(&s, &h, true).await?;
-    let source = login_source(
-        peer.map(|Extension(ConnectInfo(address))| address),
-        &h,
-        &s.config.trusted_fly_proxies,
-    );
+    let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     oidc_enrollment::enroll(&s, session, UniverseId(body.universe), source).await
 }
 

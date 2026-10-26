@@ -73,7 +73,7 @@ The sole retained beta is `d0cc4915-5e59-4b1b-a223-df1e2048ef18`: speed 5,
 universe and launch gates (historical)** and **Current state: public open beta**.
 The latter opened the same universe without resetting it. Reconfirm the current
 name, runtime mode, configuration revision/hash and image digest immediately
-before acting. Do not use retired Fly universe IDs or an old status-file digest.
+before acting. Do not use retired development universe IDs or an old status-file digest.
 
 1. Merge the implementation and require successful CI. The automatic **Release
    image** workflow publishes the exact successful current-main revision. Retain

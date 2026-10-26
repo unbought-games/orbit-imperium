@@ -1,27 +1,14 @@
 .DEFAULT_GOAL := help
 
-FLY ?= flyctl
-FLY_CONFIG ?= deploy/fly.toml
-export FLY FLY_CONFIG FLY_APP FLY_ORG FLY_REGION FLY_HA
-
-.PHONY: help fly-launch fly-deploy fly-destroy
+.PHONY: help
 
 help:
 	@printf '%s\n' \
-	  'make fly-launch FLY_APP=<name>   Create and deploy the game app' \
-	  'make fly-deploy FLY_APP=<name>   Deploy an existing game app' \
-	  'make fly-destroy FLY_APP=<name>  Permanently delete the named app' \
-	  'Optional launch settings: FLY_ORG=<slug> FLY_REGION=<region>' \
-	  'The separate PostgreSQL database is not provisioned or deleted.'
-
-fly-launch:
-	@sh scripts/fly.sh launch
-
-fly-deploy:
-	@sh scripts/fly.sh deploy
-
-fly-destroy:
-	@sh scripts/fly.sh destroy
+	  'make dev-setup UNIVERSE=<uuid>  Create a local development universe once' \
+	  'make dev                        Build and run the local game' \
+	  'make check                      Run routine tests and static checks' \
+	  'make build-universe-final       Build the release server binary' \
+	  'See docs/development.md for setup and deployment requirements.'
 
 # Routine runners have no execution deadlines; Make owns preparation and parallelism.
 # Explicit launch validation retains generous preparation and execution guards.
