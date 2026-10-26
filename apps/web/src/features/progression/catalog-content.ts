@@ -50,6 +50,8 @@ const content: Record<string, string> = {
     'A stationary cannon with strong shields that defends this planet against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
   GaussCannon:
     'A stationary electromagnetic cannon with powerful attacks against enemy fleets. Requires Shipyard 6, Energy Technology 6, Weapons Technology 3 and Shielding Technology 1.',
+  PlasmaTurret:
+    'A stationary plasma turret with powerful attacks against enemy fleets. Requires Shipyard 8 and Plasma Technology 7. Plasma research unlocks construction; Weapons, Shielding and Armour Technology improve combat stats.',
   SmallShieldDome:
     'A stationary dome whose shield protects itself, not other units. Only one small shield dome can be stationed or queued here; a large shield dome can coexist with it.',
   LargeShieldDome:
@@ -59,7 +61,7 @@ const content: Record<string, string> = {
   IonTechnology:
     'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Level 5 is required for Plasma Technology. Ion research does not improve combat stats or reduce demolition costs.',
   PlasmaTechnology:
-    'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Currently provides no unlocks or production and combat bonuses; Bombers and Plasma Turrets are unavailable in the standard rules.',
+    'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 with Shipyard 8 in the standard rules. Provides no per-level production or combat bonuses. Bombers remain unavailable.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',

@@ -5,6 +5,10 @@ use sqlx::PgPool;
 use uuid::Uuid;
 #[path = "rules_updates/fusion.rs"]
 mod fusion;
+#[path = "rules_updates/gameplay.rs"]
+mod gameplay;
+#[path = "rules_updates/plasma_turret.rs"]
+mod plasma_turret;
 #[path = "rules_updates/standard.rs"]
 mod standard;
 
