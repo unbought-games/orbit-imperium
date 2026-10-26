@@ -1918,11 +1918,18 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expect(
       await recovery.evaluate((element) => getComputedStyle(element).position),
     ).toBe('static')
-    const noticeBox = await recovery.boundingBox()
-    const intro = await page
+    // Read both boxes in one frame: resize and focus restoration can change
+    // scroll/header offsets between separate browser round trips.
+    const bounds = await page
       .getByText(/Origin .*Fleet slots:/)
-      .boundingBox()
-    expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(intro!.y)
+      .evaluate((intro) => {
+        const notice = document.querySelector('aside[aria-label="Action needs attention"]')!
+        return {
+          noticeBottom: notice.getBoundingClientRect().bottom,
+          introTop: intro.getBoundingClientRect().top,
+        }
+      })
+    expect(bounds.noticeBottom).toBeLessThanOrEqual(bounds.introTop)
     for (const control of [
       page.getByRole('combobox', { name: 'Selected body' }),
       page.getByRole('button', { name: 'Menu', exact: true }),
