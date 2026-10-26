@@ -127,7 +127,6 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
         signup: None,
         signup_per_minute: 5,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

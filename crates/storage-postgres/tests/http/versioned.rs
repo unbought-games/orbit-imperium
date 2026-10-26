@@ -34,7 +34,6 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
             origin: "https://game.test".into(),
             assets: "missing-assets".into(),
             login_per_minute: 30,
-            trusted_fly_proxies: Vec::new(),
             wake: Some(wake.clone()),
             observer: None,
         },

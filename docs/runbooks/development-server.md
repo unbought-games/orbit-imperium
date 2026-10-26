@@ -21,23 +21,15 @@ The earlier fresh-baseline release squashed the previous migration chain into `0
 
 `dev-reset` only resets a world and cannot perform this cutover. Do not delete migration ledger rows or edit their checksums to bypass the reset. Older binaries cannot use the fresh database; rollback requires restoring the old database and its matching binary together. Future migrations start after this new baseline and must be reviewed for compatibility as usual.
 
-## Dedicated Fly development deployment
+## Hosted server operation
 
-Use organization `personal`, region `ewr`, a dedicated application and a separate dedicated PostgreSQL app. The selected development option is one self-managed PostgreSQL 16 Machine (256 MB) with a 1 GB encrypted persistent volume and one application Machine (512 MB). This avoids a managed-database minimum for disposable development. It is not a competitive-launch backup/availability plan.
+Set `ORBIT_ORIGIN` to the browser-facing origin. HTTPS always uses Secure cookies, including behind a TLS-terminating proxy. HTTP requires `ORBIT_ALLOW_INSECURE_HTTP=1`; remove the retired `ORBIT_LOCAL_INSECURE` key. See the [origin and migration guidance](../architecture/deployment.md#browser-origin-http-and-https).
 
-The October 2026 published rates imply roughly $6/month if these two Machines run continuously, before egress and other account usage; time while running is prorated and volumes remain billable while stopped. Managed Postgres is a separate alternative starting at $38/month plus storage. [Fly pricing update](https://fly.io/pricing-update/).
+Use the [deployment guide](../architecture/deployment.md) for hosting requirements and the [universe configuration guide](../operations/universe-configuration.md) for explicit database initialization and world creation. Ordinary deploys never reseed or reset a universe.
 
-1. Create exact new app names with `fly apps create NAME --org personal`. Do not reuse another project's app.
-2. Import a generated `POSTGRES_PASSWORD` using `fly secrets import --app DB_APP` via stdin. Never include secret values in Git, command arguments or logs.
-3. Create `orbit_pgdata` with `fly volumes create orbit_pgdata --app DB_APP --region ewr --size 1`. Deploy `deploy/postgres.fly.toml` with `--ha=false --strategy immediate`. No public database service/IP is configured.
-4. Import application secrets: `DATABASE_URL=postgres://orbit:PASSWORD@DB_APP.internal:5432/orbit`, `ORBIT_ORIGIN=https://APP.fly.dev`. HTTPS always uses Secure cookies; no HTTP opt-in is needed. Remove the retired `ORBIT_LOCAL_INSECURE` key if present.
-5. Build the production image, then run `orbit db-init` and `orbit universe create --universe UUID` from an operator host/container with access to the dedicated database. Follow the exact [universe setup and retained-world bridge commands](../operations/universe-configuration.md); a final server cannot start against an empty database or a world without policy.
-6. Deploy with `make fly-deploy FLY_APP=APP`, retaining `ORBIT_UNIVERSE_ID` when multiple worlds exist. Restart workers after adding a universe before routing signup. Create accounts through the browser. Ordinary deploys never reseed or reset.
-7. Verify `/health/ready`, then run `scripts/hosted-smoke.mjs` with the URL, credential file and exact application Machine ID. The smoke uses real login forms and a real application restart.
+Keep the scheduler running when all browsers close. Start the database before the application. Stopping does not pause logical time; on restart, workers process overdue work in canonical order while APIs serve committed snapshots.
 
-The application configuration disables traffic-based autostop and autostart. The scheduler must keep running when all browsers close. Stop explicitly with `fly machine stop ID --app APP`; start with `fly machine start ID --app APP`. Start the database before the application. Stopping does not pause logical time. On restart the worker drains overdue heads in `(time, phase, sequence)` order before returning a fresh overview.
-
-Use `fly machine list --app APP`, `fly status --app APP`, `fly checks list --app APP`, and `fly logs --app APP` for diagnosis. `/health/live` says only that the HTTP process runs; `/health/ready` fails for storage/schema/blocking invariants. Repeated `503` during downtime catch-up is expected briefly. A blocked universe needs investigation of `universe_runtime.blocked` and its head, not removal of the head. Never skip a corrupt input.
+`/health/live` says only that the HTTP process runs; `/health/ready` checks storage and structural compatibility independently of backlog. A blocked universe needs investigation of `universe_runtime.blocked` and its head, not removal of the head. Never skip a corrupt input.
 
 ## Migration operation
 
@@ -47,17 +39,17 @@ Migration sessions enable PostgreSQL `client_connection_check_interval=1s` so th
 
 Keep migration SQL short and backward compatible with the previous deployed binary. DDL can briefly wait on table locks even when the schema change is compatible. Use staged changes for representation changes, and keep long backfills outside startup. A previous baseline-managed binary accepts later migration entries but still checks its own checksums. This does not guarantee compatibility with arbitrary older releases or upgrade world rules.
 
-Fly's startup check grace is 60 seconds. Review that interval before introducing a longer migration; an instance exposes no ready HTTP endpoint while preparing schema. Multiple existing hosts permit rolling availability; a single host still has a restart window. World bootstrap/reset remains an explicit operator action, with stopped servers required for initial MVP creation. The scheduler discovers worlds at startup.
+Allow readiness checks to accommodate schema preparation; an instance exposes no ready HTTP endpoint while preparing schema. Multiple existing hosts permit rolling availability; a single host still has a restart window. World bootstrap/reset remains an explicit operator action, with stopped servers required for initial MVP creation. The scheduler discovers worlds at startup.
 
 ## Retention and teardown
 
-Stop/start and destroy are distinct. Stopped Machine root filesystems and retained database volumes can still cost money. `make fly-destroy FLY_APP=EXACT_APP` removes only that named app and its app-owned resources; a separately named database remains. Database teardown is a separate deliberate operation. Back up desired fixtures before explicitly deleting a development volume. No teardown should name an unrelated app.
+Stop/start and database deletion are distinct. Back up retained data before explicitly deleting a development volume. The local `make db-destroy` command deletes the Compose database volume and all data in it; use it only for a disposable development database.
 
 ## Limits
 
 The test suite demonstrates slice correctness, not 1,000 concurrent players, production capacity, recovery from volume loss, or a public competitive launch. Database backup/restore drills, stronger operational monitoring and abuse controls remain full-launch work. The squashed SQLx baseline requires a fresh database, including for prior SQLx installations; legacy databases are never converted or deleted automatically. Subsequent migrations preserve data; rolling upgrades require compatibility with the previous deployed release. The fresh database cutover above is an intentional game restart. Same-version and compatible-upgrade durability are required and tested.
 
-Operational request budgets are configured with `ORBIT_LOGIN_PER_MINUTE` (default 30 per source and normalized account, with a process-wide ceiling ten times larger) and database-owned `commands_per_minute` (default 60 per player/universe), edited through `universe config export/diff/apply`. Argon2 work is bounded to two simultaneous verifications per process with no waiting queue; rate-limit responses consistently include `Retry-After`. Source/account maps expire after one minute and are capped at 4096 entries each. Sources use the actual socket peer by default. The Fly config explicitly allows the observed proxy socket peer with `ORBIT_TRUSTED_FLY_PROXIES=172.19.0.129` to supply Fly-Client-IP. This exact gateway was verified from the dedicated Machine's `/proc/net/tcp`; verify it after hosting/network changes. Arbitrary Internet peers and X-Forwarded-For are never trusted. Leave this comma-separated IP allowlist empty on a direct/local deployment. [Fly HTTP headers](https://fly.io/docs/networking/services/). Unknown and wrong-password login responses are identical. Password hashing uses Argon2id m=19456 KiB, t=2, p=1; sessions expire after eight hours and are revoked on logout.
+Operational request budgets are configured with `ORBIT_LOGIN_PER_MINUTE` (default 30 per source and normalized account, with a process-wide ceiling ten times larger) and database-owned `commands_per_minute` (default 60 per player/universe), edited through `universe config export/diff/apply`. Argon2 work is bounded to two simultaneous verifications per process with no waiting queue; rate-limit responses consistently include `Retry-After`. Source/account maps expire after one minute and are capped at 4096 entries each. Sources use the actual socket peer. Forwarded client-IP headers are ignored, so clients behind the same reverse proxy share its IP-based request budget. Unknown and wrong-password login responses are identical. Password hashing uses Argon2id m=19456 KiB, t=2, p=1; sessions expire after eight hours and are revoked on logout.
 
 
 ## Concurrent runtime development

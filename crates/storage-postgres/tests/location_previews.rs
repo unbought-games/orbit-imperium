@@ -108,7 +108,6 @@ async fn anonymous_previews_expose_only_appearance_and_deleted_slots_remain_addr
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: false,
-            trusted_fly_proxies: vec![],
             wake: None,
             observer: None,
         },

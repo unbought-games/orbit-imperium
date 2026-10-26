@@ -30,17 +30,31 @@ build by Vite. URLs start at `/`, so icons work from nested browser-history rout
 - `apple-touch-icon.png`: 180 × 180 app icon, flattened against navy for iOS.
 
 The shared wordmark uses `brand-mark.svg` as a decorative image; its link name
-remains “ORBIT IMPERIUM”. Login displays the mark at 52px (44px on mobile), while
-the game header keeps its compact 32px mark. The document head declares SVG/ICO
+remains “ORBIT IMPERIUM”. The game header keeps its compact 32px mark; public
+pages use the endorsed lockup below. The document head declares SVG/ICO
 favicons, the touch icon, and the navy browser theme color.
 
 ## App components
 
+The public landing, sign-in, signup and recovery header uses
+`brand-orbit-by-unbought.svg`: a combined Orbit/studio lockup. It preserves the
+crest and the public header's serif name treatment, with the official outlined
+unbought games F3 logo directly beneath. Every letter is an SVG path; no font
+download is required. `EndorsedBrand` gives the game and studio separate 32px-high
+brand link targets; recovery keeps the game identity non-navigating. The in-game compact
+`Brand` component is unchanged.
+
+The canonical composition recipe, reference sources and PNG exports live in the
+shared brand workspace at `assets/orbit-imperium/studio-lockup/`. The game includes
+its own SVG copy and builds independently. Both logos and this faithful combined
+export retain their separate branding terms under LICENSE. Do not reconstruct
+the company wordmark in ordinary text or add another symbol beside its symbolic O.
+
 `BrandLogo` and `BrandWordmark` can each be used independently without a link.
 `Brand` is the router link and accepts `variant="logo"`, `variant="wordmark"`, or
 `variant="both"` (the default). Logo-only links have an accessible name; the logo
-is decorative when the wordmark is present. Existing login and header placements
-use the combined version. The mobile navigation drawer composes `BrandLogo` and
+is decorative when the wordmark is present. The in-game header uses the combined
+version. The mobile navigation drawer composes `BrandLogo` and
 `BrandWordmark` without a link. The app wordmark stays live HTML so it can wrap in
 the compact header.
 

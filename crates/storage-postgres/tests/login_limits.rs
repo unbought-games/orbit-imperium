@@ -25,7 +25,6 @@ async fn one_source_cannot_exhaust_another_sources_login_budget() {
             origin: "https://game.test".into(),
             assets: "absent".into(),
             login_per_minute: 3,
-            trusted_fly_proxies: Vec::new(),
             wake: None,
             observer: None,
         },
@@ -38,7 +37,8 @@ async fn one_source_cannot_exhaust_another_sources_login_budget() {
             .header("origin", "https://game.test")
             .header("content-type", "application/json")
             .header("x-forwarded-for", format!("198.51.100.{}", index))
-            .header("fly-client-ip", format!("198.51.100.{}", index))
+            .header("x-real-ip", format!("198.51.100.{}", index))
+            .header("forwarded", format!("for=198.51.100.{}", index))
             .body(Body::from(
                 serde_json::json!({"name":format!("unknown-{index}"),"password":"wrong"})
                     .to_string(),

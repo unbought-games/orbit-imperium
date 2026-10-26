@@ -123,7 +123,6 @@ async fn public_profiles_are_view_scoped_private_and_independent_of_other_player
         signup: None,
         signup_per_minute: 5,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

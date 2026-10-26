@@ -615,7 +615,6 @@ async fn http_authentication_csrf_origin_scope_and_anonymous_privacy() {
         signup: None,
         signup_per_minute: 5,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };

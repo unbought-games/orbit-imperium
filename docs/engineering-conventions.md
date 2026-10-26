@@ -71,4 +71,4 @@ Run relevant routine checks for each change. Full-system and container acceptanc
 
 Ordinary startup validates schema/rules and never erases data. Reset is an explicit operator command limited to a development-marked universe and requires its exact ID; no wildcard reset. Keep credentials out of command history by supporting secret files/stdin or generated values. Test fixtures use isolated databases.
 
-Downtime and breaking development changes are allowed. Same-version persistence remains required. Hosted deployment follows [Fly.io guidance](architecture/deployment.md); keep the scheduler awake while running and use explicit stop/start. No automatic production provisioning, live migration framework, or paid external service is needed merely to write or test the engine.
+Downtime and breaking development changes are allowed. Same-version persistence remains required. Hosted deployment follows the [deployment requirements](architecture/deployment.md); keep the scheduler awake while running and use explicit stop/start. No automatic production provisioning, live migration framework, or paid external service is needed merely to write or test the engine.

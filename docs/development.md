@@ -110,11 +110,5 @@ OIDC setup, license and dependency notice inspection, and the commit/digest reco
 
 Hosting requires PostgreSQL, a `DATABASE_URL`, and an `ORBIT_ORIGIN` matching the browser URL. Use HTTPS for public hosting, or explicitly opt into unencrypted HTTP as documented above. See the [production setup guide](operations/signup.md) for build commands and configuration, and the [operator runbook](runbooks/development-server.md) for deployment and database maintenance.
 
-For Fly.io deployments:
 
-```sh
-make fly-launch FLY_APP=<app-name>
-make fly-deploy FLY_APP=<app-name>
-```
-
-Provision PostgreSQL separately before launching the application.
+Provision PostgreSQL before starting the application. See [deployment requirements](architecture/deployment.md) for process lifetime, persistence, and migration behavior.

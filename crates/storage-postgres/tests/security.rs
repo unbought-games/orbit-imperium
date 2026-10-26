@@ -35,7 +35,6 @@ async fn negative_http_inputs_foreign_operations_and_hidden_revisions() {
             origin: "https://game.test".into(),
             assets: "absent".into(),
             login_per_minute: 3,
-            trusted_fly_proxies: Vec::new(),
             wake: None,
             observer: None,
         },

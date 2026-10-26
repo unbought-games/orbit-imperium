@@ -1,5 +1,4 @@
 use orbit_engine::{UniverseId, UniverseOptions, parse_speed};
-use std::net::IpAddr;
 use uuid::Uuid;
 
 /// Validate an origin before using it for browser checks, links, or callbacks.
@@ -118,7 +117,6 @@ mod universe_config_tests {
             "ORBIT_ROLE" => Some("worker".into()),
             "ORBIT_UNIVERSE_ID" => Some("not-a-uuid".into()),
             "ORBIT_LOGIN_PER_MINUTE" => Some("not-a-number".into()),
-            "ORBIT_TRUSTED_FLY_PROXIES" => Some("not-an-ip".into()),
             "ORBIT_LOCAL_INSECURE" => Some("1".into()),
             "ORBIT_ALLOW_INSECURE_HTTP" => Some("invalid".into()),
             "ORBIT_ORIGIN" => Some("invalid".into()),
@@ -161,7 +159,6 @@ pub struct ServeConfig {
     pub origin: String,
     pub assets: String,
     pub login_per_minute: u32,
-    pub trusted_fly_proxies: Vec<IpAddr>,
 }
 
 impl ServeConfig {
@@ -196,7 +193,6 @@ impl ServeConfig {
                     key,
                     "ORBIT_UNIVERSE_ID"
                         | "ORBIT_LOGIN_PER_MINUTE"
-                        | "ORBIT_TRUSTED_FLY_PROXIES"
                         | "ORBIT_LOCAL_INSECURE"
                         | "ORBIT_ALLOW_INSECURE_HTTP"
                         | "ORBIT_ORIGIN"
@@ -358,13 +354,6 @@ impl ServeConfig {
                 .unwrap_or_else(|| "30".into())
                 .parse::<u32>()
                 .map_err(|e| e.to_string())?,
-            trusted_fly_proxies: get("ORBIT_TRUSTED_FLY_PROXIES")
-                .unwrap_or_default()
-                .split(',')
-                .filter(|v| !v.is_empty())
-                .map(str::parse)
-                .collect::<Result<Vec<IpAddr>, _>>()
-                .map_err(|e| e.to_string())?,
         })
     }
 }
@@ -493,7 +482,6 @@ mod serve_tests {
         assert_eq!(config.origin, "http://localhost:8080");
         assert_eq!(config.assets, "apps/web/dist");
         assert_eq!(config.login_per_minute, 30);
-        assert!(config.trusted_fly_proxies.is_empty());
         assert_eq!(config.speed, None);
         assert!(config.fixture);
         assert!(config.signup.enabled);
@@ -583,42 +571,6 @@ mod serve_tests {
             ("", false),
         ] {
             assert_eq!(parse(&[("ORBIT_SPEED", speed)]).is_ok(), valid);
-        }
-    }
-
-    #[test]
-    fn proxy_lists_accept_ip_addresses_and_skip_only_empty_entries() {
-        for (value, expected) in [
-            ("", vec![]),
-            (",,,", vec![]),
-            ("127.0.0.1", vec!["127.0.0.1"]),
-            (
-                ",127.0.0.1,,::1,127.0.0.1,",
-                vec!["127.0.0.1", "::1", "127.0.0.1"],
-            ),
-        ] {
-            let config = parse(&[("ORBIT_TRUSTED_FLY_PROXIES", value)]).unwrap();
-            assert_eq!(
-                config
-                    .trusted_fly_proxies
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>(),
-                expected
-            );
-        }
-        for value in [
-            "localhost",
-            "127.0.0.1, ::1",
-            "127.0.0.1/32",
-            "127.0.0.1:80",
-            "[::1]",
-            " ",
-        ] {
-            assert!(
-                parse(&[("ORBIT_TRUSTED_FLY_PROXIES", value)]).is_err(),
-                "{value}"
-            );
         }
     }
 

@@ -16,7 +16,7 @@ Orbit Imperium is a browser-based space strategy game with an authoritative Rust
 - [Engineering principles](engineering-principles.md): authoritative state, deterministic transitions, and separation of responsibilities.
 - [Engineering conventions](engineering-conventions.md): dependency boundaries, contracts, security, and review expectations.
 - [Universe speed](architecture/server-speed.md): fixed creation-time speed and its domain effects.
-- [Deployment and Fly.io examples](architecture/deployment.md): process roles, persistence, migrations, and example hosting commands.
+- [Deployment](architecture/deployment.md): process roles, persistence, migrations, and hosting requirements.
 - [Branding](branding.md): original logo assets, palette, and export instructions.
 
 ## Operations

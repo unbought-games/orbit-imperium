@@ -308,7 +308,6 @@ async fn signup_http_origin_cookie_disabled_and_rate_limit() {
         }),
         signup_per_minute: 2,
         legacy_signup_enabled: true,
-        trusted_fly_proxies: vec![],
         wake: None,
         observer: None,
     };
