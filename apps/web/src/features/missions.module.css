@@ -570,35 +570,34 @@
   }
 }
 
-.destinationFields > .planetPicker {
-  grid-column: 1 / -1;
-  margin-top: 8px;
-}
-.planetPicker small {
-  font-size: 0.75rem;
-}
 .destinationPreview {
-  display: flex;
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
   align-items: center;
-  gap: clamp(12px, 3vw, 24px);
+  gap: 16px;
   min-width: 0;
-  margin-block: 12px 8px;
-  padding: clamp(12px, 3vw, 24px);
-  border: 1px solid #cbb68d45;
-  border-radius: 12px;
+  margin-block: 8px;
+  padding: 12px 16px;
+  border: 1px solid #8a9d9d66;
+  border-radius: 10px;
   background:
-    radial-gradient(ellipse at 0 50%, #41697930, transparent 65%), #0a1922;
+    radial-gradient(ellipse at 0 50%, #41697945, transparent 65%), #0a1922;
+  transition:
+    border-color 120ms,
+    box-shadow 120ms;
+}
+.destinationPreview:focus-within {
+  border-color: #9acfe6;
+  box-shadow: 0 0 0 2px #9acfe628;
 }
 .destinationArt {
-  flex: 0 0 clamp(64px, 12vw, 112px);
+  width: 100%;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: 1px solid #cbb68d35;
   border-radius: 50%;
-  padding: 5px;
   color: var(--text-muted);
-  box-shadow: 0 0 32px #82c7dc12;
+  filter: drop-shadow(0 0 14px #82c7dc28);
 }
 .destinationArt > svg {
   width: 50%;
@@ -613,24 +612,95 @@
 }
 .destinationIdentity {
   display: grid;
-  justify-items: start;
-  gap: 5px;
   min-width: 0;
 }
-.destinationEyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 0.65rem;
-  color: var(--text-muted);
+.destinationChooser {
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+}
+.destinationChooser:hover,
+.destinationChooser[data-popup-open] {
+  background: transparent;
+}
+.destinationChooser:hover .destinationName {
+  color: #fff0d5;
+}
+.destinationChooser > span:last-child {
+  padding-inline: 12px;
+  color: var(--accent);
+}
+.destinationChooser:disabled > span:last-child {
+  opacity: 0.3;
 }
 .destinationName {
+  display: block;
   font:
-    400 clamp(1.3rem, 3vw, 1.8rem) / 1.15 Georgia,
+    400 clamp(1.25rem, 3vw, 1.55rem) / 1.2 Georgia,
     serif;
   color: #efdfc4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .destinationDetail {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   line-height: 1.4;
+}
+.destinationAnnouncement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.destinationOption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.destinationOptionArt {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+.destinationOption strong,
+.destinationOption small {
+  display: block;
+}
+.destinationOption small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+.destinationPreview input {
+  height: 36px;
+  padding: 0;
+}
+@media (max-width: 479px) {
+  .destinationPreview {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 12px;
+  }
+}
+
+.destinationFields > label {
+  grid-column: 1 / -1;
+}
+.destinationOptions {
+  width: var(--anchor-width);
+  max-width: var(--available-width);
+}
+
+.destinationChooser:focus-visible {
+  outline: none;
+}
+.destinationChooser:focus-visible .destinationName {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: #9acfe680;
 }

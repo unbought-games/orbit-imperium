@@ -1,8 +1,12 @@
+import { useRef } from 'react'
 import { Orbit, Radar } from 'lucide-react'
 import type { components } from '../contracts'
 import type { LocationKind } from '../shell/location-address'
 import { BodyIllustration } from './body-illustration'
-import { CoordinateLink } from './coordinate-link'
+import { CoordinateInput } from '../ui/coordinate-input'
+import { RichSelect } from '../ui/rich-select'
+import { coordinateText } from '../shell/location-address'
+import { bodyName } from '../ui/format'
 import { playerLabel, type PlayerNames } from './player-label'
 import type { destinationBody } from './dispatch-destination'
 import styles from './missions.module.css'
@@ -15,7 +19,13 @@ export function DispatchDestinationPreview({
   refreshing,
   player,
   playerNames,
-  partial,
+  value,
+  universe,
+  error,
+  planets,
+  selectedPlanet,
+  onChange,
+  onSelectPlanet,
 }: {
   coordinates: components['schemas']['Coordinates'] | null
   kind: LocationKind
@@ -24,10 +34,17 @@ export function DispatchDestinationPreview({
   refreshing: boolean
   player: string
   playerNames: PlayerNames
-  partial: boolean
+  value: string
+  universe: string
+  error?: string
+  planets?: components['schemas']['BodyV3'][]
+  selectedPlanet?: string
+  onChange: (text: string, kind?: LocationKind) => void
+  onSelectPlanet: (id: string) => void
 }) {
+  const field = useRef<HTMLDivElement>(null)
   const title = !coordinates
-    ? partial
+    ? value.trim()
       ? 'Complete your destination'
       : 'Where are we heading?'
     : kind === 'debris'
@@ -56,17 +73,16 @@ export function DispatchDestinationPreview({
               : 'No planet in the current system observation.'
   return (
     <div
+      ref={field}
       className={styles.destinationPreview}
       aria-label="Destination preview"
-      aria-live="polite"
-      aria-atomic="true"
     >
       <div className={styles.destinationArt} aria-hidden="true">
         {target && coordinates ? (
           <BodyIllustration
             body={{ ...target, coordinates }}
             className={styles.destinationWorld}
-            sizes="112px"
+            sizes="80px"
           />
         ) : kind === 'debris' && coordinates ? (
           <Orbit />
@@ -75,25 +91,63 @@ export function DispatchDestinationPreview({
         )}
       </div>
       <div className={styles.destinationIdentity}>
-        <span className={styles.destinationEyebrow}>Destination</span>
-        <strong className={styles.destinationName}>{title}</strong>
-        {coordinates && (
-          <CoordinateLink
-            at={coordinates}
-            target={kind}
-            compact
-            known={{
-              owner: target?.owner,
-              empty: kind === 'planet' && lookup === 'ready' && !target,
-            }}
-          />
+        {planets ? (
+          <RichSelect
+            label="Your other planets"
+            anchor={field}
+            title={
+              planets.length
+                ? 'Choose one of your planets'
+                : 'No other planets yet. Enter destination coordinates.'
+            }
+            value={selectedPlanet}
+            disabled={!planets.length}
+            className={styles.destinationChooser}
+            popupClassName={styles.destinationOptions}
+            onValueChange={onSelectPlanet}
+            options={planets.map((planet) => ({
+              value: planet.id,
+              label: `${bodyName(planet)} [${coordinateText(planet.coordinates)}]`,
+              content: (
+                <span className={styles.destinationOption}>
+                  <BodyIllustration
+                    body={planet}
+                    className={styles.destinationOptionArt}
+                    sizes="40px"
+                  />
+                  <span>
+                    <strong>{bodyName(planet)}</strong>
+                    <small>[{coordinateText(planet.coordinates)}]</small>
+                  </span>
+                </span>
+              ),
+            }))}
+          >
+            <strong title={title} className={styles.destinationName}>
+              {title}
+            </strong>
+          </RichSelect>
+        ) : (
+          <strong title={title} className={styles.destinationName}>
+            {title}
+          </strong>
         )}
-        <span className={styles.destinationDetail}>{detail}</span>
-        {refreshing && (
-          <span className={styles.destinationDetail}>
-            Last observation · Updating…
-          </span>
-        )}
+        <span
+          className={styles.destinationDetail}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className={styles.destinationAnnouncement}>{title}. </span>
+          {detail}
+          {refreshing && ' · Last observation · Updating…'}
+        </span>
+        <CoordinateInput
+          embedded
+          value={value}
+          universe={universe}
+          error={error}
+          onChange={onChange}
+        />
       </div>
     </div>
   )

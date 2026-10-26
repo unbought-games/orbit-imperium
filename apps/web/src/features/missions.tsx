@@ -3,7 +3,6 @@ import { CoordinateLink } from './coordinate-link'
 import { ArrowUp } from 'lucide-react'
 import { useAtomValue } from 'jotai'
 import { copiedLocationAtom } from './coordinate-memory'
-import { CoordinateInput } from '../ui/coordinate-input'
 import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useUniverseName } from '../shell/session-context'
 import { DispatchReview } from './dispatch-review'
@@ -189,70 +188,6 @@ export function Dispatch({
                   ))}
               </Select>
             </Field>
-            <Field>
-              Target
-              <Select
-                aria-label="Destination type"
-                value={targetKind}
-                onChange={(event) => {
-                  const kind = event.target.value as LocationKind
-                  setTargetKind(kind)
-                  if (kind === 'debris') setMission('Harvest')
-                  else if (mission === 'Harvest') setMission('Transport')
-                  clear()
-                }}
-              >
-                <option value="planet">Planet</option>
-                <option value="moon">Moon</option>
-                <option value="debris">Debris field</option>
-              </Select>
-            </Field>
-            {(mission === 'Transport' || mission === 'Deploy') && (
-              <Field className={styles.planetPicker}>
-                Your other planets
-                <Select
-                  aria-label="Your other planets"
-                  value={destination.selectedPlanet?.id ?? ''}
-                  disabled={!destination.planets.length}
-                  onChange={(event) => {
-                    const planet = destination.planets.find(
-                      (candidate) => candidate.id === event.target.value,
-                    )
-                    if (!planet) return
-                    setDestinationText(coordinateText(planet.coordinates))
-                    setTargetKind('planet')
-                    clear()
-                  }}
-                >
-                  <option value="" disabled>
-                    {destination.planets.length
-                      ? 'Choose a planet…'
-                      : 'No other planets yet'}
-                  </option>
-                  {destination.planets.map((planet) => (
-                    <option key={planet.id} value={planet.id}>
-                      {bodyName(planet)} · [{coordinateText(planet.coordinates)}
-                      ]
-                    </option>
-                  ))}
-                </Select>
-                <small>Or enter coordinates below.</small>
-              </Field>
-            )}
-            <CoordinateInput
-              value={destinationText}
-              universe={universeName}
-              error={Object.values(coordinateProblems).find(Boolean)}
-              onChange={(text, kind) => {
-                setDestinationText(text)
-                if (kind) {
-                  setTargetKind(kind)
-                  if (kind === 'debris') setMission('Harvest')
-                  else if (mission === 'Harvest') setMission('Transport')
-                }
-                clear()
-              }}
-            />
             <DispatchDestinationPreview
               coordinates={destinationCoordinates}
               kind={targetKind}
@@ -261,7 +196,33 @@ export function Dispatch({
               refreshing={destination.refreshing}
               player={view.binding.player}
               playerNames={playerNames}
-              partial={!!destinationText.trim()}
+              value={destinationText}
+              universe={universeName}
+              error={Object.values(coordinateProblems).find(Boolean)}
+              planets={
+                mission === 'Transport' || mission === 'Deploy'
+                  ? destination.planets
+                  : undefined
+              }
+              selectedPlanet={destination.selectedPlanet?.id}
+              onSelectPlanet={(id) => {
+                const planet = destination.planets.find(
+                  (candidate) => candidate.id === id,
+                )
+                if (!planet) return
+                setDestinationText(coordinateText(planet.coordinates))
+                setTargetKind('planet')
+                clear()
+              }}
+              onChange={(text, kind) => {
+                setDestinationText(text)
+                if (kind) {
+                  setTargetKind(kind)
+                  if (kind === 'debris') setMission('Harvest')
+                  else if (mission === 'Harvest') setMission('Transport')
+                } else if (mission !== 'Harvest') setTargetKind('planet')
+                clear()
+              }}
             />
             {recentlyCopied && (
               <Text>
