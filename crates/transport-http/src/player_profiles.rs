@@ -9,6 +9,7 @@ use unbought_auth::{ProfileError, ProfileSnapshot, PublicProfile, PublicProfileC
 
 #[derive(Clone, Serialize)]
 pub struct PlayerDisplay {
+    pub(super) kind: PlayerKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     alliance: Option<AllianceIdentity>,
     player: PlayerId,
@@ -193,6 +194,7 @@ impl AccountProfiles {
                 };
                 let profile = source.and_then(|entry| entry.profile.as_ref());
                 PlayerDisplay {
+                    kind: identity.kind,
                     alliance: None,
                     player: identity.player,
                     username: profile.map_or(identity.username, |p| p.username.clone()),
@@ -235,6 +237,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             .into_iter()
             .filter(|p| !mapped.contains(p))
             .map(|player| PlayerIdentity {
+                kind: PlayerKind::Human,
                 player,
                 username: format!("Player {}", &player.0.to_string()[..8]),
                 issuer: None,
@@ -248,6 +251,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         identities
             .into_iter()
             .map(|i| PlayerDisplay {
+                kind: i.kind,
                 alliance: None,
                 player: i.player,
                 username: i.username,

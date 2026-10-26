@@ -77,3 +77,12 @@ assert.equal(combatPayload({ ...battle, target_kind: 'Unknown' }), false);
 assert.equal(reportPreview({ kind: 'ContactLost', target: battle.target, target_name: 'Hidden' }), false);
 assert.ok(espionage({ ...observed, target: { ...observed.target, kind: 'Moon', name: 'Luna' } }));
 console.log('Combat body identity is optional for legacy payloads and absent from restricted previews.');
+
+for (const [path, operations] of Object.entries(schema.paths)) {
+ if (!path.includes('/universes/')) continue;
+ for (const method of ['get','post','put','patch','delete']) {
+  const operation=operations[method]; if(!operation)continue;
+  assert.ok(['retired','recovery-or-metadata','admission','tactical-or-quote','social-or-status','profile-or-tactical','caller-supplied-simulation','public','free-observation'].includes(operation['x-bot-category']),`${method} ${path} requires an explicit bot accounting classification`);
+ }
+}
+console.log('Every versioned universe operation has a bot accounting classification.');

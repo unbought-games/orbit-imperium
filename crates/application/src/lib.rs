@@ -1,3 +1,5 @@
+mod bots;
+pub use bots::*;
 mod simulation;
 pub use simulation::*;
 mod report_sharing;
@@ -28,6 +30,12 @@ pub use ports::*;
 pub use session::*;
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
+    #[error("snapshot serialization retry")]
+    SnapshotRetry,
+    #[error("game rejected")]
+    GameRejected(orbit_engine::GameError),
+    #[error(transparent)]
+    BotDenied(BotDenial),
     #[error("automatic universe name pool exhausted")]
     UniverseNamesExhausted,
     #[error("persisted format or content unsupported by this binary")]
@@ -59,6 +67,8 @@ pub enum StoreError {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
+    #[error(transparent)]
+    BotDenied(BotDenial),
     #[error("persisted format or content unsupported by this binary")]
     UnsupportedState,
     #[error("universe full")]
@@ -91,6 +101,8 @@ pub enum ServiceError {
 impl From<StoreError> for ServiceError {
     fn from(e: StoreError) -> Self {
         match e {
+            StoreError::GameRejected(e) => Self::GameRejected(e),
+            StoreError::BotDenied(e) => Self::BotDenied(e),
             StoreError::UniverseNamesExhausted => Self::Unavailable,
             StoreError::SignupClosed => Self::Forbidden,
             StoreError::UniverseFull => Self::UniverseFull,
@@ -99,7 +111,9 @@ impl From<StoreError> for ServiceError {
             StoreError::EpochChanged => Self::EpochChanged,
             StoreError::RateLimited => Self::RateLimited,
             StoreError::UnsupportedState => Self::UnsupportedState,
-            StoreError::Unavailable | StoreError::StaleClaim => Self::Unavailable,
+            StoreError::SnapshotRetry | StoreError::Unavailable | StoreError::StaleClaim => {
+                Self::Unavailable
+            }
             StoreError::Conflict => Self::Conflict,
             StoreError::NotFound => Self::NotFound,
             _ => Self::InvariantFailure,

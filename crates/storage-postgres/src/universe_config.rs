@@ -86,7 +86,7 @@ impl PgStore {
     }
     pub async fn has_universe_policy(&self, universe: UniverseId) -> Result<bool, StoreError> {
         let mut tx = self.config_tx().await?;
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM universe_policies WHERE universe=$1)")
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM universe_policies_v2 WHERE universe=$1)")
             .bind(universe.0)
             .fetch_one(&mut *tx)
             .await
@@ -164,10 +164,18 @@ impl PgStore {
             base_revision: revision,
             ..desired.clone()
         };
-        sqlx::query("UPDATE universe_policies SET revision=$2,signup_enabled=$3,max_players=$4,signup_per_minute=$5,commands_per_minute=$6 WHERE universe=$1")
+        sqlx::query("UPDATE universe_policies_v2 SET revision=$2,signup_enabled=$3,max_players=$4,signup_per_minute=$5,commands_per_minute=$6,bots=$7 WHERE universe=$1")
             .bind(next.universe.0).bind(revision).bind(next.policy.signup_enabled).bind(next.policy.max_players.map(i64::from))
-            .bind(i64::from(next.policy.signup_per_minute)).bind(i64::from(next.policy.commands_per_minute))
+            .bind(i64::from(next.policy.signup_per_minute)).bind(i64::from(next.policy.commands_per_minute)).bind(sqlx::types::Json(&next.policy.bots))
             .execute(&mut *tx).await.map_err(db_error).map_err(operator_error)?;
+        crate::bots::enforce_cap(
+            &mut tx,
+            next.universe,
+            &next.policy.bots,
+            next.base_revision,
+        )
+        .await
+        .map_err(operator_error)?;
         audit(&mut tx, &next, Some(&current.policy), "apply")
             .await
             .map_err(operator_error)?;
@@ -341,7 +349,7 @@ async fn policy_row(
     universe: UniverseId,
     lock: &str,
 ) -> Result<Option<sqlx::postgres::PgRow>, StoreError> {
-    sqlx::query(&format!("SELECT revision,signup_enabled,max_players,signup_per_minute,commands_per_minute FROM universe_policies WHERE universe=$1 {lock}"))
+    sqlx::query(&format!("SELECT revision,signup_enabled,max_players,signup_per_minute,commands_per_minute,bots FROM universe_policies_v2 WHERE universe=$1 {lock}"))
         .bind(universe.0).fetch_optional(&mut **tx).await.map_err(db_error)
 }
 async fn decode_policy(
@@ -359,6 +367,10 @@ async fn decode_policy(
         base_revision: row.try_get("revision").map_err(db_error)?,
         immutable: immutable(tx, universe).await?,
         policy: UniversePolicy {
+            bots: row
+                .try_get::<sqlx::types::Json<BotPolicy>, _>("bots")
+                .map_err(db_error)?
+                .0,
             signup_enabled: row.try_get("signup_enabled").map_err(db_error)?,
             max_players: row
                 .try_get::<Option<i32>, _>("max_players")
@@ -378,9 +390,9 @@ async fn insert_policy(
     d: &UniverseConfigDocument,
     provenance: &str,
 ) -> Result<(), StoreError> {
-    sqlx::query("INSERT INTO universe_policies(universe,revision,signup_enabled,max_players,signup_per_minute,commands_per_minute) VALUES($1,$2,$3,$4,$5,$6)")
+    sqlx::query("INSERT INTO universe_policies_v2(universe,revision,signup_enabled,max_players,signup_per_minute,commands_per_minute,bots) VALUES($1,$2,$3,$4,$5,$6,$7)")
         .bind(d.universe.0).bind(d.base_revision).bind(d.policy.signup_enabled).bind(d.policy.max_players.map(i64::from))
-        .bind(i64::from(d.policy.signup_per_minute)).bind(i64::from(d.policy.commands_per_minute)).execute(&mut **tx).await.map_err(db_error)?;
+        .bind(i64::from(d.policy.signup_per_minute)).bind(i64::from(d.policy.commands_per_minute)).bind(sqlx::types::Json(&d.policy.bots)).execute(&mut **tx).await.map_err(db_error)?;
     audit(tx, d, None, provenance).await
 }
 async fn audit(

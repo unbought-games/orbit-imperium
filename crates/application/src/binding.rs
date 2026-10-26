@@ -135,6 +135,7 @@ impl<S: GameStore> GameService<S> {
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView>, ServiceError> {
         Self::principal(p, c.binding)?;
+        self.store.bot_observe(c.binding).await?;
         let ReadSnapshot { facts, progress } = self.store.bound_view(c.binding).await?;
         Ok(ReadSnapshot {
             progress,
@@ -153,6 +154,7 @@ impl<S: GameStore> GameService<S> {
         request: QuoteRequestDto,
     ) -> Result<ReadSnapshot<BoundQuote>, ServiceError> {
         Self::principal(p, c.binding)?;
+        self.store.bot_observe(c.binding).await?;
         let domain: QuoteRequest = request.try_into()?;
         if !legacy_request(&domain) {
             return Err(ServiceError::Malformed);

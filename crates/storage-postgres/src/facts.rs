@@ -315,6 +315,11 @@ impl PgStore {
         let row = crate::snapshots::universe(&mut tx, u).await?;
         if let Some(binding) = binding {
             crate::binding::check_read(&mut tx, binding).await?;
+            crate::bots::observe(&mut tx, binding).await?;
+            if let QuoteRequest::Fleet { intent } = request {
+                crate::bots::require_destination_observation(&mut tx, binding, &intent.destination)
+                    .await?;
+            }
         }
         let Actor::Player(player) = actor else {
             return Err(StoreError::NotFound);

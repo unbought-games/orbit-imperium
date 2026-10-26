@@ -510,7 +510,7 @@ async fn universe_policy_two_http_instances_refresh_and_fail_closed() {
         .next()
         .unwrap()
         .to_owned();
-    sqlx::query("ALTER TABLE universe_policies RENAME TO unavailable_universe_policies")
+    sqlx::query("ALTER TABLE universe_policies_v2 RENAME TO unavailable_universe_policies")
         .execute(&pool)
         .await
         .unwrap();
@@ -536,13 +536,13 @@ async fn universe_policy_two_http_instances_refresh_and_fail_closed() {
             .unwrap();
         assert_eq!(app.clone().oneshot(session).await.unwrap().status(), 200);
     }
-    sqlx::query("ALTER TABLE unavailable_universe_policies RENAME TO universe_policies")
+    sqlx::query("ALTER TABLE unavailable_universe_policies RENAME TO universe_policies_v2")
         .execute(&pool)
         .await
         .unwrap();
     // DDL contention is bounded inside the read transaction and frees the read pool.
     let mut ddl = pool.begin().await.unwrap();
-    sqlx::query("LOCK TABLE universe_policies IN ACCESS EXCLUSIVE MODE")
+    sqlx::query("LOCK TABLE universe_policies_v2 IN ACCESS EXCLUSIVE MODE")
         .execute(&mut *ddl)
         .await
         .unwrap();

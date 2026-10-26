@@ -162,6 +162,7 @@ impl GameStore for GatedStore {
             return Err(StoreError::NotFound);
         }
         Ok(SharedReport {
+            player_kinds: Default::default(),
             player_alliances: Default::default(),
             report: ReportId(token),
             observed_at: 1000,

@@ -205,6 +205,7 @@ impl PgStore {
         if !member {
             return Err(StoreError::NotFound);
         }
+        crate::bots::lock_bot(&mut tx, u, player).await?;
         let intent = binding.map(|(_, h)| h).unwrap_or_else(|| hash(&envelope));
         if let Some(receipt) = crate::admission::existing_command(
             &mut tx,
@@ -288,6 +289,19 @@ impl PgStore {
         if recent >= limit {
             return Err(StoreError::RateLimited);
         }
+        let account = AccountId(
+            sqlx::query_scalar::<_, Uuid>(
+                "SELECT account FROM universe_memberships WHERE universe=$1 AND player=$2",
+            )
+            .bind(u.0)
+            .bind(player.0)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db_error)?,
+        );
+        let b = crate::binding::current_read(&mut tx, account, u).await?;
+        let units = true;
+        crate::bots::charge(&mut tx, b, "command", envelope.command_id.0, units).await?;
         let sequence = next_sequence(&mut tx, u).await?;
         let id = InputId(Uuid::new_v4());
         let input = OrderedInput {

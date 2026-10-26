@@ -17,6 +17,7 @@ pub fn visible_report_alliances(
 
 /// Internal account mapping. Provider subjects never go to game browsers.
 pub struct PlayerIdentity {
+    pub kind: crate::PlayerKind,
     pub player: PlayerId,
     pub username: String,
     pub issuer: Option<String>,
@@ -62,6 +63,7 @@ impl<S: GameStore> GameService<S> {
         q: PlayerProfilesQuery,
     ) -> Result<Vec<PlayerId>, ServiceError> {
         Self::principal(p, q.context.binding)?;
+        self.store.bot_observe(q.context.binding).await?;
         let current = self
             .current_binding(p.account, p.universe, q.context.request_id)
             .await?;

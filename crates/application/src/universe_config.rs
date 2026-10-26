@@ -29,6 +29,7 @@ impl UniverseUpdate {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UniversePolicy {
+    pub bots: crate::BotPolicy,
     pub signup_enabled: bool,
     // `Option` alone accepts omission. A complete policy requires explicit null.
     #[serde(deserialize_with = "required_ceiling")]
@@ -42,6 +43,7 @@ fn required_ceiling<'de, D: Deserializer<'de>>(de: D) -> Result<Option<u32>, D::
 impl Default for UniversePolicy {
     fn default() -> Self {
         Self {
+            bots: Default::default(),
             signup_enabled: true,
             max_players: None,
             signup_per_minute: 5,
@@ -52,6 +54,7 @@ impl Default for UniversePolicy {
 impl UniversePolicy {
     pub fn validate(&self, immutable: &UniverseImmutable) -> Result<(), String> {
         immutable.validate()?;
+        self.bots.validate()?;
         let capacity = immutable.geometric_capacity();
         if self
             .max_players

@@ -27,6 +27,7 @@ fn creation_defaults_and_capacity_are_derived() {
     assert_eq!(
         d.policy,
         UniversePolicy {
+            bots: Default::default(),
             signup_enabled: true,
             max_players: None,
             signup_per_minute: 5,
@@ -37,6 +38,7 @@ fn creation_defaults_and_capacity_are_derived() {
     assert_eq!(d.immutable.geometric_capacity(), 900);
     assert_eq!(d.policy.effective_max_players(&d.immutable), 900);
     let capped = UniversePolicy {
+        bots: Default::default(),
         max_players: Some(3),
         ..d.policy.clone()
     };
@@ -170,6 +172,7 @@ fn supported_extremes_and_saved_rules_keep_their_actual_speed() {
         };
         immutable.validate().unwrap();
         let policy = UniversePolicy {
+            bots: Default::default(),
             max_players: Some(900_000),
             signup_per_minute: 10_000,
             commands_per_minute: 10_000,

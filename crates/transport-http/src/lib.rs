@@ -1,6 +1,7 @@
 mod alliances;
 mod bootstrap;
 mod bootstrap_html;
+mod bots;
 mod bound_api;
 mod home_seo;
 mod location_card;
@@ -213,8 +214,15 @@ where
             "/api/v3/universes/{id}/commands/{command}",
             get(v3::receipt::<S>),
         )
+        .route("/api/v4/universes/{id}/bot-status", get(bots::status::<S>))
+        .route("/api/v4/universes/{id}/bot-retire", post(bots::retire::<S>))
+        .route(
+            "/api/v4/universes/{id}/machine/commands",
+            post(bots::commands::<S>),
+        )
         .route("/api/v4/universes/{id}/binding", get(v4::binding::<S>))
         .route("/api/v4/universes/{id}/overview", post(v4::overview::<S>))
+        .route("/api/v4/universes/{id}/catalog", post(v4::catalog::<S>))
         .route("/api/v4/universes/{id}/settings", post(v4::settings::<S>))
         .route("/api/v4/universes/{id}/quotes", post(v4::quotes::<S>))
         .route(
@@ -342,12 +350,16 @@ impl IntoResponse for Problem {
         if matches!(self.0, ServiceError::RateLimited) {
             return rate_limited(60);
         }
+        if let ServiceError::BotDenied(ref denial) = self.0 {
+            return (StatusCode::FORBIDDEN, [(header::CONTENT_TYPE,"application/problem+json"),(header::CACHE_CONTROL,"no-store")], Json(serde_json::json!({"type":"about:blank","status":403,"code":denial.code,"next_eligible_at":denial.next_eligible_at}))).into_response();
+        }
         let game_code = if let ServiceError::GameRejected(ref e) = self.0 {
             Some(e.clone())
         } else {
             None
         };
         let (status, code) = match self.0 {
+            ServiceError::BotDenied(_) => unreachable!(),
             ServiceError::UniverseFull => (StatusCode::CONFLICT, "UniverseFull"),
             ServiceError::InvalidCursor => (StatusCode::BAD_REQUEST, "InvalidCursor"),
             ServiceError::EpochChanged => (StatusCode::CONFLICT, "EpochChanged"),
@@ -401,6 +413,20 @@ async fn authenticate<S: IdentityStore>(
     h: &HeaderMap,
     mutation: bool,
 ) -> Result<AuthenticatedSession, Problem> {
+    if let Some(value) = h.get(header::AUTHORIZATION) {
+        let bearer = value
+            .to_str()
+            .ok()
+            .and_then(|v| v.strip_prefix("Bearer "))
+            .filter(|v| !v.is_empty() && v.len() <= 256)
+            .ok_or(ServiceError::Unauthenticated)?;
+        return s
+            .updates
+            .authenticate_machine(&token_digest(bearer))
+            .await
+            .map_err(ServiceError::from)?
+            .ok_or(ServiceError::Unauthenticated.into());
+    }
     if let Some(rp) = &s.oidc {
         s.updates
             .revalidate_oidc(

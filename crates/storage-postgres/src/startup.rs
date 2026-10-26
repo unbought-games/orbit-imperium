@@ -70,7 +70,7 @@ impl PgStore {
     /// Bridge overrides compare only worlds that have not activated DB policy.
     pub async fn check_legacy_speed(&self, speed: i32) -> Result<(), StartupError> {
         let mismatch: Option<uuid::Uuid> = tokio::time::timeout(Duration::from_secs(2),
-            sqlx::query_scalar("SELECT id FROM universes u WHERE NOT EXISTS(SELECT 1 FROM universe_policies p WHERE p.universe=u.id) AND (u.speed<>$1 OR $1 NOT BETWEEN 1 AND 100) ORDER BY id LIMIT 1")
+            sqlx::query_scalar("SELECT id FROM universes u WHERE NOT EXISTS(SELECT 1 FROM universe_policies_v2 p WHERE p.universe=u.id) AND (u.speed<>$1 OR $1 NOT BETWEEN 1 AND 100) ORDER BY id LIMIT 1")
                 .bind(speed).fetch_optional(&self.pool)).await.map_err(|_| StartupError::Unavailable)?.map_err(db_error)?;
         if let Some(id) = mismatch {
             return Err(StartupError::Configuration(UniverseId(id)));

@@ -18,9 +18,17 @@ fn side(report: &SharedReport, side: &str) -> String {
         .collect();
     let names: Vec<_> = owners
         .iter()
-        .filter_map(|owner| report.player_names.get(*owner))
+        .filter_map(|owner| {
+            report.player_names.get(*owner).map(|name| {
+                let name = name.chars().take(60).collect::<String>();
+                if report.player_kinds.get(*owner) == Some(&PlayerKind::Bot) {
+                    format!("{name} · Bot")
+                } else {
+                    name
+                }
+            })
+        })
         .take(4)
-        .map(|name| name.chars().take(60).collect::<String>())
         .collect();
     if names.is_empty() {
         return format!("{side}s");
@@ -115,7 +123,13 @@ fn response(status: StatusCode, body: String) -> Response {
 pub(super) async fn page<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     Path(token): Path<String>,
+    headers: HeaderMap,
 ) -> Response {
+    if let Ok(id) = uuid::Uuid::parse_str(&token)
+        && let Err(error) = super::bots::public_report_access(&s, &headers, id).await
+    {
+        return error.into_response();
+    }
     let result = match uuid::Uuid::parse_str(&token) {
         Ok(token) => s.game.shared_report(token).await,
         Err(_) => Err(ServiceError::NotFound),

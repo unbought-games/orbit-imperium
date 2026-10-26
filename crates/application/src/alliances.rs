@@ -179,6 +179,7 @@ impl<S: GameStore> GameService<S> {
         q: AllianceQueryRequest,
     ) -> Result<AllianceView, ServiceError> {
         Self::principal(p, q.context.binding)?;
+        self.store.bot_observe(q.context.binding).await?;
         self.store.alliance_query(q).await.map_err(Into::into)
     }
     pub async fn alliance_command(
