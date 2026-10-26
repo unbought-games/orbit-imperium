@@ -35,7 +35,7 @@ impl ProductionSettings {
             self.solar_plant,
         ]
     }
-    pub fn validate(&self) -> Result<(), GameError> {
+    pub fn validate(&self, rules: &Ruleset) -> Result<(), GameError> {
         if self
             .producers()
             .into_iter()
@@ -44,7 +44,9 @@ impl ProductionSettings {
         {
             return Err(GameError::InvalidInput);
         }
-        if self.fusion_reactor != 100 || self.solar_satellite != 100 {
+        if self.fusion_reactor != 100
+            || (self.solar_satellite != 100 && solar_satellite_rule(rules).is_none())
+        {
             return Err(GameError::UnavailableContent);
         }
         Ok(())
@@ -128,8 +130,7 @@ pub fn settle_production(
         return settle_economy(b, at, r);
     }
     validate_body(s, b.id, r)?;
-    let settings = &s.production_settings[&b.id].settings;
-    crate::economy::settle_rates(b, at, production_rates_with_settings(b, settings, r)?, r)
+    crate::economy::settle_rates(b, at, body_production_rates(s, b, r)?, r)
 }
 fn head(s: &GameState, kind: &str, id: impl std::fmt::Display) -> Result<(), InvariantError> {
     if !s
@@ -171,7 +172,7 @@ pub fn validate_body<'a>(
         .production_settings
         .get(&id)
         .ok_or_else(|| bad("missing production settings"))?;
-    if set.body != id || set.revision < 0 || set.settings.validate().is_err() {
+    if set.body != id || set.revision < 0 || set.settings.validate(r).is_err() {
         return Err(bad("invalid production settings"));
     }
     let research = s
@@ -669,7 +670,10 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             expected_settings_revision,
         }) => {
             let b = owned(s, *body, i, r)?;
-            settings.validate()?;
+            settings.validate(r)?;
+            if solar_satellite_rule(r).is_some() {
+                production_rates_with_settings(b, settings, solar_satellite_count(s, b, r)?, r)?;
+            }
             let settled = settle(s, b, i, r)?;
             let old = &s.production_settings[body];
             if old.revision != *expected_settings_revision {
@@ -793,7 +797,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 if b.retained_capacity.is_some() {
                     b.retained_capacity = Some(capacity);
                 }
-                production_rates_with_settings(&b, &s.production_settings[&b.id].settings, r)?;
+                body_production_rates(s, &b, r)?;
                 op.status = ConstructionStatus::Completed;
             }
             op.revision = add(op.revision, 1)?;
@@ -1023,6 +1027,16 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 })
             {
                 return Err(invariant("manufacturing ordering mismatch"));
+            }
+            if original.item == ManufacturedItem::Ship(ShipType::SolarSatellite) {
+                c.bodies.push(settle(s, b, i, r)?);
+                // Validate the new rate before crediting any inventory or score.
+                production_rates_with_settings(
+                    b,
+                    &s.production_settings[&b.id].settings,
+                    add(solar_satellite_count(s, b, r)?, 1)?,
+                    r,
+                )?;
             }
             let mut op = original.clone();
             op.completed_prefix = add(op.completed_prefix, 1)?;

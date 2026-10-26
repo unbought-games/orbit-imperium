@@ -165,6 +165,29 @@ mod tests {
             .unwrap()
     }
     #[test]
+    fn large_cargo_presents_activated_stats_and_probe_rapid_fire() {
+        let rules =
+            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-13.json")).unwrap();
+        let stats = ship(&rules, ShipType::LargeCargo);
+        let propulsion = stats.propulsion.unwrap();
+        assert_eq!(propulsion.cargo_capacity, "25000");
+        assert_eq!(propulsion.base_speed, "7500");
+        assert_eq!(propulsion.fuel_consumption, "50");
+        assert_eq!(propulsion.drive, ResearchId::CombustionDrive);
+        assert!(propulsion.impulse_upgrade.is_none());
+        let combat = stats.combat.unwrap();
+        assert_eq!(combat.attack_ticks, "500000");
+        assert_eq!(combat.shield_ticks, "2500000");
+        assert_eq!(combat.hull_ticks, "120000000");
+        assert_eq!(combat.rapid_fire_against.len(), 1);
+        assert_eq!(
+            combat.rapid_fire_against[0].unit,
+            ManufacturedItem::Ship(ShipType::EspionageProbe)
+        );
+        assert_eq!(combat.rapid_fire_against[0].factor, "5");
+    }
+
+    #[test]
     fn presents_every_ship_without_mutating_rules() {
         let rules = Ruleset::signup(UniverseProfile::signup(1, 100).unwrap()).unwrap();
         let before = serde_json::to_value(&rules.artifact).unwrap();
@@ -327,4 +350,31 @@ mod tests {
                 .all(|e| e.ship_statistics.is_none())
         );
     }
+}
+
+#[cfg(test)]
+#[test]
+fn satellite_catalog_exposes_combat_and_energy_without_propulsion() {
+    let rules =
+        Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-solar-satellite.json")).unwrap();
+    let entry = catalog_view(&rules)
+        .unwrap()
+        .into_iter()
+        .find(|e| e.entry.key == CatalogKey::Ship(ShipType::SolarSatellite))
+        .unwrap();
+    assert!(!entry.entry.mobile);
+    let statistics = entry.ship_statistics.unwrap();
+    assert!(statistics.propulsion.is_none());
+    let combat = statistics.combat.unwrap();
+    assert_eq!(combat.hull_ticks, "20000000");
+    assert_eq!(combat.attack_ticks, "100000");
+    assert_eq!(combat.shield_ticks, "100000");
+    assert!(
+        entry
+            .technical_data
+            .unwrap()
+            .facts
+            .iter()
+            .any(|f| f.label == "Energy per satellite")
+    );
 }

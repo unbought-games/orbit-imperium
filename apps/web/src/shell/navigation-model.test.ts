@@ -7,7 +7,7 @@ import {
 } from './navigation-model'
 it('keeps the same four anchor meanings across every implemented route', () => {
   expect(navigationAnchor('overview')).toBe('Empire')
-  for (const page of buildPages) expect(navigationAnchor(page)).toBe('Build')
+  for (const page of buildPages) expect(navigationAnchor(page)).toBe('Develop')
   for (const page of ['galaxy', 'dispatch', 'fleets'] as const)
     expect(navigationAnchor(page)).toBe('Fleet')
   for (const page of [
@@ -15,9 +15,13 @@ it('keeps the same four anchor meanings across every implemented route', () => {
     'settings',
     'resource-settings',
     'high-scores',
+    'alliance',
   ] as const)
     expect(navigationAnchor(page)).toBe('Menu')
   expect(buildPages[0]).toBe('resources')
+  expect(
+    navigationGroups.find((group) => group.title === 'Develop')?.pages,
+  ).toEqual(buildPages)
 })
 it('orders Fleet destinations as Galaxy, Dispatch, Fleets in the submenu and grouped menu', () => {
   expect(fleetPages).toEqual(['galaxy', 'dispatch', 'fleets'])
@@ -47,6 +51,7 @@ it('places every real destination exactly once in the grouped menu', () => {
       'reports',
       'settings',
       'high-scores',
+      'alliance',
     ].sort(),
   )
 })

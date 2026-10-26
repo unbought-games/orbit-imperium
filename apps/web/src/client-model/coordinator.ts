@@ -593,6 +593,37 @@ export class Coordinator {
       inspect()
     })
   }
+  async allianceQuery(
+    query: import('../contracts').components['schemas']['AllianceQuery'],
+  ) {
+    const pending = this.captureRequest()
+    if (!pending || !this.port.allianceQuery || this.protocol !== 4) return null
+    try {
+      const result = await this.port.allianceQuery(pending.context, query)
+      return this.responseMatches(pending, result) ? result : null
+    } catch (error) {
+      const f = failure(error)
+      if (f.code === 'EpochChanged' || f.status === 401)
+        await this.problem(error, pending.generation, pending.context.binding)
+      throw error
+    }
+  }
+  async allianceCommand(request: import('./alliances').AllianceRequest) {
+    const pending = this.captureRequest()
+    if (!pending || !this.port.allianceCommand || this.protocol !== 4)
+      return null
+    try {
+      const result = await this.port.allianceCommand(pending.context, request)
+      return this.current(pending.generation, pending.context.binding)
+        ? result
+        : null
+    } catch (error) {
+      const f = failure(error)
+      if (f.code === 'EpochChanged' || f.status === 401)
+        await this.problem(error, pending.generation, pending.context.binding)
+      throw error
+    }
+  }
   async rankings() {
     const pending = this.captureRequest()
     if (!pending || !this.port.rankings || this.protocol !== 4) return null

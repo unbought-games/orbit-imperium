@@ -1,3 +1,4 @@
+mod alliances;
 mod bootstrap;
 mod bootstrap_html;
 mod bound_api;
@@ -52,6 +53,7 @@ struct HttpState<S> {
     game: GameService<S>,
     sessions: SessionService<S>,
     config: HttpConfig,
+    alliance_public_budget: Mutex<rate_limit::LoginBudget>,
     login_budget: Mutex<rate_limit::LoginBudget>,
     signup_budget: Mutex<rate_limit::LoginBudget>,
     password_work: Arc<Semaphore>,
@@ -130,6 +132,7 @@ where
         updates: store,
         drain,
         config,
+        alliance_public_budget: Mutex::new(rate_limit::LoginBudget::new()),
         login_budget: Mutex::new(rate_limit::LoginBudget::new()),
         signup_budget: Mutex::new(rate_limit::LoginBudget::new()),
         password_work: Arc::new(Semaphore::new(2)),
@@ -215,6 +218,18 @@ where
         .route("/api/v4/universes/{id}/presence", post(v4::presence::<S>))
         .route("/api/v4/universes/{id}/world", post(v4::query::<S>))
         .route("/api/v4/universes/{id}/rankings", post(v4::rankings::<S>))
+        .route(
+            "/api/v4/universes/{id}/alliances/query",
+            post(alliances::query::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/alliances/commands",
+            post(alliances::command::<S>).layer(DefaultBodyLimit::max(128 * 1024)),
+        )
+        .route(
+            "/api/v4/universes/{id}/alliances/{alliance}",
+            get(alliances::public::<S>),
+        )
         .route(
             "/api/v4/universes/{id}/combat-simulation",
             post(simulation::simulate::<S>),

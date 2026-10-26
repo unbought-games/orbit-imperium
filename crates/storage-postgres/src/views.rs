@@ -82,6 +82,23 @@ pub(crate) async fn public_destinations(
     Ok(destinations)
 }
 impl GameStore for PgStore {
+    async fn alliance_query(&self, q: AllianceQueryRequest) -> Result<AllianceView, StoreError> {
+        self.read_alliances(q).await
+    }
+    async fn alliance_command(
+        &self,
+        q: AllianceCommandRequest,
+    ) -> Result<AllianceCommandResult, StoreError> {
+        self.commit_alliance(q).await
+    }
+    async fn public_alliance(
+        &self,
+        universe: UniverseId,
+        alliance: uuid::Uuid,
+    ) -> Result<PublicAlliance, StoreError> {
+        self.read_public_alliance(universe, alliance).await
+    }
+
     async fn location_appearance(
         &self,
         slug: &str,
@@ -154,6 +171,14 @@ impl GameStore for PgStore {
             .collect::<Result<_, StoreError>>()?;
         tx.commit().await.map_err(db_error)?;
         Ok(destinations)
+    }
+
+    async fn player_alliances(
+        &self,
+        binding: Binding,
+        players: Vec<PlayerId>,
+    ) -> Result<PublicPlayerAlliances, StoreError> {
+        self.read_player_alliances(binding, players).await
     }
 
     async fn public_player_names(

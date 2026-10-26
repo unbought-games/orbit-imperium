@@ -1,3 +1,4 @@
+import type { PlayerAlliances } from './player-alliance'
 import { combatOutcome, hasCombatLoot } from './combat-report-model'
 import { playerLabel, type PlayerNames } from './player-label'
 import { bodyIdentityLabel } from './body-identity-label'
@@ -152,6 +153,7 @@ export function reportListIdentity(
   preview: Preview | undefined,
   viewer?: string,
   names?: PlayerNames,
+  alliances?: PlayerAlliances,
 ): string {
   if (!preview) return ''
   let owners: string[] = []
@@ -169,7 +171,14 @@ export function reportListIdentity(
   return [
     ...[...new Set(owners)]
       .filter((owner) => names?.[owner]?.trim())
-      .map((owner) => playerLabel(owner, names)),
+      .map((owner) =>
+        [
+          playerLabel(owner, names),
+          alliances?.[owner] ? `[${alliances[owner].tag}]` : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
+      ),
     body,
   ]
     .filter(Boolean)

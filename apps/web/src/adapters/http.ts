@@ -1,3 +1,4 @@
+import { allianceQuery, allianceCommand } from './alliances'
 import { resetAnalytics } from './optional-services'
 import type { Bootstrap } from '../client-model/bootstrap'
 import { validate } from '../client-model/schema'
@@ -131,6 +132,10 @@ export function gamePort(
   const base = (u: string, protocol = protocols.get(u) ?? 2) =>
     `/api/v${protocol}/universes/${u}`
   return {
+    allianceQuery: (context, query) =>
+      allianceQuery(context.binding, csrf, query, context.request_id),
+    allianceCommand: (context, command) =>
+      allianceCommand(context.binding, csrf, command),
     async rankings(context) {
       return validate(
         'Rankings',

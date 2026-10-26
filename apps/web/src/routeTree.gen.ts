@@ -16,6 +16,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as UUniverseRouteImport } from './routes/u.$universe'
 import { Route as UUniverseIndexRouteImport } from './routes/u.$universe.index'
 import { Route as UUniverseSplatRouteImport } from './routes/u.$universe.$'
+import { Route as UUniverseAllianceRouteImport } from './routes/u.$universe.alliance'
 import { Route as UUniverseDispatchRouteImport } from './routes/u.$universe.dispatch'
 import { Route as UUniverseFleetsRouteImport } from './routes/u.$universe.fleets'
 import { Route as UUniverseGalaxyRouteImport } from './routes/u.$universe.galaxy'
@@ -83,6 +84,11 @@ const UUniverseIndexRoute = UUniverseIndexRouteImport.update({
 const UUniverseSplatRoute = UUniverseSplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseAllianceRoute = UUniverseAllianceRouteImport.update({
+  id: '/alliance',
+  path: '/alliance',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseDispatchRoute = UUniverseDispatchRouteImport.update({
@@ -270,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
+  '/u/$universe/alliance': typeof UUniverseAllianceRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
@@ -311,6 +318,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/u/$universe/$': typeof UUniverseSplatRoute
+  '/u/$universe/alliance': typeof UUniverseAllianceRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
   '/u/$universe/high-scores': typeof UUniverseHighScoresRoute
@@ -350,6 +358,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
+  '/u/$universe/alliance': typeof UUniverseAllianceRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
@@ -394,6 +403,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/u/$universe'
     | '/u/$universe/$'
+    | '/u/$universe/alliance'
     | '/u/$universe/dispatch'
     | '/u/$universe/fleets'
     | '/u/$universe/galaxy'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/u/$universe/$'
+    | '/u/$universe/alliance'
     | '/u/$universe/dispatch'
     | '/u/$universe/galaxy'
     | '/u/$universe/high-scores'
@@ -473,6 +484,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/u/$universe'
     | '/u/$universe/$'
+    | '/u/$universe/alliance'
     | '/u/$universe/dispatch'
     | '/u/$universe/fleets'
     | '/u/$universe/galaxy'
@@ -566,6 +578,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/u/$universe/$'
       preLoaderRoute: typeof UUniverseSplatRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/alliance': {
+      id: '/u/$universe/alliance'
+      path: '/alliance'
+      fullPath: '/u/$universe/alliance'
+      preLoaderRoute: typeof UUniverseAllianceRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/dispatch': {
@@ -928,6 +947,7 @@ const UUniverseBBodyShipyardRouteWithChildren =
 
 interface UUniverseRouteChildren {
   UUniverseSplatRoute: typeof UUniverseSplatRoute
+  UUniverseAllianceRoute: typeof UUniverseAllianceRoute
   UUniverseDispatchRoute: typeof UUniverseDispatchRoute
   UUniverseFleetsRoute: typeof UUniverseFleetsRouteWithChildren
   UUniverseGalaxyRoute: typeof UUniverseGalaxyRoute
@@ -953,6 +973,7 @@ interface UUniverseRouteChildren {
 
 const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseSplatRoute: UUniverseSplatRoute,
+  UUniverseAllianceRoute: UUniverseAllianceRoute,
   UUniverseDispatchRoute: UUniverseDispatchRoute,
   UUniverseFleetsRoute: UUniverseFleetsRouteWithChildren,
   UUniverseGalaxyRoute: UUniverseGalaxyRoute,

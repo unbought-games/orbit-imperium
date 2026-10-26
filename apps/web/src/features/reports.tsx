@@ -179,6 +179,7 @@ export function Reports({
             payload={detail.payload}
             viewer={model.binding?.player}
             playerNames={detail.player_names}
+            playerAlliances={detail.player_alliances}
             combatActions={harvestAction}
             targetActions={
               <>

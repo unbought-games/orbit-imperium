@@ -9,6 +9,8 @@ use unbought_auth::{ProfileError, ProfileSnapshot, PublicProfile, PublicProfileC
 
 #[derive(Clone, Serialize)]
 pub struct PlayerDisplay {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    alliance: Option<AllianceIdentity>,
     player: PlayerId,
     pub(super) username: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -191,6 +193,7 @@ impl AccountProfiles {
                 };
                 let profile = source.and_then(|entry| entry.profile.as_ref());
                 PlayerDisplay {
+                    alliance: None,
                     player: identity.player,
                     username: profile.map_or(identity.username, |p| p.username.clone()),
                     supporter_tier: profile.and_then(|p| p.supporter_tier),
@@ -216,6 +219,10 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
     let binding = q.context.binding;
     let request_id = q.context.request_id;
     let players = s.game.visible_profile_players(principal, q).await?;
+    let mut alliances = s
+        .game
+        .player_alliances(principal, binding, players.clone())
+        .await?;
     // Release database resources before making any Accounts HTTP request.
     let mut identities = s
         .updates
@@ -234,13 +241,14 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
                 subject: None,
             }),
     );
-    let players = if let Some(profiles) = &s.profiles {
+    let mut players = if let Some(profiles) = &s.profiles {
         profiles.display(identities).await
     } else {
         let now = unbought_auth::now();
         identities
             .into_iter()
             .map(|i| PlayerDisplay {
+                alliance: None,
                 player: i.player,
                 username: i.username,
                 supporter_tier: None,
@@ -249,6 +257,9 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             })
             .collect()
     };
+    for player in &mut players {
+        player.alliance = alliances.remove(&player.player);
+    }
     Ok(bound_api::no_store_json(PlayerProfiles {
         binding,
         request_id,

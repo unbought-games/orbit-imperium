@@ -6,6 +6,8 @@ pub use state::*;
 pub use types::*;
 mod construction;
 mod economy;
+mod solar_satellite;
+pub use solar_satellite::*;
 mod errors;
 mod numeric;
 mod rules;
@@ -87,3 +89,5 @@ mod building_energy;
 pub use building_energy::*;
 mod colonization;
 pub use colonization::*;
+
+pub mod alliances;

@@ -1,0 +1,187 @@
+.screen,
+.stack,
+.publicPage {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.publicPage {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 3rem);
+}
+.hero {
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid #3c526b;
+  border-radius: 1rem;
+  background:
+    radial-gradient(ellipse at top right, #243c52, transparent 75%), #121e2b;
+  overflow-wrap: anywhere;
+}
+.hero h2 {
+  margin: 0.45rem 0 1rem;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+.tag {
+  color: #94d9e9;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.stats,
+.actions,
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.stats {
+  color: #b8cbdc;
+  font-size: 0.9rem;
+  gap: 0.75rem 1.5rem;
+}
+.stats strong {
+  color: #eef6ff;
+}
+.tabs {
+  border-bottom: 1px solid #304257;
+  padding-bottom: 1rem;
+}
+.card {
+  min-width: 0;
+  border: 1px solid #304257;
+  border-radius: 0.75rem;
+  padding: clamp(0.9rem, 2vw, 1.4rem);
+  background: #14202d;
+  overflow-wrap: anywhere;
+}
+.card h4 {
+  margin: 0.6rem 0;
+  font-size: 1.15rem;
+}
+.card > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.25rem 0;
+}
+.card[open] > summary {
+  margin-bottom: 1rem;
+}
+.card .hero {
+  padding: 0 0 1rem;
+  border: 0;
+  background: none;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+.form,
+.form fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+.form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.form fieldset:disabled {
+  opacity: 0.7;
+}
+.form label {
+  min-width: 0;
+}
+.form textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 0.75rem;
+  border: 1px solid #43576d;
+  border-radius: 0.5rem;
+  background: #0d1722;
+  color: #edf5fc;
+  font: inherit;
+  line-height: 1.5;
+}
+.form input[type='checkbox'] {
+  margin-right: 0.5rem;
+  accent-color: #79bfd8;
+}
+.form button {
+  justify-self: start;
+}
+.permissionList {
+  display: grid;
+  gap: 0.5rem;
+}
+.permission {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid #304257;
+}
+.permission label {
+  white-space: nowrap;
+}
+.review,
+.preview {
+  border: 1px solid #66758b;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: #202c3b;
+}
+.review button + button {
+  margin-left: 0.5rem;
+}
+.markdown {
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 100%;
+}
+.markdown a,
+.brand {
+  color: #8ad8ec;
+  text-decoration: underline;
+}
+.markdown blockquote {
+  border-left: 3px solid #526c85;
+  margin-left: 0;
+  padding-left: 1rem;
+}
+.markdown table {
+  max-width: 100%;
+}
+.meta {
+  color: #a9bbcd;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .permission {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+  }
+  .permission > span {
+    grid-column: 1 / -1;
+  }
+  .actions > label {
+    width: 100%;
+  }
+  .review button {
+    margin: 0.25rem !important;
+  }
+}

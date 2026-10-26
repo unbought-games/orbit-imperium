@@ -135,8 +135,8 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
     await expect(
       page.getByRole('link', { name: 'Open research' }),
     ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/research`)
-    await page.getByRole('link', { name: 'Build', exact: true }).click()
-    const nav = page.getByRole('navigation', { name: 'Build navigation' })
+    await page.getByRole('link', { name: 'Develop', exact: true }).click()
+    const nav = page.getByRole('navigation', { name: 'Develop navigation' })
     for (const destination of ['Resources', 'Facilities'] as const) {
       await nav.getByRole('link', { name: destination, exact: true }).click()
       await expect(page.locator('main h1')).toHaveText(destination)
@@ -200,8 +200,8 @@ test('cold Defense navigation retains named universe and planet through preloadi
     universeName: 'Andromeda Prime',
     protocol: 4,
   })
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
-  const nav = page.getByRole('navigation', { name: 'Build navigation' })
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
+  const nav = page.getByRole('navigation', { name: 'Develop navigation' })
   let loading = false
   let release!: () => void
   const gate = new Promise<void>((resolve) => {
@@ -372,7 +372,7 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
 })
 
 for (const width of [320, 390]) {
-  test(`mobile Build submenu spans the ${width}px viewport and stays below resources while scrolling`, async ({
+  test(`mobile Develop submenu spans the ${width}px viewport and stays below resources while scrolling`, async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -383,9 +383,9 @@ for (const width of [320, 390]) {
         id: index === 0 ? body.id : id(index + 20),
       })),
     })
-    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    await page.getByRole('link', { name: 'Develop', exact: true }).click()
     const bar = page.getByRole('group', { name: 'Planet and resources' })
-    const nav = page.getByRole('navigation', { name: 'Build navigation' })
+    const nav = page.getByRole('navigation', { name: 'Develop navigation' })
     await expect(nav).toHaveCSS('scrollbar-width', 'none')
     const assertPinned = async () => {
       const resources = (await bar.boundingBox())!
@@ -432,8 +432,8 @@ for (const width of [768, 1440, 1920]) {
   test(`desktop header dividers align with content at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await shellFixture(page)
-    await page.getByRole('link', { name: 'Build', exact: true }).click()
-    const submenu = page.getByRole('navigation', { name: 'Build navigation' })
+    await page.getByRole('link', { name: 'Develop', exact: true }).click()
+    const submenu = page.getByRole('navigation', { name: 'Develop navigation' })
     const header = page.getByRole('banner').locator('..')
     const content = (await page.locator('main#main').boundingBox())!
     for (const divider of [header, submenu]) {
@@ -776,13 +776,13 @@ test('compact shell exposes resource details and switches bodies without purchas
     name: 'Main navigation',
     exact: true,
   })
-  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Build'])
+  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop'])
   await expect(
     nav.getByRole('button', { name: 'Fleet', exact: true }),
   ).toBeDisabled()
   await nav.getByRole('button', { name: 'Menu', exact: true }).click()
   const menu = page.getByRole('dialog', { name: 'Navigation' })
-  await expect(menu.getByRole('button', { name: 'Alliance' })).toHaveCount(0)
+  await expect(menu.getByRole('button', { name: 'Alliance', exact: true })).toBeDisabled()
   await expect(menu.getByRole('button', { name: 'Galaxy' })).toBeDisabled()
   await expect(
     menu.getByRole('link', { name: 'Resources', exact: true }),
@@ -832,11 +832,11 @@ test('desktop uses a persistent horizontal ledger and no permanent rails', async
       selector!.y + selector!.height / 2 - ledger!.y - ledger!.height / 2,
     ),
   ).toBeLessThan(10)
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   await expect(page).toHaveURL(/resources$/)
   await expect(
     page
-      .getByRole('navigation', { name: 'Build navigation' })
+      .getByRole('navigation', { name: 'Develop navigation' })
       .getByRole('link'),
   ).toHaveText(['Resources', 'Facilities', 'Research', 'Shipyard', 'Defense'])
 })
@@ -1008,7 +1008,7 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
     name: 'Main navigation',
     exact: true,
   })
-  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Build'])
+  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop'])
   await expect(nav.getByRole('button')).toHaveText(['Fleet', 'Menu'])
   const dock = await nav.boundingBox()
   expect(dock!.y + dock!.height).toBe(844)
@@ -1238,7 +1238,7 @@ test('navigation retains the ledger through cold art, rapid routes and reduced m
     .evaluate((element) =>
       element.setAttribute('data-persistent-check', 'same-ledger'),
     )
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   await expect(page).toHaveURL(/resources$/)
   await page.getByRole('link', { name: 'Empire', exact: true }).click()
   await expect(page).toHaveURL(/overview$/)
@@ -1297,10 +1297,10 @@ test('navigation keeps shell identity mounted through rapid route changes', asyn
     .evaluate((element) =>
       element.setAttribute('data-motion-check', 'persistent'),
     )
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Resources')
   await page
-    .getByRole('navigation', { name: 'Build navigation' })
+    .getByRole('navigation', { name: 'Develop navigation' })
     .getByRole('link', { name: 'Shipyard', exact: true })
     .click()
   await expect(page.locator('main h1')).toHaveText('Shipyard')
@@ -2036,7 +2036,7 @@ test('selected body context truncates on phones and retains full labels and acce
       (element) => element.scrollWidth <= element.clientWidth,
     ),
   ).toBe(true)
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   const heading = page.getByRole('heading', {
     name: 'Resources',
     exact: true,
@@ -2098,13 +2098,13 @@ for (const width of [390, 1440]) {
   })
 }
 
-test('phone Build navigation keeps full-size links on one keyboard-scrollable row', async ({
+test('phone Develop navigation keeps full-size links on one keyboard-scrollable row', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await shellFixture(page)
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
-  const nav = page.getByRole('navigation', { name: 'Build navigation' })
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
+  const nav = page.getByRole('navigation', { name: 'Develop navigation' })
   const links = nav.getByRole('link')
   await expect(links).toHaveCount(5)
   const boxes = await links.evaluateAll((elements) =>
@@ -2154,7 +2154,7 @@ test('failed world images settle without browser broken-image borders or lost co
     .toBe(true)
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
-  await page.getByRole('link', { name: 'Build', exact: true }).click()
+  await page.getByRole('link', { name: 'Develop', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Resources')
 })
 
@@ -2378,8 +2378,8 @@ for (const width of [768, 1024, 1440, 1800]) {
       expect((await header.boundingBox())!.y).toBe(0)
     }
     await assertRow()
-    await expect(page.getByRole('navigation', { name: /^(Build|Fleet) navigation$/ })).toHaveCount(0)
-    for (const group of ['Build', 'Fleet']) {
+    await expect(page.getByRole('navigation', { name: /^(Develop|Fleet) navigation$/ })).toHaveCount(0)
+    for (const group of ['Develop', 'Fleet']) {
       await primary.getByRole('link', { name: group, exact: true }).click()
       const secondary = page.getByRole('navigation', { name: `${group} navigation`, exact: true })
       await expect(secondary).toBeVisible()
@@ -2396,7 +2396,7 @@ for (const width of [768, 1024, 1440, 1800]) {
     await page.keyboard.press('Escape')
     await selectBody(page, id(6))
     await expect(planet).toHaveAttribute('data-value', id(6))
-    await primary.getByRole('link', { name: 'Build', exact: true }).click()
+    await primary.getByRole('link', { name: 'Develop', exact: true }).click()
     await expect(page.locator('main h1')).toHaveText('Resources')
     await page.mouse.move(width / 2, 300)
     await diagnosticScreenshot(page, { path: `test-results/desktop-pinned-header-${width}.png` })
@@ -2428,8 +2428,8 @@ for (const width of [768, 1024, 1440, 1800]) {
       expect((await brand.locator('../..').boundingBox())!.y).toBe(0)
     }
     await assertAlignment()
-    await primary.getByRole('link', { name: 'Build', exact: true }).click()
-    const secondary = page.getByRole('navigation', { name: 'Build navigation', exact: true })
+    await primary.getByRole('link', { name: 'Develop', exact: true }).click()
+    const secondary = page.getByRole('navigation', { name: 'Develop navigation', exact: true })
     await expect(secondary).toBeVisible()
     for (const scroll of [0, 300, 100000]) {
       await page.evaluate(y => window.scrollTo(0, y), scroll)
@@ -2842,7 +2842,7 @@ for (const mission of ['Attack', 'Espionage'] as const) {
     await page.getByRole('button', { name: 'Metal details', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
-    await page.getByRole('link', { name: 'Build', exact: true }).click()
+    await page.getByRole('link', { name: 'Develop', exact: true }).click()
     expect((await overlay()).animation).toContain('hostile-pulse')
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await expect.poll(overlay).toMatchObject({ animation: 'none', opacity: '0.7' })

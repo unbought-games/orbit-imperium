@@ -53,6 +53,7 @@ export function comparisonStats(
       : p?.drive
     : undefined
   return {
+    stationary: entry.key.id === 'SolarSatellite' && !entry.mobile,
     cost: stats?.cost,
     cargo: p?.cargo_capacity,
     drive,

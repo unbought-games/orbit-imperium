@@ -34,6 +34,8 @@ pub struct SharedReport {
     pub observed_at: i64,
     pub options: ReportShareOptions,
     pub player_names: BTreeMap<String, String>,
+    #[serde(default)]
+    pub player_alliances: BTreeMap<String, AllianceIdentity>,
     pub payload: Value,
 }
 impl<S: GameStore> GameService<S> {
@@ -170,6 +172,24 @@ pub fn project_shared_report(
     names: &PublicPlayerNames,
     options: ReportShareOptions,
 ) -> Result<SharedReport, StoreError> {
+    project_shared_report_with_alliances(
+        report,
+        observed_at,
+        source,
+        names,
+        &Default::default(),
+        options,
+    )
+}
+
+pub fn project_shared_report_with_alliances(
+    report: ReportId,
+    observed_at: i64,
+    source: &Value,
+    names: &PublicPlayerNames,
+    alliances: &PublicPlayerAlliances,
+    options: ReportShareOptions,
+) -> Result<SharedReport, StoreError> {
     let kind = source["kind"].as_str().ok_or(StoreError::CorruptData)?;
     let mut payload = fields(source, &["kind", "at", "observed_at"]);
     match kind {
@@ -237,11 +257,25 @@ pub fn project_shared_report(
         &mut ids,
         &mut player_names,
     );
+    let player_alliances = if options.include_identity {
+        ids.iter()
+            .filter_map(|(original, local)| {
+                if !player_names.contains_key(local) {
+                    return None;
+                }
+                let player = PlayerId(uuid::Uuid::parse_str(original).ok()?);
+                alliances.get(&player).map(|a| (local.clone(), a.clone()))
+            })
+            .collect()
+    } else {
+        BTreeMap::new()
+    };
     Ok(SharedReport {
         report,
         observed_at,
         options,
         player_names,
+        player_alliances,
         payload,
     })
 }
@@ -329,6 +363,58 @@ const RESEARCH: [&str; 16] = [
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn affiliation_sharing_follows_identity_consent_and_local_participant_ids() {
+        let source: Value = serde_json::from_str(include_str!(
+            "../../../contracts/fixtures/espionage-expanded.json"
+        ))
+        .unwrap();
+        let player =
+            PlayerId(uuid::Uuid::parse_str(source["target"]["owner"].as_str().unwrap()).unwrap());
+        let hidden = PlayerId(uuid::Uuid::from_u128(88));
+        let affiliation = AllianceIdentity {
+            id: uuid::Uuid::from_u128(9),
+            universe: UniverseId(uuid::Uuid::from_u128(10)),
+            tag: "OLD".into(),
+            name: "Historical alliance".into(),
+        };
+        let alliances =
+            PublicPlayerAlliances::from([(player, affiliation.clone()), (hidden, affiliation)]);
+        for include_identity in [false, true] {
+            let report = project_shared_report_with_alliances(
+                ReportId(uuid::Uuid::from_u128(11)),
+                1000,
+                &source,
+                &Default::default(),
+                &alliances,
+                ReportShareOptions {
+                    include_identity,
+                    include_coordinates: false,
+                },
+            )
+            .unwrap();
+            assert!(
+                !serde_json::to_string(&report)
+                    .unwrap()
+                    .contains(&player.to_string())
+            );
+            if include_identity {
+                assert_eq!(report.player_alliances.len(), 1);
+                assert_eq!(
+                    report.player_alliances[report.payload["target"]["owner"].as_str().unwrap()]
+                        .tag,
+                    "OLD"
+                );
+            } else {
+                assert!(report.player_alliances.is_empty());
+                assert!(
+                    !serde_json::to_string(&report)
+                        .unwrap()
+                        .contains("Historical alliance")
+                );
+            }
+        }
+    }
     #[test]
     fn publication_preserves_numbers_and_redacts_nested_private_fields_and_unknown_sections() {
         let mut source: Value = serde_json::from_str(include_str!(

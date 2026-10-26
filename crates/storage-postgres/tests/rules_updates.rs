@@ -1260,50 +1260,56 @@ async fn beginner_protection_multiplier_is_saved_per_universe_and_can_be_reset()
 
 #[tokio::test]
 async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_restart() {
+    defense_activation_preserves_paid_work(DefenseId::IonCannon).await;
+}
+
+#[tokio::test]
+async fn gauss_cannon_activation_preserves_paid_work_and_retained_defenses_across_restart() {
+    defense_activation_preserves_paid_work(DefenseId::GaussCannon).await;
+}
+
+#[tokio::test]
+async fn heavy_laser_activation_preserves_paid_work_and_retained_defenses_across_restart() {
+    defense_activation_preserves_paid_work(DefenseId::HeavyLaser).await;
+}
+
+async fn defense_activation_preserves_paid_work(defense: DefenseId) {
     let (store, pool, universe, binding) = setup().await;
     let (_, _, other, _) = setup().await;
     let service = RulesService::new(store.clone());
     let other_rules = store.load_rules(other).await.unwrap();
-    let mut prerequisites = service.export(universe).await.unwrap();
-    let fixture: RulesArtifact =
-        serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-slice-9.json")).unwrap();
-    for research in [ResearchId::LaserTechnology, ResearchId::IonTechnology] {
-        prerequisites
-            .artifact
-            .progression
-            .as_mut()
-            .unwrap()
-            .research
-            .insert(
-                research,
-                fixture.progression.as_ref().unwrap().research[&research].clone(),
-            );
-        let key = CatalogKey::Research(research);
-        *prerequisites
-            .artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == key)
-            .unwrap() = fixture
-            .catalog
-            .iter()
-            .find(|e| e.key == key)
-            .unwrap()
-            .clone();
+    if matches!(defense, DefenseId::IonCannon | DefenseId::HeavyLaser) {
+        let mut prerequisites = service.export(universe).await.unwrap();
+        let fixture: RulesArtifact =
+            serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-slice-9.json")).unwrap();
+        for research in [ResearchId::LaserTechnology, ResearchId::IonTechnology] {
+            prerequisites
+                .artifact
+                .progression
+                .as_mut()
+                .unwrap()
+                .research
+                .insert(
+                    research,
+                    fixture.progression.as_ref().unwrap().research[&research].clone(),
+                );
+            let key = CatalogKey::Research(research);
+            *prerequisites
+                .artifact
+                .catalog
+                .iter_mut()
+                .find(|e| e.key == key)
+                .unwrap() = fixture
+                .catalog
+                .iter()
+                .find(|e| e.key == key)
+                .unwrap()
+                .clone();
+        }
+        service.apply(&prerequisites).await.unwrap();
     }
-    service.apply(&prerequisites).await.unwrap();
     let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
     let body = *snapshot.state.bodies.keys().next().unwrap();
-    sqlx::query("UPDATE building_levels SET level=4 WHERE body=$1 AND building='Shipyard'")
-        .bind(body.0)
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE research_levels SET level=4 WHERE owner=$1 AND research='IonTechnology'")
-        .bind(binding.player.0)
-        .execute(&pool)
-        .await
-        .unwrap();
     sqlx::query("UPDATE bodies SET amounts=$2, revision=revision+1 WHERE id=$1")
         .bind(body.0)
         .bind(sqlx::types::Json(Resources::all(100_000 * SCALE)))
@@ -1313,19 +1319,92 @@ async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_
 
     // Completed facility/research fixtures need one paid-value lot per level.
     // A bare level edit is correctly rejected by the world lineage invariant.
-    for (item, location, base_value) in [
-        (
-            CatalogKey::Building(Building::Shipyard),
-            AssetLocation::Body(body),
-            700,
-        ),
-        (
-            CatalogKey::Research(ResearchId::IonTechnology),
-            AssetLocation::Player,
-            1400,
-        ),
-    ] {
-        for level in 1..=4 {
+    let levels = match defense {
+        DefenseId::IonCannon => vec![
+            (
+                CatalogKey::Building(Building::Shipyard),
+                AssetLocation::Body(body),
+                700,
+                4,
+            ),
+            (
+                CatalogKey::Research(ResearchId::IonTechnology),
+                AssetLocation::Player,
+                1400,
+                4,
+            ),
+        ],
+        DefenseId::HeavyLaser => vec![
+            (
+                CatalogKey::Building(Building::Shipyard),
+                AssetLocation::Body(body),
+                700,
+                4,
+            ),
+            (
+                CatalogKey::Research(ResearchId::LaserTechnology),
+                AssetLocation::Player,
+                300,
+                6,
+            ),
+            (
+                CatalogKey::Research(ResearchId::EnergyTechnology),
+                AssetLocation::Player,
+                1200,
+                3,
+            ),
+        ],
+        DefenseId::GaussCannon => vec![
+            (
+                CatalogKey::Building(Building::Shipyard),
+                AssetLocation::Body(body),
+                700,
+                6,
+            ),
+            (
+                CatalogKey::Research(ResearchId::EnergyTechnology),
+                AssetLocation::Player,
+                1200,
+                6,
+            ),
+            (
+                CatalogKey::Research(ResearchId::WeaponsTechnology),
+                AssetLocation::Player,
+                1000,
+                3,
+            ),
+            (
+                CatalogKey::Research(ResearchId::ShieldingTechnology),
+                AssetLocation::Player,
+                800,
+                1,
+            ),
+        ],
+        _ => unreachable!(),
+    };
+    for (item, location, base_value, target_level) in levels {
+        match item {
+            CatalogKey::Building(building) => {
+                sqlx::query("UPDATE building_levels SET level=$3 WHERE body=$1 AND building=$2")
+                    .bind(body.0)
+                    .bind(serde_json::to_value(building).unwrap().as_str().unwrap())
+                    .bind(target_level as i32)
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+            }
+            CatalogKey::Research(research) => {
+                sqlx::query("UPDATE research_levels SET level=$3 WHERE owner=$1 AND research=$2")
+                    .bind(binding.player.0)
+                    .bind(serde_json::to_value(research).unwrap().as_str().unwrap())
+                    .bind(target_level as i32)
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+            }
+            _ => unreachable!(),
+        }
+        for level in 1..=target_level {
             let id = OperationId(Uuid::new_v4());
             let lot = AssetLot {
                 id,
@@ -1432,9 +1511,18 @@ async fn ion_cannon_activation_preserves_paid_work_and_retained_defenses_across_
     let (before, _) = store.bound_world(binding).await.unwrap().facts;
     assert_eq!(before.state.manufacturing_batches.len(), 1);
     let mut document = service.export(universe).await.unwrap();
-    let content: serde_json::Value =
-        serde_json::from_slice(include_bytes!("../../../rules/content/ion-cannon.json")).unwrap();
-    let item = ManufacturedItem::Defense(DefenseId::IonCannon);
+    let content: serde_json::Value = serde_json::from_slice(match defense {
+        DefenseId::IonCannon => include_bytes!("../../../rules/content/ion-cannon.json").as_slice(),
+        DefenseId::HeavyLaser => {
+            include_bytes!("../../../rules/content/heavy-laser.json").as_slice()
+        }
+        DefenseId::GaussCannon => {
+            include_bytes!("../../../rules/content/gauss-cannon.json").as_slice()
+        }
+        _ => unreachable!(),
+    })
+    .unwrap();
+    let item = ManufacturedItem::Defense(defense);
     let entry = document
         .artifact
         .catalog
@@ -1712,4 +1800,235 @@ async fn cruiser_activation_preserves_players_and_survives_restart_and_disable()
     let mut destructive = service.export(universe).await.unwrap();
     destructive.artifact = before.artifact;
     assert!(service.diff(&destructive).await.is_err());
+}
+
+#[tokio::test]
+async fn satellites_settle_inventory_at_completions_and_rules_boundaries_in_both_runtimes() {
+    for scoped in [false, true] {
+        let (store, pool, universe, binding) = setup().await;
+        let service = RulesService::new(store.clone());
+        let mut doc = service.export(universe).await.unwrap();
+        let profile = doc.artifact.universe.clone();
+        doc.artifact =
+            serde_json::from_slice(include_bytes!("../../../rules/mvp-v1-solar-satellite.json"))
+                .unwrap();
+        doc.artifact.universe = profile;
+        service.apply(&doc).await.unwrap();
+        let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+        let body = *snapshot.state.bodies.keys().next().unwrap();
+        // Deterministic completed industry fixture, with matching authoritative value lots.
+        for (building, cost) in [
+            (Building::Shipyard, 700),
+            (Building::MetalMine, 90),
+            (Building::CrystalMine, 72),
+        ] {
+            sqlx::query("UPDATE building_levels SET level=1 WHERE body=$1 AND building=$2")
+                .bind(body.0)
+                .bind(format!("{building:?}"))
+                .execute(&pool)
+                .await
+                .unwrap();
+            let id = OperationId(Uuid::new_v4());
+            let lot = AssetLot {
+                id,
+                owner: binding.player,
+                item: CatalogKey::Building(building),
+                level: Some(1),
+                location: AssetLocation::Body(body),
+                quantity: 1,
+                unit_value_micro: cost * SCALE,
+                rules_hash: snapshot.rules.hash.clone(),
+                source_operation: id,
+                acquired_at: 1000,
+                acquired_sequence: 0,
+            };
+            sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
+                .bind(universe.0)
+                .bind(id.to_string())
+                .bind(sqlx::types::Json(lot))
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        sqlx::query(
+            "UPDATE bodies SET max_temperature=40, amounts=$2, revision=revision+1 WHERE id=$1",
+        )
+        .bind(body.0)
+        .bind(sqlx::types::Json(Resources::from_values([
+            0,
+            5000 * SCALE,
+            1000 * SCALE,
+        ])))
+        .execute(&pool)
+        .await
+        .unwrap();
+        if scoped {
+            store.prepare_scoped_runtime(universe, 100).await.unwrap();
+            store.activate_scoped_runtime(universe).await.unwrap();
+        }
+        let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
+        let item = ManufacturedItem::Ship(ShipType::SolarSatellite);
+        let q = inspect_progression(
+            &snapshot.state,
+            Actor::Player(binding.player),
+            &QuoteRequest::Manufacture {
+                body,
+                item,
+                quantity: 2,
+            },
+            1000,
+            &snapshot.rules,
+        )
+        .unwrap();
+        assert!(q.blockers.is_empty());
+        let id = CommandId(Uuid::new_v4());
+        store
+            .bound_admit4(ForegroundAction {
+                gameplay: CommandEnvelopeV4 {
+                    protocol: 4,
+                    binding,
+                    command_id: id,
+                    command: CommandDto3::Progression(Command::StartManufacture {
+                        body,
+                        item,
+                        quantity: 2,
+                        expected_terms_hash: q.terms_hash.unwrap(),
+                    }),
+                },
+                presence: CommandEnvelopeV4 {
+                    protocol: 4,
+                    binding,
+                    command_id: CommandId(Uuid::new_v4()),
+                    command: CommandDto3::Progression(Command::World {
+                        action: WorldAction::RecordForegroundPresence {
+                            body: Some(body),
+                            cause: PresenceCause::GameplayGesture,
+                            paired_command_id: Some(id),
+                        },
+                    }),
+                },
+            })
+            .await
+            .unwrap();
+        async fn drain(store: &PgStore, u: UniverseId, scoped: bool) {
+            let game = GameService::new(store.clone());
+            for _ in 0..20 {
+                let outcome = if scoped {
+                    game.step_scoped(u, WorkerId(Uuid::new_v4()), &InlineEngine)
+                        .await
+                        .unwrap()
+                } else {
+                    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap()
+                };
+                if matches!(outcome, StepOutcome::Idle) {
+                    return;
+                }
+            }
+            panic!("unbounded satellite work");
+        }
+        drain(&store, universe, scoped).await;
+        assert!(matches!(
+            store.bound_receipt(binding, id).await.unwrap().status,
+            ReceiptStatus::Committed { .. }
+        ));
+        let (paid, _) = store.bound_world(binding).await.unwrap().facts;
+        let batch = paid
+            .state
+            .manufacturing_batches
+            .values()
+            .find(|b| b.item == item)
+            .unwrap()
+            .clone();
+        store.set_test_time(batch.next_due_at).await.unwrap();
+        drain(&store, universe, scoped).await;
+        let (first, _) = store.bound_world(binding).await.unwrap().facts;
+        assert_eq!(
+            solar_satellite_count(&first.state, &first.state.bodies[&body], &first.rules).unwrap(),
+            1
+        );
+        assert_eq!(
+            first.state.bodies[&body].checkpoint.amounts.metal,
+            12 * SCALE
+        );
+        // Activate a new energy coefficient halfway to the next completion. This
+        // exercises old inventory-aware rates at the activation boundary.
+        store
+            .set_test_time(batch.next_due_at + 72_000)
+            .await
+            .unwrap();
+        let mut next = service.export(universe).await.unwrap();
+        next.artifact
+            .progression
+            .as_mut()
+            .unwrap()
+            .solar_satellite
+            .as_mut()
+            .unwrap()
+            .temperature_offset = 146;
+        next.artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == item.catalog_key())
+            .unwrap()
+            .enabled = false;
+        match service.apply(&next).await {
+            Ok(RulesApplyOutcome::Applied { .. }) => {}
+            Err(RulesUpdateError::Pending { .. }) if scoped => {
+                assert!(store.process_runtime_barrier(universe).await.unwrap());
+            }
+            other => panic!("unexpected satellite activation: {other:?}"),
+        }
+        let (boundary, _) = store.bound_world(binding).await.unwrap().facts;
+        assert_eq!(
+            boundary.state.bodies[&body].checkpoint.amounts.metal,
+            24_600_000
+        );
+        let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap();
+        restarted.set_test_time(batch.final_due_at).await.unwrap();
+        drain(&restarted, universe, scoped).await;
+        let (completed, _) = restarted.bound_world(binding).await.unwrap().facts;
+        assert_eq!(
+            completed.state.bodies[&body].checkpoint.amounts.metal,
+            37_200_000
+        );
+        assert_eq!(
+            solar_satellite_count(
+                &completed.state,
+                &completed.state.bodies[&body],
+                &completed.rules
+            )
+            .unwrap(),
+            2
+        );
+        validate_asset_lineage(&completed.state).unwrap();
+        let view = GameService::new(restarted)
+            .world_view(
+                Principal {
+                    account: binding.account,
+                    player: binding.player,
+                    universe,
+                },
+                QueryContext {
+                    binding,
+                    request_id: Uuid::new_v4(),
+                },
+            )
+            .await
+            .unwrap();
+        let production = view
+            .progression
+            .progression
+            .production
+            .iter()
+            .find(|p| p.body == body)
+            .unwrap();
+        assert_eq!(production.energy_supply, "62000000");
+        let output = production.solar_satellite.as_ref().unwrap();
+        assert_eq!(output.unit_energy, "31000000");
+        assert_eq!(output.energy_supply, "62000000");
+        assert!(production.editable.iter().any(|k| k == "solar_satellite"));
+        assert_eq!(production.gross_per_hour.metal, "630000000");
+    }
 }

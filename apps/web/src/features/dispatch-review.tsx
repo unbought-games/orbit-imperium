@@ -1,3 +1,4 @@
+import { useProfileSource } from '../shell/player-profiles-context'
 import {
   ArrowRight,
   Globe2,
@@ -77,6 +78,12 @@ export function DispatchReview({
     coordinates,
     target,
   )
+  useProfileSource(
+    destination.owner
+      ? { type: 'Rankings', players: [destination.owner] }
+      : null,
+  )
+
   const schedule = flightSchedule(quote.duration_ms, now, mission)
   const returning = missionReturn[mission]
   return (

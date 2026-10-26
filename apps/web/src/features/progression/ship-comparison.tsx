@@ -48,19 +48,28 @@ export function ShipComparison({
         <ResourceValue resource={resource}>{number(c.cost?.[i])}</ResourceValue>
       )),
     })),
-    { title: 'Cargo capacity', values: columns.map((c) => number(c.cargo)) },
+    {
+      title: 'Cargo capacity',
+      values: columns.map((c) => (c.stationary ? 'None' : number(c.cargo))),
+    },
     {
       title: mode === 'base' ? 'Base speed' : 'Effective speed',
-      values: columns.map((c) => number(c.speed)),
+      values: columns.map((c) =>
+        c.stationary ? 'Stationary' : number(c.speed),
+      ),
     },
     {
       title: 'Drive',
-      values: columns.map((c) => (c.drive ? label(c.drive) : 'Unavailable')),
+      values: columns.map((c) =>
+        c.stationary ? 'None' : c.drive ? label(c.drive) : 'Unavailable',
+      ),
     },
     {
       title: 'Fuel consumption per ship',
       values: columns.map((c) => (
-        <ResourceValue resource="deuterium">{number(c.fuel)}</ResourceValue>
+        <ResourceValue resource="deuterium">
+          {c.stationary ? 'None' : number(c.fuel)}
+        </ResourceValue>
       )),
     },
     { title: 'Attack strength', values: columns.map((c) => combat(c.attack)) },

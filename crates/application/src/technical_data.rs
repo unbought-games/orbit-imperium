@@ -107,6 +107,11 @@ pub(crate) fn technical_data(
                 data.fact("Planet limit", "One completed or queued dome of this type per planet. Its shield protects itself, not other units.");
             }
         }
+        CatalogKey::Ship(ShipType::SolarSatellite) => {
+            let rule = solar_satellite_rule(rules).ok_or(ServiceError::InvariantFailure)?;
+            data.fact("Energy per satellite", format!("floor((planet maximum temperature + {}) / {}). Total energy is multiplied by completed satellite count and the production setting; economy speed does not multiply energy.", rule.temperature_offset, rule.temperature_divisor));
+            data.fact("Stationary ship", "Cannot fly or carry cargo. Uses no fuel or building fields. Defends the planet and can be destroyed; destroyed satellites do not recover.");
+        }
         _ => return Ok(None),
     }
     Ok(Some(data))
@@ -228,6 +233,19 @@ mod tests {
             }
         }
         assert_eq!(before, serde_json::to_value(&r.artifact).unwrap());
+    }
+    #[test]
+    fn heavy_laser_projects_base_stats_from_active_rules() {
+        let r =
+            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-heavy-laser.json")).unwrap();
+        let defense = data(&r, CatalogKey::Defense(DefenseId::HeavyLaser))
+            .combat
+            .unwrap();
+        assert_eq!(defense.attack_ticks, "25000000");
+        assert_eq!(defense.shield_ticks, "10000000");
+        assert_eq!(defense.hull_ticks, "80000000");
+        assert!(defense.rapid_fire_against.is_empty());
+        assert!(defense.rapid_fire_from.is_empty());
     }
     #[test]
     fn custom_drive_and_combat_bonuses_match_engine_calculations() {
