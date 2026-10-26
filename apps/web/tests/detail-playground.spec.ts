@@ -134,6 +134,39 @@ for (const [scene, label] of [['mine-active', 'Cancel construction'], ['research
     await expect(dialog).toHaveCount(0)
     await expect(page.getByText(`Preview only: ${scene === 'mine-active' ? 'CancelConstruction' : 'CancelResearch'}`)).toBeVisible()
     await expect(page.getByRole('button', { name: label, exact: true })).toHaveCount(0)
+    if (scene === 'research-active') {
+      await expect(page.getByRole('heading', { name: /^Research Active:/ })).toHaveCount(0)
+      await expect(page.getByText('Level 2', { exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Next · level 3', exact: true })).toBeVisible()
+    }
+  })
+}
+
+for (const width of [320, 390, 1440]) {
+  test(`active research has one prominent banner and preserves its controls at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/detail-playground?scene=research-active')
+    const active = page.getByRole('region', { name: 'Active research', exact: true })
+    const heading = active.getByRole('heading', { name: 'Research Active: Researching Combustion Drive to level 3', exact: true })
+    await expect(heading).toBeVisible()
+    await expect(heading).toBeFocused()
+    await expect(page.getByRole('heading', { name: /^Research Active:/ })).toHaveCount(1)
+    await expect(heading).toContainText('Combustion Drive level 3')
+    await expect(active.getByText('Researching to level 3', { exact: true })).toHaveCount(0)
+    const banner = heading.locator(':scope > span')
+    expect(await banner.evaluate(element => getComputedStyle(element).borderTopStyle)).toBe('solid')
+    await expect(banner.locator('svg')).toHaveCount(1)
+    await expect(active.getByRole('button', { name: 'Completion time details', exact: true })).toHaveCount(1)
+    const refund = active.getByRole('group', { name: 'Cancellation refund', exact: true })
+    await expect(refund).toContainText('1,600')
+    await expect(refund).toContainText('2,400')
+    await expect(refund.getByRole('img', { name: 'metal', exact: true })).toBeVisible()
+    await expect(refund.getByRole('img', { name: 'deuterium', exact: true })).toBeVisible()
+    const cancel = active.getByRole('button', { name: 'Cancel research', exact: true })
+    await expect(cancel).toBeEnabled()
+    expect((await cancel.boundingBox())!.y + (await cancel.boundingBox())!.height).toBeLessThan(844 - 76)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/research-active-${width}.png`, fullPage: true })
   })
 }
 
@@ -267,6 +300,7 @@ for (const [scene, region, initial, next, elapsed] of [
     // needs the next tick after the deadline, not every intervening 250ms tick.
     await page.clock.fastForward(elapsed - 5000)
     await expect(active).toHaveCount(0)
+    if (scene === 'research-active') await expect(page.getByRole('heading', { name: /^Research Active:/ })).toHaveCount(0)
     await expect(page.getByText(next, { exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: scene === 'mine-active' ? 'Next · level 6' : 'Next · level 4', exact: true })).toBeVisible()
   })
