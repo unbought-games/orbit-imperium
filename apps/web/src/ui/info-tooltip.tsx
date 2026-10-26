@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { Tooltip } from '@base-ui/react/tooltip'
 import { classes } from './classes'
 import styles from './info-tooltip.module.css'
+import { tooltipOpenChange, type InfoTooltipMode } from './info-tooltip-state'
 
 /** Status explanations work on hover, keyboard focus, and touch. */
 export function InfoTooltip({
@@ -15,10 +16,17 @@ export function InfoTooltip({
   children: ReactNode
   className?: string
 }) {
-  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<InfoTooltipMode>(null)
+  const open = mode !== null
   const id = useId()
   return (
-    <Tooltip.Root open={open} onOpenChange={setOpen} triggerId={id}>
+    <Tooltip.Root
+      open={open}
+      onOpenChange={(next, details) =>
+        setMode((current) => tooltipOpenChange(current, next, details.reason))
+      }
+      triggerId={id}
+    >
       <Tooltip.Trigger
         id={id}
         type="button"
@@ -27,7 +35,7 @@ export function InfoTooltip({
         aria-describedby={open ? `${id}-description` : undefined}
         delay={200}
         closeOnClick={false}
-        onClick={() => setOpen(true)}
+        onClick={() => setMode('pressed')}
       >
         {children}
       </Tooltip.Trigger>
