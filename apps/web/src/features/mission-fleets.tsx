@@ -24,6 +24,8 @@ import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { routeTarget } from '../shell/route-target'
 import { TaskHeader } from '../ui/task-header'
+import { FleetSlots } from './fleet-slots'
+import { ShipComposition } from './ship-composition'
 import { FleetInventory } from './fleet-inventory'
 import { FleetCargo } from './fleet-cargo'
 import { MissionTrajectory } from './mission-trajectory'
@@ -32,7 +34,6 @@ import {
   arrivalCountdown,
   exactTime,
   recallEstimate,
-  shipManifest,
 } from './mission-presentation'
 import styles from './missions.module.css'
 type S = components['schemas']
@@ -135,10 +136,10 @@ export function MissionFleets({
           <ButtonLink {...routeTarget(universeName, 'dispatch', origin)}>
             Dispatch a fleet
           </ButtonLink>
-          <span>
-            Fleet slots: {occupiedFleetSlots(state)} /{' '}
-            {view.missions.fleet_slots}
-          </span>
+          <FleetSlots
+            used={occupiedFleetSlots(state)}
+            total={view.missions.fleet_slots}
+          />
         </div>
       </TaskHeader>
       {!fleets.length && !launches.length && (
@@ -185,7 +186,7 @@ export function MissionFleets({
               <Heading level={3} className={styles.missionTitle}>
                 Your {fleet.intent.mission.toLowerCase()} · {fleet.leg}
               </Heading>
-              <Text>{shipManifest(fleet.ships)}</Text>
+              <ShipComposition ships={fleet.ships} />
               <FleetCargo cargo={fleet.cargo} />
               <Text>
                 <CoordinateLink

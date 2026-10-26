@@ -342,7 +342,7 @@ test('Large Cargos can be selected, quoted and launched in a transport fleet', a
     .fill('2')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
-  await expect(quote).toContainText('2 Large Cargo')
+  await expect(quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Large Cargo 2'])
   await quote.getByRole('button', { name: /^Transport to / }).click()
   await expect
     .poll(() => sent)

@@ -10,6 +10,7 @@ import {
   incomingManifest,
   missionLocation,
 } from './mission-presentation'
+import { ShipComposition } from './ship-composition'
 import styles from './incoming-fleet.module.css'
 
 type S = components['schemas']
@@ -54,7 +55,11 @@ export function IncomingFleet({
             'Unrevealed location'
           )}
         </Text>
-        <Text>{incomingManifest(fleet.ships)}</Text>
+        {fleet.ships.visibility === 'Exact' ? (
+          <ShipComposition ships={fleet.ships.ships} />
+        ) : (
+          <Text>{incomingManifest(fleet.ships)}</Text>
+        )}
       </div>
       <div className={styles.arrival}>
         <span>Arrival in</span>

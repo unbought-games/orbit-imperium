@@ -22,13 +22,15 @@ import {
 import { QuoteAction, QuotePanel } from '../ui/quote-panel'
 import { CoordinateLink } from './coordinate-link'
 import { PlayerName } from './player-name'
-import { exactTime, shipManifest } from './mission-presentation'
+import { exactTime } from './mission-presentation'
 import {
   dispatchSendLabel,
   missionReturn,
   reviewDestination,
   type DispatchTarget,
 } from './dispatch-review-model'
+import { FleetSlots } from './fleet-slots'
+import { ShipComposition } from './ship-composition'
 import styles from './missions.module.css'
 type S = components['schemas']
 const missionIcons = {
@@ -147,7 +149,9 @@ export function DispatchReview({
       <dl className={styles.reviewFacts}>
         <div className={styles.reviewWide}>
           <dt>Ships</dt>
-          <dd>{shipManifest(quote.intent.ships)}</dd>
+          <dd>
+            <ShipComposition ships={quote.intent.ships} />
+          </dd>
         </div>
         <div className={styles.reviewWide}>
           <dt>
@@ -200,7 +204,7 @@ export function DispatchReview({
         <Text role="status">{colonyWarning}</Text>
       )}
       <Text className={styles.reviewNote}>
-        Fleet slots: {occupiedSlots} / {quote.slot_limit} in use
+        <FleetSlots used={occupiedSlots} total={quote.slot_limit} />
       </Text>
       <QuoteAction disabled={disabled} onClick={onSend}>
         {dispatchSendLabel(quote.intent, destination)}

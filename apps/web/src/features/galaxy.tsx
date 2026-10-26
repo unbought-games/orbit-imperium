@@ -11,7 +11,11 @@ import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
 import { GalaxyPosition } from './galaxy-position'
 import { colonizationStatus } from '../client-model/colonization'
-import { currentServerTime } from '../client-model/game-projection'
+import { FleetSlots } from './fleet-slots'
+import {
+  currentServerTime,
+  occupiedFleetSlots,
+} from '../client-model/game-projection'
 import { galaxyFlights, pendingProbe } from '../client-model/galaxy-fleets'
 import { useGalaxyEspionage } from './use-galaxy-espionage'
 type System = components['schemas']['GalaxySystem4']
@@ -115,6 +119,14 @@ export function Galaxy({
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
+      {espionage.state.view?.protocol === 4 && (
+        <div className={styles.slots}>
+          <FleetSlots
+            used={occupiedFleetSlots(espionage.state)}
+            total={espionage.state.view.missions.fleet_slots}
+          />
+        </div>
+      )}
       <GalaxyNavigation
         galaxy={galaxy}
         system={system}

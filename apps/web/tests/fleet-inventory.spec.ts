@@ -146,26 +146,17 @@ for (const width of [320, 390, 1280]) {
       name: 'Stationed ships',
       exact: true,
     })
-    const cargo = panel.getByRole('listitem', {
-      name: 'Small Cargo',
-      exact: true,
-    })
-    await expect(cargo.locator('dd')).toHaveText([
+    const cargo = panel.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Build more Small Cargo in Shipyard', exact: true }) })
+    await expect(cargo.getByRole('cell')).toHaveText([
       '9,223,372,036,854,775,807',
       '5',
       '5',
     ])
-    await expect(
-      panel
-        .getByRole('listitem', { name: 'Light Fighter', exact: true })
-        .locator('dd'),
-    ).toHaveText(['0', '0', '0'])
-    await expect(
-      panel
-        .getByRole('listitem', { name: 'Solar Satellite', exact: true })
-        .locator('dd'),
-    ).toHaveText(['0', 'Stationary', '0'])
-    await expect(panel.getByRole('listitem')).toHaveCount(3)
+    await expect(panel.getByRole('columnheader')).toHaveText(['Ship', 'Stationed', 'Flying', 'Queued'])
+    await expect(panel.getByRole('row')).toHaveCount(2)
+    expect((await panel.getByRole('row').first().boundingBox())!.height).toBeLessThan(44)
+    await expect(panel.getByRole('rowheader', { name: /Light Fighter|Solar Satellite/ })).toHaveCount(0)
+    await expect(page.getByText('Fleet slots: 2 used / 8 total', { exact: true })).toBeVisible()
     expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
       true,
     )
@@ -185,16 +176,19 @@ for (const width of [320, 390, 1280]) {
       `/u/andromeda/b/${body.id}/shipyard/small-cargo`,
     )
     await page.goto(`/u/andromeda/b/${body.id}/fleets`)
-    await expect(cargo.locator('dd').first()).toHaveText(
+    await expect(cargo.getByRole('cell').first()).toHaveText(
       '9,223,372,036,854,775,807',
     )
     options.bodies[0].inventories[0].count = '42'
     revision += 1
     await refreshGame(page)
-    await expect(cargo.locator('dd').first()).toHaveText('42')
+    await expect(cargo.getByRole('cell').first()).toHaveText('42')
+    await panel.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(panel, { path: `test-results/fleet-inventory-compact-${width}.png` })
     await selectBody(page, id(6))
     await expect(panel).toContainText('No ships stationed here.')
-    await expect(cargo.locator('dd')).toHaveText(['0', '9', '7'])
+    await expect(cargo.getByRole('cell')).toHaveText(['0', '9', '7'])
+    await expect(page.getByText('Fleet slots: 2 used / 8 total', { exact: true })).toBeVisible()
     await panel
       .getByRole('link', { name: 'Open Shipyard', exact: true })
       .click()
@@ -225,3 +219,26 @@ test('empty stationed inventory retains a useful Shipyard destination', async ({
     panel.getByRole('link', { name: 'Open Shipyard' }),
   ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/shipyard`)
 })
+
+for (const source of ['stationed', 'flying', 'queued', 'empty'] as const) {
+  test(`inventory retains ${source} ships without showing zero-only rows`, async ({ page }) => {
+    const options = inventoryFixture()
+    options.bodies[0].inventories = source === 'stationed'
+      ? [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '1' }]
+      : []
+    options.missions.fleets = source === 'flying' ? options.missions.fleets.slice(0, 1) : []
+    options.manufacturing = source === 'queued' ? options.manufacturing.slice(0, 1) : []
+    await installGameFixture(page, options)
+    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    const panel = page.getByRole('region', { name: 'Stationed ships', exact: true })
+    await expect(panel.getByRole('table')).toHaveCount(source === 'empty' ? 0 : 1)
+    if (source !== 'empty') {
+      await expect(panel.getByRole('cell')).toHaveText([
+        source === 'stationed' ? '1' : '0',
+        source === 'flying' ? '5' : '0',
+        source === 'queued' ? '3' : '0',
+      ])
+    }
+    await expect(panel.getByRole('link', { name: 'Open Shipyard' })).toBeVisible()
+  })
+}

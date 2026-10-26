@@ -313,3 +313,9 @@ summary.positionSummary:focus-visible {
   margin: 0;
   color: var(--danger);
 }
+
+.slots {
+  padding-block: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}

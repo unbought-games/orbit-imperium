@@ -1,4 +1,5 @@
 import type { components } from '../../contracts'
+import { fleetInventoryRows } from '../fleet-inventory-model'
 import { unitCounts } from './unit-counts'
 import { expect, it } from 'vitest'
 import type { BoundProgressionOptions } from '../../client-model/commands'
@@ -552,4 +553,60 @@ it('counts only owned protocol 4 fleets launched from the inspected body', () =>
       requirements: [],
     }).flying,
   ).toBe('9007199254740993')
+})
+
+it('hides only known empty inventory rows, preserving unknown legacy flight counts', () => {
+  const catalog: components['schemas']['CatalogEntry3'][] = [
+    ...(['SmallCargo', 'LightFighter', 'SolarSatellite'] as const).map(
+      (id) => ({
+        key: { kind: 'Ship' as const, id },
+        enabled: true,
+        mobile: id !== 'SolarSatellite',
+        body_kinds: ['Planet' as const],
+        requirements: [],
+      }),
+    ),
+    {
+      key: { kind: 'Defense', id: 'RocketLauncher' },
+      enabled: true,
+      mobile: false,
+      body_kinds: ['Planet'],
+      requirements: [],
+    },
+  ]
+  expect(
+    fleetInventoryRows({ ...view, catalog }, body).map(
+      ({ entry }) => entry.key.id,
+    ),
+  ).toEqual(['LightFighter'])
+  const current: components['schemas']['BoundView4'] = {
+    ...view,
+    protocol: 4,
+    catalog,
+    missions: {
+      fleets: [],
+      incoming: [],
+      score_value_micro: '0',
+      fleet_slots: '3',
+    },
+  }
+  expect(fleetInventoryRows(current, body)).toEqual([])
+  expect(
+    fleetInventoryRows(current, {
+      ...body,
+      inventories: [
+        {
+          item: { kind: 'Ship', id: 'SolarSatellite' },
+          count: '9007199254740993',
+        },
+      ],
+    }).map(({ entry, counts }) => ({ id: entry.key.id, ...counts })),
+  ).toEqual([
+    {
+      id: 'SolarSatellite',
+      stationed: '9007199254740993',
+      flying: null,
+      ordered: '0',
+    },
+  ])
 })
