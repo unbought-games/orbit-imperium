@@ -363,7 +363,7 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
   state.launchError = null
   const ship = page.getByLabel('Small Cargo · 2 available')
   const cargo = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByLabel(name, { exact: true }),
+    page.getByRole('textbox', { name, exact: true }),
   )
   for (const field of cargo) await field.fill('42')
   await review(page).click()
@@ -680,7 +680,7 @@ test('Add all fills the fleet capacity without opening review or consuming fuel 
 }) => {
   const state = await setup(page)
   const fields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByLabel(name, { exact: true }),
+    page.getByRole('textbox', { name, exact: true }),
   )
   await fields[0].fill('invalid')
   await page.getByRole('button', { name: 'Add all', exact: true }).click()
@@ -781,7 +781,7 @@ test('cleared ship and cargo amounts display zero and submit as zero even before
 }) => {
   await setup(page)
   const cargoFields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByLabel(name, { exact: true }),
+    page.getByRole('textbox', { name, exact: true }),
   )
   const unusedShip = page.getByLabel('Light Fighter · 0 available')
   for (const field of [...cargoFields, unusedShip]) {
