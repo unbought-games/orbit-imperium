@@ -34,7 +34,7 @@ it('derives Plasma unlocks for its prerequisite research from the bundled gates'
 
 it('presents Plasma artwork and explains its current lack of benefits', () => {
   const details = catalogContent(plasma.key)
-  expect(details.art.key).toBe('objects/plasma-technology')
+  expect(details.art.src).toBe('/art/atlas/objects/plasma-technology-640.webp')
   expect(details.description).toContain('Currently provides no unlocks')
   expect(details.description).toContain('production and combat bonuses')
   expect(technicalUnlocks(plasma, [plasma], 'Planet')).toEqual([])
