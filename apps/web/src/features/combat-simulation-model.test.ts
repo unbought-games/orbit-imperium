@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import observation from '../../../../contracts/fixtures/espionage-expanded.json'
 import {
+  attackerLosses,
+  averageSurvivors,
+  planningSummary,
+  sampledAmounts,
+  type SimulationResponse,
   simulationFields,
   simulationInputs,
   unsupportedReportUnits,
@@ -215,3 +220,119 @@ it.each([true, false])(
     expect(unsupportedReportUnits(observed, fields)).toEqual([])
   },
 )
+
+it('shows selected stationed inventory without constraining hypothetical forces', () => {
+  const fields = simulationFields(
+    report,
+    catalog,
+    [],
+    [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }],
+  )
+  expect(
+    fields.find((f) => f.key === 'attacker:Ship:LightFighter')?.available,
+  ).toBe('3')
+  expect(
+    simulationInputs(fields, attacking).inputs?.attacker.units[0].count,
+  ).toBe(10)
+  expect(
+    simulationFields(report, catalog, [], []).find(
+      (f) => f.key === 'attacker:Ship:LightFighter',
+    )?.available,
+  ).toBe('0')
+  expect(
+    simulationFields(report, catalog, []).find(
+      (f) => f.key === 'attacker:Ship:LightFighter',
+    )?.available,
+  ).toBeUndefined()
+  expect(
+    fields.find((f) => f.key === 'defender:Ship:LightFighter')?.available,
+  ).toBeUndefined()
+})
+it('sends only observed resource snapshots and never leaks stray unknown values', () => {
+  const fields = simulationFields(report, catalog, [])
+  expect(
+    simulationInputs(fields, attacking, report.resources).inputs
+      ?.observed_resources,
+  ).toEqual(
+    report.resources.visibility === 'Known'
+      ? report.resources.value
+      : undefined,
+  )
+  expect(
+    simulationInputs(fields, attacking, {
+      visibility: 'Unknown',
+      value: { metal: '99', crystal: '99', deuterium: '99' },
+    } as Espionage['resources']).inputs?.observed_resources,
+  ).toBeUndefined()
+})
+const sampleResponse = {
+  binding: { account: '', player: '', universe: '', epoch: '' },
+  request_id: '',
+  profile_hash: '',
+  loot_rules_enabled: true,
+  samples: [
+    {
+      outcome: 'AttackerVictory',
+      rounds: 1,
+      attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }],
+      defender: [],
+      surviving_cargo_capacity: '400000000',
+      estimated_loot: { metal: '99000000', crystal: '0', deuterium: '0' },
+    },
+    {
+      outcome: 'Draw',
+      rounds: 6,
+      attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }],
+      defender: [],
+      surviving_cargo_capacity: '100000000',
+      estimated_loot: { metal: '0', crystal: '0', deuterium: '0' },
+    },
+    {
+      outcome: 'DefenderVictory',
+      rounds: 3,
+      attacker: [],
+      defender: [],
+      surviving_cargo_capacity: '0',
+      estimated_loot: { metal: '0', crystal: '0', deuterium: '0' },
+    },
+  ],
+} satisfies SimulationResponse
+it('derives losses and aggregates per-battle loot including non-wins and absent survivors', () => {
+  const unit = {
+    item: { kind: 'Ship', id: 'LightFighter' },
+    count: 10,
+  } as const
+  expect(averageSurvivors(sampleResponse, 'attacker', unit.item)).toBeCloseTo(
+    10 / 3,
+  )
+  expect(attackerLosses(sampleResponse, unit)).toBeCloseTo(20 / 3)
+  const summary = planningSummary(sampleResponse)
+  expect(summary.cargo).toEqual({
+    average: 166666666n,
+    minimum: 0n,
+    maximum: 400000000n,
+  })
+  expect(summary.total).toEqual({
+    average: 33000000n,
+    minimum: 0n,
+    maximum: 99000000n,
+  })
+  expect(summary.loot?.[0].average).toBe(33000000n)
+  expect(
+    planningSummary({
+      ...sampleResponse,
+      samples: sampleResponse.samples.map((s) => ({
+        ...s,
+        estimated_loot: null,
+      })),
+    }).loot,
+  ).toBeNull()
+})
+it('keeps large resource averages exact and handles absent samples', () => {
+  expect(sampledAmounts(['90071992547409930', '90071992547409932'])).toEqual({
+    average: 90071992547409931n,
+    minimum: 90071992547409930n,
+    maximum: 90071992547409932n,
+  })
+  expect(sampledAmounts([])).toBeNull()
+})

@@ -6729,6 +6729,8 @@ export interface components {
         SimulationInputs: {
             attacker: components["schemas"]["SimulationSide"];
             defender: components["schemas"]["SimulationSide"];
+            /** @description Historical report-observed resources in micro-units. Omission means unknown. */
+            observed_resources?: components["schemas"]["Resources"];
         };
         SimulationQuery: {
             context: components["schemas"]["QueryContext"];
@@ -6740,6 +6742,8 @@ export interface components {
             rounds: number;
             attacker: components["schemas"]["SimulationUnit"][];
             defender: components["schemas"]["SimulationUnit"][];
+            surviving_cargo_capacity: components["schemas"]["Decimal"];
+            estimated_loot: components["schemas"]["Resources"] | null;
         };
         SimulationResponse: {
             binding: components["schemas"]["Binding"];
@@ -6747,6 +6751,7 @@ export interface components {
             request_id: string;
             profile_hash: string;
             samples: components["schemas"]["SimulationSample"][];
+            loot_rules_enabled: boolean;
         };
         ReportShareOptions: {
             include_identity: boolean;
