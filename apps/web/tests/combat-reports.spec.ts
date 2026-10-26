@@ -322,3 +322,67 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
     }
   })
 }
+
+// The reported 34 → 1 defender result is compatible with zero random explosions.
+test.describe('explosion counter explanation', () => {
+  test.use({ hasTouch: true })
+  test('preserves the counter and explains it on hover, keyboard focus, and mobile tap', async ({ page }) => {
+    await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
+    const header = { id: id(65), kind: 'Combat', observed_at: Date.now(), read: true, hidden: false }
+    const attacker = { owner: binding.player, origin: { Fleet: id(40) }, side: 'Attacker', units: units({ Cruiser: 9 }) }
+    const defender = { owner: id(9), origin: { Stationed: id(41) }, side: 'Defender', units: units({ RocketLauncher: 34 }) }
+    const start = [attacker, defender]
+    const end = [attacker, { ...defender, units: units({ RocketLauncher: 1 }) }]
+    await page.route('**/api/**/reports**', async route => {
+      const request = route.request().postDataJSON()
+      await route.fulfill({ json: {
+        protocol: 4, binding, request_id: (request.context ?? request).request_id,
+        viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(),
+        data: { header, payload: {
+          kind: 'Combat', at: Date.now(), target: { galaxy: 1, system: 1, position: 7 }, outcome: 'Draw',
+          participants: start.map(side => ({ ...side, technology: [0, 0, 0] })), survivors: end,
+          gross_losses: [{ ...defender, units: units({ RocketLauncher: 33 }) }], recovered: [], debris: resources(0, 0), loot: resources(0, 0),
+          rounds: [{ number: 1, start, end, fire: [{ owner: attacker.owner, origin: attacker.origin, side: attacker.side, shots: '116', raw_attack_ticks: '6032000000', shield_removed_ticks: '58000000', hull_removed_ticks: '620000000', explosions: '0' }] }],
+        } },
+      } })
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
+    const round = page.getByRole('region', { name: 'Report observation' }).locator('details').first()
+    await expect(round).toBeVisible()
+    await round.locator('summary').click()
+    await expect(round.locator('summary')).toContainText('34 → 1 (−33)')
+    const trigger = round.getByRole('button', { name: 'Explosions caused details' }).first()
+    const counter = trigger.locator('xpath=ancestor::dt/following-sibling::dd')
+    await expect(counter).toHaveText('0')
+    const popup = page.getByRole('dialog', { name: 'Explosions caused', exact: true })
+    await trigger.hover()
+    await expect(popup).toContainText('Counts successful random hull explosions.')
+    await expect(popup).toContainText('Units destroyed directly by hull damage do not count')
+    await expect(popup).toContainText('70% hull or less')
+    await expect(popup).toContainText('30% at 70% hull remaining, 60% at 40% remaining.')
+    await page.keyboard.press('Escape')
+    await expect(popup).toBeHidden()
+    await page.mouse.move(0, 0)
+    await round.locator('summary').focus()
+    await page.keyboard.press('Tab')
+    await expect(trigger).toBeFocused()
+    await expect(popup).toBeVisible()
+    await diagnosticScreenshot(page, { path: 'test-results/combat-explosion-keyboard.png' })
+    await page.keyboard.press('Escape')
+    await expect(popup).toBeHidden()
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 900 })
+      await trigger.tap()
+      await expect(popup).toBeVisible()
+      const box = (await popup.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(width)
+      expect(box.y).toBeGreaterThanOrEqual(0)
+      expect(box.y + box.height).toBeLessThanOrEqual(900)
+      await diagnosticScreenshot(page, { path: `test-results/combat-explosion-tap-${width}.png` })
+      await round.getByRole('heading', { level: 4 }).first().tap()
+      await expect(popup).toBeHidden()
+      await expect(counter).toHaveText('0')
+    }
+  })
+})

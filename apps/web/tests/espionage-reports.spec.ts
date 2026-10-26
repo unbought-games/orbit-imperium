@@ -1,7 +1,30 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
+import type { Locator } from '@playwright/test'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import { shellFixture, binding, body, id } from './fixtures/game'
+
+// Every group shares the same columns, even when it contains fewer entries.
+async function expectAlignedLevels(sections: Locator[]) {
+  const grids = (await Promise.all(sections.map(section => section.locator('dl').all()))).flat()
+  const firstRow = (await grids[0].locator('div').first().boundingBox())!
+  const firstValue = (await grids[0].locator('dd').first().boundingBox())!
+  for (const grid of grids) {
+    const rows = await grid.locator('div').all()
+    const first = (await rows[0].boundingBox())!
+    expect(first.x).toBeCloseTo(firstRow.x, 1)
+    expect(first.width).toBeCloseTo(firstRow.width, 1)
+    const value = (await rows[0].locator('dd').boundingBox())!
+    expect(value.x + value.width).toBeCloseTo(firstValue.x + firstValue.width, 1)
+    for (const row of rows) {
+      const name = (await row.locator('dt').boundingBox())!
+      const level = (await row.locator('dd').boundingBox())!
+      expect(name.x + name.width).toBeLessThan(level.x)
+      expect(Math.abs(level.y - name.y)).toBeLessThanOrEqual(3)
+      expect(await row.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
+    }
+  }
+}
 
 for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
   test(`groups ${variant} espionage buildings and research at desktop and mobile widths`, async ({
@@ -213,6 +236,7 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
             ? ['Level 1', 'Level 0', 'Level 0', 'Level 0']
             : []),
         ])
+        await expectAlignedLevels([buildings, research])
         const resourceBounds = await resources.boundingBox()
         const facilityBounds = await facilities.boundingBox()
         expect(resourceBounds!.y + resourceBounds!.height).toBeLessThan(
@@ -234,3 +258,111 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
     }
   })
 }
+
+
+test('long observed names wrap without moving levels or revealing hidden intelligence', async ({
+  page,
+}) => {
+  await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
+  const header = {
+    id: id(64),
+    kind: 'Espionage',
+    observed_at: Date.now(),
+    read: true,
+    hidden: false,
+  }
+  const longName = 'IntergalaktischesForschungsnetzwerkMitEinemSehrLangenNamen'
+  await page.route('**/api/**/reports**', async (route) => {
+    const request = route.request().postDataJSON()
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        request_id: (request.context ?? request).request_id,
+        viewer_revision: '1',
+        sampled_at: Date.now(),
+        as_of_ms: Date.now(),
+        data: {
+          header,
+          payload: {
+            ...observation,
+            buildings: {
+              visibility: 'Known',
+              value: {
+                ...observation.buildings.value,
+                MetalMine: 0,
+                ResearchLab: 12,
+              },
+            },
+            research: {
+              visibility: 'Known',
+              value: {
+                ...observation.research.value,
+                WeaponsTechnology: 0,
+                IntergalacticResearchNetwork: 123,
+              },
+            },
+            defenses: { visibility: 'Unknown' },
+          },
+        },
+      },
+    })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
+  const report = page.getByRole('region', { name: 'Report observation' })
+  const sections = ['Buildings', 'Research'].map((name) =>
+    report
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name, exact: true }) }),
+  )
+  // Stress the same layout with a translated, unbroken label. The server fixture remains valid.
+  await expect(
+    sections[1].getByText('Intergalactic Research Network', { exact: true }),
+  ).toBeVisible()
+  await sections[1]
+    .getByText('Intergalactic Research Network', { exact: true })
+    .evaluate((node, name) => {
+      node.textContent = name
+    }, longName)
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await expect(
+      sections[0]
+        .locator('dl > div')
+        .filter({ has: page.locator('dt', { hasText: /^Metal Mine$/ }) })
+        .locator('dd'),
+    ).toHaveText('Level 0')
+    await expect(
+      sections[0]
+        .locator('dl > div')
+        .filter({ has: page.locator('dt', { hasText: /^Research Lab$/ }) })
+        .last()
+        .locator('dd'),
+    ).toHaveText('Level 12')
+    await expect(
+      sections[1]
+        .locator('dl > div')
+        .filter({ has: page.locator('dt', { hasText: longName }) })
+        .locator('dd'),
+    ).toHaveText('Level 123')
+    await expect(
+      report.getByText('Plasma Turret', { exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      report
+        .locator('section')
+        .filter({
+          has: page.getByRole('heading', { name: 'Defenses', exact: true }),
+        }),
+    ).toContainText('Unknown — this observation did not reveal this section.')
+    await expectAlignedLevels(sections)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await diagnosticScreenshot(sections[1], {
+      path: `test-results/espionage-long-names-${width}.png`,
+    })
+  }
+})
