@@ -1,0 +1,13 @@
+{
+  "requirements": [
+    { "type": "BodyBuilding", "building": "Shipyard", "level": 6 },
+    { "type": "PlayerResearch", "research": "ShieldingTechnology", "level": 6 }
+  ],
+  "cost": { "metal": 50000, "crystal": 50000, "deuterium": 0 },
+  "combat": {
+    "item": { "kind": "Defense", "id": "LargeShieldDome" },
+    "cost": [50000, 50000, 0],
+    "attack_hundredths": 100,
+    "shield_hundredths": 1000000
+  }
+}

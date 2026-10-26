@@ -64,7 +64,7 @@ export function manufacturingPreview(
   if (!inRange) blockers.push(block('NumericRange'))
   if (
     unit.item.kind === 'Defense' &&
-    unit.item.id === 'SmallShieldDome' &&
+    ['SmallShieldDome', 'LargeShieldDome'].includes(unit.item.id) &&
     count > 1n
   )
     blockers.push(block('CapacityReserved'))

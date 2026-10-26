@@ -2377,3 +2377,52 @@ for (const width of [1280, 390]) {
     ).toBeVisible()
   })
 }
+
+const largeDomeContent = JSON.parse(readFileSync('rules/content/large-shield-dome.json', 'utf8'))
+const largeDomeCatalog: S['CatalogEntry3'][] = gaussCannonCatalog.map(entry => entry.key.id === 'LargeShieldDome'
+  ? { ...entry, enabled: true, requirements: largeDomeContent.requirements }
+  : entry)
+
+for (const width of [390, 1440]) {
+  test(`Large Shield Dome shows requirements and artwork and enforces its own limit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { sent, planet } = await setup(page, false, { metal: '50000000000', crystal: '50000000000', deuterium: '0' }, {
+      catalog: largeDomeCatalog,
+      research: [{ research: 'ShieldingTechnology', level: 6 }],
+    })
+    planet.levels.Shipyard = 6
+    planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '0' }
+    planet.inventories.push({ item: { kind: 'Defense', id: 'SmallShieldDome' }, count: '1' })
+    await refreshGame(page)
+    await navigate(page, 'Defense')
+    await page.getByRole('link', { name: 'Build Large Shield Dome', exact: true }).click()
+    const pane = page.getByRole('region', { name: 'Progression quote' })
+    await expect(pane).toContainText('Its shield protects itself, not other units.')
+    const art = pane.locator('img').first()
+    await expect(art).toHaveAttribute('src', /large-shield-dome/)
+    await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
+    await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('Shipyard')
+    await expect(dialog).toContainText('Shielding Technology')
+    await expect(dialog.getByText('6 / 6 · Met', { exact: true })).toHaveCount(2)
+    await dialog.getByRole('button', { name: 'Close technology' }).click()
+    const cost = pane.getByRole('group', { name: 'Required resources', exact: true }).first()
+    for (const name of ['Metal', 'Crystal']) await expect(cost.getByRole('button', { name: `${name} details` })).toContainText('50,000')
+    await pane.getByLabel('Defenses quantity').fill('2')
+    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
+    await expect(pane).toContainText('Capacity Reserved')
+    await pane.getByLabel('Defenses quantity').fill('1')
+    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
+    await pane.getByRole('button', { name: 'Build', exact: true }).click()
+    await expect.poll(() => sent.length).toBe(1)
+    expect(sent[0].command).toEqual({ type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'LargeShieldDome' }, quantity: '1', expected_terms_hash: 'b'.repeat(64) })
+    planet.inventories.push({ item: { kind: 'Defense', id: 'LargeShieldDome' }, count: '1' })
+    await refreshGame(page)
+    await expect(pane).toContainText('Order confirmed. Costs shown are for a new order.')
+    await pane.getByLabel('Defenses quantity').fill('1')
+    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
+    await expect(pane).toContainText('Capacity Reserved')
+    expect(sent).toHaveLength(1)
+  })
+}
