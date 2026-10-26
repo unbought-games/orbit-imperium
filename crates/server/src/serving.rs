@@ -99,7 +99,7 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
         let lab_router = std::env::var("ORBIT_LAB_WAKE_TOKEN")
             .ok()
             .filter(|token| token.len() >= 32)
-            .map(|token| crate::lab_support::router(wake, token));
+            .map(|token| crate::lab_support::router(wake, token, store.clone()));
         Some(HttpTask(tokio::spawn(async move {
             let public = async move {
                 if let Some(listener) = listener {

@@ -20,3 +20,6 @@ rand.workspace = true
 
 [dev-dependencies]
 futures = "=0.3.31"
+
+[features]
+test-support = []

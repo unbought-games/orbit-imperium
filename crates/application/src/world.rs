@@ -407,3 +407,12 @@ mod tests {
         assert!(serde_json::from_value::<WorldQuery>(extra).is_err());
     }
 }
+
+/// Pure evaluator projection; only test-support operators can load its inputs.
+#[cfg(feature = "test-support")]
+pub fn lab_world_projection(
+    snapshot: &ViewerSnapshot,
+    context: QueryContext,
+) -> Result<BoundView4, ServiceError> {
+    projection::world_projection(snapshot, context.binding.player, context)
+}
