@@ -267,6 +267,13 @@
   color: var(--battle-muted);
   font-size: 0.7rem;
 }
+.explosionHelp {
+  padding: 0;
+  gap: 0.25rem;
+  color: inherit;
+  text-align: left;
+  justify-content: flex-start;
+}
 .fire dd {
   margin: 0.3rem 0 0;
   font-variant-numeric: tabular-nums;
