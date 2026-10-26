@@ -43,10 +43,21 @@ for (const width of [390, 1440]) {
     await page.route(`**/api/v4/shared-reports/${token}`, (route) =>
       route.fulfill({ json: shared }),
     )
+    await page.route(`**/reports/shared/${token}`, async (route) => {
+      const response = await route.fetch()
+      await route.fulfill({
+        response,
+        body: (await response.text()).replace(
+          '<title>Orbit Imperium</title>',
+          '<title>Shared espionage report · Orbit Imperium</title>',
+        ),
+      })
+    })
     await page.goto(`/reports/shared/${token}`)
     await expect(
       page.getByRole('heading', { name: 'Shared report', exact: true }),
     ).toBeVisible()
+    await expect(page).toHaveTitle('Shared espionage report · Orbit Imperium')
     await expect(page.getByText('Player 1', { exact: true })).toBeVisible()
     await expect(
       page.getByText('Unknown — this observation did not reveal this section.'),

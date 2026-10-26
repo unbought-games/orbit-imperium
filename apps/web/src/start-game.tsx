@@ -9,10 +9,11 @@ import { ConnectionScreen } from './features/connection-screen'
 export async function startGame() {
   // A returning session can redirect straight from / into the game. Homepage
   // canonical/share data must not survive that client-side navigation.
-  document
-    .querySelectorAll('[data-orbit-home-head]')
-    .forEach((node) => node.remove())
-  document.title = 'Orbit Imperium'
+  const homeMetadata = document.querySelectorAll('[data-orbit-home-head]')
+  if (homeMetadata.length) {
+    homeMetadata.forEach((node) => node.remove())
+    document.title = 'Orbit Imperium'
+  }
   configureInstalledViewport()
   const root = createRoot(document.getElementById('root')!)
   // Local UX playground; no session, membership, or backend changes.

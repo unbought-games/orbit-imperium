@@ -213,6 +213,6 @@ run-speed-updates:
 
 .PHONY: test-homepage
 test-homepage:
-	cargo nextest run -p orbit-transport-http --lib -E 'test(home_seo::) | test(static_assets::)'
+	cargo nextest run -p orbit-transport-http --lib -E 'test(home_seo::) | test(static_assets::) | test(shared_report_preview::) | test(public_reports_need_no_session_but_sharing_management_requires_auth_origin_and_csrf)'
 	npm test -- anonymous-landing
 	npm run test:ui -- home.spec.ts
