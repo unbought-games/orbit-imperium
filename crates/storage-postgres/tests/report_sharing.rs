@@ -19,6 +19,18 @@ fn request(b: Binding, action: ReportShareAction) -> ReportShareRequest {
         action,
     }
 }
+// Wait for an actual database lock boundary, not an arbitrary sleep. The
+// disposable database runs this binary serially, so no unrelated query matches.
+async fn wait_for_lock(pool: &sqlx::PgPool, query: &str) {
+    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        loop {
+            let waiting: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE $1)")
+                .bind(query).fetch_one(pool).await.unwrap();
+            if waiting { break; }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }).await.expect("operation should reach the held database lock");
+}
 #[tokio::test]
 async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_with_reports() {
     let url = std::env::var("TEST_DATABASE_URL").unwrap();
@@ -105,12 +117,95 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
             Err(ServiceError::NotFound)
         ));
     }
-    let token = game
-        .report_share(principal(a), id, request(a, create.clone()))
+    let before = store.world_report(a, id).await.unwrap();
+    assert!(!before.facts.0.header.starred);
+    assert!(!before.facts.0.header.shared);
+    // Compute a report mutation before publication, then try to commit it
+    // afterwards. It must be recomputed instead of overwriting the new star.
+    let command_id = CommandId(Uuid::new_v4());
+    let envelope = |id, action| CommandEnvelopeV4 {
+        protocol: 4,
+        binding: a,
+        command_id: id,
+        command: CommandDto3::Progression(Command::World { action }),
+    };
+    game.world_submit(
+        principal(a),
+        ForegroundAction {
+            gameplay: envelope(command_id, WorldAction::MarkReportRead { report: id }),
+            presence: envelope(
+                CommandId(Uuid::new_v4()),
+                WorldAction::RecordForegroundPresence {
+                    body: None,
+                    cause: PresenceCause::GameplayGesture,
+                    paired_command_id: Some(command_id),
+                },
+            ),
+        },
+    )
+    .await
+    .unwrap();
+    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+    let claim = store
+        .claim_next(u, WorkerId(Uuid::new_v4()))
         .await
         .unwrap()
-        .token
         .unwrap();
+    assert!(matches!(
+        claim.input.payload,
+        Input::Command(Command::World {
+            action: WorldAction::MarkReportRead { .. }
+        })
+    ));
+    let snapshot = store.load_claim(&claim).await.unwrap();
+    let computed = transition(&snapshot.state, &claim.input, &snapshot.rules);
+    assert!(matches!(computed, TransitionResult::Applied(_)));
+    // Pause publication after it has starred the recipient but before commit.
+    // A command committing concurrently must lock before reading its facts;
+    // otherwise it can read the old star then overwrite the new one later.
+    let mut hold = pool.begin().await.unwrap();
+    sqlx::query("SELECT revision FROM viewer_heads WHERE universe=$1 AND player=$2 FOR UPDATE")
+        .bind(u.0)
+        .bind(a.player.0)
+        .fetch_one(&mut *hold)
+        .await
+        .unwrap();
+    let publish_game = GameService::new(store.clone());
+    let publish_action = create.clone();
+    let publish = tokio::spawn(async move {
+        publish_game
+            .report_share(principal(a), id, request(a, publish_action))
+            .await
+            .unwrap()
+    });
+    wait_for_lock(
+        &pool,
+        "UPDATE viewer_heads SET revision=revision+1 WHERE universe=%",
+    )
+    .await;
+    let commit_store = store.clone();
+    let commit_claim = claim.clone();
+    let commit = tokio::spawn(async move {
+        commit_store
+            .commit_claim(&commit_claim, computed)
+            .await
+            .unwrap()
+    });
+    wait_for_lock(&pool, "%mission_report_recipients%WHERE report=%").await;
+    hold.rollback().await.unwrap();
+    let published_status = publish.await.unwrap();
+    let token = published_status.token.unwrap();
+    assert!(published_status.header.starred && published_status.header.shared);
+    assert_eq!(commit.await.unwrap(), CommitOutcome::Conflict);
+    game.resolve_claim(claim).await.unwrap();
+    let published = store.world_report(a, id).await.unwrap();
+    assert!(published.facts.0.header.starred);
+    assert!(published.facts.0.header.shared);
+    assert!(published.facts.0.header.read);
+    assert!(published.facts.2 > before.facts.2);
+    let other = store.world_report(b, id).await.unwrap();
+    assert!(!other.facts.0.header.starred);
+    assert!(!other.facts.0.header.shared);
     let again = game
         .report_share(
             principal(a),
@@ -153,6 +248,10 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
         Err(ServiceError::NotFound)
     ));
     assert!(game.shared_report(other_token).await.is_ok());
+    let revoked = store.world_report(a, id).await.unwrap();
+    assert!(revoked.facts.0.header.starred);
+    assert!(!revoked.facts.0.header.shared);
+    assert!(revoked.facts.2 > published.facts.2);
     let new_token = game
         .report_share(principal(a), id, request(a, create.clone()))
         .await
@@ -163,14 +262,6 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
     // Stars protect the report and its shared link. Once unstarred, deletion
     // revokes the link; restoring the report must not revive it.
     for (action, rejected, link_present) in [
-        (
-            WorldAction::SetReportStarred {
-                report: id,
-                starred: true,
-            },
-            false,
-            true,
-        ),
         (
             WorldAction::SetReportHidden {
                 report: id,
@@ -265,5 +356,53 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
             .await
             .is_err()
     );
+    // Source reports cannot be removed while recipient rows exist. Physical
+    // cleanup removes recipients first, which cascades to every shared link.
+    let final_token = game
+        .report_share(
+            principal(a),
+            id,
+            request(
+                a,
+                ReportShareAction::Create {
+                    options: Default::default(),
+                },
+            ),
+        )
+        .await
+        .unwrap()
+        .token
+        .unwrap();
+    let blocked = sqlx::query("DELETE FROM mission_reports WHERE id=$1")
+        .bind(id.0)
+        .execute(&pool)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        blocked.as_database_error().unwrap().code().as_deref(),
+        Some("23503")
+    );
+    assert!(game.shared_report(final_token).await.is_ok());
+    sqlx::query("DELETE FROM mission_report_recipients WHERE report=$1")
+        .bind(id.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM mission_reports WHERE id=$1")
+        .bind(id.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(matches!(
+        game.shared_report(final_token).await,
+        Err(ServiceError::NotFound)
+    ));
+    let remaining: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM mission_report_shares WHERE report=$1")
+            .bind(id.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(remaining, 0);
     pool.close().await;
 }

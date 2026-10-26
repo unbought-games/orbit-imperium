@@ -20,6 +20,7 @@ impl PgStore {
         if !shareable_report(&payload) {
             return Err(StoreError::NotFound);
         }
+        let mutating = !matches!(action, ReportShareAction::Status);
         match action {
             ReportShareAction::Status => {}
             ReportShareAction::Revoke => {
@@ -31,6 +32,10 @@ impl PgStore {
                     .map_err(db_error)?;
             }
             ReportShareAction::Create { options } => {
+                // The recipient lock is also held by report command commits:
+                // publication and protection become visible together.
+                sqlx::query("UPDATE mission_report_recipients SET starred=true WHERE report=$1 AND recipient=$2")
+                    .bind(report.0).bind(b.player.0).execute(&mut *tx).await.map_err(db_error)?;
                 sqlx::query("DELETE FROM mission_report_shares WHERE report=$1 AND recipient=$2 AND epoch<>$3").bind(report.0).bind(b.player.0).bind(b.epoch.0).execute(&mut *tx).await.map_err(db_error)?;
                 // Publication is a historical event: record names once. Numbers
                 // remain in the immutable recipient observation, not a duplicate.
@@ -47,19 +52,44 @@ impl PgStore {
             }
         }
         let row = sqlx::query("SELECT token,options FROM mission_report_shares WHERE report=$1 AND recipient=$2 AND epoch=$3").bind(report.0).bind(b.player.0).bind(b.epoch.0).fetch_optional(&mut *tx).await.map_err(db_error)?;
-        let status = match row {
-            Some(row) => ReportShareStatus {
-                token: Some(row.try_get("token").map_err(db_error)?),
-                options: Some(
+        if mutating {
+            // Report reads carry this revision, so pre-publication responses cannot
+            // overwrite the new star or sharing state in the client.
+            sqlx::query(
+                "UPDATE viewer_heads SET revision=revision+1 WHERE universe=$1 AND player=$2",
+            )
+            .bind(b.universe.0)
+            .bind(b.player.0)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_error)?;
+        }
+        let viewer_revision: i64 =
+            sqlx::query_scalar("SELECT revision FROM viewer_heads WHERE universe=$1 AND player=$2")
+                .bind(b.universe.0)
+                .bind(b.player.0)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(db_error)?;
+        let header_row = sqlx::query("SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,EXISTS(SELECT 1 FROM mission_report_shares s WHERE s.report=r.id AND s.recipient=p.recipient AND s.epoch=$4) AS shared,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(p.recipient::text) AS preview_payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3")
+            .bind(b.universe.0).bind(report.0).bind(b.player.0).bind(b.epoch.0).fetch_one(&mut *tx).await.map_err(db_error)?;
+        let rules = crate::facts::rules(&mut tx, b.universe).await?;
+        let (token, options) = match row {
+            Some(row) => (
+                Some(row.try_get("token").map_err(db_error)?),
+                Some(
                     row.try_get::<sqlx::types::Json<ReportShareOptions>, _>("options")
                         .map_err(db_error)?
                         .0,
                 ),
-            },
-            None => ReportShareStatus {
-                token: None,
-                options: None,
-            },
+            ),
+            None => (None, None),
+        };
+        let status = ReportShareStatus {
+            token,
+            options,
+            header: crate::world::header(&header_row, &rules)?,
+            viewer_revision: viewer_revision.to_string(),
         };
         tx.commit().await.map_err(db_error)?;
         Ok(status)

@@ -8,6 +8,7 @@ mod oidc;
 mod oidc_enrollment;
 mod password_work;
 mod player_profiles;
+mod shared_report_preview;
 mod simulation;
 pub use player_profiles::AccountProfiles;
 mod rate_limit;
@@ -243,6 +244,10 @@ where
         .route(
             "/api/v4/universes/{id}/combat-simulation",
             post(simulation::simulate::<S>),
+        )
+        .route(
+            "/reports/shared/{token}",
+            get(shared_report_preview::page::<S>),
         )
         .route(
             "/api/v4/shared-reports/{token}",
