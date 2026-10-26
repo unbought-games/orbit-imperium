@@ -74,6 +74,11 @@ impl ProgressionRules {
             return Err(RulesError::InvalidReference);
         }
         if let Some(rule) = &self.fusion_reactor {
+            // The selected no-self-start equilibrium assumes no background fuel.
+            // Refuse incompatible custom economies instead of inventing cycling.
+            if a.base_income[2] != 0 {
+                return Err(RulesError::InvalidReference);
+            }
             rule.validate()?;
         }
         if let Some(rule) = &self.solar_satellite {

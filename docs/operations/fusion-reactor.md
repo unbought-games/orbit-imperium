@@ -49,7 +49,9 @@ The built-in upgrade adds the reviewed definition, prerequisites and production
 rules. It settles the old economy and initializes Fusion Reactor level zero on
 existing bodies atomically. Repeating it is a no-op. Customized costs, production
 rules or disabled content produce explicit conflicts; disabled prerequisites are
-rejected. Use the existing `rules export`, `rules diff` and `rules apply` flow for
+rejected. Fusion requires the standard zero background deuterium income; an
+export with nonzero background deuterium is rejected because its startup behavior
+is outside the selected fuel policy. Use the existing `rules export`, `rules diff` and `rules apply` flow for
 intentional customizations. Retain definitions for existing reactors when disabling
 new construction. No new environment variable, schema migration or Node preparation
 script is required. See [rules updates](rules-updates.md) for pending activation,

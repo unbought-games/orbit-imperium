@@ -243,6 +243,9 @@ fn old_rules_remain_unavailable_and_new_rules_validate_definitions() {
     let mut a = r.artifact.clone();
     a.progression.as_mut().unwrap().fusion_reactor = None;
     assert!(Ruleset::from_artifact(a, 1).is_err());
+    let mut background_fuel = r.artifact.clone();
+    background_fuel.base_income[2] = 1;
+    assert!(Ruleset::from_artifact(background_fuel, 1).is_err());
     assert!(
         ProductionSettings {
             fusion_reactor: 0,
