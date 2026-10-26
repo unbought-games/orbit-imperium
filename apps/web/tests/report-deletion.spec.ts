@@ -694,11 +694,17 @@ for (const width of [1280, 390]) {
     await expect(select).not.toBeChecked()
     await row.getByRole('button', { name: 'Star report', exact: true }).click()
     await expect(row.getByRole('button', { name: 'Unstar report' })).toBeVisible()
+    // Let the optimistic star command reconcile before measuring a disabled control.
+    await expect(row.getByRole('button', { name: 'Unstar report' })).toBeEnabled()
     await expect(select).toBeDisabled()
     const remove = row.getByRole('button', { name: 'Delete report', exact: true })
     await expect(remove).toBeDisabled()
     // A pointer on a disabled control must not fall through to the stretched link.
-    await remove.click({ force: true })
+    // Hover performs scrolling, stability and hit-target checks without requiring
+    // an enabled button. Forced clicks skip those checks and can hit another row.
+    await remove.hover()
+    await page.mouse.down()
+    await page.mouse.up()
     await expect(page).toHaveURL(inbox)
     expect(fixture.submitted()).toBe(0)
     await expect(row.getByRole('button', { name: 'Unstar report' })).toBeEnabled()
