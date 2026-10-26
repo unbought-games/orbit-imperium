@@ -160,6 +160,7 @@ test('release workflow gates publication on both native inspections and keeps ba
   assert.equal(build.if, "needs.prepare.outputs.release == 'true'")
   assert.deepEqual(publish.needs, ['prepare', 'build'])
   assert.equal(build.permissions.packages, 'write')
+  assert.equal(build.permissions.contents, 'read')
   assert.equal(publish.permissions.packages, 'write')
   assert.equal(prepare.permissions.packages, undefined)
   const buildIndex = build.steps.findIndex((s) =>

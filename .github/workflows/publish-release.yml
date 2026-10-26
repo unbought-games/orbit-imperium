@@ -113,7 +113,7 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     permissions:
-      contents: write
+      contents: read
       packages: write
     env:
       ORBIT_RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
@@ -148,20 +148,6 @@ jobs:
         run: |
           echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           docker push "$ORBIT_RELEASE_IMAGE"
-      - name: Preserve downloadable amd64 archive for new releases
-        if: matrix.arch == 'amd64' && needs.prepare.outputs.published != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TITLE: ${{ needs.prepare.outputs.title }}
-        run: |
-          mkdir -p release-assets
-          docker tag "$ORBIT_RELEASE_IMAGE" "orbit-imperium:${TAG#v}"
-          docker save "orbit-imperium:${TAG#v}" | gzip > "release-assets/orbit-imperium-$TAG-linux-amd64.tar.gz"
-          (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --verify-tag --draft --title "$TITLE"
-          fi
-          gh release upload "$TAG" release-assets/* --clobber
       - name: Clear registry credentials
         if: always()
         run: docker logout ghcr.io
@@ -200,6 +186,23 @@ jobs:
           export ORBIT_RELEASE_VERSION="${TAG#v}"
           echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           make publish-release-manifest
+      - name: Preserve downloadable amd64 archive for new releases
+        if: needs.prepare.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ needs.prepare.outputs.title }}
+        run: |
+          digest=$(node --input-type=module -e "import fs from 'node:fs'; console.log(JSON.parse(fs.readFileSync('container-image.json')).platforms.amd64)")
+          export ORBIT_RELEASE_IMAGE="$REGISTRY_IMAGE@$digest"
+          docker pull --platform linux/amd64 "$ORBIT_RELEASE_IMAGE"
+          mkdir -p release-assets
+          docker tag "$ORBIT_RELEASE_IMAGE" "orbit-imperium:${TAG#v}"
+          docker save "orbit-imperium:${TAG#v}" | gzip > "release-assets/orbit-imperium-$TAG-linux-amd64.tar.gz"
+          (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --draft --title "$TITLE"
+          fi
+          gh release upload "$TAG" release-assets/* --clobber
       - name: Publish prepared notes and record registry digests
         env:
           GH_TOKEN: ${{ github.token }}
