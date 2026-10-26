@@ -31,8 +31,9 @@ version, not a stored universe version or a claim about the deployed application
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
 Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon, Large Shield Dome and
-Plasma Technology. Plasma is research-only; Bombers and Plasma Turrets remain
-disabled. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
+Plasma Technology. The current development bundle also includes
+[Plasma Turrets](plasma-turret.md), requiring Shipyard 8 and Plasma Technology 7.
+Bombers remain disabled. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
 including fuel-aware production and level-zero initialization. The original signup
 baseline, fully activated v0.3.0 worlds and partial activations can all be upgraded.
 Fresh `setup` and `universe create` use these same standard definitions immediately;

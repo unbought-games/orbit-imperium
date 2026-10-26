@@ -168,6 +168,14 @@ pub(super) fn patches() -> Vec<Patch> {
             "../../../../rules/content/large-shield-dome.json"
         )),
     );
+    unit(
+        &mut out,
+        "Defense",
+        "PlasmaTurret",
+        &read(include_bytes!(
+            "../../../../rules/content/plasma-turret.json"
+        )),
+    );
     // Only ships supported and enabled by this release. Future content is not activated.
     for id in [
         "SmallCargo",

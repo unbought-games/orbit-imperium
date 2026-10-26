@@ -32,10 +32,39 @@ it('derives Plasma unlocks for its prerequisite research from the bundled gates'
   }
 })
 
-it('presents Plasma artwork and explains its current lack of benefits', () => {
+it('presents Plasma artwork and its turret unlock without per-level bonuses', () => {
   const details = catalogContent(plasma.key)
   expect(details.art.src).toBe('/art/atlas/objects/plasma-technology-640.webp')
-  expect(details.description).toContain('Currently provides no unlocks')
-  expect(details.description).toContain('production and combat bonuses')
+  expect(details.description).toContain('Unlocks Plasma Turrets at level 7')
+  expect(details.description).toContain('production or combat bonuses')
   expect(technicalUnlocks(plasma, [plasma], 'Planet')).toEqual([])
+})
+
+it('derives turret gates, unlocks and artwork from the enabled catalog', () => {
+  const definition = JSON.parse(
+    readFileSync('rules/content/plasma-turret.json', 'utf8'),
+  )
+  const turret: Entry = {
+    key: { kind: 'Defense', id: 'PlasmaTurret' },
+    enabled: true,
+    mobile: false,
+    body_kinds: ['Planet'],
+    requirements: definition.requirements,
+  }
+  const shipyard: Entry = {
+    ...plasma,
+    key: { kind: 'Building', id: 'Shipyard' },
+  }
+  expect(technicalUnlocks(plasma, [plasma, turret], 'Planet')).toEqual([
+    { entry: turret, level: 7 },
+  ])
+  expect(technicalUnlocks(shipyard, [turret], 'Planet')).toEqual([
+    { entry: turret, level: 8 },
+  ])
+  expect(
+    technicalUnlocks(plasma, [{ ...turret, enabled: false }], 'Planet'),
+  ).toEqual([])
+  const details = catalogContent(turret.key)
+  expect(details.art.src).toBe('/art/atlas/objects/plasma-turret-1200.webp')
+  expect(details.description).toContain('Shipyard 8 and Plasma Technology 7')
 })

@@ -116,21 +116,24 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
         after.state.research[&binding.player].levels,
         expected_research
     );
-    for key in [
-        CatalogKey::Ship(ShipType::Bomber),
-        CatalogKey::Defense(DefenseId::PlasmaTurret),
-    ] {
-        assert!(
-            !after
-                .rules
-                .artifact
-                .catalog
-                .iter()
-                .find(|entry| entry.key == key)
-                .unwrap()
-                .enabled
-        );
-    }
+    assert!(
+        after
+            .rules
+            .artifact
+            .catalog
+            .iter()
+            .any(|e| e.key == CatalogKey::Defense(DefenseId::PlasmaTurret) && e.enabled)
+    );
+    assert!(
+        !after
+            .rules
+            .artifact
+            .catalog
+            .iter()
+            .find(|e| e.key == CatalogKey::Ship(ShipType::Bomber))
+            .unwrap()
+            .enabled
+    );
     assert!(after.rules.artifact.catalog.iter().any(|entry| entry.key
         == CatalogKey::Defense(DefenseId::LargeShieldDome)
         && entry.enabled));

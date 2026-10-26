@@ -11,13 +11,11 @@ deuterium for level 1. Costs double each level. At universe speed 5 and Lab 4,
 levels 1–3 take 864, 1,728 and 3,456 seconds. Existing research/Lab exclusion,
 full cancellation refunds and completion-at-deadline rules apply.
 
-This addition enables only the research. It has no mining, combat or other
-per-level bonus, and currently unlocks nothing in the standard rules. Bombers and
-Plasma Turrets remain disabled and have no new definitions. Their planned gates
-are Plasma 5 with Shipyard 8 and Impulse Drive 6 for Bombers, and Plasma 7 with
-Shipyard 8 for Plasma Turrets. Those units require separate implementation and
-activation. Higher research levels remain possible within numeric limits without
-an additional benefit.
+Plasma Technology unlocks [Plasma Turrets](plasma-turret.md) at level 7 with
+Shipyard 8 on the producing planet. It has no mining, combat or other per-level
+bonus. Bombers remain disabled; their planned gates are Plasma 5 with Shipyard 8
+and Impulse Drive 6. Higher research levels remain possible within numeric limits
+without an additional benefit.
 
 ## Built-in activation
 
@@ -37,8 +35,9 @@ orbit audit --universe <id>
 
 The command upgrades the entire standard bundle, including any missing earlier
 content; it is not a Plasma-only switch. On an otherwise current standard world,
-the only new content is Plasma and the only initialization is Plasma level 0 for
-existing players. New signups receive level 0 too. Existing research levels,
+the bundle adds Plasma research and Plasma Turrets if missing; the only research
+initialization is Plasma level 0 for existing players. Turrets require no inventory
+or level initialization. New signups receive level 0 too. Existing research levels,
 paid work, balances, inventories and universe identity are preserved. Retain the
 diff, effective revision/hash and audit result. Refresh clients after activation.
 
@@ -49,8 +48,9 @@ for selective or custom activation. Repeating a successful upgrade is a no-op;
 if pending, rerun the same binary's command to observe the queued activation.
 See [Rules updates](rules-updates.md) for the full operational contract.
 
-To stop new Plasma research, disable its catalog entry using a fresh export and
-forward apply. Retain its definition and earned levels. Already-paid research
+To stop new Plasma research, disable its catalog entry and the dependent Plasma
+Turret catalog entry using a fresh export and forward apply. Retain definitions
+and earned levels. Already-paid research
 keeps its accepted payment and completion time; cancellation refunds the original
 payment. A standard upgrade will not silently re-enable deliberately disabled
 Plasma. Removing its definition or replaying an older export is not a rollback.
