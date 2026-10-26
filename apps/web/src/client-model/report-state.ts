@@ -53,7 +53,12 @@ export function acceptReportVisibility(
           {
             ...previous.header,
             ...(command.action.type === 'SetReportHidden'
-              ? { hidden: command.action.hidden }
+              ? {
+                  hidden: command.action.hidden,
+                  ...(command.action.hidden && previous.header.shared
+                    ? { shared: false }
+                    : {}),
+                }
               : { starred: command.action.starred }),
           },
         ],

@@ -112,8 +112,9 @@ function ShareSettings({
       <Text>
         Names and coordinates are hidden by default. Readers may still recognize
         a battle from its numbers. Revoking the link stops future access, but
-        cannot remove copies others saved. Deleting this report revokes its
-        link.
+        cannot remove copies or link previews already cached by chat services.
+        Deleting this report revokes its link. Sharing automatically stars the
+        report to protect it from deletion; stopping sharing keeps it starred.
       </Text>
       {error && (
         <Text role="alert" tone="danger">

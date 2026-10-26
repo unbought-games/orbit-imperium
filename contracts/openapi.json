@@ -11484,6 +11484,10 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/AllianceIdentity"
             }
+          },
+          "shared": {
+            "type": "boolean",
+            "description": "Whether this recipient has an active shared link; derived from publication state."
           }
         },
         "required": [
@@ -14537,11 +14541,20 @@
                 "type": "null"
               }
             ]
+          },
+          "header": {
+            "$ref": "#/components/schemas/ReportHeader4"
+          },
+          "viewer_revision": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
           }
         },
         "required": [
           "token",
-          "options"
+          "options",
+          "header",
+          "viewer_revision"
         ],
         "additionalProperties": false
       },

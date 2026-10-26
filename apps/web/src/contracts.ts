@@ -6068,6 +6068,8 @@ export interface components {
             player_alliances?: {
                 [key: string]: components["schemas"]["AllianceIdentity"];
             };
+            /** @description Whether this recipient has an active shared link; derived from publication state. */
+            shared?: boolean;
         };
         ReportsPage4: {
             items: components["schemas"]["ReportHeader4"][];
@@ -6754,6 +6756,8 @@ export interface components {
             /** Format: uuid */
             token: string | null;
             options: components["schemas"]["ReportShareOptions"] | null;
+            header: components["schemas"]["ReportHeader4"];
+            viewer_revision: string;
         };
         ReportShareAction: {
             /** @constant */

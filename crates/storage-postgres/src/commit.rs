@@ -70,6 +70,21 @@ impl PgStore {
             self.observe_event(RuntimeEvent::StaleCommit);
             return Ok(CommitOutcome::StaleClaim);
         }
+        // Sharing changes recipient protection outside the command stream. Hold
+        // its row lock through fact revalidation and persistence, so no share can
+        // slip between those steps and have its star overwritten by old facts.
+        // Other recipients retain independent access to their own preferences.
+        if let Actor::Player(recipient) = i.actor
+            && let Input::Command(Command::World {
+                action:
+                    WorldAction::MarkReportRead { report }
+                    | WorldAction::SetReportHidden { report, .. }
+                    | WorldAction::SetReportStarred { report, .. },
+            }) = &i.payload
+        {
+            sqlx::query("SELECT recipient FROM mission_report_recipients WHERE report=$1 AND recipient=$2 FOR UPDATE")
+                .bind(report.0).bind(recipient.0).fetch_all(&mut *tx).await.map_err(db_error)?;
+        }
         let rt = runtime(&mut tx, i.universe).await?;
         let (facts, rules) = match claim {
             CommitClaim::Serial(_) => {

@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/test'
-import { shellFixture, binding, body, id } from './fixtures/game'
+import { shellFixture, refreshGame, binding, body, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 const reportId = id(70)
@@ -80,90 +80,194 @@ test('a revoked report has a clear unavailable state', async ({ page }) => {
     page.getByRole('heading', { name: 'Resources', exact: true }),
   ).toHaveCount(0)
 })
-test('sharing requires explicit creation with private defaults and supports revocation', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 1000 })
-  await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
-  await page.route(`**/api/**/reports/${reportId}`, async (route) => {
-    const context = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: {
+for (const width of [390, 1440])
+  test(`sharing stars reports and warns before unstar at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    let active = false
+    let starred = false
+    let revision = 1
+    await shellFixture(page, {
+      protocol: 4,
+      extraCapabilities: ['Reports'],
+      viewerRevision: () => String(revision),
+    })
+    await page.route(`**/api/**/reports/${reportId}`, async (route) => {
+      const context = route.request().postDataJSON()
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          request_id: context.request_id,
+          viewer_revision: String(revision),
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
+          data: {
+            header: {
+              id: reportId,
+              kind: 'Espionage',
+              observed_at: payload.observed_at,
+              read: true,
+              hidden: false,
+              starred,
+              shared: active,
+            },
+            payload,
+          },
+        },
+      })
+    })
+    const actions: string[] = []
+    await page.route(`**/api/**/reports/${reportId}/share`, async (route) => {
+      const { action, context } = route.request().postDataJSON()
+      expect(context.binding).toEqual(binding)
+      expect(route.request().headers()['x-csrf-token']).toBeTruthy()
+      actions.push(action.type)
+      if (action.type === 'Create') {
+        expect(action.options).toEqual({
+          include_identity: false,
+          include_coordinates: false,
+        })
+        active = true
+        starred = true
+        revision++
+      }
+      if (action.type === 'Revoke') {
+        active = false
+        revision++
+      }
+      await route.fulfill({
+        json: {
+          token: active ? token : null,
+          options: active ? shared.options : null,
+          viewer_revision: String(revision),
           header: {
             id: reportId,
             kind: 'Espionage',
             observed_at: payload.observed_at,
             read: true,
             hidden: false,
+            starred,
+            shared: active,
           },
-          payload,
         },
-      },
-    })
-  })
-  let active = false
-  const actions: string[] = []
-  await page.route(`**/api/**/reports/${reportId}/share`, async (route) => {
-    const { action, context } = route.request().postDataJSON()
-    expect(context.binding).toEqual(binding)
-    expect(route.request().headers()['x-csrf-token']).toBeTruthy()
-    actions.push(action.type)
-    if (action.type === 'Create') {
-      expect(action.options).toEqual({
-        include_identity: false,
-        include_coordinates: false,
       })
-      active = true
-    }
-    if (action.type === 'Revoke') active = false
-    await route.fulfill({
-      json: {
-        token: active ? token : null,
-        options: active ? shared.options : null,
-      },
     })
+    const starCommands: boolean[] = []
+    await page.route('**/commands', async (route) => {
+      const envelope = route.request().postDataJSON().gameplay
+      expect(envelope.command.action.type).toBe('SetReportStarred')
+      starred = envelope.command.action.starred
+      starCommands.push(starred)
+      revision++
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          command_id: envelope.command_id,
+          admitted_at: Date.now(),
+          executed_at: Date.now(),
+          status: 'Committed',
+          result_ids: [],
+          minimum_viewer_revision: String(revision),
+        },
+      })
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
+    const trigger = page.getByRole('button', {
+      name: 'Share report',
+      exact: true,
+    })
+    await trigger.focus()
+    await page.keyboard.press('Enter')
+    await expect(
+      page.getByRole('button', { name: 'Create share link' }),
+    ).toBeVisible()
+    expect(actions).toEqual(['Status'])
+    await expect(
+      page.getByRole('checkbox', { name: 'Include player and planet names' }),
+    ).not.toBeChecked()
+    await expect(
+      page.getByRole('checkbox', { name: 'Include target coordinates' }),
+    ).not.toBeChecked()
+    await diagnosticScreenshot(page, {
+      path: `test-results/share-settings-${width}.png`,
+      fullPage: true,
+    })
+    await page.getByRole('button', { name: 'Create share link' }).click()
+    await expect(page.getByRole('textbox', { name: 'Share link' })).toHaveValue(
+      new RegExp(`/reports/shared/${token}$`),
+    )
+    await page.getByRole('button', { name: 'Close sharing' }).click()
+    await expect(
+      page.getByRole('button', { name: 'Unstar report', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await page
+      .getByRole('button', { name: 'Unstar report', exact: true })
+      .click()
+    await expect(page.getByRole('dialog')).toContainText(
+      'Deleting it also permanently removes its shared links.',
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/unstar-shared-${width}.png`,
+      fullPage: true,
+    })
+    await page.getByRole('button', { name: 'Keep starred' }).click()
+    await expect(
+      page.getByRole('button', { name: 'Unstar report', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(starCommands).toEqual([])
+    await page
+      .getByRole('button', { name: 'Unstar report', exact: true })
+      .click()
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Unstar report', exact: true })
+      .click()
+    await expect(
+      page.getByRole('button', { name: 'Star report', exact: true }),
+    ).toBeVisible()
+    expect(starCommands).toEqual([false])
+    await page.getByRole('button', { name: 'Star report', exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: 'Unstar report', exact: true }),
+    ).toBeVisible()
+    // A later server update must not turn an open unstar confirmation into
+    // the opposite action.
+    await page
+      .getByRole('button', { name: 'Unstar report', exact: true })
+      .click()
+    starred = false
+    revision++
+    await refreshGame(page)
+    await expect(page.locator('button[aria-label="Star report"]')).toHaveCount(
+      1,
+    )
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Unstar report', exact: true })
+      .click()
+    expect(starCommands).toEqual([false, true])
+    await page.getByRole('button', { name: 'Star report', exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: 'Unstar report', exact: true }),
+    ).toBeVisible()
+    await trigger.click()
+    await page
+      .getByRole('button', { name: 'Stop sharing', exact: true })
+      .click()
+    await expect(
+      page.getByRole('button', { name: 'Create share link' }),
+    ).toBeVisible()
+    expect(actions).toEqual(['Status', 'Create', 'Status', 'Revoke'])
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+    await expect(
+      page.getByRole('button', { name: 'Unstar report', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
-  const trigger = page.getByRole('button', {
-    name: 'Share report',
-    exact: true,
-  })
-  await trigger.focus()
-  await page.keyboard.press('Enter')
-  await expect(
-    page.getByRole('button', { name: 'Create share link' }),
-  ).toBeVisible()
-  expect(actions).toEqual(['Status'])
-  await expect(
-    page.getByRole('checkbox', { name: 'Include player and planet names' }),
-  ).not.toBeChecked()
-  await expect(
-    page.getByRole('checkbox', { name: 'Include target coordinates' }),
-  ).not.toBeChecked()
-  await diagnosticScreenshot(page, {
-    path: 'test-results/share-settings-mobile.png',
-    fullPage: true,
-  })
-  await page.getByRole('button', { name: 'Create share link' }).click()
-  await expect(page.getByRole('textbox', { name: 'Share link' })).toHaveValue(
-    new RegExp(`/reports/shared/${token}$`),
-  )
-  await page.getByRole('button', { name: 'Stop sharing', exact: true }).click()
-  await expect(
-    page.getByRole('button', { name: 'Create share link' }),
-  ).toBeVisible()
-  expect(actions).toEqual(['Status', 'Create', 'Revoke'])
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(trigger).toBeFocused()
-})
 
 test('public combat shows loot and keeps historical names without a profile session', async ({
   page,

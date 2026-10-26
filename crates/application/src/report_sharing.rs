@@ -25,6 +25,8 @@ pub struct ReportShareRequest {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportShareStatus {
+    pub header: ReportHeader4,
+    pub viewer_revision: String,
     pub token: Option<uuid::Uuid>,
     pub options: Option<ReportShareOptions>,
 }
