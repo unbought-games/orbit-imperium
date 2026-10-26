@@ -120,7 +120,7 @@ jobs:
       ORBIT_RELEASE_PLATFORM: linux/${{ matrix.arch }}
       ORBIT_RELEASE_SOURCE: source
       TAG: ${{ needs.prepare.outputs.tag }}
-      ORBIT_RELEASE_IMAGE: ghcr.io/unbought-games/orbit-imperium:build-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+      ORBIT_RELEASE_IMAGE: ghcr.io/unbought-games/orbit-imperium:build-${{ github.run_id }}-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -160,7 +160,7 @@ jobs:
       packages: write
     env:
       ORBIT_RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
-      ORBIT_IMAGE_STAGING: build-${{ github.run_id }}-${{ github.run_attempt }}
+      ORBIT_IMAGE_STAGING: build-${{ github.run_id }}
       TAG: ${{ needs.prepare.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

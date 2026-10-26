@@ -185,5 +185,17 @@ test('release workflow gates publication on both native inspections and keeps ba
   assert.equal(anonymous.env, undefined)
   assert.equal(publish.env.REGISTRY_TOKEN, undefined)
   assert.equal(workflow.env.REGISTRY_TOKEN, undefined)
+  // GitHub retries only failed matrix jobs; successful builds keep their tags.
+  // Resolve the actual producer/consumer templates across different attempts.
+  const expand = (template, arch, attempt) =>
+    template
+      .replaceAll('${{ github.run_id }}', '1234')
+      .replaceAll('${{ github.run_attempt }}', String(attempt))
+      .replaceAll('${{ matrix.arch }}', arch)
+  for (const arch of ['amd64', 'arm64']) {
+    const successfulBuild = expand(build.env.ORBIT_RELEASE_IMAGE, arch, 1)
+    const retryConsumer = `${image}:${expand(publish.env.ORBIT_IMAGE_STAGING, arch, 2)}-${arch}`
+    assert.equal(successfulBuild, retryConsumer)
+  }
   assert.equal(workflow.concurrency['cancel-in-progress'], false)
 })

@@ -46,8 +46,9 @@ when the GitHub release already exists. A partial manifest retains its existing
 architecture digests; any conflicting source revision, version or repository label
 fails closed. Version tags are never moved. `container-image.json` records the
 source commit, index digest and platform digests as an additional release asset;
-an existing record must match exactly. Staging `build-<run>-<attempt>-<arch>` tags
-are implementation artifacts, not supported release references.
+an existing record must match exactly. Staging `build-<run>-<arch>` tags
+are implementation artifacts, not supported release references. Their names stay
+stable across attempts so rerunning only failed jobs can reuse successful builds.
 
 ## Release assets
 
