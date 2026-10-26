@@ -37,7 +37,11 @@ export function Production({
             <strong>
               <ResourceQuantity
                 resource={name}
-                value={production.gross_per_hour[name]}
+                value={
+                  name === 'deuterium'
+                    ? `${production.net_deuterium_per_hour.sign === 'Negative' ? '-' : ''}${production.net_deuterium_per_hour.magnitude}`
+                    : production.gross_per_hour[name]
+                }
               />
             </strong>
             <small>/ hour</small>
@@ -135,6 +139,34 @@ export function Production({
                         {autosave.settings?.[key] ?? production.settings[key]}%
                       </span>
                     </div>
+                    {key === 'fusion_reactor' && production.fusion_reactor && (
+                      <span>
+                        <ResourceQuantity
+                          resource="energy"
+                          value={production.fusion_reactor.energy_supply}
+                        />{' '}
+                        supplied
+                        {' · '}
+                        <ResourceQuantity
+                          resource="deuterium"
+                          value={production.fuel_deuterium_per_hour}
+                        />{' '}
+                        fuel / hour
+                        {production.settings.fusion_reactor > 0 &&
+                          (body.levels.FusionReactor ?? 0) > 0 &&
+                          BigInt(production.fuel_utilization) < 1000000n && (
+                            <>
+                              {' '}
+                              · Fuel limited:{' '}
+                              <NumberValue
+                                value={production.fuel_utilization}
+                                divisor={10000}
+                              />
+                              % of requested output
+                            </>
+                          )}
+                      </span>
+                    )}
                     {key === 'solar_satellite' &&
                       production.solar_satellite && (
                         <span>
@@ -201,10 +233,18 @@ export function Production({
           <NumberValue value={production.fuel_utilization} divisor={10000} />
           %.
         </p>
+        {production.fusion_reactor && (
+          <p>
+            At zero deuterium, Fusion automatically reduces output to what
+            ongoing production can fuel. Without fuel or external solar power,
+            it cannot start.
+          </p>
+        )}
         <p>
-          Rates use saved settings, before storage limits. Full storage stops
-          production; excess resources remain usable. Energy shortages reduce
-          output without changing your settings.
+          Rates use saved settings. Deuterium is shown net of fuel use. Full
+          storage suppresses new income; fuel consumption continues and excess
+          resources remain usable. Energy and fuel shortages reduce output
+          without changing your settings.
         </p>
       </details>
     </Section>

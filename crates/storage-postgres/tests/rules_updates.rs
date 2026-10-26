@@ -3,6 +3,8 @@ use orbit_engine::*;
 use orbit_storage_postgres::PgStore;
 use sqlx::PgPool;
 use uuid::Uuid;
+#[path = "rules_updates/fusion.rs"]
+mod fusion;
 #[path = "rules_updates/standard.rs"]
 mod standard;
 

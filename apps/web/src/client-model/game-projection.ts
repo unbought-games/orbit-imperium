@@ -39,6 +39,11 @@ export function nextWorkDelay(state: GameState) {
       deadlines.push(view.progression.research_operation.due_at)
     deadlines.push(
       ...view.progression.manufacturing.map((work) => work.next_due_at),
+      ...view.progression.production.flatMap((p) =>
+        p.fusion_reactor?.projection_limit == null
+          ? []
+          : [p.fusion_reactor.projection_limit],
+      ),
     )
   }
   return Math.min(...deadlines) - currentServerTime(state)
@@ -643,6 +648,12 @@ export function projectGameView(state: GameState): BoundView | null {
           .map((work) => work.next_due_at),
       )
     }
+    if (view.protocol !== 2) {
+      const fuelLimit = view.progression.production.find(
+        (p) => p.body === body.id,
+      )?.fusion_reactor?.projection_limit
+      if (fuelLimit != null) deadlines.push(fuelLimit)
+    }
     let horizon = Math.max(
       view.as_of_ms,
       Math.min(
@@ -651,12 +662,27 @@ export function projectGameView(state: GameState): BoundView | null {
         ...deadlines,
       ),
     )
-    for (const { attempt, intent } of active)
+    const requestedReactor =
+      view.protocol !== 2 &&
+      'FusionReactor' in body.levels &&
+      Number(body.levels.FusionReactor) > 0 &&
+      view.progression.production.some(
+        (p) =>
+          p.body === body.id &&
+          p.fusion_reactor &&
+          p.settings.fusion_reactor > 0,
+      )
+    for (const { attempt, intent } of active) {
+      const command = attempt.envelope.command
+      const cost = requestedReactor
+        ? payment(command, intent, view, state)
+        : null
       if (
-        attempt.envelope.command.type === 'SetProduction' &&
-        attempt.envelope.command.body === body.id
+        (command.type === 'SetProduction' && command.body === body.id) ||
+        (cost?.body === body.id && BigInt(cost.delta.deuterium) !== 0n)
       )
         horizon = Math.min(horizon, intent.submittedAt)
+    }
     const rate = rawResourceRates(view, body)
     let cursor = view.as_of_ms
     for (const { attempt, intent } of active.sort(

@@ -14,6 +14,7 @@ const productionSetting = {
   CrystalMine: 'crystal_mine',
   DeuteriumSynthesizer: 'deuterium_synthesizer',
   SolarPlant: 'solar_plant',
+  FusionReactor: 'fusion_reactor',
 } as const
 const buildingResource: Record<string, Resource> = {
   MetalMine: 'metal',
@@ -77,9 +78,22 @@ export function buildingInsights(
   const percent = BigInt(
     setting && production ? production.settings[setting] : 100,
   )
-  const supply = BigInt(production?.energy_supply ?? body.energy.supply)
-  const demand = BigInt(production?.energy_demand ?? body.energy.demand)
-  const utilization = BigInt(production?.utilization ?? body.energy.utilization)
+  const projected = proposal?.building_production
+  const supply = BigInt(
+    projected?.current.energy_supply ??
+      production?.energy_supply ??
+      body.energy.supply,
+  )
+  const demand = BigInt(
+    projected?.current.energy_demand ??
+      production?.energy_demand ??
+      body.energy.demand,
+  )
+  const utilization = BigInt(
+    projected?.current.utilization ??
+      production?.utilization ??
+      body.energy.utilization,
+  )
   const benefit = proposal?.building_benefit
   const energy = proposal?.building_energy
   const consumptionChange = energy
@@ -92,14 +106,17 @@ export function buildingInsights(
     benefit?.kind === 'Energy'
       ? ((BigInt(benefit.target) - BigInt(benefit.current)) * percent) / 100n
       : 0n
-  // Fusion benefits/fuel effects are not in this inspection contract; don't invent them.
-  const afterDemand =
-    consumptionChange !== null && id !== 'FusionReactor'
+  const afterDemand = projected
+    ? BigInt(projected.target.energy_demand)
+    : consumptionChange !== null && id !== 'FusionReactor'
       ? demand + consumptionChange
       : null
-  const afterSupply = supply + supplyChange
-  const afterUtilization =
-    afterDemand === null
+  const afterSupply = projected
+    ? BigInt(projected.target.energy_supply)
+    : supply + supplyChange
+  const afterUtilization = projected
+    ? BigInt(projected.target.utilization)
+    : afterDemand === null
       ? null
       : afterDemand <= 0n
         ? million
@@ -112,23 +129,51 @@ export function buildingInsights(
   const rawRate = resource ? rawResourceRates(view, body)?.[resource] : null
   // Preserve base income (and net deuterium fuel use) from the server's rate.
   // Only replace this mine's contribution, using the projected planet-wide power.
+  const projectedRate =
+    resource === 'metal'
+      ? 'metal_per_hour'
+      : resource === 'crystal'
+        ? 'crystal_per_hour'
+        : 'net_deuterium_per_hour'
+  const projectedOutput = (value: string) => {
+    if (!resource) return value
+    const rate = BigInt(value)
+    return (rate > 0n &&
+      BigInt(body.amounts[resource]) >= BigInt(body.capacity[resource])) ||
+      (rate < 0n && BigInt(body.amounts[resource]) === 0n)
+      ? '0'
+      : value
+  }
   const planetOutput =
-    isOutput &&
-    production &&
-    benefit &&
-    resource &&
-    rawRate != null &&
-    afterUtilization !== null
-      ? minePlanetOutput(
-          body,
-          resource,
-          BigInt(rawRate),
-          scaledOutput(benefit.current, utilization),
-          scaledOutput(benefit.target, afterUtilization),
-          scaledOutput(benefit.target, million),
-        )
-      : null
+    projected && isOutput && resource
+      ? {
+          current: projectedOutput(projected.current[projectedRate]),
+          target: projectedOutput(projected.target[projectedRate]),
+          fullPowerTarget: null,
+        }
+      : isOutput &&
+          production &&
+          benefit &&
+          resource &&
+          rawRate != null &&
+          afterUtilization !== null
+        ? minePlanetOutput(
+            body,
+            resource,
+            BigInt(rawRate),
+            scaledOutput(benefit.current, utilization),
+            scaledOutput(benefit.target, afterUtilization),
+            scaledOutput(benefit.target, million),
+          )
+        : null
   return {
+    fuel: projected
+      ? {
+          current: projected.current.fuel_deuterium_per_hour,
+          target: projected.target.fuel_deuterium_per_hour,
+          utilization: projected.target.fuel_utilization,
+        }
+      : null,
     storage,
     energy: {
       current: (supply - demand).toString(),
@@ -138,7 +183,7 @@ export function buildingInsights(
       balanceChange:
         afterDemand === null
           ? null
-          : (supplyChange - (afterDemand - demand)).toString(),
+          : (afterSupply - afterDemand - (supply - demand)).toString(),
       utilization: utilization.toString(),
       afterUtilization: afterUtilization?.toString() ?? null,
       constructionBlocked:
@@ -157,11 +202,15 @@ export function buildingInsights(
           planetTotal: planetOutput !== null,
           fullPowerTarget: planetOutput?.fullPowerTarget ?? null,
           current:
+            (id === 'FusionReactor'
+              ? projected?.current.fusion_supply
+              : null) ??
             planetOutput?.current ??
             (benefit.kind === 'Energy' && production
               ? ((BigInt(benefit.current) * percent) / 100n).toString()
               : benefit.current),
           target:
+            (id === 'FusionReactor' ? projected?.target.fusion_supply : null) ??
             planetOutput?.target ??
             (benefit.kind === 'Energy' && production
               ? ((BigInt(benefit.target) * percent) / 100n).toString()
@@ -175,9 +224,11 @@ export function buildingInsights(
                   : 'Planet total at saved settings, including base production'
               : 'Mine potential at 100% output and full power; planet estimate unavailable'
             : benefit.kind === 'Energy'
-              ? production
-                ? null
-                : 'At 100% output'
+              ? id === 'FusionReactor' && projected
+                ? 'At saved settings and current fuel availability'
+                : production
+                  ? null
+                  : 'At 100% output'
               : null,
         }
       : null,

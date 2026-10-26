@@ -51,7 +51,8 @@ pub fn validate_rules_update(
         .progression
         .as_ref()
         .ok_or(RulesError::InvalidReference)?;
-    if (before.solar_satellite.is_some() && after.solar_satellite.is_none())
+    if (before.fusion_reactor.is_some() && after.fusion_reactor.is_none())
+        || (before.solar_satellite.is_some() && after.solar_satellite.is_none())
         || before
             .unit_costs
             .iter()
@@ -76,9 +77,13 @@ pub fn settle_rules_boundary(
     body: &Body,
     settings: &ProductionSettings,
     satellites: i64,
+    technology: u32,
     at: Timestamp,
     current: &Ruleset,
 ) -> Result<ResourceCheckpoint, InvariantError> {
+    if fusion_rule(current).is_some() {
+        return settle_fusion(body, settings, satellites, technology, at, current);
+    }
     crate::economy::settle_rates(
         body,
         at,

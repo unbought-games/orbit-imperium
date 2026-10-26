@@ -5560,6 +5560,7 @@ export interface components {
             progress?: components["schemas"]["SnapshotProgress"];
             building_energy?: components["schemas"]["BuildingEnergy"];
             building_benefit?: components["schemas"]["BuildingBenefit"];
+            building_production?: components["schemas"]["BuildingProduction"];
         };
         ProductionDto: {
             /** Format: uuid */
@@ -5581,6 +5582,10 @@ export interface components {
             solar_satellite?: {
                 unit_energy: components["schemas"]["Decimal"];
                 energy_supply: components["schemas"]["Decimal"];
+            };
+            fusion_reactor?: {
+                energy_supply: string;
+                projection_limit: number | null;
             };
         };
         ResearchOperationDto: {
@@ -6023,6 +6028,7 @@ export interface components {
             progress?: components["schemas"]["SnapshotProgress"];
             building_energy?: components["schemas"]["BuildingEnergy"];
             building_benefit?: components["schemas"]["BuildingBenefit"];
+            building_production?: components["schemas"]["BuildingProduction"];
         };
         GameProgressionOptions: components["schemas"]["BoundProgressionOptions"] | components["schemas"]["BoundProgressionOptions4"];
         Attempt4: {
@@ -7274,6 +7280,21 @@ export interface components {
             request_id: string;
             profile_hash: string;
             catalog: components["schemas"]["CatalogEntry"][];
+        };
+        BuildingProductionValues: {
+            energy_supply: string;
+            energy_demand: string;
+            utilization: string;
+            fusion_supply: string;
+            fuel_deuterium_per_hour: string;
+            fuel_utilization: string;
+            metal_per_hour: string;
+            crystal_per_hour: string;
+            net_deuterium_per_hour: string;
+        };
+        BuildingProduction: {
+            current: components["schemas"]["BuildingProductionValues"];
+            target: components["schemas"]["BuildingProductionValues"];
         };
     };
     responses: never;

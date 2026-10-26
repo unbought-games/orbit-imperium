@@ -582,3 +582,65 @@ it('preserves crystal base income and computes the new efficiency during an exis
     fullPowerTarget: micro(225),
   })
 })
+
+it('uses server fuel-limited output for fusion previews rather than rated power', () => {
+  const { view, body, proposal } = fixture()
+  proposal.building_benefit = {
+    kind: 'Energy',
+    current: micro(80),
+    target: micro(100),
+  }
+  const current = {
+    energy_supply: micro(33),
+    energy_demand: micro(100),
+    utilization: micro(0.33),
+    fusion_supply: micro(13),
+    fuel_deuterium_per_hour: micro(3),
+    fuel_utilization: micro(0.16),
+    net_deuterium_per_hour: '0',
+    metal_per_hour: micro(40),
+    crystal_per_hour: micro(15),
+  }
+  proposal.building_production = {
+    current,
+    target: {
+      ...current,
+      energy_supply: micro(40),
+      fusion_supply: micro(20),
+      fuel_deuterium_per_hour: micro(4),
+      utilization: micro(0.4),
+    },
+  }
+  const insight = buildingInsights(view, body, 'FusionReactor', proposal)
+  expect(insight.energy.current).toBe(micro(-67))
+  expect(insight.energy.after).toBe(micro(-60))
+  expect(insight.energy.balanceChange).toBe(micro(7))
+  expect(insight.benefit).toMatchObject({
+    current: micro(13),
+    target: micro(20),
+  })
+  expect(insight.fuel).toMatchObject({ current: micro(3), target: micro(4) })
+})
+
+it('still suppresses projected mine income at full storage on fusion planets', () => {
+  const { view, body, proposal } = fixture()
+  body.amounts.metal = body.capacity.metal
+  const current = {
+    energy_supply: micro(33),
+    energy_demand: micro(100),
+    utilization: micro(0.33),
+    fusion_supply: micro(13),
+    fuel_deuterium_per_hour: micro(3),
+    fuel_utilization: micro(0.16),
+    net_deuterium_per_hour: '0',
+    metal_per_hour: micro(40),
+    crystal_per_hour: micro(15),
+  }
+  proposal.building_production = {
+    current,
+    target: { ...current, metal_per_hour: micro(50) },
+  }
+  expect(
+    buildingInsights(view, body, 'MetalMine', proposal).benefit,
+  ).toMatchObject({ current: '0', target: '0' })
+})

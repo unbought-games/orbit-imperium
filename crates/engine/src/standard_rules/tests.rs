@@ -36,6 +36,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             fresh.artifact.progression.as_ref().unwrap().research
         );
         for key in [
+            CatalogKey::Building(Building::FusionReactor),
             CatalogKey::Ship(ShipType::LargeCargo),
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
@@ -86,7 +87,13 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
     old = Ruleset::from_artifact(old.artifact, old.speed).unwrap();
     let next = upgrade_standard_rules(&old).unwrap();
     assert_eq!(next.artifact.base_income, old.artifact.base_income);
-    assert_eq!(next.artifact.buildings, old.artifact.buildings);
+    for (key, definition) in &old.artifact.buildings {
+        assert_eq!(&next.artifact.buildings[key], definition);
+    }
+    assert_eq!(
+        validate_rules_update(&old, &next).unwrap().add_buildings,
+        vec![Building::FusionReactor]
+    );
     assert_eq!(
         next.artifact.ships[&ShipType::SmallCargo],
         old.artifact.ships[&ShipType::SmallCargo]
@@ -158,6 +165,58 @@ fn disabled_base_prerequisites_fail_before_any_upgrade() {
     assert!(matches!(
         upgrade_standard_rules(&disabled),
         Err(StandardRulesError::Prerequisite(_))
+    ));
+}
+
+#[test]
+fn fusion_upgrade_conflicts_and_disabled_prerequisites_are_explicit() {
+    let old = retained(include_bytes!("../../../../rules/mvp-v1-slice-11.json"));
+    let next = upgrade_standard_rules(&old).unwrap();
+    assert_eq!(
+        next.artifact.buildings[&Building::FusionReactor].base,
+        [900, 360, 180]
+    );
+    assert_eq!(
+        next.artifact.buildings[&Building::FusionReactor].growth,
+        [9, 5]
+    );
+    let mut custom = next.artifact.clone();
+    custom
+        .progression
+        .as_mut()
+        .unwrap()
+        .fusion_reactor
+        .as_mut()
+        .unwrap()
+        .fuel_base = 12;
+    let custom = Ruleset::from_artifact(custom, 3).unwrap();
+    assert!(matches!(
+        upgrade_standard_rules(&custom),
+        Err(StandardRulesError::Conflicts(_))
+    ));
+    let mut disabled = old.artifact.clone();
+    disabled
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::DeuteriumSynthesizer))
+        .unwrap()
+        .enabled = false;
+    let disabled = Ruleset::from_artifact(disabled, 3).unwrap();
+    assert!(matches!(
+        upgrade_standard_rules(&disabled),
+        Err(StandardRulesError::Prerequisite(_))
+    ));
+    let mut disabled = next.artifact.clone();
+    disabled
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::FusionReactor))
+        .unwrap()
+        .enabled = false;
+    let disabled = Ruleset::from_artifact(disabled, 3).unwrap();
+    assert!(matches!(
+        upgrade_standard_rules(&disabled),
+        Err(StandardRulesError::Conflicts(_))
     ));
 }
 
