@@ -31,6 +31,16 @@ release is not rebuilt or overwritten on retry; only the website notification re
 
 ## Release assets
 
+Content additions also update the compiled recipe in
+`crates/engine/src/standard_rules/`, its `STANDARD_RULES_RELEASE`, and its tests.
+The recipe explicitly identifies owned fields and recognized older values;
+changing an existing bundled default must supply a reviewed predecessor rather
+than overwrite a custom value. Keep historical fixtures intact. Verify fresh
+setup, upgrade from the previous standard content, partial activations, conflicts,
+and retry/no-op behavior. A code-only patch release need not change the content
+bundle version. Operators use `orbit rules upgrade` from the installed image;
+release publication itself never activates a live universe.
+
 Each release publishes a compressed Linux amd64 Docker image and SHA256SUMS.
 Source is available in the GitHub repository at the release tag.
 GitHub hosts the public assets; self-hosters don't need access to

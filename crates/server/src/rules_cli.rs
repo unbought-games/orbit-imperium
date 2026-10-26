@@ -10,14 +10,34 @@ use std::{
     time::Duration,
 };
 use uuid::Uuid;
+mod upgrade;
+pub use upgrade::HELP as UPGRADE_HELP;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum RulesCli {
-    Export { universe: UniverseId, out: PathBuf },
-    Diff { universe: UniverseId, file: PathBuf },
-    Apply { universe: UniverseId, file: PathBuf },
+    Upgrade {
+        universe: Option<UniverseId>,
+        dry_run: bool,
+    },
+    Export {
+        universe: UniverseId,
+        out: PathBuf,
+    },
+    Diff {
+        universe: UniverseId,
+        file: PathBuf,
+    },
+    Apply {
+        universe: UniverseId,
+        file: PathBuf,
+    },
 }
 pub fn parse_rules_cli(args: &[String]) -> Result<RulesCli, String> {
+    if args.get(1).map(String::as_str) == Some("rules")
+        && args.get(2).map(String::as_str) == Some("upgrade")
+    {
+        return upgrade::parse(&args[3..]);
+    }
     let usage = "use rules export --universe UUID --out FILE, or rules diff|apply --universe UUID --file FILE";
     if args.len() != 7 || args[1] != "rules" {
         return Err(usage.into());
@@ -87,8 +107,12 @@ async fn apply_with_retry<S: RulesStore>(
     }
 }
 pub async fn run_rules_cli(command: RulesCli, store: PgStore) -> Result<(), String> {
+    if let RulesCli::Upgrade { universe, dry_run } = command {
+        return upgrade::run(store, universe, dry_run).await;
+    }
     let service = RulesService::new(store);
     match command {
+        RulesCli::Upgrade { .. } => unreachable!("handled before file-based commands"),
         RulesCli::Export { universe, out } => {
             let doc = service.export(universe).await.map_err(|e| e.to_string())?;
             let mut bytes = serde_json::to_vec_pretty(&doc).map_err(|e| e.to_string())?;

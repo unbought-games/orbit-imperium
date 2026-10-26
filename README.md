@@ -66,19 +66,35 @@ From a checkout of this repository:
 
 ```sh
 npm ci
-make dev-setup UNIVERSE=00000000-0000-4000-8000-000000000001
+make dev-setup
 make dev
 ```
 
 Open [localhost:8080](http://localhost:8080) and choose **Create an account**.
-Setup creates a universe at the default 5× speed. Run setup once with a UUID of
-your choice; repeating it with the same UUID conflicts. Use `make dev` to restart
-your existing universe. Game data persists in the Docker volume.
+Setup creates a universe at the default 5× speed, or reuses your existing universe
+without resetting it. Use `make dev` to restart. Game data persists in the Docker
+volume. The server also provides `orbit setup --name "Friends" --speed 3` for
+repeatable setup against your own PostgreSQL database; see the
+[setup command](docs/operations/universe-configuration.md#repeatable-setup).
 
 For a public server, follow the [production setup guide](docs/operations/signup.md)
 and [universe configuration guide](docs/operations/universe-configuration.md).
 The [rules update guide](docs/operations/rules-updates.md) explains how to activate
 new content without replacing player progress.
+
+Fresh setup includes the standard content bundled in the server. After updating
+every server process to a new image, upgrade an existing universe with the same
+binary and database configuration:
+
+```sh
+orbit rules upgrade --dry-run
+orbit rules upgrade
+```
+
+The preview is optional. The command selects the sole universe; use `--universe UUID`
+when there are several. Customized values in content being upgraded produce an
+explicit conflict instead of being overwritten. No Node.js or source checkout is
+needed to run these commands inside the game image.
 
 ## Help build Orbit Imperium
 

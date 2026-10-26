@@ -3,6 +3,8 @@ use orbit_engine::*;
 use orbit_storage_postgres::PgStore;
 use sqlx::PgPool;
 use uuid::Uuid;
+#[path = "rules_updates/standard.rs"]
+mod standard;
 
 #[tokio::test]
 async fn custom_saved_catalog_survives_startup_and_initializes_signup() {

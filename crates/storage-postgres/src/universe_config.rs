@@ -1,8 +1,10 @@
 //! Authoritative policies and historical changes. Runtime decisions never cache a policy.
 use crate::{PgStore, StoreError, db_error, ordering::Tx};
 use orbit_application::*;
-use orbit_engine::{Ruleset, UniverseId};
+use orbit_engine::{UniverseId, standard_signup_rules};
 use sqlx::Row;
+mod setup;
+pub use setup::SetupOutcome;
 
 #[derive(Debug)]
 pub struct UniverseConfigChange {
@@ -106,23 +108,8 @@ impl PgStore {
         request: &UniverseCreate,
     ) -> Result<UniverseConfigDocument, String> {
         request.validate()?;
-        let rules =
-            Ruleset::signup_with_speed(request.immutable.profile()?, request.immutable.speed)
-                .map_err(|e| format!("immutable: {e}"))?;
         let mut tx = self.config_tx().await.map_err(operator_error)?;
-        crate::enrollment::provision(&mut tx, request.universe, &rules)
-            .await
-            .map_err(operator_error)?;
-        let document = UniverseConfigDocument {
-            version: UNIVERSE_CONFIG_VERSION,
-            universe: request.universe,
-            base_revision: 0,
-            immutable: request.immutable.clone(),
-            policy: request.policy.clone(),
-        };
-        insert_policy(&mut tx, &document, "create")
-            .await
-            .map_err(operator_error)?;
+        let document = create_in_tx(&mut tx, request).await?;
         tx.commit()
             .await
             .map_err(db_error)
@@ -257,7 +244,7 @@ impl PgStore {
         let universes = self.universes().await.map_err(operator_error)?;
         if universes.is_empty() {
             return Err(
-                "no universes exist; run db-init then universe create before serving".into(),
+                "no universes exist; run orbit setup before serving (or db-init then universe create)".into(),
             );
         }
         for universe in universes {
@@ -314,6 +301,28 @@ impl PgStore {
             .map(|d| i64::from(d.policy.commands_per_minute))
             .unwrap_or(self.admission_limit))
     }
+}
+async fn create_in_tx(
+    tx: &mut Tx<'_>,
+    request: &UniverseCreate,
+) -> Result<UniverseConfigDocument, String> {
+    request.validate()?;
+    let rules = standard_signup_rules(request.immutable.profile()?, request.immutable.speed)
+        .map_err(|e| format!("immutable: {e}"))?;
+    crate::enrollment::provision(tx, request.universe, &rules)
+        .await
+        .map_err(operator_error)?;
+    let document = UniverseConfigDocument {
+        version: UNIVERSE_CONFIG_VERSION,
+        universe: request.universe,
+        base_revision: 0,
+        immutable: request.immutable.clone(),
+        policy: request.policy.clone(),
+    };
+    insert_policy(tx, &document, "create")
+        .await
+        .map_err(operator_error)?;
+    Ok(document)
 }
 async fn immutable(tx: &mut Tx<'_>, universe: UniverseId) -> Result<UniverseImmutable, StoreError> {
     let row = sqlx::query("SELECT u.speed,u.profile_hash,r.profile FROM universes u JOIN rulesets r ON r.hash=u.profile_hash WHERE u.id=$1")

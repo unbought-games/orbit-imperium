@@ -153,7 +153,7 @@ test('seed and reset flush buffered identifiers before replacing the launcher', 
 })
 
 
-test('explicit dev setup initializes schema then creates the chosen universe; dev only serves', async (t) => {
+test('dev setup uses the repeatable setup command; dev only serves', async (t) => {
   const { directory, env, run } = fixture(t)
   executable(join(directory, 'cargo'), 'process.exit(0)')
   executable(join(directory, 'npm'), 'process.exit(0)')
@@ -161,15 +161,16 @@ test('explicit dev setup initializes schema then creates the chosen universe; de
   env.PATH = `${directory}:${env.PATH}`
   const universe = '12345678-1234-4234-8234-123456789abc'
   const setup = (await run('dev-setup', `UNIVERSE=${universe}`)).stdout.trim().split('\n').map(JSON.parse)
-  assert.deepEqual(setup.map(x => x.args), [['db-init'], ['universe', 'create', '--universe', universe]])
+  assert.deepEqual(setup.map(x => x.args), [['setup', '--universe', universe]])
+  assert.deepEqual(JSON.parse((await run('dev-setup')).stdout.trim()).args, ['setup'])
   assert.deepEqual(JSON.parse((await run('dev')).stdout.trim()).args, ['serve'])
   executable(join(directory, 'target/debug/orbit'), `
     const args = process.argv.slice(2)
     console.log(JSON.stringify({ args }))
-    if (args[0] === 'db-init') process.exit(1)
+    if (args[0] === 'setup') process.exit(1)
   `)
   await assert.rejects(run('dev-setup', `UNIVERSE=${universe}`), error => {
-    assert.deepEqual(error.stdout.trim().split('\n').map(JSON.parse).map(x => x.args), [['db-init']])
+    assert.deepEqual(error.stdout.trim().split('\n').map(JSON.parse).map(x => x.args), [['setup', '--universe', universe]])
     return error.code !== 0
   })
 })

@@ -8,6 +8,87 @@ before changing shared vocabulary or response shapes.
 
 Use the deployed `orbit` binary with the same `DATABASE_URL` as the service. These commands are operator CLI commands, not public HTTP endpoints. The database must already have been prepared by server startup.
 
+## Standard release upgrades
+
+Self-hosted and official hosted universes use the same commands, definitions and
+conflict checks. Run these **after every API, worker and operator process has been
+updated** to the new image:
+
+```sh
+orbit rules upgrade --dry-run # optional read-only preview
+orbit rules upgrade
+```
+
+The command targets the standard content compiled into the installed binary; it
+does not download anything or require Node.js, a source checkout, or a proposal
+file. `--universe UUID` selects an existing world. Without it, the command uses
+`ORBIT_UNIVERSE_ID`, or the sole universe if that environment variable is absent.
+Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
+--help` works without a database. An empty database needs `orbit setup` first.
+
+The bundled content release is currently **0.4.0**. This is the content bundle's
+version, not a stored universe version or a claim about the deployed application.
+The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
+Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
+Large Cargo, Solar Satellite, Heavy Laser and Gauss Cannon. The original signup
+baseline, fully activated v0.3.0 worlds and partial activations can all be upgraded.
+Fresh `setup` and `universe create` use these same standard definitions immediately;
+repeating setup or restarting does not upgrade existing rules.
+
+The upgrade has an explicit list of owned fields: the named content's catalog
+entries, research/ship definitions, unit costs, combat entries, related rapid fire,
+Small Cargo's Impulse Drive alternative, colonization policy and satellite energy.
+Each owned field or keyed entry must be absent, match its recognized older baseline,
+or already match the bundled value. Anything else produces a conflict with the
+path, current value, recognized older value and proposed value. All conflicts are
+reported before any activation. Definitions retained after deliberately disabling
+content are not silently re-enabled. Disabled base prerequisites also fail.
+Unrelated settings, including universe identity, speed, topology, base production,
+mine costs and base Small Cargo stats, are retained. Customizing a bundle-owned
+definition requires the explicit export/diff/apply workflow below; there is no
+force-overwrite option or general automatic merge.
+
+Preview reads the active rules and validates a proposal without changing the
+database. Applying recomputes a proposal from the then-current rules and uses the
+existing revision-checked atomic activation. It is not a saved approval of an
+earlier preview. A concurrent edit after preparation fails stale; it is never
+silently rebased. Existing payments and timing retain the guarantees below.
+
+Output is JSON. Preview returns `status: Ready` with a diff, or `UpToDate`.
+Application returns `outcome.status: Applied` or `AlreadyActive` with the rules hash
+and revision. These outcomes exit successfully. Conflict, Rejected, Stale, Busy and
+Pending outcomes exit nonzero. A `Pending` outcome includes `activation_id`: the
+activation remains queued. Rerun the **same command with the same binary** to
+observe it; deterministic preparation produces the same proposal until activation
+finishes. A different pending proposal is never replaced. After activation,
+repeating the command is a no-op. Successful activation does not run a full
+game-state audit automatically; `orbit audit` remains an explicit inspection.
+
+### Official production rollout
+
+Deployment tooling owns the database credentials, image digest and rollout. Orbit
+does not detect which versions other replicas are running. The release workflow
+must verify every API and worker uses the chosen image before invoking that same
+image as an operator process:
+
+```sh
+orbit rules upgrade --universe "$ORBIT_UNIVERSE_ID" --dry-run
+orbit rules upgrade --universe "$ORBIT_UNIVERSE_ID"
+```
+
+Treat only confirmed `Applied` or `AlreadyActive` as complete, retain the reported
+hash/revision, and verify serving readiness. If pending, keep workers running and
+repeat the command until confirmed. Stop for conflicts or rejected/stale proposals;
+do not report deployment as content activation. Use the same flow for a self-hosted
+cluster. No additional production environment variable, migration, HTTPS change or
+privileged override is required. The command does not deploy an image or certify
+that the rollout has happened.
+
+The per-content preparation scripts remain available for selective/custom
+activation and older release workflows. Normal standard upgrades use the binary
+command above; existing external deployment automation must explicitly switch to
+it after the image containing this command is deployed.
+
 For Ion Technology prerequisites and activation, see [Ion Technology](ion-technology.md).
 
 For the reviewed Laser Technology and Light Laser content patch, see
@@ -83,7 +164,7 @@ schema before deployment, subject to the same bounds.
 
 After schema preparation, final serving validates existing worlds, requires their
 policies and resolves API signup routing before readiness. It never creates a
-universe; use `db-init` and `universe create` explicitly. New creation remains a
+universe; use `orbit setup` (or `db-init` and `universe create`) explicitly. New creation remains a
 separate database transaction, and workers must restart to discover it. Metadata
 queries retain their bounded lock and statement timeouts. Shared operator guards continue preventing reset while a
 server runs. Losing that guard session or the scheduler terminates the process.

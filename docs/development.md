@@ -18,11 +18,11 @@ From the repository root:
 
 ```sh
 npm ci
-make dev-setup UNIVERSE=00000000-0000-4000-8000-000000000001
+make dev-setup
 make dev
 ```
 
-`make dev-setup` explicitly initializes the database and creates one universe at the default 5× speed. Choose a UUID for your installation; repeating setup with that UUID conflicts without resetting it. `make dev` starts PostgreSQL, builds the application, and starts the existing world. Open [localhost:8080](http://localhost:8080) and choose **Create an account** to play.
+`make dev-setup` runs `orbit setup` to migrate the database and create one universe at the default 5× speed. Repeating setup reuses the sole existing universe without resetting it. Optionally pass `UNIVERSE=UUID` to choose its identity. `make dev` starts PostgreSQL, builds the application, and starts the existing world. Open [localhost:8080](http://localhost:8080) and choose **Create an account** to play.
 
 Run `make dev` again to restart. Game data persists in the Docker volume. The local database uses `orbit` for its username, password, and database name and listens on `127.0.0.1:55432`. Set `ORBIT_DB_PASSWORD` to override the local password.
 
@@ -72,9 +72,9 @@ After changing the OpenAPI specification, run `npm run contracts` to regenerate 
 
 ## Deploying and enabling content
 
-Fresh installations require `db-init` and `universe create` before serving. Retained installations require the separate configuration bridge before activating database policy. See [universe configuration](operations/universe-configuration.md) for exact creation, live policy, two-artifact rollout and rollback commands.
+Fresh installations use `orbit setup` before `orbit serve`. Setup applies migrations and creates the first universe, and is safe to repeat. Legacy retained installations without database-owned policy still require the separate configuration bridge; setup does not replace that upgrade. See [universe configuration](operations/universe-configuration.md) for exact setup, live policy, two-artifact rollout and rollback commands.
 
-Roll out the updated server/frontend to all instances, then use the server's `rules export`, `rules diff`, and `rules apply` commands to activate content per universe. Existing configurations and player progress survive deployment; new content stays disabled until applied. See [rules updates](operations/rules-updates.md) for the operator workflow.
+Fresh worlds include the installed binary's standard content. Roll out the updated server/frontend to all instances, then run `orbit rules upgrade` to activate standard content in existing universes; `--dry-run` previews the changes. Existing configurations and player progress survive deployment. The `rules export`, `rules diff`, and `rules apply` commands remain available for custom/individual changes. See [rules updates](operations/rules-updates.md) for conflict handling and the same workflow on the official hosted server.
 
 ## Testing
 

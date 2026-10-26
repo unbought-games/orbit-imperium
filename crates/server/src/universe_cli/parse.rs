@@ -193,21 +193,21 @@ fn acknowledge(values: &mut BTreeMap<String, String>, bridge: bool) -> Result<()
     }
     Ok(())
 }
-fn finish(values: BTreeMap<String, String>) -> Result<(), String> {
+pub(crate) fn finish(values: BTreeMap<String, String>) -> Result<(), String> {
     if let Some((key, _)) = values.first_key_value() {
         Err(format!("unknown option {key}"))
     } else {
         Ok(())
     }
 }
-fn id(s: &str) -> Result<UniverseId, String> {
+pub(crate) fn id(s: &str) -> Result<UniverseId, String> {
     Uuid::parse_str(s)
         .ok()
         .filter(|v| !v.is_nil())
         .map(Into::into)
         .ok_or_else(|| "--universe must be a non-nil UUID".into())
 }
-fn integer(s: &str, key: &str) -> Result<u32, String> {
+pub(crate) fn integer(s: &str, key: &str) -> Result<u32, String> {
     let n = s
         .parse::<u32>()
         .map_err(|_| format!("{key} must be an unsigned integer"))?;
@@ -223,7 +223,7 @@ fn number(values: &mut BTreeMap<String, String>, key: &str, default: u32) -> Res
         .transpose()
         .map(|v| v.unwrap_or(default))
 }
-fn boolean(s: &str, key: &str) -> Result<bool, String> {
+pub(crate) fn boolean(s: &str, key: &str) -> Result<bool, String> {
     match s {
         "true" => Ok(true),
         "false" => Ok(false),
