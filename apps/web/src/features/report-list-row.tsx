@@ -51,7 +51,9 @@ export function ReportListRow({
     playerNames,
     report.player_alliances,
   )
-  const title = [outcome.title, identity].filter(Boolean).join(' · ')
+  const title = [label(report.kind), outcome.symbol && outcome.title, identity]
+    .filter(Boolean)
+    .join(' · ')
   return (
     <Panel
       as="article"
@@ -77,14 +79,15 @@ export function ReportListRow({
             onClick={() => void model.recordPresence('AccountVisit', null)}
             {...routeTarget(universe, 'reports', origin, report.id)}
           >
-            <strong
-              className={outcome.symbol ? styles[outcome.tone] : undefined}
-            >
-              {outcome.symbol && (
-                <span aria-hidden="true">{outcome.symbol} </span>
-              )}
-              {outcome.title}
+            <strong className={styles.reportType} data-kind={report.kind}>
+              {label(report.kind)}
             </strong>
+            {outcome.symbol && (
+              <span className={styles[outcome.tone]}>
+                <span aria-hidden="true">{outcome.symbol} </span>
+                {outcome.title}
+              </span>
+            )}
             {!report.read && (
               <span
                 className={styles.unread}

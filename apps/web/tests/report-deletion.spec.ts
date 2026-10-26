@@ -669,3 +669,51 @@ test('bulk cleanup holds the inbox through intermediate receipts and reloads onc
   await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
   expect(fixture.pageRequests.slice(before)).toEqual([null])
 })
+
+
+for (const width of [1280, 390]) {
+  test(`report whitespace opens the report while controls and keyboard stay independent at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const fixture = await reportsFixture(page)
+    const inbox = `/u/andromeda/b/${body.id}/reports`
+    const rows = page.getByRole('article')
+    // Hit the empty padding at the bottom of the row, away from the title/controls.
+    const row = rows.first()
+    const box = (await row.boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height - 2)
+    await expect(page).toHaveURL(`${inbox}/${id(70)}`)
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
+    await expect(rows).toHaveCount(2)
+    const select = rows.first().getByRole('checkbox')
+    await select.check()
+    await expect(select).toBeChecked()
+    await expect(page).toHaveURL(inbox)
+    await select.press('Space')
+    await expect(select).not.toBeChecked()
+    await row.getByRole('button', { name: 'Star report', exact: true }).click()
+    await expect(row.getByRole('button', { name: 'Unstar report' })).toBeVisible()
+    await expect(select).toBeDisabled()
+    const remove = row.getByRole('button', { name: 'Delete report', exact: true })
+    await expect(remove).toBeDisabled()
+    // A pointer on a disabled control must not fall through to the stretched link.
+    await remove.click({ force: true })
+    await expect(page).toHaveURL(inbox)
+    expect(fixture.submitted()).toBe(0)
+    await expect(row.getByRole('button', { name: 'Unstar report' })).toBeEnabled()
+    await row.getByRole('button', { name: 'Unstar report' }).press('Enter')
+    await expect(remove).toBeEnabled()
+    // Native Tab/Enter navigation still opens the same report.
+    await select.focus()
+    await page.keyboard.press('Tab')
+    const link = row.getByRole('link', { name: 'Espionage', exact: true })
+    await expect(link).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(`${inbox}/${id(70)}`)
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await rows.first().getByRole('button', { name: 'Delete report', exact: true }).click()
+    await expect.poll(fixture.submitted).toBe(1)
+    await expect(page).toHaveURL(inbox)
+  })
+}

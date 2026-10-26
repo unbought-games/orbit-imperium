@@ -16,6 +16,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
     { id: id(71), kind: 'Espionage', observed_at: now - 134000, read: false, hidden: false, preview: { kind: 'Espionage', target: { body: id(80), owner: id(9), kind: 'Planet', name: 'Nova Roma', coordinates: { galaxy: 1, system: 1, position: 3 } }, resources: { visibility: 'Known', value: { metal: '125000000000', crystal: '80000000000', deuterium: '12000000000' } }, fleet: { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '3' }] }, defenses: { visibility: 'Unknown' } } },
     { id: id(72), kind: 'Combat', observed_at: now - 600000, read: true, hidden: false, preview: { kind: 'Combat', target_name: 'Luna', target_kind: 'Moon', target: { galaxy: 1, system: 2, position: 7 }, outcome: 'AttackerVictory', participants: [{ owner: binding.player, side: 'Attacker' }, { owner: id(9), side: 'Defender' }], loot: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
     { id: id(73), kind: 'Returned', observed_at: now - 900000, read: true, hidden: false, preview: { kind: 'Returned', origin_coordinates: { galaxy: 1, system: 1, position: 5 }, ships: [{ ship_type: 'LightFighter', count: '90' }, { ship_type: 'SmallCargo', count: '15' }], cargo: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
+    { id: id(74), kind: 'Delivered', observed_at: now - 1800000, read: true, hidden: false, preview: { kind: 'Delivered', target: { galaxy: 1, system: 1, position: 3 }, cargo: { metal: '1000000000', crystal: '2000000000', deuterium: '3000000000' } } },
   ]
   await page.route('**/api/**/reports', async route => {
     const { context } = route.request().postDataJSON()
@@ -41,7 +42,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
   // Otherwise its hover popover can reopen at its previous desktop position.
   await page.mouse.move(0, 0)
   const rows = page.locator('main article')
-  await expect(rows).toHaveCount(4)
+  await expect(rows).toHaveCount(5)
   await expect(rows.first()).toContainText('[1:1:5]')
   await expect(rows.first()).toContainText('1 Espionage Probe')
   await expect(rows.first()).toContainText('No cargo')
@@ -49,6 +50,12 @@ test('report glances expose historical mission facts in compact rows on desktop 
   for (const [name, value] of [['metal', '125,000'], ['crystal', '80,000'], ['deuterium', '12,000']]) {
     const symbol = rows.nth(1).getByRole('img', { name, exact: true })
     await expect(symbol).toBeVisible()
+    const resourceValue = symbol.locator('..')
+    await resourceValue.hover()
+    expect(await resourceValue.evaluate(el => {
+      const rect = el.getBoundingClientRect()
+      return el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))
+    })).toBe(true)
     const expectedColor = await page.evaluate(resource => {
       const probe = document.createElement('span')
       probe.style.color = `var(--resource-${resource})`
@@ -77,8 +84,9 @@ test('report glances expose historical mission facts in compact rows on desktop 
   }
   await expect(rows.nth(1)).toContainText('Fleet: 3')
   await expect(rows.nth(1)).toContainText('Defenses: unknown')
-  await expect(rows.nth(2).getByRole('link', { name: 'Victory · Commander Cassiopeia · Luna (Moon)', exact: true })).toBeVisible()
-  await expect(rows.nth(2).locator('strong')).toHaveText('✓ Victory')
+  await expect(rows.nth(2).getByRole('link', { name: 'Combat · Victory · Commander Cassiopeia · Luna (Moon)', exact: true })).toBeVisible()
+  await expect(rows.nth(2).locator('strong')).toHaveText('Combat')
+  await expect(rows.nth(2).getByText('✓ Victory')).toBeVisible()
   await expect(rows.nth(2)).toContainText('Loot:')
   await expect(rows.nth(2).getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('40,000')
   await expect(rows.first().getByLabel('Unread', { exact: true })).toBeVisible()
@@ -119,11 +127,46 @@ test('report glances expose historical mission facts in compact rows on desktop 
     combat.outcome = outcome
     combat.participants = [{ owner: binding.player, side }]
     await page.reload()
-    await expect(rows.nth(2).locator('strong')).toHaveText(title)
-    await expect(rows.nth(2).locator('strong')).toHaveCSS('color', color)
-    await expect(rows.nth(2).getByRole('link', { name: `${title.slice(2)} · Luna (Moon)`, exact: true })).toHaveAccessibleName(`${title.slice(2)} · Luna (Moon)`)
+    await expect(rows.nth(2).locator('strong')).toHaveText('Combat')
+    await expect(rows.nth(2).locator('strong')).toHaveCSS('color', 'rgb(227, 152, 133)')
+    await expect(rows.nth(2).getByText(title, { exact: true })).toBeVisible()
+    await expect(rows.nth(2).getByText(title, { exact: true })).toHaveCSS('color', color)
+    await expect(rows.nth(2).getByRole('link', { name: `Combat · ${title.slice(2)} · Luna (Moon)`, exact: true })).toHaveAccessibleName(`Combat · ${title.slice(2)} · Luna (Moon)`)
     if (outcome === 'AttackerVictory' && side === 'Attacker') await expect(rows.nth(2)).toContainText('Loot:')
     else await expect(rows.nth(2)).not.toContainText('Loot:')
+  }
+  // Type colors also work without previews and meet WCAG AA on the row surface.
+  for (const [kind, color] of [
+    ['Combat', 'rgb(227, 152, 133)'],
+    ['Delivered', 'rgb(145, 201, 172)'],
+    ['Espionage', 'rgb(148, 191, 229)'],
+    ['SpyContact', 'rgb(148, 191, 229)'],
+    ['ContactLost', 'rgb(227, 152, 133)'],
+  ] as const) {
+    items[0].kind = kind
+    delete items[0].preview
+    await page.reload()
+    const heading = rows.first().locator('strong')
+    await expect(heading).toHaveCSS('color', color)
+    const contrast = await heading.evaluate(el => {
+      let surface: Element | null = el
+      let background = 'rgba(0, 0, 0, 0)'
+      while (surface && background === 'rgba(0, 0, 0, 0)') {
+        background = getComputedStyle(surface).backgroundColor
+        surface = surface.parentElement
+      }
+      const luminance = (rgb: string) => {
+        const channels = rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(n => {
+          const c = n / 255
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+        })
+        return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+      }
+      const foreground = luminance(getComputedStyle(el).color)
+      const backdrop = luminance(background)
+      return (Math.max(foreground, backdrop) + 0.05) / (Math.min(foreground, backdrop) + 0.05)
+    })
+    expect(contrast).toBeGreaterThanOrEqual(4.5)
   }
   const spy = items[1].preview
   if (spy?.kind !== 'Espionage' || !spy.target) throw Error('Expected spy target')
@@ -141,6 +184,10 @@ test('report glances expose historical mission facts in compact rows on desktop 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await diagnosticScreenshot(page, { path: `test-results/report-title-long-${width}.png` })
   }
+  await rows.nth(1).getByRole('button', { name: 'Location actions for [1:1:3]' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Copy coordinates', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
   expect(detailRequests).toEqual([])
   // Coordinate navigation stays independent from report selection; no detail reads for titles.
   await rows.nth(1).getByRole('link', { name: 'View [1:1:3] in galaxy', exact: true }).click()
