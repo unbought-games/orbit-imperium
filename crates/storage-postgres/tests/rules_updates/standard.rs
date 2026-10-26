@@ -93,6 +93,10 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
     let plan = service.prepare_upgrade(universe).await.unwrap();
     assert_eq!(plan.release, "0.4.0");
     assert!(!plan.diff.changes.is_empty());
+    assert_eq!(
+        plan.diff.initialize.add_research,
+        vec![ResearchId::PlasmaTechnology]
+    );
     assert_eq!(store.load_rules(universe).await.unwrap(), before.rules);
     let after_preview: i64 =
         sqlx::query_scalar("SELECT count(*) FROM rules_activations WHERE universe=$1")
@@ -106,6 +110,27 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
         matches!(service.apply(&plan.document).await.unwrap(), RulesApplyOutcome::Applied { revision, .. } if revision == current_revision+1)
     );
     let (after, _) = store.bound_world(binding).await.unwrap().facts;
+    let mut expected_research = before.state.research[&binding.player].levels.clone();
+    expected_research.insert(ResearchId::PlasmaTechnology, 0);
+    assert_eq!(
+        after.state.research[&binding.player].levels,
+        expected_research
+    );
+    for key in [
+        CatalogKey::Ship(ShipType::Bomber),
+        CatalogKey::Defense(DefenseId::PlasmaTurret),
+    ] {
+        assert!(
+            !after
+                .rules
+                .artifact
+                .catalog
+                .iter()
+                .find(|entry| entry.key == key)
+                .unwrap()
+                .enabled
+        );
+    }
     assert_eq!(after.state.players, before.state.players);
     assert_eq!(after.state.epoch, before.state.epoch);
     assert_eq!(after.state.constructions, before.state.constructions);
@@ -173,6 +198,26 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
         serde_json::to_value(before.state.constructions.values().next().unwrap().paid).unwrap()
     );
     store.audit_universe(universe).await.unwrap();
+    let joined = SessionService::new(store.clone())
+        .signup(
+            &format!("plasma{}", Uuid::new_v4().simple()),
+            "password",
+            SignupPolicy {
+                universe,
+                max_players: 45,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    let level: i64 = sqlx::query_scalar(
+        "SELECT level FROM research_levels WHERE owner=$1 AND research='PlasmaTechnology'",
+    )
+    .bind(joined.session.memberships[0].player.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(level, 0);
     // A restarted operator independently derives the same no-op proposal.
     let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
         .await

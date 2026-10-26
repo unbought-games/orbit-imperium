@@ -3269,3 +3269,6 @@ fn heavy_laser_paid_fifo_survives_disable_and_restart_without_duplicate_credit()
     assert_eq!(s.bodies[&b].checkpoint.amounts, paid);
     assert_eq!(s.bodies[&b].fields, fields);
 }
+
+#[path = "progression/plasma.rs"]
+mod plasma;

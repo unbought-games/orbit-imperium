@@ -40,6 +40,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
             CatalogKey::Defense(DefenseId::GaussCannon),
+            CatalogKey::Research(ResearchId::PlasmaTechnology),
         ] {
             assert!(
                 next.artifact
@@ -158,4 +159,76 @@ fn disabled_base_prerequisites_fail_before_any_upgrade() {
         upgrade_standard_rules(&disabled),
         Err(StandardRulesError::Prerequisite(_))
     ));
+}
+
+#[test]
+fn plasma_upgrade_is_research_only_and_preserves_custom_or_disabled_content() {
+    let latest = standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 5).unwrap();
+    // Reconstruct a fully upgraded world from before Plasma was bundled.
+    let mut artifact = latest.artifact.clone();
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .remove(&ResearchId::PlasmaTechnology);
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::PlasmaTechnology))
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+    let previous = Ruleset::from_artifact(artifact, latest.speed).unwrap();
+    let next = upgrade_standard_rules(&previous).unwrap();
+    assert_eq!(next, latest);
+    let delta = validate_rules_update(&previous, &next).unwrap();
+    assert_eq!(delta.add_research, vec![ResearchId::PlasmaTechnology]);
+    assert!(delta.add_buildings.is_empty());
+    assert_eq!(previous.artifact.ships, next.artifact.ships);
+    assert_eq!(previous.artifact.world, next.artifact.world);
+    assert_eq!(
+        previous.artifact.progression.as_ref().unwrap().unit_costs,
+        next.artifact.progression.as_ref().unwrap().unit_costs
+    );
+    for key in [
+        CatalogKey::Ship(ShipType::Bomber),
+        CatalogKey::Defense(DefenseId::PlasmaTurret),
+    ] {
+        assert!(
+            !next
+                .artifact
+                .catalog
+                .iter()
+                .find(|e| e.key == key)
+                .unwrap()
+                .enabled
+        );
+    }
+    assert!(validate_rules_update(&next, &previous).is_err());
+    for disable in [false, true] {
+        let mut custom = next.artifact.clone();
+        if disable {
+            custom
+                .catalog
+                .iter_mut()
+                .find(|e| e.key == CatalogKey::Research(ResearchId::PlasmaTechnology))
+                .unwrap()
+                .enabled = false;
+        } else {
+            custom
+                .progression
+                .as_mut()
+                .unwrap()
+                .research
+                .get_mut(&ResearchId::PlasmaTechnology)
+                .unwrap()
+                .base[0] = 3000;
+        }
+        let custom = Ruleset::from_artifact(custom, next.speed).unwrap();
+        assert!(matches!(
+            upgrade_standard_rules(&custom),
+            Err(StandardRulesError::Conflicts(_))
+        ));
+    }
 }

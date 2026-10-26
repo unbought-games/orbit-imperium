@@ -150,6 +150,15 @@ pub(super) fn patches() -> Vec<Patch> {
             "../../../../rules/content/gauss-cannon.json"
         )),
     );
+    let plasma = read(include_bytes!(
+        "../../../../rules/content/plasma-technology.json"
+    ));
+    research(
+        &mut out,
+        "PlasmaTechnology",
+        plasma["research"].clone(),
+        plasma["requirements"].clone(),
+    );
     // Only ships supported and enabled by this release. Future content is not activated.
     for id in [
         "SmallCargo",

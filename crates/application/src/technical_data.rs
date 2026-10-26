@@ -371,7 +371,11 @@ mod tests {
         );
         let combat = data(&r, CatalogKey::Research(ResearchId::WeaponsTechnology));
         assert!(combat.bonuses.is_empty());
-        for tech in [ResearchId::LaserTechnology, ResearchId::IonTechnology] {
+        for tech in [
+            ResearchId::LaserTechnology,
+            ResearchId::IonTechnology,
+            ResearchId::PlasmaTechnology,
+        ] {
             let projected = data(&r, CatalogKey::Research(tech));
             assert!(projected.bonuses.is_empty());
             assert!(
