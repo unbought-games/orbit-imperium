@@ -376,6 +376,122 @@ fn absent_lineage_and_unpaired_gameplay_fail_closed() {
     );
 }
 #[test]
+fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() {
+    // Full collection, recycler-limited, free-space-limited, and an
+    // exhausted field. Every flight carries all three resources before launch.
+    for (loaded, debris, expected) in [
+        ([100, 200, 300], [299, 101], [299, 101, 0]),
+        ([100, 200, 300], [30000, 30000], [10000, 10000, 0]),
+        ([9000, 9000, 6000], [1000, 1000], [500, 500, 0]),
+        ([100, 200, 300], [0, 0], [0, 0, 0]),
+    ] {
+        let (mut s, r, p, b, _) = fixture();
+        let field_id = OperationId(Uuid::from_u128(900));
+        let coordinates = s.bodies[&b].coordinates;
+        s.world.as_mut().unwrap().records.debris.insert(
+            field_id,
+            DebrisField {
+                id: field_id,
+                coordinates,
+                marker_present: true,
+                metal: debris[0] * SCALE,
+                crystal: debris[1] * SCALE,
+                generation: 1,
+                cleanup_at: next_debris_cleanup(1000).unwrap(),
+                revision: 0,
+            },
+        );
+        let loaded = Resources::from_values(loaded.map(|n| n * SCALE));
+        let collected = Resources::from_values(expected.map(|n| n * SCALE));
+        let intent = FleetIntent {
+            origin: b,
+            destination: MissionDestination::Debris {
+                coordinates,
+                field_identity: field_id,
+            },
+            mission: Mission::Harvest,
+            ships: vec![
+                ManifestStack {
+                    owner: p,
+                    ship_type: ShipType::Recycler,
+                    count: 1,
+                },
+                ManifestStack {
+                    owner: p,
+                    ship_type: ShipType::SmallCargo,
+                    count: 1,
+                },
+            ],
+            cargo: loaded,
+            speed_percent: 100,
+        };
+        let q = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
+        let result = run(
+            &mut s,
+            &r,
+            p,
+            b,
+            1000,
+            300,
+            Input::Command(Command::World {
+                action: WorldAction::LaunchFleet {
+                    intent,
+                    expected_terms_hash: q.terms_hash,
+                },
+            }),
+        );
+        let launch = apply(&mut s, result);
+        let due = launch.events[0].clone();
+        let result = run(&mut s, &r, p, b, due.at, 301, Input::Event(due.event));
+        let arrival = apply(&mut s, result);
+        let w = &s.world.as_ref().unwrap().records;
+        let report = w
+            .reports
+            .values()
+            .find(|r| r.kind == "Harvested")
+            .unwrap()
+            .clone();
+        let wire = |v: Resources| serde_json::json!({"metal":v.metal.to_string(),"crystal":v.crystal.to_string(),"deuterium":v.deuterium.to_string()});
+        assert_eq!(
+            report.payloads[&p]["harvested"],
+            wire(collected),
+            "loaded {loaded:?}"
+        );
+        let total = Resources::from_values(std::array::from_fn(|k| {
+            loaded.values()[k] + collected.values()[k]
+        }));
+        assert_eq!(report.payloads[&p]["cargo"], wire(total));
+        assert_eq!(w.fleets.values().next().unwrap().cargo, total);
+        assert_eq!(w.debris[&field_id].metal, (debris[0] - expected[0]) * SCALE);
+        assert_eq!(
+            w.debris[&field_id].crystal,
+            (debris[1] - expected[1]) * SCALE
+        );
+
+        let due = arrival.events[0].clone();
+        // Compute the home balance at return time before applying the delivery,
+        // so ordinary production is not mistaken for returned cargo.
+        let home_before = settle_production(&s, &s.bodies[&b], due.at, &r)
+            .unwrap()
+            .amounts;
+        let result = run(&mut s, &r, p, b, due.at, 302, Input::Event(due.event));
+        apply(&mut s, result);
+        let w = &s.world.as_ref().unwrap().records;
+        let returned = w.reports.values().find(|r| r.kind == "Returned").unwrap();
+        assert_eq!(returned.payloads[&p]["cargo"], wire(total));
+        assert!(returned.payloads[&p].get("harvested").is_none());
+        assert_eq!(w.reports[&report.id].payloads, report.payloads);
+        for k in 0..3 {
+            assert_eq!(
+                s.bodies[&b].checkpoint.amounts.values()[k],
+                home_before.values()[k] + total.values()[k]
+            );
+        }
+        assert_eq!(w.fleets.values().next().unwrap().leg, MissionLeg::Returned);
+    }
+}
+
+#[test]
 fn harvest_reference_survives_return_and_cleanup_records_loss() {
     let (mut s, r, p, b, _) = fixture();
     let id = OperationId(Uuid::from_u128(900));

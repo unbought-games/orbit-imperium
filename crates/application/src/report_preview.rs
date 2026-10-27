@@ -13,7 +13,14 @@ pub fn report_preview(payload: &Value) -> Value {
         ],
         Some("SpyContact") => &["origin", "target", "detected"],
         Some("Delivered") => &["origin", "target", "cargo"],
-        Some("Returned" | "Recalled" | "Harvested" | "MissionFailed" | "Deployed") => &[
+        Some("Harvested") => &[
+            "origin_coordinates",
+            "destination_coordinates",
+            "cargo",
+            "harvested",
+            "ships",
+        ],
+        Some("Returned" | "Recalled" | "MissionFailed" | "Deployed") => &[
             "origin_coordinates",
             "destination_coordinates",
             "cargo",
@@ -66,6 +73,17 @@ pub fn report_preview(payload: &Value) -> Value {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn harvest_preview_preserves_recorded_delta_and_does_not_invent_historical_amounts() {
+        let legacy = json!({"kind":"Harvested","cargo":{"metal":"123000000","crystal":"45000000","deuterium":"6000000"}});
+        assert_eq!(report_preview(&legacy), legacy);
+        for metal in ["0", "9007199254740993"] {
+            let mut current = legacy.clone();
+            current["harvested"] = json!({"metal":metal,"crystal":"0","deuterium":"0"});
+            assert_eq!(report_preview(&current), current);
+        }
+    }
 
     #[test]
     fn preserves_unknown_and_known_empty_observations_without_revealing_other_sections() {

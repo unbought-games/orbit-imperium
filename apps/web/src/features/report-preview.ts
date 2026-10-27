@@ -56,7 +56,6 @@ export function reportPreview(
       break
     case 'Returned':
     case 'Recalled':
-    case 'Harvested':
     case 'MissionFailed':
     case 'Deployed':
       at =
@@ -70,6 +69,15 @@ export function reportPreview(
             ? { resources: preview.cargo, label: 'Cargo' }
             : 'No cargo',
         )
+      break
+    case 'Harvested':
+      at = preview.destination_coordinates
+      if (preview.ships) facts.push(shipsText(preview.ships))
+      facts.push(
+        preview.harvested
+          ? { resources: preview.harvested, label: 'Harvested' }
+          : 'Harvested amount unavailable',
+      )
       break
     case 'Combat':
       at = preview.target

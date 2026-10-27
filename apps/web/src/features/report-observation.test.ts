@@ -315,3 +315,37 @@ it('keeps legacy combat coordinates and never borrows identity for contact-lost 
   expect(restricted).not.toContain('Hidden')
   expect(restricted).not.toContain('Moon')
 })
+
+it('shows newly collected resources and preserves explicit zero harvests', () => {
+  for (const metal of ['250000000', '0']) {
+    const text = render({
+      kind: 'Harvested',
+      harvested: { metal, crystal: '0', deuterium: '0' },
+      cargo: {
+        metal: '10713000000',
+        crystal: '8238000000',
+        deuterium: '2608000000',
+      },
+    })
+    expect(text).toContain(
+      `Harvested resources${metal === '0' ? '0' : '250'}00`,
+    )
+    expect(text).not.toContain('Carried resources')
+    expect(text).not.toContain('unavailable')
+    expect(text).not.toContain('2,608')
+  }
+})
+
+it('labels historical harvest cargo honestly without inventing a collection amount', () => {
+  const text = render({
+    kind: 'Harvested',
+    cargo: {
+      metal: '10713000000',
+      crystal: '8238000000',
+      deuterium: '2608000000',
+    },
+  })
+  expect(text).toContain('Harvested amount unavailable')
+  expect(text).toContain('including cargo loaded before departure')
+  expect(text).toContain('Carried resources10,7138,2382,608')
+})

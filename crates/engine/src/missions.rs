@@ -423,16 +423,16 @@ pub(crate) fn mission_report(
         },
     );
 }
+fn own_report_payload(i: &OrderedInput, f: &MissionFleet, kind: &str) -> serde_json::Value {
+    json!({"kind":kind,"fleet":f.id,"origin":f.intent.origin,"destination":f.intent.destination,"origin_coordinates":f.origin_coordinates,"destination_coordinates":f.destination_coordinates,"cargo":wire_resources(f.cargo),"ships":f.ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>(),"at":i.at})
+}
 fn own_report(w: &mut WorldRecords, i: &OrderedInput, f: &MissionFleet, kind: &str) {
     mission_report(
         w,
         i,
         f,
         kind,
-        std::collections::BTreeMap::from([(
-            f.owner,
-            json!({"kind":kind,"fleet":f.id,"origin":f.intent.origin,"destination":f.intent.destination,"origin_coordinates":f.origin_coordinates,"destination_coordinates":f.destination_coordinates,"cargo":wire_resources(f.cargo),"ships":f.ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>(),"at":i.at}),
-        )]),
+        std::collections::BTreeMap::from([(f.owner, own_report_payload(i, f, kind))]),
     );
 }
 fn schedule(c: &mut ChangeSet, i: &OrderedInput, f: &MissionFleet) {
@@ -897,12 +897,19 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                     .revision
                                     .checked_add(1)
                                     .ok_or(GameError::NumericRange)?;
-                                f.cargo = resources(
-                                    f.cargo,
-                                    Resources::from_values([m * SCALE, k * SCALE, 0]),
-                                    true,
-                                )?;
-                                own_report(&mut w, i, &f, "Harvested");
+                                let harvested = Resources::from_values([m * SCALE, k * SCALE, 0]);
+                                f.cargo = resources(f.cargo, harvested, true)?;
+                                let mut payload = own_report_payload(i, &f, "Harvested");
+                                // Capture the collection at arrival: total cargo also includes
+                                // resources loaded at launch and cannot stand in for this fact.
+                                payload["harvested"] = wire_resources(harvested);
+                                mission_report(
+                                    &mut w,
+                                    i,
+                                    &f,
+                                    "Harvested",
+                                    std::collections::BTreeMap::from([(f.owner, payload)]),
+                                );
                             }
                             Mission::Attack => crate::encounter::attack_encounter(
                                 s,

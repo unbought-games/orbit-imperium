@@ -13487,6 +13487,10 @@
           },
           "destination_coordinates": {
             "$ref": "#/components/schemas/Coordinates"
+          },
+          "harvested": {
+            "$ref": "#/components/schemas/Resources",
+            "description": "Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo."
           }
         },
         "required": [
@@ -15227,6 +15231,10 @@
                 "items": {
                   "$ref": "#/components/schemas/PublicShip4"
                 }
+              },
+              "harvested": {
+                "$ref": "#/components/schemas/Resources",
+                "description": "Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo."
               }
             },
             "required": [

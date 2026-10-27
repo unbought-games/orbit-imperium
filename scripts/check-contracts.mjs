@@ -86,3 +86,15 @@ for (const [path, operations] of Object.entries(schema.paths)) {
  }
 }
 console.log('Every versioned universe operation has a bot accounting classification.');
+
+const missionOutcome = ajv.compile({ components: schema.components, $ref: '#/components/schemas/MissionOutcomePayload4' });
+const harvestReport = { kind: 'Harvested', fleet: id, origin: id, destination: { type: 'Debris', coordinates: { galaxy: 1, system: 1, position: 1 }, field_identity: id }, cargo: { metal: '100000000', crystal: '200000000', deuterium: '300000000' }, ships: [{ ship_type: 'Recycler', count: '1' }], at: 1000 };
+assert.ok(missionOutcome(harvestReport), 'historical harvest reports remain valid without a collected amount');
+for (const metal of ['0', '9007199254740993']) {
+ const harvested = { metal, crystal: '0', deuterium: '0' };
+ assert.ok(missionOutcome({ ...harvestReport, harvested }));
+ assert.ok(reportPreview({ kind: 'Harvested', cargo: harvestReport.cargo, harvested }));
+}
+assert.equal(missionOutcome({ ...harvestReport, harvested: null }), false);
+assert.equal(reportPreview({ kind: 'Harvested', harvested: { metal: '-1', crystal: '0', deuterium: '0' } }), false);
+console.log('Harvest reports preserve historical cargo and optionally record exact newly collected resources.');

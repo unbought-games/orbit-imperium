@@ -392,7 +392,11 @@ function ReportObservationContent({
       <Panel
         as="section"
         aria-label="Report observation"
-        className={styles.observation}
+        className={
+          kind === 'Harvested'
+            ? `${styles.observation} ${styles.harvest}`
+            : styles.observation
+        }
       >
         <Text>
           {label(text(kind))}
@@ -424,7 +428,21 @@ function ReportObservationContent({
             </>
           ) : null}
         </Text>
-        {'cargo' in payload && (
+        {kind === 'Harvested' && (
+          <>
+            <Heading level={3}>Harvested resources</Heading>
+            {payload.harvested ? (
+              <Resources value={payload.harvested} />
+            ) : (
+              <Text>
+                Harvested amount unavailable. This older report recorded only
+                total carried resources, including cargo loaded before
+                departure.
+              </Text>
+            )}
+          </>
+        )}
+        {'cargo' in payload && (kind !== 'Harvested' || !payload.harvested) && (
           <>
             <Heading level={3}>
               {kind === 'Delivered' || kind === 'Deployed'

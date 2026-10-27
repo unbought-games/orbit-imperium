@@ -6653,6 +6653,8 @@ export interface components {
             at: number;
             origin_coordinates?: components["schemas"]["Coordinates"];
             destination_coordinates?: components["schemas"]["Coordinates"];
+            /** @description Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo. */
+            harvested?: components["schemas"]["Resources"];
         };
         BattleCounts4: {
             /** Format: uuid */
@@ -7043,6 +7045,8 @@ export interface components {
             destination_coordinates?: components["schemas"]["Coordinates"];
             cargo?: components["schemas"]["Resources"];
             ships?: components["schemas"]["PublicShip4"][];
+            /** @description Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo. */
+            harvested?: components["schemas"]["Resources"];
         } | {
             /** @constant */
             kind: "Combat";
