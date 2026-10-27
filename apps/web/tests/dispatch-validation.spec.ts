@@ -7,6 +7,20 @@ import type { components } from '../src/contracts'
 import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 type S = components['schemas']
 
+test('destination focus glow is desktop only', async ({ page }) => {
+  await setup(page)
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  const preview = page.getByLabel('Destination preview')
+  for (const width of [767, 768, 390]) {
+    await page.setViewportSize({ width, height: 844 })
+    await input.focus()
+    await expect(input).toBeFocused()
+    await expect(preview).toHaveCSS('border-color', width < 768 ? 'rgba(138, 157, 157, 0.4)' : 'rgb(154, 207, 230)')
+    await expect(preview).toHaveCSS('box-shadow', width < 768 ? 'none' : 'rgba(154, 207, 230, 0.157) 0px 0px 0px 2px')
+    await expect(input.locator('..')).toHaveCSS('outline-style', 'none')
+  }
+})
+
 async function setup(page: Page) {
   const colony = {
     ...body,
