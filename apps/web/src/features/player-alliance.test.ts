@@ -4,7 +4,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { PlayerProfilesController } from '../client-model/player-profiles'
 import { PlayerProfilesContext } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
-import { HistoricalAlliances, type AllianceIdentity } from './player-alliance'
+import {
+  HistoricalAlliances,
+  sameAlliance,
+  type AllianceIdentity,
+} from './player-alliance'
 
 const player = '00000000-0000-4000-8000-000000000001'
 const alliance: AllianceIdentity = {
@@ -13,6 +17,16 @@ const alliance: AllianceIdentity = {
   tag: 'NEW',
   name: 'New alliance',
 }
+it('matches alliances by universe and identity, never by their names or tags', () => {
+  expect(
+    sameAlliance(alliance, { ...alliance, name: 'Renamed', tag: 'REN' }),
+  ).toBe(true)
+  expect(sameAlliance(alliance, { ...alliance, id: 'other' })).toBe(false)
+  expect(sameAlliance(alliance, { ...alliance, universe: 'other' })).toBe(false)
+  expect(sameAlliance(undefined, undefined)).toBe(false)
+  expect(sameAlliance(alliance, null)).toBe(false)
+  expect(sameAlliance(undefined, alliance)).toBe(false)
+})
 function profiles() {
   const controller = new PlayerProfilesController(async () => {
     throw new Error('No network')

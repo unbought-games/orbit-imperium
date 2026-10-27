@@ -19,6 +19,10 @@ import {
   type GalaxyMissionCapabilities,
 } from './galaxy-mission-actions'
 import { GalaxyPlayerStatuses, GalaxyActivity } from './galaxy-player-status'
+import { usePlayerDisplay } from '../shell/player-profiles-context'
+import { sameAlliance } from './player-alliance'
+import { Users } from 'lucide-react'
+import { InfoTooltip } from '../ui/info-tooltip'
 
 export function GalaxyPosition({
   position,
@@ -54,8 +58,12 @@ export function GalaxyPosition({
   }
 }) {
   const { body, debris, coordinates } = position
+  const viewerProfile = usePlayerDisplay(player ?? '')
+  const ownerProfile = usePlayerDisplay(body?.owner ?? '')
+  const viewerAlliance = viewerProfile?.alliance
   const target = `[${coordinates.galaxy}:${coordinates.system}:${coordinates.position}]`
   const owned = body?.owner === player
+  const allied = !owned && sameAlliance(viewerAlliance, ownerProfile?.alliance)
   const protectedTarget = !owned && body?.attack_blocker === 'BeginnerProtected'
   const canTarget = !!body && body.id !== origin
   const actions = galaxyMissionActions({
@@ -78,6 +86,7 @@ export function GalaxyPosition({
         styles.positionCard,
         !body && !debris && styles.empty,
         protectedTarget && styles.protected,
+        allied && styles.allied,
       )}
     >
       <div className={styles.positionSummary}>
@@ -125,6 +134,16 @@ export function GalaxyPosition({
                 />
               </span>
               {owned && <span className={styles.you}>You</span>}
+              {allied && viewerAlliance && (
+                <InfoTooltip
+                  label="Your alliance"
+                  description={`This player is a member of ${viewerAlliance.name} [${viewerAlliance.tag}], like you.`}
+                  className={styles.allianceBadge}
+                >
+                  <Users size={13} aria-hidden="true" />
+                  <span>Your alliance</span>
+                </InfoTooltip>
+              )}
               <GalaxyActivity activity={body.activity} />
             </div>
           )}
