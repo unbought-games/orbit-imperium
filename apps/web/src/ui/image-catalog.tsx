@@ -114,6 +114,7 @@ export function ImageTile({
   disabledReason = 'unavailable',
   className,
   progress,
+  action,
   ...props
 }: Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   disabled?: boolean
@@ -128,6 +129,7 @@ export function ImageTile({
   countLabel?: string
   inspectable?: boolean
   disabledReason?: string
+  action?: ReactNode
   progress?: {
     kind?: 'construction' | 'research'
     targetLevel: number
@@ -227,6 +229,7 @@ export function ImageTile({
           </span>
         )}
       </Tile>
+      {action}
     </div>
   )
 }

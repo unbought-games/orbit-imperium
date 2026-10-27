@@ -39,6 +39,7 @@ for (const width of [1440, 390, 320]) {
         })
         await expect(tile).toBeEnabled()
         await expect(tile).toContainText('Unavailable · Inspect details')
+        await expect(page.getByRole('button', { name: `Build ${title}`, exact: true })).toBeDisabled()
         if (width < 600) await tile.tap()
         else {
           await tile.focus()
@@ -60,7 +61,7 @@ for (const width of [1440, 390, 320]) {
         ).toHaveCount(0)
         await expect(
           page.getByRole('button', {
-            name: `Start upgrade ${title}`,
+            name: new RegExp(`^Build ${title}`),
             exact: true,
           }),
         ).toHaveCount(0)
@@ -187,7 +188,7 @@ for (const width of [1440, 390, 320]) {
         ).toBeDisabled()
         await expect(
           page.getByRole('button', {
-            name: `Start upgrade ${title}`,
+            name: new RegExp(`^Build ${title}`),
             exact: true,
           }),
         ).toHaveCount(0)

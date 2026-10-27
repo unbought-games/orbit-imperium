@@ -123,23 +123,23 @@ async function setup(page: Page, blocked = false, commandReferences = false) {
   return { economy, sent, planet }
 }
 
-test('resource rows require opening details before confirming an upgrade', async ({
+test('resource rows retain detail inspection alongside quick build', async ({
   page,
 }) => {
   const { planet, economy } = await setup(page, true)
   economy.gross_per_hour.metal = '0'
   await refreshGame(page)
   const quick = page.getByRole('button', {
-    name: 'Start upgrade Metal Mine',
+    name: 'Build Metal Mine level 2',
     exact: true,
   })
   await expect(
     page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   ).toHaveAttribute('title', /Not enough resources/)
-  await expect(quick).toHaveCount(0)
+  await expect(quick).toBeDisabled()
   planet.amounts.metal = '60000000'
   await refreshGame(page)
-  await expect(quick).toHaveCount(0)
+  await expect(quick).toBeEnabled()
   const sent: components['schemas']['CommandEnvelopeV3'][] = []
   let release!: () => void
   const gate = new Promise<void>((resolve) => {

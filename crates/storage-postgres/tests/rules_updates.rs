@@ -2041,3 +2041,6 @@ async fn satellites_settle_inventory_at_completions_and_rules_boundaries_in_both
         assert_eq!(production.gross_per_hour.metal, "630000000");
     }
 }
+
+#[path = "rules_updates/bomber.rs"]
+mod bomber;

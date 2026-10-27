@@ -1,3 +1,5 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { selectBody } from './fixtures/body-selector'
 import { openProductionSettings } from './fixtures/production-settings'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id, refreshGame } from './fixtures/game'
@@ -198,7 +200,7 @@ test('satellites require Shipyard 1 and show stationary statistics and local ene
   await expect(pane).toContainText('Shipyard')
   await pane.getByText('Technical data', { exact: true }).click()
   await expect(pane).toContainText('Cannot fly or carry cargo')
-  await expect(pane).toContainText('Energy per satellite on this planet')
+  await expect(pane).toContainText('Energy per satellite · 100% production')
   await expect(pane).toContainText('30')
   await expect(pane).not.toContainText('Propulsion statistics are unavailable')
 })
@@ -311,4 +313,47 @@ test('production controls show satellite quantity and submit group throttling', 
   await page.reload()
   await expect(row.getByRole('slider')).toHaveValue('50')
   await expect(row).toContainText('30')
+})
+
+for (const width of [320, 1440]) {
+  test(`satellite ordering shows authoritative planet output without technical expansion at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const production = await setup(page)
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`)
+    const order = page.getByRole('region', { name: 'New order', exact: true })
+    const perUnit = order.locator('dl > div').filter({ has: page.getByText('Energy per satellite · 100% production', { exact: true }) })
+    await expect(perUnit).toContainText('30')
+    await expect(order.getByText('Current satellite energy · 100% production', { exact: true })).toBeVisible()
+    await expect(page.locator('details').filter({ has: page.getByText('Technical data', { exact: true }) })).not.toHaveAttribute('open', '')
+    production.settings.solar_satellite = 50
+    production.solar_satellite!.energy_supply = '30000000'
+    production.settings_revision = '1'
+    await refreshGame(page)
+    await expect(order.getByText('Current satellite energy · 50% production', { exact: true })).toBeVisible()
+    await expect(perUnit).toContainText('30')
+    await diagnosticScreenshot(order, { path: `test-results/satellite-order-${width}.png` })
+  })
+}
+
+test('satellite ordering updates across planets, zero stationed satellites and unavailable production', async ({ page }) => {
+  const second = { ...body, id: id(6), coordinates: { galaxy: 1, system: 371, position: 13 }, inventories: [] }
+  const production = await setup(page, 1, { bodies: [{ ...body, inventories: [] }, second] })
+  production.solar_satellite!.energy_supply = '0'
+  production.settings.solar_satellite = 0
+  await page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`)
+  const order = page.getByRole('region', { name: 'New order', exact: true })
+  await expect(order).toContainText('Energy per satellite · 100% production30')
+  await expect(order).toContainText('Current satellite energy · 0% production0')
+  await selectBody(page, second.id)
+  await expect(order).toContainText('Satellite energy data unavailable for this planet.')
+  await expect(order).not.toContainText('100% production30')
+  production.body = second.id
+  production.solar_satellite = { unit_energy: '47000000', energy_supply: '0' }
+  production.settings_revision = '1'
+  await refreshGame(page)
+  await expect(order).toContainText('Energy per satellite · 100% production47')
+  delete production.solar_satellite
+  production.settings_revision = '2'
+  await refreshGame(page)
+  await expect(order).toContainText('Satellite energy data unavailable for this planet.')
 })

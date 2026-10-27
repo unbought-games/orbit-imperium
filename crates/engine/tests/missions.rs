@@ -2762,3 +2762,6 @@ fn large_shield_dome_raid_reports_destruction_and_recovery_without_defense_debri
         validate_asset_lineage(&s).unwrap();
     }
 }
+
+#[path = "missions/bomber.rs"]
+mod bomber;

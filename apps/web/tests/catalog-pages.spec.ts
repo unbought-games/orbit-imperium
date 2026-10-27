@@ -254,7 +254,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
   return fixture
 }
 
-test('facility rows have no upgrade action and require confirmation on the detail page', async ({
+test('facility rows offer quick build while retaining detail-page confirmation', async ({
   page,
 }) => {
   const { sent, planet, blockers } = await setup(page, true)
@@ -266,15 +266,16 @@ test('facility rows have no upgrade action and require confirmation on the detai
     'No Free Field',
   )
   const quick = page.getByRole('button', {
-    name: 'Start upgrade Robotics Factory',
+    name: 'Build Robotics Factory level 1',
     exact: true,
   })
   await expect(quick).toHaveCount(0)
   await page.getByRole('link', { name: /^Back to / }).click()
+  await expect(quick).toBeDisabled()
   blockers.length = 0
   planet.fields++
   await refreshGame(page)
-  await expect(quick).toHaveCount(0)
+  await expect(quick).toBeEnabled()
   await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
   expect(sent).toHaveLength(0)
   const confirm = page.getByRole('button', { name: 'Confirm upgrade', exact: true })
@@ -1678,7 +1679,9 @@ test('clickable catalog cards keep artwork and labels left aligned independently
     }],
   })
   await navigate(page, 'Facilities')
-  await expect(page.getByRole('button', { name: /^Start upgrade / })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Build Robotics Factory/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Build Research Lab', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Build Shipyard', exact: true })).toBeDisabled()
   for (const width of [1440, 768, 767, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     for (const title of ['Robotics Factory', 'Research Lab', 'Shipyard']) {
@@ -2499,5 +2502,60 @@ for (const gate of ['Shipyard', 'PlasmaTechnology', 'disabled'] as const) {
     }
     await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
     expect(sent).toEqual([])
+  })
+}
+
+for (const width of [320, 390, 1440]) {
+  test(`manufacturing stacks every exact resource cost in compact rows at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page, false, { metal: '10000000000', crystal: '6000000000', deuterium: '2000000000' })
+    for (const [pageName, itemName, quantityLabel] of [
+      ['Shipyard', 'Small Cargo', 'Shipyard quantity'],
+      ['Defense', 'Rocket Launcher', 'Defenses quantity'],
+    ] as const) {
+      await navigate(page, pageName)
+      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
+      const order = page.getByRole('region', { name: 'New order', exact: true })
+      const costs = order.getByRole('group', { name: 'Required resources' })
+      for (const quantity of ['1', '123456789']) {
+        await order.getByRole('textbox', { name: quantityLabel }).fill(quantity)
+        for (const [resource, unit] of [['Metal', 10000n], ['Crystal', 6000n], ['Deuterium', 2000n]] as const) {
+          const amount = costs.getByRole('button', { name: `${resource} details`, exact: true })
+          await expect(amount).toHaveText((unit * BigInt(quantity)).toLocaleString('en-US'))
+          const bounds = await amount.boundingBox()
+          const container = await costs.locator('..').boundingBox()
+          expect(bounds!.x).toBeGreaterThanOrEqual(container!.x)
+          expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(container!.x + container!.width + 1)
+          expect(await amount.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+        }
+        const rows = await costs.getByRole('button').evaluateAll(elements => elements.map(el => {
+          const { top, bottom, right, height } = el.getBoundingClientRect()
+          return { top, bottom, right, height }
+        }))
+        expect(rows).toHaveLength(3)
+        const labelBounds = (await order.getByText('New order cost', { exact: true }).boundingBox())!
+        const costBounds = (await costs.boundingBox())!
+        expect(labelBounds.x + labelBounds.width).toBeLessThan(costBounds.x)
+        expect(Math.abs(labelBounds.y + labelBounds.height / 2 - costBounds.y - costBounds.height / 2)).toBeLessThan(1)
+        await expect(order.locator('dt').filter({ hasText: /^Order complete$/ }).locator('..')).toHaveCSS('border-bottom-width', '1px')
+        for (const [index, row] of rows.entries()) {
+          expect(row.height).toBeGreaterThanOrEqual(24)
+          expect(row.height).toBeLessThanOrEqual(28)
+          expect(Math.abs(row.right - rows[0].right)).toBeLessThan(1)
+          if (index > 0) {
+            expect(row.top).toBeGreaterThanOrEqual(rows[index - 1].bottom)
+            expect(row.top - rows[index - 1].bottom).toBeLessThanOrEqual(2)
+          }
+        }
+        expect(await costs.locator('..').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        const icons = await costs.locator('svg').evaluateAll(elements => elements.map(el => getComputedStyle(el).color))
+        expect(new Set(icons).size).toBe(3)
+        await diagnosticScreenshot(order, { path: `test-results/manufacturing-${pageName}-${width}-${quantity}.png` })
+      }
+      await order.getByRole('button', { name: 'Deuterium details', exact: true }).click()
+      await expect(page.getByRole('dialog', { name: 'Deuterium', exact: true })).toContainText('246,913,578,000')
+      await page.keyboard.press('Escape')
+    }
   })
 }

@@ -8,6 +8,7 @@ const technicalData = {
   combat: { attack_ticks: '5000000', shield_ticks: '1000000', hull_ticks: '40000000', rapid_fire_against: [], rapid_fire_from: [] },
 }
 const catalog: components['schemas']['CatalogEntry3'][] = [
+  { key: { kind: 'Ship', id: 'Bomber' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: true, ship_statistics: { propulsion: null, combat: { ...technicalData.combat, attack_ticks: '100000000', shield_ticks: '50000000', hull_ticks: '750000000' } } },
   { key: { kind: 'Ship', id: 'LightFighter' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: true, technical_data: technicalData },
   { key: { kind: 'Defense', id: 'RocketLauncher' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: technicalData },
   { key: { kind: 'Defense', id: 'HeavyLaser' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: { ...technicalData, combat: { ...technicalData.combat, attack_ticks: '25000000', shield_ticks: '10000000', hull_ticks: '80000000' } } },
@@ -26,7 +27,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await page.route('**/combat-simulation', async route => {
     submitted = route.request().postDataJSON()
     if (hidden && attempts++ === 0) { await route.fulfill({ status: 503, json: { code: 'Unavailable' } }); return }
-    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, surviving_cargo_capacity: '400000000', estimated_loot: hidden ? null : { metal: '133000000', crystal: '133000000', deuterium: '134000000' }, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }], defender: [] })) } })
+    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, surviving_cargo_capacity: '400000000', estimated_loot: hidden ? null : { metal: '133000000', crystal: '133000000', deuterium: '134000000' }, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
   })
   await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
   const trigger = page.getByRole('button', { name: 'Simulate combat', exact: true })
@@ -44,6 +45,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await expect(dialog.getByLabel('Attacker Large Shield Dome', { exact: true })).toHaveCount(0)
   await expect(dialog.getByLabel('Attacker Heavy Laser', { exact: true })).toHaveCount(0)
   await dialog.getByLabel('Attacker Light Fighter', { exact: true }).fill('10')
+  await dialog.getByLabel('Attacker Bomber', { exact: true }).fill('2')
+  await expect(dialog.getByLabel('Defender Bomber', { exact: true })).toHaveValue(hidden ? '' : '0')
   if (hidden) {
     await expect(dialog.getByRole('button', { name: 'Run 10 battles' })).toBeDisabled()
     await dialog.getByRole('button', { name: 'Assume all unknown values are zero' }).click()
@@ -61,7 +64,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   }
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toBeVisible()
   const results = dialog.getByRole('region', { name: 'Simulation results' })
-  await expect(results).toContainText('2 lost · 8 surviving')
+  await expect(results).toContainText('Light Fighter2 lost · 8 surviving')
+  await expect(results).toContainText('Bomber2 lost · 0 surviving')
   await expect(results).toContainText('Surviving cargo capacity: 400 average')
   await expect(results).toContainText(hidden ? 'resources were not observed' : 'Estimated loot: 400 average')
   if (!hidden) {
@@ -75,6 +79,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     await diagnosticScreenshot(page, { path: `test-results/simulation-results-${hidden}-${width}.png`, fullPage: true })
   }
   expect(submitted.inputs.defender.units).toEqual(hidden ? [] : [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 12 }, { item: { kind: 'Defense', id: 'HeavyLaser' }, count: 7 }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: 1 }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: 3 }])
+  expect(submitted.inputs.attacker.units).toEqual([{ item: { kind: 'Ship', id: 'Bomber' }, count: 2 }, { item: { kind: 'Ship', id: 'LightFighter' }, count: 10 }])
   expect(Object.keys(submitted).sort()).toEqual(['context', 'inputs'])
   await dialog.getByLabel('Attacker Light Fighter', { exact: true }).fill('20')
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toHaveCount(0)

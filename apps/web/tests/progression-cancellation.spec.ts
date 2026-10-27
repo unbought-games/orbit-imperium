@@ -229,7 +229,7 @@ async function cancellationFixture(page: Page, lateOptions = false) {
       ),
     ).toBe(false)
     await expect(
-      page.getByRole('button', { name: /^Start upgrade / }),
+      page.getByRole('button', { name: /^Build / }).and(page.locator(':enabled')),
     ).toHaveCount(0)
     await inspect('Crystal Mine')
     await expect(cancel).toBeDisabled()
@@ -338,7 +338,7 @@ test('rejected cancellation keeps construction active and every upgrade blocked'
     await refreshGame(page)
     await fixture.pane.getByRole('link', { name: /^Back to / }).click()
     await expect(
-      page.getByRole('button', { name: /^Start upgrade / }),
+      page.getByRole('button', { name: /^Build / }).and(page.locator(':enabled')),
     ).toHaveCount(0)
     await expect(
       page

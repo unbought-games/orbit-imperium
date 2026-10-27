@@ -56,6 +56,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
         for key in [
             CatalogKey::Building(Building::FusionReactor),
             CatalogKey::Ship(ShipType::LargeCargo),
+            CatalogKey::Ship(ShipType::Bomber),
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
             CatalogKey::Defense(DefenseId::GaussCannon),
@@ -349,8 +350,28 @@ fn large_shield_dome_upgrade_owns_complete_definitions_and_rejects_customization
 #[test]
 fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_content() {
     let latest = standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 5).unwrap();
-    // Reconstruct a world from before Plasma research and turrets were bundled.
+    // Reconstruct a world from before Plasma and its dependent units were bundled.
     let mut artifact = latest.artifact.clone();
+    let bomber = ManufacturedItem::Ship(ShipType::Bomber);
+    artifact.ships.remove(&ShipType::Bomber);
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .retain(|u| u.item != bomber);
+    let combat = &mut artifact.world.as_mut().unwrap().combat;
+    combat.units.retain(|u| u.item != bomber);
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != bomber && rf.target != bomber);
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == bomber.catalog_key())
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
     let turret = ManufacturedItem::Defense(DefenseId::PlasmaTurret);
     artifact
         .progression
@@ -391,8 +412,29 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
     let delta = validate_rules_update(&previous, &next).unwrap();
     assert_eq!(delta.add_research, vec![ResearchId::PlasmaTechnology]);
     assert!(delta.add_buildings.is_empty());
-    assert_eq!(previous.artifact.ships, next.artifact.ships);
-    let mut without_turrets = next.artifact.clone();
+    let mut artifact = next.artifact.clone();
+    let bomber = ManufacturedItem::Ship(ShipType::Bomber);
+    artifact.ships.remove(&ShipType::Bomber);
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .retain(|u| u.item != bomber);
+    let combat = &mut artifact.world.as_mut().unwrap().combat;
+    combat.units.retain(|u| u.item != bomber);
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != bomber && rf.target != bomber);
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == bomber.catalog_key())
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+    let mut without_turrets = artifact;
+    assert_eq!(previous.artifact.ships, without_turrets.ships);
     without_turrets
         .world
         .as_mut()
@@ -418,8 +460,7 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
             .any(|e| e.key == turret.catalog_key() && e.enabled)
     );
     assert!(
-        !next
-            .artifact
+        next.artifact
             .catalog
             .iter()
             .find(|e| e.key == CatalogKey::Ship(ShipType::Bomber))
@@ -430,6 +471,12 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
     for disable in [false, true] {
         let mut custom = next.artifact.clone();
         if disable {
+            custom
+                .catalog
+                .iter_mut()
+                .find(|e| e.key == bomber.catalog_key())
+                .unwrap()
+                .enabled = false;
             custom
                 .catalog
                 .iter_mut()

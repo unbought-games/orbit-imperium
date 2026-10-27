@@ -192,6 +192,12 @@ pub(super) fn patches() -> Vec<Patch> {
             "factor":satellite["rapid_fire_from"][id],
         })));
     }
+    unit(
+        &mut out,
+        "Ship",
+        "Bomber",
+        &read(include_bytes!("../../../../rules/content/bomber.json")),
+    );
     let fusion = read(include_bytes!(
         "../../../../rules/content/fusion-reactor.json"
     ));

@@ -125,7 +125,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
             .any(|e| e.key == CatalogKey::Defense(DefenseId::PlasmaTurret) && e.enabled)
     );
     assert!(
-        !after
+        after
             .rules
             .artifact
             .catalog
