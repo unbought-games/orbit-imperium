@@ -13,11 +13,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.summary > div:nth-last-child(2) {
+  border-bottom: 0;
+}
 .summary > div:last-child {
-  display: flex;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 .summary > div:last-child dd {
-  flex: 1 1 16rem;
   overflow: visible;
 }
 .summary > div:last-child dd > div {

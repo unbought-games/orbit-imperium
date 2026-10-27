@@ -2530,6 +2530,11 @@ for (const width of [320, 390, 1440]) {
           return { top, bottom, right, height }
         }))
         expect(rows).toHaveLength(3)
+        const labelBounds = (await order.getByText('New order cost', { exact: true }).boundingBox())!
+        const costBounds = (await costs.boundingBox())!
+        expect(labelBounds.x + labelBounds.width).toBeLessThan(costBounds.x)
+        expect(Math.abs(labelBounds.y + labelBounds.height / 2 - costBounds.y - costBounds.height / 2)).toBeLessThan(1)
+        await expect(order.locator('dt').filter({ hasText: /^Order complete$/ }).locator('..')).toHaveCSS('border-bottom-width', '0px')
         for (const [index, row] of rows.entries()) {
           expect(row.height).toBeGreaterThanOrEqual(24)
           expect(row.height).toBeLessThanOrEqual(28)
