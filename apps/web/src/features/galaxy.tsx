@@ -4,12 +4,13 @@ import { playerLabel } from './player-label'
 import { Button } from '../ui/button'
 import { GalaxyNavigation } from './galaxy-navigation'
 import styles from './galaxy.module.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { galaxyTarget } from '../shell/galaxy-location'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
+import { GalaxyHarvestAction } from './galaxy-harvest-action'
 import { GalaxyPosition } from './galaxy-position'
 import { galaxyMissionCapabilities } from './galaxy-mission-actions'
 import { colonizationStatus } from '../client-model/colonization'
@@ -36,6 +37,16 @@ export function Galaxy({
   ) => void
 }) {
   const espionage = useGalaxyEspionage(model, origin)
+  const [harvestSelection, setHarvestSelection] = useState<{
+    field: string
+    galaxy: number
+    system: number
+    position: number
+    origin: string
+    key: number
+  } | null>(null)
+  const harvestOpener = useRef<HTMLElement | null>(null)
+  const [harvestOpen, setHarvestOpen] = useState(false)
   const home = model.view?.bodies.find((b) => b.id === origin)?.coordinates
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
@@ -112,6 +123,58 @@ export function Galaxy({
       target?.scrollIntoView({ block: 'center' })
     }
   }, [loaded, galaxy, system, position])
+  const harvestPosition =
+    harvestSelection?.origin === origin
+      ? data?.positions.find(
+          (entry) =>
+            entry.debris?.field_identity === harvestSelection.field &&
+            entry.coordinates.galaxy === harvestSelection.galaxy &&
+            entry.coordinates.system === harvestSelection.system &&
+            entry.coordinates.position === harvestSelection.position,
+        )
+      : undefined
+  const harvestContextLost =
+    !!harvestSelection &&
+    (!valid ||
+      harvestSelection.origin !== origin ||
+      harvestSelection.galaxy !== galaxy ||
+      harvestSelection.system !== system ||
+      (!!data && !harvestPosition))
+  useEffect(() => {
+    if (harvestContextLost) {
+      // Navigation/depletion ends this interaction; returning must require a
+      // new explicit action rather than remounting a previously open form.
+      setHarvestOpen(false)
+      setHarvestSelection(null)
+    }
+  }, [harvestContextLost])
+  const draft = (
+    coordinates: components['schemas']['Coordinates'],
+    mission: DispatchDraft['mission'],
+    opener?: HTMLElement | null,
+  ) => {
+    if (mission === 'Harvest') {
+      const position = data?.positions.find(
+        (entry) =>
+          entry.coordinates.position === coordinates.position &&
+          entry.coordinates.galaxy === coordinates.galaxy &&
+          entry.coordinates.system === coordinates.system,
+      )
+      if (position?.debris) {
+        harvestOpener.current = opener ?? null
+        const field = position.debris.field_identity
+        setHarvestSelection((previous) => ({
+          field,
+          ...coordinates,
+          origin,
+          key: (previous?.key ?? 0) + 1,
+        }))
+        setHarvestOpen(true)
+        return
+      }
+    }
+    onDraft(coordinates, mission)
+  }
   const missions = galaxyMissionCapabilities(model.view)
   useProfileSource(
     data ? { type: 'Galaxy', galaxy: data.galaxy, system: data.system } : null,
@@ -197,7 +260,7 @@ export function Galaxy({
                     model.view,
                     position.coordinates.position,
                   )}
-                  onDraft={onDraft}
+                  onDraft={draft}
                   flights={galaxyFlights(espionage.state, position)}
                   now={currentServerTime(espionage.state)}
                   espionage={
@@ -226,6 +289,21 @@ export function Galaxy({
             ))}
           </ul>
         </section>
+      )}
+      {harvestSelection && harvestPosition && (
+        <GalaxyHarvestAction
+          key={harvestSelection.key}
+          model={model}
+          returnFocusRef={harvestOpener}
+          origin={origin}
+          position={harvestPosition}
+          open={harvestOpen}
+          onClose={() => setHarvestOpen(false)}
+          onCustomize={() => {
+            setHarvestOpen(false)
+            onDraft(harvestPosition.coordinates, 'Harvest')
+          }}
+        />
       )}
     </section>
   )

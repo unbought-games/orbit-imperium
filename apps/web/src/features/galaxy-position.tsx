@@ -47,6 +47,7 @@ export function GalaxyPosition({
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
+    opener?: HTMLElement | null,
   ) => void
   flights?: GalaxyFlight[]
   now?: number
@@ -113,6 +114,7 @@ export function GalaxyPosition({
               at={coordinates}
               target={body?.kind === 'Moon' ? 'moon' : 'planet'}
               known={{ owner: body?.owner, empty: !body, debris: !!debris }}
+              onHarvest={(opener) => onDraft(coordinates, 'Harvest', opener)}
               className={styles.coordinates}
             />
           </div>
