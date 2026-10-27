@@ -10,23 +10,22 @@ All pull request titles must follow Conventional Commits (for example, `fix: cor
 
 ## UI screenshots
 
-Every PR containing a user interface change must embed screenshots of the final
-running implementation at both desktop and mobile viewport sizes in its
-description. Cover each changed screen and relevant interaction state, and label
-each image with its screen/state and viewport dimensions. Inspect both layouts
-and fix visible defects before publishing; refresh affected screenshots after
-subsequent UI fixes.
+For every user interface change, capture and inspect the final running
+implementation at both desktop and mobile viewport sizes. Cover each changed
+screen and relevant interaction state, label each image with its screen/state
+and viewport dimensions, and fix visible defects. Refresh affected captures
+after subsequent UI fixes.
 
-Use durable image URLs accessible to reviewers and verify that the images render
-in the PR. Local file paths, temporary development URLs, and links to CI artifacts
-alone do not satisfy this requirement. Follow `.github/pull_request_template.md`.
+Display these screenshots inline in the originating implementation chat's final
+response using absolute local image paths. Show current screenshots in that chat
+before enqueueing or merging a UI PR as well.
 
-Display the same desktop and mobile screenshots inline in the originating agent
-implementation thread's final response so the owner can review them in either
-place. Also show current screenshots in that thread before enqueueing or merging
-a UI PR. If capture or image hosting is blocked, report the concrete blocker;
-do not claim readiness or enqueue or merge the PR without the required images.
-PRs without UI changes may mark screenshots as not applicable.
+Screenshots belong in the chat, not the PR description. Do not upload or host
+images for a PR or use browser drag-and-drop to attach them unless the user
+explicitly requests it. Image hosting is not a readiness or merge requirement.
+If capture or inline display in the chat is blocked, report the concrete blocker
+rather than silently omitting visual review. PRs without UI changes may mark
+visual validation as not applicable.
 
 # Frontend state
 
