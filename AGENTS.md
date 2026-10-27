@@ -8,6 +8,26 @@
 
 All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests are squash-merged, so the PR title becomes the commit title. Verify the title before creating or updating a PR.
 
+## UI screenshots
+
+Every PR containing a user interface change must embed screenshots of the final
+running implementation at both desktop and mobile viewport sizes in its
+description. Cover each changed screen and relevant interaction state, and label
+each image with its screen/state and viewport dimensions. Inspect both layouts
+and fix visible defects before publishing; refresh affected screenshots after
+subsequent UI fixes.
+
+Use durable image URLs accessible to reviewers and verify that the images render
+in the PR. Local file paths, temporary development URLs, and links to CI artifacts
+alone do not satisfy this requirement. Follow `.github/pull_request_template.md`.
+
+Display the same desktop and mobile screenshots inline in the originating agent
+implementation thread's final response so the owner can review them in either
+place. Also show current screenshots in that thread before enqueueing or merging
+a UI PR. If capture or image hosting is blocked, report the concrete blocker;
+do not claim readiness or enqueue or merge the PR without the required images.
+PRs without UI changes may mark screenshots as not applicable.
+
 # Frontend state
 
 - Use Zustand for shared game state. Keep one authoritative source for each value; derive affordability, eligibility, counts, and other computed values with pure selectors.
