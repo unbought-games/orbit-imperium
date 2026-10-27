@@ -5,8 +5,9 @@ import type {
   MouseEventHandler,
 } from 'react'
 import { useId } from 'react'
-import { ArrowDown, Hammer, FlaskConical } from 'lucide-react'
+import { FlaskConical } from 'lucide-react'
 import { classes } from './classes'
+import { VisuallyHidden } from './visually-hidden'
 import styles from './image-catalog.module.css'
 export type CatalogSprite = {
   columns: number
@@ -147,6 +148,7 @@ export function ImageTile({
         type={href ? undefined : 'button'}
         className={classes(
           styles.tile,
+          !!action && styles.withAction,
           selected && styles.selected,
           locked && styles.locked,
           props.disabled && styles.unavailable,
@@ -174,9 +176,26 @@ export function ImageTile({
         </span>
         <span className={styles.caption}>
           <span>{title}</span>
-          <strong>
-            {countLabel} {level}
-          </strong>
+          {progress && progress.kind !== 'research' ? (
+            <strong
+              id={progressId}
+              role="group"
+              aria-label="Construction progress"
+            >
+              {countLabel} {level} →{' '}
+              <b aria-label={`Target level ${progress.targetLevel}`}>
+                {countLabel} {progress.targetLevel}
+              </b>
+              <VisuallyHidden>
+                {' '}
+                · {progress.status} · {progress.countdown}
+              </VisuallyHidden>
+            </strong>
+          ) : (
+            <strong>
+              {countLabel} {level}
+            </strong>
+          )}
           {inspectable && (props.disabled || locked) && (
             <small>
               {props.disabled
@@ -185,40 +204,25 @@ export function ImageTile({
             </small>
           )}
         </span>
-        {progress && (
+        {progress && !action && (
           <span
-            id={progressId}
+            id={progress.kind === 'research' ? progressId : undefined}
             className={styles.progress}
-            role="group"
+            role={progress.kind === 'research' ? 'group' : undefined}
             aria-label={
-              progress.kind === 'research'
-                ? 'Research progress'
-                : 'Construction progress'
+              progress.kind === 'research' ? 'Research progress' : undefined
             }
           >
-            <span className={styles.progressHeader}>
-              <span
-                className={styles.direction}
-                aria-label={
-                  progress.kind === 'research'
-                    ? 'Researching'
-                    : progress.direction === 'up'
-                      ? 'Upgrading'
-                      : 'Tearing down'
-                }
-              >
-                {progress.kind === 'research' ? (
+            {progress.kind === 'research' && (
+              <span className={styles.progressHeader}>
+                <span className={styles.direction} aria-label="Researching">
                   <FlaskConical size={14} aria-hidden="true" />
-                ) : progress.direction === 'up' ? (
-                  <Hammer size={14} aria-hidden="true" />
-                ) : (
-                  <ArrowDown size={14} aria-hidden="true" />
-                )}
+                </span>
+                <strong aria-label={`Target level ${progress.targetLevel}`}>
+                  {progress.targetLevel}
+                </strong>
               </span>
-              <strong aria-label={`Target level ${progress.targetLevel}`}>
-                {progress.targetLevel}
-              </strong>
-            </span>
+            )}
             <span className={styles.countdown}>
               {progress.countdown}
               {progress.status !== 'In progress' &&
@@ -229,7 +233,7 @@ export function ImageTile({
           </span>
         )}
       </Tile>
-      {action}
+      {action && <div className={styles.action}>{action}</div>}
     </div>
   )
 }

@@ -241,7 +241,7 @@ export function WorkSummaries({
                         >
                           <span>{name}</span>{' '}
                           <span className={styles.workTiming}>
-                            {workSummaryTiming(work.status, countdown(due))}
+                            {workSummaryTiming(work.status, work.countdown)}
                           </span>
                         </Link>
                       ) : (
