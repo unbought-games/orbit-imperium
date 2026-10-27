@@ -4,6 +4,19 @@ import styles from './player-alliance.module.css'
 
 export type AllianceIdentity = components['schemas']['AllianceIdentity']
 export type PlayerAlliances = Readonly<Record<string, AllianceIdentity>>
+
+export function sameAlliance(
+  viewer: AllianceIdentity | null | undefined,
+  target: AllianceIdentity | null | undefined,
+): boolean {
+  return (
+    !!viewer &&
+    !!target &&
+    viewer.id === target.id &&
+    viewer.universe === target.universe
+  )
+}
+
 // Even an empty historical map suppresses current affiliations. Old reports
 // cannot acquire intelligence from a player's subsequent alliance membership.
 export const HistoricalAlliances = createContext<PlayerAlliances | undefined>(
