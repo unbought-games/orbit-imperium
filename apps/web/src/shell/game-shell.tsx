@@ -136,6 +136,8 @@ export function GameShell() {
       search: dispatchSearch(draft),
       state: {
         dispatchObservation: {
+          ships: draft.ships,
+          speed: draft.speed,
           target: draft.target,
           observedAt: draft.observedAt,
         },

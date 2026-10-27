@@ -4,10 +4,10 @@ import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { Button } from '../ui/button'
-import { NumberInput } from '../ui/form'
 import { bodyName, coordinates, label } from '../ui/format'
-import { formatWholeNumber } from '../ui/whole-number'
 import { useGameScreen } from '../shell/screen-context'
+import { SimulationFields } from './simulation-fields'
+import { SimulationFlight } from './simulation-flight'
 import { SimulationPlanning } from './combat-simulation-planning'
 import {
   simulationFields,
@@ -132,11 +132,6 @@ function SimulationForm({
           </time>{' '}
           ({reportAge(report.observed_at, now)}).
         </p>
-        <p>
-          This is a historical snapshot. Resources, fleets, defenses and
-          research may have changed. Unknown is not zero. Player edits are
-          assumptions; the target is never refreshed.
-        </p>
         <form
           onSubmit={(event) => {
             event.preventDefault()
@@ -166,36 +161,11 @@ function SimulationForm({
                     Assume all unknown values are zero
                   </Button>
                 )}
-                {fields
-                  .filter((f) => f.side === side)
-                  .map((field) => (
-                    <label key={field.key} className={styles.field}>
-                      <span>
-                        {label(field.label)}
-                        {field.available !== undefined && (
-                          <span title="Ships currently stationed on the selected planet">
-                            {' '}
-                            ({formatWholeNumber(field.available)} available)
-                          </span>
-                        )}
-                        <small>
-                          {edits[field.key] !== undefined
-                            ? `Player assumption${field.value !== null ? ` · ${field.source.toLowerCase()}: ${field.value}` : ' · not observed'}`
-                            : field.value === null
-                              ? 'Unknown · not observed'
-                              : field.source}
-                        </small>
-                      </span>
-                      <NumberInput
-                        aria-label={`${sideNames[side]} ${label(field.label)}`}
-                        value={edits[field.key] ?? field.value ?? ''}
-                        placeholder="Unknown"
-                        onChange={(event) =>
-                          edit({ [field.key]: event.target.value })
-                        }
-                      />
-                    </label>
-                  ))}
+                <SimulationFields
+                  fields={fields.filter((f) => f.side === side)}
+                  edits={edits}
+                  edit={edit}
+                />
               </fieldset>
             ))}
           </div>
@@ -219,17 +189,37 @@ function SimulationForm({
             {running ? 'Simulating…' : 'Run 10 battles'}
           </Button>
         </form>
+        <SimulationFlight
+          model={model}
+          report={report}
+          fields={fields}
+          edits={edits}
+          onClose={onClose}
+        />
         {result && (
           <section aria-label="Simulation results" aria-live="polite">
-            <h3>Sample results</h3>
+            <h3>Sample results · attacker perspective</h3>
             <p>A sample of possible outcomes, not a prediction or guarantee.</p>
             <div className={styles.outcomes}>
               {simulationSummary(result).map((row) => (
-                <p key={row.outcome}>
+                <p
+                  key={row.outcome}
+                  className={
+                    row.outcome === 'AttackerVictory'
+                      ? styles.win
+                      : row.outcome === 'DefenderVictory'
+                        ? styles.loss
+                        : undefined
+                  }
+                >
                   <strong>
                     {row.count} / {result.samples.length}
                   </strong>{' '}
-                  {label(row.outcome)}
+                  {row.outcome === 'AttackerVictory'
+                    ? 'Victory · attacker wins'
+                    : row.outcome === 'DefenderVictory'
+                      ? 'Defeat · defender wins'
+                      : label(row.outcome)}
                 </p>
               ))}
             </div>
@@ -280,6 +270,14 @@ function SimulationForm({
             <SimulationPlanning result={result} />
           </section>
         )}
+        <details className={styles.help}>
+          <summary>About report snapshots and assumptions</summary>
+          <p>
+            This is a historical snapshot. Resources, fleets, defenses and
+            research may have changed. Unknown is not zero. Player edits are
+            assumptions; the target is never refreshed.
+          </p>
+        </details>
       </div>
     </dialog>,
     document.body,
