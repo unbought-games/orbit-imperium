@@ -9,7 +9,8 @@ All browser assets live in `apps/web/public/` and are copied into the production
 build by Vite. URLs start at `/`, so icons work from nested browser-history routes.
 
 - `favicon.svg`: the approved moon-and-ship mark on a navy tile for contrast in
-  both light and dark browser tabs; generated from `brand-mark.svg`.
+  both light and dark browser tabs; generated from `brand-mark.svg` with the
+  same centered 85% foreground scale as the home-screen icon.
 - `favicon-16.png`, `favicon-32.png`, `favicon-48.png`: individual raster exports.
 - `favicon.ico`: contains those three native-resolution PNG frames for fallback.
 - `brand-mark.svg`: transparent display mark for the shared wordmark. A tapered
@@ -22,9 +23,8 @@ build by Vite. URLs start at `/`, so icons work from nested browser-history rout
   the lettering is live SVG text, not outlined paths.
 - `icon.svg`: the same mark and navy tile, with a 64-unit viewBox and 1024px
   dimensions; generated from `brand-mark.svg`. The foreground is scaled to 85%
-  around the tile center, leaving at least 12% clear space at each edge. This
-  padding applies only to home-screen icons; the favicon retains its larger mark
-  for readability at small sizes.
+  around the tile center, leaving at least 12% clear space at each edge. The
+  favicon uses this same padding.
 - `icon-1024.png`: 1024 × 1024 RGBA export of the app icon, preserving its
   rounded silhouette and transparent outer corners.
 - `apple-touch-icon.png`: 180 × 180 app icon, flattened against navy for iOS.
@@ -74,11 +74,12 @@ are preserved. Component styles reference tokens, including overview gradients.
 
 ## Editing and export
 
-Edit `brand-mark.svg` and `brand-wordmark.svg` directly, keeping their core hex
-colors in sync with the named tokens. Run `node scripts/export-brand.mjs` to
-refresh the combined lockup, favicon SVG, app icon SVG, and both home-screen PNGs
-from those masters. The script uses Sharp to render the PNGs and flattens the
-touch icon against navy. Render favicon PNGs directly from `favicon.svg` at their
-required sizes with Sharp.
-Assemble the ICO using the three corresponding PNG frames. Do not upscale the
-16px raster to produce larger files. Flatten the touch icon against `#0d1827`.
+Canonical masters and the export recipe are maintained in the shared brand
+workspace at `assets/orbit-imperium/identity/`; this repository keeps independent
+copies of the masters and generator. Keep their core hex colors in sync with the
+named tokens. Run `node scripts/export-brand.mjs` to refresh the combined lockup,
+favicon SVG/PNGs/ICO, app icon SVG, and both home-screen PNGs from the local
+masters. The script uses Sharp to render every favicon PNG directly at its native
+size, packages those same frames in the ICO, and flattens the touch icon against
+`#0d1827`. Optional source and output directory arguments support the canonical
+brand workspace without adding a build dependency on it.
