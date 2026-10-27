@@ -74,6 +74,21 @@ test('harvest reports distinguish new collections, zero collections and historic
         await expect(symbol).toHaveCSS('color', name === 'metal' ? 'rgb(203, 182, 141)' : canonicalColor)
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+      // Resources and ship entries stay together at the left, including on
+      // wide screens; available page width must not spread these facts apart.
+      for (const entries of [report.getByRole('group', { name: 'Resource amounts' }).locator(':scope > span'), report.locator('dl > div')]) {
+        const boxes = await entries.evaluateAll(elements => elements.map(element => {
+          const { x, y, width } = element.getBoundingClientRect()
+          return { x, y, width }
+        }))
+        expect(boxes.length).toBeGreaterThan(1)
+        for (let i = 1; i < boxes.length; i++) {
+          expect(boxes[i].y).toBe(boxes[0].y)
+          const gap = boxes[i].x - boxes[i - 1].x - boxes[i - 1].width
+          expect(gap).toBeGreaterThanOrEqual(12)
+          expect(gap).toBeLessThanOrEqual(32)
+        }
+      }
       await diagnosticScreenshot(page, { path: `test-results/harvest-${state}-${width}.png`, fullPage: true })
       await page.getByRole('link', { name: 'Back to reports' }).click()
     }

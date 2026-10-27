@@ -98,6 +98,16 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+.harvest .resources {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+.harvest .grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
 .targetSection {
   padding-bottom: 4px;
   border-bottom: 1px solid #cbb68d30;

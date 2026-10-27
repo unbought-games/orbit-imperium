@@ -392,7 +392,11 @@ function ReportObservationContent({
       <Panel
         as="section"
         aria-label="Report observation"
-        className={styles.observation}
+        className={
+          kind === 'Harvested'
+            ? `${styles.observation} ${styles.harvest}`
+            : styles.observation
+        }
       >
         <Text>
           {label(text(kind))}
