@@ -736,6 +736,33 @@ async fn transport_requires_auth_csrf_binding_and_valid_content() {
         .0,
         StatusCode::OK
     );
+    // Valid 4,000-scalar content may use JSON surrogate escapes (e.g. Python
+    // clients). Bound the wire envelope without rejecting valid decoded text.
+    let unicode = f.social_request(
+        0,
+        SocialAction::Send {
+            player: f.bindings[1].player,
+            body: "🌌".repeat(4000),
+        },
+    );
+    let wire = serde_json::to_string(&unicode)
+        .unwrap()
+        .replace("🌌", "\\ud83c\\udf0c");
+    assert!(wire.len() > 32 * 1024);
+    let response = app
+        .clone()
+        .oneshot(
+            Request::post(&url)
+                .header("content-type", "application/json")
+                .header("cookie", format!("orbit_session={}", f.sessions[0].token))
+                .header("origin", "https://game.test")
+                .header("x-csrf-token", &f.sessions[0].csrf)
+                .body(Body::from(wire))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
     for body in [" ".into(), "x".repeat(4001)] {
         assert!(
             f.store

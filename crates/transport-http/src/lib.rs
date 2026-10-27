@@ -245,7 +245,7 @@ where
         )
         .route(
             "/api/v4/universes/{id}/social/commands",
-            post(social::command::<S>).layer(DefaultBodyLimit::max(32 * 1024)),
+            post(social::command::<S>).layer(DefaultBodyLimit::max(64 * 1024)),
         )
         .route(
             "/api/v4/universes/{id}/alliances/query",
