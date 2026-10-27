@@ -192,6 +192,20 @@ export class SocialController {
         })
     }
   }
+  // Read-position acknowledgements must not disable the composer or replace an
+  // uncertain send. This transition is monotonic and safe to retry independently.
+  async markRead(player: string, message: string) {
+    const gen = this.generation
+    try {
+      const result = await this.ports.command({
+        command_id: this.ports.newId(),
+        action: { type: 'Read', player, message },
+      })
+      return gen === this.generation && result !== null
+    } catch {
+      return false
+    }
+  }
   async run(action: SocialAction) {
     if (this.store.getState().busy || this.store.getState().pending)
       return false

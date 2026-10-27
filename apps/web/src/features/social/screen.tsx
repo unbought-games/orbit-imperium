@@ -3,7 +3,11 @@ import { universeSlug } from '../../client-model/universe-name'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { bindingKey } from '../../client-model/commands'
-import type { SocialController, SocialQuery } from '../../client-model/social'
+import type {
+  SocialController,
+  SocialQuery,
+  SocialView,
+} from '../../client-model/social'
 import { useGameSession } from '../../shell/session-context'
 import { useProfilePlayers } from '../../shell/player-profiles-context'
 import { Button } from '../../ui/button'
@@ -33,10 +37,11 @@ export function MessagesScreen() {
 function useReadPosition(
   controller: SocialController,
   player: string | undefined,
-  latest: string | undefined,
+  history: SocialView | null,
   busy: boolean,
 ) {
   const marked = useRef('')
+  const latest = history?.messages.at(-1)?.id
   useEffect(() => {
     if (
       busy ||
@@ -49,12 +54,10 @@ function useReadPosition(
     const state = controller.store.getState()
     if (state.pending || state.busy) return
     marked.current = latest
-    void controller
-      .run({ type: 'Read', player, message: latest })
-      .then((ok) => {
-        if (!ok) marked.current = ''
-      })
-  }, [controller, player, latest, busy])
+    void controller.markRead(player, latest).then((ok) => {
+      if (!ok) marked.current = ''
+    })
+  }, [controller, player, latest, history, busy])
 }
 function Workspace() {
   const { view, universeName } = useGameSession()
@@ -82,7 +85,7 @@ function Workspace() {
       search: { body: search.body, player },
     })
   }
-  useReadPosition(controller, search.player, history?.messages.at(-1)?.id, busy)
+  useReadPosition(controller, search.player, history, busy)
   useProfilePlayers([
     ...(state.list?.conversations.map((c) => c.contact.player) ?? []),
     ...(state.list?.contacts.map((c) => c.player) ?? []),

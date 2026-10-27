@@ -119,3 +119,21 @@ describe('social controller', () => {
     expect(c.store.getState().pending).toBeNull()
   })
 })
+it('read acknowledgements never lock the composer or replace an uncertain send', async () => {
+  const read = defer<{ command_id: string; message: null }>()
+  const c = new SocialController({
+    newId: () => 'id',
+    read: async () => view(),
+    command: async (r) =>
+      r.action.type === 'Read'
+        ? read.promise
+        : Promise.reject(Error('network')),
+  })
+  const acknowledgement = c.markRead('peer', 'm1')
+  expect(c.store.getState().busy).toBe(false)
+  await c.run({ type: 'Send', player: 'peer', body: 'hello' })
+  expect(c.store.getState().pending?.action.type).toBe('Send')
+  read.resolve({ command_id: 'id', message: null })
+  expect(await acknowledgement).toBe(true)
+  expect(c.store.getState().pending?.action.type).toBe('Send')
+})
