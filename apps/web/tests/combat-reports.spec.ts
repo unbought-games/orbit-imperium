@@ -48,7 +48,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
             Battlecruiser: 10000,
             Bomber: 5000,
             Destroyer: 3000,
-            Deathstar: 100,
+            Dreadnought: 100,
             LargeCargo: 5000,
           }
         : { LightFighter: 12, SmallCargo: 2 },
@@ -62,7 +62,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
             Battleship: 15000,
             Battlecruiser: 8000,
             Destroyer: 2000,
-            Deathstar: 50,
+            Dreadnought: 50,
             RocketLauncher: 100000,
             LightLaser: 60000,
             HeavyLaser: 20000,

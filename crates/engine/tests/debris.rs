@@ -51,8 +51,21 @@ fn snapshot(index: usize) -> (GameState, OrderedInput) {
     (serde_json::from_value(facts).unwrap(), input)
 }
 
+fn historical_rules() -> Ruleset {
+    let mut rules = Ruleset::mvp_fleets().unwrap();
+    // These immutable replay fixtures predate the disabled ship's catalog rename.
+    // Their gameplay definitions are unchanged; replay with the recorded identity
+    // so the original paid terms, fact hashes and outcome assertions stay intact.
+    // This fixture-only identity is never used to load or write live rules.
+    rules.hash = historical_case(0).1.profile_hash;
+    for index in 1..5 {
+        assert_eq!(historical_case(index).1.profile_hash, rules.hash);
+    }
+    rules
+}
+
 fn apply(state: &mut GameState, input: &OrderedInput) -> ChangeSet {
-    let result = transition(state, input, &Ruleset::mvp_fleets().unwrap());
+    let result = transition(state, input, &historical_rules());
     let TransitionResult::Applied(changes) = result else {
         panic!("{result:?}")
     };
@@ -263,7 +276,7 @@ fn cleanup_and_normal_return_at_equal_timestamps_follow_input_order() {
 #[test]
 fn historical_journal_replay_preserves_original_outcome_hashes() {
     // Captured from 8406eb6aa8d2972c96bb58e40dc75f7d319ce047 before this change.
-    let rules = Ruleset::mvp_fleets().unwrap();
+    let rules = historical_rules();
     for index in 0..5 {
         let (facts, input, expected) = historical_case(index);
         let replayed = replay_legacy_debris_transition(&facts, &input, &rules).unwrap();
@@ -292,7 +305,7 @@ fn historical_replay_keeps_stale_event_hashes_and_rejects_inconsistent_counters(
         field: OperationId(uuid::Uuid::from_u128(900)),
         generation: 0,
     });
-    let rules = Ruleset::mvp_fleets().unwrap();
+    let rules = historical_rules();
     let replayed = replay_legacy_debris_transition(&facts, &input, &rules).unwrap();
     assert_eq!(
         replayed["Applied"]["expected_facts_hash"],

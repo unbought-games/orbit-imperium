@@ -11,6 +11,6 @@
   "rapid_fire_from": {
     "SmallCargo": 5, "LargeCargo": 5, "LightFighter": 5, "HeavyFighter": 5,
     "Cruiser": 5, "Battleship": 5, "Battlecruiser": 5, "Bomber": 5,
-    "Destroyer": 5, "Deathstar": 1250, "ColonyShip": 5, "Recycler": 5
+    "Destroyer": 5, "Dreadnought": 1250, "ColonyShip": 5, "Recycler": 5
   }
 }

@@ -56,7 +56,7 @@ describe('technical data', () => {
     const entries: S['CatalogEntry3'][] = [
       ship('Cruiser', 5),
       ship('LightFighter', 2),
-      { ...ship('Deathstar', 12), enabled: false },
+      { ...ship('Dreadnought', 12), enabled: false },
       { ...ship('SolarSatellite', 3), body_kinds: ['Moon'] as ['Moon'] },
       { ...entry, key: { kind: 'Research', id: 'EnergyTechnology' } },
     ]

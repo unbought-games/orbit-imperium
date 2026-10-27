@@ -8,6 +8,24 @@ fn retained(bytes: &[u8]) -> Ruleset {
 }
 
 #[test]
+fn dreadnought_identity_round_trips_in_catalogs_and_combat_maps() {
+    let key = CatalogKey::Ship(ShipType::Dreadnought);
+    let encoded = serde_json::to_value(key).unwrap();
+    assert_eq!(
+        encoded,
+        serde_json::json!({"kind": "Ship", "id": "Dreadnought"})
+    );
+    assert_eq!(serde_json::from_value::<CatalogKey>(encoded).unwrap(), key);
+    let ships = std::collections::BTreeMap::from([(ShipType::Dreadnought, 2)]);
+    let encoded = serde_json::to_value(&ships).unwrap();
+    assert_eq!(encoded, serde_json::json!({"Dreadnought": 2}));
+    assert_eq!(
+        serde_json::from_value::<std::collections::BTreeMap<ShipType, i32>>(encoded).unwrap(),
+        ships
+    );
+}
+
+#[test]
 fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
     let fresh = standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 3).unwrap();
     for bytes in [
@@ -67,7 +85,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
                 .artifact
                 .catalog
                 .iter()
-                .any(|e| e.key == CatalogKey::Ship(ShipType::Deathstar) && e.enabled)
+                .any(|e| e.key == CatalogKey::Ship(ShipType::Dreadnought) && e.enabled)
         );
     }
 }

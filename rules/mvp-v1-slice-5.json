@@ -835,7 +835,7 @@
     {
       "key": {
         "kind": "Ship",
-        "id": "Deathstar"
+        "id": "Dreadnought"
       },
       "body_kinds": [
         "Planet"

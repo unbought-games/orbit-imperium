@@ -128,7 +128,7 @@ pub enum ShipType {
     Battlecruiser,
     Bomber,
     Destroyer,
-    Deathstar,
+    Dreadnought,
     ColonyShip,
     SolarSatellite,
 }
