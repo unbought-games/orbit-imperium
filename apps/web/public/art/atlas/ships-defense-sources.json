@@ -275,8 +275,8 @@
       }
     },
     {
-      "key": "objects/deathstar",
-      "master": "masters/ships-defense/deathstar.png",
+      "key": "objects/dreadnought",
+      "master": "masters/ships-defense/dreadnought.png",
       "sizes": [
         96,
         320,
@@ -286,20 +286,23 @@
       "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
       "catalogKey": {
         "kind": "Ship",
-        "id": "Deathstar"
+        "id": "Dreadnought"
       },
       "dimensions": {
         "width": 1254,
         "height": 1254
       },
       "alpha": true,
-      "sha256": "58610f7af53826f6371f627fd1bbb48d59924c7e4098789364ac7df74fbd3b63",
+      "sha256": "5af4a0e6bb39cc0d752b81d51e231e4d13897ec874d1234a3d327cf39fae157b",
       "silhouetteBounds": {
-        "left": 37,
-        "top": 177,
-        "width": 1198,
-        "height": 928
-      }
+        "left": 0,
+        "top": 0,
+        "width": 1254,
+        "height": 1254
+      },
+      "generatedOn": "2026-10-26",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated crescent siege Dreadnought artwork for Orbit Imperium, matching the existing fleet palette. No third-party game artwork."
     },
     {
       "key": "objects/colony-ship",

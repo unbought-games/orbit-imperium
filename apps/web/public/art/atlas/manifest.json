@@ -3588,8 +3588,8 @@
       ]
     },
     {
-      "key": "objects/deathstar",
-      "master": "masters/ships-defense/deathstar.png",
+      "key": "objects/dreadnought",
+      "master": "masters/ships-defense/dreadnought.png",
       "sizes": [
         96,
         320,
@@ -3599,20 +3599,23 @@
       "crop": "Complete centered silhouette; contain, never cover. Exporter adds 6% inset.",
       "catalogKey": {
         "kind": "Ship",
-        "id": "Deathstar"
+        "id": "Dreadnought"
       },
       "dimensions": {
         "width": 1254,
         "height": 1254
       },
       "alpha": true,
-      "sha256": "58610f7af53826f6371f627fd1bbb48d59924c7e4098789364ac7df74fbd3b63",
+      "sha256": "5af4a0e6bb39cc0d752b81d51e231e4d13897ec874d1234a3d327cf39fae157b",
       "silhouetteBounds": {
-        "left": 37,
-        "top": 177,
-        "width": 1198,
-        "height": 928
+        "left": 0,
+        "top": 0,
+        "width": 1254,
+        "height": 1254
       },
+      "generatedOn": "2026-10-26",
+      "tool": "OpenAI built-in image_gen",
+      "provenance": "Original AI-generated crescent siege Dreadnought artwork for Orbit Imperium, matching the existing fleet palette. No third-party game artwork.",
       "sourceFragment": "ships-defense-sources.json",
       "effectiveSourceDimensions": {
         "width": 1254,
@@ -3620,31 +3623,31 @@
       },
       "variants": [
         {
-          "path": "objects/deathstar-96.webp",
+          "path": "objects/dreadnought-96.webp",
           "width": 96,
           "height": 96,
-          "bytes": 4378,
+          "bytes": 5140,
           "alpha": true
         },
         {
-          "path": "objects/deathstar-320.webp",
+          "path": "objects/dreadnought-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 24138,
+          "bytes": 28450,
           "alpha": true
         },
         {
-          "path": "objects/deathstar-640.webp",
+          "path": "objects/dreadnought-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 81188,
+          "bytes": 93556,
           "alpha": true
         },
         {
-          "path": "objects/deathstar-1200.webp",
+          "path": "objects/dreadnought-1200.webp",
           "width": 1200,
           "height": 1200,
-          "bytes": 238488,
+          "bytes": 284628,
           "alpha": true
         }
       ]

@@ -28,7 +28,7 @@ manufacturing formula applies: at Shipyard 3, one ship takes 3,600 seconds at
 1× economy speed or 360 seconds at 10×.
 
 The historical matrix also contains relationships involving Solar Satellites,
-Battlecruisers, and Deathstars. Those ships remain unsupported; their eventual
+Battlecruisers, and Dreadnoughts. Those ships remain unsupported; their eventual
 content additions must add the corresponding relationships. References to
 undefined combat units are rejected by the rules validator.
 

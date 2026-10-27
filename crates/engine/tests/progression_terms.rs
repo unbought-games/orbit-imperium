@@ -8,7 +8,7 @@ fn progression_profile_has_exact_selected_closure() {
     assert_eq!(rules.speed, 10);
     assert_eq!(
         rules.hash.0,
-        "4e5eff1be2e97e0baa2bb6317f13f6abdd2afea774e5a40a27d9c6c5158e2584"
+        "5f3f20ea292a960783c20e6adbcaa311e989bb3120b5254d1b561f5c1f67eca4"
     );
     let enabled: Vec<_> = rules
         .artifact

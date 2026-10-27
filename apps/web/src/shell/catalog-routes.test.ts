@@ -6,6 +6,7 @@ import type { BoundView } from '../client-model/commands'
 it('uses readable stable item slugs and routes each catalog kind to its category', () => {
   expect(catalogSlug('ImpulseDrive')).toBe('impulse-drive')
   expect(catalogSlug('SmallShieldDome')).toBe('small-shield-dome')
+  expect(catalogSlug('Dreadnought')).toBe('dreadnought')
   expect(catalogSlug('metal-mine')).toBe('metal-mine')
   for (const [key, page] of [
     [{ kind: 'Building', id: 'MetalMine' }, 'resources'],
@@ -13,6 +14,7 @@ it('uses readable stable item slugs and routes each catalog kind to its category
     [{ kind: 'Building', id: 'LunarBase' }, 'facilities'],
     [{ kind: 'Research', id: 'ImpulseDrive' }, 'research'],
     [{ kind: 'Ship', id: 'SolarSatellite' }, 'shipyard'],
+    [{ kind: 'Ship', id: 'Dreadnought' }, 'shipyard'],
     [{ kind: 'Defense', id: 'LightLaser' }, 'defense'],
   ] as const)
     expect(catalogPage(key)).toBe(page)

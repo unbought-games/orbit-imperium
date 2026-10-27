@@ -121,7 +121,7 @@ const catalog: S['CatalogEntry3'][] = [
     body_kinds: ['Planet'],
   },
   {
-    key: { kind: 'Ship', id: 'Deathstar' },
+    key: { kind: 'Ship', id: 'Dreadnought' },
     requirements: [],
     enabled: false,
     mobile: true,
@@ -620,8 +620,8 @@ test('manufacturing updates totals locally and Build validates without dismissin
   const { sent, inspections } = await setup(page)
   await navigate(page, 'Shipyard')
   await expect(
-    page.getByRole('link', { name: 'Build Deathstar', exact: true }),
-  ).toHaveAttribute('title', 'Deathstar · unavailable in this universe')
+    page.getByRole('link', { name: 'Build Dreadnought', exact: true }),
+  ).toHaveAttribute('title', 'Dreadnought · unavailable in this universe')
   await page
     .getByRole('link', { name: 'Build Small Cargo', exact: true })
     .click()
@@ -1459,11 +1459,11 @@ test('unknown catalog IDs and inaccessible planets fail closed while disabled it
     await expect(page.getByRole('region', { name: 'Progression quote' })).toHaveCount(0)
     await expect(page).toHaveURL(path)
   }
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/deathstar`)
+  await page.goto(`/u/andromeda/b/${body.id}/shipyard/dreadnought`)
   const detail = page.getByRole('region', { name: 'Progression quote' })
   await expect(detail).toContainText('Unavailable in this universe.')
   await expect(detail.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
-  expect(inspections.some(r => r.type === 'Manufacture' && r.item.id === 'Deathstar')).toBe(false)
+  expect(inspections.some(r => r.type === 'Manufacture' && r.item.id === 'Dreadnought')).toBe(false)
   expect(sent).toEqual([])
 })
 
@@ -2238,7 +2238,7 @@ for (const width of [390, 1280]) {
         await expect(disclosure).toContainText('Replaced when Impulse Drive reaches level 8')
         await expect(disclosure).toContainText('Level 6')
         await expect(disclosure.getByRole('link', { name: 'Small Cargo', exact: true })).toBeVisible()
-        await expect(disclosure).not.toContainText('Deathstar')
+        await expect(disclosure).not.toContainText('Dreadnought')
       }
       await expect.poll(() => disclosure.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
       await summary.scrollIntoViewIfNeeded()

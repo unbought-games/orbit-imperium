@@ -5485,7 +5485,7 @@ export interface components {
         /** @enum {unknown} */
         ResearchId3: "CombustionDrive" | "ComputerTechnology" | "EnergyTechnology" | "EspionageTechnology" | "WeaponsTechnology" | "ShieldingTechnology" | "ArmourTechnology" | "LaserTechnology" | "IonTechnology" | "PlasmaTechnology" | "HyperspaceTechnology" | "ImpulseDrive" | "HyperspaceDrive" | "Astrophysics" | "IntergalacticResearchNetwork" | "GravitonTechnology";
         /** @enum {unknown} */
-        ShipId3: "SmallCargo" | "LightFighter" | "Recycler" | "EspionageProbe" | "LargeCargo" | "HeavyFighter" | "Cruiser" | "Battleship" | "Battlecruiser" | "Bomber" | "Destroyer" | "Deathstar" | "ColonyShip" | "SolarSatellite";
+        ShipId3: "SmallCargo" | "LightFighter" | "Recycler" | "EspionageProbe" | "LargeCargo" | "HeavyFighter" | "Cruiser" | "Battleship" | "Battlecruiser" | "Bomber" | "Destroyer" | "Dreadnought" | "ColonyShip" | "SolarSatellite";
         /** @enum {unknown} */
         DefenseId3: "RocketLauncher" | "SmallShieldDome" | "LightLaser" | "HeavyLaser" | "GaussCannon" | "IonCannon" | "PlasmaTurret" | "LargeShieldDome";
         CatalogKey3: {
