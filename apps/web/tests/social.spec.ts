@@ -187,13 +187,15 @@ for (const viewport of [
     expect(await position()).toEqual(before)
     await expect(composer).toBeFocused()
     await expect(composer).toBeEnabled()
-    // Full-page captures start at the top so fixed navigation is not composited midway down.
+    // Capture the conversation header and composer at their actual viewport positions.
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, {
       path: `test-results/messages-refresh-${viewport.width}.png`,
-      fullPage: true,
     })
     await page.evaluate((y) => window.scrollTo(0, y), before.pageY)
+    await diagnosticScreenshot(page, {
+      path: `test-results/messages-composer-${viewport.width}.png`,
+    })
     releasePoll()
     // The disabled paging button tells us the unchanged response has settled.
     await expect(
