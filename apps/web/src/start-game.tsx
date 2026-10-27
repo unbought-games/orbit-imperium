@@ -22,6 +22,13 @@ export async function startGame() {
     root.render(<SupporterPreview />)
     return
   }
+  if (import.meta.env.DEV && location.pathname === '/action-sheet-playground') {
+    const { ActionSheetPlayground } = await import(
+      './dev/action-sheet-playground'
+    )
+    root.render(<ActionSheetPlayground />)
+    return
+  }
   if (import.meta.env.DEV && location.pathname === '/detail-playground') {
     const { DetailPlayground } = await import('./dev/detail-playground')
     root.render(<DetailPlayground />)

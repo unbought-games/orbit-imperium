@@ -73,7 +73,7 @@
   --button-ink: var(--text-muted);
   --button-min-size: 24px;
   --button-padding: 4px;
-  border-radius: var(--radius-control);
+  border-radius: var(--button-radius, var(--radius-control));
   font-weight: inherit;
 }
 :where(.small) {
@@ -115,7 +115,7 @@
   }
   :where(.ghost:not(:disabled):not([aria-disabled='true'])):hover {
     color: var(--text);
-    background: #ffffff14;
+    background-color: #ffffff14;
   }
 }
 :where(.ghost:not(:disabled):not([aria-disabled='true'])):is(
@@ -126,7 +126,7 @@
   [aria-current='page']
 ) {
   color: var(--text);
-  background: #ffffff14;
+  background-color: #ffffff14;
 }
 :where(.button:not(:disabled):not([aria-disabled='true'])):active {
   transform: translateY(1px);
@@ -134,7 +134,7 @@
 }
 :where(.ghost:not(:disabled):not([aria-disabled='true'])):active {
   color: var(--text);
-  background: #ffffff24;
+  background-color: #ffffff24;
 }
 :where(
     .button:not(.ghost):not(:disabled):not([aria-disabled='true'])

@@ -1,0 +1,23 @@
+.debris {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.sendRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, 1fr);
+  gap: var(--space-3);
+  align-items: end;
+}
+.help {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+.help > p {
+  margin-block: var(--space-2);
+}
+.customize {
+  width: 100%;
+  margin-top: var(--space-3);
+}

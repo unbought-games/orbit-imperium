@@ -1,0 +1,128 @@
+:where(.surface) {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-page);
+  isolation: isolate;
+}
+:where(.dialog) {
+  position: fixed;
+  inset: 0 auto auto 0;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  overflow: clip;
+  background: transparent;
+  color: var(--text);
+}
+.dialog::backdrop {
+  background: transparent;
+}
+:where(.backdrop) {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  touch-action: none;
+}
+:where(.sheet) {
+  position: absolute;
+  left: 50%;
+  bottom: -64px;
+  width: 100%;
+  max-width: 640px;
+  overflow: hidden;
+  border: 1px solid var(--border-accent);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  background: linear-gradient(
+    145deg,
+    var(--surface-raised),
+    var(--surface) 45%
+  );
+  box-shadow:
+    0 -16px 64px #0008,
+    inset 0 1px var(--champagne-shadow);
+  will-change: transform;
+  touch-action: pan-y;
+}
+:where(.handleRow) {
+  position: relative;
+  height: 48px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+:where(.handle) {
+  width: calc(100% - 112px);
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.handle:active {
+  cursor: grabbing;
+}
+.handle > span {
+  width: 42px;
+  height: 5px;
+  border-radius: 5px;
+  background: var(--champagne);
+}
+.handle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -5px;
+}
+:where(.close) {
+  --button-radius: 50%;
+  --button-min-size: var(--control-size);
+  position: absolute;
+  /* The 44px hit area shares the sheet's 22px corner center. Its inset
+     circular face follows the same curve without touching the border. */
+  right: -1px;
+  top: -1px;
+  padding: var(--space-1);
+  background-clip: content-box;
+}
+.close:focus-visible {
+  outline-offset: -4px;
+}
+:where(.content) {
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-inline: var(--space-5);
+  padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+  scroll-padding-block: var(--space-4);
+  /* Children retain native vertical gestures; only the handle starts a sheet drag. */
+  touch-action: pan-y;
+}
+:where(.heading) {
+  padding-bottom: var(--space-4);
+}
+.heading > h2 {
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-weight: 400;
+}
+.heading > p {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+:where(.srOnly) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
