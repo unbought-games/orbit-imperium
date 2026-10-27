@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { useLocation } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -22,12 +22,14 @@ export function GalaxyNavigation({
   galaxies,
   systems,
   browse,
+  fleetSlots,
 }: {
   galaxy: number
   system: number
   galaxies: number
   systems: number
   browse: (galaxy: number, system: number) => void
+  fleetSlots?: ReactNode
 }) {
   // Only user edits live here; the URL remains the committed source of truth.
   const [edits, setEdits] = useState<{ galaxy?: string; system?: string }>({})
@@ -139,6 +141,7 @@ export function GalaxyNavigation({
       <Button type="submit" variant="secondary">
         Go
       </Button>
+      {fleetSlots}
       {(invalidGalaxy || invalidSystem) && (
         <p id={errorId} role="alert" className={styles.coordinateError}>
           {invalidGalaxy &&
