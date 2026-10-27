@@ -49,12 +49,13 @@ html[data-ios-standalone] {
   outline-offset: 3px;
 }
 /* Match the mobile shell, including touch devices in landscape/tablet layouts.
-   Keep DOM focus and focus containment; suppress only its visual outlines.
+   Keep DOM focus and persistent location-selection outlines. Components own
+   their focus-within decoration so ancestors keep non-focus outlines.
    Important lets this policy win over route-loaded component styles. */
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  :is(:focus, :focus-visible, :focus-within),
-  :is(:focus, :focus-visible, :focus-within)::before,
-  :is(:focus, :focus-visible, :focus-within)::after {
+  :is(:focus, :focus-visible):not([aria-current='location']),
+  :is(:focus, :focus-visible):not([aria-current='location'])::before,
+  :is(:focus, :focus-visible):not([aria-current='location'])::after {
     outline: none !important;
   }
 }
