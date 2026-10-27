@@ -68,3 +68,39 @@ it('derives turret gates, unlocks and artwork from the enabled catalog', () => {
   expect(details.art.src).toBe('/art/atlas/objects/plasma-turret-1200.webp')
   expect(details.description).toContain('Shipyard 8 and Plasma Technology 7')
 })
+
+it('derives Bomber unlocks and presents its Impulse-only role', () => {
+  const definition = JSON.parse(
+    readFileSync('rules/content/bomber.json', 'utf8'),
+  )
+  const bomber: Entry = {
+    key: { kind: 'Ship', id: 'Bomber' },
+    enabled: true,
+    mobile: true,
+    body_kinds: ['Planet'],
+    requirements: definition.requirements,
+  }
+  for (const [key, level] of [
+    [{ kind: 'Research', id: 'PlasmaTechnology' }, 5],
+    [{ kind: 'Research', id: 'ImpulseDrive' }, 6],
+    [{ kind: 'Building', id: 'Shipyard' }, 8],
+  ] as const) {
+    expect(technicalUnlocks({ ...plasma, key }, [bomber], 'Planet')).toEqual([
+      { entry: bomber, level },
+    ])
+    expect(
+      technicalUnlocks(
+        { ...plasma, key },
+        [{ ...bomber, enabled: false }],
+        'Planet',
+      ),
+    ).toEqual([])
+  }
+  const details = catalogContent(bomber.key)
+  expect(details.art.src).toBe('/art/atlas/objects/bomber-1200.webp')
+  expect(details.description).toContain(
+    'Shipyard 8, Impulse Drive 6 and Plasma Technology 5',
+  )
+  expect(details.description).toContain('no Hyperspace upgrade is available')
+  expect(catalogContent(plasma.key).description).toContain('Bombers at level 5')
+})
