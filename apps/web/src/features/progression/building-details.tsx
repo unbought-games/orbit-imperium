@@ -19,7 +19,6 @@ import { ConstructionDetails } from './construction-details'
 import { buildingInsights, affordabilityForecast } from './detail-insights'
 import {
   DetailLayout,
-  DetailIntroduction,
   DetailSection,
   DetailStat,
   DetailRow,
@@ -140,14 +139,15 @@ export function BuildingDetails({
         <DetailSection
           title={
             firstBuild
-              ? undefined
+              ? unavailable
+                ? undefined
+                : 'First Build'
               : action === 'Demolition'
                 ? `Tear down to level ${terms?.target_level ?? Math.max(0, level - 1)}`
                 : `Next · level ${terms?.target_level ?? level + 1}`
           }
           label="Target level and benefit"
         >
-          {firstBuild && !unavailable && <DetailIntroduction name={title} />}
           {unavailable && <p role="status">{unavailable}</p>}
           {loading && <p role="status">Loading building details…</p>}
           {error && (

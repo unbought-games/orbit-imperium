@@ -105,15 +105,3 @@ export function DetailRow({
     </div>
   )
 }
-
-/** A compact empty footprint introduces the first construction decision. */
-export function DetailIntroduction({ name }: { name: string }) {
-  return (
-    <div className={styles.introduction}>
-      <div className={styles.emptyFootprint}>
-        <span>No {name}</span>
-      </div>
-      <h3>First Build</h3>
-    </div>
-  )
-}
