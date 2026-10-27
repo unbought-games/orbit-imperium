@@ -159,3 +159,14 @@ test('custom maximum and desktop layout keep all controls accessible', async ({ 
   await topAt(page, 215.2)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+test('native dialog closure releases scroll locking and restores the opener', async ({ page }) => {
+  await open(page)
+  // Native method="dialog" forms and requestClose() use this close path.
+  await dialog(page).evaluate((element: HTMLDialogElement) => element.close())
+  await expect(dialog(page)).not.toBeVisible()
+  await expect.poll(() => page.evaluate(() => document.body.style.position)).toBe('')
+  await expect(page.getByRole('button', { name: 'Open snap sheet', exact: true })).toBeFocused()
+  await open(page)
+  await expect(handle(page)).toBeFocused()
+})

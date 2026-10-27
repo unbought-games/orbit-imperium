@@ -59,6 +59,7 @@ export function useActionSheet(options: ActionSheetOptions) {
   const handle = useRef<HTMLButtonElement>(null)
   const scroll = useRef<HTMLDivElement>(null)
   const opener = useRef<HTMLElement | null>(null)
+  const internalClose = useRef(false)
   const unlock = useRef<(() => void) | null>(null)
   const restoreSurface = useRef<(() => void) | null>(null)
   const animation = useRef<ReturnType<typeof animate> | null>(null)
@@ -126,6 +127,8 @@ export function useActionSheet(options: ActionSheetOptions) {
     [],
   )
   const finishClose = useCallback(() => {
+    // Internal completion/unmount must not masquerade as a user dismissal.
+    internalClose.current = true
     restoreSurface.current?.()
     restoreSurface.current = null
     dialog.current?.close()
@@ -134,6 +137,18 @@ export function useActionSheet(options: ActionSheetOptions) {
     if (opener.current?.isConnected)
       opener.current.focus({ preventScroll: true })
   }, [])
+
+  const nativeClose = useCallback(
+    (stillOpen: boolean) => {
+      if (internalClose.current || stillOpen) return
+      // A native dialog form can close before the controlled prop changes.
+      // Release its document lock even though no exit animation remains to run.
+      stopAnimation()
+      finishClose()
+      if (latest.current.options.open) close()
+    },
+    [stopAnimation, finishClose, close],
+  )
 
   useLayoutEffect(() => {
     const element = dialog.current
@@ -149,6 +164,7 @@ export function useActionSheet(options: ActionSheetOptions) {
             : null)
         unlock.current = lockSheetDocument()
         y.set(maxHeight + SHEET_PAINT_EXTENSION)
+        internalClose.current = false
         element.showModal()
         // The wrapper must never become the scrolling element (including on focus).
         element.scrollTop = 0
@@ -300,6 +316,7 @@ export function useActionSheet(options: ActionSheetOptions) {
     keyHandle,
     focusContent,
     close,
+    nativeClose,
     snapTo: settle,
   }
 }

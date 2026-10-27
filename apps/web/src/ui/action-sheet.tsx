@@ -52,9 +52,7 @@ export function ActionSheet({
         event.preventDefault()
         sheet.close()
       }}
-      onClose={(event) => {
-        if (options.open && !event.currentTarget.open) sheet.close()
-      }}
+      onClose={(event) => sheet.nativeClose(event.currentTarget.open)}
     >
       <motion.div
         className={styles.backdrop}
