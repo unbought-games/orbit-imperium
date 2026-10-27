@@ -40,20 +40,26 @@ for (const [scene, title, action] of examples) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (scene === 'mine-zero') {
       await expect(page.getByLabel('Current level and benefit')).toHaveCount(0)
-      const empty = page.getByText('No Metal Mine', { exact: true })
       const firstBuild = page.getByRole('heading', { name: 'First Build', exact: true })
-      await expect(empty).toBeVisible()
+      await expect(page.getByText('No Metal Mine', { exact: true })).toHaveCount(0)
       await expect(firstBuild).toBeVisible()
+      await expect(page.getByLabel('Target level and benefit').locator(':scope > :first-child')).toHaveText('First Build')
+      const spacing = await firstBuild.evaluate(heading => {
+        const header = heading.closest('article')!.querySelector('header')!
+        const metrics = heading.parentElement!.querySelector('dl')!
+        return {
+          above: heading.getBoundingClientRect().top - header.getBoundingClientRect().bottom,
+          below: metrics.getBoundingClientRect().top - heading.getBoundingClientRect().bottom,
+        }
+      })
+      expect(spacing.above).toBeGreaterThan(0)
+      expect(spacing.below).toBeCloseTo(spacing.above, 1)
       await expect(page.getByText('Next · level 1', { exact: true })).toHaveCount(0)
       await expect(page.getByRole('progressbar')).toHaveCount(0)
       await expect(page.getByText('63 / h', { exact: true })).toBeVisible()
       await expect(page.getByText('Energy balance', { exact: true })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Solar Plant', exact: true })).toHaveCount(0)
       await expect(button).toHaveText('Build Metal Mine')
-      const emptyBox = (await empty.boundingBox())!
-      const firstBuildBox = (await firstBuild.boundingBox())!
-      expect(firstBuildBox.y).toBeGreaterThan(emptyBox.y + emptyBox.height)
-      expect(firstBuildBox.y - emptyBox.y).toBeLessThan(60)
       expect(box.y + box.height).toBeLessThan(500)
       const costs = page.getByRole('group', { name: 'Required resources', exact: true })
       await expect(costs.getByRole('button', { name: 'Metal details', exact: true })).toHaveText('60')

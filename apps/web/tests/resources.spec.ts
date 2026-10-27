@@ -470,7 +470,7 @@ test('level zero buildings offer upgrades without a tear-down option', async ({
     .getByRole('link', { name: 'Upgrade Deuterium Synthesizer', exact: true })
     .click()
   const quote = page.getByRole('region', { name: 'Progression quote' })
-  await expect(quote).toContainText('No Deuterium Synthesizer')
+  await expect(quote).not.toContainText('No Deuterium Synthesizer')
   await expect(quote.getByRole('heading', { name: 'First Build', exact: true })).toBeVisible()
   await expect(quote.getByLabel('Current level and benefit')).toHaveCount(0)
   await expect(
