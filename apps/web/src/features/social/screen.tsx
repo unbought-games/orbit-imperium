@@ -259,7 +259,9 @@ function Workspace() {
                 Back to conversations
               </Button>
             )}
-            {state.loadingHistory && <p role="status">Loading messages…</p>}
+            {state.loadingHistory && !history && (
+              <p role="status">Loading messages…</p>
+            )}
             {history?.contact && (
               <>
                 <h2>

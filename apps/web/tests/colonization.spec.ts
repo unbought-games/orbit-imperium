@@ -100,6 +100,7 @@ for(const success of [true,false])test(`colonization ${success?'success links to
 
 
 test('occupied colony positions retain the actionable error through shared dispatch validation', async ({ page }) => {
+  await page.clock.install()
   const source = { ...body, inventories: [{ item: { kind: 'Ship' as const, id: 'ColonyShip' as const }, count: '1' }] }
   await setup(page, [source])
   let resolved = 0
@@ -117,13 +118,19 @@ test('occupied colony positions retain the actionable error through shared dispa
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect.poll(() => observed).toBe(1)
+  await page.clock.pauseAt(new Date())
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
   await setDestination(page, { position: '8' })
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
+  // Settle the debounced read-only preview before explicitly requesting review.
+  // Otherwise runner speed decides whether one or both resolve requests occur.
+  await page.clock.runFor(250)
+  await expect.poll(() => resolved).toBe(1)
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('This position is occupied. Choose an empty position.')
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(resolved).toBe(1)
+  expect(resolved).toBe(2) // One preview resolve and one explicit review resolve.
 })
 
 
