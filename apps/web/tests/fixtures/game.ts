@@ -84,7 +84,11 @@ export async function installGameFixture(
   )
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() !== 'document') return route.fallback()
-    const response = await route.fetch()
+    // The local HTML connection can reset during reload. Retry only safe GET
+    // transport resets; Playwright still exposes HTTP errors and exhausted retries.
+    const response = await route.fetch({
+      maxRetries: route.request().method() === 'GET' ? 2 : 0,
+    })
     const html = (await response.text()).replace(
       /(<script id="orbit-bootstrap" type="application\/json">)[\s\S]*?(<\/script>)/,
       '$1$2',

@@ -2,6 +2,41 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { binding, body, shellFixture } from './fixtures/game'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
+import { createServer } from 'node:http'
+
+test('fixture document loading recovers connection resets without retrying HTTP errors', async ({ page }) => {
+  const requests = new Map<string, number>()
+  const server = createServer((request, response) => {
+    const path = request.url ?? '/'
+    const count = (requests.get(path) ?? 0) + 1
+    requests.set(path, count)
+    // Reproduce the socket hang-up observed during fixture page.reload().
+    if (path === '/reset' && count === 1) {
+      request.socket.destroy()
+      return
+    }
+    response.writeHead(path === '/unavailable' ? 503 : 200, { 'content-type': 'text/html' })
+    response.end('<script id="orbit-bootstrap" type="application/json">{"server":"observation"}</script><h1>Fixture document</h1>')
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = server.address()
+    if (!address || typeof address === 'string') throw Error('Expected test server port')
+    await shellFixture(page)
+    const base = `http://127.0.0.1:${address.port}`
+    const recovered = await page.goto(`${base}/reset`)
+    expect(recovered?.status()).toBe(200)
+    expect(requests.get('/reset')).toBe(2)
+    await expect(page.getByRole('heading', { name: 'Fixture document' })).toBeVisible()
+    await expect(page.locator('#orbit-bootstrap')).toHaveText('')
+    const unavailable = await page.goto(`${base}/unavailable`)
+    expect(unavailable?.status()).toBe(503)
+    expect(requests.get('/unavailable')).toBe(1)
+  } finally {
+    server.closeAllConnections()
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
+  }
+})
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/analytics', (route) =>
