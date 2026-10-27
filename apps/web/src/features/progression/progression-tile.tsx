@@ -3,6 +3,7 @@ import { ImageTile } from '../../ui/image-catalog'
 import type { ProgressionProps } from './shared'
 import type { ProgressionRequest } from './options'
 import { useBuildingCost } from './use-progression-options'
+import { BuildingQuickBuild } from './building-quick-build'
 import { canAfford } from '../../client-model/resources'
 
 /** Keeps server cost inputs separate from affordability, which follows live balances. */
@@ -26,11 +27,25 @@ export function ProgressionTile({
       ? view.bodies.find((body) => body.id === request.body)
       : null
   const unaffordable = !!cost && !!body && !canAfford(cost, body.amounts)
-  return (
-    <ImageTile
-      {...tile}
-      inspectable={request?.type === 'Upgrade'}
-      unaffordable={unaffordable}
-    />
-  )
+  const props = {
+    ...tile,
+    inspectable: request?.type === 'Upgrade',
+    unaffordable,
+  }
+  if (request?.type === 'Upgrade' && body)
+    return (
+      <BuildingQuickBuild
+        key={`${request.body}:${request.building}`}
+        model={model}
+        view={view}
+        body={body}
+        request={request}
+        tile={props}
+        unavailable={
+          tile.disabled ? (tile.disabledReason ?? 'Unavailable') : ''
+        }
+        cost={cost}
+      />
+    )
+  return <ImageTile {...props} />
 }

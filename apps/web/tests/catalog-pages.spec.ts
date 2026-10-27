@@ -254,7 +254,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
   return fixture
 }
 
-test('facility rows have no upgrade action and require confirmation on the detail page', async ({
+test('facility rows offer quick build while retaining detail-page confirmation', async ({
   page,
 }) => {
   const { sent, planet, blockers } = await setup(page, true)
@@ -266,15 +266,16 @@ test('facility rows have no upgrade action and require confirmation on the detai
     'No Free Field',
   )
   const quick = page.getByRole('button', {
-    name: 'Start upgrade Robotics Factory',
+    name: 'Build Robotics Factory level 1',
     exact: true,
   })
   await expect(quick).toHaveCount(0)
   await page.getByRole('link', { name: /^Back to / }).click()
+  await expect(quick).toBeDisabled()
   blockers.length = 0
   planet.fields++
   await refreshGame(page)
-  await expect(quick).toHaveCount(0)
+  await expect(quick).toBeEnabled()
   await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
   expect(sent).toHaveLength(0)
   const confirm = page.getByRole('button', { name: 'Confirm upgrade', exact: true })
@@ -1678,7 +1679,9 @@ test('clickable catalog cards keep artwork and labels left aligned independently
     }],
   })
   await navigate(page, 'Facilities')
-  await expect(page.getByRole('button', { name: /^Start upgrade / })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Build Robotics Factory/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Build Research Lab', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Build Shipyard', exact: true })).toBeDisabled()
   for (const width of [1440, 768, 767, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     for (const title of ['Robotics Factory', 'Research Lab', 'Shipyard']) {
