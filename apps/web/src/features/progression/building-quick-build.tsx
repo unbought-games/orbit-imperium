@@ -2,7 +2,7 @@ import { useId, type ComponentProps } from 'react'
 import { ImageTile } from '../../ui/image-catalog'
 import { VisuallyHidden } from '../../ui/visually-hidden'
 import { Popover } from '../../ui/popover'
-import { Hammer } from 'lucide-react'
+import { Hammer, Info } from 'lucide-react'
 import type { components } from '../../contracts'
 import type { ProgressionProps } from './shared'
 import type { ProgressionRequest } from './options'
@@ -54,6 +54,7 @@ export function BuildingQuickBuild({
               <Button
                 type="button"
                 size="small"
+                className={styles.build}
                 padding="compact"
                 aria-label={
                   error
@@ -74,7 +75,7 @@ export function BuildingQuickBuild({
               <Popover
                 label={`${title} build`}
                 className={styles.details}
-                trigger="Details"
+                trigger={<Info size={18} aria-hidden="true" />}
               >
                 <div className={styles.review}>
                   <strong>

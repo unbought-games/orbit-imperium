@@ -1,13 +1,19 @@
 .action {
-  flex: 0 0 90px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
   align-self: center;
   padding: 4px;
   text-align: center;
   min-width: 0;
 }
+.build {
+  white-space: nowrap;
+}
 .details {
+  min-width: 44px;
   min-height: 44px;
-  text-decoration: underline;
 }
 .review {
   overflow-wrap: anywhere;
