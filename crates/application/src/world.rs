@@ -389,6 +389,15 @@ impl<S: GameStore> GameService<S> {
     }
 }
 
+/// Pure evaluator projection; only test-support operators can load its inputs.
+#[cfg(feature = "test-support")]
+pub fn lab_world_projection(
+    snapshot: &ViewerSnapshot,
+    context: QueryContext,
+) -> Result<BoundView4, ServiceError> {
+    projection::world_projection(snapshot, context.binding.player, context)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

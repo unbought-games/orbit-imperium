@@ -497,7 +497,9 @@ pub(crate) async fn require_destination_observation(
     if matches!(d, orbit_engine::MissionDestination::Body { .. }) {
         return Ok(());
     }
-    let known:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bot_observations WHERE universe=$1 AND player=$2 AND epoch=$3 AND response->'Ok'->'facts'->'data'=$4)")
+    // ReadSnapshot flattens facts into the successful response. Match the
+    // retained destination exactly; an unobserved coordinate stays forbidden.
+    let known:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bot_observations WHERE universe=$1 AND player=$2 AND epoch=$3 AND response->'Ok'->'data'=$4)")
         .bind(b.universe.0).bind(b.player.0).bind(b.epoch.0).bind(sqlx::types::Json(d)).fetch_one(&mut **tx).await.map_err(db_error)?;
     if known {
         Ok(())

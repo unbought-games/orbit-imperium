@@ -1091,3 +1091,30 @@ pub(crate) fn header(
         shared: row.try_get("shared").map_err(db_error)?,
     })
 }
+
+#[cfg(feature = "test-support")]
+impl PgStore {
+    /// Privileged evaluator read, never exposed by the gameplay router.
+    pub async fn lab_fleet_quote(
+        &self,
+        b: Binding,
+        intent: FleetIntent,
+    ) -> Result<serde_json::Value, StoreError> {
+        let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
+        crate::binding::check_read(&mut tx, b).await?;
+        let snapshot = self
+            .world_snapshot_in_tx(
+                &mut tx,
+                b,
+                Some(&WorldQueryKind::FleetQuote {
+                    intent: intent.clone(),
+                }),
+            )
+            .await?;
+        let (facts, _) = snapshot.facts;
+        let quote = quote_fleet(&facts.state, b.player, &intent, facts.at, &facts.rules)
+            .map_err(StoreError::GameRejected)?;
+        tx.commit().await.map_err(db_error)?;
+        serde_json::to_value(quote).map_err(|_| StoreError::CorruptData)
+    }
+}

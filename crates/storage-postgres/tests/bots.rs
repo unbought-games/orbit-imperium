@@ -883,3 +883,87 @@ async fn shared_report_bot_kinds_follow_redacted_ids_and_identity_option() {
         .unwrap();
     }
 }
+
+#[tokio::test]
+async fn observed_coordinate_destinations_authorize_quotes_without_free_scanning() {
+    use orbit_engine::{Coordinates, DestinationSelection, FleetIntent};
+    use serde_json::json;
+    let (store, pool, u) = setup(100).await;
+    let b = store.create_bot(u, "colonist", 0).await.unwrap();
+    let other = store.create_bot(u, "other-colonist", 0).await.unwrap();
+    let game = GameService::new(store.clone());
+    let body: Uuid = sqlx::query_scalar("SELECT id FROM bodies WHERE owner=$1")
+        .bind(b.player.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let other_body: Uuid = sqlx::query_scalar("SELECT id FROM bodies WHERE owner=$1")
+        .bind(other.player.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let coordinates = Coordinates {
+        galaxy: 1,
+        system: 100,
+        position: 8,
+    };
+    let mut intent: FleetIntent = serde_json::from_value(json!({
+        "origin":body,"destination":{"type":"EmptyPosition","coordinates":coordinates,"slot_revision":"0"},
+        "mission":"Colonize","ships":[{"owner":b.player,"ship_type":"ColonyShip","count":"1"}],
+        "cargo":{"metal":"0","crystal":"0","deuterium":"0"},"speed_percent":100
+    })).unwrap();
+    let query = |intent: &FleetIntent| WorldQueryKind::FleetQuote {
+        intent: intent.clone(),
+    };
+    assert!(matches!(
+        store.bound_world_query(b, query(&intent)).await,
+        Err(StoreError::NotFound)
+    ));
+    let resolved = game
+        .world_query(
+            principal(b),
+            WorldQuery {
+                context: context(b),
+                query: WorldQueryKind::ResolveDestination {
+                    selection: DestinationSelection::EmptyPositionAt { coordinates },
+                },
+            },
+        )
+        .await
+        .unwrap();
+    intent.destination = serde_json::from_value(resolved.data.clone()).unwrap();
+    // Exercise the real persisted observation and scoped quote loading. The bot
+    // still needs to buy a ship before the engine can approve a launch.
+    store.bound_world_query(b, query(&intent)).await.unwrap();
+    assert_eq!(
+        store.bot_status(principal(b)).await.unwrap().allowance_used,
+        1
+    );
+    let mut unseen = intent.clone();
+    unseen.destination = serde_json::from_value(json!({"type":"EmptyPosition",
+        "coordinates":{"galaxy":1,"system":100,"position":9},"slot_revision":"0"}))
+    .unwrap();
+    assert!(matches!(
+        store.bound_world_query(b, query(&unseen)).await,
+        Err(StoreError::NotFound)
+    ));
+    let mut foreign = intent.clone();
+    foreign.origin = BodyId(other_body);
+    foreign.ships[0].owner = other.player;
+    assert!(matches!(
+        store.bound_world_query(other, query(&foreign)).await,
+        Err(StoreError::NotFound)
+    ));
+    assert_eq!(
+        store
+            .bot_status(principal(other))
+            .await
+            .unwrap()
+            .allowance_used,
+        0
+    );
+    assert_eq!(
+        store.bot_status(principal(b)).await.unwrap().allowance_used,
+        1
+    );
+}

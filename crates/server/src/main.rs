@@ -3,6 +3,8 @@ mod audit_cli;
 mod bots_cli;
 mod config;
 mod engine_executor;
+#[cfg(feature = "test-support")]
+mod lab_support;
 mod metrics;
 mod rules_cli;
 mod runtime;

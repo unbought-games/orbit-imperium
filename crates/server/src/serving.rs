@@ -92,9 +92,14 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
             signup_per_minute: prepared.legacy_signup_per_minute,
             legacy_signup_enabled: prepared.legacy_enabled,
             login_per_minute: serve.login_per_minute,
-            wake: Some(wake),
+            wake: Some(wake.clone()),
             observer: Some(metrics),
         };
+        #[cfg(feature = "test-support")]
+        let lab_router = std::env::var("ORBIT_LAB_WAKE_TOKEN")
+            .ok()
+            .filter(|token| token.len() >= 32)
+            .map(|token| crate::lab_support::router(wake, token, store.clone()));
         Some(HttpTask(tokio::spawn(async move {
             let public = async move {
                 if let Some(listener) = listener {
@@ -108,6 +113,12 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
                                 oidc,
                                 serve.profiles,
                             );
+                            #[cfg(feature = "test-support")]
+                            let router = if let Some(lab) = lab_router {
+                                router.merge(lab)
+                            } else {
+                                router
+                            };
                             if let Some(integration) = analytics {
                                 router.merge(integration.router())
                             } else {

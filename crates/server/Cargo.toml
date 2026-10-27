@@ -29,5 +29,5 @@ reqwest = { version = "=0.12.28", default-features = false, features = ["json", 
 tokio = { workspace = true, features = ["test-util"] }
 
 [features]
-test-support = ["orbit-storage-postgres/test-support"]
+test-support = ["orbit-storage-postgres/test-support", "orbit-application/test-support"]
 universe-config-bridge = []
