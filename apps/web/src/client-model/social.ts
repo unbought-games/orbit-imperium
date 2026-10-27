@@ -34,8 +34,20 @@ export function mergeMessages(
     (a, b) => (BigInt(a.sequence) < BigInt(b.sequence) ? -1 : 1),
   )
 }
+/** Confirmed read positions override an older inbox observation, never newer mail. */
+export function conversationUnread(
+  conversation: S['SocialConversation'],
+  readPositions: Record<string, string>,
+) {
+  return (
+    conversation.unread &&
+    BigInt(conversation.latest.sequence) >
+      BigInt(readPositions[conversation.contact.player] ?? '0')
+  )
+}
 export class SocialController {
   readonly store = createStore<{
+    readPositions: Record<string, string>
     alliance: S['AllianceDetail'] | null
     list: SocialView | null
     history: SocialView | null
@@ -46,6 +58,7 @@ export class SocialController {
     error: string
     completed: SocialRequest | null
   }>(() => ({
+    readPositions: {},
     alliance: null,
     list: null,
     history: null,
@@ -61,6 +74,7 @@ export class SocialController {
   private historyGeneration = 0
   private player: string | null = null
   private expandedList = false
+  private newerRequested = false
   private query: SocialQuery = {
     type: 'Conversations',
     cursor: null,
@@ -81,7 +95,9 @@ export class SocialController {
     this.listGeneration++
     this.historyGeneration++
     this.player = null
+    this.newerRequested = false
     this.store.setState({
+      readPositions: {},
       alliance: null,
       list: null,
       history: null,
@@ -145,13 +161,18 @@ export class SocialController {
   }
   async open(player: string | null) {
     this.player = player
+    this.newerRequested = false
     this.historyGeneration++
     this.store.setState({ history: null, loadingHistory: false, error: '' })
     if (player) await this.history()
   }
   async history(direction: 'latest' | 'older' | 'newer' = 'latest') {
     const player = this.player
-    if (!player || this.store.getState().loadingHistory) return
+    if (!player) return
+    if (this.store.getState().loadingHistory) {
+      if (direction === 'newer') this.newerRequested = true
+      return
+    }
     const old = this.store.getState().history
     const before = direction === 'older' ? (old?.next_cursor ?? null) : null
     const after =
@@ -182,7 +203,7 @@ export class SocialController {
       this.store.setState({ history: merged, loadingHistory: false })
       // Drain bounded forward pages in order. Never jump to the newest page and skip a gap.
       if (direction === 'newer' && after && view.next_cursor)
-        await this.history('newer')
+        this.newerRequested = true
     } catch (e) {
       if (gen === this.historyGeneration)
         this.store.setState({
@@ -191,17 +212,35 @@ export class SocialController {
           ...([401, 403, 404].includes(status(e)) ? { history: null } : {}),
         })
     }
+    if (gen === this.historyGeneration && this.newerRequested) {
+      this.newerRequested = false
+      await this.history('newer')
+    }
   }
   // Read-position acknowledgements must not disable the composer or replace an
   // uncertain send. This transition is monotonic and safe to retry independently.
   async markRead(player: string, message: string) {
     const gen = this.generation
+    const sequence = this.store
+      .getState()
+      .history?.messages.find((m) => m.id === message)?.sequence
     try {
       const result = await this.ports.command({
         command_id: this.ports.newId(),
         action: { type: 'Read', player, message },
       })
-      return gen === this.generation && result !== null
+      if (gen !== this.generation || result === null) return false
+      if (sequence)
+        this.store.setState((state) => ({
+          readPositions: {
+            ...state.readPositions,
+            [player]:
+              BigInt(sequence) > BigInt(state.readPositions[player] ?? '0')
+                ? sequence
+                : state.readPositions[player],
+          },
+        }))
+      return true
     } catch {
       return false
     }

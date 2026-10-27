@@ -429,10 +429,12 @@ function RankingDetails({
   onClose: () => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
+  const closeButton = useRef<HTMLButtonElement>(null)
   const title = useId()
   useLayoutEffect(() => {
     const element = dialog.current
     element?.showModal()
+    closeButton.current?.focus()
     return () => {
       if (element?.open) element.close()
     }
@@ -477,7 +479,11 @@ function RankingDetails({
       )}
       <p>From the ranking snapshot currently displayed.</p>
       <p>{scoring}</p>
-      <Button variant="secondary" onClick={() => dialog.current?.close()}>
+      <Button
+        ref={closeButton}
+        variant="secondary"
+        onClick={() => dialog.current?.close()}
+      >
         Close
       </Button>
     </dialog>,

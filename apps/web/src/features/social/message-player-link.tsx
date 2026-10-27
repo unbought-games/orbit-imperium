@@ -1,3 +1,4 @@
+import styles from './social.module.css'
 import { universeSlug } from '../../client-model/universe-name'
 import { useContext } from 'react'
 import { MessageSquare } from 'lucide-react'
@@ -19,6 +20,8 @@ export function MessagePlayerLink({
     return null
   return (
     <Link
+      data-message-player
+      className={styles.playerLink}
       to="/u/$universe/messages"
       params={{ universe: universeSlug(session.universeName) }}
       search={{ player }}

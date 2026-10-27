@@ -163,3 +163,17 @@
     display: none;
   }
 }
+
+.targetName {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-inline-end: 26px;
+}
+.targetName [data-message-player] {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}

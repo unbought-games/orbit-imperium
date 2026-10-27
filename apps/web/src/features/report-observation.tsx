@@ -258,11 +258,13 @@ function ReportObservationContent({
                 />
               )}
               <div className={styles.targetInfo}>
-                <PlayerName
-                  messageAction
-                  player={text(target.owner)}
-                  names={playerNames}
-                />
+                <span className={styles.targetName}>
+                  <PlayerName
+                    messageAction
+                    player={text(target.owner)}
+                    names={playerNames}
+                  />
+                </span>
                 <span className={styles.targetDetails}>
                   <BodyIdentity
                     coordinatesHidden={shared && !target.coordinates}

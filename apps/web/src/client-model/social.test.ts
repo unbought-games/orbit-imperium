@@ -3,6 +3,7 @@ import {
   SocialController,
   emptySocialView,
   mergeMessages,
+  conversationUnread,
   type SocialView,
   type SocialRequest,
   type SocialQuery,
@@ -136,4 +137,79 @@ it('read acknowledgements never lock the composer or replace an uncertain send',
   read.resolve({ command_id: 'id', message: null })
   expect(await acknowledgement).toBe(true)
   expect(c.store.getState().pending?.action.type).toBe('Send')
+})
+it('queues the post-send refresh behind an older-history page instead of dropping it', async () => {
+  const older = defer<SocialView>()
+  const queried: SocialQuery[] = []
+  const c = new SocialController({
+    newId: () => 'send',
+    command: async (r) => ({ command_id: r.command_id, message: 'm52' }),
+    read: async (q) => {
+      queried.push(q)
+      if (q.type !== 'Messages') return view()
+      if (q.before) return older.promise
+      if (q.after) return view({ messages: [msg(52)] })
+      return view({ messages: [msg(50), msg(51)], next_cursor: 'm50' })
+    },
+  })
+  await c.open('peer')
+  const page = c.history('older')
+  await c.run({ type: 'Send', player: 'peer', body: 'Message 52' })
+  expect(queried.some((q) => q.type === 'Messages' && q.after)).toBe(false)
+  older.resolve(view({ messages: [msg(49)] }))
+  await page
+  expect(queried.some((q) => q.type === 'Messages' && q.after === 'm51')).toBe(
+    true,
+  )
+  expect(c.store.getState().history?.messages.map((m) => m.id)).toEqual([
+    'm49',
+    'm50',
+    'm51',
+    'm52',
+  ])
+})
+it('confirmed read positions clear stale paged inbox badges without hiding newer unread messages', async () => {
+  const contact = {
+    player: 'peer',
+    username: 'Peer',
+    blocked: false,
+    request: null,
+    requested_by: null,
+    accepted: false,
+  }
+  const conversation = { contact, latest: msg(2), unread: true }
+  const c = new SocialController({
+    newId: () => 'read',
+    command: async (r) => ({ command_id: r.command_id, message: null }),
+    read: async (q) =>
+      q.type === 'Messages'
+        ? view({ contact, messages: [msg(1), msg(2)] })
+        : view({ conversations: [conversation], next_cursor: 'older' }),
+  })
+  await c.list()
+  await c.moreList()
+  await c.open('peer')
+  await c.markRead('peer', 'm2')
+  expect(
+    conversationUnread(conversation, c.store.getState().readPositions),
+  ).toBe(false)
+  await c.markRead('peer', 'm1')
+  expect(c.store.getState().readPositions.peer).toBe('2')
+  expect(
+    conversationUnread(
+      { ...conversation, latest: msg(3) },
+      c.store.getState().readPositions,
+    ),
+  ).toBe(true)
+  // A late inbox response contains the pre-read projection; the confirmed source
+  // marker still takes precedence without dropping the user's loaded pages.
+  await c.list()
+  expect(
+    conversationUnread(
+      c.store.getState().list!.conversations[0],
+      c.store.getState().readPositions,
+    ),
+  ).toBe(false)
+  c.clear()
+  expect(c.store.getState().readPositions).toEqual({})
 })

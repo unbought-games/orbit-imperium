@@ -1,3 +1,4 @@
+import { conversationUnread } from '../../client-model/social'
 import { MessageHistory } from './history'
 import { universeSlug } from '../../client-model/universe-name'
 import { useEffect, useRef, useState } from 'react'
@@ -144,7 +145,9 @@ function Workspace() {
                   fallback={c.contact.username}
                   linkAlliance={false}
                 />
-                {c.unread && <strong> · Unread</strong>}
+                {conversationUnread(c, state.readPositions) && (
+                  <strong> · Unread</strong>
+                )}
               </Button>
               <p className={styles.preview}>{c.latest.body}</p>
               <small>{new Date(c.latest.sent_at).toLocaleString()}</small>

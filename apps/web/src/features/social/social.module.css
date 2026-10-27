@@ -87,3 +87,10 @@
     display: none;
   }
 }
+
+.playerLink {
+  min-width: 24px;
+  min-height: 24px;
+  justify-content: center;
+  vertical-align: middle;
+}
