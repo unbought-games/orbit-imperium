@@ -13,13 +13,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.summary > div:last-child {
+  display: flex;
+}
 .summary > div:last-child dd {
-  overflow-x: auto;
+  flex: 1 1 16rem;
+  overflow: visible;
 }
 .summary > div:last-child dd > div {
-  flex-wrap: nowrap;
-  width: max-content;
-  min-width: 100%;
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 .costPlaceholder {

@@ -2501,3 +2501,39 @@ for (const gate of ['Shipyard', 'PlasmaTechnology', 'disabled'] as const) {
     expect(sent).toEqual([])
   })
 }
+
+for (const width of [320, 390, 1440]) {
+  test(`manufacturing wraps every exact resource cost at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page, false, { metal: '10000000000', crystal: '6000000000', deuterium: '2000000000' })
+    for (const [pageName, itemName, quantityLabel] of [
+      ['Shipyard', 'Small Cargo', 'Shipyard quantity'],
+      ['Defense', 'Rocket Launcher', 'Defenses quantity'],
+    ] as const) {
+      await navigate(page, pageName)
+      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
+      const order = page.getByRole('region', { name: 'New order', exact: true })
+      const costs = order.getByRole('group', { name: 'Required resources' })
+      for (const quantity of ['1', '123456789']) {
+        await order.getByRole('textbox', { name: quantityLabel }).fill(quantity)
+        for (const [resource, unit] of [['Metal', 10000n], ['Crystal', 6000n], ['Deuterium', 2000n]] as const) {
+          const amount = costs.getByRole('button', { name: `${resource} details`, exact: true })
+          await expect(amount).toHaveText((unit * BigInt(quantity)).toLocaleString('en-US'))
+          const bounds = await amount.boundingBox()
+          const container = await costs.locator('..').boundingBox()
+          expect(bounds!.x).toBeGreaterThanOrEqual(container!.x)
+          expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(container!.x + container!.width + 1)
+          expect(await amount.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+        }
+        expect(await costs.locator('..').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        const icons = await costs.locator('svg').evaluateAll(elements => elements.map(el => getComputedStyle(el).color))
+        expect(new Set(icons).size).toBe(3)
+        await diagnosticScreenshot(order, { path: `test-results/manufacturing-${pageName}-${width}-${quantity}.png` })
+      }
+      await order.getByRole('button', { name: 'Deuterium details', exact: true }).click()
+      await expect(page.getByRole('dialog', { name: 'Deuterium', exact: true })).toContainText('246,913,578,000')
+      await page.keyboard.press('Escape')
+    }
+  })
+}

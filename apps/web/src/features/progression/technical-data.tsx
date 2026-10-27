@@ -6,7 +6,6 @@ import { ResourceValue } from '../../ui/resource-value'
 import { Requirements } from '../../ui/requirements'
 import { DetailRow } from './detail-layout'
 import { ShipStatistics } from './ship-statistics'
-import { SatelliteOutput } from './satellite-output'
 import { CombatStatistics } from './combat-statistics'
 import {
   bonusPercent,
@@ -46,9 +45,6 @@ export function TechnicalData({
           {entry.key.kind === 'Ship' ? (
             <>
               <ShipStatistics entry={entry} />
-              {entry.key.id === 'SolarSatellite' && (
-                <SatelliteOutput view={view} body={body} />
-              )}
               {data && (
                 <dl className={styles.compare}>
                   {data.facts.map((fact, index) => (
