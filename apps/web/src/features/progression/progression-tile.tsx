@@ -38,13 +38,11 @@ export function ProgressionTile({
         key={`${request.body}:${request.building}`}
         model={model}
         view={view}
-        body={body}
         request={request}
         tile={props}
         unavailable={
           tile.disabled ? (tile.disabledReason ?? 'Unavailable') : ''
         }
-        cost={cost}
       />
     )
   return <ImageTile {...props} />

@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { useStore } from 'zustand'
+import { quickBuildFeedback, type BuildGesture } from './quick-build-feedback'
 import { buildingProgress } from '../../client-model/building-progress'
 import { pending } from './shared'
 import type { ProgressionProps } from './shared'
@@ -15,7 +18,17 @@ export function useBuildingQuickBuild({
   request: Extract<ProgressionRequest, { type: 'Upgrade' }>
   unavailable: string
 }) {
-  const work = buildingProgress(model.store.getState(), request.body)
+  const state = useStore(model.store)
+  const [gesture, setGesture] = useState<BuildGesture | null>(null)
+  const feedback = quickBuildFeedback(
+    state,
+    {
+      body: request.body,
+      item: { kind: 'Building', id: request.building },
+    },
+    gesture,
+  )
+  const work = buildingProgress(state, request.body)
   // Cost-only queries remain reusable while work is active. Command eligibility
   // must be inspected again after confirmed completion or cancellation.
   const inspection = useProgressionOptions(
@@ -42,11 +55,25 @@ export function useBuildingQuickBuild({
   return {
     ...inspection,
     reason,
+    feedback,
+    recover: () => {
+      if (feedback.recoveryId) void model.recover(feedback.recoveryId)
+    },
     submit: () => {
       // send rechecks the live store and records the intent synchronously before
       // its first await, fencing both rapid clicks and competing row actions.
-      if (!reason && command && inspection.proposal)
+      if (
+        !reason &&
+        feedback.phase === 'hammer' &&
+        command &&
+        inspection.proposal
+      ) {
+        const before = model.store.getState().attempts
         void model.send(command, inspection.proposal)
+        const after = model.store.getState()
+        const key = [...after.attempts.keys()].find((key) => !before.has(key))
+        if (key) setGesture({ key, at: after.now })
+      }
     },
   }
 }

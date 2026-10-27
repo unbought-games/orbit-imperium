@@ -1,20 +1,46 @@
 .action {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  justify-items: center;
+}
+.layer {
+  grid-area: 1 / 1;
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-  align-self: center;
-  padding: 4px;
-  text-align: center;
-  min-width: 0;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  opacity: 1;
+  /* Explicitly requested exception to the global no-transition rule. */
+  transition: opacity 180ms ease !important;
+}
+.layer[aria-hidden='true'] {
+  opacity: 0;
+}
+.layer[aria-hidden='true'] button {
+  pointer-events: none;
 }
 .build {
-  white-space: nowrap;
-}
-.details {
-  min-width: 44px;
+  width: 100%;
   min-height: 44px;
 }
-.review {
+.check {
+  color: #86d9ad;
+}
+.countdown {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   overflow-wrap: anywhere;
+}
+.problem {
+  margin: 4px 0 0;
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    transition: none !important;
+  }
 }

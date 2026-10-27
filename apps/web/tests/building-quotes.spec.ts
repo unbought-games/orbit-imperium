@@ -519,6 +519,7 @@ for (const [catalog, building] of [
     page,
   }) => {
     const fixture = await quickBuildFixture(page)
+    await page.clock.pauseAt(now + 1000)
     let release!: () => void
     fixture.gateCommand(
       new Promise<void>((resolve) => {
@@ -552,12 +553,44 @@ for (const [catalog, building] of [
         'Confirming',
       )
       await expect(build).toHaveCount(0)
+      const control = page.getByRole('group', {
+        name: `${building} quick build`,
+      })
+      await page.clock.runFor(250)
+      await expect(
+        control.getByRole('img', { name: 'Build requested; confirming' }),
+      ).toHaveCSS('opacity', '1')
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({
+          width,
+          height: width === 390 ? 844 : 1000,
+        })
+        await expect(control).toHaveAttribute('data-phase', 'check')
+        await diagnosticScreenshot(page, {
+          path: `test-results/${catalog}-quick-build-check-${width}.png`,
+        })
+      }
       release()
       await expect(
         page
           .getByRole('button', { name: 'Cancel construction', exact: true })
           .first(),
       ).toBeEnabled()
+      await page.clock.runFor(3000)
+      await expect(control).toHaveAttribute('data-phase', 'countdown')
+      await expect(control.getByLabel(`${building} time remaining`)).toHaveCSS(
+        'opacity',
+        '1',
+      )
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({
+          width,
+          height: width === 390 ? 844 : 1000,
+        })
+        await diagnosticScreenshot(page, {
+          path: `test-results/${catalog}-quick-build-countdown-${width}.png`,
+        })
+      }
       await row.click()
       await expect(
         page.getByRole('region', { name: 'Active construction' }),
@@ -580,13 +613,10 @@ test('quick build follows live affordability without requerying and confirmed co
     exact: true,
   })
   await expect(build).toBeDisabled()
-  await page
-    .getByRole('button', { name: 'Metal Mine build details', exact: true })
-    .click()
-  await expect(
-    page.getByRole('dialog', { name: 'Metal Mine build', exact: true }),
-  ).toContainText('Need')
-  await page.keyboard.press('Escape')
+  await expect(build).toHaveAccessibleDescription('Build requirements not met')
+  await build.evaluate((button) => (button as HTMLButtonElement).click())
+  await expect(page).toHaveURL(/\/resources$/)
+  expect(fixture.sent).toHaveLength(0)
   const before = fixture.queries()
   fixture.planets[0].amounts.metal = '60000000'
   await fixture.refresh()
@@ -641,11 +671,11 @@ for (const code of [
       page.getByRole('button', { name: 'Build Metal Mine level 2' }),
     ).toBeDisabled()
     await page
-      .getByRole('button', { name: 'Metal Mine build details', exact: true })
+      .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
       .click()
     await expect(
       page
-        .getByRole('dialog', { name: 'Metal Mine build', exact: true })
+        .getByRole('region', { name: 'Progression quote' })
         .getByLabel('Action blockers'),
     ).toContainText(code.replace(/([a-z])([A-Z])/g, '$1 $2'))
     expect(fixture.sent).toHaveLength(0)
@@ -685,22 +715,37 @@ test('quick build discards delayed quotes after switching planets', async ({
   }
 })
 
-test('quick build keeps inspection failures retryable and server rejection visible in the catalog', async ({
+test('quick build stays disabled on inspection failure and keeps server rejection visible', async ({
   page,
 }) => {
   const fixture = await quickBuildFixture(page)
   fixture.failOptions(true)
   fixture.reject()
   await page.goto(`/u/andromeda/b/${body.id}/resources`)
-  const retry = page.getByRole('button', {
-    name: 'Retry Metal Mine build details',
+  const build = page.getByRole('button', {
+    name: 'Build Metal Mine',
+    exact: true,
   })
+  await expect(build).toBeDisabled()
+  await expect(build).toHaveAccessibleDescription(
+    'Unable to inspect this action. Check your connection and try again.',
+  )
+  await build.evaluate((button) => (button as HTMLButtonElement).click())
+  expect(fixture.sent).toHaveLength(0)
+  await page
+    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
+    .click()
+  const retry = page.getByRole('button', { name: 'Retry', exact: true })
   await expect(retry).toBeEnabled()
   fixture.failOptions(false)
   await retry.click()
+  await expect(
+    page.getByRole('button', { name: 'Confirm upgrade' }),
+  ).toBeEnabled()
+  await page.getByRole('link', { name: /^Back to / }).click()
   await page.getByRole('button', { name: 'Build Metal Mine level 2' }).click()
   await expect(
-    page.getByRole('group', { name: 'Latest action result' }),
+    page.getByRole('group', { name: 'Build problem' }),
   ).toContainText(/resources/i)
   await expect(
     page.getByRole('button', { name: 'Build Metal Mine level 2' }),
@@ -710,7 +755,7 @@ test('quick build keeps inspection failures retryable and server rejection visib
 })
 
 for (const width of [320, 390, 1440]) {
-  test(`quick build keyboard, touch-sized controls and cost details at ${width}px`, async ({
+  test(`quick build stays inside the row with keyboard and touch-sized controls at ${width}px`, async ({
     page,
   }) => {
     const fixture = await quickBuildFixture(page)
@@ -728,37 +773,24 @@ for (const width of [320, 390, 1440]) {
     const box = (await build.boundingBox())!
     expect(box.height).toBeGreaterThanOrEqual(44)
     expect(box.width).toBeGreaterThanOrEqual(44)
-    // The action word must remain a single line, including narrow phones.
-    const textHeight = await build.evaluate((button) => {
-      const text = Array.from(button.childNodes).find(
-        (node) =>
-          node.nodeType === Node.TEXT_NODE &&
-          node.textContent?.includes('Build'),
-      )!
-      const range = document.createRange()
-      range.selectNode(text)
-      return range.getBoundingClientRect().height
-    })
-    expect(textHeight).toBeLessThan(25)
-    await page.keyboard.press('Tab')
-    const details = page.getByRole('button', {
-      name: 'Metal Mine build details',
-      exact: true,
-    })
-    await expect(details).toBeFocused()
-    const popup = page.getByRole('dialog', {
-      name: 'Metal Mine build',
-      exact: true,
-    })
-    await expect(popup).toContainText('Build time')
+    await expect(build).toHaveText('')
+    await expect(build).toHaveAccessibleName('Build Metal Mine level 2')
+    await expect(build).toHaveAttribute('title', 'Build Metal Mine level 2')
+    await expect(build).toHaveAttribute('data-button-variant', 'ghost')
     await expect(
-      popup.getByRole('group', { name: 'Required resources' }),
-    ).toContainText('60')
-    await diagnosticScreenshot(page, {
-      path: `test-results/quick-build-details-${width}.png`,
-    })
-    await page.keyboard.press('Escape')
-    await expect(popup).toHaveCount(0)
+      page.getByRole('button', { name: /build details/ }),
+    ).toHaveCount(0)
+    const rowBox = (await row.boundingBox())!
+    expect(box.x).toBeGreaterThan(rowBox.x)
+    expect(box.x + box.width).toBeLessThanOrEqual(rowBox.x + rowBox.width)
+    expect(box.y).toBeGreaterThanOrEqual(rowBox.y)
+    expect(box.y + box.height).toBeLessThanOrEqual(rowBox.y + rowBox.height)
+    // A sibling action avoids invalid nested buttons/links and preserves tab order.
+    await expect(row.getByRole('button')).toHaveCount(0)
+    await page.keyboard.press('Tab')
+    await expect(
+      page.getByRole('link', { name: 'Upgrade Crystal Mine', exact: true }),
+    ).toBeFocused()
     await diagnosticScreenshot(page, {
       path: `test-results/quick-build-${width}.png`,
     })
@@ -767,7 +799,8 @@ for (const width of [320, 390, 1440]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await row.click()
+    // Even the blank far-right edge belongs to the full-row detail link.
+    await row.click({ position: { x: rowBox.width - 3, y: rowBox.height / 2 } })
     await expect(
       page.getByRole('button', { name: 'Confirm upgrade' }),
     ).toBeEnabled()
@@ -811,7 +844,7 @@ test('quick build prevents competing row commands before the first receipt', asy
 
 test.describe('touch quick build', () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
-  test('tap details then build without leaving the catalog', async ({
+  test('tap the row for details and its ghost button to build', async ({
     page,
   }) => {
     const fixture = await quickBuildFixture(page)
@@ -819,15 +852,14 @@ test.describe('touch quick build', () => {
     const build = page.getByRole('button', { name: 'Build Metal Mine level 2' })
     await expect(build).toBeEnabled()
     await page
-      .getByRole('button', { name: 'Metal Mine build details', exact: true })
+      .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
       .tap()
     await expect(
-      page.getByRole('dialog', { name: 'Metal Mine build', exact: true }),
-    ).toContainText('Build time')
-    await page.getByRole('heading', { name: 'Resource buildings' }).tap()
-    await expect(
-      page.getByRole('dialog', { name: 'Metal Mine build', exact: true }),
-    ).toHaveCount(0)
+      page.getByRole('button', { name: 'Confirm upgrade' }),
+    ).toBeEnabled()
+    expect(fixture.sent).toHaveLength(0)
+    await page.getByRole('link', { name: /^Back to / }).tap()
+    await expect(build).toBeEnabled()
     await build.tap()
     await expect.poll(() => fixture.sent.length).toBe(1)
     await expect(page).toHaveURL(/\/resources$/)
@@ -844,3 +876,127 @@ test('keyboard activation builds from the catalog', async ({ page }) => {
   await expect.poll(() => fixture.sent.length).toBe(1)
   await expect(page).toHaveURL(/\/resources$/)
 })
+
+for (const response of ['early', 'late', 'rejected'] as const) {
+  test(`quick build fades through a three-second acknowledgment with ${response} confirmation`, async ({
+    page,
+  }) => {
+    const fixture = await quickBuildFixture(page)
+    await page.clock.pauseAt(now + 1000)
+    await page.setViewportSize({ width: 390, height: 844 })
+    let release!: () => void
+    fixture.gateCommand(
+      new Promise<void>((resolve) => {
+        release = resolve
+      }),
+    )
+    if (response === 'rejected') fixture.reject()
+    try {
+      await page.goto(`/u/andromeda/b/${body.id}/resources`)
+      const build = page.getByRole('button', {
+        name: 'Build Solar Plant level 2',
+        exact: true,
+      })
+      const control = page.getByRole('group', {
+        name: 'Solar Plant quick build',
+      })
+      const row = page.getByRole('link', {
+        name: 'Upgrade Solar Plant',
+        exact: true,
+      })
+      await expect(build).toBeEnabled()
+      await build.click()
+      await expect(control).toHaveAttribute('data-phase', 'check')
+      await expect.poll(() => fixture.sent.length).toBe(1)
+      await expect(
+        page.getByRole('button', { name: 'Build Metal Mine', exact: true }),
+      ).toBeDisabled()
+      await expect(
+        page.getByRole('group', { name: 'Latest action result' }),
+      ).toHaveCount(0)
+      const target = row.getByLabel('Target level 2')
+      await expect(target).toHaveText('Level 2')
+      await expect(target).toHaveCSS('font-weight', '700')
+      await expect(row.getByLabel('Construction progress')).toContainText(
+        'Level 1 → Level 2',
+      )
+      const titleBox = (await row
+        .getByText('Solar Plant', { exact: true })
+        .boundingBox())!
+      const targetBox = (await target.boundingBox())!
+      expect(targetBox.y).toBeGreaterThan(titleBox.y)
+      expect(targetBox.x).toBeGreaterThan(titleBox.x)
+      const check = control.getByRole('img', {
+        name: 'Build requested; confirming',
+      })
+      await expect(check).toHaveCSS('transition-duration', '0.18s')
+      if (response === 'early') {
+        release()
+        await expect(
+          control.getByRole('img', { name: 'Construction started' }),
+        ).toBeVisible()
+      }
+      await page.clock.runFor(2750)
+      await expect(control).toHaveAttribute('data-phase', 'check')
+      await diagnosticScreenshot(page, {
+        path: `test-results/quick-build-check-${response}.png`,
+      })
+      if (response === 'rejected') {
+        release()
+        await expect(control).toHaveAttribute('data-phase', 'hammer')
+        await expect(
+          page.getByRole('group', { name: 'Build problem' }),
+        ).toContainText(/resources/i)
+        await expect(build).toBeEnabled()
+      } else {
+        await page.clock.runFor(250)
+        await expect(control).toHaveAttribute(
+          'data-phase',
+          response === 'late' ? 'pending' : 'countdown',
+        )
+        if (response === 'late') {
+          await page.clock.runFor(5000)
+          await expect(control).toHaveAttribute('data-phase', 'pending')
+          await expect(
+            page.getByRole('button', { name: 'Build Metal Mine', exact: true }),
+          ).toBeDisabled()
+          release()
+          await expect(control).toHaveAttribute('data-phase', 'countdown')
+        }
+        await page.clock.runFor(250)
+        await expect(
+          control.getByLabel('Solar Plant time remaining'),
+        ).toContainText(/\d+s/)
+        await expect(
+          control.getByLabel('Solar Plant time remaining'),
+        ).toHaveCSS('opacity', '1')
+        await expect(
+          page.getByRole('link', { name: /^Solar Plant · Level 2/ }),
+        ).toContainText(
+          (await control
+            .getByLabel('Solar Plant time remaining')
+            .textContent())!,
+        )
+        await diagnosticScreenshot(page, {
+          path: `test-results/quick-build-countdown-${response}.png`,
+        })
+        if (response === 'early') {
+          await page.setViewportSize({ width: 1440, height: 1000 })
+          await diagnosticScreenshot(page, {
+            path: 'test-results/quick-build-countdown-desktop.png',
+          })
+        }
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await expect(
+          control.getByLabel('Solar Plant time remaining'),
+        ).toHaveCSS('transition-duration', '0s')
+      }
+      await expect(
+        page.getByRole('group', { name: 'Latest action result' }),
+      ).toHaveCount(0)
+      expect(fixture.sent).toHaveLength(1)
+    } finally {
+      release()
+    }
+  })
+}
