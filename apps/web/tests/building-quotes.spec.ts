@@ -284,11 +284,10 @@ for (const width of [320, 390, 1440]) {
     const current = pane.getByLabel('Current level and benefit')
     const target = pane.getByLabel('Target level and benefit')
     await expect(current).toHaveCount(0)
-    const empty = target.getByText('No Metal Storage', { exact: true })
-    await expect(empty).toBeVisible()
-    await expect(
-      target.getByRole('heading', { name: 'First Build', exact: true }),
-    ).toBeVisible()
+    await expect(target.getByText('No Metal Storage', { exact: true })).toHaveCount(0)
+    const firstBuild = target.getByRole('heading', { name: 'First Build', exact: true })
+    await expect(firstBuild).toBeVisible()
+    await expect(target.locator(':scope > :first-child')).toHaveText('First Build')
     await expect(target).toContainText('Metal capacity')
     await expect(target).toContainText('20,000')
     const button = target.getByRole('button', { name: 'Confirm upgrade' })
@@ -308,7 +307,7 @@ for (const width of [320, 390, 1440]) {
       .filter({ has: page.getByText('Metal capacity', { exact: true }) })
     // Read every rectangle in the same browser task: route-focus scrolling
     // between separate boundingBox calls can mix viewport coordinate systems.
-    const [emptyBox, targetBox, costBox, benefitBox, buttonBox] =
+    const [headingBox, targetBox, costBox, benefitBox, buttonBox] =
       await page.evaluate(
         (elements) =>
           elements.map((element) => {
@@ -317,13 +316,14 @@ for (const width of [320, 390, 1440]) {
             return { y, height }
           }),
         await Promise.all(
-          [empty, target, cost, benefit, button].map((locator) =>
+          [firstBuild, target, cost, benefit, button].map((locator) =>
             locator.elementHandle(),
           ),
         ),
       )
     expect(costBox.y).toBeGreaterThanOrEqual(targetBox.y)
-    expect(emptyBox.y + emptyBox.height).toBeLessThan(costBox.y)
+    expect(headingBox.y).toBe(targetBox.y)
+    expect(headingBox.y + headingBox.height).toBeLessThan(costBox.y)
     expect(costBox.y + costBox.height).toBeLessThanOrEqual(benefitBox.y)
     expect(buttonBox.y).toBeGreaterThanOrEqual(benefitBox.y + benefitBox.height)
     expect(

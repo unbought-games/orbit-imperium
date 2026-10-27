@@ -104,6 +104,21 @@ async function assertLocation(page: Page, system: number, position: number) {
   await expect(page.locator('a a, button a, a button')).toHaveCount(0)
 }
 for (const width of [1280, 390, 320]) {
+  test(`selected galaxy location retains its outline with focus inside at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await setup(page)
+    await page.goto(path('galaxy?galaxy=1&system=5&position=12'))
+    const selected = page.locator('li[aria-current="location"]')
+    await expect(selected).toBeFocused()
+    await expect(selected).toHaveCSS('outline-style', 'solid')
+    const control = selected.getByRole('button').first()
+    await control.focus()
+    await expect(control).toBeFocused()
+    await expect(selected).toHaveCSS('outline-style', 'solid')
+    await expect(selected).toHaveCSS('outline-width', '2px')
+    if (width < 768) await expect(control).toHaveCSS('outline-style', 'none')
+  })
+
   test(`mission endpoints retain planet context and browser history at ${width}px`, async ({
     page,
   }) => {

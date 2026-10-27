@@ -945,10 +945,8 @@ test('changing manufacturing quantity while unit terms load uses the latest quan
     },
     { times: 1 },
   )
-  await navigate(page, 'Shipyard')
-  await page
-    .getByRole('link', { name: 'Build Small Cargo', exact: true })
-    .click()
+  // Gate the detail's unit terms, independently of catalog cost inspections.
+  await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
   await reached
   await page.getByLabel('Shipyard quantity').fill('4')
   await expect(
@@ -1159,6 +1157,8 @@ test('activated Impulse Drive uses server gates, supports level four, and shows 
   let sent: unknown
   await page.route('**/progression-options', async route => {
     const { context, request } = route.request().postDataJSON()
+    // Other visible research rows inspect their costs before opening details.
+    if (request.type !== 'Research' || request.research !== 'ImpulseDrive') return route.fallback()
     expect(request).toEqual({ type: 'Research', host: body.id, research: 'ImpulseDrive' })
     await route.fulfill({ json: {
       protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',
@@ -1217,6 +1217,8 @@ test('activated Astrophysics shows three gates, exact rounded costs, and deferre
   let sent: unknown
   await page.route('**/progression-options', async route => {
     const { context, request } = route.request().postDataJSON()
+    // Other visible research rows inspect their costs before opening details.
+    if (request.type !== 'Research' || request.research !== 'Astrophysics') return route.fallback()
     expect(request).toEqual({ type: 'Research', host: body.id, research: 'Astrophysics' })
     await route.fulfill({ json: {
       protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',
@@ -1308,11 +1310,12 @@ test('Light Laser shows completed inventory and builds a batch at its catalog co
   expect(sent[0].command).toMatchObject({ type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'LightLaser' }, quantity: '3' })
 })
 
-for (const width of [390, 1440]) {
-  test.describe(`catalog focus at ${width}px`, () => {
-    test.use({ viewport: { width, height: 844 }, hasTouch: true, isMobile: width === 390 })
+for (const [width, hasTouch] of [[390, true], [1440, true], [1440, false]] as const) {
+  test.describe(`catalog focus at ${width}px (${hasTouch ? 'touch' : 'desktop'})`, () => {
+    test.use({ viewport: { width, height: 844 }, hasTouch, isMobile: width === 390 })
 
     test('detail containers stay unoutlined while controls retain keyboard focus', async ({ page, browserName }) => {
+      const outline = hasTouch || width < 768 ? 'none' : 'solid'
       await setup(page)
       await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
       const tile = page.getByRole('link', { name: 'Build Small Cargo', exact: true })
@@ -1324,7 +1327,7 @@ for (const width of [390, 1440]) {
       await page.reload()
       await expect(panel).toBeFocused()
       await expect(panel).toHaveCSS('outline-style', 'none')
-      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-reload-${width}.png` })
+      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-reload-${width}-${hasTouch ? 'touch' : 'desktop'}.png` })
 
       const tree = panel.getByRole('button', { name: 'Technology tree', exact: true })
       if (width === 390) await tree.tap()
@@ -1347,7 +1350,7 @@ for (const width of [390, 1440]) {
       const tabKey = browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab'
       await page.keyboard.press(tabKey)
       await expect(back).toBeFocused()
-      await expect(back).toHaveCSS('outline-style', 'solid')
+      await expect(back).toHaveCSS('outline-style', outline)
       // Traverse real controls from the programmatic reading-order anchor.
       const quantity = panel.getByLabel('Shipyard quantity')
       let visitedQuantity = false
@@ -1355,22 +1358,24 @@ for (const width of [390, 1440]) {
         await page.keyboard.press(tabKey)
         if (await quantity.evaluate(element => element === document.activeElement)) {
           visitedQuantity = true
-          await expect(quantity).toHaveCSS('outline-style', 'solid')
+          await expect(quantity).toHaveCSS('outline-style', outline)
         }
       }
       expect(visitedQuantity).toBe(true)
       await expect(tree).toBeFocused()
-      await expect(tree).toHaveCSS('outline-style', 'solid')
+      await expect(tree).toHaveCSS('outline-style', outline)
       await page.keyboard.press('Enter')
       await expect(page.getByRole('dialog', { name: 'Technology — Small Cargo', exact: true })).toBeVisible()
       await page.keyboard.press('Escape')
       await expect(tree).toBeFocused()
-      await expect(tree).toHaveCSS('outline-style', 'solid')
+      await expect(tree).toHaveCSS('outline-style', outline)
       await expect(panel).toHaveCSS('outline-style', 'none')
-      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-keyboard-${width}.png` })
+      await diagnosticScreenshot(page, { path: `test-results/catalog-focus-keyboard-${width}-${hasTouch ? 'touch' : 'desktop'}.png` })
     })
   })
+}
 
+for (const width of [390, 1440]) {
   test(`catalog deep links survive refresh and history without Escape dismissal at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const { sent } = await setup(page)
@@ -1597,7 +1602,7 @@ for (const width of [1440, 390]) {
     await tree.focus()
     await page.keyboard.down('Space')
     await expect(tree).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 1)')
-    await expect(tree).toHaveCSS('outline-style', 'solid')
+    await expect(tree).toHaveCSS('outline-style', width < 768 ? 'none' : 'solid')
     await page.keyboard.up('Space')
     await expect(page.getByRole('dialog', { name: 'Technology — Robotics Factory', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Close technology' }).click()

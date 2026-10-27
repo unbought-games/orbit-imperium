@@ -16,7 +16,10 @@ export function createAppRouter(
 }
 declare module '@tanstack/react-router' {
   interface HistoryState {
-    dispatchObservation?: Pick<DispatchDraft, 'observedAt' | 'target'>
+    dispatchObservation?: Pick<
+      DispatchDraft,
+      'observedAt' | 'target' | 'ships' | 'speed'
+    >
   }
 
   interface Register {

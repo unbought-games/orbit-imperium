@@ -98,7 +98,7 @@ Keep decision metrics in one semantic data list: aligned labels/values, subtle r
 
 Link missing prerequisite names directly to their item details in the selected universe/body. Research levels that satisfy a dependency show “Required for” with item links; this means one prerequisite is met, not that the dependent item is buildable. Playground item links navigate within the same isolated fixture and its back control returns to the previous item.
 
-For unbuilt buildings, replace the current/next comparison with `DetailIntroduction`: a compact recessed blue grid labeled “No [building]”, then “First Build”. Show the first level's benefit, power needs, time, cost, blockers, and a named build action. Omit zero-level stats and stockpile forecasts. Keep existing-building upgrades unchanged.
+For unbuilt buildings, begin the decision panel with “First Build” directly below the page heading. Show the first level's benefit, power needs, time, cost, blockers, and a named build action. Omit empty-building placeholders, zero-level stats and stockpile forecasts. Keep existing-building upgrades unchanged.
 
 `detail-insights.ts` derives storage-fill and resource-affordability times from authoritative net production and live balances, using exact integer arithmetic. Energy/output estimates use saved production settings and the quote's nominal benefit/consumption deltas. Label estimates, account for throttling and full storage, and do not invent missing benefit data. Energy recommendations use enabled catalog entries for the selected body. Blocker timers identify the actual affected work; overdue work awaits server completion.
 

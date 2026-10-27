@@ -98,6 +98,12 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await expect(rows.first().getByRole('link', { name: 'Returned', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(70)}`)
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
+    const reportLink = rows.first().getByRole('link', { name: 'Returned', exact: true })
+    await page.keyboard.press('Tab')
+    await reportLink.focus()
+    await expect(reportLink).toBeFocused()
+    expect(await reportLink.evaluate(el => getComputedStyle(el, '::after').outlineStyle))
+      .toBe(width < 768 ? 'none' : 'solid')
     await expect(rows.nth(1).getByRole('link', { name: 'Espionage · Commander Cassiopeia · Nova Roma', exact: true })).toBeVisible()
     await expect(rows.nth(1)).toContainText('[1:1:3]')
     await expect(rows.nth(2)).toContainText('Commander Cassiopeia · Luna (Moon)')

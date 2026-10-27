@@ -23,8 +23,9 @@ export function SimulationPlanning({ result }: { result: SimulationResponse }) {
       )}
       <p>
         Assumes empty cargo on arrival. Launch fuel is paid up front; surviving
-        arrival capacity has no fuel deduction. Fuel cost and launch feasibility
-        are not calculated. This is gross loot, not profit.
+        arrival capacity has no fuel deduction. This is gross loot before fuel
+        costs. See Attack planning for flight estimates and Dispatch for launch
+        review.
       </p>
       {summary.loot && summary.total ? (
         <>
