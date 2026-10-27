@@ -1,0 +1,13 @@
+{
+  "requirements": [
+    { "type": "BodyBuilding", "building": "Shipyard", "level": 8 },
+    { "type": "PlayerResearch", "research": "PlasmaTechnology", "level": 7 }
+  ],
+  "cost": { "metal": 50000, "crystal": 50000, "deuterium": 30000 },
+  "combat": {
+    "item": { "kind": "Defense", "id": "PlasmaTurret" },
+    "cost": [50000, 50000, 30000],
+    "attack_hundredths": 300000,
+    "shield_hundredths": 30000
+  }
+}

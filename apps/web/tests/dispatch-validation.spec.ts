@@ -1,7 +1,7 @@
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
-import { shellFixture, body, binding, id } from './fixtures/game'
+import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
 import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
@@ -13,9 +13,7 @@ async function setup(page: Page) {
     id: id(6),
     coordinates: { galaxy: 1, system: 1, position: 2 },
   }
-  await shellFixture(page, {
-    protocol: 4,
-    bodies: [
+  const bodies = [
       {
         ...body,
         name: 'Aster Haven',
@@ -27,7 +25,12 @@ async function setup(page: Page) {
         ],
       },
       { ...colony, name: 'Haven Colony' },
-    ],
+    ]
+  let revision = 1
+  await shellFixture(page, {
+    viewerRevision: () => String(revision),
+    protocol: 4,
+    bodies,
     playerNames: { [binding.player]: 'Commander' },
     research: [{ research: 'Astrophysics', level: 8 }],
     extraCapabilities: [
@@ -63,6 +66,9 @@ async function setup(page: Page) {
     ],
   })
   const state = {
+    bodies,
+    ownedObservation: false,
+    advanceRevision: () => { revision++ },
     blocker: null as S['GameError4'] | null,
     quoteError: null as S['GameError4'] | null,
     launchError: 'BeginnerProtected' as S['GameError4'] | null,
@@ -93,7 +99,9 @@ async function setup(page: Page) {
             position: i + 1,
           },
           body:
-            i === 0 && state.observationAvailable
+            i === 1 && state.ownedObservation
+              ? { id: colony.id, kind: 'Planet', owner: binding.player, name: 'Haven Colony', activity: { type: 'None' }, inactivity: 'Active', vacation: false, espionage_eligible: false, attack_blocker: null }
+              : i === 0 && state.observationAvailable
               ? {
                   id: id(20),
                   kind: 'Planet',
@@ -192,6 +200,14 @@ async function setup(page: Page) {
   await expect(page.getByText('Mission rules', { exact: true })).toHaveCount(0)
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   return state
+}
+
+async function selectDestinationPlanet(page: Page, id: string) {
+  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  await picker.click()
+  await page.getByRole('option').and(page.locator(`[data-value="${id}"]`)).click()
+  await expect(picker).toHaveAttribute('data-value', id)
+  await expect(page.getByRole('listbox')).toHaveCount(0)
 }
 
 const review = (page: Page) =>
@@ -782,48 +798,22 @@ test('Add all leaves invalid cargo untouched and explains the problem', async ({
   await expect(page.getByRole('textbox', { name: 'Crystal', exact: true })).toHaveValue('0')
 })
 
-test('mission changes keep the same destination visible during refresh but never reuse it for other coordinates', async ({
-  page,
-}) => {
-  const state = await setup(page)
-  const destination = page.getByText('Destination: Ember Watch', {
-    exact: false,
-  })
-  await expect(destination).toBeVisible()
+test('mission changes preserve the observed destination and coordinate edits never reuse another target', async ({ page }) => {
+  await setup(page)
+  const preview = page.getByLabel('Destination preview')
+  await expect(preview).toContainText('Ember Watch')
   for (const next of ['Attack', 'Espionage', 'Transport']) {
-    let release!: () => void
-    let held = false
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    state.hold = async (route) => {
-      if (route.request().postDataJSON().type === 'Galaxy') {
-        held = true
-        await gate
-      }
-    }
     await mission(page).selectOption(next)
-    await expect.poll(() => held).toBe(true)
-    await expect(destination).toBeVisible()
-    const refreshed = page.waitForResponse(
-      (response) =>
-        response.url().endsWith('/world') &&
-        response.request().postDataJSON().type === 'Galaxy',
-    )
-    release()
-    await refreshed
-    await expect(destination).toBeVisible()
+    await expect(preview).toContainText('Ember Watch')
   }
-  state.hold = null
   await setDestination(page, { position: '3' })
-  await expect(destination).toHaveCount(0)
+  await expect(preview).toContainText('Empty position')
+  await expect(preview).not.toContainText('Ember Watch')
   await setDestination(page, { position: '1' })
-  await expect(destination).toBeVisible()
+  await expect(preview).toContainText('Ember Watch')
   await setDestination(page, { system: '2' })
-  await expect(destination).toHaveCount(0)
-  await expect(
-    page.getByText('Destination: Other Planet', { exact: false }),
-  ).toBeVisible()
+  await expect(preview).not.toContainText('Ember Watch')
+  await expect(preview).toContainText('Other Planet')
 })
 
 test('cleared ship and cargo amounts display zero and submit as zero even before blur', async ({
@@ -1004,6 +994,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   page,
 }) => {
   const state = await setup(page)
+  await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
   state.blocker = 'BeginnerProtected'
   await mission(page).selectOption('Attack')
   await expect(
@@ -1081,6 +1072,7 @@ test('late eligibility and quote failures cannot overwrite an edited destination
   page,
 }) => {
   const state = await setup(page)
+  await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
   let release!: () => void
   let held = false
   const gate = new Promise<void>((resolve) => {
@@ -1141,7 +1133,7 @@ test('late eligibility and quote failures cannot overwrite an edited destination
 })
 
 for (const width of [320, 390, 1280]) {
-  test(`dispatch uses one full-width coordinate field at ${width}px`, async ({
+  test(`dispatch keeps coordinate editing inside one compact field at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -1154,21 +1146,21 @@ for (const width of [320, 390, 1280]) {
       page.getByRole('region', { name: 'Flight timing' }).locator('time'),
     ).toBeVisible()
     await expect(
-      page.getByText('Destination: Ember Watch', { exact: false }),
+      page.getByLabel('Destination preview').getByText('Ember Watch', { exact: true }),
     ).toBeVisible()
     const coordinate = group.getByLabel('Destination coordinates', {
       exact: true,
     })
     await expect(coordinate).toHaveCount(1)
     const fieldBox = (await coordinate.boundingBox())!
-    expect(fieldBox.height).toBe(44)
-    expect(fieldBox.width).toBeGreaterThan(width < 400 ? 180 : 250)
+    expect(fieldBox.height).toBe(36)
+    expect(fieldBox.width).toBeGreaterThan(width < 400 ? 130 : 250)
     const selectors = await group
       .locator('select')
       .evaluateAll((elements) =>
         elements.map((element) => element.getBoundingClientRect().height),
       )
-    expect(selectors).toEqual([44, 44])
+    expect(selectors).toEqual([44])
     const speed = page.getByRole('group', { name: 'Speed and flight estimates' })
       .getByRole('combobox', { name: 'Speed', exact: true })
     expect((await speed.boundingBox())!.height).toBe(44)
@@ -1250,7 +1242,7 @@ for (const kind of [
     if (kind === 'Colonize') await setDestination(page, { position: '6' })
     if (['Attack', 'Transport', 'Espionage'].includes(kind))
       await expect(
-        page.getByText('Destination: Ember Watch', { exact: false }),
+        page.getByLabel('Destination preview').getByText('Ember Watch', { exact: true }),
       ).toBeVisible()
     await review(page).click()
     const quote = page.getByRole('region', { name: 'Fleet quote' })
@@ -1393,3 +1385,325 @@ for (const width of [320, 390, 1280]) {
     await diagnosticScreenshot(page, { path: `test-results/dispatch-composition-${width}.png`, fullPage: true })
   })
 }
+
+for (const width of [320, 390, 1440]) {
+  test(`destination picker and coordinates converge on one preview at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page)
+    const picker = page.getByRole('combobox', { name: 'Your other planets' })
+    const preview = page.getByLabel('Destination preview')
+    const input = page.getByLabel('Destination coordinates', { exact: true })
+    await picker.click()
+    await expect(page.getByRole('listbox', { name: 'Your other planets' }).getByRole('option')).toHaveText(['Haven Colony[1:1:2]'])
+    await diagnosticScreenshot(page, { path: `test-results/destination-options-${width}.png` })
+    await picker.press('Escape')
+    await selectDestinationPlanet(page, id(6))
+    await expect(input).toHaveValue('1:1:2')
+    await expect(preview).toContainText('Haven Colony')
+    await expect(preview).toContainText('Planet · Your colony')
+    await expect(preview.locator('img')).toHaveAttribute('src', /planet-02-/)
+    await expect(preview).toHaveCount(1)
+    expect((await preview.boundingBox())!.height).toBeLessThanOrEqual(120)
+    await expect(preview.getByLabel('Destination coordinates', { exact: true })).toHaveCount(1)
+    await expect(page.getByLabel('Destination type')).toHaveCount(0)
+    await mission(page).scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/destination-picker-${width}.png` })
+    await diagnosticScreenshot(preview, { path: `test-results/destination-control-${width}.png` })
+    const picked = await preview.textContent()
+    await input.fill('1:1:1')
+    await expect(picker).not.toHaveAttribute('data-value')
+    await expect(preview).toContainText('Ember Watch')
+    await expect(preview).toContainText('Stargazer')
+    await input.fill('1:1:2')
+    await expect(picker).toHaveAttribute('data-value', id(6))
+    expect(await preview.textContent()).toBe(picked)
+    await diagnosticScreenshot(page, { path: `test-results/destination-coordinate-${width}.png` })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await mission(page).selectOption('Deploy')
+    await expect(picker).toHaveAttribute('data-value', id(6))
+    await review(page).click()
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Haven Colony')
+    await page.getByRole('button', { name: 'Edit mission' }).click()
+    // Mission chooses debris automatically; the planet picker explicitly returns to a planet.
+    await mission(page).selectOption('Harvest')
+    await expect(preview).toContainText('Debris field')
+    await mission(page).selectOption('Transport')
+    await selectDestinationPlanet(page, id(6))
+    await expect(preview).toContainText('Haven Colony')
+    await input.fill('1:')
+    await expect(preview).toContainText('Complete your destination')
+    await expect(preview.locator('img')).toHaveCount(0)
+    await expect(picker).not.toHaveAttribute('data-value')
+    await input.fill('')
+    await expect(preview).toContainText('Where are we heading?')
+    await input.fill('1:1:999')
+    await expect(preview).toContainText('Complete your destination')
+    await expect(preview.getByText('[1:1:999]')).toHaveCount(0)
+  })
+}
+
+test('late destination lookup cannot replace a selected colony and failures are honest', async ({ page }) => {
+  const state = await setup(page)
+  const preview = page.getByLabel('Destination preview')
+  await expect(preview).toContainText('Ember Watch')
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  state.hold = async route => {
+    const query = route.request().postDataJSON()
+    if (query.type === 'Galaxy' && query.system === 2) { held = true; await gate }
+  }
+  await setDestination(page, { system: '2' })
+  await expect(preview).toContainText('Looking up destination')
+  await expect(preview).not.toContainText('Ember Watch')
+  await expect.poll(() => held).toBe(true)
+  await selectDestinationPlanet(page, id(6))
+  await expect(preview).toContainText('Haven Colony')
+  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy' && r.request().postDataJSON().system === 2)
+  release()
+  await response
+  await expect(preview).toContainText('Haven Colony')
+  await page.route('**/world', async route => {
+    if (route.request().postDataJSON().type === 'Galaxy') return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+    await route.fallback()
+  })
+  await setDestination(page, { system: '3', position: '1' })
+  await expect(preview).toContainText('Destination unavailable')
+  await expect(preview.locator('img')).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Your other planets' })).not.toHaveAttribute('data-value')
+})
+
+test('destination picker excludes origin and moons and handles a one-planet empire', async ({ page }) => {
+  await shellFixture(page, { protocol: 4, bodies: [{ ...body, name: 'Home' }, { ...body, id: id(90), kind: 'Moon', name: 'Home moon' }], extraCapabilities: ['Deploy'] })
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await expect(page.getByRole('combobox', { name: 'Your other planets' })).toBeDisabled()
+  await expect(page.getByRole('combobox', { name: 'Your other planets' })).toHaveAttribute('title', /No other planets yet/)
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toBeEnabled()
+})
+
+
+test('planet renames, removal and origin changes update the picker and preview from live empire data', async ({ page }) => {
+  const home = { ...body, name: 'Home' }
+  const colony = { ...body, id: id(6), name: 'Colony', coordinates: { galaxy: 1, system: 1, position: 2 } }
+  const bodies = [home, colony]
+  let revision = 1
+  await shellFixture(page, { protocol: 4, bodies, viewerRevision: () => String(revision), extraCapabilities: ['Deploy'] })
+  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  const preview = page.getByLabel('Destination preview')
+  await selectDestinationPlanet(page, colony.id)
+  await expect(preview).toContainText('Colony')
+  colony.name = 'Aurora Anchorage 🪐'
+  revision++
+  await refreshGame(page)
+  await expect(preview).toContainText(colony.name)
+  await expect(picker).toContainText(colony.name)
+  await selectBody(page, colony.id)
+  await picker.click()
+  await expect(page.getByRole('listbox', { name: 'Your other planets' }).getByRole('option')).toHaveText(['Home[1:371:12]'])
+  await picker.press('Escape')
+  await selectDestinationPlanet(page, home.id)
+  await expect(preview).toContainText('Home')
+  await selectBody(page, home.id)
+  await selectDestinationPlanet(page, colony.id)
+  bodies.pop()
+  revision++
+  await refreshGame(page)
+  await expect(picker).toBeDisabled()
+  await expect(preview).not.toContainText(colony.name)
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue('1:1:2')
+})
+
+
+test('selecting a planet invalidates an in-flight review for manual coordinates', async ({ page }) => {
+  const state = await setup(page)
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  state.hold = async route => {
+    if (route.request().postDataJSON().type === 'ResolveDestination') { held = true; await gate }
+  }
+  await review(page).click()
+  await expect.poll(() => held).toBe(true)
+  await selectDestinationPlanet(page, id(6))
+  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'ResolveDestination')
+  release()
+  await response
+  await expect(page.getByLabel('Destination preview')).toContainText('Haven Colony')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.quotes).toBe(0)
+  state.hold = null
+  await review(page).click()
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Haven Colony')
+})
+
+
+test('destination retains its last observation while refreshing the same system', async ({ page }) => {
+  const state = await setup(page)
+  const preview = page.getByLabel('Destination preview')
+  await mission(page).selectOption('Attack')
+  await expect(preview).toContainText('Ember Watch')
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  state.hold = async route => {
+    if (route.request().postDataJSON().type === 'Galaxy') { held = true; await gate }
+  }
+  state.advanceRevision()
+  await refreshGame(page)
+  await expect.poll(() => held).toBe(true)
+  await expect(preview).toContainText('Ember Watch')
+  await expect(preview).toContainText('Last observation · Updating…')
+  await expect(preview.locator('img')).toHaveCount(1)
+  state.observationAvailable = false
+  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
+  release()
+  await response
+  await expect(preview).toContainText('Empty position')
+  await expect(preview).not.toContainText('Ember Watch')
+  await expect(preview).not.toContainText('Updating')
+})
+
+test('a retained observation of a former colony is explicitly marked as updating', async ({ page }) => {
+  const state = await setup(page)
+  const preview = page.getByLabel('Destination preview')
+  await expect(preview).toContainText('Ember Watch')
+  state.ownedObservation = true
+  state.advanceRevision()
+  const observed = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
+  await refreshGame(page)
+  await observed
+  await expect(preview).not.toContainText('Updating')
+  await selectDestinationPlanet(page, id(6))
+  await expect(preview).toContainText('Haven Colony')
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  state.hold = async route => {
+    if (route.request().postDataJSON().type === 'Galaxy') { held = true; await gate }
+  }
+  state.bodies.splice(1, 1)
+  state.advanceRevision()
+  await refreshGame(page)
+  await expect.poll(() => held).toBe(true)
+  await expect(page.getByRole('combobox', { name: 'Your other planets' })).toBeDisabled()
+  await expect(preview).toContainText('Haven Colony')
+  await expect(preview).toContainText('Last observation · Updating…')
+  await expect(preview).toContainText('You (last observed)')
+  await expect(preview).not.toContainText('Your colony')
+  state.ownedObservation = false
+  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
+  release()
+  await response
+  await expect(preview).toContainText('Empty position')
+  await expect(preview).not.toContainText('Haven Colony')
+})
+
+
+test('unified destination supports keyboard planet selection, dismissal and coordinate advancement', async ({ page }) => {
+  await setup(page)
+  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  await picker.focus()
+  await picker.press('ArrowDown')
+  await expect(page.getByRole('listbox', { name: 'Your other planets' })).toBeVisible()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(input).toHaveValue('1:1:2')
+  await expect(picker).toBeFocused()
+  await picker.press('ArrowDown')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+  await expect(input).toHaveValue('1:1:2')
+  await input.fill('1')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('1')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('2')
+  await expect(input).toHaveValue('1:1:2')
+  await expect(picker).toHaveAttribute('data-value', id(6))
+})
+
+
+test('ordinary coordinate entry defaults to Planet and Harvest keeps debris intent', async ({ page }) => {
+  await setup(page)
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  const preview = page.getByLabel('Destination preview')
+  await input.fill('1:1:3')
+  await expect(preview).toContainText('Empty position')
+  await input.fill('1:1:1')
+  await expect(preview).toContainText('Planet · Stargazer')
+  await mission(page).selectOption('Harvest')
+  await input.fill('1:1:3')
+  await expect(preview).toContainText('Debris field')
+  await mission(page).selectOption('Transport')
+  await input.fill('1:1:1')
+  await expect(preview).toContainText('Planet · Stargazer')
+})
+
+test('explicit moon links retain their body intent through coordinate edits and review', async ({ page }) => {
+  const state = await setup(page)
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  const preview = page.getByLabel('Destination preview')
+  await input.evaluate(element => {
+    const data = new DataTransfer()
+    data.setData('text/plain', `${location.origin}/u/andromeda/location/1:1:1?target=moon`)
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  })
+  await expect(preview).toContainText('Moon not observed')
+  await input.fill('1')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('1 3')
+  await expect(input).toHaveValue('1:1:3')
+  await expect(preview).toContainText('Moon not observed')
+  state.destination = { type: 'Body', id: id(91), expected_owner: id(30), expected_kind: 'Moon' }
+  const resolved = page.waitForRequest(r => r.url().endsWith('/world') && r.postDataJSON().type === 'ResolveDestination')
+  await review(page).click()
+  expect((await resolved).postDataJSON().selection).toEqual({ type: 'BodyAt', coordinates: { galaxy: 1, system: 1, position: 3 }, kind: 'Moon' })
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Unknown moon')
+  await page.getByRole('button', { name: 'Edit mission' }).click()
+  await selectDestinationPlanet(page, id(6))
+  await expect(preview).toContainText('Planet · Your colony')
+})
+
+
+test('long planet names remain readable in the narrow destination list', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 })
+  const state = await setup(page)
+  const name = 'M'.repeat(40)
+  state.bodies[1].name = name
+  state.advanceRevision()
+  await refreshGame(page)
+  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  await picker.click()
+  const list = page.getByRole('listbox', { name: 'Your other planets' })
+  await expect(list).toContainText(name)
+  expect(await list.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await page.getByRole('option').and(page.locator(`[data-value="${id(6)}"]`)).click()
+  await expect(picker).toContainText(name)
+  await expect(picker.locator('strong')).toHaveAttribute('title', name)
+  expect((await page.getByLabel('Destination preview').boundingBox())!.height).toBeLessThanOrEqual(120)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+test('choosing a planet clears a rejected paste notice without changing coordinate validation', async ({ page }) => {
+  await setup(page)
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  const preview = page.getByLabel('Destination preview')
+  await input.focus()
+  await input.evaluate(element => {
+    const data = new DataTransfer()
+    data.setData('text/plain', 'https://other.test/u/andromeda/location/1:1:2')
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  })
+  await expect(preview.getByRole('alert')).toContainText('Use coordinates or a location link')
+  await selectDestinationPlanet(page, id(6))
+  await expect(input).toHaveValue('1:1:2')
+  await expect(preview).toContainText('Haven Colony')
+  await expect(preview.getByRole('alert')).toHaveCount(0)
+  await expect(input).toHaveAttribute('aria-invalid', 'false')
+  await input.fill('999:1:2')
+  await input.press('Tab')
+  await expect(preview.getByRole('alert')).toContainText('Enter a galaxy number from 1 to 1.')
+  await expect(input).toHaveAttribute('aria-invalid', 'true')
+})

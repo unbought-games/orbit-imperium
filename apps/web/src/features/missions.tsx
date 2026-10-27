@@ -1,8 +1,8 @@
+import { DispatchDestinationPreview } from './dispatch-destination-preview'
 import { CoordinateLink } from './coordinate-link'
 import { ArrowUp } from 'lucide-react'
 import { useAtomValue } from 'jotai'
 import { copiedLocationAtom } from './coordinate-memory'
-import { CoordinateInput } from '../ui/coordinate-input'
 import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useUniverseName } from '../shell/session-context'
 import { DispatchReview } from './dispatch-review'
@@ -63,19 +63,20 @@ export function Dispatch({
   const {
     coordinateProblems,
     coordinatesValid,
+    galaxy,
+    system,
+    position,
     targetProblem,
     attackWarning,
     mission,
     colony,
     setMission,
-    galaxy,
-    system,
-    position,
     destinationText,
     setDestinationText,
     targetKind,
     setTargetKind,
-    destinationDescription,
+    destination,
+    destinationCoordinates,
     speed,
     setSpeed,
     ships,
@@ -96,7 +97,6 @@ export function Dispatch({
     send,
     clear,
     review,
-    targetName,
     target,
     playerNames,
     timing,
@@ -118,19 +118,6 @@ export function Dispatch({
               />
             </span>
           </TaskHeader>
-          {targetName && (
-            <Text>
-              Destination: {targetName}{' '}
-              <CoordinateLink
-                at={{
-                  galaxy: Number(galaxy),
-                  system: Number(system),
-                  position: Number(position),
-                }}
-                label="destination"
-              />
-            </Text>
-          )}
           {mission === 'Colonize' && (
             <Text role="status">
               Planets: {colony.count} / {colony.capacity}.{' '}
@@ -201,10 +188,32 @@ export function Dispatch({
                   ))}
               </Select>
             </Field>
-            <CoordinateInput
+            <DispatchDestinationPreview
+              coordinates={destinationCoordinates}
+              kind={targetKind}
+              target={target}
+              lookup={destination.lookup}
+              refreshing={destination.refreshing}
+              player={view.binding.player}
+              playerNames={playerNames}
               value={destinationText}
               universe={universeName}
               error={Object.values(coordinateProblems).find(Boolean)}
+              planets={
+                mission === 'Transport' || mission === 'Deploy'
+                  ? destination.planets
+                  : undefined
+              }
+              selectedPlanet={destination.selectedPlanet?.id}
+              onSelectPlanet={(id) => {
+                const planet = destination.planets.find(
+                  (candidate) => candidate.id === id,
+                )
+                if (!planet) return
+                setDestinationText(coordinateText(planet.coordinates))
+                setTargetKind('planet')
+                clear()
+              }}
               onChange={(text, kind) => {
                 setDestinationText(text)
                 if (kind) {
@@ -215,31 +224,6 @@ export function Dispatch({
                 clear()
               }}
             />
-            <Field>
-              Target
-              <Select
-                aria-label="Destination type"
-                value={targetKind}
-                onChange={(event) => {
-                  const kind = event.target.value as LocationKind
-                  setTargetKind(kind)
-                  if (kind === 'debris') setMission('Harvest')
-                  else if (mission === 'Harvest') setMission('Transport')
-                  clear()
-                }}
-              >
-                <option value="planet">Planet</option>
-                <option value="moon">Moon</option>
-                <option value="debris">Debris field</option>
-              </Select>
-            </Field>
-            {coordinatesValid && (
-              <Text role="status">
-                {targetKind === 'debris'
-                  ? 'Debris field'
-                  : destinationDescription}
-              </Text>
-            )}
             {recentlyCopied && (
               <Text>
                 Recently copied in game: [

@@ -12,13 +12,14 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
   { key: { kind: 'Defense', id: 'RocketLauncher' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: technicalData },
   { key: { kind: 'Defense', id: 'HeavyLaser' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: { ...technicalData, combat: { ...technicalData.combat, attack_ticks: '25000000', shield_ticks: '10000000', hull_ticks: '80000000' } } },
   { key: { kind: 'Defense', id: 'LargeShieldDome' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: { ...technicalData, combat: { ...technicalData.combat, attack_ticks: '100000', shield_ticks: '1000000000', hull_ticks: '1000000000' } } },
+  { key: { kind: 'Defense', id: 'PlasmaTurret' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: { ...technicalData, combat: { ...technicalData.combat, attack_ticks: '300000000', shield_ticks: '30000000', hull_ticks: '1000000000' } } },
 ]
 for (const hidden of [false, true]) test(`prefills report simulation with ${hidden ? 'unknown' : 'observed'} intelligence`, async ({ page }) => {
   await installGameFixture(page, { protocol: 4, catalog, bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }, { ...body, id: id(6), inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '99' }] }], extraCapabilities: ['Reports'] })
   const header = { id: id(63), kind: 'Espionage', observed_at: 6000, read: true, hidden: false }
   await page.route('**/api/**/reports/**', async route => {
     const context = route.request().postDataJSON()
-    await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { header, payload: { ...observation, resources: hidden ? { visibility: 'Unknown' } : observation.resources, defenses: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Defense', id: 'HeavyLaser' }, count: '7' }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: '1' }] }, fleet: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '12' }] }, research: hidden ? { visibility: 'Unknown' } : observation.research } } } })
+    await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { header, payload: { ...observation, resources: hidden ? { visibility: 'Unknown' } : observation.resources, defenses: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Defense', id: 'HeavyLaser' }, count: '7' }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: '1' }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: '3' }] }, fleet: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '12' }] }, research: hidden ? { visibility: 'Unknown' } : observation.research } } } })
   })
   let submitted: any = null
   let attempts = 0
@@ -38,6 +39,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await expect(dialog.getByLabel('Defender Rocket Launcher', { exact: true })).toHaveValue(hidden ? '' : '0')
   await expect(dialog.getByLabel('Defender Heavy Laser', { exact: true })).toHaveValue(hidden ? '' : '7')
   await expect(dialog.getByLabel('Defender Large Shield Dome', { exact: true })).toHaveValue(hidden ? '' : '1')
+  await expect(dialog.getByLabel('Defender Plasma Turret', { exact: true })).toHaveValue(hidden ? '' : '3')
+  await expect(dialog.getByLabel('Attacker Plasma Turret', { exact: true })).toHaveCount(0)
   await expect(dialog.getByLabel('Attacker Large Shield Dome', { exact: true })).toHaveCount(0)
   await expect(dialog.getByLabel('Attacker Heavy Laser', { exact: true })).toHaveCount(0)
   await dialog.getByLabel('Attacker Light Fighter', { exact: true }).fill('10')
@@ -71,7 +74,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/simulation-results-${hidden}-${width}.png`, fullPage: true })
   }
-  expect(submitted.inputs.defender.units).toEqual(hidden ? [] : [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 12 }, { item: { kind: 'Defense', id: 'HeavyLaser' }, count: 7 }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: 1 }])
+  expect(submitted.inputs.defender.units).toEqual(hidden ? [] : [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 12 }, { item: { kind: 'Defense', id: 'HeavyLaser' }, count: 7 }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: 1 }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: 3 }])
   expect(Object.keys(submitted).sort()).toEqual(['context', 'inputs'])
   await dialog.getByLabel('Attacker Light Fighter', { exact: true }).fill('20')
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toHaveCount(0)

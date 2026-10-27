@@ -1,3 +1,4 @@
+import { useDispatchDestination } from './use-dispatch-destination'
 import { coordinateFields } from '../ui/coordinate-input-model'
 import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useEffect, useRef, useState } from 'react'
@@ -68,67 +69,25 @@ export function useDispatch({
     model.settings,
   )
   const coordinatesValid = !Object.values(coordinateProblems).some(Boolean)
-  const [observation, setObservation] = useState<S['GalaxySystem4'] | null>(
-    null,
-  )
-  useEffect(() => {
-    setObservation(null)
-  }, [model])
-  useEffect(() => {
-    let current = true
-    setObservation((previous) =>
-      previous?.galaxy === Number(galaxy) && previous.system === Number(system)
-        ? previous
-        : null,
-    )
-    if (!coordinatesValid || mission === 'Harvest' || mission === 'Colonize')
-      return
-    const timer = setTimeout(() => {
-      void model
-        .world({
-          type: 'Galaxy',
-          galaxy: Number(galaxy),
-          system: Number(system),
-        })
-        .then((result) => {
-          if (current && result && 'positions' in result) setObservation(result)
-        })
-        .catch(() => {
-          /* Review still checks eligibility when this advisory read fails. */
-        })
-    }, 250)
-    return () => {
-      current = false
-      clearTimeout(timer)
-    }
-  }, [model, galaxy, system, coordinatesValid, mission, view.viewer_revision])
-  const ownedTarget = coordinatesValid
-    ? view.bodies.find(
-        (candidate) =>
-          candidate.kind === (targetKind === 'moon' ? 'Moon' : 'Planet') &&
-          candidate.coordinates.galaxy === Number(galaxy) &&
-          candidate.coordinates.system === Number(system) &&
-          candidate.coordinates.position === Number(position),
-      )
-    : undefined
-  const observedBody =
-    coordinatesValid &&
-    observation?.galaxy === Number(galaxy) &&
-    observation.system === Number(system)
-      ? observation.positions.find(
-          (candidate) => candidate.coordinates.position === Number(position),
-        )?.body
-      : undefined
-  const observedTarget =
-    observedBody?.kind.toLowerCase() === targetKind ? observedBody : undefined
-  const target = ownedTarget
+  const destinationCoordinates = coordinatesValid
     ? {
-        id: ownedTarget.id,
-        owner: view.binding.player,
-        kind: ownedTarget.kind,
-        name: ownedTarget.name,
+        galaxy: Number(galaxy),
+        system: Number(system),
+        position: Number(position),
       }
-    : observedTarget
+    : null
+  const destination = useDispatchDestination(
+    model,
+    view,
+    body.id,
+    destinationCoordinates,
+    targetKind,
+    mission,
+  )
+  const { target, observation } = destination
+  const observedTarget = observation?.positions.find(
+    (candidate) => candidate.body?.id === target?.id,
+  )?.body
   const colony = colonizationStatus(view, Number(position))
   const targetProblem =
     targetKind === 'moon' && (mission === 'Colonize' || mission === 'Harvest')
@@ -404,17 +363,8 @@ export function useDispatch({
     setDestinationText,
     targetKind,
     setTargetKind,
-    destinationDescription: target
-      ? `${target.name ?? target.kind} · ${target.kind}`
-      : observation
-        ? targetKind === 'moon'
-          ? 'Moon not shown in the current observation. Review verifies the moon target.'
-          : 'Empty position'
-        : 'Looking up destination…',
-    targetName:
-      mission !== 'Harvest' && mission !== 'Colonize'
-        ? target?.name
-        : undefined,
+    destination,
+    destinationCoordinates,
     colony,
     coordinateProblems,
     coordinatesValid,

@@ -425,6 +425,19 @@ mod tests {
         );
     }
     #[test]
+    fn standard_plasma_projects_no_per_level_bonuses() {
+        let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+        let projected = data(&r, CatalogKey::Research(ResearchId::PlasmaTechnology));
+        assert!(projected.bonuses.is_empty());
+        assert!(projected.combat.is_none());
+        assert!(
+            projected
+                .facts
+                .iter()
+                .any(|f| f.value.contains("No additional per-level"))
+        );
+    }
+    #[test]
     fn colony_thresholds_and_slot_capacity_match_supported_semantics() {
         let r = rules();
         let astro = data(&r, CatalogKey::Research(ResearchId::Astrophysics));

@@ -1410,6 +1410,7 @@ fn sequential_raids_observe_remaining_stock_and_recovered_defenses() {
     sequential_defense_raids(DefenseId::IonCannon);
     sequential_defense_raids(DefenseId::HeavyLaser);
     sequential_defense_raids(DefenseId::GaussCannon);
+    sequential_defense_raids(DefenseId::PlasmaTurret);
 }
 fn sequential_defense_raids(defense: DefenseId) {
     let (mut s, mut r, p, b, t) = raid_fixture();
@@ -1442,8 +1443,25 @@ fn sequential_defense_raids(defense: DefenseId) {
             policy.policy_hash = r.hash.clone();
         }
     }
+    if defense == DefenseId::PlasmaTurret {
+        r = upgrade_standard_rules(&r).unwrap();
+        s.profile_hash = r.hash.clone();
+        for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
+            policy.policy_hash = r.hash.clone();
+        }
+        for research in s.research.values_mut() {
+            for key in r.artifact.progression.as_ref().unwrap().research.keys() {
+                research.levels.entry(*key).or_insert(0);
+            }
+        }
+        for body in s.bodies.values_mut() {
+            body.levels.insert(Building::FusionReactor, 0);
+        }
+    }
     // Heavier defenses need a larger attack to exercise destruction and recovery.
-    let fighters = if matches!(defense, DefenseId::IonCannon | DefenseId::GaussCannon) {
+    let fighters = if defense == DefenseId::PlasmaTurret {
+        1000
+    } else if matches!(defense, DefenseId::IonCannon | DefenseId::GaussCannon) {
         300
     } else {
         100

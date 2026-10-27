@@ -463,9 +463,9 @@ test('share URLs highlight deleted moon slots and preserve moon intent through r
   )
   const input = page.getByLabel('Destination coordinates', { exact: true })
   await expect(input).toHaveValue('1:5:12')
-  await expect(page.getByLabel('Destination type')).toHaveValue('moon')
+  await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
   await page.reload()
-  await expect(page.getByLabel('Destination type')).toHaveValue('moon')
+  await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
   await input.evaluate((element) => {
     const data = new DataTransfer()
     data.setData(
@@ -481,7 +481,7 @@ test('share URLs highlight deleted moon slots and preserve moon intent through r
     )
   })
   await expect(input).toHaveValue('1:7:3')
-  await expect(page.getByLabel('Destination type')).toHaveValue('moon')
+  await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
   await input.evaluate((element) => {
     const data = new DataTransfer()
     data.setData(

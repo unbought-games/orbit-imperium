@@ -306,9 +306,7 @@ test('every row keeps its Actions control and your selected planet can harvest i
   await expect(
     page.getByRole('combobox', { name: 'Mission', exact: true }),
   ).toHaveValue('Harvest')
-  await expect(
-    page.getByRole('combobox', { name: 'Destination type' }),
-  ).toHaveValue('debris')
+  await expect(page.getByLabel('Destination preview')).toContainText('Debris field')
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveValue(coordinatePattern('position', '3'))
