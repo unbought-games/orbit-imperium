@@ -133,6 +133,21 @@ export function Galaxy({
             entry.coordinates.position === harvestSelection.position,
         )
       : undefined
+  const harvestContextLost =
+    !!harvestSelection &&
+    (!valid ||
+      harvestSelection.origin !== origin ||
+      harvestSelection.galaxy !== galaxy ||
+      harvestSelection.system !== system ||
+      (!!data && !harvestPosition))
+  useEffect(() => {
+    if (harvestContextLost) {
+      // Navigation/depletion ends this interaction; returning must require a
+      // new explicit action rather than remounting a previously open form.
+      setHarvestOpen(false)
+      setHarvestSelection(null)
+    }
+  }, [harvestContextLost])
   const draft = (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
