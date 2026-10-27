@@ -424,7 +424,21 @@ function ReportObservationContent({
             </>
           ) : null}
         </Text>
-        {'cargo' in payload && (
+        {kind === 'Harvested' && (
+          <>
+            <Heading level={3}>Harvested resources</Heading>
+            {payload.harvested ? (
+              <Resources value={payload.harvested} />
+            ) : (
+              <Text>
+                Harvested amount unavailable. This older report recorded only
+                total carried resources, including cargo loaded before
+                departure.
+              </Text>
+            )}
+          </>
+        )}
+        {'cargo' in payload && (kind !== 'Harvested' || !payload.harvested) && (
           <>
             <Heading level={3}>
               {kind === 'Delivered' || kind === 'Deployed'

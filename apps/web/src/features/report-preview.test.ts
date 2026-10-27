@@ -231,3 +231,34 @@ it('includes public bot identity in compact report labels', () => {
     ),
   ).toContain('Harvester Bot')
 })
+
+it('shows only newly harvested resources, including a recorded zero harvest', () => {
+  for (const metal of ['250000000', '0']) {
+    const harvested = { metal, crystal: '0', deuterium: '0' }
+    expect(
+      reportPreview({
+        kind: 'Harvested',
+        destination_coordinates: { galaxy: 1, system: 2, position: 3 },
+        harvested,
+        cargo: {
+          metal: '10713000000',
+          crystal: '8238000000',
+          deuterium: '2608000000',
+        },
+      }),
+    ).toEqual({
+      location: '[1:2:3]',
+      coordinates: { galaxy: 1, system: 2, position: 3 },
+      facts: [{ resources: harvested, label: 'Harvested' }],
+    })
+  }
+})
+
+it('does not misrepresent historical cargo as a harvested amount', () => {
+  expect(
+    reportPreview({
+      kind: 'Harvested',
+      cargo: { metal: '1000000', crystal: '2000000', deuterium: '3000000' },
+    }).facts,
+  ).toEqual(['Harvested amount unavailable'])
+})
