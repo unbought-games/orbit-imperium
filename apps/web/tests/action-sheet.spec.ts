@@ -170,3 +170,39 @@ test('native dialog closure releases scroll locking and restores the opener', as
   await open(page)
   await expect(handle(page)).toBeFocused()
 })
+
+for (const touch of [false, true]) {
+  test.describe(touch ? 'touch focus styling' : 'desktop focus styling', () => {
+    test.use({ hasTouch: touch, isMobile: touch })
+
+    test('sheet and form focus outlines follow the mobile policy without losing focus', async ({ page }) => {
+      // Safari does not focus clicked buttons; keyboard activation establishes
+      // the focused opener whose restoration this test checks on both engines.
+      const opener = page.getByRole('button', { name: 'Open snap sheet', exact: true })
+      await opener.focus()
+      await opener.press('Enter')
+      await expect(dialog(page)).toBeVisible()
+      await topAt(page, 444)
+      await expect(handle(page)).toBeFocused()
+      await expect(handle(page)).toHaveCSS('outline-style', 'none')
+      for (const width of [767, 768, 1024, 390]) {
+        await page.setViewportSize({ width, height: 844 })
+        const outline = touch || width < 768 ? 'none' : 'solid'
+        for (const control of [
+          handle(page),
+          page.getByRole('button', { name: 'Dismiss sheet', exact: true }),
+          page.getByLabel('Planet name', { exact: true }),
+          page.getByRole('combobox', { name: 'Primary mission', exact: true }),
+        ]) {
+          // Keyboard modality exercises :focus-visible even after touch/click.
+          await page.keyboard.press('Tab')
+          await control.focus()
+          await expect(control).toBeFocused()
+          await expect(control).toHaveCSS('outline-style', outline)
+        }
+      }
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('button', { name: 'Open snap sheet', exact: true })).toBeFocused()
+    })
+  })
+}

@@ -590,6 +590,12 @@
   border-color: #9acfe6;
   box-shadow: 0 0 0 2px #9acfe628;
 }
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .destinationPreview:focus-within {
+    border-color: #8a9d9d66;
+    box-shadow: none;
+  }
+}
 .destinationArt {
   width: 100%;
   aspect-ratio: 1;
