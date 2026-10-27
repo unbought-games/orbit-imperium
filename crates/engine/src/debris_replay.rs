@@ -33,6 +33,21 @@ pub fn replay_legacy_debris_transition(
         // Historical fact hashes included the counter, even on no-op events.
         serialized["Applied"]["expected_facts_hash"] = json!(hash(facts));
         if let Some(world) = &changes.world {
+            // This journal format predates collection observations. Reproduce
+            // its original payload for reports emitted by this transition;
+            // never rewrite historical reports already present in the facts.
+            for report in world.records.reports.values() {
+                if report.event == input.id && report.kind == "Harvested" {
+                    for recipient in report.payloads.keys() {
+                        if let Some(payload) = serialized["Applied"]["world"]["records"]["reports"]
+                            [report.id.to_string()]["payloads"][recipient.to_string()]
+                        .as_object_mut()
+                        {
+                            payload.remove("harvested");
+                        }
+                    }
+                }
+            }
             for field in world.records.debris.values() {
                 serialized["Applied"]["world"]["records"]["debris"][field.id.to_string()]["active_references"] = json!(
                     debris_reference_count(field.id, world.records.fleets.values())
