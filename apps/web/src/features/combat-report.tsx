@@ -1,3 +1,4 @@
+import { MessagePlayerLink } from './social/message-player-link'
 import type { ReactNode } from 'react'
 import { BodyIdentity } from './body-identity'
 import { PlayerName } from './player-name'
@@ -164,6 +165,7 @@ function ForceCard({ force }: { force: CombatForce }) {
         <h3>
           <PlayerName player={force.owner} fallback={force.name} />
         </h3>
+        <MessagePlayerLink player={force.owner} name={force.name} />
       </header>
       <div className={styles.strength}>
         <strong>

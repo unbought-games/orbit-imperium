@@ -52,6 +52,7 @@ it('places every real destination exactly once in the grouped menu', () => {
       'settings',
       'high-scores',
       'alliance',
+      'messages',
     ].sort(),
   )
 })

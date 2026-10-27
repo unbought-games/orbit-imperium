@@ -22,6 +22,14 @@ export type BoundReports = Schemas['BoundReports4']
 export type BoundReport = Schemas['BoundReport4']
 export type Rankings = Schemas['Rankings']
 export interface GamePort {
+  socialQuery?(
+    context: QueryContext,
+    query: Schemas['SocialQuery'],
+  ): Promise<Schemas['SocialView']>
+  socialCommand?(
+    context: QueryContext,
+    request: Omit<Schemas['SocialCommandRequest'], 'context'>,
+  ): Promise<Schemas['SocialCommandResult']>
   allianceQuery?(
     context: QueryContext,
     query: Schemas['AllianceQuery'],

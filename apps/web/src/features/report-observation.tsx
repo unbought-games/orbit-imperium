@@ -258,7 +258,11 @@ function ReportObservationContent({
                 />
               )}
               <div className={styles.targetInfo}>
-                <PlayerName player={text(target.owner)} names={playerNames} />
+                <PlayerName
+                  messageAction
+                  player={text(target.owner)}
+                  names={playerNames}
+                />
                 <span className={styles.targetDetails}>
                   <BodyIdentity
                     coordinatesHidden={shared && !target.coordinates}
@@ -319,8 +323,12 @@ function ReportObservationContent({
         className={styles.observation}
       >
         <Text>
-          <PlayerName player={text(payload.sender)} names={playerNames} /> made
-          espionage contact from{' '}
+          <PlayerName
+            messageAction
+            player={text(payload.sender)}
+            names={playerNames}
+          />{' '}
+          made espionage contact from{' '}
           <CoordinateLink at={payload.origin} label="origin" /> at{' '}
           <CoordinateLink at={payload.target} label="target" />.
         </Text>

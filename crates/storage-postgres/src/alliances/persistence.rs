@@ -15,7 +15,7 @@ pub(super) async fn membership(
     .await
     .map_err(db_error)
 }
-pub(super) async fn load(
+pub(crate) async fn load(
     tx: &mut Tx<'_>,
     universe: UniverseId,
     epoch: Epoch,

@@ -4,6 +4,7 @@ mod bots;
 mod colonization;
 mod rankings;
 mod report_sharing;
+mod social;
 use orbit_application::StoreError;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 mod enrollment;

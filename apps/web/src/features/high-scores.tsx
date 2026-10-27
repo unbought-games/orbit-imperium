@@ -1,3 +1,4 @@
+import { MessagePlayerLink } from './social/message-player-link'
 import { EmptyState } from '../ui/empty-state'
 import { useEffect, useLayoutEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -454,6 +455,7 @@ function RankingDetails({
           alliance={row.alliance ?? null}
         />
       </h2>
+      <MessagePlayerLink player={row.player} name={row.username} />
       <dl className={styles.stats}>
         <div>
           <dt>Universe rank</dt>

@@ -1,3 +1,4 @@
+import { socialQuery, socialCommand } from './social'
 import { allianceQuery, allianceCommand } from './alliances'
 import { resetAnalytics } from './optional-services'
 import type { Bootstrap } from '../client-model/bootstrap'
@@ -132,6 +133,10 @@ export function gamePort(
   const base = (u: string, protocol = protocols.get(u) ?? 2) =>
     `/api/v${protocol}/universes/${u}`
   return {
+    socialQuery: (context, query) =>
+      socialQuery(context.binding, csrf, query, context.request_id),
+    socialCommand: (context, command) =>
+      socialCommand(context.binding, csrf, command),
     allianceQuery: (context, query) =>
       allianceQuery(context.binding, csrf, query, context.request_id),
     allianceCommand: (context, command) =>

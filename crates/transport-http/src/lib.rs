@@ -12,6 +12,7 @@ mod password_work;
 mod player_profiles;
 mod shared_report_preview;
 mod simulation;
+mod social;
 pub use player_profiles::AccountProfiles;
 mod rate_limit;
 mod signup_config;
@@ -238,6 +239,14 @@ where
         .route("/api/v4/universes/{id}/presence", post(v4::presence::<S>))
         .route("/api/v4/universes/{id}/world", post(v4::query::<S>))
         .route("/api/v4/universes/{id}/rankings", post(v4::rankings::<S>))
+        .route(
+            "/api/v4/universes/{id}/social/query",
+            post(social::query::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/social/commands",
+            post(social::command::<S>).layer(DefaultBodyLimit::max(32 * 1024)),
+        )
         .route(
             "/api/v4/universes/{id}/alliances/query",
             post(alliances::query::<S>),

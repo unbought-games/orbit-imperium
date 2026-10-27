@@ -4726,6 +4726,270 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/universes/{universe}/social/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SocialQueryRequest"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SocialView"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/social/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SocialCommandRequest"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SocialCommandResult"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6972,7 +7236,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        AlliancePermission: "ViewMembers" | "ViewActivity" | "ViewApplications" | "ProcessApplications" | "EditProfile" | "ManageRecruitment" | "PublishPosts" | "ManagePosts" | "PinPosts" | "ManageRoles" | "AssignRoles" | "KickMembers" | "ViewAudit";
+        AlliancePermission: "ViewMembers" | "ViewActivity" | "ViewApplications" | "ProcessApplications" | "EditProfile" | "ManageRecruitment" | "PublishPosts" | "ManagePosts" | "PinPosts" | "ManageRoles" | "AssignRoles" | "KickMembers" | "ViewAudit" | "SendCircular";
         /** @enum {string} */
         AllianceRecruitment: "Open" | "Application" | "Closed";
         AllianceIdentity: {
@@ -7295,6 +7559,163 @@ export interface components {
         BuildingProduction: {
             current: components["schemas"]["BuildingProductionValues"];
             target: components["schemas"]["BuildingProductionValues"];
+        };
+        SocialAction: {
+            /** @constant */
+            type: "Send";
+            /** Format: uuid */
+            player: string;
+            body: string;
+        } | {
+            /** @constant */
+            type: "Read";
+            /** Format: uuid */
+            player: string;
+            /** Format: uuid */
+            message: string;
+        } | {
+            /** @constant */
+            type: "Hide";
+            /** Format: uuid */
+            player: string;
+            /** Format: uuid */
+            message: string;
+        } | {
+            /** @constant */
+            type: "Circular";
+            /** Format: uuid */
+            alliance: string;
+            body: string;
+        } | {
+            /** @constant */
+            type: "ReadCircular";
+            /** Format: uuid */
+            circular: string;
+        } | {
+            /** @constant */
+            type: "HideCircular";
+            /** Format: uuid */
+            circular: string;
+        } | {
+            /** @constant */
+            type: "RequestFriend";
+            /** Format: uuid */
+            player: string;
+        } | {
+            /** @constant */
+            type: "AcceptFriend";
+            /** Format: uuid */
+            player: string;
+            /** Format: uuid */
+            request: string;
+        } | {
+            /** @constant */
+            type: "RemoveFriend";
+            /** Format: uuid */
+            player: string;
+            /** Format: uuid */
+            request: string;
+        } | {
+            /** @constant */
+            type: "Block";
+            /** Format: uuid */
+            player: string;
+        } | {
+            /** @constant */
+            type: "Unblock";
+            /** Format: uuid */
+            player: string;
+        };
+        SocialQuery: {
+            /** @constant */
+            type: "Conversations";
+            cursor: string | null;
+            limit: number;
+        } | {
+            /** @constant */
+            type: "Messages";
+            /** Format: uuid */
+            player: string;
+            before: string | null;
+            after: string | null;
+            limit: number;
+        } | {
+            /** @constant */
+            type: "Circulars";
+            cursor: string | null;
+            limit: number;
+        } | {
+            /** @constant */
+            type: "Contacts";
+            /** @enum {string} */
+            kind: "Friends" | "Requests" | "Blocks";
+            cursor: string | null;
+            limit: number;
+        };
+        SocialQueryRequest: {
+            context: components["schemas"]["QueryContext"];
+            query: components["schemas"]["SocialQuery"];
+        };
+        SocialCommandRequest: {
+            context: components["schemas"]["QueryContext"];
+            /** Format: uuid */
+            command_id: string;
+            action: components["schemas"]["SocialAction"];
+        };
+        SocialCommandResult: {
+            /** Format: uuid */
+            command_id: string;
+            message: string | null;
+        };
+        SocialMessage: {
+            /** Format: uuid */
+            id: string;
+            sequence: string;
+            /** Format: uuid */
+            sender: string;
+            body: string;
+            /** Format: int64 */
+            sent_at: number;
+        };
+        SocialContact: {
+            /** Format: uuid */
+            player: string;
+            username: string;
+            blocked: boolean;
+            request: string | null;
+            requested_by: string | null;
+            accepted: boolean;
+        };
+        SocialConversation: {
+            contact: components["schemas"]["SocialContact"];
+            latest: components["schemas"]["SocialMessage"];
+            unread: boolean;
+        };
+        SocialCircular: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            alliance: string;
+            alliance_name: string;
+            alliance_tag: string;
+            /** Format: uuid */
+            sender: string;
+            sender_name: string;
+            body: string;
+            /** Format: int64 */
+            sent_at: number;
+            read: boolean;
+        };
+        SocialView: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            conversations: components["schemas"]["SocialConversation"][];
+            messages: components["schemas"]["SocialMessage"][];
+            circulars: components["schemas"]["SocialCircular"][];
+            contacts: components["schemas"]["SocialContact"][];
+            contact: components["schemas"]["SocialContact"] | null;
+            next_cursor: string | null;
         };
     };
     responses: never;

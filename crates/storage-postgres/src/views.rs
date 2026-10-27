@@ -112,6 +112,15 @@ impl GameStore for PgStore {
         self.manage_report_share_request(report, q).await
     }
 
+    async fn social_query(&self, q: SocialQueryRequest) -> Result<SocialView, StoreError> {
+        self.read_social(q).await
+    }
+    async fn social_command(
+        &self,
+        q: SocialCommandRequest,
+    ) -> Result<SocialCommandResult, StoreError> {
+        self.commit_social(q).await
+    }
     async fn alliance_query(&self, q: AllianceQueryRequest) -> Result<AllianceView, StoreError> {
         self.read_alliances(q).await
     }
