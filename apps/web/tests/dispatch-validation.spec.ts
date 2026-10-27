@@ -1707,3 +1707,21 @@ test('choosing a planet clears a rejected paste notice without changing coordina
   await expect(preview.getByRole('alert')).toContainText('Enter a galaxy number from 1 to 1.')
   await expect(input).toHaveAttribute('aria-invalid', 'true')
 })
+
+test('background flight estimates preserve an explicit moon destination', async ({ page }) => {
+  const state = await setup(page)
+  state.destination = { type: 'Body', id: id(91), expected_owner: id(30), expected_kind: 'Moon' }
+  const resolved = page.waitForRequest(request => {
+    if (!request.url().endsWith('/world')) return false
+    const query = request.postDataJSON()
+    return query.type === 'ResolveDestination' && query.selection.coordinates.position === 3
+  })
+  await page.getByLabel('Destination coordinates', { exact: true }).evaluate(element => {
+    const data = new DataTransfer()
+    data.setData('text/plain', `${location.origin}/u/andromeda/location/1:1:3?target=moon`)
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  })
+  expect((await resolved).postDataJSON().selection).toEqual({ type: 'BodyAt', coordinates: { galaxy: 1, system: 1, position: 3 }, kind: 'Moon' })
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+})

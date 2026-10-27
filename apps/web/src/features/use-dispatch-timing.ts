@@ -5,6 +5,7 @@ import { dispatchSelection } from '../client-model/dispatch-timing'
 import { dispatchFailure } from '../client-model/dispatch-validation'
 type S = components['schemas']
 type Request = {
+  kind: 'Planet' | 'Moon'
   coordinates: S['Coordinates']
   intent: Omit<S['FleetIntent4'], 'destination'>
 }
@@ -31,6 +32,7 @@ export function useDispatchTiming(
             selection: dispatchSelection(
               input.intent.mission,
               input.coordinates,
+              input.kind,
             ),
           })
           if (!current) return
