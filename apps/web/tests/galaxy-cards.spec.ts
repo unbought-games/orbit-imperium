@@ -1504,7 +1504,8 @@ test('mobile harvest opens at half height, derives the count, and Customize pres
   await sheet.getByRole('button', { name: 'Customize', exact: true }).click()
   await expect(page).toHaveURL(/\/dispatch\?/)
   await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toHaveValue('Harvest')
-  await expect(page.getByRole('combobox', { name: 'Destination type' })).toHaveValue('debris')
+  await expect(page.getByLabel('Destination preview')).toContainText('Debris field')
+  await expect(page).toHaveURL(/target=debris/)
   await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '2'))
 })
 
@@ -1607,8 +1608,12 @@ test('desktop Harvest opens an anchored popover, selects the quantity and preser
   expect(await rows(page).nth(1).boundingBox()).toEqual(before)
   const anchor = (await actions(page, 2).boundingBox())!, box = (await popover.boundingBox())!
   expect(box.width).toBe(340)
-  expect(box.x + box.width).toBeCloseTo(anchor.x + anchor.width, 0)
-  expect(box.y).toBeCloseTo(anchor.y + anchor.height + 8, 0)
+  // Floating UI paints at the nearest device pixel; fractional Linux row
+  // metrics must still land on exactly that pixel rather than a larger tolerance.
+  const dpr = await page.evaluate(() => window.devicePixelRatio)
+  const devicePixel = (value: number) => Math.round(value * dpr) / dpr
+  expect(box.x).toBeCloseTo(devicePixel(anchor.x + anchor.width - box.width), 5)
+  expect(box.y).toBeCloseTo(devicePixel(anchor.y + anchor.height + 8), 5)
   expect(await page.evaluate(() => document.body.style.position)).toBe('')
   await expect(page.getByRole('button', { name: 'Resize action sheet' })).toHaveCount(0)
   await input.fill('2')
