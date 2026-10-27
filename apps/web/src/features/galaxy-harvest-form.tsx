@@ -1,45 +1,29 @@
 import { useId, type RefObject } from 'react'
-import type { Coordinator } from '../client-model/coordinator'
 import type { HarvestPosition } from '../client-model/galaxy-harvest'
-import { ActionSheet } from '../ui/action-sheet'
 import { Button } from '../ui/button'
 import { Field, NumberInput } from '../ui/form'
 import { ResourceValue } from '../ui/resource-value'
 import { formatWholeNumber } from '../ui/whole-number'
-import { useGalaxyHarvest } from './use-galaxy-harvest'
-import styles from './galaxy-harvest-sheet.module.css'
+import type { useGalaxyHarvest } from './use-galaxy-harvest'
+import styles from './galaxy-harvest-form.module.css'
 
-export function GalaxyHarvestSheet({
-  model,
-  origin,
+export function GalaxyHarvestForm({
+  harvest,
   position,
-  open,
-  onClose,
+  inputRef,
   onCustomize,
-  returnFocusRef,
+  onRecover,
 }: {
-  model: Coordinator
-  returnFocusRef: RefObject<HTMLElement | null>
-  origin: string
+  harvest: ReturnType<typeof useGalaxyHarvest>
   position: HarvestPosition
-  open: boolean
-  onClose: () => void
+  inputRef: RefObject<HTMLInputElement | null>
   onCustomize: () => void
+  onRecover: () => void
 }) {
-  const harvest = useGalaxyHarvest(model, origin, position, open, onClose)
   const helpId = useId()
-  const { galaxy, system, position: slot } = position.coordinates
   const disabled = harvest.busy || harvest.blockers.length > 0
   return (
-    <ActionSheet
-      returnFocusRef={returnFocusRef}
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose()
-      }}
-      title="Harvest mission"
-      description={`Debris at [${galaxy}:${system}:${slot}]`}
-    >
+    <>
       <div className={styles.debris} aria-label="Available debris">
         <ResourceValue resource="metal">
           {formatWholeNumber(position.debris?.metal ?? '0')}
@@ -58,6 +42,7 @@ export function GalaxyHarvestSheet({
           <Field>
             Recyclers
             <NumberInput
+              ref={inputRef}
               aria-describedby={helpId}
               aria-invalid={!!harvest.invalid && !disabled}
               value={harvest.count}
@@ -87,11 +72,7 @@ export function GalaxyHarvestSheet({
           </p>
         )}
         {harvest.uncertain && harvest.commandId && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void model.recover(harvest.commandId!)}
-          >
+          <Button type="button" variant="secondary" onClick={onRecover}>
             Resolve saved command
           </Button>
         )}
@@ -104,6 +85,6 @@ export function GalaxyHarvestSheet({
           Customize
         </Button>
       </form>
-    </ActionSheet>
+    </>
   )
 }

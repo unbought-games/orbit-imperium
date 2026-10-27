@@ -37,6 +37,7 @@ export function CoordinateLink({
   known?: { owner?: string; empty?: boolean; debris?: boolean }
 }) {
   const trigger = useRef<HTMLButtonElement>(null)
+  const handingOff = useRef(false)
   const screen = useContext(ScreenContext)
   const session = useContext(SessionContext)
   const context = screen ?? session
@@ -116,13 +117,13 @@ export function CoordinateLink({
                     if (
                       mission === 'Harvest' &&
                       onHarvest &&
-                      window.matchMedia('(max-width: 767px)').matches &&
                       !event.ctrlKey &&
                       !event.metaKey &&
                       !event.shiftKey &&
                       !event.altKey
                     ) {
                       event.preventDefault()
+                      handingOff.current = true
                       onHarvest(trigger.current)
                     }
                   }}
@@ -147,14 +148,24 @@ export function CoordinateLink({
     </>
   )
   return (
-    <ContextMenu.Root onOpenChange={() => setFeedback('')}>
+    <ContextMenu.Root
+      onOpenChange={(open) => {
+        setFeedback('')
+        if (open) handingOff.current = false
+      }}
+    >
       <ContextMenu.Trigger
         render={<span />}
         data-coordinate=""
         className={`${styles.coordinate} ${className ?? ''}`}
       >
         {compact ? (
-          <Menu.Root onOpenChange={() => setFeedback('')}>
+          <Menu.Root
+            onOpenChange={(open) => {
+              setFeedback('')
+              if (open) handingOff.current = false
+            }}
+          >
             <Menu.Trigger
               ref={trigger}
               render={<Button variant="ghost" padding="compact" />}
@@ -166,7 +177,12 @@ export function CoordinateLink({
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Positioner className={styles.positioner} sideOffset={4}>
-                <Menu.Popup className={styles.menu}>{items()}</Menu.Popup>
+                <Menu.Popup
+                  finalFocus={() => !handingOff.current}
+                  className={styles.menu}
+                >
+                  {items()}
+                </Menu.Popup>
               </Menu.Positioner>
             </Menu.Portal>
           </Menu.Root>
@@ -204,7 +220,12 @@ export function CoordinateLink({
                 <Copy size={14} />
               )}
             </Button>
-            <Menu.Root onOpenChange={() => setFeedback('')}>
+            <Menu.Root
+              onOpenChange={(open) => {
+                setFeedback('')
+                if (open) handingOff.current = false
+              }}
+            >
               <Menu.Trigger
                 ref={trigger}
                 render={
@@ -217,7 +238,12 @@ export function CoordinateLink({
               </Menu.Trigger>
               <Menu.Portal>
                 <Menu.Positioner className={styles.positioner} sideOffset={4}>
-                  <Menu.Popup className={styles.menu}>{items()}</Menu.Popup>
+                  <Menu.Popup
+                    finalFocus={() => !handingOff.current}
+                    className={styles.menu}
+                  >
+                    {items()}
+                  </Menu.Popup>
                 </Menu.Positioner>
               </Menu.Portal>
             </Menu.Root>
@@ -233,7 +259,10 @@ export function CoordinateLink({
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Positioner className={styles.positioner}>
-          <ContextMenu.Popup className={styles.menu}>
+          <ContextMenu.Popup
+            finalFocus={() => !handingOff.current}
+            className={styles.menu}
+          >
             {items()}
           </ContextMenu.Popup>
         </ContextMenu.Positioner>

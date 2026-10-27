@@ -10,7 +10,7 @@ import { galaxyTarget } from '../shell/galaxy-location'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
-import { GalaxyHarvestSheet } from './galaxy-harvest-sheet'
+import { GalaxyHarvestAction } from './galaxy-harvest-action'
 import { GalaxyPosition } from './galaxy-position'
 import { galaxyMissionCapabilities } from './galaxy-mission-actions'
 import { colonizationStatus } from '../client-model/colonization'
@@ -39,6 +39,9 @@ export function Galaxy({
   const espionage = useGalaxyEspionage(model, origin)
   const [harvestSelection, setHarvestSelection] = useState<{
     field: string
+    galaxy: number
+    system: number
+    position: number
     origin: string
     key: number
   } | null>(null)
@@ -123,7 +126,11 @@ export function Galaxy({
   const harvestPosition =
     harvestSelection?.origin === origin
       ? data?.positions.find(
-          (entry) => entry.debris?.field_identity === harvestSelection.field,
+          (entry) =>
+            entry.debris?.field_identity === harvestSelection.field &&
+            entry.coordinates.galaxy === harvestSelection.galaxy &&
+            entry.coordinates.system === harvestSelection.system &&
+            entry.coordinates.position === harvestSelection.position,
         )
       : undefined
   const draft = (
@@ -131,10 +138,7 @@ export function Galaxy({
     mission: DispatchDraft['mission'],
     opener?: HTMLElement | null,
   ) => {
-    if (
-      mission === 'Harvest' &&
-      window.matchMedia('(max-width: 767px)').matches
-    ) {
+    if (mission === 'Harvest') {
       const position = data?.positions.find(
         (entry) =>
           entry.coordinates.position === coordinates.position &&
@@ -146,6 +150,7 @@ export function Galaxy({
         const field = position.debris.field_identity
         setHarvestSelection((previous) => ({
           field,
+          ...coordinates,
           origin,
           key: (previous?.key ?? 0) + 1,
         }))
@@ -271,7 +276,7 @@ export function Galaxy({
         </section>
       )}
       {harvestSelection && harvestPosition && (
-        <GalaxyHarvestSheet
+        <GalaxyHarvestAction
           key={harvestSelection.key}
           model={model}
           returnFocusRef={harvestOpener}

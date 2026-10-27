@@ -32,9 +32,14 @@ export function GalaxyActionMenu({
   ) => void
 }) {
   const trigger = useRef<HTMLButtonElement>(null)
+  const handingOff = useRef(false)
   const enabled = actions.some((action) => !action.reason)
   return (
-    <Menu.Root>
+    <Menu.Root
+      onOpenChange={(open) => {
+        if (open) handingOff.current = false
+      }}
+    >
       <Menu.Trigger
         ref={trigger}
         render={<Button variant="ghost" className={styles.actionTrigger} />}
@@ -56,6 +61,7 @@ export function GalaxyActionMenu({
           className={styles.menuPositioner}
         >
           <Menu.Popup
+            finalFocus={() => !handingOff.current}
             className={styles.actionMenu}
             aria-label={`Missions to ${target}`}
           >
@@ -68,6 +74,7 @@ export function GalaxyActionMenu({
                   disabled={!!action.reason}
                   title={action.reason}
                   onClick={() => {
+                    handingOff.current = action.mission === 'Harvest'
                     onDraft(coordinates, action.mission, trigger.current)
                   }}
                 >
