@@ -32,6 +32,8 @@ import { routeTarget } from '../shell/route-target'
 import { bodyName, label } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
+  ships?: Record<string, string>
+  speed?: number
   origin?: string
   targetKind?: LocationKind
   coordinates: S['Coordinates']

@@ -2,9 +2,16 @@ import { useEffect, useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { dispatchSelection } from '../client-model/dispatch-timing'
-import { dispatchFailure } from '../client-model/dispatch-validation'
+import {
+  dispatchObservationError,
+  dispatchFailure,
+} from '../client-model/dispatch-validation'
 type S = components['schemas']
 type Request = {
+  observation?: {
+    coordinates: S['Coordinates']
+    target?: S['MissionDestination4']
+  }
   kind: 'Planet' | 'Moon'
   coordinates: S['Coordinates']
   intent: Omit<S['FleetIntent4'], 'destination'>
@@ -18,7 +25,8 @@ export function useDispatchTiming(
   revision: string,
   enabled: boolean,
 ) {
-  const key = request ? JSON.stringify(request) : null
+  const key =
+    request && enabled ? JSON.stringify({ ...request, revision }) : null
   const [result, setResult] = useState<Result | null>(null)
   useEffect(() => {
     if (!key || !enabled) return
@@ -37,6 +45,19 @@ export function useDispatchTiming(
           })
           if (!current) return
           if (!destination || !('type' in destination)) throw Error('NotFound')
+          const problem = dispatchObservationError(
+            input.observation ?? null,
+            dispatchSelection(
+              input.intent.mission,
+              input.coordinates,
+              input.kind,
+            ),
+            destination,
+          )
+          if (problem) {
+            setResult({ key, error: problem })
+            return
+          }
           const terms = await model.world({
             type: 'FleetQuote',
             intent: { ...input.intent, destination },

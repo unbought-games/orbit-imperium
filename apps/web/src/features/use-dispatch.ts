@@ -56,8 +56,8 @@ export function useDispatch({
           ? 'moon'
           : 'planet'),
     ),
-    [speed, setSpeed] = useState(100),
-    [ships, setShips] = useState<Record<string, string>>({}),
+    [speed, setSpeed] = useState(draft?.speed ?? 100),
+    [ships, setShips] = useState<Record<string, string>>(draft?.ships ?? {}),
     [cargo, setCargo] = useState(['0', '0', '0']),
     [quote, setQuote] = useState<S['FleetTerms4'] | null>(null),
     [error, setError] = useState(''),
