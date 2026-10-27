@@ -15,8 +15,8 @@ import {
 import {
   currentProgressionOptions,
   progressionContext,
-  buildingCostContext,
-  currentBuildingCost,
+  catalogCostContext,
+  currentCatalogCost,
   technologyRequest,
 } from './options'
 
@@ -341,7 +341,7 @@ it('orders all ships and defenses together and appends pending orders for the se
 
 it('keeps building cost inputs stable across queues but invalidates changed levels, subjects and profiles', () => {
   const current = structuredClone(view)
-  const original = buildingCostContext(view, proposal.request)
+  const original = catalogCostContext(view, proposal.request)
   current.bodies[0].fields_reserved = 1
   current.bodies[0].amounts.metal = '999'
   current.constructions.push({
@@ -352,23 +352,23 @@ it('keeps building cost inputs stable across queues but invalidates changed leve
     due_at: 2000,
     paid: { metal: '1', crystal: '0', deuterium: '0' },
   })
-  expect(buildingCostContext(current, proposal.request)).toBe(original)
-  expect(currentBuildingCost(proposal, current)).toEqual({
+  expect(catalogCostContext(current, proposal.request)).toBe(original)
+  expect(currentCatalogCost(proposal, current)).toEqual({
     metal: '60',
     crystal: '15',
     deuterium: '0',
   })
   current.bodies[0].levels.MetalMine = 2
-  expect(buildingCostContext(current, proposal.request)).not.toBe(original)
-  expect(currentBuildingCost(proposal, current)).toBeNull()
+  expect(catalogCostContext(current, proposal.request)).not.toBe(original)
+  expect(currentCatalogCost(proposal, current)).toBeNull()
   current.bodies[0].levels.MetalMine = 1
   current.profile_hash = 'new-profile'
-  expect(currentBuildingCost(proposal, current)).toBeNull()
+  expect(currentCatalogCost(proposal, current)).toBeNull()
   current.profile_hash = view.profile_hash
   current.binding.epoch = 'new-epoch'
-  expect(currentBuildingCost(proposal, current)).toBeNull()
+  expect(currentCatalogCost(proposal, current)).toBeNull()
   expect(
-    buildingCostContext(view, {
+    catalogCostContext(view, {
       type: 'Upgrade',
       body: 'other',
       building: 'MetalMine',
@@ -662,3 +662,82 @@ it('hides only known empty inventory rows, preserving unknown legacy flight coun
     },
   ])
 })
+
+function researchOptions(): BoundProgressionOptions {
+  return {
+    ...proposal,
+    request: { type: 'Research', host: body.id, research: 'EnergyTechnology' },
+    terms: {
+      type: 'Research',
+      profile_hash: view.profile_hash,
+      host: body.id,
+      research: 'EnergyTechnology',
+      source_level: 0,
+      target_level: 1,
+      paid: { metal: '0', crystal: '800000000', deuterium: '400000000' },
+      duration_ms: 1000,
+      formula: 'ResearchClassic',
+      labs: [],
+      effective_lab: '1',
+      required_energy: '0',
+    },
+  }
+}
+
+it('uses authoritative next research level and per-unit manufacturing costs', () => {
+  const research = researchOptions()
+  expect(currentCatalogCost(research, view)).toEqual({
+    metal: '0',
+    crystal: '800000000',
+    deuterium: '400000000',
+  })
+  const current = structuredClone(view)
+  const context = catalogCostContext(current, research.request)
+  current.research = [{ research: 'EnergyTechnology', level: 1 }]
+  expect(catalogCostContext(current, research.request)).not.toBe(context)
+  expect(currentCatalogCost(research, current)).toBeNull()
+  const manufacture = unitOptions()
+  if (manufacture.terms?.type !== 'Manufacture') throw Error('fixture')
+  manufacture.terms.quantity = '5'
+  manufacture.terms.paid.metal = '300000000'
+  expect(currentCatalogCost(manufacture, current)?.metal).toBe('60000000')
+})
+
+it.each([researchOptions(), unitOptions()])(
+  'keeps catalog costs across balances and queues, rejects stale sessions and profiles ($request.type)',
+  (source) => {
+    const current = structuredClone(view)
+    const context = catalogCostContext(current, source.request)
+    current.bodies[0].amounts.metal = '999999999'
+    current.bodies[0].levels.ResearchLab = 5
+    current.bodies[0].inventories = [
+      { item: { kind: 'Ship', id: 'SmallCargo' }, count: '20' },
+    ]
+    current.progression.research_operation = {
+      id: 'work',
+      host: body.id,
+      research: 'CombustionDrive',
+      source_level: 0,
+      target_level: 1,
+      paid: body.amounts,
+      started_at: 1000,
+      due_at: 2000,
+      labs: [],
+      effective_lab: '1',
+      can_cancel: true,
+    }
+    current.sampled_at += 1000
+    current.viewer_revision = '2'
+    expect(catalogCostContext(current, source.request)).toBe(context)
+    expect(currentCatalogCost(source, current)).not.toBeNull()
+    current.binding.epoch = 'new-epoch'
+    expect(catalogCostContext(current, source.request)).not.toBe(context)
+    expect(currentCatalogCost(source, current)).toBeNull()
+    current.binding.epoch = view.binding.epoch
+    current.profile_hash = 'new-profile'
+    expect(catalogCostContext(current, source.request)).not.toBe(context)
+    expect(currentCatalogCost(source, current)).toBeNull()
+    expect(currentCatalogCost(source, { ...view, bodies: [] })).toBeNull()
+    expect(currentCatalogCost({ ...source, terms: null }, view)).toBeNull()
+  },
+)

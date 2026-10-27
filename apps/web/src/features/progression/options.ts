@@ -9,9 +9,9 @@ import type { ProgressionProps } from './shared'
 
 export type ProgressionRequest = BoundProgressionOptions['request']
 
-// Building material costs depend on the rules profile and source level, not
+// Catalog material costs depend on the rules profile and source level, not
 // active queues, available fields, balances, or production eligibility.
-export function buildingCostContext(
+export function catalogCostContext(
   view: ProgressionProps['view'],
   request: ProgressionRequest | null,
 ) {
@@ -27,11 +27,14 @@ export function buildingCostContext(
     level:
       body && request?.type === 'Upgrade'
         ? body.levels[request.building as keyof typeof body.levels]
-        : null,
+        : request?.type === 'Research'
+          ? (view.research.find((entry) => entry.research === request.research)
+              ?.level ?? 0)
+          : null,
   })
 }
 
-export function currentBuildingCost(
+export function currentCatalogCost(
   proposal: BoundProgressionOptions | null,
   view: ProgressionProps['view'],
 ) {
@@ -40,19 +43,39 @@ export function currentBuildingCost(
     !proposal ||
     proposal.protocol !== view.protocol ||
     canonical(proposal.binding) !== canonical(view.binding) ||
-    terms?.type !== 'Building' ||
-    terms.action !== 'Upgrade' ||
+    !terms ||
+    terms.type === 'Transport' ||
     terms.profile_hash !== view.profile_hash
   )
     return null
-  const body = view.bodies.find((body) => body.id === terms.body)
-  if (
-    !body ||
-    body.levels[terms.building as keyof typeof body.levels] !==
-      terms.source_level
-  )
-    return null
-  return terms.paid
+  switch (terms.type) {
+    case 'Building': {
+      const body = view.bodies.find((body) => body.id === terms.body)
+      if (
+        terms.action !== 'Upgrade' ||
+        !body ||
+        body.levels[terms.building as keyof typeof body.levels] !==
+          terms.source_level
+      )
+        return null
+      return terms.paid
+    }
+    case 'Research': {
+      const level =
+        view.research.find((entry) => entry.research === terms.research)
+          ?.level ?? 0
+      if (
+        !view.bodies.some((body) => body.id === terms.host) ||
+        level !== terms.source_level
+      )
+        return null
+      return terms.paid
+    }
+    case 'Manufacture':
+      return view.bodies.some((body) => body.id === terms.body)
+        ? terms.unit_cost
+        : null
+  }
 }
 
 // Balances and sample timestamps change during normal polling. They do not
