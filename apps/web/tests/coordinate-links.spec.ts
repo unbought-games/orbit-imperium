@@ -535,3 +535,18 @@ test('shared locations show an access error without offering enrollment', async 
     0,
   )
 })
+
+test('closing a coordinate menu respects focus moved to its location link', async ({ page }) => {
+  await setup(page)
+  await page.goto(path(`fleets/${fleet.id}`))
+  const target = page.getByRole('link', { name: 'View destination [1:5:12] in galaxy', exact: true }).first()
+  await page.getByRole('button', { name: 'Location actions for [1:5:12]', exact: true }).first().click()
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  await page.keyboard.press('Escape')
+  await target.focus()
+  await expect(menu).toHaveCount(0)
+  await expect(target).toBeFocused()
+  await page.keyboard.press('Enter')
+  await assertLocation(page, 5, 12)
+})

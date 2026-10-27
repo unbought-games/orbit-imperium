@@ -243,6 +243,7 @@ export function Galaxy({
                   playerIdentity={
                     position.body ? (
                       <PlayerName
+                        messageAction
                         badgeTooltip
                         player={position.body.owner}
                         names={data.player_names}

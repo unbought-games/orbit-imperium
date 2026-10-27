@@ -619,6 +619,36 @@ export class Coordinator {
       inspect()
     })
   }
+  async socialQuery(
+    query: import('../contracts').components['schemas']['SocialQuery'],
+  ) {
+    const pending = this.captureRequest()
+    if (!pending || !this.port.socialQuery || this.protocol !== 4) return null
+    try {
+      const result = await this.port.socialQuery(pending.context, query)
+      return this.responseMatches(pending, result) ? result : null
+    } catch (error) {
+      const f = failure(error)
+      if (f.code === 'EpochChanged' || f.status === 401)
+        await this.problem(error, pending.generation, pending.context.binding)
+      throw error
+    }
+  }
+  async socialCommand(request: import('./social').SocialRequest) {
+    const pending = this.captureRequest()
+    if (!pending || !this.port.socialCommand || this.protocol !== 4) return null
+    try {
+      const result = await this.port.socialCommand(pending.context, request)
+      return this.current(pending.generation, pending.context.binding)
+        ? result
+        : null
+    } catch (error) {
+      const f = failure(error)
+      if (f.code === 'EpochChanged' || f.status === 401)
+        await this.problem(error, pending.generation, pending.context.binding)
+      throw error
+    }
+  }
   async allianceQuery(
     query: import('../contracts').components['schemas']['AllianceQuery'],
   ) {

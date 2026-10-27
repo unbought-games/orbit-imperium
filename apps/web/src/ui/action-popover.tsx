@@ -49,12 +49,13 @@ export function ActionPopover({
     whileElementsMounted: autoUpdate,
     middleware: [
       offset(8),
-      flip({ padding: 12 }),
-      shift({ padding: 12 }),
+      // Reserve one CSS pixel for device-pixel rounding of floating coordinates.
+      flip({ padding: 13 }),
+      shift({ padding: 13 }),
       size({
-        padding: 12,
+        padding: 13,
         apply({ availableHeight, elements }) {
-          elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`
+          elements.floating.style.maxHeight = `${Math.max(0, Math.floor(availableHeight))}px`
         },
       }),
     ],

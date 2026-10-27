@@ -1,3 +1,4 @@
+import { MessagePlayerLink } from './social/message-player-link'
 import { createContext, useContext } from 'react'
 import { usePlayerDisplay } from '../shell/player-profiles-context'
 import { SupporterIdentity } from './supporter-identity'
@@ -18,6 +19,7 @@ export function PlayerName({
   alliance,
   linkAlliance = true,
   badgeTooltip = false,
+  messageAction = false,
 }: {
   player: string
   fallback?: string
@@ -25,6 +27,7 @@ export function PlayerName({
   alliance?: AllianceIdentity | null
   linkAlliance?: boolean
   badgeTooltip?: boolean
+  messageAction?: boolean
 }) {
   const profile = usePlayerDisplay(player)
   const kinds = useContext(PlayerKinds)
@@ -51,6 +54,12 @@ export function PlayerName({
           {' '}
           Bot
         </span>
+      )}
+      {messageAction && (
+        <MessagePlayerLink
+          player={player}
+          name={profile?.username ?? fallback ?? playerLabel(player, names)}
+        />
       )}
       {affiliation && (
         <>

@@ -85,7 +85,9 @@ fn default_roles_and_leader_authority_are_derived() {
     );
     assert_eq!(
         s.permissions(player(2)),
-        [ViewMembers, PublishPosts].into_iter().collect()
+        [ViewMembers, PublishPosts, SendCircular]
+            .into_iter()
+            .collect()
     );
     assert!(s.grantable_permissions(player(2)).is_empty());
     assert!(s.permissions(player(999)).is_empty());
@@ -106,7 +108,9 @@ fn default_roles_and_leader_authority_are_derived() {
     );
     assert_eq!(
         s.permissions(player(2)),
-        [ViewMembers, PublishPosts].into_iter().collect()
+        [ViewMembers, PublishPosts, SendCircular]
+            .into_iter()
+            .collect()
     );
 }
 #[test]
@@ -266,7 +270,9 @@ fn leadership_transfer_is_immediate_and_old_leader_becomes_member() {
     assert_eq!(s.leader, player(2));
     assert_eq!(
         s.permissions(player(1)),
-        [ViewMembers, PublishPosts].into_iter().collect()
+        [ViewMembers, PublishPosts, SendCircular]
+            .into_iter()
+            .collect()
     );
     denied(&mut s, 1, AllianceAction::Disband { alliance: id(10) });
     run(&mut s, 1, AllianceAction::Leave { alliance: id(10) }).unwrap();

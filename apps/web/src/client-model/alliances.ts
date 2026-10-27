@@ -13,6 +13,7 @@ export const permissionLabels: Record<AlliancePermission, string> = {
   EditProfile: 'Edit alliance profile',
   ManageRecruitment: 'Change recruitment mode',
   PublishPosts: 'Publish notices',
+  SendCircular: 'Send alliance circulars',
   ManagePosts: 'Edit and delete others’ notices',
   PinPosts: 'Pin notices',
   ManageRoles: 'Create and edit roles',

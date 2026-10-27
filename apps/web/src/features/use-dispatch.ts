@@ -139,6 +139,7 @@ export function useDispatch({
     model,
     timingReady
       ? {
+          kind: targetKind === 'moon' ? 'Moon' : 'Planet',
           coordinates: {
             galaxy: Number(galaxy),
             system: Number(system),

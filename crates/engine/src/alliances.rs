@@ -21,6 +21,7 @@ pub enum AlliancePermission {
     EditProfile,
     ManageRecruitment,
     PublishPosts,
+    SendCircular,
     ManagePosts,
     PinPosts,
     ManageRoles,
@@ -29,7 +30,7 @@ pub enum AlliancePermission {
     ViewAudit,
 }
 impl AlliancePermission {
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 14] = [
         Self::ViewMembers,
         Self::ViewActivity,
         Self::ViewApplications,
@@ -37,6 +38,7 @@ impl AlliancePermission {
         Self::EditProfile,
         Self::ManageRecruitment,
         Self::PublishPosts,
+        Self::SendCircular,
         Self::ManagePosts,
         Self::PinPosts,
         Self::ManageRoles,
@@ -287,7 +289,7 @@ impl AllianceState {
             StateRole {
                 id: role_ids[0],
                 name: "Member".into(),
-                permissions: vec![ViewMembers, PublishPosts],
+                permissions: vec![ViewMembers, PublishPosts, SendCircular],
                 grantable_permissions: vec![],
                 is_default: true,
             },

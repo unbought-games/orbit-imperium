@@ -9,7 +9,7 @@ use orbit_application::*;
 use orbit_engine::alliances::{AllianceError, AllianceState, StateApplication, StateMember};
 use sqlx::{Row, postgres::PgRow};
 use uuid::Uuid;
-mod persistence;
+pub(crate) mod persistence;
 mod reads;
 use persistence::*;
 

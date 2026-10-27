@@ -38,6 +38,20 @@ export function CoordinateLink({
 }) {
   const trigger = useRef<HTMLButtonElement>(null)
   const handingOff = useRef(false)
+  const menuPopup = useRef<HTMLDivElement>(null)
+  const contextPopup = useRef<HTMLDivElement>(null)
+  // A callback is an explicit focus target in Base UI. Preserve its normal
+  // outside-focus behavior while suppressing restoration during Harvest handoff.
+  const restoreFocus = (popup: HTMLElement | null) => {
+    const active = document.activeElement
+    return (
+      !handingOff.current &&
+      (!active ||
+        active === document.body ||
+        active === trigger.current ||
+        !!popup?.contains(active))
+    )
+  }
   const screen = useContext(ScreenContext)
   const session = useContext(SessionContext)
   const context = screen ?? session
@@ -178,7 +192,8 @@ export function CoordinateLink({
             <Menu.Portal>
               <Menu.Positioner className={styles.positioner} sideOffset={4}>
                 <Menu.Popup
-                  finalFocus={() => !handingOff.current}
+                  ref={menuPopup}
+                  finalFocus={() => restoreFocus(menuPopup.current)}
                   className={styles.menu}
                 >
                   {items()}
@@ -239,7 +254,8 @@ export function CoordinateLink({
               <Menu.Portal>
                 <Menu.Positioner className={styles.positioner} sideOffset={4}>
                   <Menu.Popup
-                    finalFocus={() => !handingOff.current}
+                    ref={menuPopup}
+                    finalFocus={() => restoreFocus(menuPopup.current)}
                     className={styles.menu}
                   >
                     {items()}
@@ -260,7 +276,8 @@ export function CoordinateLink({
       <ContextMenu.Portal>
         <ContextMenu.Positioner className={styles.positioner}>
           <ContextMenu.Popup
-            finalFocus={() => !handingOff.current}
+            ref={contextPopup}
+            finalFocus={() => restoreFocus(contextPopup.current)}
             className={styles.menu}
           >
             {items()}

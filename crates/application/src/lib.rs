@@ -158,3 +158,6 @@ pub use setup::UniverseSetup;
 
 mod alliances;
 pub use alliances::*;
+
+mod social;
+pub use social::*;

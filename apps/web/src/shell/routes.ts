@@ -16,6 +16,7 @@ export type Page =
   | 'galaxy'
   | 'high-scores'
   | 'alliance'
+  | 'messages'
 export type Destination = {
   universe?: string
   page: Page | null
@@ -78,6 +79,8 @@ export function resolveDestination(
     )
   if (page === 'alliance' && view.protocol !== 4)
     return unavailable('Alliances are unavailable in this universe.')
+  if (page === 'messages' && view.protocol !== 4)
+    return unavailable('Messages are unavailable in this universe.')
   if (page === 'high-scores' && view.protocol !== 4)
     return unavailable('High Scores are unavailable in this universe.')
   if (page === 'facilities' && view.protocol === 2)
@@ -127,7 +130,8 @@ export function resolveDestination(
     !body &&
     page !== 'settings' &&
     page !== 'high-scores' &&
-    page !== 'alliance'
+    page !== 'alliance' &&
+    page !== 'messages'
   )
     return unavailable('No planet is available for this membership.')
   return {

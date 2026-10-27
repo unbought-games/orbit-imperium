@@ -46,7 +46,11 @@ export function GameShell() {
     item?: string
     coordinates?: string
   }
-  const search = leaf.search as { body?: string; alliance?: string }
+  const search = leaf.search as {
+    body?: string
+    alliance?: string
+    player?: string
+  }
   const route = resolveNamedDestination(
     {
       universe: params.universe,
@@ -82,9 +86,11 @@ export function GameShell() {
           ? { search: validateGalaxySearch(leaf.search) }
           : page === 'dispatch'
             ? { search: validateDispatchSearch(leaf.search) }
-            : page === 'alliance'
-              ? { search: { body: body.id, alliance: search.alliance } }
-              : {}),
+            : page === 'messages'
+              ? { search: { body: body.id, player: search.player } }
+              : page === 'alliance'
+                ? { search: { body: body.id, alliance: search.alliance } }
+                : {}),
         replace: true,
       })
     }
@@ -145,6 +151,9 @@ export function GameShell() {
         id,
         available ? (route.item ?? undefined) : undefined,
       ),
+      ...(available && page === 'messages'
+        ? { search: { body: id, player: search.player } }
+        : {}),
     })
   }
   const hideRouteHeading =

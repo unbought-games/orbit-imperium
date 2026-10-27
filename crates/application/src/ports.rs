@@ -160,6 +160,18 @@ pub trait GameStore: Send + Sync {
         self.report_share(q.context.binding, report, q.action)
     }
 
+    fn social_query(
+        &self,
+        _q: SocialQueryRequest,
+    ) -> impl std::future::Future<Output = Result<SocialView, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
+    fn social_command(
+        &self,
+        _q: SocialCommandRequest,
+    ) -> impl std::future::Future<Output = Result<SocialCommandResult, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
     fn alliance_query(
         &self,
         _q: AllianceQueryRequest,
