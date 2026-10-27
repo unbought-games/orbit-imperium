@@ -14,7 +14,7 @@ import { GalaxyHarvestAction } from './galaxy-harvest-action'
 import { GalaxyPosition } from './galaxy-position'
 import { galaxyMissionCapabilities } from './galaxy-mission-actions'
 import { colonizationStatus } from '../client-model/colonization'
-import { FleetSlots } from './fleet-slots'
+import { FleetSlotCount } from './fleet-slots'
 import {
   currentServerTime,
   occupiedFleetSlots,
@@ -182,20 +182,21 @@ export function Galaxy({
   )
   return (
     <section className={styles.screen} aria-label="Galaxy browser">
-      {espionage.state.view?.protocol === 4 && (
-        <div className={styles.slots}>
-          <FleetSlots
-            used={occupiedFleetSlots(espionage.state)}
-            total={espionage.state.view.missions.fleet_slots}
-          />
-        </div>
-      )}
       <GalaxyNavigation
         galaxy={galaxy}
         system={system}
         galaxies={model.settings?.galaxies ?? 1}
         systems={model.settings?.systems_per_galaxy ?? 5}
         browse={browse}
+        fleetSlots={
+          espionage.state.view?.protocol === 4 && (
+            <FleetSlotCount
+              className={styles.slots}
+              used={occupiedFleetSlots(espionage.state)}
+              total={espionage.state.view.missions.fleet_slots}
+            />
+          )
+        }
       />
       {!valid && (
         <p role="alert">These coordinates are outside this universe.</p>

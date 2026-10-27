@@ -389,7 +389,6 @@
   .toolbar {
     padding-inline: 12px;
   }
-  .slots,
   .error,
   .loading,
   .coordinateError {
@@ -401,8 +400,16 @@
 }
 @media (max-width: 599px) {
   .toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 54px) 44px minmax(
+        0,
+        54px
+      ) 44px 44px minmax(max-content, 1fr);
     align-items: end;
-    gap: 6px;
+    gap: 4px;
+  }
+  .toolbar > button[type='submit'] {
+    padding-inline: 4px;
   }
   .coordinateField {
     display: grid;
@@ -410,7 +417,7 @@
     font-size: 0.75rem;
   }
   .toolbar input {
-    width: 54px;
+    width: 100%;
   }
   .positionList {
     grid-template-columns: 45px minmax(0, 1fr) 112px 44px;
@@ -485,13 +492,17 @@
 }
 
 .coordinateError {
+  grid-column: 1 / -1;
   flex-basis: 100%;
   margin: 0;
   color: var(--danger);
 }
 
 .slots {
-  padding-block: 0.5rem;
+  margin-inline-start: auto;
+  min-width: 44px;
+  min-height: 44px;
+  white-space: nowrap;
   font-size: 0.875rem;
   color: var(--text-muted);
 }

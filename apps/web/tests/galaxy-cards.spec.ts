@@ -852,6 +852,7 @@ for (const width of [320, 390, 1280]) {
       toolbar.getByRole('textbox', { name: 'Solar system' }),
       toolbar.getByRole('button', { name: 'Next system' }),
       toolbar.getByRole('button', { name: 'Go', exact: true }),
+      toolbar.getByRole('button', { name: 'Fleet slots: 0 used / 1 total', exact: true }),
     ]
     const boxes = []
     for (const control of controls) {
@@ -865,6 +866,21 @@ for (const width of [320, 390, 1280]) {
       Math.max(...boxes.map((box) => box.y)) -
         Math.min(...boxes.map((box) => box.y)),
     ).toBeLessThanOrEqual(1)
+    const slots = controls[5]
+    await expect(slots).toHaveText('0 / 1')
+    expect(boxes[5].x).toBeGreaterThanOrEqual(boxes[4].x + boxes[4].width)
+    expect(toolbarBox.x + toolbarBox.width - boxes[5].x - boxes[5].width).toBeLessThanOrEqual(12)
+    await slots.click()
+    const tooltip = page.getByRole('tooltip')
+    await expect(tooltip).toContainText('Fleet slots: 0 used / 1 total')
+    await expect(tooltip).toContainText('Outbound and returning fleets, including pending departures')
+    await page.keyboard.press('Escape')
+    await expect(tooltip).toHaveCount(0)
+    await controls[4].focus()
+    await page.keyboard.press('Tab')
+    await expect(slots).toBeFocused()
+    await expect(tooltip).toBeVisible()
+    await page.keyboard.press('Escape')
     expect((await toolbar.boundingBox())!.height).toBeLessThanOrEqual(80)
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
@@ -898,8 +914,8 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
     fleet_slots: '3',
   }
   await setup(page, null, { missions, viewerRevision: () => String(revision) })
-  const slots = page.getByText(/^Fleet slots: \d+ used \/ 3 total$/)
-  await expect(slots).toHaveText('Fleet slots: 0 used / 3 total')
+  const slots = page.getByRole('button', { name: /^Fleet slots: \d+ used \/ 3 total$/ })
+  await expect(slots).toHaveText('0 / 3')
   let quotes = 0,
     launches = 0
   let releaseQuote!: () => void, releaseLaunch!: () => void
@@ -1024,7 +1040,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   await expect(
     target.getByRole('group', { name: /^Your fleets to / }),
   ).toContainText('Espionage departure pending')
-  await expect(slots).toHaveText('Fleet slots: 1 used / 3 total')
+  await expect(slots).toHaveText('1 / 3')
   expect(intents[0]).toEqual({
     origin: body.id,
     destination: {
@@ -1040,7 +1056,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   })
   releaseLaunch()
   await finishRefresh(1)
-  await expect(slots).toHaveText('Fleet slots: 1 used / 3 total')
+  await expect(slots).toHaveText('1 / 3')
   await expect(
     target.getByRole('group', { name: /^Your fleets to / }),
   ).toHaveText(/Espionage en route · \d/)
@@ -1055,7 +1071,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   revision++
   await refreshGame(page)
   await finishRefresh(2)
-  await expect(slots).toHaveText('Fleet slots: 1 used / 3 total')
+  await expect(slots).toHaveText('1 / 3')
   await expect(
     target.getByRole('button', { name: /^Actions for/ }),
   ).toBeFocused()
@@ -1070,7 +1086,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   revision++
   await refreshGame(page)
   await finishRefresh(3)
-  await expect(slots).toHaveText('Fleet slots: 0 used / 3 total')
+  await expect(slots).toHaveText('0 / 3')
   await expect(
     target.getByRole('button', { name: /^Actions for/ }),
   ).toBeFocused()
@@ -1663,7 +1679,7 @@ test('mobile harvest quotes and sends one departure, stays in Galaxy and reserve
   await expect(sheet).not.toBeVisible()
   await expect(page).toHaveURL(/\/galaxy$/)
   expect(launches).toBe(1)
-  await expect(page.getByText('Fleet slots: 1 used / 3 total')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Fleet slots: 1 used / 3 total', exact: true })).toBeVisible()
   const reopened = await openHarvest(page)
   await expect(reopened.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('2')
 })
@@ -1810,7 +1826,7 @@ test('desktop Harvest sends the edited quantity with Enter through the shared la
   await expect(popover).not.toBeVisible()
   expect(launches).toBe(1)
   await expect(page).toHaveURL(/\/galaxy$/)
-  await expect(page.getByText('Fleet slots: 1 used / 3 total')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Fleet slots: 1 used / 3 total', exact: true })).toBeVisible()
 })
 
 test('browser-history navigation away from a harvest target does not reopen its popover on return', async ({ page }) => {
