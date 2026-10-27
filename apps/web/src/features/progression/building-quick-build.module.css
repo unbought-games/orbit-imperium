@@ -1,0 +1,14 @@
+.action {
+  flex: 0 0 90px;
+  align-self: center;
+  padding: 4px;
+  text-align: center;
+  min-width: 0;
+}
+.details {
+  min-height: 44px;
+  text-decoration: underline;
+}
+.review {
+  overflow-wrap: anywhere;
+}
