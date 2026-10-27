@@ -945,10 +945,8 @@ test('changing manufacturing quantity while unit terms load uses the latest quan
     },
     { times: 1 },
   )
-  await navigate(page, 'Shipyard')
-  await page
-    .getByRole('link', { name: 'Build Small Cargo', exact: true })
-    .click()
+  // Gate the detail's unit terms, independently of catalog cost inspections.
+  await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
   await reached
   await page.getByLabel('Shipyard quantity').fill('4')
   await expect(
@@ -1159,6 +1157,8 @@ test('activated Impulse Drive uses server gates, supports level four, and shows 
   let sent: unknown
   await page.route('**/progression-options', async route => {
     const { context, request } = route.request().postDataJSON()
+    // Other visible research rows inspect their costs before opening details.
+    if (request.type !== 'Research' || request.research !== 'ImpulseDrive') return route.fallback()
     expect(request).toEqual({ type: 'Research', host: body.id, research: 'ImpulseDrive' })
     await route.fulfill({ json: {
       protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',
@@ -1217,6 +1217,8 @@ test('activated Astrophysics shows three gates, exact rounded costs, and deferre
   let sent: unknown
   await page.route('**/progression-options', async route => {
     const { context, request } = route.request().postDataJSON()
+    // Other visible research rows inspect their costs before opening details.
+    if (request.type !== 'Research' || request.research !== 'Astrophysics') return route.fallback()
     expect(request).toEqual({ type: 'Research', host: body.id, research: 'Astrophysics' })
     await route.fulfill({ json: {
       protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',

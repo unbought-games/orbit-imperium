@@ -8,8 +8,8 @@ import type { ProgressionProps } from './shared'
 import {
   currentProgressionOptions,
   progressionContext,
-  buildingCostContext,
-  currentBuildingCost,
+  catalogCostContext,
+  currentCatalogCost,
   type ProgressionRequest,
 } from './options'
 
@@ -91,16 +91,16 @@ export function useProgressionOptions(
 }
 
 /** Cost data is reusable across queue changes; action eligibility is not. */
-export function useBuildingCost(
+export function useCatalogCost(
   model: Coordinator,
   view: ProgressionProps['view'],
   request: ProgressionRequest | null,
 ) {
-  const upgrade = request?.type === 'Upgrade' ? request : null
+  const priced = request?.type === 'Demolition' ? null : request
   const { proposal } = useServerProgressionOptions(
     model,
-    upgrade,
-    buildingCostContext(view, upgrade),
+    priced,
+    catalogCostContext(view, priced),
   )
-  return currentBuildingCost(proposal, view)
+  return currentCatalogCost(proposal, view)
 }

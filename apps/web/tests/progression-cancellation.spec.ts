@@ -185,8 +185,19 @@ async function cancellationFixture(page: Page, lateOptions = false) {
     })
   })
   await page.goto(`/u/andromeda/b/${body.id}/resources`)
-  // The six inactive building tiles each load cost inputs before cancellation.
-  await expect.poll(() => inspections.filter((x) => x.delivered).length).toBe(6)
+  // Only unlocked, inactive tiles inspect costs; the Deuterium Tank remains
+  // locked and the Crystal Mine keeps its active-construction presentation.
+  await expect
+    .poll(() =>
+      inspections.filter((x) => x.delivered).map((x) => x.building).sort(),
+    )
+    .toEqual([
+      'CrystalStorage',
+      'DeuteriumSynthesizer',
+      'MetalMine',
+      'MetalStorage',
+      'SolarPlant',
+    ])
   await page
     .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
     .click()

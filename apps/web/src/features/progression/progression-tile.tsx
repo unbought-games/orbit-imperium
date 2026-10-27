@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import { ImageTile } from '../../ui/image-catalog'
 import type { ProgressionProps } from './shared'
 import type { ProgressionRequest } from './options'
-import { useBuildingCost } from './use-progression-options'
+import { useCatalogCost } from './use-progression-options'
 import { BuildingQuickBuild } from './building-quick-build'
 import { canAfford } from '../../client-model/resources'
 
@@ -17,15 +17,18 @@ export function ProgressionTile({
   view: ProgressionProps['view']
   request: ProgressionRequest | null
 }) {
-  const cost = useBuildingCost(
+  const cost = useCatalogCost(
     model,
     view,
-    tile.disabled || tile.progress ? null : request,
+    tile.disabled || tile.locked || tile.progress ? null : request,
   )
-  const body =
-    request && 'body' in request
-      ? view.bodies.find((body) => body.id === request.body)
-      : null
+  const body = request
+    ? view.bodies.find(
+        (body) =>
+          body.id ===
+          (request.type === 'Research' ? request.host : request.body),
+      )
+    : null
   const unaffordable = !!cost && !!body && !canAfford(cost, body.amounts)
   const props = {
     ...tile,

@@ -144,15 +144,12 @@ export function TechnologyPage(props: ProgressionProps) {
                       key={entry.key.id}
                       model={model}
                       view={view}
-                      request={
-                        entry.key.kind === 'Building'
-                          ? {
-                              type: 'Upgrade',
-                              body: body.id,
-                              building: entry.key.id,
-                            }
-                          : null
-                      }
+                      request={technologyRequest(
+                        entry.key,
+                        body.id,
+                        'Upgrade',
+                        '1',
+                      )}
                       title={label(entry.key.id)}
                       aria-label={`${verb} ${label(entry.key.id)}`}
                       art={catalogContent(entry.key).art}
