@@ -132,6 +132,101 @@ const targetBody = (
 })
 const debris = { field_identity: id(40), metal: '900', crystal: '1500' }
 
+for (const width of [390, 1280])
+  test(`alliance mates are clearly marked and follow current membership at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await setup(
+      page,
+      null,
+      {},
+      {
+        2: { body: targetBody({ inactivity: 'Inactive7' }) },
+      },
+    )
+    const alliance = {
+      id: id(90),
+      universe: binding.universe,
+      name: 'Star League',
+      tag: 'STAR',
+    }
+    let member = true
+    let joined = true
+    await playerProfilesFixture(page, () => [
+      {
+        player: binding.player,
+        username: 'You',
+        alliance: joined ? alliance : undefined,
+      },
+      {
+        player: id(31),
+        username: 'Alliance mate',
+        alliance: member ? alliance : undefined,
+      },
+      {
+        player: id(32),
+        username: 'Other player',
+        alliance: { ...alliance, id: id(91) },
+      },
+    ])
+    await page.reload()
+    const ally = rows(page).nth(1)
+    const badge = ally.getByRole('button', {
+      name: 'Your alliance',
+      exact: true,
+    })
+    await expect(badge).toBeVisible()
+    await expect(badge).toHaveText('Your alliance')
+    await expect(ally).toHaveCSS(
+      'box-shadow',
+      'rgb(124, 185, 240) 3px 0px 0px 0px inset',
+    )
+    await expect(
+      ally.getByRole('link', { name: 'Alliance Star League [STAR]' }),
+    ).toBeVisible()
+    await expect(
+      ally.getByRole('button', {
+        name: 'Inactive for 7 days or more',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(
+      rows(page).first().getByText('You', { exact: true }).last(),
+    ).toBeVisible()
+    await expect(
+      rows(page).first().getByRole('button', { name: 'Your alliance' }),
+    ).toHaveCount(0)
+    await expect(
+      rows(page).nth(2).getByRole('button', { name: 'Your alliance' }),
+    ).toHaveCount(0)
+    await badge.click()
+    await expect(page.getByRole('tooltip')).toContainText(
+      'member of Star League [STAR], like you',
+    )
+    await page.keyboard.press('Escape')
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+    await diagnosticScreenshot(page, {
+      path: `test-results/galaxy-alliance-${width}.png`,
+    })
+
+    // Current profile refreshes remove the marker after either player leaves.
+    member = false
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+    await expect(badge).toHaveCount(0)
+    await expect(ally).toHaveCSS('box-shadow', 'none')
+    member = true
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+    await expect(badge).toBeVisible()
+    joined = false
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+    await expect(badge).toHaveCount(0)
+  })
+
 test('protection is a green player status with an accessible explanation and blocks hostile actions until refreshed', async ({
   page,
 }) => {
@@ -306,7 +401,9 @@ test('every row keeps its Actions control and your selected planet can harvest i
   await expect(
     page.getByRole('combobox', { name: 'Mission', exact: true }),
   ).toHaveValue('Harvest')
-  await expect(page.getByLabel('Destination preview')).toContainText('Debris field')
+  await expect(page.getByLabel('Destination preview')).toContainText(
+    'Debris field',
+  )
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveValue(coordinatePattern('position', '3'))

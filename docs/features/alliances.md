@@ -2,6 +2,10 @@
 
 Alliances are scoped to a universe epoch. Creation and membership have no resource cost. A player has at most one current alliance and five pending applications. Open recruitment joins immediately; Application recruitment requires approval; Closed blocks new requests while allowing existing applications to be processed. Create, join and accept withdraw every other pending application atomically.
 
+The galaxy marks other players in your current alliance with a blue row accent and a visible "Your alliance" badge, alongside their public alliance tag. The marker compares alliance IDs within the same universe using current, unexpired player profiles, and leaves vacation, inactivity and beginner-protection indicators visible. Your own planets retain the "You" label.
+
+Alliance membership currently does not prevent attacks or espionage. Mission eligibility checks ownership, vacation, player lifecycle and beginner protection; it does not check alliance membership. The galaxy alliance marker identifies a relationship, not combat immunity.
+
 The HTTP surface is `POST /api/v4/universes/{id}/alliances/query`, `POST /api/v4/universes/{id}/alliances/commands` and unauthenticated `GET /api/v4/universes/{id}/alliances/{alliance}`. Private POSTs use the existing session, Origin, CSRF, current-player/epoch and protocol checks. The public endpoint is independently rate limited, returns only public summary fields and derived scores, and never records presence. All responses disable caching.
 
 The pure `orbit_engine::alliances` domain owns recruitment, membership, combined role permissions, delegation and noticeboard policy. The application layer owns DTOs and private projections. The PostgreSQL adapter revalidates binding in the transaction, takes a social-subsystem advisory lock per universe/epoch, and commits source facts, bounded audit and immutable retry receipt together. This serializes competing accepts, joins, founder creation, role changes and pin limits without inserting gameplay commands. Database uniqueness additionally protects case-insensitive names/tags and current membership.

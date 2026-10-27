@@ -245,7 +245,10 @@ impl Ruleset {
                 && (drive != ResearchId::ImpulseDrive
                     || !matches!(
                         ship,
-                        ShipType::ColonyShip | ShipType::HeavyFighter | ShipType::Cruiser
+                        ShipType::ColonyShip
+                            | ShipType::HeavyFighter
+                            | ShipType::Cruiser
+                            | ShipType::Bomber
                     )
                     || artifact
                         .progression

@@ -124,7 +124,27 @@ fn turret_only_upgrade_preserves_existing_rules_without_initialization() {
     entry.requirements.clear();
     let old = Ruleset::from_artifact(old, latest.speed).unwrap();
     let next = upgrade_standard_rules(&old).unwrap();
-    assert_eq!(next, latest);
+    // Upgrades preserve existing collection order; re-added units append after
+    // newer content such as Bomber. Compare all artifact values by unit key.
+    let canonical = |rules: &Ruleset| {
+        let mut artifact = rules.artifact.clone();
+        artifact
+            .progression
+            .as_mut()
+            .unwrap()
+            .unit_costs
+            .sort_by_key(|u| u.item);
+        artifact
+            .world
+            .as_mut()
+            .unwrap()
+            .combat
+            .units
+            .sort_by_key(|u| u.item);
+        artifact
+    };
+    assert_eq!(canonical(&next), canonical(&latest));
+    assert_eq!(next.speed, latest.speed);
     let delta = validate_rules_update(&old, &next).unwrap();
     assert!(delta.add_research.is_empty() && delta.add_buildings.is_empty());
     assert_eq!(old.protocol(), next.protocol());

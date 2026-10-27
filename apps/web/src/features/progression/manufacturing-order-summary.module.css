@@ -13,14 +13,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.summary > div:last-child {
+  grid-template-columns: auto minmax(0, 1fr);
+}
 .summary > div:last-child dd {
-  overflow-x: auto;
+  overflow: visible;
 }
 .summary > div:last-child dd > div {
-  flex-wrap: nowrap;
-  width: max-content;
-  min-width: 100%;
-  justify-content: flex-end;
+  display: grid;
+  justify-items: end;
+  gap: 0;
+}
+/* Match loaded amounts and draft placeholders so editing keeps controls still. */
+.summary > div:last-child dd button,
+.summary > div:last-child dd > div > span {
+  min-height: 28px;
 }
 .costPlaceholder {
   display: flex;

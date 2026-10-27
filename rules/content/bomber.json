@@ -1,0 +1,115 @@
+{
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 8
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "PlasmaTechnology",
+      "level": 5
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "ImpulseDrive",
+      "level": 6
+    }
+  ],
+  "ship": {
+    "drive": "ImpulseDrive",
+    "base_speed": 4000,
+    "drive_coefficient": [
+      1,
+      5
+    ],
+    "fuel": 1000,
+    "capacity": 500
+  },
+  "cost": {
+    "metal": 50000,
+    "crystal": 25000,
+    "deuterium": 15000
+  },
+  "combat": {
+    "item": {
+      "kind": "Ship",
+      "id": "Bomber"
+    },
+    "cost": [
+      50000,
+      25000,
+      15000
+    ],
+    "attack_hundredths": 100000,
+    "shield_hundredths": 50000
+  },
+  "rapid_fire": [
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "RocketLauncher"
+      },
+      "factor": 20
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "LightLaser"
+      },
+      "factor": 20
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "HeavyLaser"
+      },
+      "factor": 10
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "IonCannon"
+      },
+      "factor": 10
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "SolarSatellite"
+      },
+      "factor": 5
+    }
+  ]
+}

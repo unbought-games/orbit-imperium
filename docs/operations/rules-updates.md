@@ -33,7 +33,8 @@ Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
 Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon, Large Shield Dome and
 Plasma Technology. The current development bundle also includes
 [Plasma Turrets](plasma-turret.md), requiring Shipyard 8 and Plasma Technology 7.
-Bombers remain disabled. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
+[Bombers](bomber.md) require Shipyard 8, Impulse Drive 6 and Plasma Technology 5;
+they use Impulse propulsion without a Hyperspace upgrade. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
 including fuel-aware production and level-zero initialization. The original signup
 baseline, fully activated v0.3.0 worlds and partial activations can all be upgraded.
 Fresh `setup` and `universe create` use these same standard definitions immediately;

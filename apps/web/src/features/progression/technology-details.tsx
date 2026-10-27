@@ -6,6 +6,7 @@ import {
 } from '../../ui/number-value'
 import { progressionCommand, technologyRequest } from './options'
 import { useId } from 'react'
+import { SatelliteOutput } from './satellite-output'
 import { ManufacturingOrderSummary } from './manufacturing-order-summary'
 import { Network } from 'lucide-react'
 import { Button } from '../../ui/button'
@@ -206,6 +207,9 @@ export function TechnologyDetails({
                 Retry
               </Button>
             </div>
+          )}
+          {entry.key.kind === 'Ship' && entry.key.id === 'SolarSatellite' && (
+            <SatelliteOutput view={view} body={body} />
           )}
           {manufacture && (
             <ManufacturingOrderSummary

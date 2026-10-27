@@ -162,6 +162,21 @@
   font-size: 0.7rem;
   font-weight: 500;
 }
+.allied {
+  background: #7cb9f00c;
+  box-shadow: inset 3px 0 #7cb9f0;
+}
+.allied:hover {
+  background: #7cb9f014;
+}
+.allianceBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #a9d1ff;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
 .activity {
   color: #a6b1ba;
   font-size: 0.7rem;

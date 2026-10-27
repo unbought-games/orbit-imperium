@@ -37,6 +37,8 @@ const content: Record<string, string> = {
     'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
   Cruiser:
     'A fast impulse-powered combat ship with rapid fire against Light Fighters, Rocket Launchers and Espionage Probes. Cargo capacity is shared by resources and mission fuel.',
+  Bomber:
+    'An impulse-powered siege ship with rapid fire against Rocket Launchers, Light Lasers, Heavy Lasers, Ion Cannons, Espionage Probes and Solar Satellites. Requires Shipyard 8, Impulse Drive 6 and Plasma Technology 5. Cargo capacity is shared by resources and mission fuel. Uses Impulse Drive at every research level; no Hyperspace upgrade is available.',
   Recycler: 'Collects metal and crystal from debris fields.',
   EspionageProbe:
     'Gathers intelligence about another planet on an espionage mission.',
@@ -61,7 +63,7 @@ const content: Record<string, string> = {
   IonTechnology:
     'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Level 5 is required for Plasma Technology. Ion research does not improve combat stats or reduce demolition costs.',
   PlasmaTechnology:
-    'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 with Shipyard 8 in the standard rules. Provides no per-level production or combat bonuses. Bombers remain unavailable.',
+    'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 and Bombers at level 5 with Shipyard 8 in the standard rules. Bombers also require Impulse Drive 6. Provides no per-level production or combat bonuses.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',
