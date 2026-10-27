@@ -21,8 +21,14 @@
   overflow: visible;
 }
 .summary > div:last-child dd > div {
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  justify-items: end;
+  gap: 0;
+}
+/* Match loaded amounts and draft placeholders so editing keeps controls still. */
+.summary > div:last-child dd button,
+.summary > div:last-child dd > div > span {
+  min-height: 28px;
 }
 .costPlaceholder {
   display: flex;

@@ -2503,7 +2503,7 @@ for (const gate of ['Shipyard', 'PlasmaTechnology', 'disabled'] as const) {
 }
 
 for (const width of [320, 390, 1440]) {
-  test(`manufacturing wraps every exact resource cost at ${width}px`, async ({ page }) => {
+  test(`manufacturing stacks every exact resource cost in compact rows at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await setup(page, false, { metal: '10000000000', crystal: '6000000000', deuterium: '2000000000' })
     for (const [pageName, itemName, quantityLabel] of [
@@ -2524,6 +2524,20 @@ for (const width of [320, 390, 1440]) {
           expect(bounds!.x).toBeGreaterThanOrEqual(container!.x)
           expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(container!.x + container!.width + 1)
           expect(await amount.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+        }
+        const rows = await costs.getByRole('button').evaluateAll(elements => elements.map(el => {
+          const { top, bottom, right, height } = el.getBoundingClientRect()
+          return { top, bottom, right, height }
+        }))
+        expect(rows).toHaveLength(3)
+        for (const [index, row] of rows.entries()) {
+          expect(row.height).toBeGreaterThanOrEqual(24)
+          expect(row.height).toBeLessThanOrEqual(28)
+          expect(Math.abs(row.right - rows[0].right)).toBeLessThan(1)
+          if (index > 0) {
+            expect(row.top).toBeGreaterThanOrEqual(rows[index - 1].bottom)
+            expect(row.top - rows[index - 1].bottom).toBeLessThanOrEqual(2)
+          }
         }
         expect(await costs.locator('..').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
