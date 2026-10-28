@@ -159,6 +159,13 @@ export function useReports(
   const detailHeader =
     state.detail &&
     projectedReportHeader(headers, attempts.values(), state.detail.report)
+  const canLoadMore =
+    !item &&
+    !state.request &&
+    !changingVisibility &&
+    reportRequestScope(model.store.getState()) === scope &&
+    !!state.page?.has_more &&
+    !!state.page.next_cursor
   return {
     page: state.page && {
       ...state.page,
@@ -175,6 +182,7 @@ export function useReports(
     loading: !!state.request && state.request.kind !== 'more',
     loadingMore: state.request?.kind === 'more',
     changingVisibility,
+    canLoadMore,
     invalidate,
     retry: () => {
       invalidate()
@@ -189,8 +197,9 @@ export function useReports(
         !state.page?.has_more ||
         !state.page.next_cursor
       )
-        return
+        return false
       void load('more', state.page.next_cursor)
+      return true
     },
   }
 }

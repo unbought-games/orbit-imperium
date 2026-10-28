@@ -41,7 +41,8 @@ export function acceptReportVisibility(
   if (
     command.type !== 'World' ||
     (command.action.type !== 'SetReportHidden' &&
-      command.action.type !== 'SetReportStarred') ||
+      command.action.type !== 'SetReportStarred' &&
+      command.action.type !== 'MarkReportRead') ||
     receipt.status !== 'Committed'
   )
     return headers
@@ -52,14 +53,16 @@ export function acceptReportVisibility(
         [
           {
             ...previous.header,
-            ...(command.action.type === 'SetReportHidden'
-              ? {
-                  hidden: command.action.hidden,
-                  ...(command.action.hidden && previous.header.shared
-                    ? { shared: false }
-                    : {}),
-                }
-              : { starred: command.action.starred }),
+            ...(command.action.type === 'MarkReportRead'
+              ? { read: true }
+              : command.action.type === 'SetReportHidden'
+                ? {
+                    hidden: command.action.hidden,
+                    ...(command.action.hidden && previous.header.shared
+                      ? { shared: false }
+                      : {}),
+                  }
+                : { starred: command.action.starred }),
           },
         ],
         receipt.minimum_viewer_revision,

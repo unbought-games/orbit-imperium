@@ -2297,22 +2297,23 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await page.addInitScript(() => {
         const events: string[] = []
         Object.assign(window, { uiMotionEvents: events })
-        document.addEventListener('animationstart', () => events.push('animation'), true)
-        document.addEventListener('transitionrun', () => events.push('transition'), true)
+        document.addEventListener('animationstart', event => { if (!(event.target instanceof Element && event.target.closest('[data-command-hud]'))) events.push('animation') }, true)
+        document.addEventListener('transitionrun', event => { if (!(event.target instanceof Element && event.target.closest('[data-command-hud]'))) events.push('transition') }, true)
         const start = document.startViewTransition.bind(document)
         document.startViewTransition = (...args) => {
           events.push('view-transition')
           return start(...args)
         }
       })
-      // Navigation stays motionless; the intentional hostile-fleet signal has
+      // Navigation stays motionless; the explicitly animated command HUD is
+      // checked separately, and the intentional hostile-fleet signal has
       // its own coverage, so keep this fixture free of incoming threats.
       const purchases = await shellFixture(page, {
         protocol: 4,
         missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
       })
       const assertStill = async () => {
-        expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+        expect(await page.evaluate(() => document.getAnimations().filter(animation => { const target = (animation.effect as KeyframeEffect | null)?.target; return !(target instanceof Element && target.closest('[data-command-hud]')) }).length)).toBe(0)
         expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
       }
       await assertStill()
