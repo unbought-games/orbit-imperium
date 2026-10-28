@@ -61,6 +61,7 @@ fn target(
 }
 /// The supported replacement profile uses this coefficient in both flight and presentation.
 pub const IMPULSE_UPGRADE_COEFFICIENT: [i64; 2] = [1, 5];
+pub const HYPERSPACE_UPGRADE_COEFFICIENT: [i64; 2] = [3, 10];
 
 /// Derive the active propulsion profile from completed research at quotation/launch.
 /// Disabling further research does not remove bonuses already earned. Retained
@@ -76,8 +77,14 @@ pub fn ship_propulsion(
             .copied()
             .ok_or(GameError::PolicyUnavailable)
     };
-    let (base, coefficient, fuel, completed) = match &rule.impulse_drive {
-        Some(upgrade) if level(ResearchId::ImpulseDrive)? >= upgrade.minimum_level => (
+    let (base, coefficient, fuel, completed) = match (&rule.hyperspace_drive, &rule.impulse_drive) {
+        (Some(upgrade), _) if level(ResearchId::HyperspaceDrive)? >= upgrade.minimum_level => (
+            upgrade.base_speed,
+            HYPERSPACE_UPGRADE_COEFFICIENT,
+            upgrade.fuel,
+            level(ResearchId::HyperspaceDrive)?,
+        ),
+        (_, Some(upgrade)) if level(ResearchId::ImpulseDrive)? >= upgrade.minimum_level => (
             upgrade.base_speed,
             IMPULSE_UPGRADE_COEFFICIENT,
             upgrade.fuel,

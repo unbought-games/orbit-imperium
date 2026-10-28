@@ -56,6 +56,7 @@ impl ProgressionRules {
                         | ResearchId::IonTechnology
                         | ResearchId::PlasmaTechnology
                         | ResearchId::HyperspaceTechnology
+                        | ResearchId::HyperspaceDrive
                         | ResearchId::Astrophysics
                 )
             {

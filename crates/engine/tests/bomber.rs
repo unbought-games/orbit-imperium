@@ -9,7 +9,7 @@ fn rules() -> Ruleset {
 }
 
 #[test]
-fn bomber_uses_impulse_at_every_level_without_a_hyperspace_switch() {
+fn bomber_switches_only_at_completed_hyperspace_eight_without_stacking() {
     let r = rules();
     let mut research = ResearchLevels {
         owner: PlayerId(Uuid::nil()),
@@ -17,27 +17,31 @@ fn bomber_uses_impulse_at_every_level_without_a_hyperspace_switch() {
         levels: r.research_keys().into_iter().map(|k| (k, 0)).collect(),
     };
     research.levels.insert(ResearchId::CombustionDrive, 100);
-    research.levels.insert(ResearchId::HyperspaceDrive, 100);
     research
         .levels
         .insert(ResearchId::HyperspaceTechnology, 100);
     let ship = &r.artifact.ships[&ShipType::Bomber];
     assert!(ship.impulse_drive.is_none());
-    for (level, speed) in [(0, 4000), (6, 8800), (8, 10400), (17, 17600)] {
-        research.levels.insert(ResearchId::ImpulseDrive, level);
+    for (impulse, hyperspace, speed) in [
+        (6, 0, 8800),
+        (6, 7, 8800),
+        (6, 8, 17000),
+        (100, 8, 17000),
+        (6, 9, 18500),
+    ] {
+        research.levels.insert(ResearchId::ImpulseDrive, impulse);
+        research
+            .levels
+            .insert(ResearchId::HyperspaceDrive, hyperspace);
         assert_eq!(ship_propulsion(ship, &research).unwrap(), (speed, 1000));
     }
-    assert!(
-        r.artifact
-            .catalog
-            .iter()
-            .any(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceTechnology) && e.enabled)
-    );
-    assert!(
-        !r.artifact
-            .catalog
-            .iter()
-            .any(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive) && e.enabled)
+    let mut retained = ship.clone();
+    retained.hyperspace_drive = None;
+    assert_eq!(ship_propulsion(&retained, &research).unwrap(), (8800, 1000));
+    research.levels.remove(&ResearchId::HyperspaceDrive);
+    assert_eq!(
+        ship_propulsion(ship, &research),
+        Err(GameError::PolicyUnavailable)
     );
 }
 

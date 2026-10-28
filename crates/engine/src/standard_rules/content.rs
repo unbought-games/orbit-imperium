@@ -26,7 +26,17 @@ fn unit(out: &mut Vec<Patch>, kind: &str, id: &str, content: &Value) {
     let mobile = kind == "Ship" && id != "SolarSatellite";
     out.push(catalog(kind, id, mobile, content["requirements"].clone()));
     if let Some(ship) = content.get("ship") {
-        out.push(Patch::field(format!("/ships/{id}"), ship.clone()));
+        let mut current = ship.clone();
+        let mut patch = Patch::field(format!("/ships/{id}"), current.clone());
+        // Recognize the exact released Impulse-only profile without overwriting custom ships.
+        if id == "Bomber" {
+            let drive = read(include_bytes!(
+                "../../../../rules/content/hyperspace-drive.json"
+            ));
+            current["hyperspace_drive"] = drive["bomber"].clone();
+            patch = Patch::field(format!("/ships/{id}"), current).with_previous(ship.clone());
+        }
+        out.push(patch);
     }
     out.push(Patch::entry(
         "/progression/unit_costs",
@@ -168,6 +178,15 @@ pub(super) fn patches() -> Vec<Patch> {
         "HyperspaceTechnology",
         hyperspace["research"].clone(),
         hyperspace["requirements"].clone(),
+    );
+    let drive = read(include_bytes!(
+        "../../../../rules/content/hyperspace-drive.json"
+    ));
+    research(
+        &mut out,
+        "HyperspaceDrive",
+        drive["research"].clone(),
+        drive["requirements"].clone(),
     );
     unit(
         &mut out,

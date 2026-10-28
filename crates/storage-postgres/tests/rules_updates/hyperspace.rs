@@ -18,8 +18,7 @@ async fn hyperspace_activates_researches_and_finishes_after_disable_and_restart_
                 .contains(&ResearchId::HyperspaceTechnology)
         );
         assert!(
-            !plan
-                .diff
+            plan.diff
                 .initialize
                 .add_research
                 .contains(&ResearchId::HyperspaceDrive)
@@ -38,7 +37,7 @@ async fn hyperspace_activates_researches_and_finishes_after_disable_and_restart_
             0
         );
         assert!(
-            !snapshot
+            snapshot
                 .rules
                 .research_keys()
                 .contains(&ResearchId::HyperspaceDrive)
@@ -154,6 +153,13 @@ async fn hyperspace_activates_researches_and_finishes_after_disable_and_restart_
             .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceTechnology))
             .unwrap()
             .enabled = false;
+        disabled
+            .artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
+            .unwrap()
+            .enabled = false;
         service.apply(&disabled).await.unwrap();
         assert!(service.prepare_upgrade(universe).await.is_err());
         let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
@@ -184,7 +190,7 @@ async fn hyperspace_activates_researches_and_finishes_after_disable_and_restart_
                 .any(|b| b.code == GameError::UnavailableContent)
         );
         assert!(
-            !after
+            after
                 .rules
                 .research_keys()
                 .contains(&ResearchId::HyperspaceDrive)

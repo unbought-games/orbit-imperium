@@ -169,7 +169,10 @@ fn research_data(data: &mut TechnicalData, research: ResearchId, rules: &Ruleset
                 if !rules.artifact.catalog.iter().any(|e| e.enabled && e.key == CatalogKey::Ship(ship)) { continue; }
                 let key = Some(CatalogKey::Ship(ship));
                 if rule.drive.unwrap_or(CombustionDrive) == research {
-                    data.bonus("Base speed", rule.drive_coefficient, key, rule.impulse_drive.as_ref().map(|u| format!("Replaced when Impulse Drive reaches level {}.", u.minimum_level)));
+                    data.bonus("Base speed", rule.drive_coefficient, key, rule.hyperspace_drive.as_ref().map(|u| format!("Replaced when Hyperspace Drive reaches level {}.", u.minimum_level)).or_else(|| rule.impulse_drive.as_ref().map(|u| format!("Replaced when Impulse Drive reaches level {}.", u.minimum_level))));
+                }
+                if research == HyperspaceDrive && let Some(upgrade) = &rule.hyperspace_drive {
+                    data.bonus("Base speed", HYPERSPACE_UPGRADE_COEFFICIENT, key, Some(format!("From Hyperspace Drive level {}; replacement base speed {}. See the ship’s technical statistics for the full profile.", upgrade.minimum_level, upgrade.base_speed)));
                 }
                 if research == ImpulseDrive && let Some(upgrade) = &rule.impulse_drive {
                     data.bonus("Base speed", IMPULSE_UPGRADE_COEFFICIENT, key, Some(format!("From Impulse Drive level {}; replacement base speed {}. See the ship’s technical statistics for the full profile.", upgrade.minimum_level, upgrade.base_speed)));
@@ -219,6 +222,37 @@ mod tests {
         )
         .unwrap()
         .unwrap()
+    }
+    #[test]
+    fn hyperspace_drive_bonus_and_impulse_replacement_condition_follow_active_rules() {
+        let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap();
+        let drive = data(&r, CatalogKey::Research(ResearchId::HyperspaceDrive));
+        assert_eq!(drive.bonuses.len(), 1);
+        assert_eq!(drive.bonuses[0].fraction, ["3", "10"]);
+        assert_eq!(
+            drive.bonuses[0].subject,
+            Some(CatalogKey::Ship(ShipType::Bomber))
+        );
+        assert!(
+            drive.bonuses[0]
+                .condition
+                .as_ref()
+                .unwrap()
+                .contains("level 8; replacement base speed 5000")
+        );
+        let impulse = data(&r, CatalogKey::Research(ResearchId::ImpulseDrive));
+        let bomber = impulse
+            .bonuses
+            .iter()
+            .find(|b| b.subject == Some(CatalogKey::Ship(ShipType::Bomber)))
+            .unwrap();
+        assert!(
+            bomber
+                .condition
+                .as_ref()
+                .unwrap()
+                .contains("Hyperspace Drive reaches level 8")
+        );
     }
     #[test]
     fn covers_enabled_buildings_research_and_defenses_without_mutation() {

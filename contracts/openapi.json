@@ -15548,6 +15548,16 @@
             },
             "minItems": 2,
             "maxItems": 2
+          },
+          "hyperspace_upgrade": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShipImpulseStatistics3"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
