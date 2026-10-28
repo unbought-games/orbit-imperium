@@ -406,10 +406,7 @@ impl PgStore {
             .execute(&mut *tx)
             .await
             .map_err(db_error)?;
-        sqlx::query("SELECT pg_advisory_xact_lock_shared(901330)")
-            .execute(&mut *tx)
-            .await
-            .map_err(db_error)?;
+        crate::pools::world_edit_gate(&mut tx, false).await?;
         crate::binding::check_read(&mut tx, b).await?;
         if lock_bot(&mut tx, b.universe, b.player).await?.is_none() {
             return Ok(None);

@@ -125,10 +125,7 @@ impl PgStore {
         pool: &PgPool,
     ) -> Result<crate::ordering::Tx<'static>, StoreError> {
         let mut tx = self.begin_unlocked(pool).await?;
-        sqlx::query("SELECT pg_advisory_xact_lock_shared(901330)")
-            .execute(&mut *tx)
-            .await
-            .map_err(db_error)?;
+        world_edit_gate(&mut tx, false).await?;
         Ok(tx)
     }
     pub(crate) async fn begin_unlocked(
@@ -161,6 +158,24 @@ impl PgStore {
         })
         .collect()
     }
+}
+
+/// A two-integer namespace keeps the editor gate separate from all existing
+/// bigint advisory locks, including the universe-name allocation lock (901330).
+pub(crate) async fn world_edit_gate(
+    tx: &mut crate::ordering::Tx<'_>,
+    exclusive: bool,
+) -> Result<(), StoreError> {
+    let query = if exclusive {
+        "SELECT pg_advisory_xact_lock(901331, 0)"
+    } else {
+        "SELECT pg_advisory_xact_lock_shared(901331, 0)"
+    };
+    sqlx::query(query)
+        .execute(&mut **tx)
+        .await
+        .map_err(db_error)?;
+    Ok(())
 }
 
 #[cfg(test)]

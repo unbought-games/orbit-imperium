@@ -243,24 +243,27 @@ async fn failed_naming_rolls_back_the_entire_world_and_can_be_retried() {
 }
 
 #[tokio::test]
-async fn setup_waits_for_creation_contention_without_a_sql_lock_timeout_failure() {
+async fn ordinary_world_access_is_independent_of_the_universe_name_lock() {
     let (store, pool) = fresh().await;
-    let mut creator = pool.begin().await.unwrap();
-    sqlx::query("LOCK TABLE universes IN SHARE ROW EXCLUSIVE MODE")
-        .execute(&mut *creator)
+    let world = store
+        .setup_universe(&UniverseSetup::default())
         .await
         .unwrap();
-    let setup = tokio::spawn(async move { store.setup_universe(&UniverseSetup::default()).await });
-    // This is a functional contention fixture, deliberately longer than the
-    // 250 ms per-query lock timeout. The caller must still be waiting, not fail.
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    assert!(!setup.is_finished());
-    creator.commit().await.unwrap();
-    let outcome = setup.await.unwrap().unwrap();
-    assert_eq!(outcome.status, "created");
-    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM universes")
-        .fetch_one(&pool)
+    let mut name_allocator = pool.begin().await.unwrap();
+    // This is the existing bigint key used by assign_universe_name(). It must
+    // not overlap the new shared editor gate used by ordinary transactions.
+    sqlx::query("SELECT pg_advisory_xact_lock(901330)")
+        .execute(&mut *name_allocator)
         .await
         .unwrap();
-    assert_eq!(count, 1);
+    let summary = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        store.universe_summary(world.universe),
+    )
+    .await
+    .expect("ordinary world access must not wait for name allocation")
+    .unwrap();
+    assert_eq!(summary.universe, world.universe);
+    assert_eq!(summary.name, world.name);
+    name_allocator.rollback().await.unwrap();
 }

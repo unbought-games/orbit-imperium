@@ -86,9 +86,7 @@ impl PgStore {
                 self.drain_world(u).await?;
             }
             let mut tx = self.begin_unlocked(&self.pool).await?;
-            sqlx::query("SELECT pg_advisory_xact_lock(901330)")
-                .execute(&mut *tx)
-                .await?;
+            crate::pools::world_edit_gate(&mut tx, true).await?;
             if let Some((saved,result))=sqlx::query_as::<_,(String,Value)>("SELECT request_hash,result FROM world_edit_receipts WHERE universe=$1 AND operation_id=$2").bind(u.0).bind(operation).fetch_optional(&mut *tx).await?{if saved!=request_hash{return Err("operation ID already used for a different request".into())}return Ok(result)}
             let exists: bool =
                 sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM universes WHERE id=$1)")
