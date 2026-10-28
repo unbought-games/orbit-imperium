@@ -44,7 +44,8 @@ The development bundle also includes [Hyperspace Technology](hyperspace-technolo
 requiring Research Lab 7, Energy Technology 5 and Shielding Technology 5. It is
 prerequisite research without per-level bonuses. [Hyperspace Drive](hyperspace-drive.md)
 requires Lab 7 and Hyperspace Technology 3 and includes the classic Bomber switch
-at Drive 8. Other dependent systems remain unavailable.
+at Drive 8. [Battleships](battleship.md) require Shipyard 7 and Hyperspace Drive 4;
+they use Hyperspace propulsion from the outset. Other dependent systems remain unavailable.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
 

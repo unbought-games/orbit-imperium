@@ -227,21 +227,24 @@ mod tests {
     fn hyperspace_drive_bonus_and_impulse_replacement_condition_follow_active_rules() {
         let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap();
         let drive = data(&r, CatalogKey::Research(ResearchId::HyperspaceDrive));
-        assert_eq!(drive.bonuses.len(), 2);
-        let destroyer = drive
+        assert_eq!(drive.bonuses.len(), 3);
+        for ship in [ShipType::Battleship, ShipType::Destroyer] {
+            let bonus = drive
+                .bonuses
+                .iter()
+                .find(|b| b.subject == Some(CatalogKey::Ship(ship)))
+                .unwrap();
+            assert_eq!(bonus.fraction, ["3", "10"]);
+            assert!(bonus.condition.is_none());
+        }
+        let bomber = drive
             .bonuses
             .iter()
-            .find(|b| b.subject == Some(CatalogKey::Ship(ShipType::Destroyer)))
+            .find(|b| b.subject == Some(CatalogKey::Ship(ShipType::Bomber)))
             .unwrap();
-        assert_eq!(destroyer.fraction, ["3", "10"]);
-        assert!(destroyer.condition.is_none());
-        assert_eq!(drive.bonuses[0].fraction, ["3", "10"]);
-        assert_eq!(
-            drive.bonuses[0].subject,
-            Some(CatalogKey::Ship(ShipType::Bomber))
-        );
+        assert_eq!(bomber.fraction, ["3", "10"]);
         assert!(
-            drive.bonuses[0]
+            bomber
                 .condition
                 .as_ref()
                 .unwrap()

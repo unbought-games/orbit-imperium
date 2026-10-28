@@ -167,6 +167,13 @@ async fn hyperspace_activates_researches_and_finishes_after_disable_and_restart_
             .find(|e| e.key == CatalogKey::Ship(ShipType::Destroyer))
             .unwrap()
             .enabled = false;
+        disabled
+            .artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == CatalogKey::Ship(ShipType::Battleship))
+            .unwrap()
+            .enabled = false;
         service.apply(&disabled).await.unwrap();
         assert!(service.prepare_upgrade(universe).await.is_err());
         let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())

@@ -17,7 +17,8 @@ terms across research, activation and restart. Mixed fleets use the slowest ship
 for travel time and each ship's selected profile for fuel.
 
 `rules/content/hyperspace-drive.json` owns research costs/gates and the Bomber
-replacement. [Destroyers](destroyer.md) use native Hyperspace propulsion and
+replacement. [Battleships](battleship.md) use native Hyperspace propulsion and
+unlock at Drive 4 with Shipyard 7. [Destroyers](destroyer.md) use native Hyperspace propulsion and
 unlock at Drive 6 with Shipyard 9 and Hyperspace Technology 5. No later Recycler
 switch or cargo bonus is included.
 The catalog derives technical data from active rules; the optional
@@ -48,9 +49,9 @@ customized profiles, research costs, prerequisites and intentionally disabled
 content. Use export/diff/apply for reviewed custom activation. Retained artifacts
 omit the optional profile, preserving their serialization and hashes.
 
-To stop new research, disable the Drive and dependent Destroyer catalog entries while retaining its
+To stop new research, disable the Drive and dependent Battleship and Destroyer catalog entries while retaining its
 research definition, earned levels and Bomber profile. Paid work keeps its original
 terms; cancellation refunds the original payment. Disabling research does not
 remove earned speed. Disabling Hyperspace Technology also requires disabling its
-Drive and Destroyer dependents. Removing definitions or replaying an older export is not rollback.
+Drive, Battleship and Destroyer dependents. Removing definitions or replaying an older export is not rollback.
 See [Rules updates](rules-updates.md) for the operational contract.
