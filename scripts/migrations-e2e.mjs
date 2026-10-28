@@ -164,7 +164,7 @@ try {
   for (const [args, overrides] of [
     [['unknown'], {}], [['serve', '--unknown'], {}], [['db-init', '--unknown'], {}],
     [['serve'], {ORBIT_BIND:'not-an-address'}], [['serve'], {ORBIT_LOGIN_PER_MINUTE:'invalid'}],
-    [['dev-seed','--universe',randomUUID(),'--at','-1'], {ORBIT_SEED_PASSWORD_FILE:passwords}],
+    [['test-foundation-create','--universe',randomUUID(),'--at','-1'], {ORBIT_SEED_PASSWORD_FILE:passwords}],
   ]) { assert.throws(()=>cli({...invalidEnv,...overrides},args)); await empty(invalid.db); }
   const badAccounts = join(directory, 'invalid-accounts.json');
   writeFileSync(badAccounts, JSON.stringify(Array.from({length:5},()=>({name:'duplicate',password:randomUUID()}))));
@@ -177,11 +177,11 @@ try {
     assert.equal((await db.query('SELECT count(*)::int AS n FROM _sqlx_migrations')).rows[0].n,migrationVersions.length);
     assert.equal((await db.query('SELECT count(*)::int AS n FROM accounts')).rows[0].n,0);
   }
-  for (const command of ['dev-seed','mvp-bootstrap','mvp-progression-bootstrap','mvp-fleets-bootstrap','mvp-raids-bootstrap']) {
+  for (const command of ['test-foundation-create','mvp-bootstrap','mvp-progression-bootstrap','mvp-fleets-bootstrap','mvp-raids-bootstrap']) {
     const seeded = await database();
     const seedEnv = environment(seeded.url, await port(), {ORBIT_SEED_PASSWORD_FILE:passwords, ORBIT_MVP_ACCOUNTS_FILE:accounts, ORBIT_MVP_SEED_FILE:seed});
     cli(seedEnv,[command,'--universe',randomUUID(),'--at',String(Date.now())]);
-    assert.equal((await seeded.db.query('SELECT count(*)::int AS n FROM accounts')).rows[0].n,command==='dev-seed'?2:5);
+    assert.equal((await seeded.db.query('SELECT count(*)::int AS n FROM accounts')).rows[0].n,command==='test-foundation-create'?2:5);
     const world = (await seeded.db.query('SELECT id,epoch,profile_hash FROM universes')).rows;
     const seededChild=launch(seedEnv);await ready(seededChild,seedEnv);await stop(seededChild);
     assert.deepEqual((await seeded.db.query('SELECT id,epoch,profile_hash FROM universes')).rows,world);

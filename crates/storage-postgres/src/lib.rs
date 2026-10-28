@@ -17,6 +17,7 @@ pub use migrations::MigrationError;
 mod analytics;
 mod identity;
 mod oidc;
+#[cfg(feature = "test-support")]
 mod seed;
 #[derive(Clone)]
 pub struct PgStore {
@@ -205,3 +206,5 @@ mod bootstrap;
 pub use bootstrap::MvpAccount;
 
 mod rules_update;
+
+mod world_edit;

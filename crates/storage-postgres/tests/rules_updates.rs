@@ -7,6 +7,8 @@ use uuid::Uuid;
 mod fusion;
 #[path = "rules_updates/gameplay.rs"]
 mod gameplay;
+#[path = "rules_updates/hyperspace.rs"]
+mod hyperspace;
 #[path = "rules_updates/plasma_turret.rs"]
 mod plasma_turret;
 #[path = "rules_updates/standard.rs"]

@@ -160,6 +160,15 @@ pub(super) fn patches() -> Vec<Patch> {
         plasma["requirements"].clone(),
     );
     // Next content bundle: existing worlds opt in through rules upgrade.
+    let hyperspace = read(include_bytes!(
+        "../../../../rules/content/hyperspace-technology.json"
+    ));
+    research(
+        &mut out,
+        "HyperspaceTechnology",
+        hyperspace["research"].clone(),
+        hyperspace["requirements"].clone(),
+    );
     unit(
         &mut out,
         "Defense",

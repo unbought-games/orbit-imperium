@@ -1,0 +1,607 @@
+{
+  "version": 1,
+  "name": "Development Playground",
+  "edits": [
+    {
+      "op": "add-player",
+      "user": "user",
+      "password": "password",
+      "planet": "1:50:8"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "research": {
+        "astrophysics": 15,
+        "combustiondrive": 8,
+        "impulsedrive": 6,
+        "computertechnology": 12,
+        "espionagetechnology": 8,
+        "energytechnology": 8,
+        "weaponstechnology": 6,
+        "shieldingtechnology": 6,
+        "armourtechnology": 6
+      }
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:50:8",
+      "name": "Home",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-planet",
+      "user": "user",
+      "planet": "1:51:8",
+      "name": "Forge"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:51:8",
+      "name": "Forge",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-planet",
+      "user": "user",
+      "planet": "1:52:8",
+      "name": "Haven"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:52:8",
+      "name": "Haven",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-planet",
+      "user": "user",
+      "planet": "1:53:8",
+      "name": "Elysium"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:53:8",
+      "name": "Elysium",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-planet",
+      "user": "user",
+      "planet": "1:54:8",
+      "name": "Kepler"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:54:8",
+      "name": "Kepler",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-planet",
+      "user": "user",
+      "planet": "1:55:8",
+      "name": "Nereid"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:55:8",
+      "name": "Nereid",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-planet",
+      "user": "user",
+      "planet": "1:56:8",
+      "name": "Helios"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:56:8",
+      "name": "Helios",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-planet",
+      "user": "user",
+      "planet": "1:57:8",
+      "name": "Borealis"
+    },
+    {
+      "op": "set",
+      "user": "user",
+      "planet": "1:57:8",
+      "name": "Borealis",
+      "resources": {
+        "metal": 2000000,
+        "crystal": 1500000,
+        "deuterium": 1000000
+      },
+      "buildings": {
+        "metalmine": 12,
+        "crystalmine": 10,
+        "deuteriumsynthesizer": 8,
+        "solarplant": 18,
+        "roboticsfactory": 6,
+        "researchlab": 8,
+        "shipyard": 8,
+        "metalstorage": 7,
+        "crystalstorage": 7,
+        "deuteriumtank": 7
+      },
+      "ships": {
+        "smallcargo": 100,
+        "lightfighter": 100,
+        "cruiser": 20,
+        "espionageprobe": 30,
+        "recycler": 20,
+        "colonyship": 3
+      },
+      "defenses": {
+        "rocketlauncher": 50,
+        "lightlaser": 20
+      }
+    },
+    {
+      "op": "add-bot",
+      "user": "scout",
+      "planet": "1:49:4",
+      "preset": "weak"
+    },
+    {
+      "op": "set",
+      "user": "scout",
+      "activity": "inactive7"
+    },
+    {
+      "op": "set",
+      "user": "scout",
+      "activity": "inactive28"
+    },
+    {
+      "op": "add-bot",
+      "user": "prospector",
+      "planet": "1:49:5",
+      "preset": "strong"
+    },
+    {
+      "op": "add-bot",
+      "user": "drifter",
+      "planet": "1:49:6",
+      "preset": "weak"
+    },
+    {
+      "op": "add-bot",
+      "user": "rival",
+      "planet": "1:49:7",
+      "preset": "strong"
+    },
+    {
+      "op": "add-bot",
+      "user": "trader",
+      "planet": "1:49:8",
+      "preset": "weak"
+    },
+    {
+      "op": "set",
+      "user": "trader",
+      "activity": "inactive7"
+    },
+    {
+      "op": "add-bot",
+      "user": "vanguard",
+      "planet": "1:49:9",
+      "preset": "strong"
+    },
+    {
+      "op": "set",
+      "user": "vanguard",
+      "activity": "inactive28"
+    },
+    {
+      "op": "add-bot",
+      "user": "sleeper",
+      "planet": "1:49:10",
+      "preset": "weak"
+    },
+    {
+      "op": "set",
+      "user": "sleeper",
+      "activity": "sleeping"
+    },
+    {
+      "op": "add-bot",
+      "user": "retired",
+      "planet": "1:49:11",
+      "preset": "strong"
+    },
+    {
+      "op": "set",
+      "user": "retired",
+      "activity": "retired"
+    },
+    {
+      "op": "add-bot",
+      "user": "wanderer",
+      "planet": "1:50:4",
+      "preset": "weak"
+    },
+    {
+      "op": "set",
+      "user": "wanderer",
+      "activity": "inactive7"
+    },
+    {
+      "op": "set",
+      "user": "wanderer",
+      "vacation": true
+    },
+    {
+      "op": "add-bot",
+      "user": "sentinel",
+      "planet": "1:50:5",
+      "preset": "strong"
+    },
+    {
+      "op": "add-bot",
+      "user": "outpost",
+      "planet": "1:50:6",
+      "preset": "weak"
+    },
+    {
+      "op": "set",
+      "user": "outpost",
+      "activity": "inactive28"
+    },
+    {
+      "op": "add-bot",
+      "user": "merchant",
+      "planet": "1:50:7",
+      "preset": "strong"
+    },
+    {
+      "op": "add-bot",
+      "user": "nomad",
+      "planet": "1:50:12",
+      "preset": "weak"
+    },
+    {
+      "op": "set",
+      "user": "nomad",
+      "activity": "inactive7"
+    },
+    {
+      "op": "add-bot",
+      "user": "guardian",
+      "planet": "1:50:9",
+      "preset": "strong"
+    },
+    {
+      "op": "add-bot",
+      "user": "miner",
+      "planet": "1:50:10",
+      "preset": "weak"
+    },
+    {
+      "op": "add-bot",
+      "user": "observer",
+      "planet": "1:50:11",
+      "preset": "strong"
+    },
+    {
+      "op": "set",
+      "user": "observer",
+      "activity": "inactive28"
+    },
+    {
+      "op": "debris",
+      "planet": "1:50:9",
+      "resources": {
+        "metal": 120000,
+        "crystal": 80000
+      }
+    },
+    {
+      "op": "queue",
+      "planet": "1:50:8",
+      "buildings": {
+        "metalmine": 13
+      },
+      "arrives_in": "10m"
+    },
+    {
+      "op": "queue",
+      "planet": "1:51:8",
+      "research": {
+        "computertechnology": 13
+      },
+      "arrives_in": "15m"
+    },
+    {
+      "op": "queue",
+      "planet": "1:52:8",
+      "ships": {
+        "cruiser": 10
+      },
+      "arrives_in": "2m"
+    },
+    {
+      "op": "attack",
+      "planet": "1:50:8",
+      "from": "1:49:7",
+      "ships": {
+        "lightfighter": 2
+      },
+      "arrives_in": "5m"
+    },
+    {
+      "op": "spy",
+      "planet": "1:49:4",
+      "from": "1:50:8",
+      "arrives_in": "2m"
+    },
+    {
+      "op": "transport",
+      "planet": "1:51:8",
+      "from": "1:50:8",
+      "ships": {
+        "smallcargo": 10
+      },
+      "resources": {
+        "metal": 1000
+      },
+      "arrives_in": "3m"
+    },
+    {
+      "op": "report",
+      "user": "user",
+      "kind": "transport",
+      "resources": {
+        "metal": 10000,
+        "crystal": 5000
+      }
+    },
+    {
+      "op": "message",
+      "user": "user",
+      "from": "trader",
+      "text": "Welcome to the playground. Edit this world with orbit world, or save a scenario and try something new."
+    },
+    {
+      "op": "report",
+      "user": "user",
+      "kind": "espionage",
+      "resources": {
+        "metal": 200000,
+        "crystal": 100000,
+        "deuterium": 50000
+      }
+    },
+    {
+      "op": "alliance",
+      "user": "user",
+      "name": "Playground Explorers",
+      "text": "PLAY"
+    },
+    {
+      "op": "report",
+      "user": "user",
+      "kind": "combat"
+    }
+  ],
+  "policy": {
+    "bots": {
+      "version": 1,
+      "enabled": true,
+      "max_active": 32,
+      "action_units_per_24h": 100000
+    },
+    "signup_enabled": true,
+    "max_players": null,
+    "signup_per_minute": 5,
+    "commands_per_minute": 60
+  }
+}

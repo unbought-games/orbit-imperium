@@ -14,7 +14,7 @@ This first migration-enabled release requires a fresh database. Legacy schema-1 
 
 Use repository-pinned Rust 1.99.0 and Node 24.18.0/npm 11.16.0, Docker Compose and PostgreSQL 16.10. On the Mac mini, put the already installed rustup toolchain before Homebrew Rust: `export PATH="$HOME/.cargo/bin:$PATH"`. Run `npm ci`, `npm run build`, and `cargo build --release -p orbit-server --features test-support` from the checkout.
 
-Create the target database and supply credentials with DDL privileges. There is no separate schema initialization step: run bootstrap before starting the server for a new world. A schema migration can run while older compatible servers keep serving, but initial world creation/reset retains the stopped-server requirement. Do not run `dev-reset` against an MVP world. The old `dev-seed` remains a two-player synthetic fixture, not the private MVP.
+Create the target database and supply credentials with DDL privileges. There is no separate schema initialization step: run bootstrap before starting the server for a new world. A schema migration can run while older compatible servers keep serving, but initial world creation/reset retains the stopped-server requirement. The old `dev-seed` and binary `dev-reset` entry points are retired. Historical two-player regression fixtures use the test-support-only `test-foundation-create` command; use the normal `orbit world` interface for current development worlds.
 
 For isolation from the Mac mini's CI ports, create a separate Compose project using port 55482 (first check it is free). The following creates new private files only when absent:
 
