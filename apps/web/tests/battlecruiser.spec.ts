@@ -43,7 +43,7 @@ battlecruiser.ship_statistics = {
         factor: String(r.factor),
       }),
     ),
-    rapid_fire_from: [],
+    rapid_fire_from: [{ unit: { kind: 'Ship', id: 'Destroyer' }, factor: '2' }],
   },
 }
 const battleshipDefinition = JSON.parse(

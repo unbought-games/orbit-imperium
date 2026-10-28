@@ -128,7 +128,9 @@ fn hyperspace_rules_reject_incomplete_unsupported_and_invalid_switches() {
         .filter(|e| {
             matches!(
                 e.key,
-                CatalogKey::Ship(ShipType::Battlecruiser | ShipType::Battleship)
+                CatalogKey::Ship(
+                    ShipType::Battlecruiser | ShipType::Battleship | ShipType::Destroyer
+                )
             )
         })
         .for_each(|e| e.enabled = false);

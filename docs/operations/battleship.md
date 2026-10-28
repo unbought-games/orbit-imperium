@@ -23,8 +23,8 @@ fire, following the private reference archive's `original-docs/game/ships.md`,
 Hull derives from metal plus crystal cost. Weapons, Shielding and Armour apply
 normal combat bonuses. Other drives and Hyperspace Technology add no speed or
 cargo bonus. At Shipyard 7 and economy speed 5, one Battleship takes 2,160 seconds.
-Battlecruisers have rapid fire 7 against Battleships. Relationships with
-unavailable Dreadnoughts remain inactive.
+Battlecruisers have rapid fire 7 against Battleships. Relationships involving
+unsupported Dreadnoughts remain inactive.
 
 ## Activation and retained work
 
@@ -50,4 +50,5 @@ To stop new construction, disable the Battleship catalog entry with a fresh expo
 and forward apply. Retain its ship, manufacturing and combat definitions. Paid
 batches finish at their accepted costs and deadlines; existing Battleships still
 fly and fight. Flights retain committed terms across research changes and restart.
-Disabling Hyperspace Drive research also requires disabling Battleship construction.
+Disabling Hyperspace Drive research also requires disabling dependent Battleship,
+Battlecruiser and Destroyer construction.

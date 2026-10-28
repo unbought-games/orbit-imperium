@@ -1,10 +1,10 @@
 use orbit_engine::*;
-use uuid::Uuid;
-#[allow(dead_code)]
-mod common;
 #[allow(dead_code)]
 #[path = "common/prior_content.rs"]
 mod prior_content;
+use uuid::Uuid;
+#[allow(dead_code)]
+mod common;
 
 const BATTLESHIP: ManufacturedItem = ManufacturedItem::Ship(ShipType::Battleship);
 fn rules() -> Ruleset {
@@ -116,17 +116,15 @@ fn battleship_combat_derives_stats_and_applies_only_its_two_rapid_fire_pairs() {
             assert!(shots.iter().any(|n| *n > 1));
         }
     }
-    let incoming: Vec<_> = combat
-        .rapid_fire
-        .iter()
-        .filter(|rf| rf.target == BATTLESHIP)
-        .collect();
-    assert_eq!(incoming.len(), 1);
     assert_eq!(
-        incoming[0].shooter,
-        ManufacturedItem::Ship(ShipType::Battlecruiser)
+        combat
+            .rapid_fire
+            .iter()
+            .filter(|rf| rf.target == BATTLESHIP)
+            .map(|rf| (rf.shooter, rf.factor))
+            .collect::<Vec<_>>(),
+        vec![(ManufacturedItem::Ship(ShipType::Battlecruiser), 7)]
     );
-    assert_eq!(incoming[0].factor, 7);
 }
 
 #[test]
@@ -149,6 +147,27 @@ fn battleship_manufacturing_charges_and_times_metal_and_crystal_only() {
 fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
     let mut previous = prior_content::without_battlecruiser(latest.artifact.clone());
+    let destroyer = ManufacturedItem::Ship(ShipType::Destroyer);
+    previous.ships.remove(&ShipType::Destroyer);
+    previous
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .retain(|u| u.item != destroyer);
+    let combat = &mut previous.world.as_mut().unwrap().combat;
+    combat.units.retain(|u| u.item != destroyer);
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != destroyer && rf.target != destroyer);
+    let entry = previous
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == destroyer.catalog_key())
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+
     previous.ships.remove(&ShipType::Battleship);
     previous
         .progression
@@ -171,23 +190,23 @@ fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data()
     let previous = Ruleset::from_artifact(previous, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);
-    let mut retained = prior_content::without_battlecruiser(next.artifact.clone());
+    let mut retained = next.artifact.clone();
     retained.ships.remove(&ShipType::Battleship);
+    retained.ships.remove(&ShipType::Destroyer);
+    retained.ships.remove(&ShipType::Battlecruiser);
     assert_eq!(retained.ships, previous.artifact.ships);
     assert_eq!(next.artifact.buildings, previous.artifact.buildings);
     assert_eq!(
         next.artifact.progression.as_ref().unwrap().research,
         previous.artifact.progression.as_ref().unwrap().research
     );
-    for id in [ShipType::Destroyer, ShipType::Dreadnought] {
-        assert!(
-            !next
-                .artifact
-                .catalog
-                .iter()
-                .any(|e| e.key == CatalogKey::Ship(id) && e.enabled)
-        );
-    }
+    assert!(
+        !next
+            .artifact
+            .catalog
+            .iter()
+            .any(|e| e.key == CatalogKey::Ship(ShipType::Dreadnought) && e.enabled)
+    );
 
     assert_eq!(upgrade_standard_rules(&next).unwrap(), next);
     let delta = validate_rules_update(&previous, &next).unwrap();

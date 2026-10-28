@@ -62,6 +62,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Ship(ShipType::Bomber),
             CatalogKey::Ship(ShipType::Battlecruiser),
             CatalogKey::Ship(ShipType::Battleship),
+            CatalogKey::Ship(ShipType::Destroyer),
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
             CatalogKey::Defense(DefenseId::GaussCannon),
@@ -692,7 +693,9 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
                 .filter(|e| {
                     matches!(
                         e.key,
-                        CatalogKey::Ship(ShipType::Battlecruiser | ShipType::Battleship)
+                        CatalogKey::Ship(
+                            ShipType::Battlecruiser | ShipType::Battleship | ShipType::Destroyer
+                        )
                     )
                 })
                 .for_each(|e| e.enabled = false);

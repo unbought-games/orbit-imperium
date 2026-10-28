@@ -6,7 +6,10 @@ pub fn without_battlecruiser(artifact: RulesArtifact) -> RulesArtifact {
 }
 
 pub fn without_native_hyperspace_ships(artifact: RulesArtifact) -> RulesArtifact {
-    without_ship(without_battlecruiser(artifact), ShipType::Battleship)
+    without_ship(
+        without_ship(without_battlecruiser(artifact), ShipType::Battleship),
+        ShipType::Destroyer,
+    )
 }
 
 fn without_ship(mut artifact: RulesArtifact, ship: ShipType) -> RulesArtifact {

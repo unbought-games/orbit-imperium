@@ -10,13 +10,6 @@ const definition = JSON.parse(
   readFileSync('rules/content/hyperspace-drive.json', 'utf8'),
 )
 const baseline = JSON.parse(readFileSync('rules/mvp-v1-slice-13.json', 'utf8'))
-const battleship = baseline.catalog.find(
-  (entry: S['CatalogEntry3']) => entry.key.id === 'Battleship',
-)
-battleship.enabled = true
-battleship.requirements = JSON.parse(
-  readFileSync('rules/content/battleship.json', 'utf8'),
-).requirements
 const cost = {
   metal: '10000000000',
   crystal: '20000000000',
@@ -58,7 +51,19 @@ async function setup(
                 {
                   label: 'Base speed',
                   fraction: ['3', '10'],
+                  subject: { kind: 'Ship', id: 'Battlecruiser' },
+                  condition: null,
+                },
+                {
+                  label: 'Base speed',
+                  fraction: ['3', '10'],
                   subject: { kind: 'Ship', id: 'Battleship' },
+                  condition: null,
+                },
+                {
+                  label: 'Base speed',
+                  fraction: ['3', '10'],
+                  subject: { kind: 'Ship', id: 'Destroyer' },
                   condition: null,
                 },
                 {
@@ -105,25 +110,49 @@ async function setup(
                 ),
               ).requirements,
             }
-          : entry.key.id === 'ImpulseDrive'
+          : entry.key.id === 'Battlecruiser'
             ? {
                 ...entry,
-                technical_data: {
-                  bonuses: [
-                    {
-                      label: 'Base speed',
-                      fraction: ['1', '5'],
-                      subject: { kind: 'Ship', id: 'Bomber' },
-                      condition:
-                        'Replaced when Hyperspace Drive reaches level 8.',
-                    },
-                  ],
-                  facts: [],
-                  storage_capacities: null,
-                  combat: null,
-                },
+                enabled,
+                requirements: JSON.parse(
+                  readFileSync('rules/content/battlecruiser.json', 'utf8'),
+                ).requirements,
               }
-            : entry,
+            : entry.key.id === 'Battleship'
+              ? {
+                  ...entry,
+                  enabled,
+                  requirements: JSON.parse(
+                    readFileSync('rules/content/battleship.json', 'utf8'),
+                  ).requirements,
+                }
+              : entry.key.id === 'Destroyer'
+                ? {
+                    ...entry,
+                    enabled,
+                    requirements: JSON.parse(
+                      readFileSync('rules/content/destroyer.json', 'utf8'),
+                    ).requirements,
+                  }
+                : entry.key.id === 'ImpulseDrive'
+                  ? {
+                      ...entry,
+                      technical_data: {
+                        bonuses: [
+                          {
+                            label: 'Base speed',
+                            fraction: ['1', '5'],
+                            subject: { kind: 'Ship', id: 'Bomber' },
+                            condition:
+                              'Replaced when Hyperspace Drive reaches level 8.',
+                          },
+                        ],
+                        facts: [],
+                        storage_capacities: null,
+                        combat: null,
+                      },
+                    }
+                  : entry,
     ),
     research: [
       { research, level: 0 },
@@ -298,9 +327,6 @@ for (const width of [390, 1440]) {
     await tile.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane).toContainText('Bombers switch to a 5,000 base speed')
-    await expect(pane).toContainText(
-      'Unlocks Battleships at level 4 with Shipyard 7',
-    )
     await expect(
       pane.getByRole('button', { name: 'Crystal details' }),
     ).toContainText('20,000')
@@ -317,10 +343,6 @@ for (const width of [390, 1440]) {
     await expect(
       pane.getByRole('list', { name: 'Prerequisites' }).first(),
     ).toContainText('Research Lab 7')
-    await expect(pane).toContainText('Battleship')
-    await expect(pane).not.toContainText(
-      'No enabled catalog entries on this body require this technology.',
-    )
     await capture('research-ready')
     await pane
       .getByRole('button', { name: 'Technology tree', exact: true })

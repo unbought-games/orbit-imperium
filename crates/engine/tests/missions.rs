@@ -2884,5 +2884,8 @@ mod battlecruiser;
 #[path = "missions/bomber.rs"]
 mod bomber;
 
+#[path = "missions/destroyer.rs"]
+mod destroyer;
+
 #[path = "missions/battleship.rs"]
 mod battleship;

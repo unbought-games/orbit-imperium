@@ -133,11 +133,14 @@ fn battlecruiser_combat_derives_stats_and_applies_only_its_seven_rapid_fire_pair
             assert!(shots.iter().any(|n| *n > 1));
         }
     }
-    assert!(
+    assert_eq!(
         combat
             .rapid_fire
             .iter()
-            .all(|rf| rf.target != BATTLECRUISER)
+            .filter(|rf| rf.target == BATTLECRUISER)
+            .map(|rf| (rf.shooter, rf.factor))
+            .collect::<Vec<_>>(),
+        vec![(ManufacturedItem::Ship(ShipType::Destroyer), 2)]
     );
 }
 
@@ -161,6 +164,27 @@ fn battlecruiser_manufacturing_charges_all_resources_but_times_only_metal_and_cr
 fn battlecruiser_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
     let mut previous = latest.artifact.clone();
+    let destroyer = ManufacturedItem::Ship(ShipType::Destroyer);
+    previous.ships.remove(&ShipType::Destroyer);
+    previous
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .retain(|u| u.item != destroyer);
+    let combat = &mut previous.world.as_mut().unwrap().combat;
+    combat.units.retain(|u| u.item != destroyer);
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != destroyer && rf.target != destroyer);
+    let entry = previous
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == destroyer.catalog_key())
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+
     previous.ships.remove(&ShipType::Battlecruiser);
     previous
         .progression

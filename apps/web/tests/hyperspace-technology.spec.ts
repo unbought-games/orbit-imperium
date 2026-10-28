@@ -194,7 +194,9 @@ for (const width of [390, 1440]) {
     await capture('research-catalog')
     await tile.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText('Level 5 is required for Battlecruisers')
+    await expect(pane).toContainText(
+      'Unlocks Destroyers at level 5',
+    )
     await expect(
       pane.getByRole('button', { name: 'Crystal details' }),
     ).toContainText('4,000')
