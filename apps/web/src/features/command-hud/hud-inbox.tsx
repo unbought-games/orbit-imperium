@@ -1,10 +1,16 @@
 import type { RefObject } from 'react'
 import type { Coordinator } from '../../client-model/coordinator'
-import { occupiedFleetSlots } from '../../client-model/game-projection'
 import { Button, ButtonLink } from '../../ui/button'
 import { routeTarget } from '../../shell/route-target'
 import { HudIconMark } from './hud-controls'
-import { noticeContent, noticeKey, type HudTarget } from './model'
+import { HudFleets } from './hud-fleets'
+import { HudEnemyAttacks } from './hud-enemy-attacks'
+import {
+  incomingAttacks,
+  noticeContent,
+  noticeKey,
+  type HudTarget,
+} from './model'
 import type { CommandHudState } from './use-command-hud'
 import { useHudInbox } from './use-hud-inbox'
 import styles from './hud.module.css'
@@ -28,16 +34,15 @@ export function HudInbox({
 }) {
   const visible = hud.selection === 'inbox'
   const inbox = useHudInbox(model, hud.state, visible, scrollRoot)
-  const view = hud.state.view
   return (
     <div hidden={!visible}>
-      <div className={styles.reportRow}>
-        <span>Fleet channels in use</span>
-        <strong>
-          {occupiedFleetSlots(hud.state)} /{' '}
-          {view?.protocol === 4 ? view.missions.fleet_slots : '—'}
-        </strong>
-      </div>
+      <HudEnemyAttacks state={hud.state} onSelect={onSelect} />
+      <HudFleets
+        state={hud.state}
+        universe={universe}
+        body={body}
+        close={close}
+      />
       {hud.inboxError && (
         <>
           <p role="alert">{hud.inboxError}</p>
@@ -90,7 +95,9 @@ export function HudInbox({
         <p role="status" className={styles.noticeText}>
           {inbox.targets.length
             ? 'You’re all caught up.'
-            : 'No new intelligence. All channels clear.'}
+            : incomingAttacks(hud.state).length
+              ? 'No unread intelligence.'
+              : 'No new intelligence. All channels clear.'}
         </p>
       )}
       <div className={styles.panelActions}>
@@ -102,9 +109,6 @@ export function HudInbox({
           onClick={close}
         >
           Messages
-        </ButtonLink>
-        <ButtonLink {...routeTarget(universe, 'fleets', body)} onClick={close}>
-          Fleet activity
         </ButtonLink>
       </div>
     </div>

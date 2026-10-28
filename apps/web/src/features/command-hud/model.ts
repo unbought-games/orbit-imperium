@@ -50,6 +50,9 @@ export function incomingThreats(state: GameState) {
     ? state.view.missions.incoming.filter((f) => isHostileMission(f.mission))
     : []
 }
+export function incomingAttacks(state: GameState) {
+  return incomingThreats(state).filter((fleet) => fleet.mission === 'Attack')
+}
 export function unreadReports(state: GameState) {
   return [...state.reportHeaders.keys()]
     .flatMap((id) => {
