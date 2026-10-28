@@ -1087,50 +1087,67 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             {
                 return Err(invariant("manufacturing ordering mismatch"));
             }
-            if original.item == ManufacturedItem::Ship(ShipType::SolarSatellite) {
-                c.bodies.push(settle(s, b, i, r)?);
-                // Validate the new rate before crediting any inventory or score.
-                production_economy(
-                    b,
-                    &s.production_settings[&b.id].settings,
-                    add(solar_satellite_count(s, b, r)?, 1)?,
-                    energy_technology(s, b)?,
-                    r,
-                )?;
-            }
-            let mut op = original.clone();
-            op.completed_prefix = add(op.completed_prefix, 1)?;
-            op.revision = add(op.revision, 1)?;
-            let old = s
-                .inventories
-                .iter()
-                .find(|x| x.body == b.id && x.item == op.item);
-            c.inventories.push(InventoryStack {
-                body: b.id,
-                owner: b.owner,
-                item: op.item,
-                count: add(old.map_or(0, |x| x.count), 1)?,
-                revision: old.map_or(Ok(0), |x| add(x.revision, 1))?,
-            });
-            if op.completed_prefix == op.quantity {
-                op.status = ManufacturingStatus::Completed;
-            } else {
-                op.next_due_at = deadline(i.at, op.unit_duration_ms)?;
-                event(
-                    &mut c,
-                    i,
-                    op.next_due_at,
-                    ScheduledEvent::ManufacturingDue {
-                        operation: op.id,
-                        generation: op.generation,
-                        expected_prefix: op.completed_prefix,
-                    },
-                )
-            }
-            c.affected_viewers.insert(b.owner);
-            c.manufacturing_batches.push(op);
+            c = complete_manufacturing(s, i, r, original, 1)?;
         }
         _ => return Err(GameError::UnavailableContent.into()),
     }
+    Ok(c)
+}
+
+/// Shared completion primitive for ordinary per-unit events and operator batch completion.
+pub(crate) fn complete_manufacturing(
+    s: &GameState,
+    i: &OrderedInput,
+    r: &Ruleset,
+    original: &ManufacturingBatch,
+    count: i64,
+) -> Result<ChangeSet, Fault> {
+    if count <= 0 || count > original.quantity - original.completed_prefix {
+        return Err(GameError::InvalidInput.into());
+    }
+    let b = owned(s, original.body, i, r)?;
+    let mut c = ChangeSet::new(s, i, r);
+    if original.item == ManufacturedItem::Ship(ShipType::SolarSatellite) {
+        c.bodies.push(settle(s, b, i, r)?);
+        // Validate the new rate before crediting any inventory or score.
+        production_economy(
+            b,
+            &s.production_settings[&b.id].settings,
+            add(solar_satellite_count(s, b, r)?, count)?,
+            energy_technology(s, b)?,
+            r,
+        )?;
+    }
+    let mut op = original.clone();
+    op.completed_prefix = add(op.completed_prefix, count)?;
+    op.revision = add(op.revision, 1)?;
+    let old = s
+        .inventories
+        .iter()
+        .find(|x| x.body == b.id && x.item == op.item);
+    c.inventories.push(InventoryStack {
+        body: b.id,
+        owner: b.owner,
+        item: op.item,
+        count: add(old.map_or(0, |x| x.count), count)?,
+        revision: old.map_or(Ok(0), |x| add(x.revision, 1))?,
+    });
+    if op.completed_prefix == op.quantity {
+        op.status = ManufacturingStatus::Completed;
+    } else {
+        op.next_due_at = deadline(i.at, op.unit_duration_ms)?;
+        event(
+            &mut c,
+            i,
+            op.next_due_at,
+            ScheduledEvent::ManufacturingDue {
+                operation: op.id,
+                generation: op.generation,
+                expected_prefix: op.completed_prefix,
+            },
+        )
+    }
+    c.affected_viewers.insert(b.owner);
+    c.manufacturing_batches.push(op);
     Ok(c)
 }

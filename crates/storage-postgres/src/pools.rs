@@ -124,6 +124,17 @@ impl PgStore {
         &self,
         pool: &PgPool,
     ) -> Result<crate::ordering::Tx<'static>, StoreError> {
+        let mut tx = self.begin_unlocked(pool).await?;
+        sqlx::query("SELECT pg_advisory_xact_lock_shared(901330)")
+            .execute(&mut *tx)
+            .await
+            .map_err(db_error)?;
+        Ok(tx)
+    }
+    pub(crate) async fn begin_unlocked(
+        &self,
+        pool: &PgPool,
+    ) -> Result<crate::ordering::Tx<'static>, StoreError> {
         let connection = self.acquire_pool(pool).await?;
         // Keep SQLx's owned pooled connection in the native transaction. Timing
         // checkout separately excludes the BEGIN round-trip from pool waiting.

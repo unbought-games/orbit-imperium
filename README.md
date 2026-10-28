@@ -76,16 +76,17 @@ You'll need Rust, Node.js/npm, Make, and Docker Compose; the
 From a checkout of this repository:
 
 ```sh
-npm ci
-make dev-setup
 make dev
 ```
 
-Open [localhost:8080](http://localhost:8080) and choose **Create an account**.
-Setup creates a universe at the default 5× speed, or reuses your existing universe
-without resetting it. Use `make dev` to restart. Game data persists in the Docker
-volume. The server also provides `orbit setup --name "Friends" --speed 3` for
-repeatable setup against your own PostgreSQL database; see the
+Open the URL printed by Make and sign in with **user/password**. The local
+playground includes eight developed planets and nearby bots. Repeating `make dev`
+resumes your progress; `make dev-reset` restores the current playground. Use
+`./orbit world --help` to inspect and edit it, or apply a JSON batch with
+`./orbit world scenario apply edits.json`.
+
+For an independently managed database, `orbit setup --name "Friends" --speed 3`
+provides repeatable setup; see the
 [setup command](docs/operations/universe-configuration.md#repeatable-setup).
 
 For a public server, follow the [production setup guide](docs/operations/signup.md)

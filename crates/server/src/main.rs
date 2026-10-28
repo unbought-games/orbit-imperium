@@ -13,6 +13,7 @@ mod serving;
 mod setup_cli;
 mod universe_cli;
 mod universe_serving;
+mod world_cli;
 #[cfg(feature = "test-support")]
 use orbit_engine::parse_speed;
 #[cfg(feature = "test-support")]
@@ -35,6 +36,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 async fn run_main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
+    if args.get(1).is_some_and(|s| s.eq_ignore_ascii_case("world")) {
+        let command = world_cli::parse(&args[2..])?;
+        if matches!(command.action, world_cli::Action::Help) {
+            println!("{}", world_cli::HELP);
+            return Ok(());
+        }
+        let store = PgStore::connect(&env::var("DATABASE_URL")?).await?;
+        store.migrate().await?;
+        world_cli::run(&store, command).await?;
+        return Ok(());
+    }
+
     if args.len() == 4 && args[1] == "rules" && args[2] == "upgrade" && args[3] == "--help" {
         println!("{}", rules_cli::UPGRADE_HELP);
         return Ok(());
@@ -124,7 +137,7 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
             );
         }
         #[cfg(feature = "test-support")]
-        command @ ("dev-seed" | "dev-reset") => {
+        command @ ("test-foundation-create" | "test-foundation-reset") => {
             let (universe, at) = creation(&args)?;
             let file = env::var("ORBIT_SEED_PASSWORD_FILE")?;
             let text = std::fs::read_to_string(file)?;
@@ -137,7 +150,7 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
                 return Err("seed passwords must be at least 12 bytes".into());
             }
             store.migrate().await?;
-            if command == "dev-reset" {
+            if command == "test-foundation-reset" {
                 store.reset(universe, at, speed, &passwords).await?
             } else {
                 store.seed(universe, at, speed, &passwords).await?
@@ -163,7 +176,7 @@ fn command(args: &[String]) -> Result<&str, Box<dyn Error>> {
         "rules" => { rules_cli::parse_rules_cli(args)?; Ok(name) },
         "audit" => { audit_cli::parse(args)?; Ok(name) },
         "serve" | "db-init" | "db-init-progression" | "db-init-fleets" | "db-init-raids" if args.len() <= 2 => Ok(name),
-        "dev-seed" | "dev-reset" | "mvp-bootstrap" | "mvp-progression-bootstrap" | "mvp-fleets-bootstrap" | "mvp-raids-bootstrap"
+        "test-foundation-create" | "test-foundation-reset" | "mvp-bootstrap" | "mvp-progression-bootstrap" | "mvp-fleets-bootstrap" | "mvp-raids-bootstrap"
             if cfg!(feature = "test-support") && args.len() == 6 && matches!((args[2].as_str(), args[4].as_str()), ("--universe", "--at") | ("--at", "--universe")) => Ok(name),
         _ => Err("invalid command/options: use setup --help, serve, db-init, or a seed/bootstrap command with exactly --universe UUID and --at MILLISECONDS".into()),
     }
@@ -213,7 +226,14 @@ mod command_tests {
     fn creation_options_are_exact_and_accept_either_order() {
         let id = "00000000-0000-4000-8000-000000000001";
         for words in [
-            vec!["orbit", "dev-seed", "--at", "0", "--universe", id],
+            vec![
+                "orbit",
+                "test-foundation-create",
+                "--at",
+                "0",
+                "--universe",
+                id,
+            ],
             vec![
                 "orbit",
                 "mvp-raids-bootstrap",
@@ -229,12 +249,19 @@ mod command_tests {
         }
         for words in [
             vec!["orbit", "serve", "--unknown"],
-            vec!["orbit", "dev-seed", "--at", "0", "--at", "1"],
+            vec!["orbit", "test-foundation-create", "--at", "0", "--at", "1"],
             vec!["orbit", "db-init", "--universe", id],
         ] {
             assert!(command(&args(&words)).is_err());
         }
-        let values = args(&["orbit", "dev-seed", "--universe", id, "--at", "-1"]);
+        let values = args(&[
+            "orbit",
+            "test-foundation-create",
+            "--universe",
+            id,
+            "--at",
+            "-1",
+        ]);
         assert!(creation(&values).is_err());
     }
 }

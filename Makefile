@@ -4,7 +4,7 @@
 
 help:
 	@printf '%s\n' \
-	  'make dev-setup UNIVERSE=<uuid>  Create a local development universe once' \
+	  'make dev-reset                 Restore the rich local playground' \
 	  'make dev                        Build and run the local game' \
 	  'make check                      Run routine tests and static checks' \
 	  'make build-universe-final       Build the release server binary' \
@@ -73,17 +73,20 @@ db-init:
 db-destroy:
 	docker compose down --volumes db
 
-dev-seed:
-	node scripts/local.mjs dev-seed $(if $(UNIVERSE),--universe "$(UNIVERSE)") $(if $(AT),--at "$(AT)")
-
-dev-reset:
-	node scripts/local.mjs dev-reset $(if $(UNIVERSE),--universe "$(UNIVERSE)") $(if $(AT),--at "$(AT)")
-
-# Repeatable setup; omit UNIVERSE to create or reuse the sole universe.
-.PHONY: dev-setup build-universe-final build-universe-bridge
-dev-setup: db-up
+# Local lifecycle owns an isolated worktree database; game edits live in orbit world.
+.PHONY: dev dev-reset dev-setup _dev-binary _dev-dependencies build-universe-final build-universe-bridge
+_dev-binary:
 	cargo build -p orbit-server
-	node scripts/local.mjs setup $(if $(UNIVERSE),--universe "$(UNIVERSE)")
+
+_dev-dependencies:
+	@test -d node_modules || npm ci
+	npm run news:build
+
+dev-reset: _dev-binary _dev-dependencies
+	node scripts/local-world.mjs reset
+
+dev-setup: _dev-binary _dev-dependencies
+	node scripts/local-world.mjs setup
 
 # Separate deployable artifacts. The default image remains the final release.
 build-universe-final:
@@ -110,10 +113,8 @@ publish-release-manifest:
 verify-release-registry:
 	node scripts/release-registry.mjs
 
-dev: db-up
-	cargo build -p orbit-server
-	npm run build
-	node scripts/local.mjs serve
+dev: _dev-binary _dev-dependencies
+	node scripts/local-world.mjs start
 
 # Explicit-only validation. PostgreSQL must already be running in an isolated
 # disposable Compose project; see docs/runbooks/ci-runners.md.
@@ -234,3 +235,8 @@ test-homepage:
 .PHONY: test-location-previews
 test-location-previews:
 	cargo nextest run -p orbit-transport-http --lib -E 'test(location_card::)'
+
+# Explicit-only local development lifecycle validation; owns disposable Compose projects.
+.PHONY: test-world-local
+test-world-local: _dev-binary _dev-dependencies
+	$(TIMEOUT) full-system node scripts/world-local-e2e.mjs

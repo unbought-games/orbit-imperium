@@ -13,10 +13,10 @@ export default defineConfig({
   optimizeDeps: { entries: ['index.html', 'src/landing-main.tsx'] },
   server: {
     host: '127.0.0.1',
-    port: 5173,
+    port: Number(process.env.ORBIT_DEV_PORT || 5173),
     proxy: {
-      '/api': 'http://127.0.0.1:8080',
-      '/health': 'http://127.0.0.1:8080',
+      '/api': process.env.ORBIT_DEV_API_URL || 'http://127.0.0.1:8080',
+      '/health': process.env.ORBIT_DEV_API_URL || 'http://127.0.0.1:8080',
     },
   },
   build: {

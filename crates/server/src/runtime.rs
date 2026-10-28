@@ -57,7 +57,8 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
     max_in_flight: usize,
     drain_timeout: Duration,
 ) -> Result<(), StoreError> {
-    let universes = store.universes().await?;
+    let mut universes = store.universes().await?;
+    let mut refresh_worlds = tokio::time::Instant::now();
     let worker = Uuid::new_v4().into();
     let mut tasks = JoinSet::new();
     let mut active = BTreeMap::new();
@@ -66,6 +67,7 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
     let _maintenance = start_retention(store.clone(), drain.clone());
     let result = async {
         while !*drain.borrow() {
+            if refresh_worlds.elapsed() >= Duration::from_secs(1) { universes = store.universes().await?; refresh_worlds = tokio::time::Instant::now(); }
             let mut claimed_any = false;
             for _ in 0..universes.len() {
                 if tasks.len() >= max_in_flight || *drain.borrow() { break; }

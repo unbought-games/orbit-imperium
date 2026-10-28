@@ -81,7 +81,7 @@ pub(super) fn recruitment(row: &PgRow) -> Result<AllianceRecruitment, StoreError
         _ => Err(StoreError::CorruptData),
     }
 }
-pub(super) async fn save(tx: &mut Tx<'_>, b: Binding, s: &AllianceState) -> Result<(), StoreError> {
+pub(crate) async fn save(tx: &mut Tx<'_>, b: Binding, s: &AllianceState) -> Result<(), StoreError> {
     let recruitment = match s.recruitment {
         AllianceRecruitment::Open => "Open",
         AllianceRecruitment::Application => "Application",
@@ -107,7 +107,7 @@ pub(super) async fn save(tx: &mut Tx<'_>, b: Binding, s: &AllianceState) -> Resu
     }
     Ok(())
 }
-pub(super) async fn history(
+pub(crate) async fn history(
     tx: &mut Tx<'_>,
     b: Binding,
     before: Option<&AllianceState>,

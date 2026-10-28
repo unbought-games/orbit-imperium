@@ -4,7 +4,7 @@ use orbit_application::*;
 use sqlx::Row;
 impl RuntimeStatusStore for PgStore {
     async fn runtime_status(&self, u: UniverseId) -> Result<RuntimeStatus, StoreError> {
-        let mut tx = self.begin_tx(&self.pool).await?;
+        let mut tx = self.begin_unlocked(&self.pool).await?;
         sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
             .execute(&mut *tx)
             .await

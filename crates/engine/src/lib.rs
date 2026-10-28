@@ -97,3 +97,5 @@ pub mod alliances;
 mod fusion;
 pub use fusion::*;
 mod fuel_settlement;
+
+pub mod world_edit;
