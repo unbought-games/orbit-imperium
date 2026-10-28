@@ -4,6 +4,7 @@ import {
   Orbit,
   Blocks,
   Radar,
+  Telescope,
   Menu,
   Mail,
   X,
@@ -26,7 +27,6 @@ import { routeTarget } from './route-target'
 import { resolveDestination, type Page } from './routes'
 import {
   buildPages,
-  fleetPages,
   navigationAnchor,
   navigationGroups,
   pageTitles,
@@ -40,7 +40,6 @@ export function Navigation({
   view,
   body,
   page,
-  detail = false,
   activity,
   onVisit,
   onLogout,
@@ -49,7 +48,6 @@ export function Navigation({
   view: BoundView
   body: string | undefined
   page: Page
-  detail?: boolean
   activity: ReadonlySet<Page>
   onVisit?: (page: Page) => void
   onLogout: () => void
@@ -143,17 +141,16 @@ export function Navigation({
       </Button>
     )
   }
-  const fleetLanding = resolveDestination(
-    { universe: view.binding.universe, page: 'galaxy', body },
-    view,
-  ).available
-    ? 'galaxy'
-    : 'fleets'
   const primaryNavigation = (
-    <nav className={styles.primary} aria-label="Main navigation">
+    <nav
+      className={styles.primary}
+      aria-label="Main navigation"
+      data-touch-control=""
+    >
       {destination('overview', 'Empire', Orbit, true)}
       {destination('resources', 'Develop', Blocks, true)}
-      {destination(fleetLanding, 'Fleet', Radar, true)}
+      {destination('galaxy', 'Galaxy', Telescope, true)}
+      {destination('fleets', 'Fleets', Radar, true)}
       <Button
         variant="ghost"
         type="button"
@@ -190,18 +187,10 @@ export function Navigation({
           <nav
             className={styles.secondary}
             aria-label="Develop navigation"
+            data-touch-control=""
             onFocus={revealFocusedDestination}
           >
             {buildPages.map((p) => destination(p))}
-          </nav>
-        )}
-        {selected === 'Fleet' && !detail && (
-          <nav
-            className={styles.secondary}
-            aria-label="Fleet navigation"
-            onFocus={revealFocusedDestination}
-          >
-            {fleetPages.map((p) => destination(p))}
           </nav>
         )}
       </div>
@@ -223,7 +212,7 @@ export function Navigation({
             close()
         }}
       >
-        <div className={styles.heading}>
+        <div className={styles.heading} data-touch-control="">
           <div className={styles.brand}>
             <BrandLogo alt="" />
             <BrandWordmark />
@@ -239,7 +228,11 @@ export function Navigation({
           </Button>
         </div>
         <h2 id={`${menuId}-title`}>Navigation</h2>
-        <nav className={styles.groups} aria-label="Menu destinations">
+        <nav
+          className={styles.groups}
+          aria-label="Menu destinations"
+          data-touch-control=""
+        >
           {navigationGroups.map((group) => (
             <section key={group.title}>
               <h3>{group.title}</h3>

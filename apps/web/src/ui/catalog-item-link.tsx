@@ -17,6 +17,7 @@ export function CatalogItemLink({
   const universe = useUniverseName()
   return (
     <Link
+      data-touch-control=""
       className={className}
       {...routeTarget(universe, catalogPage(item), body, item.id)}
     >

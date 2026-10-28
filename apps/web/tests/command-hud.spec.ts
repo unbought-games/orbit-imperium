@@ -735,6 +735,7 @@ test('orb hover charges every layer, preserves its hit area and palette, and sup
   await page.mouse.up()
   await expect(page.getByRole('dialog',{name:'Command uplink'})).toBeVisible()
   await page.getByRole('button',{name:'Close command HUD'}).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.mouse.move(5,5)
   await expect.poll(()=>channel('charge')).toBe(0)
   await expect.poll(()=>channel('press')).toBe(0)
@@ -984,4 +985,94 @@ test('enemy attacks open above fleets, use red, keep hidden intelligence hidden,
   await expect(enemies.getByRole('article')).toHaveCount(0)
   await expect(panel.getByText('No enemy attacks inbound.')).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-cleared-320x740.png`})
+})
+
+
+test('orb popup animates out on close, Escape and backdrop dismissal before releasing the modal', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'no-preference'})
+  await intelligenceFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const orb=page.getByTestId('command-orb')
+  const panel=page.getByRole('dialog',{name:'Command uplink',exact:true})
+  await expect(orb).toBeVisible()
+  await page.evaluate(()=>window.scrollTo(0,150))
+  const originalY=await page.evaluate(()=>scrollY)
+  for(const dismissal of ['button','escape','backdrop'] as const){
+    await orb.click()
+    await expect(panel).toBeVisible()
+    await expect.poll(()=>panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+    await expect(panel).toContainText('No new intelligence. All channels clear.')
+    if(dismissal==='button')await diagnosticScreenshot(page,{path:`${output}/popup-open-390x844.png`})
+    const samples=await panel.evaluate(async (el,dismissal)=>{
+      const dialog=el as HTMLDialogElement
+      if(dismissal==='button')dialog.querySelector<HTMLButtonElement>('[aria-label="Close command HUD"]')!.click()
+      else if(dismissal==='escape')dialog.dispatchEvent(new Event('cancel',{cancelable:true}))
+      else dialog.click()
+      const samples=[]
+      while(dialog.isConnected){
+        samples.push({
+          opacity:Number(getComputedStyle(dialog).opacity),
+          transform:getComputedStyle(dialog).transform,
+          backdropOpacity:Number(getComputedStyle(dialog,'::backdrop').opacity),
+          modal:dialog.matches(':modal'),
+          locked:document.body.style.position==='fixed',
+          content:dialog.textContent,
+          closing:dialog.hasAttribute('data-closing'),
+          inert:dialog.firstElementChild!.hasAttribute('inert'),
+        })
+        await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
+      }
+      return samples
+    },dismissal)
+    const fading=samples.filter(s=>s.closing&&s.opacity>0&&s.opacity<0.95)
+    expect(fading.length,`${dismissal} must visibly fade before unmounting`).toBeGreaterThan(0)
+    for(const sample of fading){
+      expect(sample.modal).toBe(true)
+      expect(sample.locked).toBe(true)
+      expect(sample.inert).toBe(true)
+      expect(sample.content).toContain('No new intelligence. All channels clear.')
+      expect(sample.transform).not.toBe('none')
+    }
+    expect(samples.some(s=>s.backdropOpacity>0&&s.backdropOpacity<0.95)).toBe(true)
+    await expect(panel).toHaveCount(0)
+    await expect(orb).toBeFocused()
+    expect(await page.evaluate(()=>document.body.style.position)).toBe('')
+    expect(await page.evaluate(()=>scrollY)).toBe(originalY)
+  }
+  await diagnosticScreenshot(page,{path:`${output}/popup-closed-390x844.png`})
+  if(process.env.ORBIT_TEST_SCREENSHOTS==='1'){
+    await orb.click()
+    await expect.poll(()=>panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+    await panel.evaluate(async el=>{
+      el.querySelector<HTMLButtonElement>('[aria-label="Close command HUD"]')!.click()
+      await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))
+      for(const animation of el.getAnimations()){
+        animation.pause()
+        animation.currentTime=Number(animation.effect!.getTiming().duration)/2
+      }
+    })
+    await diagnosticScreenshot(page,{path:`${output}/popup-closing-390x844.png`})
+    await panel.evaluate(el=>{for(const animation of el.getAnimations())animation.play()})
+    await expect(panel).toHaveCount(0)
+  }
+  // Native Escape must be prevented while the exit plays, then return focus.
+  await orb.click()
+  await expect(panel).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+  await expect(orb).toBeFocused()
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await orb.click()
+  expect(await panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+  expect(await panel.evaluate(el=>getComputedStyle(el,'::backdrop').animationName)).toBe('none')
+  await page.getByRole('button',{name:'Close command HUD'}).click()
+  await expect(panel).toHaveCount(0)
+  await orb.click()
+  await expect(panel).toBeVisible()
+  await page.setViewportSize({width:1440,height:900})
+  await expect(orb).toHaveCount(0)
+  await expect(panel).toHaveCount(0)
+  expect(await page.evaluate(()=>document.body.style.position)).toBe('')
+  await diagnosticScreenshot(page,{path:`${output}/popup-desktop-1440x900.png`})
 })

@@ -138,11 +138,7 @@ export function buildingInsights(
   const projectedOutput = (value: string) => {
     if (!resource) return value
     const rate = BigInt(value)
-    return (rate > 0n &&
-      BigInt(body.amounts[resource]) >= BigInt(body.capacity[resource])) ||
-      (rate < 0n && BigInt(body.amounts[resource]) === 0n)
-      ? '0'
-      : value
+    return rate < 0n && BigInt(body.amounts[resource]) === 0n ? '0' : value
   }
   const planetOutput =
     projected && isOutput && resource
@@ -167,6 +163,10 @@ export function buildingInsights(
           )
         : null
   return {
+    productionPaused:
+      isOutput &&
+      storage?.state === 'full' &&
+      BigInt(planetOutput?.current ?? benefit?.current ?? '0') > 0n,
     fuel: projected
       ? {
           current: projected.current.fuel_deuterium_per_hour,
@@ -217,11 +217,9 @@ export function buildingInsights(
               : benefit.target),
           qualifier: isOutput
             ? planetOutput
-              ? storage?.state === 'full'
-                ? 'Storage is full; production resumes when storage has room'
-                : resource === 'deuterium'
-                  ? 'Planet total at saved settings, net of fuel use'
-                  : 'Planet total at saved settings, including base production'
+              ? resource === 'deuterium'
+                ? 'Planet total at saved settings, net of fuel use'
+                : 'Planet total at saved settings, including base production'
               : 'Mine potential at 100% output and full power; planet estimate unavailable'
             : benefit.kind === 'Energy'
               ? id === 'FusionReactor' && projected
@@ -235,7 +233,7 @@ export function buildingInsights(
   }
 }
 
-/** Compare rates at the same current stock levels, not speculative completion balances. */
+/** Show output before storage caps, retaining current fuel availability. */
 function minePlanetOutput(
   body: S['BodyV3'],
   resource: Resource,
@@ -246,11 +244,7 @@ function minePlanetOutput(
 ) {
   const otherProduction = currentRate - currentMine
   const constrained = (rate: bigint) =>
-    (rate > 0n &&
-      BigInt(body.amounts[resource]) >= BigInt(body.capacity[resource])) ||
-    (rate < 0n && BigInt(body.amounts[resource]) === 0n)
-      ? '0'
-      : rate.toString()
+    rate < 0n && BigInt(body.amounts[resource]) === 0n ? '0' : rate.toString()
   return {
     current: constrained(currentRate),
     target: constrained(otherProduction + targetMine),

@@ -1,0 +1,66 @@
+{
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 7
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceDrive",
+      "level": 4
+    }
+  ],
+  "ship": {
+    "drive": "HyperspaceDrive",
+    "base_speed": 10000,
+    "drive_coefficient": [
+      3,
+      10
+    ],
+    "fuel": 500,
+    "capacity": 1500
+  },
+  "cost": {
+    "metal": 45000,
+    "crystal": 15000,
+    "deuterium": 0
+  },
+  "combat": {
+    "item": {
+      "kind": "Ship",
+      "id": "Battleship"
+    },
+    "cost": [
+      45000,
+      15000,
+      0
+    ],
+    "attack_hundredths": 100000,
+    "shield_hundredths": 20000
+  },
+  "rapid_fire": [
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battleship"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battleship"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "SolarSatellite"
+      },
+      "factor": 5
+    }
+  ]
+}

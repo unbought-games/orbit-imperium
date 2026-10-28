@@ -34,8 +34,9 @@ Base hull / attack / shield are 200 / 100 / 25. Hull is derived from metal plus
 crystal; the combat artifact records attack 10,000 and shield 2,500 in hundredths.
 Existing Armour, Weapons and Shielding bonuses apply. Lasers have no outgoing
 rapid fire. The [Bomber bundle](bomber.md) supplies rapid fire 20 against them.
-The reference's Destroyer 10 and Dreadnought 200 pairs belong with those future
-ships. Existing defense recovery (default independent 70% per destroyed
+The [Destroyer bundle](destroyer.md) supplies rapid fire 10 against them.
+The reference's Dreadnought 200 pair belongs with that future
+ship. Existing defense recovery (default independent 70% per destroyed
 unit), no defense debris, report and valuation behavior apply unchanged.
 
 ## Prepare and activate

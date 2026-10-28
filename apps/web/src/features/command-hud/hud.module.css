@@ -489,13 +489,14 @@
     overscroll-behavior: contain;
     touch-action: pan-y pinch-zoom;
   }
-  .dialog[open] {
-    animation: dialogIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  }
   .dialog::backdrop {
     touch-action: none;
     background: #030c15b8;
     backdrop-filter: blur(5px);
+    animation: backdropIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+  .dialog[data-closing]::backdrop {
+    animation: backdropOut 0.4s ease-in both !important;
   }
   .dialogInterior {
     padding: 16px 20px 0;
@@ -889,14 +890,20 @@
     transform: scaleX(0);
   }
 }
-@keyframes dialogIn {
+@keyframes backdropIn {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: none;
+  }
+}
+@keyframes backdropOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 /* This experiment deliberately opts into motion above the game's global reset. */
@@ -908,6 +915,9 @@
   .surface *::after {
     animation: none !important;
     transition: none !important;
+  }
+  .surface .dialog::backdrop {
+    animation: none !important;
   }
 }
 

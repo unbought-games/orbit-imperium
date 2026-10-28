@@ -195,7 +195,7 @@ for (const width of [390, 1440]) {
     await tile.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane).toContainText(
-      'Higher levels currently unlock no additional content',
+      'Unlocks Destroyers at level 5',
     )
     await expect(
       pane.getByRole('button', { name: 'Crystal details' }),
