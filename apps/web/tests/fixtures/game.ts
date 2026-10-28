@@ -331,6 +331,8 @@ export async function installGameFixture(
           minimum_viewer_revision: options.viewerRevision?.() ?? '1',
         },
       })
+    if (url.pathname.endsWith('/social/query')) return route.fulfill({ json: { ...context.context, conversations: [], messages: [], circulars: [], contacts: [], contact: null, next_cursor: null } })
+    if (protocol === 4 && url.pathname.endsWith('/reports')) return route.fulfill({ json: { protocol: 4, binding, request_id: context.context.request_id, viewer_revision: options.viewerRevision?.() ?? '1', sampled_at: sampledAt, as_of_ms: sampledAt, data: { items: [], next_cursor: null, has_more: false, as_of_ms: sampledAt } } })
     if (url.pathname.endsWith('/commands')) purchases++
     return route.fulfill({ status: 404, json: { code: 'NotFound' } })
   })

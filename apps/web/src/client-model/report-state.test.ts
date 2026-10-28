@@ -170,3 +170,17 @@ it('keeps publication protection when an older report response arrives later', (
     shared: false,
   })
 })
+
+it('acknowledges a report read only after commitment and rejects older unread observations', () => {
+  const read = attempt('committed')
+  read.envelope.command = {
+    type: 'World',
+    action: { type: 'MarkReportRead', report: 'report' },
+  }
+  const accepted = acceptReportVisibility(headers, read, receipt)
+  expect(accepted.get('report')?.header.read).toBe(true)
+  expect(
+    mergeReportHeaders(accepted, [header], '1').get('report')?.header.read,
+  ).toBe(true)
+  expect(headers.get('report')?.header.read).toBe(false)
+})

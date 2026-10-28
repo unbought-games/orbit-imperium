@@ -1636,7 +1636,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-application"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "argon2",
  "futures",
@@ -1653,7 +1653,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-engine"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "hex",
  "hmac",
@@ -1669,7 +1669,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-server"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "axum",
  "hex",
@@ -1688,7 +1688,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-storage-postgres"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "axum",
  "hex",
@@ -1711,7 +1711,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-transport-http"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "axum",
  "base64 0.22.1",

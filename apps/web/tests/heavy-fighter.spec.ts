@@ -145,6 +145,8 @@ test('Heavy Fighter exposes its missing Impulse Drive prerequisite', async ({
 })
 
 test('Heavy Fighter submits the selected build quantity', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await setup(page)
   const pane = page.getByRole('region', { name: 'Progression quote' })
   let sent: unknown = null
@@ -189,6 +191,11 @@ test('Heavy Fighter submits the selected build quantity', async ({ page }) => {
       item,
       quantity: '2',
     })
+  const toast = page.getByLabel('Recent game events').getByRole('button', { name: /Shipyard order accepted/ })
+  await expect(toast).toContainText('12,000')
+  await expect(toast).toContainText('8,000')
+  await expect(page.getByTestId('command-orb')).toHaveAttribute('data-tone', 'green')
+  await diagnosticScreenshot(page, { path: 'test-results/live-hud/shipyard-390x844.png' })
 })
 
 test('Heavy Fighters can be selected, quoted and launched in an attack fleet', async ({

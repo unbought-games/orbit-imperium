@@ -100,7 +100,11 @@ for(const success of [true,false])test(`colonization ${success?'success links to
 
 
 test('occupied colony positions retain the actionable error through shared dispatch validation', async ({ page }) => {
-  await page.clock.install()
+  const now = Date.now()
+  // Freeze before loading the app; pausing at wall time after startup can race
+  // the browser's advancing clock and try to move it backward.
+  await page.clock.install({ time: now - 60_000 })
+  await page.clock.pauseAt(now)
   const source = { ...body, inventories: [{ item: { kind: 'Ship' as const, id: 'ColonyShip' as const }, count: '1' }] }
   await setup(page, [source])
   let resolved = 0
@@ -117,8 +121,9 @@ test('occupied colony positions retain the actionable error through shared dispa
     await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PositionOccupied' } })
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toBeVisible()
+  await page.clock.runFor(250)
   await expect.poll(() => observed).toBe(1)
-  await page.clock.pauseAt(new Date())
   await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
   await setDestination(page, { position: '8' })
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')

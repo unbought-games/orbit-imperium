@@ -247,3 +247,15 @@
     padding-inline: 8px;
   }
 }
+
+/* A floating command orb must never make the last row's controls unreachable. */
+@media (max-width: 767px) {
+  .game-shell[data-mobile-hud] {
+    padding-bottom: calc(230px + env(safe-area-inset-bottom));
+  }
+  .game-shell[data-mobile-hud]
+    .work-area
+    :where(button, a, input, select, textarea, [tabindex]) {
+    scroll-margin-block-end: calc(230px + env(safe-area-inset-bottom));
+  }
+}

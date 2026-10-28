@@ -1,3 +1,4 @@
+import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
 import {
   Outlet,
@@ -186,7 +187,11 @@ export function GameShell() {
     </Popover>
   )
   return (
-    <div className={styles['game-shell']} ref={pinned.shell}>
+    <div
+      className={styles['game-shell']}
+      ref={pinned.shell}
+      data-mobile-hud={view.protocol === 4 || undefined}
+    >
       <div className={styles['shell-columns']}>
         <div className={styles.header} ref={pinned.header}>
           <header className={styles.identity} data-touch-control="">
@@ -330,6 +335,7 @@ export function GameShell() {
           </main>
         </div>
       </div>
+      <CommandHud body={body?.id} onDraft={prepareDispatch} />
     </div>
   )
 }
