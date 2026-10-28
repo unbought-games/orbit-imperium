@@ -451,6 +451,7 @@ export function EnergyAdvice({
             <span key={entry.key.id}>
               {i > 0 && ' · '}
               <Link
+                data-touch-control=""
                 {...routeTarget(
                   universe,
                   catalogPage(entry.key),

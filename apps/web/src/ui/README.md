@@ -2,7 +2,7 @@
 
 Use shared React components for styled elements and compose them into feature components. Plain, unstyled HTML wrappers are fine; a new component should own a visual pattern or behavior.
 
-- `style.css` is only for document defaults, resets, global focus/scroll behavior, and the no-animation policy. Shared design values live in `styles/tokens.css`.
+- `style.css` is only for document defaults, resets, global focus/scroll/selection behavior, and the no-animation policy. Shared design values live in `styles/tokens.css`.
 - Keep component styles in an adjacent `*.module.css` file. Import the module in its owner, and keep responsive rules there too. Do not use global feature classes or `:global` escape hatches.
 - Reuse `Button`, `ButtonLink`, `Link`, form controls, `Panel`, `Section`, typography, and the catalog/quote components before adding a new visual pattern.
 - Choose explicit variants (`<Button variant="secondary">`, `<Panel tone="accent">`). Never infer an action's visual meaning from its position among siblings.
@@ -31,6 +31,24 @@ Add screen routes in `src/routes`; TanStack generates `routeTree.gen.ts` (do not
 `resolveDestination` checks planet ownership, protocol capabilities and item visibility against each confirmed view. It does not parse URLs. Preserve those checks when extending routes. Build catalogs, research, fleets, galaxy, and dispatch use `/u/$universe/b/$body/...`. Catalog items add a stable kebab-case item segment. Research levels remain universe-wide; the path identifies the host/funding body. Legacy query-context URLs redirect to the canonical planet path. Reports and account settings retain their existing routes. Never silently replace an explicit inaccessible planet.
 
 Use native browser links for external destinations and same-page non-navigation helpers. Preserve route title/focus behavior, keyboard menu restoration, and direct-link login. Tests must cover browser-history navigation and actual server refreshes, since Vite's development fallback alone cannot prove production hosting works.
+
+## Mobile text selection
+
+On touch devices with a coarse primary pointer and no hover, native buttons,
+selects, disclosure summaries, and ARIA action/menu controls suppress text
+selection and iOS long-press callouts. Shared linked controls, game navigation
+chrome, catalog cards, and decorative game art opt in with `data-touch-control`.
+Use that attribute for new control surfaces, rather than disabling selection on
+entire screens or all links. Content remains selectable by default: descriptions,
+reports, messages,
+help, errors, identities, and ordinary coordinate links. Inputs, textareas, and
+editable elements explicitly retain selection and native copy/paste menus;
+`data-touch-selectable` does the same for copyable content nested in chrome.
+Keep explanatory popup/dialog bodies outside an opted-in control container.
+The policy lives in `style.css` and applies in mobile browsers and installed apps;
+viewport width alone never disables desktop selection.
+Do not target `nav` generically: ranking ranges, alliance counts, and public
+policy/support links retain native selection and link callouts.
 
 ## Editorial game shell
 

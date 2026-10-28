@@ -14,7 +14,7 @@ export default defineConfig({
   outputDir: process.env.ORBIT_TEST_OUTPUT_DIR ?? 'test-results/browser',
   testDir: 'apps/web/tests',
   testMatch: process.env.ORBIT_UI_E2E
-    ? uiFiles
+    ? [...uiFiles, 'mobile-selection.spec.ts']
     : process.env.ORBIT_CORE_E2E
       ? coreFiles
       : process.env.ORBIT_SIGNUP_E2E

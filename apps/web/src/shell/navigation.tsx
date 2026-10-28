@@ -142,7 +142,11 @@ export function Navigation({
     )
   }
   const primaryNavigation = (
-    <nav className={styles.primary} aria-label="Main navigation">
+    <nav
+      className={styles.primary}
+      aria-label="Main navigation"
+      data-touch-control=""
+    >
       {destination('overview', 'Empire', Orbit, true)}
       {destination('resources', 'Develop', Blocks, true)}
       {destination('galaxy', 'Galaxy', Telescope, true)}
@@ -183,6 +187,7 @@ export function Navigation({
           <nav
             className={styles.secondary}
             aria-label="Develop navigation"
+            data-touch-control=""
             onFocus={revealFocusedDestination}
           >
             {buildPages.map((p) => destination(p))}
@@ -207,7 +212,7 @@ export function Navigation({
             close()
         }}
       >
-        <div className={styles.heading}>
+        <div className={styles.heading} data-touch-control="">
           <div className={styles.brand}>
             <BrandLogo alt="" />
             <BrandWordmark />
@@ -223,7 +228,11 @@ export function Navigation({
           </Button>
         </div>
         <h2 id={`${menuId}-title`}>Navigation</h2>
-        <nav className={styles.groups} aria-label="Menu destinations">
+        <nav
+          className={styles.groups}
+          aria-label="Menu destinations"
+          data-touch-control=""
+        >
           {navigationGroups.map((group) => (
             <section key={group.title}>
               <h3>{group.title}</h3>

@@ -41,6 +41,39 @@ html[data-ios-standalone] {
   /* Allow native scrolling in both directions, but no pinch or double-tap zoom. */
   touch-action: pan-x pan-y;
 }
+/* Touch controls behave like app controls; reading content stays selectable.
+   Input capabilities keep narrow desktop windows unchanged and cover tablets
+   in landscape. Semantic selectors also cover controls mounted in portals. */
+@media (hover: none) and (pointer: coarse) {
+  :where(
+    button,
+    select,
+    summary,
+    [role='button'],
+    [role='tab'],
+    [role='option'],
+    [role='combobox'],
+    [role='menuitem'],
+    [role='menuitemcheckbox'],
+    [role='menuitemradio'],
+    [data-touch-control]
+  ) {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* Preserve editing and explicit copy targets inside control chrome too. */
+  :where(
+    input,
+    textarea,
+    [contenteditable]:not([contenteditable='false']),
+    [data-touch-selectable]
+  ) {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+}
 :focus-visible {
   scroll-margin-block: 16px calc(6rem + 16px);
 }

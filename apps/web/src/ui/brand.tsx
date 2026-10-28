@@ -38,7 +38,11 @@ function BrandAnchor({
   variant?: 'logo' | 'wordmark' | 'both'
 }) {
   return (
-    <a className={classes(styles.brand, className)} {...props}>
+    <a
+      data-touch-control=""
+      className={classes(styles.brand, className)}
+      {...props}
+    >
       {variant !== 'wordmark' && (
         <BrandLogo alt={variant === 'logo' ? 'Orbit Imperium' : ''} />
       )}
