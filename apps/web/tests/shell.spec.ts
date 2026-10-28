@@ -488,50 +488,13 @@ for (const protocol of [3, 4] as const) {
     await navigate(page, 'Fleets')
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
     await expect(page.locator('main h1')).toHaveText('Fleets')
-    await page.getByRole('link', { name: 'Fleet', exact: true }).click()
-    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${protocol === 4 ? 'galaxy' : 'fleets'}`)
+    await page.getByRole('link', { name: 'Fleets', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
     await navigate(page, 'Fleets')
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
     await expect(page.locator('main h1')).toHaveText('Fleets')
   })
 }
-
-test('mobile Fleet submenu keeps Galaxy inside the pinned header', async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.setViewportSize({ width: 390, height: 844 })
-  await shellFixture(page, { protocol: 4 })
-  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
-  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
-  await expect(page.locator('main h1')).toHaveText('Galaxy')
-  const nav = page.getByRole('navigation', { name: 'Fleet navigation' })
-  await expect(
-    nav.getByRole('link', { name: 'Galaxy', exact: true }),
-  ).toHaveAttribute('aria-current', 'page')
-  await expect(nav.getByRole('link')).toHaveText([
-    'Galaxy',
-    'Dispatch',
-    'Fleets',
-  ])
-  await expect(
-    nav.getByRole('link', { name: 'Galaxy', exact: true }),
-  ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy`)
-  await page.evaluate(() => window.scrollTo(0, 250))
-  const bar = page.getByRole('group', { name: 'Planet and resources' })
-  await expect.poll(async () => (await bar.boundingBox())!.y).toBe(0)
-  const resources = (await bar.boundingBox())!
-  const submenu = (await nav.boundingBox())!
-  expect(submenu.y).toBe(resources.y + resources.height)
-  expect(submenu.x).toBe(0)
-  expect(submenu.width).toBe(390)
-  for (const [title, path] of [['Dispatch', 'dispatch'], ['Fleets', 'fleets']]) {
-    await nav.getByRole('link', { name: title, exact: true }).click()
-    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
-    await expect(page.locator('main h1')).toHaveText(title)
-    await expect(nav.getByRole('link', { name: title, exact: true })).toHaveAttribute('aria-current', 'page')
-  }
-})
 
 test('mobile planet box is one tap target with rich planet and moon labels', async ({
   page,
@@ -813,7 +776,7 @@ test('compact shell exposes resource details and switches bodies without purchas
   })
   await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop'])
   await expect(
-    nav.getByRole('button', { name: 'Fleet', exact: true }),
+    nav.getByRole('button', { name: 'Fleets', exact: true }),
   ).toBeDisabled()
   await nav.getByRole('button', { name: 'Menu', exact: true }).click()
   const menu = page.getByRole('dialog', { name: 'Navigation' })
@@ -1044,7 +1007,7 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
     exact: true,
   })
   await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop'])
-  await expect(nav.getByRole('button')).toHaveText(['Fleet', 'Menu'])
+  await expect(nav.getByRole('button')).toHaveText(['Galaxy', 'Fleets', 'Menu'])
   const dock = await nav.boundingBox()
   expect(dock!.y + dock!.height).toBe(844)
   const metal = await page
@@ -1339,7 +1302,7 @@ test('navigation keeps shell identity mounted through rapid route changes', asyn
     .getByRole('link', { name: 'Shipyard', exact: true })
     .click()
   await expect(page.locator('main h1')).toHaveText('Shipyard')
-  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await page.getByRole('link', { name: 'Galaxy', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Galaxy')
   let release!: () => void
   const gate = new Promise<void>((resolve) => {
@@ -1392,10 +1355,10 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)
-  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
+  await page.getByRole('link', { name: 'Galaxy', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Galaxy')
   await page
-    .getByRole('navigation', { name: 'Fleet navigation' })
+    .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('link', { name: 'Fleets', exact: true })
     .click()
   await expect(page.locator('main h1')).toHaveText('Fleets')
@@ -1940,7 +1903,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     for (const control of [
       page.getByRole('combobox', { name: 'Selected body' }),
       page.getByRole('button', { name: 'Menu', exact: true }),
-      page.getByRole('link', { name: 'Fleet', exact: true }),
+      page.getByRole('link', { name: 'Fleets', exact: true }),
     ]) {
       await expect(control).toBeInViewport()
       expect(
@@ -2429,9 +2392,17 @@ for (const width of [768, 1024, 1440, 1800]) {
     }
     await assertRow()
     await expect(page.getByRole('navigation', { name: /^(Develop|Fleet) navigation$/ })).toHaveCount(0)
-    for (const group of ['Develop', 'Fleet']) {
+    for (const group of ['Develop', 'Galaxy', 'Fleets']) {
       await primary.getByRole('link', { name: group, exact: true }).click()
       const secondary = page.getByRole('navigation', { name: `${group} navigation`, exact: true })
+      if (group !== 'Develop') {
+        await expect(secondary).toHaveCount(0)
+        for (const scroll of [0, 300, 100000]) {
+          await page.evaluate(y => window.scrollTo(0, y), scroll)
+          await assertRow()
+        }
+        continue
+      }
       await expect(secondary).toBeVisible()
       const row = (await primary.boundingBox())!
       expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
