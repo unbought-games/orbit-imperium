@@ -199,15 +199,13 @@ fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data()
         next.artifact.progression.as_ref().unwrap().research,
         previous.artifact.progression.as_ref().unwrap().research
     );
-    for id in [ShipType::Dreadnought] {
-        assert!(
-            !next
-                .artifact
-                .catalog
-                .iter()
-                .any(|e| e.key == CatalogKey::Ship(id) && e.enabled)
-        );
-    }
+    assert!(
+        !next
+            .artifact
+            .catalog
+            .iter()
+            .any(|e| e.key == CatalogKey::Ship(ShipType::Dreadnought) && e.enabled)
+    );
 
     assert_eq!(upgrade_standard_rules(&next).unwrap(), next);
     let delta = validate_rules_update(&previous, &next).unwrap();
