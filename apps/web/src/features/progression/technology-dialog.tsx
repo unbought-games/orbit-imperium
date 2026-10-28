@@ -59,6 +59,7 @@ export function TechnologyDialog({
         <div className={met ? styles.met : styles.missing}>
           <CatalogImage art={catalogContent(key).art} />
           <Link
+            data-touch-control=""
             {...routeTarget(
               universeName,
               catalogPage(key),

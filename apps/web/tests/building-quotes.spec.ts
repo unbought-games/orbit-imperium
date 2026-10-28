@@ -222,7 +222,7 @@ for (const width of [320, 390, 1440]) {
     await expect(pane).not.toContainText('Construction energy required')
     await expect(pane).not.toContainText('Extra operating energy')
     await expect(pane.locator('dl')).toContainText(
-      /Energy balance-14\s*→\s*\+13/,
+      /Energy after upgrade13\s*\(-14\)/,
     )
     await expect(
       pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
@@ -234,7 +234,7 @@ for (const width of [320, 390, 1440]) {
       .getByRole('button', { name: 'Demolish Crystal Mine', exact: true })
       .click()
     await expect(pane.locator('dl')).toContainText(
-      /Energy balance\+11\s*→\s*\+37/,
+      /Energy after demolition37\s*\(\+11\)/,
     )
     await expect(pane).not.toContainText('Operating energy saved')
     await page.goto(`/u/andromeda/b/${body.id}/facilities`)

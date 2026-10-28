@@ -26,7 +26,7 @@ export function FleetSlotCount({
 /** Fleet slots are empire-wide, including returning and pending departures. */
 export function FleetSlots({ used, total }: { used: number; total: string }) {
   return (
-    <span>
+    <span data-touch-control="">
       Fleet slots: <NumberValue value={used} /> used /{' '}
       <NumberValue value={total} /> total
     </span>

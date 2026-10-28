@@ -54,6 +54,7 @@ export function ButtonLinkAnchor({
 }: ComponentPropsWithRef<'a'> & ButtonAppearance) {
   return (
     <a
+      data-touch-control=""
       data-button-variant={variant ?? 'primary'}
       className={buttonClasses({ variant, size, padding, className })}
       {...props}

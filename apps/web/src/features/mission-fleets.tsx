@@ -129,7 +129,10 @@ export function MissionFleets({
       <TaskHeader title={item ? 'Mission details' : undefined}>
         <div className={styles.actions}>
           {item && (
-            <Link {...routeTarget(universeName, 'fleets', origin)}>
+            <Link
+              data-touch-control=""
+              {...routeTarget(universeName, 'fleets', origin)}
+            >
               All fleets
             </Link>
           )}
@@ -241,7 +244,10 @@ export function MissionFleets({
                 action: { type: 'RecallMission', fleet: fleet.id },
               })) && <Recall model={model} fleetId={fleet.id} fleet={fleet} />}
             {!item && (
-              <Link {...routeTarget(universeName, 'fleets', origin, fleet.id)}>
+              <Link
+                data-touch-control=""
+                {...routeTarget(universeName, 'fleets', origin, fleet.id)}
+              >
                 Mission details
               </Link>
             )}
