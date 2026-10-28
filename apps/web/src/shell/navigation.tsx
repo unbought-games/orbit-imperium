@@ -223,7 +223,7 @@ export function Navigation({
             close()
         }}
       >
-        <div className={styles.heading}>
+        <div className={styles.heading} data-touch-control="">
           <div className={styles.brand}>
             <BrandLogo alt="" />
             <BrandWordmark />

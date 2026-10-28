@@ -189,7 +189,7 @@ export function GameShell() {
     <div className={styles['game-shell']} ref={pinned.shell}>
       <div className={styles['shell-columns']}>
         <div className={styles.header} ref={pinned.header}>
-          <header className={styles.identity}>
+          <header className={styles.identity} data-touch-control="">
             <Brand
               className={styles.brand}
               {...routeTarget(universeName, 'overview', body?.id)}

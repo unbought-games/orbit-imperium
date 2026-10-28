@@ -13,6 +13,7 @@ export function BodyIllustration({
   const art = resolveBodyArt(body)
   return (
     <img
+      data-touch-control=""
       className={className}
       src={art.thumbnail}
       srcSet={art.srcSet}

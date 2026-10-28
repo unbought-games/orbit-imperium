@@ -23,6 +23,8 @@ import {
 } from '@floating-ui/react'
 import styles from './popover.module.css'
 
+const linkControlProps = { 'data-touch-control': '' }
+
 /** Read-only details, available with a mouse, keyboard, or touch. */
 export function Popover({
   label,
@@ -66,6 +68,7 @@ export function Popover({
     <>
       {link ? (
         cloneElement(link, {
+          ...linkControlProps,
           ref: refs.setReference,
           className,
           ...getReferenceProps({
