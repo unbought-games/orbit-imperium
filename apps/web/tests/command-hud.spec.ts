@@ -631,17 +631,38 @@ test('orb symbols overlap in a holographic dissolve, settle after rapid changes,
   await expect(symbols).toHaveCount(1)
   await expect(symbols).toHaveAttribute('data-orb-symbol','message')
   await orb.evaluate(el=>{for(const a of el.getAnimations())if(a.effect?.getTiming().iterations===1)a.finish()})
+  // Capture a complete overlap frame inside the browser. evaluateAll first
+  // resolves element handles and then samples them in a separate task; an
+  // outgoing symbol can be detached between those tasks on a busy CI runner.
+  type SymbolFrame = { opacity:number; filter:string; transform:string; hidden:string|null; pointerEvents:string }
+  await orb.evaluate(el=>{
+    const target=el as Element & {symbolOverlap?:SymbolFrame[]}
+    const sample=()=>{
+      const frame=Array.from(el.querySelectorAll('[data-orb-symbol]'),node=>{
+        const style=getComputedStyle(node)
+        return {opacity:Number(style.opacity),filter:style.filter,transform:style.transform,hidden:node.getAttribute('aria-hidden'),pointerEvents:style.pointerEvents}
+      })
+      if(frame.length===2 && frame.every(part=>part.opacity>0 && part.opacity<1 && part.filter!=='blur(0px)' && part.filter!=='none' && part.transform!=='none')){
+        target.symbolOverlap=frame
+        return
+      }
+      if(el.isConnected)requestAnimationFrame(sample)
+    }
+    requestAnimationFrame(sample)
+  })
   const incoming={sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Attack' as const,arrival_at:baseTime+180000,ships:{visibility:'Unknown' as const}}
   f.missions.incoming.push(incoming)
   await f.refresh()
   await expect(orb).toHaveAttribute('data-tone','red')
-  await expect(symbols).toHaveCount(2)
-  // Sample actual rendered opacity/scale/blur while both symbols are present.
-  await expect.poll(()=>symbols.evaluateAll(nodes=>nodes.length===2 && nodes.every(node=>{
-    const style=getComputedStyle(node)
-    return Number(style.opacity)>0 && Number(style.opacity)<1 && style.filter!=='blur(0px)' && style.filter!=='none' && style.transform!=='none'
-  })),{intervals:[10,20,30]}).toBe(true)
-  expect(await symbols.evaluateAll(nodes=>nodes.every(node=>node.getAttribute('aria-hidden')==='true' && getComputedStyle(node).pointerEvents==='none'))).toBe(true)
+  let overlap:SymbolFrame[]=[]
+  await expect.poll(async()=>{
+    overlap=await orb.evaluate(el=>(el as Element & {symbolOverlap?:SymbolFrame[]}).symbolOverlap ?? [])
+    return overlap.length
+  },{intervals:[10,20,30]}).toBe(2)
+  expect(overlap.map(({hidden,pointerEvents})=>({hidden,pointerEvents}))).toEqual([
+    {hidden:'true',pointerEvents:'none'},
+    {hidden:'true',pointerEvents:'none'},
+  ])
   await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-overlap-390x844.png`})
   await expect(symbols).toHaveCount(1)
   await expect(symbols).toHaveAttribute('data-orb-symbol','attack')
