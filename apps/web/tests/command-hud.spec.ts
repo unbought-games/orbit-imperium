@@ -768,3 +768,27 @@ test.describe('orb touch feedback',()=>{
     await cdp.detach()
   })
 })
+
+test('a missing report cursor offers retry without an observer render loop', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.clock.install()
+  await intelligenceFixture(page)
+  let requests=0
+  await page.route('**/api/**/reports',route=>{
+    requests++
+    const {context}=route.request().postDataJSON()
+    return route.fulfill({json:{protocol:4,...context,viewer_revision:'1',sampled_at:baseTime,as_of_ms:baseTime,data:{items:[],has_more:true,next_cursor:null,as_of_ms:baseTime}}})
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await page.getByTestId('command-orb').click()
+  const panel=page.getByRole('dialog')
+  await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+  await expect(panel.getByRole('button',{name:'Load more intelligence'})).toHaveCount(0)
+  const before=requests
+  await page.clock.runFor(1000)
+  expect(requests).toBe(before)
+  await panel.getByRole('button',{name:'Retry loading'}).click()
+  await expect.poll(()=>requests).toBeGreaterThan(before)
+  await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+})

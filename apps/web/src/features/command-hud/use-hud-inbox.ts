@@ -34,20 +34,32 @@ export function useHudInbox(
     ).values(),
   ]
   const more = limit < targets.length || !!reports.page?.has_more
-  const loading = reports.loading || reports.loadingMore
-  const failed = reports.error !== null
+  const buffered = limit < targets.length
+  const loading =
+    reports.loading || reports.loadingMore || reports.changingVisibility
+  const failed =
+    reports.error !== null ||
+    (!!reports.page?.has_more && !reports.page.next_cursor)
   const loadMore = () => {
     if (loading) return
-    setLimit((value) => value + batchSize)
-    if (limit + batchSize > targets.length && reports.page?.has_more)
-      reports.more()
+    const started = limit + batchSize > targets.length && reports.more()
+    if (buffered || started) setLimit((value) => value + batchSize)
   }
   const latestLoad = useRef(loadMore)
   latestLoad.current = loadMore
   useEffect(() => {
     const element = sentinel.current
     const root = scrollRoot.current
-    if (!visible || !more || loading || failed || !element || !root) return
+    if (
+      !visible ||
+      !more ||
+      loading ||
+      failed ||
+      (!buffered && !reports.canLoadMore) ||
+      !element ||
+      !root
+    )
+      return
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) latestLoad.current()
@@ -64,6 +76,8 @@ export function useHudInbox(
     limit,
     targets.length,
     reports.page?.next_cursor,
+    reports.canLoadMore,
+    buffered,
     scrollRoot,
   ])
   return {
@@ -73,6 +87,6 @@ export function useHudInbox(
     failed,
     sentinel,
     loadMore,
-    retry: () => (reports.page?.has_more ? reports.more() : reports.retry()),
+    retry: () => (reports.canLoadMore ? reports.more() : reports.retry()),
   }
 }

@@ -1,4 +1,8 @@
-import { readMailbox, acceptMailboxAction } from './social-mailbox'
+import {
+  readStableMailbox,
+  acceptMailboxAction,
+  reconcileMailboxReads,
+} from './social-mailbox'
 import {
   validateInitialGame,
   validateGameData,
@@ -57,6 +61,7 @@ type BoundResponse = Pick<QueryContext, 'binding' | 'request_id'>
 type Failure = { status?: number; code?: string; retryAfterMs?: number }
 const failure = (e: unknown): Failure => (e && typeof e === 'object' ? e : {})
 export class Coordinator {
+  private mailboxReads = new Map<string, import('./social').SocialAction>()
   private mailboxVersion = 0
   private mailboxRequest: Promise<void> | null = null
   readonly store = createGameStore()
@@ -221,6 +226,7 @@ export class Coordinator {
     return write
   }
   invalidate() {
+    this.mailboxReads.clear()
     this.mailboxVersion++
     this.mailboxRequest = null
     this.delivery?.stop()
@@ -643,29 +649,21 @@ export class Coordinator {
   }
   refreshMailbox() {
     if (this.mailboxRequest) return this.mailboxRequest
-    const version = this.mailboxVersion
     const binding = this.binding
+    const generation = this.generation
     if (!binding || this.protocol !== 4 || !this.ready) return Promise.resolve()
-    const work = readMailbox((query) => {
-      if (
-        version !== this.mailboxVersion ||
-        !this.binding ||
-        !sameBinding(binding, this.binding)
-      )
-        return Promise.resolve(null)
-      return this.socialQuery(query)
+    const active = () => this.current(generation, binding) && this.ready
+    const work = readStableMailbox(
+      (query) => this.socialQuery(query),
+      () => this.mailboxVersion,
+      active,
+      (mailbox) =>
+        this.store.setState({
+          mailbox: reconcileMailboxReads(mailbox, this.mailboxReads.values()),
+        }),
+    ).finally(() => {
+      if (this.mailboxRequest === work) this.mailboxRequest = null
     })
-      .then((mailbox) => {
-        if (
-          version === this.mailboxVersion &&
-          this.binding &&
-          sameBinding(binding, this.binding)
-        )
-          this.store.setState({ mailbox })
-      })
-      .finally(() => {
-        if (this.mailboxRequest === work) this.mailboxRequest = null
-      })
     this.mailboxRequest = work
     return work
   }
@@ -676,6 +674,11 @@ export class Coordinator {
       const result = await this.port.socialCommand(pending.context, request)
       if (!this.current(pending.generation, pending.context.binding))
         return null
+      const action = request.action
+      if (action.type === 'Read')
+        this.mailboxReads.set(`message:${action.message}`, action)
+      if (action.type === 'ReadCircular')
+        this.mailboxReads.set(`circular:${action.circular}`, action)
       this.mailboxVersion++
       this.store.setState({
         mailbox: acceptMailboxAction(

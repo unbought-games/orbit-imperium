@@ -79,3 +79,39 @@ export function acceptMailboxAction(
     }
   return mailbox
 }
+
+/** Restart an invalidated read internally; preference changes are not inbox failures. */
+export async function readStableMailbox(
+  read: (query: SocialQuery) => Promise<SocialView | null>,
+  version: () => number,
+  active: () => boolean,
+  commit: (mailbox: SocialMailbox) => void,
+): Promise<void> {
+  while (active()) {
+    const started = version()
+    try {
+      const mailbox = await readMailbox((query) =>
+        active() && started === version() ? read(query) : Promise.resolve(null),
+      )
+      if (!active()) throw new Error('Unable to confirm your inbox. Try again.')
+      if (started === version()) {
+        // Publish in the same turn as the version check; a later .then could
+        // otherwise overwrite a preference acknowledged between microtasks.
+        commit(mailbox)
+        return
+      }
+    } catch (error) {
+      if (!active() || started === version()) throw error
+    }
+  }
+  throw new Error('Unable to confirm your inbox. Try again.')
+}
+
+/** Accepted read commands are durable facts for this session, including across later stale fetches. */
+export function reconcileMailboxReads(
+  mailbox: SocialMailbox,
+  reads: Iterable<SocialAction>,
+): SocialMailbox {
+  for (const action of reads) mailbox = acceptMailboxAction(mailbox, action)!
+  return mailbox
+}
