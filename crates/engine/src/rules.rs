@@ -253,7 +253,10 @@ impl Ruleset {
                             | ShipType::Cruiser
                             | ShipType::Bomber,
                         ResearchId::ImpulseDrive
-                    ) | (ShipType::Battlecruiser, ResearchId::HyperspaceDrive)
+                    ) | (
+                        ShipType::Battlecruiser | ShipType::Battleship,
+                        ResearchId::HyperspaceDrive
+                    )
                 ) || artifact
                     .progression
                     .as_ref()

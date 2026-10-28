@@ -195,6 +195,7 @@ export function Reports({
           {detail.payload.kind === 'Colonized' && (
             <div className={styles.controls}>
               <Link
+                data-touch-control=""
                 {...routeTarget(universe, 'resources', detail.payload.body)}
               >
                 Open colony resources

@@ -120,6 +120,7 @@ impl ProgressionRules {
                     | ShipType::Cruiser
                     | ShipType::Bomber
                     | ShipType::Battlecruiser
+                    | ShipType::Battleship
                     | ShipType::Recycler
                     | ShipType::EspionageProbe
             ) {

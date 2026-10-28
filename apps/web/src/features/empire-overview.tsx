@@ -62,7 +62,11 @@ function Destination({
     { universe: view.binding.universe, body, page },
     view,
   ).available ? (
-    <Link className={className} {...routeTarget(universeName, page, body)}>
+    <Link
+      data-touch-control=""
+      className={className}
+      {...routeTarget(universeName, page, body)}
+    >
       {children}
     </Link>
   ) : null
@@ -131,6 +135,7 @@ function FlightList({
           </div>
           {available && (
             <Link
+              data-touch-control=""
               className={styles.flightLink}
               {...routeTarget(universeName, 'fleets', body, flight.item)}
               aria-label={`View ${flight.mission} ${flight.leg.toLowerCase()} fleet`}
@@ -214,6 +219,7 @@ function CommandMap({
         >
           {nodes.map(({ body: node, x, y }) => (
             <Link
+              data-touch-control=""
               key={node.id}
               {...routeTarget(universeName, 'overview', node.id)}
               onClick={() => void model.recordPresence('BodyVisit', node.id)}

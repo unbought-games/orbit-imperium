@@ -102,7 +102,7 @@ async fn battlecruisers_activate_build_and_finish_after_disable_and_restart_in_b
             ),
             ("70000000", "40000000", "700000000")
         );
-        assert_eq!(stats.rapid_fire_against.len(), 6);
+        assert_eq!(stats.rapid_fire_against.len(), 7);
         assert!(stats.rapid_fire_from.is_empty());
         let propulsion = entry
             .ship_statistics

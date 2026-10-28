@@ -2049,5 +2049,8 @@ mod battlecruiser;
 #[path = "rules_updates/bomber.rs"]
 mod bomber;
 
+#[path = "rules_updates/battleship.rs"]
+mod battleship;
+
 #[path = "rules_updates/hyperspace_drive.rs"]
 mod hyperspace_drive;

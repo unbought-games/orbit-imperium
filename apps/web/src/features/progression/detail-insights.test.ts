@@ -373,16 +373,16 @@ describe('detail decision estimates', () => {
   })
 })
 
-it('shows stopped mine output at full storage and labels the target condition', () => {
+it('keeps energy-adjusted mine output visible at full storage', () => {
   const { view, body, proposal } = fixture()
   body.amounts.metal = body.capacity.metal
   expect(
     buildingInsights(view, body, 'MetalMine', proposal).benefit,
   ).toMatchObject({
-    current: '0',
-    target: '0',
-    fullPowerTarget: '0',
-    qualifier: 'Storage is full; production resumes when storage has room',
+    current: micro(650),
+    target: '786363000',
+    fullPowerTarget: micro(850),
+    qualifier: 'Planet total at saved settings, including base production',
   })
 })
 
@@ -542,7 +542,7 @@ it('keeps base income when throttled off, unpowered, or demolishing the last min
   ).toBe(micro(40))
 })
 
-it('preserves net fuel use and applies both full and empty storage limits to deuterium', () => {
+it('preserves net fuel use and empty storage limits without capping deuterium estimates', () => {
   const { view, body, proposal, production } = fixture()
   proposal.building_benefit = {
     kind: 'DeuteriumPerHour',
@@ -560,7 +560,11 @@ it('preserves net fuel use and applies both full and empty storage limits to deu
   body.amounts.deuterium = '0'
   expect(insight()).toMatchObject({ current: '0', target: micro(15) })
   body.amounts.deuterium = body.capacity.deuterium
-  expect(insight()).toMatchObject({ current: micro(-5), target: '0' })
+  expect(insight()).toMatchObject({ current: micro(-5), target: micro(15) })
+  expect(
+    buildingInsights(view, body, 'DeuteriumSynthesizer', proposal)
+      .productionPaused,
+  ).toBe(false)
 })
 
 it('preserves crystal base income and computes the new efficiency during an existing deficit', () => {
@@ -622,7 +626,7 @@ it('uses server fuel-limited output for fusion previews rather than rated power'
   expect(insight.fuel).toMatchObject({ current: micro(3), target: micro(4) })
 })
 
-it('still suppresses projected mine income at full storage on fusion planets', () => {
+it('keeps projected mine income visible at full storage on fusion planets', () => {
   const { view, body, proposal } = fixture()
   body.amounts.metal = body.capacity.metal
   const current = {
@@ -642,5 +646,41 @@ it('still suppresses projected mine income at full storage on fusion planets', (
   }
   expect(
     buildingInsights(view, body, 'MetalMine', proposal).benefit,
-  ).toMatchObject({ current: '0', target: '0' })
+  ).toMatchObject({ current: micro(40), target: micro(50) })
+  expect(
+    buildingInsights(view, body, 'MetalMine', proposal).productionPaused,
+  ).toBe(true)
 })
+
+for (const [building, resource, kind] of [
+  ['MetalMine', 'metal', 'MetalPerHour'],
+  ['CrystalMine', 'crystal', 'CrystalPerHour'],
+  ['DeuteriumSynthesizer', 'deuterium', 'DeuteriumPerHour'],
+] as const) {
+  it.each([1000, 1500])(
+    `preserves ${resource} output estimates at %s stored and clears the pause when capacity returns`,
+    (amount) => {
+      const { view, body, proposal, production } = fixture()
+      proposal.building_benefit = {
+        kind,
+        current: micro(20),
+        target: micro(40),
+      }
+      production.net_deuterium_per_hour = {
+        sign: 'Nonnegative',
+        magnitude: micro(20),
+      }
+      const before = buildingInsights(view, body, building, proposal)
+      expect(before.productionPaused).toBe(false)
+      body.amounts[resource] = micro(amount)
+      const full = buildingInsights(view, body, building, proposal)
+      expect(full.benefit).toEqual(before.benefit)
+      expect(full.productionPaused).toBe(true)
+      expect(full.storage?.rate).toBe('0')
+      body.amounts[resource] = micro(900)
+      expect(
+        buildingInsights(view, body, building, proposal).productionPaused,
+      ).toBe(false)
+    },
+  )
+}

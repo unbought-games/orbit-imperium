@@ -49,7 +49,7 @@ and disabled base prerequisites produce conflicts rather than silent overwrites.
 Use the existing export/diff/apply workflow for selective or custom activation.
 See [Rules updates](rules-updates.md) for the full operational contract.
 
-To stop new research, disable its catalog entry and its Hyperspace Drive and Battlecruiser dependents
+To stop new research, disable its catalog entry and its Hyperspace Drive, Battleship and Battlecruiser dependents
 using a fresh export and forward apply. Retain its definition and earned levels. Already-paid work keeps its
 accepted payment and completion time; cancellation refunds its original payment.
 A standard upgrade will not silently re-enable deliberately disabled technology.

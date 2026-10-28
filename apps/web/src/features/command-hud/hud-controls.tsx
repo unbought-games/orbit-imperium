@@ -181,6 +181,7 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
   return (
     <div
       className={styles.orbDock}
+      data-touch-control=""
       data-tone={appearance.tone}
       data-pressed={pressed || undefined}
     >

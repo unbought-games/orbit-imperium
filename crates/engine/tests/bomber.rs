@@ -149,7 +149,7 @@ fn bomber_manufacturing_charges_all_resources_but_times_only_metal_and_crystal()
 #[test]
 fn bomber_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
-    let mut previous = prior_content::without_battlecruiser(latest.artifact.clone());
+    let mut previous = prior_content::without_native_hyperspace_ships(latest.artifact.clone());
     previous.ships.remove(&ShipType::Bomber);
     previous
         .progression

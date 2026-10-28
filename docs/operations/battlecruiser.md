@@ -20,9 +20,9 @@ Battlecruiser values rather than its superseded beta statistics.
 | Base speed | 10,000; Hyperspace Drive adds 30% of base per completed level |
 | Speed at Hyperspace Drive 5 | 25,000 |
 | Fuel coefficient | 250; actual fuel depends on the flight |
-| Rapid fire | Small Cargo and Large Cargo 3; Heavy Fighters and Cruisers 4; Espionage Probes and Solar Satellites 5 |
+| Rapid fire | Small Cargo and Large Cargo 3; Heavy Fighters and Cruisers 4; Battleships 7; Espionage Probes and Solar Satellites 5 |
 
-Battleships, Destroyers and Dreadnoughts remain unavailable. Their rapid-fire
+Destroyers and Dreadnoughts remain unavailable. Their rapid-fire
 relationships belong with their content additions. Battlecruisers have no rapid
 fire against Light Fighters, Bombers or defenses. Hull derives from metal plus
 crystal cost. Weapons, Shielding and Armour improve combat stats; Laser and
@@ -32,7 +32,7 @@ Deuterium is charged but does not add build time.
 
 ## Activation and retained work
 
-Fresh setup and universe creation include Battlecruisers. Existing universes
+Standard content bundle 0.9.0 includes Battlecruisers in fresh setup and universe creation. Existing universes
 keep saved rules until explicitly upgraded. Deploy the supporting API, worker,
 operator binary and frontend before activation:
 

@@ -7,7 +7,8 @@ all costs double each level. At Lab 7 and research speed 5, levels 1–3 take 2,
 5,400 and 10,800 seconds. Research is player-wide within the universe, paid by its
 origin, with the existing single slot, Lab locks and exact cancellation refunds.
 
-At level 5, the Drive unlocks [Battlecruisers](battlecruiser.md), whose native
+At level 4, the Drive unlocks [Battleships](battleship.md), using base speed
+10,000, a 30% bonus per level and fuel coefficient 500. At level 5, it unlocks [Battlecruisers](battlecruiser.md), whose native
 Hyperspace propulsion uses base speed 10,000 and a 30% bonus per level.
 
 The classic Bomber switch is included: below completed Drive 8, Bombers use base
@@ -50,9 +51,9 @@ customized profiles, research costs, prerequisites and intentionally disabled
 content. Use export/diff/apply for reviewed custom activation. Retained artifacts
 omit the optional profile, preserving their serialization and hashes.
 
-To stop new research, disable the Drive and dependent Battlecruiser catalog entries while retaining its
+To stop new research, disable the Drive and dependent Battleship and Battlecruiser catalog entries while retaining its
 research definition, earned levels and Bomber profile. Paid work keeps its original
 terms; cancellation refunds the original payment. Disabling research does not
 remove earned speed. Disabling Hyperspace Technology also requires disabling its
-Drive and Battlecruiser dependents. Removing definitions or replaying an older export is not rollback.
+Drive, Battleship and Battlecruiser dependents. Removing definitions or replaying an older export is not rollback.
 See [Rules updates](rules-updates.md) for the operational contract.

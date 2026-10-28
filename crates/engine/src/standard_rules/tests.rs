@@ -1,7 +1,7 @@
 use super::*;
 #[path = "../../tests/common/prior_content.rs"]
 mod prior_content;
-use prior_content::without_battlecruiser;
+use prior_content::without_native_hyperspace_ships;
 
 fn retained(bytes: &[u8]) -> Ruleset {
     let mut artifact: RulesArtifact = serde_json::from_slice(bytes).unwrap();
@@ -61,6 +61,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Ship(ShipType::LargeCargo),
             CatalogKey::Ship(ShipType::Bomber),
             CatalogKey::Ship(ShipType::Battlecruiser),
+            CatalogKey::Ship(ShipType::Battleship),
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
             CatalogKey::Defense(DefenseId::GaussCannon),
@@ -356,7 +357,7 @@ fn large_shield_dome_upgrade_owns_complete_definitions_and_rejects_customization
 fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_content() {
     let latest = standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 5).unwrap();
     // Reconstruct a world from before Plasma and its dependent units were bundled.
-    let mut artifact = without_battlecruiser(latest.artifact.clone());
+    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
     let bomber = ManufacturedItem::Ship(ShipType::Bomber);
     artifact.ships.remove(&ShipType::Bomber);
     artifact
@@ -438,7 +439,7 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
-    let mut without_turrets = without_battlecruiser(artifact);
+    let mut without_turrets = without_native_hyperspace_ships(artifact);
     assert_eq!(previous.artifact.ships, without_turrets.ships);
     without_turrets
         .world
@@ -622,7 +623,7 @@ fn plasma_turret_upgrade_owns_complete_definitions_and_rejects_customizations() 
 fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizations() {
     let latest = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
     let key = CatalogKey::Research(ResearchId::HyperspaceTechnology);
-    let mut artifact = without_battlecruiser(latest.artifact.clone());
+    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
     artifact
         .progression
         .as_mut()
@@ -662,11 +663,11 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
         ]
     );
     assert!(delta.add_buildings.is_empty());
-    let mut ships = without_battlecruiser(next.artifact.clone()).ships;
+    let mut ships = without_native_hyperspace_ships(next.artifact.clone()).ships;
     ships.get_mut(&ShipType::Bomber).unwrap().hyperspace_drive = None;
     assert_eq!(ships, previous.artifact.ships);
     assert_eq!(
-        without_battlecruiser(next.artifact.clone()).world,
+        without_native_hyperspace_ships(next.artifact.clone()).world,
         previous.artifact.world
     );
     for id in [
@@ -688,9 +689,13 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
             artifact
                 .catalog
                 .iter_mut()
-                .find(|e| e.key == CatalogKey::Ship(ShipType::Battlecruiser))
-                .unwrap()
-                .enabled = false;
+                .filter(|e| {
+                    matches!(
+                        e.key,
+                        CatalogKey::Ship(ShipType::Battlecruiser | ShipType::Battleship)
+                    )
+                })
+                .for_each(|e| e.enabled = false);
         }
         match custom {
             0 => {

@@ -1,7 +1,7 @@
 use orbit_engine::*;
 #[path = "common/prior_content.rs"]
 mod prior_content;
-use prior_content::without_battlecruiser;
+use prior_content::without_native_hyperspace_ships;
 
 fn rules() -> Ruleset {
     standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap()
@@ -10,7 +10,7 @@ fn rules() -> Ruleset {
 #[test]
 fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_legacy_hash() {
     let latest = rules();
-    let mut artifact = without_battlecruiser(latest.artifact.clone());
+    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
     artifact
         .progression
         .as_mut()
@@ -51,7 +51,7 @@ fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_lega
     assert_eq!(previous.protocol(), next.protocol());
     assert_eq!(
         previous.artifact.world,
-        without_battlecruiser(next.artifact.clone()).world
+        without_native_hyperspace_ships(next.artifact.clone()).world
     );
     assert_eq!(previous.artifact.universe, next.artifact.universe);
     assert!(validate_rules_update(&next, &previous).is_err());
@@ -125,9 +125,13 @@ fn hyperspace_rules_reject_incomplete_unsupported_and_invalid_switches() {
         .enabled = false;
     a.catalog
         .iter_mut()
-        .find(|e| e.key == CatalogKey::Ship(ShipType::Battlecruiser))
-        .unwrap()
-        .enabled = false;
+        .filter(|e| {
+            matches!(
+                e.key,
+                CatalogKey::Ship(ShipType::Battlecruiser | ShipType::Battleship)
+            )
+        })
+        .for_each(|e| e.enabled = false);
     let disabled = Ruleset::from_artifact(a, latest.speed).unwrap();
     let research = ResearchLevels {
         owner: PlayerId(uuid::Uuid::nil()),

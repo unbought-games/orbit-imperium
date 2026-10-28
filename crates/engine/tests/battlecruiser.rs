@@ -49,7 +49,7 @@ fn battlecruiser_uses_native_hyperspace_without_stacking_other_research() {
 }
 
 #[test]
-fn battlecruiser_combat_derives_stats_and_applies_only_its_six_rapid_fire_pairs() {
+fn battlecruiser_combat_derives_stats_and_applies_only_its_seven_rapid_fire_pairs() {
     let r = rules();
     let mut combat = r.artifact.world.as_ref().unwrap().combat.clone();
     combat.max_rounds = 1;
@@ -73,6 +73,7 @@ fn battlecruiser_combat_derives_stats_and_applies_only_its_six_rapid_fire_pairs(
             ManufacturedItem::Ship(ShipType::SmallCargo | ShipType::LargeCargo) => 3,
             ManufacturedItem::Ship(ShipType::HeavyFighter | ShipType::Cruiser) => 4,
             ManufacturedItem::Ship(ShipType::EspionageProbe | ShipType::SolarSatellite) => 5,
+            ManufacturedItem::Ship(ShipType::Battleship) => 7,
             _ => 1,
         };
         assert_eq!(

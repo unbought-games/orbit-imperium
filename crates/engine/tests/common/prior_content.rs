@@ -1,9 +1,17 @@
 use super::*;
 
 /// Reconstruct retained worlds before Battlecruiser and its dependencies existed.
-pub fn without_battlecruiser(mut artifact: RulesArtifact) -> RulesArtifact {
-    let item = ManufacturedItem::Ship(ShipType::Battlecruiser);
-    artifact.ships.remove(&ShipType::Battlecruiser);
+pub fn without_battlecruiser(artifact: RulesArtifact) -> RulesArtifact {
+    without_ship(artifact, ShipType::Battlecruiser)
+}
+
+pub fn without_native_hyperspace_ships(artifact: RulesArtifact) -> RulesArtifact {
+    without_ship(without_battlecruiser(artifact), ShipType::Battleship)
+}
+
+fn without_ship(mut artifact: RulesArtifact, ship: ShipType) -> RulesArtifact {
+    let item = ManufacturedItem::Ship(ship);
+    artifact.ships.remove(&ship);
     artifact
         .progression
         .as_mut()
