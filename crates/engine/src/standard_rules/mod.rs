@@ -7,7 +7,7 @@ use std::fmt;
 mod content;
 mod patch;
 
-pub const STANDARD_RULES_RELEASE: &str = "0.7.0";
+pub const STANDARD_RULES_RELEASE: &str = "0.8.0";
 
 #[derive(Debug, Serialize)]
 pub struct RulesUpgradeConflict {
