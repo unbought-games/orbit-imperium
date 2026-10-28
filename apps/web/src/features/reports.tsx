@@ -1,3 +1,4 @@
+import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
 import { ReportStarButton } from './report-star-button'
@@ -182,31 +183,12 @@ export function Reports({
             playerAlliances={detail.player_alliances}
             combatActions={harvestAction}
             targetActions={
-              <>
-                {detail.payload.kind === 'Espionage' &&
-                  model.view?.capabilities.some(
-                    (c) => c.capability === 'Attack' && c.enabled,
-                  ) && (
-                    <Button
-                      onClick={() => {
-                        if (detail.payload.kind === 'Espionage')
-                          onDraft({
-                            coordinates: detail.payload.target.coordinates,
-                            mission: 'Attack',
-                            target: {
-                              type: 'Body',
-                              id: detail.payload.target.body,
-                              expected_owner: detail.payload.target.owner,
-                              expected_kind: detail.payload.target.kind,
-                            },
-                            observedAt: detail.header.observed_at,
-                          })
-                      }}
-                    >
-                      Attack
-                    </Button>
-                  )}
-              </>
+              <ReportAttackButton
+                model={model}
+                payload={detail.payload}
+                observedAt={detail.header.observed_at}
+                onDraft={onDraft}
+              />
             }
           />
 

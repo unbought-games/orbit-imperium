@@ -1,3 +1,4 @@
+import { readMailbox, acceptMailboxAction } from './social-mailbox'
 import {
   validateInitialGame,
   validateGameData,
@@ -56,6 +57,8 @@ type BoundResponse = Pick<QueryContext, 'binding' | 'request_id'>
 type Failure = { status?: number; code?: string; retryAfterMs?: number }
 const failure = (e: unknown): Failure => (e && typeof e === 'object' ? e : {})
 export class Coordinator {
+  private mailboxVersion = 0
+  private mailboxRequest: Promise<void> | null = null
   readonly store = createGameStore()
   private get attempts() {
     return this.store.getState().attempts
@@ -218,6 +221,8 @@ export class Coordinator {
     return write
   }
   invalidate() {
+    this.mailboxVersion++
+    this.mailboxRequest = null
     this.delivery?.stop()
     this.delivery = null
     this.generation++
@@ -229,6 +234,8 @@ export class Coordinator {
       binding: null,
       view: null,
       settings: null,
+      reportInbox: null,
+      mailbox: null,
       reportHeaders: new Map(),
       attempts: new Map(),
       intents: new Map(),
@@ -634,14 +641,49 @@ export class Coordinator {
       throw error
     }
   }
+  refreshMailbox() {
+    if (this.mailboxRequest) return this.mailboxRequest
+    const version = this.mailboxVersion
+    const binding = this.binding
+    if (!binding || this.protocol !== 4 || !this.ready) return Promise.resolve()
+    const work = readMailbox((query) => {
+      if (
+        version !== this.mailboxVersion ||
+        !this.binding ||
+        !sameBinding(binding, this.binding)
+      )
+        return Promise.resolve(null)
+      return this.socialQuery(query)
+    })
+      .then((mailbox) => {
+        if (
+          version === this.mailboxVersion &&
+          this.binding &&
+          sameBinding(binding, this.binding)
+        )
+          this.store.setState({ mailbox })
+      })
+      .finally(() => {
+        if (this.mailboxRequest === work) this.mailboxRequest = null
+      })
+    this.mailboxRequest = work
+    return work
+  }
   async socialCommand(request: import('./social').SocialRequest) {
     const pending = this.captureRequest()
     if (!pending || !this.port.socialCommand || this.protocol !== 4) return null
     try {
       const result = await this.port.socialCommand(pending.context, request)
-      return this.current(pending.generation, pending.context.binding)
-        ? result
-        : null
+      if (!this.current(pending.generation, pending.context.binding))
+        return null
+      this.mailboxVersion++
+      this.store.setState({
+        mailbox: acceptMailboxAction(
+          this.store.getState().mailbox,
+          request.action,
+        ),
+      })
+      return result
     } catch (error) {
       const f = failure(error)
       if (f.code === 'EpochChanged' || f.status === 401)
@@ -782,6 +824,14 @@ export class Coordinator {
     )
     if (!this.responseMatches(pending, result)) return null
     this.store.setState({
+      ...(cursor === null && !includeHidden
+        ? {
+            reportInbox: {
+              ...result.data,
+              items: result.data.items.map((header) => header.id),
+            },
+          }
+        : {}),
       reportHeaders: mergeReportHeaders(
         this.store.getState().reportHeaders,
         result.data.items,

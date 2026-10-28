@@ -1,3 +1,4 @@
+import type { SocialMailbox } from './social-mailbox'
 import type { components } from '../contracts'
 import { createStore } from 'zustand/vanilla'
 import type {
@@ -6,7 +7,7 @@ import type {
   BoundSettings,
   BoundView,
 } from './commands'
-import type { ReportHeaders } from './report-state'
+import type { ReportHeaders, ReportPage } from './report-state'
 import type { SubmittedIntent } from './game-projection'
 
 export type GameState = {
@@ -17,6 +18,8 @@ export type GameState = {
     string,
     Omit<components['schemas']['ReportShareStatus'], 'header'>
   >
+  reportInbox: ReportPage | null
+  mailbox: SocialMailbox | null
   reportHeaders: ReportHeaders
   attempts: AttemptLedger
   intents: Map<string, SubmittedIntent>
@@ -35,6 +38,8 @@ export function createGameStore() {
     binding: null,
     view: null,
     settings: null,
+    reportInbox: null,
+    mailbox: null,
     reportHeaders: new Map(),
     attempts: new Map(),
     intents: new Map(),

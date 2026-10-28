@@ -366,3 +366,66 @@ it.each(['progressionOptions', 'reports', 'report', 'world'] as const)(
     expect(port[endpoint]).toHaveBeenCalledTimes(1)
   },
 )
+
+it('does not let an older mailbox fetch undo an acknowledged read or escape a session reset', async () => {
+  const { model, port } = await setup()
+  const mailbox = {
+    conversations: [
+      {
+        contact: {
+          player: id(90),
+          username: 'Nova',
+          blocked: false,
+          request: null,
+          requested_by: null,
+          accepted: false,
+        },
+        latest: {
+          id: id(91),
+          sequence: '1',
+          sender: id(90),
+          body: 'Hello',
+          sent_at: 1000,
+        },
+        unread: true,
+      },
+    ],
+    circulars: [],
+  }
+  const gate = deferred<void>()
+  Object.assign(port, {
+    socialQuery: async (
+      context: QueryContext,
+      query: import('./social').SocialQuery,
+    ) => {
+      await gate.promise
+      return {
+        ...context,
+        conversations:
+          query.type === 'Conversations' ? mailbox.conversations : [],
+        circulars: [],
+        messages: [],
+        contacts: [],
+        contact: null,
+        next_cursor: null,
+      }
+    },
+    socialCommand: async (
+      _context: QueryContext,
+      request: import('./social').SocialRequest,
+    ) => ({ command_id: request.command_id, message: null }),
+  })
+  model.store.setState({ mailbox })
+  const work = model.refreshMailbox()
+  await model.socialCommand({
+    command_id: id(92),
+    action: { type: 'Read', player: id(90), message: id(91) },
+  })
+  gate.resolve()
+  await work
+  expect(model.store.getState().mailbox?.conversations[0].unread).toBe(false)
+  const old = model.refreshMailbox()
+  model.invalidate()
+  await expect(old).rejects.toThrow('Unable to confirm your inbox')
+  expect(model.store.getState().mailbox).toBeNull()
+})
