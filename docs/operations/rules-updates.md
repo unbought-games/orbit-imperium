@@ -37,6 +37,10 @@ Plasma Technology. The current development bundle also includes
 they use Impulse propulsion without a Hyperspace upgrade. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
 including fuel-aware production and level-zero initialization. The original signup
 baseline, fully activated v0.3.0 worlds and partial activations can all be upgraded.
+The development bundle also includes [Hyperspace Technology](hyperspace-technology.md),
+requiring Research Lab 7, Energy Technology 5 and Shielding Technology 5. It is
+prerequisite research without per-level bonuses; Hyperspace Drive and its other
+dependent systems remain unavailable.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
 

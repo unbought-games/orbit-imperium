@@ -4,8 +4,9 @@ Bombers require completed Shipyard 8 on the producing planet and player-wide
 Impulse Drive 6 and Plasma Technology 5. Plasma requires Research Lab 4, Energy 8,
 Laser 10 and Ion 5; there is no redundant Laser gate on the ship itself.
 
-This release implements Impulse propulsion at every research level. Hyperspace
-Technology, Hyperspace Drive and the later Bomber drive switch remain unavailable.
+This release implements Impulse propulsion at every research level.
+[Hyperspace Technology](hyperspace-technology.md) does not change that profile;
+Hyperspace Drive and the later Bomber drive switch remain unavailable.
 
 ## Selected rules
 

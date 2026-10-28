@@ -95,7 +95,10 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
     assert!(!plan.diff.changes.is_empty());
     assert_eq!(
         plan.diff.initialize.add_research,
-        vec![ResearchId::PlasmaTechnology]
+        vec![
+            ResearchId::PlasmaTechnology,
+            ResearchId::HyperspaceTechnology
+        ]
     );
     assert_eq!(store.load_rules(universe).await.unwrap(), before.rules);
     let after_preview: i64 =
@@ -112,6 +115,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
     let (after, _) = store.bound_world(binding).await.unwrap().facts;
     let mut expected_research = before.state.research[&binding.player].levels.clone();
     expected_research.insert(ResearchId::PlasmaTechnology, 0);
+    expected_research.insert(ResearchId::HyperspaceTechnology, 0);
     assert_eq!(
         after.state.research[&binding.player].levels,
         expected_research
@@ -236,6 +240,14 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
     .await
     .unwrap();
     assert_eq!(level, 0);
+    let hyperspace: i64 = sqlx::query_scalar(
+        "SELECT level FROM research_levels WHERE owner=$1 AND research='HyperspaceTechnology'",
+    )
+    .bind(joined.session.memberships[0].player.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(hyperspace, 0);
     // A restarted operator independently derives the same no-op proposal.
     let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
         .await

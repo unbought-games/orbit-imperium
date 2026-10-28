@@ -63,6 +63,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Defense(DefenseId::PlasmaTurret),
             CatalogKey::Defense(DefenseId::LargeShieldDome),
             CatalogKey::Research(ResearchId::PlasmaTechnology),
+            CatalogKey::Research(ResearchId::HyperspaceTechnology),
         ] {
             assert!(
                 next.artifact
@@ -610,5 +611,81 @@ fn plasma_turret_upgrade_owns_complete_definitions_and_rejects_customizations() 
             ),
             "{field}"
         );
+    }
+}
+
+#[test]
+fn hyperspace_upgrade_initializes_only_technology_and_preserves_customizations() {
+    let latest = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+    let key = CatalogKey::Research(ResearchId::HyperspaceTechnology);
+    let mut artifact = latest.artifact.clone();
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .remove(&ResearchId::HyperspaceTechnology);
+    let entry = artifact.catalog.iter_mut().find(|e| e.key == key).unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+    let previous = Ruleset::from_artifact(artifact, latest.speed).unwrap();
+    let next = upgrade_standard_rules(&previous).unwrap();
+    assert_eq!(next, latest);
+    let delta = validate_rules_update(&previous, &next).unwrap();
+    assert_eq!(delta.add_research, vec![ResearchId::HyperspaceTechnology]);
+    assert!(delta.add_buildings.is_empty());
+    assert_eq!(next.artifact.ships, previous.artifact.ships);
+    assert_eq!(next.artifact.world, previous.artifact.world);
+    for id in [
+        ResearchId::HyperspaceDrive,
+        ResearchId::IntergalacticResearchNetwork,
+    ] {
+        assert!(
+            !next
+                .artifact
+                .catalog
+                .iter()
+                .any(|e| e.key == CatalogKey::Research(id) && e.enabled)
+        );
+        assert!(!next.research_keys().contains(&id));
+    }
+    for custom in 0..3 {
+        let mut artifact = next.artifact.clone();
+        match custom {
+            0 => {
+                artifact
+                    .catalog
+                    .iter_mut()
+                    .find(|e| e.key == key)
+                    .unwrap()
+                    .enabled = false
+            }
+            1 => {
+                artifact
+                    .progression
+                    .as_mut()
+                    .unwrap()
+                    .research
+                    .get_mut(&ResearchId::HyperspaceTechnology)
+                    .unwrap()
+                    .base[1] = 5000
+            }
+            _ => {
+                artifact
+                    .catalog
+                    .iter_mut()
+                    .find(|e| e.key == key)
+                    .unwrap()
+                    .requirements[0] = Requirement::BodyBuilding {
+                    building: Building::ResearchLab,
+                    level: 8,
+                }
+            }
+        }
+        let custom = Ruleset::from_artifact(artifact, next.speed).unwrap();
+        assert!(matches!(
+            upgrade_standard_rules(&custom),
+            Err(StandardRulesError::Conflicts(_))
+        ));
     }
 }
