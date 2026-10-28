@@ -65,7 +65,7 @@ const content: Record<string, string> = {
   PlasmaTechnology:
     'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 and Bombers at level 5 with Shipyard 8 in the standard rules. Bombers also require Impulse Drive 6. Provides no per-level production or combat bonuses.',
   HyperspaceTechnology:
-    'Requires Research Lab 7, Energy Technology 5 and Shielding Technology 5. Establishes the foundation for future hyperspace systems. Provides no per-level cargo, speed, combat or production bonuses. Hyperspace Drive and other dependent systems are unavailable; higher levels currently provide no additional benefit.',
+    'Establishes the foundation for future hyperspace systems. Provides no per-level cargo, speed, combat or production bonuses. Hyperspace Drive and other dependent systems are unavailable; higher levels currently provide no additional benefit.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',

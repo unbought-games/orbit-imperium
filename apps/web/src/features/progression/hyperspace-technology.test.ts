@@ -40,8 +40,8 @@ it('uses existing artwork and explains the current lack of dependent systems and
   expect(details.art.src).toBe(
     '/art/atlas/objects/hyperspace-technology-640.webp',
   )
-  expect(details.description).toContain(
-    'Research Lab 7, Energy Technology 5 and Shielding Technology 5',
+  expect(details.description).not.toMatch(
+    /Research Lab|Energy Technology|Shielding Technology/,
   )
   expect(details.description).toContain(
     'no per-level cargo, speed, combat or production bonuses',
