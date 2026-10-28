@@ -3544,5 +3544,8 @@ fn shield_dome_collection_validation_rejects_inventory_and_queue_overcapacity() 
 #[path = "progression/plasma.rs"]
 mod plasma;
 
+#[path = "progression/hyperspace.rs"]
+mod hyperspace;
+
 #[path = "progression/plasma_turret.rs"]
 mod plasma_turret;

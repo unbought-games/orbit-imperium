@@ -64,6 +64,8 @@ const content: Record<string, string> = {
     'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Level 5 is required for Plasma Technology. Ion research does not improve combat stats or reduce demolition costs.',
   PlasmaTechnology:
     'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 and Bombers at level 5 with Shipyard 8 in the standard rules. Bombers also require Impulse Drive 6. Provides no per-level production or combat bonuses.',
+  HyperspaceTechnology:
+    'Establishes the foundation for future hyperspace systems. Provides no per-level cargo, speed, combat or production bonuses. Hyperspace Drive and other dependent systems are unavailable; higher levels currently provide no additional benefit.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',
