@@ -320,7 +320,7 @@ it('keeps enemy attacks separate, arrival-ordered and honest about hidden ships 
     duration: null,
     ships: [{ ship_type: 'Cruiser', count: '12' }],
     home: { name: 'Home' },
-    target: { name: 'Enemy world' },
+    target: { name: 'Unknown origin', address: '[1:2:3]', kind: 'Unknown' },
   })
   expect(entries[1].row.ships).toEqual([])
   expect(fleetFlight(entries[1].row, 1000)).toMatchObject({
@@ -333,4 +333,39 @@ it('keeps enemy attacks separate, arrival-ordered and honest about hidden ships 
   expect(enemyAttackRows(state)).toHaveLength(2)
   state.view.missions.incoming = []
   expect(enemyAttackRows(state)).toEqual([])
+})
+
+it('never infers enemy origin identity or planet/moon art from a shared coordinate slot', () => {
+  const state = fixture()
+  const origin = { galaxy: 1, system: 2, position: 3 }
+  const planet: S['Destination'] = {
+    id: 'enemy-planet',
+    kind: 'Planet',
+    name: 'Enemy planet',
+    coordinates: origin,
+  }
+  const moon: S['Destination'] = {
+    id: 'enemy-moon',
+    kind: 'Moon',
+    name: 'Enemy moon',
+    coordinates: origin,
+  }
+  state.view.missions.incoming = [
+    {
+      sender: 'enemy',
+      origin,
+      target: 'home',
+      mission: 'Attack',
+      arrival_at: 5000,
+      ships: { visibility: 'Unknown' },
+    },
+  ]
+  for (const candidates of [[planet, moon], [moon, planet], [planet], [moon]]) {
+    state.view.destinations = candidates
+    expect(enemyAttackRows(state)[0].row.target).toEqual({
+      name: 'Unknown origin',
+      address: '[1:2:3]',
+      kind: 'Unknown',
+    })
+  }
 })

@@ -191,10 +191,6 @@ export function enemyAttackRows(state: GameState) {
   if (view?.protocol !== 4) return []
   return incomingAttacks(state)
     .map((fleet) => {
-      const source = [...view.bodies, ...view.destinations].find(
-        (body) =>
-          coordinates(body) === coordinates({ coordinates: fleet.origin }),
-      )
       const row: FleetSummaryRow = {
         key: incomingKey(fleet),
         origin: fleet.target,
@@ -202,7 +198,11 @@ export function enemyAttackRows(state: GameState) {
         leg: 'Incoming',
         ships: fleet.ships.visibility === 'Exact' ? fleet.ships.ships : [],
         home: endpoint(view, fleet.target, undefined, 'Planet'),
-        target: endpoint(view, source?.id, fleet.origin, 'Planet'),
+        target: {
+          name: 'Unknown origin',
+          address: coordinates({ coordinates: fleet.origin }),
+          kind: 'Unknown',
+        },
         dueAt: fleet.arrival_at,
         duration: null,
       }
