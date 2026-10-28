@@ -273,7 +273,15 @@ for (const touch of [true, false]) {
       test('mixed navigation content and public links retain native selection', async ({
         page,
       }) => {
-        await shellFixture(page, { protocol: 4 })
+        await shellFixture(page, {
+          protocol: 4,
+          missions: {
+            fleets: [],
+            incoming: [],
+            fleet_slots: '1',
+            score_value_micro: '0',
+          },
+        })
         await page.route('**/rankings', (route) => {
           const context = route.request().postDataJSON()
           return route.fulfill({
@@ -306,6 +314,7 @@ for (const touch of [true, false]) {
             rankingPages.getByRole('button', { name: 'Next', exact: true }),
             true,
           )
+        await range.scrollIntoViewIfNeeded()
         await capture(page, 'ranking-navigation')
 
         await page.route('**/alliances/query', (route) => {
@@ -338,6 +347,7 @@ for (const touch of [true, false]) {
             }),
             true,
           )
+        await alliancePages.scrollIntoViewIfNeeded()
         await capture(page, 'alliance-navigation')
 
         await page.route('**/api/v1/bootstrap', (route) =>
