@@ -108,9 +108,9 @@ pub(super) fn mission(
     .map_err(error)?;
     if let Some(t) = e.travel_time.as_ref().or(e.arrives_in.as_ref()) {
         terms.duration_ms = duration_ms(t)?;
-        terms.terms_hash = Hash(String::new());
-        terms.terms_hash = hash(&serde_json::json!({"protocol":4,"terms":terms}));
     }
+    terms.terms_hash = Hash(String::new());
+    terms.terms_hash = hash(&serde_json::json!({"protocol":4,"terms":terms}));
     let remaining = e
         .arrives_in
         .as_ref()

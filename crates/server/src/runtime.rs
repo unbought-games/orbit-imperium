@@ -67,7 +67,7 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
     let _maintenance = start_retention(store.clone(), drain.clone());
     let result = async {
         while !*drain.borrow() {
-            if refresh_worlds.elapsed() >= Duration::from_secs(1) { universes = store.universes().await?; refresh_worlds = tokio::time::Instant::now(); }
+            refresh_universe_list(&mut universes, &mut refresh_worlds, || store.universes()).await?;
             let mut claimed_any = false;
             for _ in 0..universes.len() {
                 if tasks.len() >= max_in_flight || *drain.borrow() { break; }
@@ -153,6 +153,31 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
     }
     result
 }
+// Retain the last discovered worlds on a temporary pool/network failure. Every
+// attempt, including a failed one, waits a refresh interval before trying again.
+async fn refresh_universe_list<F>(
+    universes: &mut Vec<UniverseId>,
+    last_attempt: &mut tokio::time::Instant,
+    refresh: impl FnOnce() -> F,
+) -> Result<(), StoreError>
+where
+    F: std::future::Future<Output = Result<Vec<UniverseId>, StoreError>>,
+{
+    if last_attempt.elapsed() < Duration::from_secs(1) {
+        return Ok(());
+    }
+    let result = refresh().await;
+    *last_attempt = tokio::time::Instant::now();
+    match result {
+        Ok(next) => *universes = next,
+        Err(StoreError::Unavailable) => {
+            eprintln!("scheduler universe refresh: storage unavailable; retaining previous worlds")
+        }
+        Err(error) => return Err(error),
+    }
+    Ok(())
+}
+
 // The mode lookup shares the claim's failure handling: pool timeouts are transient.
 async fn attempt_claim(
     store: &PgStore,
@@ -270,6 +295,73 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn universe_refresh_retains_worlds_on_failure_and_retries_after_the_interval() {
+        let old = UniverseId(Uuid::from_u128(1));
+        let new = UniverseId(Uuid::from_u128(2));
+        let mut worlds = vec![old];
+        let mut last_attempt = tokio::time::Instant::now();
+        let calls = std::cell::Cell::new(0);
+        refresh_universe_list(&mut worlds, &mut last_attempt, || {
+            calls.set(calls.get() + 1);
+            std::future::ready(Ok(vec![new]))
+        })
+        .await
+        .unwrap();
+        assert_eq!(calls.get(), 0);
+        tokio::time::advance(Duration::from_secs(1)).await;
+        refresh_universe_list(&mut worlds, &mut last_attempt, || {
+            calls.set(calls.get() + 1);
+            std::future::ready(Err(StoreError::Unavailable))
+        })
+        .await
+        .unwrap();
+        assert_eq!(worlds, vec![old]);
+        assert_eq!(calls.get(), 1);
+        refresh_universe_list(&mut worlds, &mut last_attempt, || {
+            calls.set(calls.get() + 1);
+            std::future::ready(Ok(vec![new]))
+        })
+        .await
+        .unwrap();
+        assert_eq!(
+            calls.get(),
+            1,
+            "transient failure must not cause a tight retry loop"
+        );
+        tokio::time::advance(Duration::from_secs(1)).await;
+        refresh_universe_list(&mut worlds, &mut last_attempt, || {
+            calls.set(calls.get() + 1);
+            std::future::ready(Ok(vec![new]))
+        })
+        .await
+        .unwrap();
+        assert_eq!(worlds, vec![new]);
+        assert_eq!(calls.get(), 2);
+        tokio::time::advance(Duration::from_secs(1)).await;
+        refresh_universe_list(&mut worlds, &mut last_attempt, || {
+            std::future::ready(Ok(vec![]))
+        })
+        .await
+        .unwrap();
+        assert!(
+            worlds.is_empty(),
+            "successful discovery must also remove departed worlds"
+        );
+    }
+    #[tokio::test(start_paused = true)]
+    async fn universe_refresh_preserves_fatal_errors() {
+        let original = vec![UniverseId(Uuid::from_u128(1))];
+        let mut worlds = original.clone();
+        let mut last_attempt = tokio::time::Instant::now();
+        tokio::time::advance(Duration::from_secs(1)).await;
+        let result = refresh_universe_list(&mut worlds, &mut last_attempt, || {
+            std::future::ready(Err(StoreError::UnsupportedState))
+        })
+        .await;
+        assert!(matches!(result, Err(StoreError::UnsupportedState)));
+        assert_eq!(worlds, original);
+    }
     #[test]
     fn transient_resolution_errors_keep_scheduler_alive_but_capability_errors_stop_it() {
         for error in [StoreError::Unavailable, StoreError::StaleClaim] {

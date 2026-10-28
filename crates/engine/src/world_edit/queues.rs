@@ -248,10 +248,15 @@ pub(super) fn start(
             .into_iter()
             .next()
             .unwrap();
-        if target != i64::from(b.levels[&key]) + 1 {
-            return Err("queued building level must be the next level".into());
-        }
-        let terms = building_terms(b, key, BuildingAction::Upgrade, r).map_err(error)?;
+        let action = match target - i64::from(b.levels[&key]) {
+            1 => BuildingAction::Upgrade,
+            -1 => BuildingAction::Demolition,
+            _ => return Err("queued building level must be one level higher or lower".into()),
+        };
+        let terms = building_terms(b, key, action, r).map_err(error)?;
+        let ProgressionMaterial::Building { target_level, .. } = &terms else {
+            unreachable!()
+        };
         let at = deadline(i, e, &terms)?;
         c.constructions.push(Construction {
             progression: Some(terms.clone()),
@@ -259,7 +264,7 @@ pub(super) fn start(
             body: id,
             owner: b.owner,
             building: key,
-            target_level: b.levels[&key] + 1,
+            target_level: *target_level,
             paid: e.paid.unwrap_or(terms.paid()),
             profile_hash: e.paid_rules_hash.clone().unwrap_or_else(|| r.hash.clone()),
             terms_hash: hash(&terms),

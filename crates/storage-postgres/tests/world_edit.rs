@@ -397,3 +397,240 @@ async fn mission_user_selects_sender_for_cross_user_batches() {
         ]
     );
 }
+
+#[tokio::test]
+async fn mission_hashes_and_timing_work_with_defaults_and_overrides() {
+    let (store, pool) = fresh().await;
+    let u = UniverseId(Uuid::new_v4());
+    let setup = document(json!([
+        {"op":"add-player","user":"alice","password":"password","planet":"1:1:8"},
+        {"op":"add-player","user":"bob","password":"password","planet":"1:2:8"},
+        {"op":"set","user":"alice","planet":"1:1:8","ships":{"lightfighter":5,"espionageprobe":5,"smallcargo":5}}
+    ]));
+    store
+        .apply_world_scenario(u, &setup, ScenarioMode::Create, Uuid::new_v4())
+        .await
+        .unwrap();
+    let auth = SessionService::new(store.clone())
+        .login("alice", "password", None)
+        .await
+        .unwrap();
+    let game = GameService::new(store.clone());
+    let binding = game
+        .current_binding(auth.session.account, u, Uuid::new_v4())
+        .await
+        .unwrap()
+        .binding;
+    let rules = store.load_rules(u).await.unwrap();
+    let mut seen = std::collections::BTreeSet::new();
+    for timing in [
+        json!({}),
+        json!({"arrives_in":"30s"}),
+        json!({"travel_time":"45s"}),
+        json!({"arrives_in":"20s","travel_time":"60s"}),
+    ] {
+        let edits = ["attack", "spy", "transport"].map(|op| {
+            let mut edit = json!({"op":op,"user":"alice","from":"1:1:8","planet":"1:2:8"});
+            edit.as_object_mut()
+                .unwrap()
+                .extend(timing.as_object().unwrap().clone());
+            edit
+        });
+        store
+            .apply_world_scenario(
+                u,
+                &document(json!(edits)),
+                ScenarioMode::Patch,
+                Uuid::new_v4(),
+            )
+            .await
+            .unwrap();
+        let snapshot = store.bound_world(binding).await.unwrap();
+        let state = &snapshot.facts.0.state;
+        validate_asset_lineage(state).unwrap();
+        let fleets: Vec<sqlx::types::Json<MissionFleet>> =
+            sqlx::query_scalar("SELECT data FROM mission_fleets WHERE universe=$1")
+                .bind(u.0)
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+        let new = fleets
+            .iter()
+            .filter(|f| !seen.contains(&f.id))
+            .collect::<Vec<_>>();
+        assert_eq!(new.len(), 3);
+        for f in new {
+            let ordinary = fleet_terms(
+                &f.intent,
+                f.origin_coordinates,
+                f.destination_coordinates,
+                &state.research[&binding.player],
+                &rules,
+            )
+            .unwrap();
+            let duration = timing
+                .get("travel_time")
+                .or_else(|| timing.get("arrives_in"))
+                .map(|v| orbit_engine::world_edit::duration_ms(v.as_str().unwrap()).unwrap())
+                .unwrap_or(ordinary.duration_ms);
+            let remaining = timing
+                .get("arrives_in")
+                .map(|v| orbit_engine::world_edit::duration_ms(v.as_str().unwrap()).unwrap())
+                .unwrap_or(duration);
+            assert_eq!(f.terms.duration_ms, duration);
+            assert_eq!(f.due_at - f.launched_at, remaining);
+            assert!(!f.terms.terms_hash.0.is_empty());
+        }
+        seen.extend(fleets.into_iter().map(|f| f.id));
+    }
+    assert_eq!(seen.len(), 12);
+}
+
+#[tokio::test]
+async fn ordinary_demolition_survives_scenario_export_replace_and_completion() {
+    let (store, pool) = fresh().await;
+    let u = UniverseId(Uuid::new_v4());
+    let setup = document(json!([
+        {"op":"add-player","user":"alice","password":"password","planet":"1:1:8"},
+        {"op":"set","user":"alice","planet":"1:1:8","buildings":{"metalmine":5,"solarplant":10},"resources":{"metal":100000,"crystal":100000,"deuterium":100000}}
+    ]));
+    store
+        .apply_world_scenario(u, &setup, ScenarioMode::Create, Uuid::new_v4())
+        .await
+        .unwrap();
+    let auth = SessionService::new(store.clone())
+        .login("alice", "password", None)
+        .await
+        .unwrap();
+    let game = GameService::new(store.clone());
+    let binding = game
+        .current_binding(auth.session.account, u, Uuid::new_v4())
+        .await
+        .unwrap()
+        .binding;
+    let state = store.bound_world(binding).await.unwrap().facts.0.state;
+    let body = *state.bodies.keys().next().unwrap();
+    let rules = store.load_rules(u).await.unwrap();
+    let q = quote(
+        &state,
+        Actor::Player(binding.player),
+        &QuoteRequest::Demolition {
+            body,
+            building: Building::MetalMine,
+        },
+        1_790_000_000_000,
+        &rules,
+    )
+    .unwrap();
+    let gameplay = CommandEnvelopeV4 {
+        protocol: 4,
+        binding,
+        command_id: CommandId(Uuid::new_v4()),
+        command: CommandDto3::Progression(Command::StartDemolition {
+            body,
+            building: Building::MetalMine,
+            expected_terms_hash: q.terms_hash,
+        }),
+    };
+    let presence = CommandEnvelopeV4 {
+        protocol: 4,
+        binding,
+        command_id: CommandId(Uuid::new_v4()),
+        command: CommandDto3::Progression(Command::World {
+            action: WorldAction::RecordForegroundPresence {
+                body: Some(body),
+                cause: PresenceCause::GameplayGesture,
+                paired_command_id: Some(gameplay.command_id),
+            },
+        }),
+    };
+    game.world_submit(
+        Principal {
+            account: binding.account,
+            player: binding.player,
+            universe: u,
+        },
+        ForegroundAction { presence, gameplay },
+    )
+    .await
+    .unwrap();
+    loop {
+        match game.step(u, WorkerId(Uuid::new_v4())).await.unwrap() {
+            StepOutcome::Idle => break,
+            StepOutcome::Committed { .. } => {}
+            other => panic!("demolition admission did not commit: {other:?}"),
+        }
+    }
+    let (before, paid, due): (
+        sqlx::types::Json<ProgressionMaterial>,
+        sqlx::types::Json<Resources>,
+        i64,
+    ) = sqlx::query_as(
+        "SELECT progression,paid,due_at FROM constructions WHERE universe=$1 AND status='Active'",
+    )
+    .bind(u.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(matches!(
+        before.0,
+        ProgressionMaterial::Building {
+            action: BuildingAction::Demolition,
+            source_level: 5,
+            target_level: 4,
+            ..
+        }
+    ));
+    let exported = store.export_world_scenario(u).await.unwrap();
+    let recipe: WorldScenario =
+        serde_json::from_slice(&serde_json::to_vec(&exported).unwrap()).unwrap();
+    let queued = recipe.edits.iter().find(|e| e.op == "queue").unwrap();
+    assert_eq!(queued.buildings.get("metalmine"), Some(&4));
+    store
+        .apply_world_scenario(u, &recipe, ScenarioMode::Replace, Uuid::new_v4())
+        .await
+        .unwrap();
+    let (restored, restored_paid, restored_due): (
+        sqlx::types::Json<ProgressionMaterial>,
+        sqlx::types::Json<Resources>,
+        i64,
+    ) = sqlx::query_as(
+        "SELECT progression,paid,due_at FROM constructions WHERE universe=$1 AND status='Active'",
+    )
+    .bind(u.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(matches!(
+        restored.0,
+        ProgressionMaterial::Building {
+            action: BuildingAction::Demolition,
+            source_level: 5,
+            target_level: 4,
+            ..
+        }
+    ));
+    assert_eq!(restored_paid.0, paid.0);
+    assert_eq!(restored_due, due);
+    store
+        .apply_world_scenario(
+            u,
+            &document(json!([{"op":"finish","planet":"1:1:8"}])),
+            ScenarioMode::Patch,
+            Uuid::new_v4(),
+        )
+        .await
+        .unwrap();
+    let level:i64=sqlx::query_scalar("SELECT l.level FROM building_levels l JOIN bodies b ON b.id=l.body WHERE b.universe=$1 AND l.building='MetalMine'").bind(u.0).fetch_one(&pool).await.unwrap();
+    assert_eq!(level, 4);
+    let auth = SessionService::new(store.clone())
+        .login("alice", "password", None)
+        .await
+        .unwrap();
+    let binding = game
+        .current_binding(auth.session.account, u, Uuid::new_v4())
+        .await
+        .unwrap()
+        .binding;
+    validate_asset_lineage(&store.bound_world(binding).await.unwrap().facts.0.state).unwrap();
+}
