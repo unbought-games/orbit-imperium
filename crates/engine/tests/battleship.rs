@@ -1,4 +1,5 @@
 use orbit_engine::*;
+#[allow(dead_code)]
 #[path = "common/prior_content.rs"]
 mod prior_content;
 use uuid::Uuid;

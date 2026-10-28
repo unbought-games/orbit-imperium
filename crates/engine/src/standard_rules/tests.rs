@@ -1,4 +1,7 @@
 use super::*;
+#[path = "../../tests/common/prior_content.rs"]
+mod prior_content;
+use prior_content::without_native_hyperspace_ships;
 
 fn retained(bytes: &[u8]) -> Ruleset {
     let mut artifact: RulesArtifact = serde_json::from_slice(bytes).unwrap();
@@ -57,8 +60,8 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Building(Building::FusionReactor),
             CatalogKey::Ship(ShipType::LargeCargo),
             CatalogKey::Ship(ShipType::Bomber),
-            CatalogKey::Ship(ShipType::Battleship),
             CatalogKey::Ship(ShipType::Battlecruiser),
+            CatalogKey::Ship(ShipType::Battleship),
             CatalogKey::Ship(ShipType::Destroyer),
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
@@ -355,34 +358,27 @@ fn large_shield_dome_upgrade_owns_complete_definitions_and_rejects_customization
 fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_content() {
     let latest = standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 5).unwrap();
     // Reconstruct a world from before Plasma and its dependent units were bundled.
-    let mut artifact = latest.artifact.clone();
-    for ship in [
-        ShipType::Bomber,
-        ShipType::Battleship,
-        ShipType::Battlecruiser,
-        ShipType::Destroyer,
-    ] {
-        let item = ManufacturedItem::Ship(ship);
-        artifact.ships.remove(&ship);
-        artifact
-            .progression
-            .as_mut()
-            .unwrap()
-            .unit_costs
-            .retain(|u| u.item != item);
-        let combat = &mut artifact.world.as_mut().unwrap().combat;
-        combat.units.retain(|u| u.item != item);
-        combat
-            .rapid_fire
-            .retain(|rf| rf.shooter != item && rf.target != item);
-        let entry = artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == item.catalog_key())
-            .unwrap();
-        entry.enabled = false;
-        entry.requirements.clear();
-    }
+    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
+    let bomber = ManufacturedItem::Ship(ShipType::Bomber);
+    artifact.ships.remove(&ShipType::Bomber);
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .retain(|u| u.item != bomber);
+    let combat = &mut artifact.world.as_mut().unwrap().combat;
+    combat.units.retain(|u| u.item != bomber);
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != bomber && rf.target != bomber);
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == bomber.catalog_key())
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
     let turret = ManufacturedItem::Defense(DefenseId::PlasmaTurret);
     artifact
         .progression
@@ -425,34 +421,26 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
     assert!(delta.add_buildings.is_empty());
     let mut artifact = next.artifact.clone();
     let bomber = ManufacturedItem::Ship(ShipType::Bomber);
-    for ship in [
-        ShipType::Bomber,
-        ShipType::Battleship,
-        ShipType::Battlecruiser,
-        ShipType::Destroyer,
-    ] {
-        let item = ManufacturedItem::Ship(ship);
-        artifact.ships.remove(&ship);
-        artifact
-            .progression
-            .as_mut()
-            .unwrap()
-            .unit_costs
-            .retain(|u| u.item != item);
-        let combat = &mut artifact.world.as_mut().unwrap().combat;
-        combat.units.retain(|u| u.item != item);
-        combat
-            .rapid_fire
-            .retain(|rf| rf.shooter != item && rf.target != item);
-        let entry = artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == item.catalog_key())
-            .unwrap();
-        entry.enabled = false;
-        entry.requirements.clear();
-    }
-    let mut without_turrets = artifact;
+    artifact.ships.remove(&ShipType::Bomber);
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .retain(|u| u.item != bomber);
+    let combat = &mut artifact.world.as_mut().unwrap().combat;
+    combat.units.retain(|u| u.item != bomber);
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != bomber && rf.target != bomber);
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == bomber.catalog_key())
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+    let mut without_turrets = without_native_hyperspace_ships(artifact);
     assert_eq!(previous.artifact.ships, without_turrets.ships);
     without_turrets
         .world
@@ -636,34 +624,7 @@ fn plasma_turret_upgrade_owns_complete_definitions_and_rejects_customizations() 
 fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizations() {
     let latest = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
     let key = CatalogKey::Research(ResearchId::HyperspaceTechnology);
-    let mut artifact = latest.artifact.clone();
-    for ship in [
-        ShipType::Battleship,
-        ShipType::Battlecruiser,
-        ShipType::Destroyer,
-    ] {
-        artifact.ships.remove(&ship);
-        let item = ManufacturedItem::Ship(ship);
-        artifact
-            .progression
-            .as_mut()
-            .unwrap()
-            .unit_costs
-            .retain(|u| u.item != item);
-        let combat = &mut artifact.world.as_mut().unwrap().combat;
-        combat.units.retain(|u| u.item != item);
-        combat
-            .rapid_fire
-            .retain(|rf| rf.shooter != item && rf.target != item);
-        let entry = artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == item.catalog_key())
-            .unwrap();
-        entry.enabled = false;
-        entry.requirements.clear();
-    }
-
+    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
     artifact
         .progression
         .as_mut()
@@ -703,31 +664,13 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
         ]
     );
     assert!(delta.add_buildings.is_empty());
-    let mut ships = next.artifact.ships.clone();
-    ships.remove(&ShipType::Destroyer);
-    ships.remove(&ShipType::Battleship);
-    ships.remove(&ShipType::Battlecruiser);
+    let mut ships = without_native_hyperspace_ships(next.artifact.clone()).ships;
     ships.get_mut(&ShipType::Bomber).unwrap().hyperspace_drive = None;
     assert_eq!(ships, previous.artifact.ships);
-    let mut retained_world = next.artifact.world.clone();
-    let combat = &mut retained_world.as_mut().unwrap().combat;
-    combat.units.retain(|u| {
-        !matches!(
-            u.item,
-            ManufacturedItem::Ship(
-                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
-            )
-        )
-    });
-    combat.rapid_fire.retain(|rf| {
-        !matches!(
-            rf.shooter,
-            ManufacturedItem::Ship(
-                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
-            )
-        )
-    });
-    assert_eq!(retained_world, previous.artifact.world);
+    assert_eq!(
+        without_native_hyperspace_ships(next.artifact.clone()).world,
+        previous.artifact.world
+    );
     for id in [
         ResearchId::IntergalacticResearchNetwork,
         ResearchId::GravitonTechnology,
@@ -743,27 +686,22 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
     }
     for custom in 0..3 {
         let mut artifact = next.artifact.clone();
+        if custom == 0 {
+            artifact
+                .catalog
+                .iter_mut()
+                .filter(|e| {
+                    matches!(
+                        e.key,
+                        CatalogKey::Ship(
+                            ShipType::Battlecruiser | ShipType::Battleship | ShipType::Destroyer
+                        )
+                    )
+                })
+                .for_each(|e| e.enabled = false);
+        }
         match custom {
             0 => {
-                artifact
-                    .catalog
-                    .iter_mut()
-                    .find(|e| e.key == CatalogKey::Ship(ShipType::Destroyer))
-                    .unwrap()
-                    .enabled = false;
-
-                artifact
-                    .catalog
-                    .iter_mut()
-                    .find(|e| e.key == CatalogKey::Ship(ShipType::Battleship))
-                    .unwrap()
-                    .enabled = false;
-                artifact
-                    .catalog
-                    .iter_mut()
-                    .find(|e| e.key == CatalogKey::Ship(ShipType::Battlecruiser))
-                    .unwrap()
-                    .enabled = false;
                 artifact
                     .catalog
                     .iter_mut()

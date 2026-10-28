@@ -34,7 +34,7 @@ missions or combat bonuses are enabled by this addition.
 
 ## Activation and retained work
 
-The standard content bundle is 0.8.0. Fresh setup and universe creation include
+The standard content bundle is 0.10.0. Fresh setup and universe creation include
 Destroyers. Existing universes retain their saved rules until explicit activation.
 Deploy the supporting server, worker, operator binary and client everywhere first:
 

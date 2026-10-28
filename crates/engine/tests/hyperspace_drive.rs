@@ -1,4 +1,7 @@
 use orbit_engine::*;
+#[path = "common/prior_content.rs"]
+mod prior_content;
+use prior_content::without_native_hyperspace_ships;
 
 fn rules() -> Ruleset {
     standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap()
@@ -7,34 +10,7 @@ fn rules() -> Ruleset {
 #[test]
 fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_legacy_hash() {
     let latest = rules();
-    let mut artifact = latest.artifact.clone();
-    for ship in [
-        ShipType::Battleship,
-        ShipType::Battlecruiser,
-        ShipType::Destroyer,
-    ] {
-        artifact.ships.remove(&ship);
-        let item = ManufacturedItem::Ship(ship);
-        artifact
-            .progression
-            .as_mut()
-            .unwrap()
-            .unit_costs
-            .retain(|u| u.item != item);
-        let combat = &mut artifact.world.as_mut().unwrap().combat;
-        combat.units.retain(|u| u.item != item);
-        combat
-            .rapid_fire
-            .retain(|rf| rf.shooter != item && rf.target != item);
-        let entry = artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == item.catalog_key())
-            .unwrap();
-        entry.enabled = false;
-        entry.requirements.clear();
-    }
-
+    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
     artifact
         .progression
         .as_mut()
@@ -73,25 +49,10 @@ fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_lega
     assert_eq!(delta.add_research, vec![ResearchId::HyperspaceDrive]);
     assert!(delta.add_buildings.is_empty());
     assert_eq!(previous.protocol(), next.protocol());
-    let mut retained_world = next.artifact.world.clone();
-    let combat = &mut retained_world.as_mut().unwrap().combat;
-    combat.units.retain(|u| {
-        !matches!(
-            u.item,
-            ManufacturedItem::Ship(
-                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
-            )
-        )
-    });
-    combat.rapid_fire.retain(|rf| {
-        !matches!(
-            rf.shooter,
-            ManufacturedItem::Ship(
-                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
-            )
-        )
-    });
-    assert_eq!(previous.artifact.world, retained_world);
+    assert_eq!(
+        previous.artifact.world,
+        without_native_hyperspace_ships(next.artifact.clone()).world
+    );
     assert_eq!(previous.artifact.universe, next.artifact.universe);
     assert!(validate_rules_update(&next, &previous).is_err());
     let mut custom = previous.artifact.clone();
@@ -164,19 +125,15 @@ fn hyperspace_rules_reject_incomplete_unsupported_and_invalid_switches() {
         .enabled = false;
     a.catalog
         .iter_mut()
-        .find(|e| e.key == CatalogKey::Ship(ShipType::Destroyer))
-        .unwrap()
-        .enabled = false;
-    a.catalog
-        .iter_mut()
-        .find(|e| e.key == CatalogKey::Ship(ShipType::Battleship))
-        .unwrap()
-        .enabled = false;
-    a.catalog
-        .iter_mut()
-        .find(|e| e.key == CatalogKey::Ship(ShipType::Battlecruiser))
-        .unwrap()
-        .enabled = false;
+        .filter(|e| {
+            matches!(
+                e.key,
+                CatalogKey::Ship(
+                    ShipType::Battlecruiser | ShipType::Battleship | ShipType::Destroyer
+                )
+            )
+        })
+        .for_each(|e| e.enabled = false);
     let disabled = Ruleset::from_artifact(a, latest.speed).unwrap();
     let research = ResearchLevels {
         owner: PlayerId(uuid::Uuid::nil()),

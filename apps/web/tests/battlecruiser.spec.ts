@@ -46,6 +46,36 @@ battlecruiser.ship_statistics = {
     rapid_fire_from: [{ unit: { kind: 'Ship', id: 'Destroyer' }, factor: '2' }],
   },
 }
+const battleshipDefinition = JSON.parse(
+  readFileSync('rules/content/battleship.json', 'utf8'),
+)
+const battleship = catalog.find((e) => e.key.id === 'Battleship')!
+battleship.enabled = true
+battleship.requirements = battleshipDefinition.requirements
+battleship.ship_statistics = {
+  cost: ['45000', '15000', '0'],
+  propulsion: {
+    drive: 'HyperspaceDrive',
+    drive_coefficient: ['3', '10'],
+    base_speed: '10000',
+    cargo_capacity: '1500',
+    fuel_consumption: '500',
+    impulse_upgrade: null,
+  },
+  combat: {
+    technology_bonus: ['1', '10'],
+    attack_ticks: '100000000',
+    shield_ticks: '20000000',
+    hull_ticks: '600000000',
+    rapid_fire_against: battleshipDefinition.rapid_fire.map(
+      (r: { target: S['ItemKey3']; factor: number }) => ({
+        unit: r.target,
+        factor: String(r.factor),
+      }),
+    ),
+    rapid_fire_from: [{ unit: item, factor: '7' }],
+  },
+}
 const researchDefinitions = {
   HyperspaceDrive: JSON.parse(
     readFileSync('rules/content/hyperspace-drive.json', 'utf8'),
@@ -72,6 +102,12 @@ for (const [key, definition] of Object.entries(researchDefinitions)) {
               label: 'Base speed',
               fraction: ['3', '10'],
               subject: item,
+              condition: null,
+            },
+            {
+              label: 'Base speed',
+              fraction: ['3', '10'],
+              subject: { kind: 'Ship', id: 'Battleship' },
               condition: null,
             },
           ]
@@ -382,6 +418,7 @@ for (const width of [390, 1440]) {
     await expect(stats).toContainText('Hyperspace Drive')
     await expect(stats).toContainText('Solar Satellite')
     await expect(stats).toContainText('Cruiser')
+    await expect(stats).toContainText('Battleship × 7')
     await expect(stats).not.toContainText('profile changes')
     await page.getByLabel('Shipyard quantity').fill('2')
     await expect(
@@ -548,6 +585,10 @@ for (const width of [390, 1440]) {
         pane.getByRole('button', { name: 'Confirm research', exact: true }),
       ).toBeEnabled()
       await pane.getByText('Technical data', { exact: true }).click()
+      if (slug === 'hyperspace-drive') {
+        await expect(pane).toContainText('Battlecruiser: +30% of base')
+        await expect(pane).toContainText('Battleship: +30% of base')
+      }
       await expect(
         pane.getByRole('link', { name: /Battlecruiser/ }),
       ).toBeVisible()
