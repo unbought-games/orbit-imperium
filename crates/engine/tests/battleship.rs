@@ -2,6 +2,9 @@ use orbit_engine::*;
 use uuid::Uuid;
 #[allow(dead_code)]
 mod common;
+#[allow(dead_code)]
+#[path = "common/prior_content.rs"]
+mod prior_content;
 
 const BATTLESHIP: ManufacturedItem = ManufacturedItem::Ship(ShipType::Battleship);
 fn rules() -> Ruleset {
@@ -113,7 +116,17 @@ fn battleship_combat_derives_stats_and_applies_only_its_two_rapid_fire_pairs() {
             assert!(shots.iter().any(|n| *n > 1));
         }
     }
-    assert!(combat.rapid_fire.iter().all(|rf| rf.target != BATTLESHIP));
+    let incoming: Vec<_> = combat
+        .rapid_fire
+        .iter()
+        .filter(|rf| rf.target == BATTLESHIP)
+        .collect();
+    assert_eq!(incoming.len(), 1);
+    assert_eq!(
+        incoming[0].shooter,
+        ManufacturedItem::Ship(ShipType::Battlecruiser)
+    );
+    assert_eq!(incoming[0].factor, 7);
 }
 
 #[test]
@@ -135,7 +148,7 @@ fn battleship_manufacturing_charges_and_times_metal_and_crystal_only() {
 #[test]
 fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
-    let mut previous = latest.artifact.clone();
+    let mut previous = prior_content::without_battlecruiser(latest.artifact.clone());
     previous.ships.remove(&ShipType::Battleship);
     previous
         .progression
@@ -158,7 +171,7 @@ fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data()
     let previous = Ruleset::from_artifact(previous, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);
-    let mut retained = next.artifact.clone();
+    let mut retained = prior_content::without_battlecruiser(next.artifact.clone());
     retained.ships.remove(&ShipType::Battleship);
     assert_eq!(retained.ships, previous.artifact.ships);
     assert_eq!(next.artifact.buildings, previous.artifact.buildings);
@@ -166,11 +179,7 @@ fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data()
         next.artifact.progression.as_ref().unwrap().research,
         previous.artifact.progression.as_ref().unwrap().research
     );
-    for id in [
-        ShipType::Battlecruiser,
-        ShipType::Destroyer,
-        ShipType::Dreadnought,
-    ] {
+    for id in [ShipType::Destroyer, ShipType::Dreadnought] {
         assert!(
             !next
                 .artifact

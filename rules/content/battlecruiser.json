@@ -1,0 +1,131 @@
+{
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 8
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "LaserTechnology",
+      "level": 12
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceTechnology",
+      "level": 5
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceDrive",
+      "level": 5
+    }
+  ],
+  "ship": {
+    "drive": "HyperspaceDrive",
+    "base_speed": 10000,
+    "drive_coefficient": [
+      3,
+      10
+    ],
+    "fuel": 250,
+    "capacity": 750
+  },
+  "cost": {
+    "metal": 30000,
+    "crystal": 40000,
+    "deuterium": 15000
+  },
+  "combat": {
+    "item": {
+      "kind": "Ship",
+      "id": "Battlecruiser"
+    },
+    "cost": [
+      30000,
+      40000,
+      15000
+    ],
+    "attack_hundredths": 70000,
+    "shield_hundredths": 40000
+  },
+  "rapid_fire": [
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "SmallCargo"
+      },
+      "factor": 3
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "LargeCargo"
+      },
+      "factor": 3
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "HeavyFighter"
+      },
+      "factor": 4
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "factor": 4
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "SolarSatellite"
+      },
+      "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Battleship"
+      },
+      "factor": 7
+    }
+  ]
+}

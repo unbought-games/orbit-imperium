@@ -35,7 +35,7 @@ it('derives the technology unlock from each bundled prerequisite', () => {
   }
 })
 
-it('uses existing artwork and explains the current lack of dependent systems and bonuses', () => {
+it('uses existing artwork and explains current unlocks without per-level bonuses', () => {
   const details = catalogContent(hyperspace.key)
   expect(details.art.src).toBe(
     '/art/atlas/objects/hyperspace-technology-640.webp',
@@ -48,7 +48,7 @@ it('uses existing artwork and explains the current lack of dependent systems and
   )
   expect(details.description).toContain('Unlocks Hyperspace Drive at level 3')
   expect(details.description).toContain(
-    'Higher levels currently unlock no additional content',
+    'Level 5 is required for Battlecruisers',
   )
   expect(technicalUnlocks(hyperspace, [hyperspace], 'Planet')).toEqual([])
 })

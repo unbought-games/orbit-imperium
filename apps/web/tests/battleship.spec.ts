@@ -65,7 +65,9 @@ battleship.ship_statistics = {
         factor: String(r.factor),
       }),
     ),
-    rapid_fire_from: [],
+    rapid_fire_from: [
+      { unit: { kind: 'Ship', id: 'Battlecruiser' }, factor: '7' },
+    ],
   },
 }
 for (const [id, file] of [

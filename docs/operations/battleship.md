@@ -23,7 +23,8 @@ fire, following the private reference archive's `original-docs/game/ships.md`,
 Hull derives from metal plus crystal cost. Weapons, Shielding and Armour apply
 normal combat bonuses. Other drives and Hyperspace Technology add no speed or
 cargo bonus. At Shipyard 7 and economy speed 5, one Battleship takes 2,160 seconds.
-Relationships with unavailable Battlecruisers and Dreadnoughts remain inactive.
+Battlecruisers have rapid fire 7 against Battleships. Relationships with
+unavailable Dreadnoughts remain inactive.
 
 ## Activation and retained work
 

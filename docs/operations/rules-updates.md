@@ -284,3 +284,6 @@ In scoped mode, `rules apply` durably queues a global boundary. Earlier conflict
 If observation lasts longer than 30 seconds, the CLI reports a durable pending activation ID. The activation remains queued and workers continue it. Retrying the same file observes the same request; do not interpret a disconnected/pending CLI as cancellation. A different proposal cannot replace a pending boundary. Serial/preparing mode retains the older idle-boundary behavior until activation.
 
 Process restarts do not need a gameplay audit or a caught-up simulation. Private lag metrics and blocked-scope diagnostics are operational signals, not readiness failures for an otherwise compatible API. Unsupported vocabulary still stops an incompatible process locally.
+
+[Battlecruisers](battlecruiser.md) use the same standard upgrade path, with existing
+Laser and Hyperspace research prerequisites and no inventory backfill.
