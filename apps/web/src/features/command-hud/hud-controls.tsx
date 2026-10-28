@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import {
   Atom,
   Check,
@@ -134,13 +134,8 @@ export function HudToast({
   )
 }
 export function CommandOrb({ hud }: { hud: CommandHudState }) {
-  const [starting, setStarting] = useState(true)
-  useEffect(() => {
-    const timer = window.setTimeout(() => setStarting(false), 5500)
-    return () => window.clearTimeout(timer)
-  }, [])
   const appearance = orbAppearance(hud.state, hud.recent)
-  const idle = appearance.caption === 'SYSTEMS ONLINE'
+  const caption = hud.caption
   const unread = hasUnreadIntelligence(hud.state)
   const unreadCount = unreadBadgeCount(hud.state)
   const used = occupiedFleetSlots(hud.state)
@@ -148,12 +143,22 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
     hud.state.view?.protocol === 4 ? hud.state.view.missions.fleet_slots : '0'
   return (
     <div className={styles.orbDock} data-tone={appearance.tone}>
-      {(!idle || starting) && (
+      {caption && (
         <span
-          className={`${styles.orbCaption} ${idle ? styles.startupCaption : ''}`}
+          key={caption.id}
+          className={`${styles.orbCaption} ${styles.typedCaption}`}
           data-testid="orb-caption"
+          data-category={caption.category}
+          style={
+            {
+              '--caption-chars': caption.text.length,
+              '--caption-width': `${caption.text.length}ch`,
+              '--caption-typing': `${caption.typingMs}ms`,
+              '--caption-life': `${caption.lifetimeMs}ms`,
+            } as CSSProperties
+          }
         >
-          {idle ? <span>Systems Online</span> : appearance.caption}
+          <span>{caption.text}</span>
         </span>
       )}
       <button

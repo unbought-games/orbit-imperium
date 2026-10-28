@@ -1,3 +1,20 @@
+/* Animate shared channels once; every gradient, ring, shadow and badge
+   consumes the same interpolated palette, including newly mounted parts. */
+@property --command-orb-red {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 164;
+}
+@property --command-orb-green {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 219;
+}
+@property --command-orb-blue {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 239;
+}
 .surface {
   --hud: #a4dbef;
   --hud-rgb: 164, 219, 239;
@@ -48,10 +65,39 @@
     display: flex;
     align-items: center;
     flex-direction: column;
+    --command-orb-red: 164;
+    --command-orb-green: 219;
+    --command-orb-blue: 239;
+    transition:
+      --command-orb-red 700ms ease-in-out,
+      --command-orb-green 700ms ease-in-out,
+      --command-orb-blue 700ms ease-in-out !important;
+  }
+  .orbDock[data-tone='champagne'] {
+    --command-orb-red: 236;
+    --command-orb-green: 211;
+    --command-orb-blue: 159;
+  }
+  .orbDock[data-tone='green'] {
+    --command-orb-red: 135;
+    --command-orb-green: 242;
+    --command-orb-blue: 187;
+  }
+  .orbDock[data-tone='red'] {
+    --command-orb-red: 255;
+    --command-orb-green: 125;
+    --command-orb-blue: 131;
+  }
+  .surface .orbDock,
+  .surface .orbDock [data-tone] {
+    --hud-rgb:
+      var(--command-orb-red), var(--command-orb-green), var(--command-orb-blue);
+    --hud: rgb(var(--hud-rgb));
   }
   .orbCaption {
     position: absolute;
     bottom: calc(100% + 9px);
+    right: 0;
     font: 9px/1.4 monospace;
     color: var(--hud);
     letter-spacing: 0.12em;
@@ -61,18 +107,19 @@
     background: #081a25f5;
     text-shadow: 0 0 12px rgba(var(--hud-rgb), 0.8);
   }
-  .startupCaption {
+  .typedCaption {
     letter-spacing: 0;
-    animation: startupFade 5.5s linear both !important;
+    animation: captionFade var(--caption-life) linear both !important;
   }
-  .startupCaption > span {
+  .typedCaption > span {
     display: block;
     box-sizing: content-box;
-    width: 14ch;
+    width: var(--caption-width);
     overflow: hidden;
     border-right: 1ch solid currentColor;
     animation:
-      typeStartup 1.05s steps(14, end) 0.45s both,
+      typeCaption var(--caption-typing) steps(var(--caption-chars), end) 150ms
+        both,
       cursorBlink 0.8s step-end infinite !important;
   }
   .orb {
@@ -87,7 +134,7 @@
     pointer-events: auto;
     isolation: isolate;
     transform-origin: center;
-    animation: orbIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    animation: orbIn 1.4s ease-in-out both !important;
   }
   .orb::before {
     content: '';
@@ -129,7 +176,7 @@
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background: #f0fbff;
+    background: color-mix(in srgb, var(--hud) 25%, white);
     position: absolute;
     left: 9px;
     top: 8px;
@@ -153,7 +200,7 @@
       circle at 33% 20%,
       rgba(var(--hud-rgb), 0.65),
       rgba(var(--hud-rgb), 0.12) 34%,
-      #0b2533 65%,
+      color-mix(in srgb, var(--hud) 12%, #061018) 65%,
       rgba(var(--hud-rgb), 0.6)
     );
     box-shadow:
@@ -165,7 +212,7 @@
   .orbCore > svg {
     position: relative;
     filter: drop-shadow(0 0 7px var(--hud));
-    color: #f0fbff;
+    color: color-mix(in srgb, var(--hud) 22%, white);
   }
   .coreShimmer {
     position: absolute;
@@ -192,7 +239,7 @@
     background: var(--hud);
     color: #11202a;
     font: 700 10px/1 monospace;
-    border: 2px solid #10232e;
+    border: 2px solid color-mix(in srgb, var(--hud) 15%, #061018);
     border-radius: 50%;
     display: grid;
     place-items: center;
@@ -216,7 +263,7 @@
     color: var(--hud);
     padding: 4px 9px;
     border-radius: 12px;
-    background: #081a25f5;
+    background: color-mix(in srgb, var(--hud) 6%, #061018);
     border: 1px solid rgba(var(--hud-rgb), 0.22);
   }
   .slotBadge span {
@@ -689,12 +736,12 @@
     transform: scale(1);
   }
 }
-@keyframes typeStartup {
+@keyframes typeCaption {
   from {
     width: 0;
   }
   to {
-    width: 14ch;
+    width: var(--caption-width);
   }
 }
 @keyframes cursorBlink {
@@ -702,7 +749,7 @@
     border-color: transparent;
   }
 }
-@keyframes startupFade {
+@keyframes captionFade {
   0%,
   90% {
     opacity: 1;
@@ -784,6 +831,7 @@
 }
 /* This experiment deliberately opts into motion above the game's global reset. */
 @media (prefers-reduced-motion: reduce) {
+  .surface .typedCaption > span,
   .surface .dialog[open],
   .surface *,
   .surface *::before,
@@ -847,6 +895,7 @@
   overflow-wrap: anywhere;
 }
 @media (prefers-reduced-motion: reduce) {
+  .surface .typedCaption > span,
   .surface .dialog[open],
   .surface *,
   .surface *::before,

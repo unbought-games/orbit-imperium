@@ -283,7 +283,6 @@ export function orbAppearance(state: GameState, notices: HudNotice[]) {
         threat?.mission === 'Attack'
           ? ('attack' as HudIcon)
           : ('scan' as HudIcon),
-      caption: 'THREAT DETECTED',
     }
   const success = notices
     .map((n) => noticeContent(state, n))
@@ -292,17 +291,14 @@ export function orbAppearance(state: GameState, notices: HudNotice[]) {
     return {
       tone: 'green' as HudTone,
       icon: success.icon,
-      caption: 'ORDER CONFIRMED',
     }
   if (hasUnreadIntelligence(state))
     return {
       tone: 'champagne' as HudTone,
       icon: 'message' as HudIcon,
-      caption: 'NEW INTELLIGENCE',
     }
   return {
     tone: 'ice' as HudTone,
     icon: null,
-    caption: state.stale ? 'CONNECTION LOST' : 'SYSTEMS ONLINE',
   }
 }

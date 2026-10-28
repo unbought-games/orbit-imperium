@@ -210,11 +210,17 @@ test('orb boots from its center, types the complete label and clears it without 
     animation.pause(); animation.currentTime = 0
     const start = {opacity:getComputedStyle(el).opacity, transform:getComputedStyle(el).transform}
     animation.currentTime = 700
-    return {start, end:{opacity:getComputedStyle(el).opacity, transform:getComputedStyle(el).transform}, origin:getComputedStyle(el).transformOrigin}
+    const midpoint = Number(getComputedStyle(el).opacity)
+    animation.currentTime = 1400
+    return {start, midpoint, end:{opacity:getComputedStyle(el).opacity, transform:getComputedStyle(el).transform}, origin:getComputedStyle(el).transformOrigin}
   })
   expect(frames.start.opacity).toBe('0')
   expect(frames.start.transform).toBe('matrix(0.15, 0, 0, 0.15, 0, 0)')
+  expect(frames.midpoint).toBeCloseTo(0.5, 2)
   expect(frames.end.opacity).toBe('1')
+  await orb.evaluate(el=>{el.getAnimations()[0].currentTime=700})
+  await diagnosticScreenshot(page,{path:`${output}/startup-midpoint-390x844.png`})
+  await orb.evaluate(el=>{el.getAnimations()[0].currentTime=1400})
   expect(frames.origin).toBe('37px 37px')
   const text = caption.locator('span')
   await text.evaluate(el => { for(const animation of el.getAnimations()){animation.pause();animation.currentTime=1600} })
@@ -225,6 +231,9 @@ test('orb boots from its center, types the complete label and clears it without 
   await expect(caption).toHaveCount(0)
   expect(await orb.boundingBox()).toEqual(before)
   await diagnosticScreenshot(page,{path:`${output}/startup-cleared-390x844.png`})
+  await page.setViewportSize({width:1440,height:900})
+  await expect(orb).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/startup-desktop-1440x900.png`})
 })
 
 test.describe('HUD touch scroll ownership', () => {
@@ -452,4 +461,162 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   await expect(page.getByTestId('command-orb')).toHaveCount(0)
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
   await diagnosticScreenshot(page,{path:`${output}/infinite-desktop-1440x900.png`})
+})
+
+test('captions explain once, joke only on confirmed new losses, and keep humor separate from regular feedback', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.clock.install()
+  await page.addInitScript(()=>{Math.random=()=>0})
+  const f=await intelligenceFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const caption=page.getByTestId('orb-caption')
+  const orb=page.getByTestId('command-orb')
+  await expect(caption).toHaveText('Systems Online')
+  await page.clock.fastForward(6000)
+  await expect(caption).toHaveCount(0)
+  f.conversations.push({contact:{player:id(99),username:'Nova',blocked:false,request:null,requested_by:null,accepted:false},latest:{id:id(851),sequence:'1',sender:id(99),body:'Scouts are ready.',sent_at:baseTime},unread:true})
+  await f.refresh()
+  await expect(caption).toHaveText('Champagne means unread.')
+  await diagnosticScreenshot(page,{path:`${output}/caption-education-390x844.png`})
+  await page.clock.fastForward(6000)
+  await expect(caption).toHaveCount(0)
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await f.refresh()
+  await expect(caption).toHaveCount(0)
+  // A detected probe is not necessarily a destroyed probe.
+  f.headers.unshift({id:id(860),kind:'Espionage',observed_at:baseTime,read:false,hidden:false,preview:{kind:'Espionage',counterespionage:{detected:true,probability_ppm:1000000}}})
+  await f.refresh()
+  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Espionage report/})).toBeVisible()
+  await page.clock.fastForward(8000)
+  await expect(caption).toHaveCount(0)
+  const loss=(n:number):S['ReportHeader4']=>({id:id(n),kind:'Combat',observed_at:baseTime+n,read:false,hidden:false,preview:{kind:'Combat',mission:'Espionage',outcome:'DefenderVictory',participants:[{owner:binding.player,side:'Attacker'}]}})
+  f.headers.unshift(loss(861))
+  await f.refresh()
+  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
+  await page.clock.fastForward(8000)
+  await expect(caption).toHaveText('Whoops.')
+  await expect(caption).toHaveAttribute('data-category','personality')
+  await diagnosticScreenshot(page,{path:`${output}/caption-whoops-390x844.png`})
+  // An urgent regular card still appears and interrupts the joke during cooldown.
+  f.missions.incoming.push({sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Attack',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}})
+  await f.refresh()
+  await expect(orb).toHaveAttribute('data-tone','red')
+  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Hostile fleet inbound/})).toBeVisible()
+  await expect(caption).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/caption-urgent-card-390x844.png`})
+  f.missions.incoming.length=0
+  await f.refresh()
+  await page.clock.fastForward(8000)
+  f.headers.unshift(loss(862))
+  await f.refresh()
+  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
+  await page.clock.fastForward(8000)
+  await expect(caption).toHaveCount(0)
+  // Client navigation keeps the humor budget. No old report replays on refresh.
+  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Develop',exact:true}).click()
+  await expect(page).toHaveURL(/resources$/)
+  await page.clock.fastForward(8000)
+  await expect(caption).toHaveCount(0)
+  await page.clock.fastForward(90000)
+  await expect(page.getByTestId('unread-count')).toHaveText('4')
+  f.headers.unshift(loss(863))
+  await f.refresh()
+  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
+  await page.clock.fastForward(8000)
+  await expect(caption).toHaveText('Good thing we sent the bad one.')
+  await expect(caption.locator('span')).toHaveCSS('animation-name','none')
+  await page.setViewportSize({width:320,height:740})
+  const bounds=(await caption.boundingBox())!
+  expect(bounds.x).toBeGreaterThanOrEqual(0)
+  expect(bounds.x+bounds.width).toBeLessThanOrEqual(320)
+  expect(await caption.locator('span').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
+  await diagnosticScreenshot(page,{path:`${output}/caption-long-320x740.png`})
+  await page.clock.fastForward(6000)
+  await expect(caption).toHaveCount(0)
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await diagnosticScreenshot(page,{path:`${output}/caption-expired-320x740.png`})
+  await page.setViewportSize({width:1440,height:900})
+  await expect(orb).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/caption-desktop-1440x900.png`})
+})
+
+test('every orb surface blends through the shared palette, including rapid retargets and reduced motion', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  const f=await intelligenceFixture(page)
+  f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const orb=page.getByTestId('command-orb')
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await expect(page.getByTestId('unread-count')).toHaveText('1')
+  // Finish only the entrance so color captures show the fully formed orb.
+  await orb.evaluate(el=>{for(const a of el.getAnimations())if(a.effect?.getTiming().iterations===1)a.finish()})
+  const palette={ice:[164,219,239],champagne:[236,211,159],green:[135,242,187],red:[255,125,131]}
+  for(const tone of ['red','green','ice','champagne'] as const){
+    const frames=await orb.evaluate(async (el,tone)=>{
+      const dock=el.parentElement!
+      const outer=el.children[0], inner=el.children[1], core=el.children[2]
+      const shimmer=core.children[0], icon=core.querySelector('svg')!
+      const badge=el.querySelector('[data-testid="unread-count"]')!
+      const slots=el.nextElementSibling!
+      const style=(node:Element,pseudo?:string)=>getComputedStyle(node,pseudo)
+      const sample=()=>({
+        channels:['red','green','blue'].map(channel=>Number(style(dock).getPropertyValue(`--command-orb-${channel}`))),
+        parts:{
+          orb:style(el).color,
+          caption:style(dock.querySelector('[data-testid="orb-caption"]')!).color,
+          outer:style(outer).borderTopColor, inner:style(inner).borderTopColor,
+          core:style(core).backgroundImage, coreShadow:style(core).boxShadow, coreBorder:style(core).borderColor,
+          shimmer:style(shimmer).backgroundImage, icon:style(icon).color, iconGlow:style(icon).filter,
+          aura:style(el,'::before').backgroundImage, ripple:style(el,'::after').borderColor,
+          spark:style(outer,'::after').backgroundColor, sparkGlow:style(outer,'::after').boxShadow,
+          badge:style(badge).backgroundColor, badgeBorder:style(badge).borderColor, badgeGlow:style(badge).boxShadow,
+          slots:style(slots).color, slotsBorder:style(slots).borderColor, slotsBackground:style(slots).backgroundColor,
+        }
+      })
+      const before=sample()
+      dock.dataset.tone=tone;el.setAttribute('data-tone',tone)
+      // Force the style change, then sample the actual CSS transitions at known times.
+      style(dock).getPropertyValue('--command-orb-red')
+      await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
+      const transitions=dock.getAnimations().filter(a=>a instanceof CSSTransition)
+      for(const animation of transitions){animation.pause();animation.currentTime=0}
+      const start=sample()
+      for(const animation of transitions)animation.currentTime=350
+      const middle=sample()
+      for(const animation of transitions)animation.currentTime=700
+      const end=sample()
+      for(const animation of transitions)animation.finish()
+      return {before,start,middle,end,count:transitions.length}
+    },tone)
+    expect(frames.count).toBe(3)
+    expect(frames.start.channels).toEqual(frames.before.channels)
+    expect(frames.end.channels).toEqual(palette[tone])
+    for(let i=0;i<3;i++)expect(frames.middle.channels[i]).toBeCloseTo((frames.before.channels[i]+palette[tone][i])/2,0)
+    for(const part of Object.keys(frames.end.parts) as (keyof typeof frames.end.parts)[]){
+      expect(frames.middle.parts[part],`${tone}: ${part} must leave its old color`).not.toBe(frames.before.parts[part])
+      expect(frames.middle.parts[part],`${tone}: ${part} must not snap to its new color`).not.toBe(frames.end.parts[part])
+    }
+    await diagnosticScreenshot(page,{path:`${output}/orb-palette-${tone}-390x844.png`})
+  }
+  const interrupted=await orb.evaluate(async el=>{
+    const dock=el.parentElement!
+    const channels=()=>['red','green','blue'].map(c=>Number(getComputedStyle(dock).getPropertyValue(`--command-orb-${c}`)))
+    dock.dataset.tone='red';el.setAttribute('data-tone','red')
+    channels()
+    await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
+    for(const animation of dock.getAnimations()){animation.pause();animation.currentTime=350}
+    const before=channels()
+    dock.dataset.tone='ice';el.setAttribute('data-tone','ice')
+    const after=channels()
+    return {before,after}
+  })
+  for(let i=0;i<3;i++)expect(interrupted.after[i]).toBeCloseTo(interrupted.before[i],0)
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await orb.evaluate(el=>{el.parentElement!.dataset.tone='green';el.setAttribute('data-tone','green')})
+  expect(await orb.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(135, 242, 187)')
+  expect(await orb.evaluate(el=>getComputedStyle(el.parentElement!).transitionProperty)).toBe('none')
+  await page.setViewportSize({width:1440,height:900})
+  await expect(orb).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/orb-palette-desktop-1440x900.png`})
 })

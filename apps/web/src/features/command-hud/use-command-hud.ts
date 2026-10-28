@@ -1,3 +1,4 @@
+import { useOrbCaption } from './use-orb-caption'
 import { readHudReports } from './read-hud-reports'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
@@ -14,6 +15,7 @@ import {
 /** This hook stores only interaction history/IDs; all game facts come from the game store. */
 export function useCommandHud(model: Coordinator) {
   const state = useStore(model.store)
+  const caption = useOrbCaption(model)
   const [notices, setNotices] = useState<HudNotice[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
   const [selection, select] = useState<HudTarget | 'inbox' | null>(null)
@@ -101,6 +103,7 @@ export function useCommandHud(model: Coordinator) {
   const recent = notices.filter((n) => state.now - n.shownAt < 7000).reverse()
   return {
     state,
+    caption,
     recent,
     toasts: recent.filter((n) => !dismissed.includes(noticeKey(n))),
     selection,
