@@ -100,6 +100,32 @@ async function galaxyFixture(page: Page) {
 }
 
 async function capture(page: Page, name: string) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+  await page.evaluate(async () => {
+    await document.fonts.ready
+    const entrances = document
+      .getAnimations()
+      .filter(
+        (animation) =>
+          animation instanceof CSSAnimation &&
+          /orbIn|dialogIn/.test(animation.animationName),
+      )
+    const images = [...document.images].filter((image) => {
+      const box = image.getBoundingClientRect()
+      return (
+        box.width > 0 &&
+        box.height > 0 &&
+        box.top < innerHeight &&
+        box.bottom > 0
+      )
+    })
+    await Promise.all([
+      ...entrances.map((animation) =>
+        animation.finished.catch(() => undefined),
+      ),
+      ...images.map((image) => image.decode().catch(() => undefined)),
+    ])
+  })
   const { width, height } = page.viewportSize()!
   await diagnosticScreenshot(page, {
     path: `test-results/touch-selection/${name}-${width}x${height}.png`,
@@ -240,7 +266,7 @@ for (const touch of [true, false]) {
       test.use({
         hasTouch: touch,
         isMobile: touch,
-        reducedMotion: 'reduce',
+        reducedMotion: 'no-preference',
         viewport: { width: touch ? 390 : 1440, height: 900 },
       })
 
