@@ -46,7 +46,16 @@ destroyer.ship_statistics = {
     rapid_fire_from: [],
   },
 }
-catalog.find((e) => e.key.id === 'HyperspaceTechnology')!.enabled = true
+for (const [id, file] of [
+  ['HyperspaceTechnology', 'hyperspace-technology'],
+  ['HyperspaceDrive', 'hyperspace-drive'],
+]) {
+  const entry = catalog.find((e) => e.key.id === id)!
+  entry.enabled = true
+  entry.requirements = JSON.parse(
+    readFileSync(`rules/content/${file}.json`, 'utf8'),
+  ).requirements
+}
 const bound = (request_id: string, data: unknown) => ({
   protocol: 4,
   binding,
