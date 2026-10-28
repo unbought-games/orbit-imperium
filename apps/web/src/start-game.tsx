@@ -29,6 +29,11 @@ export async function startGame() {
     root.render(<ActionSheetPlayground />)
     return
   }
+  if (import.meta.env.DEV && location.pathname === '/hud-playground') {
+    const { HudPlayground } = await import('./dev/hud/hud-playground')
+    root.render(<HudPlayground />)
+    return
+  }
   if (import.meta.env.DEV && location.pathname === '/detail-playground') {
     const { DetailPlayground } = await import('./dev/detail-playground')
     root.render(<DetailPlayground />)

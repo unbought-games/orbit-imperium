@@ -366,3 +366,104 @@ it.each(['progressionOptions', 'reports', 'report', 'world'] as const)(
     expect(port[endpoint]).toHaveBeenCalledTimes(1)
   },
 )
+
+it('restarts paging after acknowledged reads, reconciles later stale mail, and fences session resets', async () => {
+  const { model, port } = await setup()
+  const mailbox: import('./social-mailbox').SocialMailbox = {
+    conversations: [
+      {
+        contact: {
+          player: id(90),
+          username: 'Nova',
+          blocked: false,
+          request: null,
+          requested_by: null,
+          accepted: false,
+        },
+        latest: {
+          id: id(91),
+          sequence: '1',
+          sender: id(90),
+          body: 'Hello',
+          sent_at: 1000,
+        },
+        unread: true,
+      },
+    ],
+    circulars: [
+      {
+        id: id(94),
+        alliance: id(95),
+        alliance_name: 'Stars',
+        alliance_tag: 'STAR',
+        sender: id(90),
+        sender_name: 'Nova',
+        body: 'Hello alliance',
+        sent_at: 1000,
+        read: false,
+      },
+    ],
+  }
+  const gate = deferred<void>()
+  const pageCalls: string[] = []
+  Object.assign(port, {
+    socialQuery: async (
+      context: QueryContext,
+      query: import('./social').SocialQuery,
+    ) => {
+      pageCalls.push(`${query.type}:${'cursor' in query ? query.cursor : null}`)
+      await gate.promise
+      return {
+        ...context,
+        conversations:
+          query.type === 'Conversations' && !query.cursor
+            ? mailbox.conversations
+            : [],
+        circulars: query.type === 'Circulars' ? mailbox.circulars : [],
+        messages: [],
+        contacts: [],
+        contact: null,
+        next_cursor:
+          query.type === 'Conversations' && !query.cursor ? id(93) : null,
+      }
+    },
+    socialCommand: async (
+      _context: QueryContext,
+      request: import('./social').SocialRequest,
+    ) => ({ command_id: request.command_id, message: null }),
+  })
+  model.store.setState({ mailbox })
+  const work = model.refreshMailbox()
+  await model.socialCommand({
+    command_id: id(92),
+    action: { type: 'Read', player: id(90), message: id(91) },
+  })
+  await model.socialCommand({
+    command_id: id(96),
+    action: { type: 'ReadCircular', circular: id(94) },
+  })
+  expect(model.refreshMailbox()).toBe(work)
+  gate.resolve()
+  await expect(work).resolves.toBeUndefined()
+  expect(pageCalls.filter((call) => call.startsWith('Conversations'))).toEqual([
+    'Conversations:null',
+    'Conversations:null',
+    `Conversations:${id(93)}`,
+  ])
+  expect(model.store.getState().mailbox?.circulars[0].read).toBe(true)
+  // The server can still return an old unread observation on the next refresh.
+  await model.refreshMailbox()
+  expect(model.store.getState().mailbox?.conversations[0].unread).toBe(false)
+  expect(model.store.getState().mailbox?.circulars[0].read).toBe(true)
+  mailbox.conversations[0].latest = {
+    ...mailbox.conversations[0].latest,
+    id: id(97),
+    sequence: '2',
+  }
+  await model.refreshMailbox()
+  expect(model.store.getState().mailbox?.conversations[0].unread).toBe(true)
+  const old = model.refreshMailbox()
+  model.invalidate()
+  await expect(old).rejects.toThrow('Unable to confirm your inbox')
+  expect(model.store.getState().mailbox).toBeNull()
+})

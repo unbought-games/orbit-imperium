@@ -609,12 +609,16 @@ for (const width of [1280, 390]) {
     const fixture = await reportsFixture(page)
     fixture.headers[0].preview = { kind: 'Espionage', resources: { visibility: 'Unknown' } }
     fixture.headers[1].preview = { kind: 'Espionage', resources: { visibility: 'Known', value: { metal: '1000000', crystal: '9000000', deuterium: '0' } } }
+    // The mobile HUD independently hydrates the unread badge. Finish that
+    // background page before measuring the triage operation's own request.
+    if (width < 768) await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(1)
+    const beforeTriage = fixture.pageRequests.filter(cursor => cursor !== null).length
     let release!: () => void
     fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
     await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
     await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeDisabled()
     await expect(page.getByRole('article').first().getByRole('button', { name: 'Star report', exact: true })).toBeDisabled()
-    await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(1)
+    await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length - beforeTriage).toBe(1)
     release()
     await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
     await page.getByRole('combobox', { name: 'Sort by', exact: true }).selectOption('crystal')
@@ -723,3 +727,23 @@ for (const width of [1280, 390]) {
     await expect(page).toHaveURL(inbox)
   })
 }
+
+test('HUD infinite paging waits for a pending report preference, then resumes', async ({page})=>{
+  await page.setViewportSize({width:390,height:900})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.clock.install()
+  const fixture=await reportsFixture(page)
+  await expect.poll(()=>fixture.pageRequests.filter(cursor=>cursor!==null).length).toBe(1)
+  let release!:()=>void
+  fixture.pause(new Promise<void>(resolve=>{release=resolve}))
+  await page.locator('main article').first().getByRole('button',{name:'Delete report'}).click()
+  await page.getByTestId('command-orb').click()
+  const panel=page.getByRole('dialog')
+  await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toBeVisible()
+  const before=fixture.pageRequests.filter(cursor=>cursor!==null).length
+  await page.clock.runFor(1000)
+  expect(fixture.pageRequests.filter(cursor=>cursor!==null).length).toBe(before)
+  release()
+  await expect(panel.getByLabel('Intelligence list').getByRole('button',{name:/Espionage report/})).toBeVisible()
+  await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toHaveCount(0)
+})

@@ -906,6 +906,8 @@ for (const width of [320, 390, 1280]) {
 test('one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   let revision = 1
   const missions: components['schemas']['MissionView4'] = {
     fleets: [],
@@ -1056,6 +1058,10 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   })
   releaseLaunch()
   await finishRefresh(1)
+  const probeToast = page.getByLabel('Recent game events').getByRole('button', { name: /Probe away/ })
+  await expect(probeToast.locator('time')).toHaveAttribute('datetime', new Date(missions.fleets[0].due_at).toISOString())
+  await expect(probeToast).toContainText('2 fleet slots available')
+  await diagnosticScreenshot(page, { path: 'test-results/live-hud/probe-390x844.png' })
   await expect(slots).toHaveText('1 / 3')
   await expect(
     target.getByRole('group', { name: /^Your fleets to / }),
@@ -1679,6 +1685,8 @@ test('mobile harvest quotes and sends one departure, stays in Galaxy and reserve
   await expect(sheet).not.toBeVisible()
   await expect(page).toHaveURL(/\/galaxy$/)
   expect(launches).toBe(1)
+  await expect(page.getByLabel('Recent game events').getByRole('button', { name: /Fleet dispatched/ })).toContainText('2 fleet slots available')
+  await diagnosticScreenshot(page, { path: 'test-results/live-hud/fleet-390x844.png' })
   await expect(page.getByRole('button', { name: 'Fleet slots: 1 used / 3 total', exact: true })).toBeVisible()
   const reopened = await openHarvest(page)
   await expect(reopened.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('2')
