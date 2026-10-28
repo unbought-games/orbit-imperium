@@ -24,7 +24,7 @@ make dev
 make dev-reset
 ```
 
-Planet names are labels. Select planets only by galaxy:system:position; select players by username. Catalog names are case-insensitive. `show` lists coordinates, owners, catalog vocabulary, and queues. Output is JSON for scripts and agents.
+Planet names are labels. Select planets only by galaxy:system:position; select players by username. On fleet commands, optional `--user` selects the sender and checks ownership of `--from`, not the destination. Catalog names are case-insensitive. `show` lists coordinates, owners, catalog vocabulary, and queues. Output is JSON for scripts and agents.
 
 Edits bypass gameplay payment and waiting but maintain the game records together. Creating queues grants the paid work; cancellation refunds their recorded value. Missions consume the selected stationed ships and cargo, carry their existing valuation, and run through ordinary arrival/combat/return processing; the operator may override timing. Report examples do not alter inventories or battle outcomes. `set` changes only listed items. `give` adds to existing amounts. Editing an active building or research operation requires finishing or clearing it first.
 

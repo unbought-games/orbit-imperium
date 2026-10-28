@@ -178,9 +178,22 @@ pub fn edit_world(
     edit: &WorldEdit,
     owner: Option<PlayerId>,
 ) -> EditResult<ChangeSet> {
+    let op = edit.op.to_ascii_lowercase();
+    if matches!(op.as_str(), "attack" | "spy" | "transport") {
+        let source = edit
+            .from
+            .as_deref()
+            .ok_or("mission requires from coordinates")?;
+        let origin = planet_id(state, source)?;
+        if owner.is_some_and(|p| state.bodies[&origin].owner != p) {
+            return Err(format!(
+                "origin planet {source} does not belong to the selected user"
+            ));
+        }
+        return events::mission(state, rules, input, edit);
+    }
     let mut next = state.clone();
     let mut change = ChangeSet::new(state, input, rules);
-    let op = edit.op.to_ascii_lowercase();
     let ids = if matches!(op.as_str(), "add-planet" | "debris") {
         vec![]
     } else if let Some(label) = &edit.planet {
@@ -253,7 +266,6 @@ pub fn edit_world(
                 policy.revision += 1;
             }
         }
-        "attack" | "spy" | "transport" => return events::mission(state, rules, input, edit),
         "finish" | "clear" | "queue" => {
             return events::queues(state, rules, input, edit, &ids, owner);
         }

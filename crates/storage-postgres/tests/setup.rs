@@ -241,3 +241,26 @@ async fn failed_naming_rolls_back_the_entire_world_and_can_be_retried() {
         "Friends"
     );
 }
+
+#[tokio::test]
+async fn setup_waits_for_creation_contention_without_a_sql_lock_timeout_failure() {
+    let (store, pool) = fresh().await;
+    let mut creator = pool.begin().await.unwrap();
+    sqlx::query("LOCK TABLE universes IN SHARE ROW EXCLUSIVE MODE")
+        .execute(&mut *creator)
+        .await
+        .unwrap();
+    let setup = tokio::spawn(async move { store.setup_universe(&UniverseSetup::default()).await });
+    // This is a functional contention fixture, deliberately longer than the
+    // 250 ms per-query lock timeout. The caller must still be waiting, not fail.
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    assert!(!setup.is_finished());
+    creator.commit().await.unwrap();
+    let outcome = setup.await.unwrap().unwrap();
+    assert_eq!(outcome.status, "created");
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM universes")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+}

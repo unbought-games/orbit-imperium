@@ -15,7 +15,7 @@ Use `./orbit world scenario apply edits.json` to apply a handwritten batch to th
 }
 ```
 
-Planets are always coordinates. Users are usernames in the selected universe. On a planet edit, `user` asserts ownership. `all_planets: true` requires a user and cannot accompany planet coordinates. `set` assigns absolute values; `give` adds. Resource amounts are whole game units. Catalog identifiers and operation names are case-insensitive. Duplicate catalog spellings, including case variants, fail. Names, passwords, and message text retain their case.
+Planets are always coordinates. Users are usernames in the selected universe. On a planet edit, `user` asserts ownership. For `attack`, `spy`, and `transport`, it asserts ownership of the `from` planet; the destination may belong to another user. `all_planets: true` requires a user and cannot accompany planet coordinates. `set` assigns absolute values; `give` adds. Resource amounts are whole game units. Catalog identifiers and operation names are case-insensitive. Duplicate catalog spellings, including case variants, fail. Names, passwords, and message text retain their case.
 
 Every command is represented by an edit: `set`, `give`, `add-player`, `add-bot`, `add-planet`, `queue`, `finish`, `clear`, `attack`, `spy`, `transport`, `debris`, `report`, `message`, and `alliance`. Run `./orbit world --help` for arguments. `queue` takes exactly one building/research next level or ship/defense quantity. `arrives_in` is a positive duration ending in `ms`, `s`, `m`, `h`, or `d`; for manufacturing it is the per-unit duration. `finish` and `clear` operate on queues at a planet or across an explicitly selected user.
 

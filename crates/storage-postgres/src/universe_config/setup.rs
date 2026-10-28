@@ -13,14 +13,42 @@ impl PgStore {
     /// Migrations are performed by the caller before this atomic first-world operation.
     pub async fn setup_universe(&self, request: &UniverseSetup) -> Result<SetupOutcome, String> {
         request.validate()?;
-        let mut tx = self.config_tx().await.map_err(operator_error)?;
-        // Also serializes with universe create/update, which need not know about setup.
-        // Ordinary reads continue; no permanent setup marker or copied state is needed.
-        sqlx::query("LOCK TABLE universes IN SHARE ROW EXCLUSIVE MODE")
-            .execute(&mut *tx)
-            .await
-            .map_err(db_error)
-            .map_err(operator_error)?;
+        let creation = request.creation(
+            request
+                .universe
+                .unwrap_or_else(|| UniverseId(Uuid::new_v4())),
+        );
+        // Rule assembly/validation is CPU work, not database work. In particular,
+        // a second first-run caller must not spend its lock budget waiting for it.
+        let prepared_rules =
+            standard_signup_rules(creation.immutable.profile()?, creation.immutable.speed)
+                .map_err(|error| format!("immutable: {error}"))?;
+        // A peer may be performing first-world inserts. Do not hold a pool
+        // connection or spend a SQL lock timeout waiting for that whole workflow.
+        // Only this known lock conflict is retryable; all other errors propagate.
+        let wait_until = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+        let mut tx = loop {
+            let mut candidate = self.config_tx().await.map_err(operator_error)?;
+            match sqlx::query("LOCK TABLE universes IN SHARE ROW EXCLUSIVE MODE NOWAIT")
+                .execute(&mut *candidate)
+                .await
+            {
+                Ok(_) => break candidate,
+                Err(error)
+                    if error.as_database_error().and_then(|e| e.code()).as_deref()
+                        == Some("55P03")
+                        && tokio::time::Instant::now() < wait_until =>
+                {
+                    candidate
+                        .rollback()
+                        .await
+                        .map_err(db_error)
+                        .map_err(operator_error)?;
+                    tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+                }
+                Err(error) => return Err(operator_error(db_error(error))),
+            }
+        };
         let worlds: Vec<(Uuid, String)> =
             sqlx::query_as("SELECT id,name FROM universes ORDER BY id")
                 .fetch_all(&mut *tx)
@@ -50,10 +78,8 @@ impl PgStore {
             if !worlds.is_empty() {
                 return Err("requested universe does not exist in this nonempty database; inspect universe list, or use universe create explicitly for additional worlds".into());
             }
-            let universe = request
-                .universe
-                .unwrap_or_else(|| UniverseId(Uuid::new_v4()));
-            let configuration = create_in_tx(&mut tx, &request.creation(universe)).await?;
+            let universe = creation.universe;
+            let configuration = create_prepared_in_tx(&mut tx, &creation, &prepared_rules).await?;
             if let Some(name) = &request.name {
                 sqlx::query("UPDATE universes SET name=$2 WHERE id=$1")
                     .bind(universe.0)

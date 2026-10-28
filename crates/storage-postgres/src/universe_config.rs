@@ -317,7 +317,17 @@ pub(crate) async fn create_in_tx(
     request.validate()?;
     let rules = standard_signup_rules(request.immutable.profile()?, request.immutable.speed)
         .map_err(|e| format!("immutable: {e}"))?;
-    crate::enrollment::provision(tx, request.universe, &rules)
+    create_prepared_in_tx(tx, request, &rules).await
+}
+
+/// The creation caller may prepare release content before taking its serialization lock.
+async fn create_prepared_in_tx(
+    tx: &mut Tx<'_>,
+    request: &UniverseCreate,
+    rules: &orbit_engine::Ruleset,
+) -> Result<UniverseConfigDocument, String> {
+    request.validate()?;
+    crate::enrollment::provision(tx, request.universe, rules)
         .await
         .map_err(operator_error)?;
     let document = UniverseConfigDocument {

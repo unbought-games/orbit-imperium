@@ -339,3 +339,61 @@ async fn concurrent_multi_user_edits_publish_normal_updates() {
     let preserved = store.inspect_world(u, Some("bob"), None).await.unwrap();
     assert_eq!(preserved["players"][0]["research"]["Astrophysics"], 3);
 }
+
+#[tokio::test]
+async fn mission_user_selects_sender_for_cross_user_batches() {
+    let (store, pool) = fresh().await;
+    let u = UniverseId(Uuid::new_v4());
+    let setup = document(json!([
+        {"op":"add-player","user":"alice","password":"password","planet":"1:1:8"},
+        {"op":"add-player","user":"bob","password":"password","planet":"1:2:8"},
+        {"op":"set","user":"alice","planet":"1:1:8","ships":{"lightfighter":3,"espionageprobe":3,"smallcargo":3}}
+    ]));
+    store
+        .apply_world_scenario(u, &setup, ScenarioMode::Create, Uuid::new_v4())
+        .await
+        .unwrap();
+    for op in ["attack", "spy", "transport"] {
+        let wrong = document(
+            json!([{"op":op,"user":"bob","from":"1:1:8","planet":"1:2:8","arrives_in":"30s"}]),
+        );
+        let error = store
+            .apply_world_scenario(u, &wrong, ScenarioMode::Patch, Uuid::new_v4())
+            .await
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("origin planet 1:1:8 does not belong"),
+            "{error}"
+        );
+    }
+    let fleet_count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM mission_fleets WHERE universe=$1")
+            .bind(u.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        fleet_count, 0,
+        "wrong-origin user must not launch any fleet"
+    );
+    let missions = document(json!([
+        {"op":"attack","user":"alice","from":"1:1:8","planet":"1:2:8","arrives_in":"30s"},
+        {"op":"spy","user":"alice","from":"1:1:8","planet":"1:2:8","arrives_in":"30s"},
+        {"op":"transport","user":"alice","from":"1:1:8","planet":"1:2:8","arrives_in":"30s","resources":{"metal":10}}
+    ]));
+    store
+        .apply_world_scenario(u, &missions, ScenarioMode::Patch, Uuid::new_v4())
+        .await
+        .unwrap();
+    let fleets:Vec<(String,String,String)>=sqlx::query_as("SELECT sender.name,target.name,f.data->'intent'->>'mission' FROM mission_fleets f JOIN universe_memberships sm ON sm.universe=f.universe AND sm.player=f.owner JOIN accounts sender ON sender.id=sm.account JOIN universe_memberships tm ON tm.universe=f.universe AND tm.player=(f.data->'intent'->'destination'->>'expected_owner')::uuid JOIN accounts target ON target.id=tm.account WHERE f.universe=$1 ORDER BY f.data->'intent'->>'mission'").bind(u.0).fetch_all(&pool).await.unwrap();
+    assert_eq!(
+        fleets,
+        vec![
+            ("alice".into(), "bob".into(), "Attack".into()),
+            ("alice".into(), "bob".into(), "Espionage".into()),
+            ("alice".into(), "bob".into(), "Transport".into())
+        ]
+    );
+}
