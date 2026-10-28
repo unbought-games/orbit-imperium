@@ -46,7 +46,8 @@ customized profiles, research costs, prerequisites and intentionally disabled
 content. Use export/diff/apply for reviewed custom activation. Retained artifacts
 omit the optional profile, preserving their serialization and hashes.
 
-To stop new research, disable the Drive catalog entry while retaining its
+To stop new research, disable the Drive and dependent Battleship construction
+catalog entries while retaining the Drive's
 research definition, earned levels and Bomber profile. Paid work keeps its original
 terms; cancellation refunds the original payment. Disabling research does not
 remove earned speed. Disabling Hyperspace Technology also requires disabling its
