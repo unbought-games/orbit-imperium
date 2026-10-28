@@ -186,7 +186,12 @@ async function setup(
       )
       await route.fulfill({
         json: {
-          ...bound(context.request_id, null),
+          protocol: 4,
+          binding,
+          request_id: context.request_id,
+          viewer_revision: '1',
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
           request,
           terms: {
             type: 'Research',
@@ -539,6 +544,9 @@ for (const width of [390, 1440]) {
       await page.goto(`/u/andromeda/b/${body.id}/research/${slug}`)
       const pane = page.getByRole('region', { name: 'Progression quote' })
       await expect(pane).toContainText('Battlecruisers')
+      await expect(
+        pane.getByRole('button', { name: 'Confirm research', exact: true }),
+      ).toBeEnabled()
       await pane.getByText('Technical data', { exact: true }).click()
       await expect(
         pane.getByRole('link', { name: /Battlecruiser/ }),
