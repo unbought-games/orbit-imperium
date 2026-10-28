@@ -51,6 +51,12 @@ async function setup(
                 {
                   label: 'Base speed',
                   fraction: ['3', '10'],
+                  subject: { kind: 'Ship', id: 'Battlecruiser' },
+                  condition: null,
+                },
+                {
+                  label: 'Base speed',
+                  fraction: ['3', '10'],
                   subject: { kind: 'Ship', id: 'Battleship' },
                   condition: null,
                 },
@@ -104,41 +110,49 @@ async function setup(
                 ),
               ).requirements,
             }
-          : entry.key.id === 'Battleship'
+          : entry.key.id === 'Battlecruiser'
             ? {
                 ...entry,
                 enabled,
                 requirements: JSON.parse(
-                  readFileSync('rules/content/battleship.json', 'utf8'),
+                  readFileSync('rules/content/battlecruiser.json', 'utf8'),
                 ).requirements,
               }
-            : entry.key.id === 'Destroyer'
+            : entry.key.id === 'Battleship'
               ? {
                   ...entry,
                   enabled,
                   requirements: JSON.parse(
-                    readFileSync('rules/content/destroyer.json', 'utf8'),
+                    readFileSync('rules/content/battleship.json', 'utf8'),
                   ).requirements,
                 }
-              : entry.key.id === 'ImpulseDrive'
+              : entry.key.id === 'Destroyer'
                 ? {
                     ...entry,
-                    technical_data: {
-                      bonuses: [
-                        {
-                          label: 'Base speed',
-                          fraction: ['1', '5'],
-                          subject: { kind: 'Ship', id: 'Bomber' },
-                          condition:
-                            'Replaced when Hyperspace Drive reaches level 8.',
-                        },
-                      ],
-                      facts: [],
-                      storage_capacities: null,
-                      combat: null,
-                    },
+                    enabled,
+                    requirements: JSON.parse(
+                      readFileSync('rules/content/destroyer.json', 'utf8'),
+                    ).requirements,
                   }
-                : entry,
+                : entry.key.id === 'ImpulseDrive'
+                  ? {
+                      ...entry,
+                      technical_data: {
+                        bonuses: [
+                          {
+                            label: 'Base speed',
+                            fraction: ['1', '5'],
+                            subject: { kind: 'Ship', id: 'Bomber' },
+                            condition:
+                              'Replaced when Hyperspace Drive reaches level 8.',
+                          },
+                        ],
+                        facts: [],
+                        storage_capacities: null,
+                        combat: null,
+                      },
+                    }
+                  : entry,
     ),
     research: [
       { research, level: 0 },

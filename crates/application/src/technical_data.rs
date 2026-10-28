@@ -227,8 +227,12 @@ mod tests {
     fn hyperspace_drive_bonus_and_impulse_replacement_condition_follow_active_rules() {
         let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap();
         let drive = data(&r, CatalogKey::Research(ResearchId::HyperspaceDrive));
-        assert_eq!(drive.bonuses.len(), 3);
-        for ship in [ShipType::Battleship, ShipType::Destroyer] {
+        assert_eq!(drive.bonuses.len(), 4);
+        for ship in [
+            ShipType::Battleship,
+            ShipType::Battlecruiser,
+            ShipType::Destroyer,
+        ] {
             let bonus = drive
                 .bonuses
                 .iter()

@@ -35,7 +35,7 @@ Plasma Technology. The current development bundle also includes
 [Plasma Turrets](plasma-turret.md), requiring Shipyard 8 and Plasma Technology 7.
 [Destroyers](destroyer.md) require Shipyard 9, Hyperspace Technology 5 and
 Hyperspace Drive 6. They use native Hyperspace propulsion and rapid fire against
-Light Lasers, Espionage Probes and Solar Satellites.
+Light Lasers, Battlecruisers, Espionage Probes and Solar Satellites.
 [Bombers](bomber.md) require Shipyard 8, Impulse Drive 6 and Plasma Technology 5;
 they use Impulse propulsion until the Hyperspace Drive 8 switch. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
 including fuel-aware production and level-zero initialization. The original signup
@@ -287,3 +287,6 @@ In scoped mode, `rules apply` durably queues a global boundary. Earlier conflict
 If observation lasts longer than 30 seconds, the CLI reports a durable pending activation ID. The activation remains queued and workers continue it. Retrying the same file observes the same request; do not interpret a disconnected/pending CLI as cancellation. A different proposal cannot replace a pending boundary. Serial/preparing mode retains the older idle-boundary behavior until activation.
 
 Process restarts do not need a gameplay audit or a caught-up simulation. Private lag metrics and blocked-scope diagnostics are operational signals, not readiness failures for an otherwise compatible API. Unsupported vocabulary still stops an incompatible process locally.
+
+[Battlecruisers](battlecruiser.md) use the same standard upgrade path, with existing
+Laser and Hyperspace research prerequisites and no inventory backfill.

@@ -20,7 +20,7 @@ propulsion, combat and rapid fire. Values follow the private reference archive's
 | Base speed | 5,000; Hyperspace Drive adds 30% of base per completed level |
 | Speed at Hyperspace Drive 6 | 14,000 |
 | Fuel coefficient | 1,000; actual fuel depends on the flight |
-| Rapid fire | Light Lasers 10; Espionage Probes and Solar Satellites 5 |
+| Rapid fire | Light Lasers 10; Battlecruisers 2; Espionage Probes and Solar Satellites 5 |
 
 This is native Hyperspace propulsion with no drive switch. Impulse, Combustion
 and Hyperspace Technology levels do not add speed. Hull derives from metal plus
@@ -28,8 +28,8 @@ crystal cost; Weapons, Shielding and Armour apply the usual combat bonuses.
 At Shipyard 9, no Nanite Factory and economy speed 5, one Destroyer takes 3,168
 seconds. Deuterium is charged but does not add manufacturing time.
 
-The reference's Destroyer → Battlecruiser factor 2 and Dreadnought → Destroyer
-factor 5 remain deferred until those ships are supported. No unrelated ships,
+The reference's Destroyer → Battlecruiser factor 2 is active. Dreadnought →
+Destroyer factor 5 remains deferred until Dreadnoughts are supported. No unrelated ships,
 missions or combat bonuses are enabled by this addition.
 
 ## Activation and retained work

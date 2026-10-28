@@ -101,7 +101,7 @@ async fn destroyers_activate_build_and_finish_after_disable_and_restart_in_both_
             ),
             ("200000000", "50000000", "1100000000")
         );
-        assert_eq!(stats.rapid_fire_against.len(), 3);
+        assert_eq!(stats.rapid_fire_against.len(), 4);
         assert!(stats.rapid_fire_from.is_empty());
         let propulsion = entry
             .ship_statistics

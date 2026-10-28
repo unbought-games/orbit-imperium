@@ -77,6 +77,17 @@
         "id": "SolarSatellite"
       },
       "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "factor": 2
     }
   ]
 }

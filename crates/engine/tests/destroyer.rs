@@ -43,7 +43,7 @@ fn destroyer_uses_only_completed_hyperspace_drive_levels() {
 }
 
 #[test]
-fn destroyer_combat_derives_stats_and_applies_only_its_three_rapid_fire_pairs() {
+fn destroyer_combat_derives_stats_and_applies_only_its_four_rapid_fire_pairs() {
     let r = rules();
     let mut combat = r.artifact.world.as_ref().unwrap().combat.clone();
     combat.max_rounds = 1;
@@ -62,6 +62,7 @@ fn destroyer_combat_derives_stats_and_applies_only_its_three_rapid_fire_pairs() 
         let factor = match target {
             ManufacturedItem::Defense(DefenseId::LightLaser) => 10,
             ManufacturedItem::Ship(ShipType::EspionageProbe | ShipType::SolarSatellite) => 5,
+            ManufacturedItem::Ship(ShipType::Battlecruiser) => 2,
             _ => 1,
         };
         assert_eq!(

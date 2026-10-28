@@ -56,6 +56,15 @@ for (const [id, file] of [
     readFileSync(`rules/content/${file}.json`, 'utf8'),
   ).requirements
 }
+for (const [id, file] of [
+  ['Battleship', 'battleship'],
+  ['Battlecruiser', 'battlecruiser'],
+] as const) {
+  const entry = catalog.find((e) => e.key.id === id)!
+  const content = JSON.parse(readFileSync(`rules/content/${file}.json`, 'utf8'))
+  entry.enabled = true
+  entry.requirements = content.requirements
+}
 const bound = (request_id: string, data: unknown) => ({
   protocol: 4,
   binding,

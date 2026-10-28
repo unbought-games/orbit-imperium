@@ -8,7 +8,11 @@ fn rules() -> Ruleset {
 fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_legacy_hash() {
     let latest = rules();
     let mut artifact = latest.artifact.clone();
-    for ship in [ShipType::Battleship, ShipType::Destroyer] {
+    for ship in [
+        ShipType::Battleship,
+        ShipType::Battlecruiser,
+        ShipType::Destroyer,
+    ] {
         artifact.ships.remove(&ship);
         let item = ManufacturedItem::Ship(ship);
         artifact
@@ -74,13 +78,17 @@ fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_lega
     combat.units.retain(|u| {
         !matches!(
             u.item,
-            ManufacturedItem::Ship(ShipType::Battleship | ShipType::Destroyer)
+            ManufacturedItem::Ship(
+                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
+            )
         )
     });
     combat.rapid_fire.retain(|rf| {
         !matches!(
             rf.shooter,
-            ManufacturedItem::Ship(ShipType::Battleship | ShipType::Destroyer)
+            ManufacturedItem::Ship(
+                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
+            )
         )
     });
     assert_eq!(previous.artifact.world, retained_world);
@@ -162,6 +170,11 @@ fn hyperspace_rules_reject_incomplete_unsupported_and_invalid_switches() {
     a.catalog
         .iter_mut()
         .find(|e| e.key == CatalogKey::Ship(ShipType::Battleship))
+        .unwrap()
+        .enabled = false;
+    a.catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Ship(ShipType::Battlecruiser))
         .unwrap()
         .enabled = false;
     let disabled = Ruleset::from_artifact(a, latest.speed).unwrap();

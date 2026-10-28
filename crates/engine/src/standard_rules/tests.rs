@@ -58,6 +58,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Ship(ShipType::LargeCargo),
             CatalogKey::Ship(ShipType::Bomber),
             CatalogKey::Ship(ShipType::Battleship),
+            CatalogKey::Ship(ShipType::Battlecruiser),
             CatalogKey::Ship(ShipType::Destroyer),
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
@@ -355,7 +356,12 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
     let latest = standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 5).unwrap();
     // Reconstruct a world from before Plasma and its dependent units were bundled.
     let mut artifact = latest.artifact.clone();
-    for ship in [ShipType::Bomber, ShipType::Battleship, ShipType::Destroyer] {
+    for ship in [
+        ShipType::Bomber,
+        ShipType::Battleship,
+        ShipType::Battlecruiser,
+        ShipType::Destroyer,
+    ] {
         let item = ManufacturedItem::Ship(ship);
         artifact.ships.remove(&ship);
         artifact
@@ -419,7 +425,12 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
     assert!(delta.add_buildings.is_empty());
     let mut artifact = next.artifact.clone();
     let bomber = ManufacturedItem::Ship(ShipType::Bomber);
-    for ship in [ShipType::Bomber, ShipType::Battleship, ShipType::Destroyer] {
+    for ship in [
+        ShipType::Bomber,
+        ShipType::Battleship,
+        ShipType::Battlecruiser,
+        ShipType::Destroyer,
+    ] {
         let item = ManufacturedItem::Ship(ship);
         artifact.ships.remove(&ship);
         artifact
@@ -626,7 +637,11 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
     let latest = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
     let key = CatalogKey::Research(ResearchId::HyperspaceTechnology);
     let mut artifact = latest.artifact.clone();
-    for ship in [ShipType::Battleship, ShipType::Destroyer] {
+    for ship in [
+        ShipType::Battleship,
+        ShipType::Battlecruiser,
+        ShipType::Destroyer,
+    ] {
         artifact.ships.remove(&ship);
         let item = ManufacturedItem::Ship(ship);
         artifact
@@ -691,6 +706,7 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
     let mut ships = next.artifact.ships.clone();
     ships.remove(&ShipType::Destroyer);
     ships.remove(&ShipType::Battleship);
+    ships.remove(&ShipType::Battlecruiser);
     ships.get_mut(&ShipType::Bomber).unwrap().hyperspace_drive = None;
     assert_eq!(ships, previous.artifact.ships);
     let mut retained_world = next.artifact.world.clone();
@@ -698,13 +714,17 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
     combat.units.retain(|u| {
         !matches!(
             u.item,
-            ManufacturedItem::Ship(ShipType::Battleship | ShipType::Destroyer)
+            ManufacturedItem::Ship(
+                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
+            )
         )
     });
     combat.rapid_fire.retain(|rf| {
         !matches!(
             rf.shooter,
-            ManufacturedItem::Ship(ShipType::Battleship | ShipType::Destroyer)
+            ManufacturedItem::Ship(
+                ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer
+            )
         )
     });
     assert_eq!(retained_world, previous.artifact.world);
@@ -736,6 +756,12 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
                     .catalog
                     .iter_mut()
                     .find(|e| e.key == CatalogKey::Ship(ShipType::Battleship))
+                    .unwrap()
+                    .enabled = false;
+                artifact
+                    .catalog
+                    .iter_mut()
+                    .find(|e| e.key == CatalogKey::Ship(ShipType::Battlecruiser))
                     .unwrap()
                     .enabled = false;
                 artifact

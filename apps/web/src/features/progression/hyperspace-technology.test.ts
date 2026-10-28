@@ -48,6 +48,9 @@ it('uses existing artwork and explains the standard unlocks and lack of per-leve
   )
   expect(details.description).toContain('Unlocks Hyperspace Drive at level 3')
   expect(details.description).toContain('Unlocks Destroyers at level 5')
+  expect(details.description).toContain(
+    'Level 5 is required for Battlecruisers',
+  )
   expect(technicalUnlocks(hyperspace, [hyperspace], 'Planet')).toEqual([])
 })
 

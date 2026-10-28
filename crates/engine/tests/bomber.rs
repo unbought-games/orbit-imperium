@@ -148,7 +148,12 @@ fn bomber_manufacturing_charges_all_resources_but_times_only_metal_and_crystal()
 fn bomber_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
     let mut previous = latest.artifact.clone();
-    for ship in [ShipType::Bomber, ShipType::Battleship, ShipType::Destroyer] {
+    for ship in [
+        ShipType::Bomber,
+        ShipType::Battleship,
+        ShipType::Battlecruiser,
+        ShipType::Destroyer,
+    ] {
         let item = ManufacturedItem::Ship(ship);
         previous.ships.remove(&ship);
         previous

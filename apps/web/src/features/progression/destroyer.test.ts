@@ -40,5 +40,5 @@ it('uses the existing Destroyer art and explains native hyperspace propulsion', 
   expect(content.art.src).toBe('/art/atlas/objects/destroyer-1200.webp')
   expect(content.description).toContain('powered by Hyperspace Drive')
   expect(content.description).toContain('shared by resources and mission fuel')
-  expect(content.description).not.toContain('Battlecruiser')
+  expect(content.description).toContain('Battlecruiser')
 })
