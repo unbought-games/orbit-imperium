@@ -207,6 +207,26 @@ for (const mode of modes) {
         page.getByRole('tooltip').getByText(/Used slots out of/),
         false,
       )
+      if (mode.width < 768) {
+        const orb = page.getByRole('button', { name: /Open command HUD/ })
+        if (mode.touch) await selectionIs(orb, true)
+        await selectionIs(
+          page.getByLabel('Fleet slots: 0 used of 1', { exact: true }),
+          mode.touch,
+        )
+        await orb.click()
+        const panel = page.getByRole('dialog', {
+          name: 'Command uplink',
+          exact: true,
+        })
+        await selectionIs(
+          panel.getByRole('heading', { name: 'Command uplink', exact: true }),
+          false,
+        )
+        await page
+          .getByRole('button', { name: 'Close command HUD', exact: true })
+          .click()
+      }
     })
   })
 }
@@ -220,6 +240,7 @@ for (const touch of [true, false]) {
       test.use({
         hasTouch: touch,
         isMobile: touch,
+        reducedMotion: 'reduce',
         viewport: { width: touch ? 390 : 1440, height: 900 },
       })
 
@@ -256,6 +277,21 @@ for (const touch of [true, false]) {
         await page
           .getByRole('button', { name: 'Close menu', exact: true })
           .click()
+        if (touch) {
+          await page.getByRole('button', { name: /Open command HUD/ }).click()
+          await expect(
+            page.getByRole('dialog', { name: 'Command uplink', exact: true }),
+          ).toBeVisible()
+          await capture(page, 'command-hud')
+          await page
+            .getByRole('button', { name: 'Close command HUD', exact: true })
+            .click()
+        } else {
+          await expect(
+            page.getByRole('button', { name: /Open command HUD/ }),
+          ).toHaveCount(0)
+          await capture(page, 'command-hud')
+        }
         for (const screen of [
           'resources',
           'facilities',
