@@ -270,6 +270,101 @@ for (const touch of [true, false]) {
         viewport: { width: touch ? 390 : 1440, height: 900 },
       })
 
+      test('mixed navigation content and public links retain native selection', async ({
+        page,
+      }) => {
+        await shellFixture(page, { protocol: 4 })
+        await page.route('**/rankings', (route) => {
+          const context = route.request().postDataJSON()
+          return route.fulfill({
+            json: {
+              binding,
+              request_id: context.request_id,
+              sampled_at: 1792843200000,
+              processing_pending: false,
+              players: [
+                {
+                  player: binding.player,
+                  username: 'Copyable Commander',
+                  points: '1000',
+                  rank: 1,
+                },
+              ],
+            },
+          })
+        })
+        await page.goto(`/u/andromeda/high-scores?body=${body.id}`)
+        const rankingPages = page.getByRole('navigation', {
+          name: 'Ranking pages',
+          exact: true,
+        })
+        const range = rankingPages.getByRole('status')
+        await expect(range).toHaveText('1–1 of 1')
+        await selectionIs(range, false)
+        if (touch)
+          await selectionIs(
+            rankingPages.getByRole('button', { name: 'Next', exact: true }),
+            true,
+          )
+        await capture(page, 'ranking-navigation')
+
+        await page.route('**/alliances/query', (route) => {
+          const { context } = route.request().postDataJSON()
+          return route.fulfill({
+            json: {
+              ...context,
+              sampled_at: 1792843200000,
+              directory: [],
+              directory_count: 0,
+              alliance: null,
+              applications: [],
+            },
+          })
+        })
+        await page.goto('/u/andromeda/alliance')
+        const alliancePages = page.getByRole('navigation', {
+          name: 'Alliance directory pages',
+          exact: true,
+        })
+        await selectionIs(
+          alliancePages.getByText('0 alliances', { exact: true }),
+          false,
+        )
+        if (touch)
+          await selectionIs(
+            alliancePages.getByRole('button', {
+              name: 'More alliances',
+              exact: true,
+            }),
+            true,
+          )
+        await capture(page, 'alliance-navigation')
+
+        await page.route('**/api/v1/bootstrap', (route) =>
+          route.fulfill({
+            json: {
+              version: 1,
+              signup_enabled: true,
+              result: { status: 'anonymous' },
+            },
+          }),
+        )
+        await page.route('**/api/auth/config', (route) =>
+          route.fulfill({ json: { mode: 'local', universes: [] } }),
+        )
+        await page.goto('/signup')
+        const support = page
+          .getByRole('navigation', {
+            name: 'Policies and support',
+            exact: true,
+          })
+          .getByRole('link', { name: 'Support', exact: true })
+        await selectionIs(support, false)
+        await expect(support).not.toHaveCSS('-webkit-touch-callout', 'none')
+        await support.scrollIntoViewIfNeeded()
+        await capture(page, 'public-policy')
+      })
+
       test('game screens and popup content retain their intended selection behavior', async ({
         page,
       }) => {

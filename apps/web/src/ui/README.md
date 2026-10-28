@@ -35,17 +35,20 @@ Use native browser links for external destinations and same-page non-navigation 
 ## Editorial game shell
 
 On touch devices with a coarse primary pointer and no hover, native buttons,
-selects, disclosure summaries, navigation, and ARIA action/menu controls suppress
-text selection and iOS long-press callouts. Shared linked controls, catalog cards,
-and decorative game art opt in with `data-touch-control`. Use that attribute for
-new control surfaces, rather than disabling selection on entire screens or all
-links. Content remains selectable by default: descriptions, reports, messages,
+selects, disclosure summaries, and ARIA action/menu controls suppress text
+selection and iOS long-press callouts. Shared linked controls, game navigation
+chrome, catalog cards, and decorative game art opt in with `data-touch-control`.
+Use that attribute for new control surfaces, rather than disabling selection on
+entire screens or all links. Content remains selectable by default: descriptions,
+reports, messages,
 help, errors, identities, and ordinary coordinate links. Inputs, textareas, and
 editable elements explicitly retain selection and native copy/paste menus;
 `data-touch-selectable` does the same for copyable content nested in chrome.
 Keep explanatory popup/dialog bodies outside an opted-in control container.
 The policy lives in `style.css` and applies in mobile browsers and installed apps;
 viewport width alone never disables desktop selection.
+Do not target `nav` generically: ranking ranges, alliance counts, and public
+policy/support links retain native selection and link callouts.
 
 The shell uses a compact horizontal masthead and ledger, with four stable anchors: Empire, Develop, Fleet, Menu. Develop defaults to Resources and exposes the five implemented build destinations in secondary navigation. Fleet groups activity and Dispatch. The grouped modal Menu contains real implemented destinations only, with capability-unavailable entries disabled. At phone sizes the same anchors form the safe-area-aware thumb dock. There are no permanent desktop rails or in-game footer.
 
