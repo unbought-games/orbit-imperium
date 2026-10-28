@@ -38,20 +38,21 @@ export function comparisonStats(
   const p = stats?.propulsion
   const c = stats?.combat
   const level = (id: string) => research.find((r) => r.research === id)?.level
-  const impulse = level('ImpulseDrive')
+  const replacement = p?.hyperspace_upgrade
+    ? { drive: 'HyperspaceDrive' as const, ...p.hyperspace_upgrade }
+    : p?.impulse_upgrade
+      ? { drive: 'ImpulseDrive' as const, ...p.impulse_upgrade }
+      : undefined
+  const completed = replacement ? level(replacement.drive) : undefined
   const knownProfile =
-    mode === 'base' || !p?.impulse_upgrade || impulse !== undefined
+    mode === 'base' || !replacement || completed !== undefined
   const upgraded =
     mode === 'current' &&
-    p?.impulse_upgrade &&
-    impulse !== undefined &&
-    impulse >= p.impulse_upgrade.minimum_level
-  const profile = upgraded ? p.impulse_upgrade : p
-  const drive = knownProfile
-    ? upgraded
-      ? 'ImpulseDrive'
-      : p?.drive
-    : undefined
+    replacement &&
+    completed !== undefined &&
+    completed >= replacement.minimum_level
+  const profile = upgraded ? replacement : p
+  const drive = knownProfile ? profile?.drive : undefined
   return {
     stationary: entry.key.id === 'SolarSatellite' && !entry.mobile,
     cost: stats?.cost,

@@ -38,7 +38,7 @@ const content: Record<string, string> = {
   Cruiser:
     'A fast impulse-powered combat ship with rapid fire against Light Fighters, Rocket Launchers and Espionage Probes. Cargo capacity is shared by resources and mission fuel.',
   Bomber:
-    'An impulse-powered siege ship with rapid fire against Rocket Launchers, Light Lasers, Heavy Lasers, Ion Cannons, Espionage Probes and Solar Satellites. Requires Shipyard 8, Impulse Drive 6 and Plasma Technology 5. Cargo capacity is shared by resources and mission fuel. Uses Impulse Drive at every research level; no Hyperspace upgrade is available.',
+    'An impulse-powered siege ship with rapid fire against Rocket Launchers, Light Lasers, Heavy Lasers, Ion Cannons, Espionage Probes and Solar Satellites. Cargo capacity is shared by resources and mission fuel. Uses Impulse Drive until the Hyperspace Drive level 8 upgrade in the standard rules; see technical statistics for this universe’s propulsion profiles.',
   Recycler: 'Collects metal and crystal from debris fields.',
   EspionageProbe:
     'Gathers intelligence about another planet on an espionage mission.',
@@ -64,8 +64,10 @@ const content: Record<string, string> = {
     'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Level 5 is required for Plasma Technology. Ion research does not improve combat stats or reduce demolition costs.',
   PlasmaTechnology:
     'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 and Bombers at level 5 with Shipyard 8 in the standard rules. Bombers also require Impulse Drive 6. Provides no per-level production or combat bonuses.',
+  HyperspaceDrive:
+    'At level 8, Bombers switch to a 5,000 base speed with a 30% speed bonus per completed Hyperspace Drive level in the standard rules. The bonus adds to base speed and replaces Impulse propulsion. Base fuel consumption remains 1,000 deuterium.',
   HyperspaceTechnology:
-    'Establishes the foundation for future hyperspace systems. Provides no per-level cargo, speed, combat or production bonuses. Hyperspace Drive and other dependent systems are unavailable; higher levels currently provide no additional benefit.',
+    'Unlocks Hyperspace Drive at level 3 in the standard rules. Provides no per-level cargo, speed, combat or production bonuses. Higher levels currently unlock no additional content in the standard rules.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',

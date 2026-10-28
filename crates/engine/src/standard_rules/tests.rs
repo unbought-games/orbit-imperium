@@ -615,7 +615,7 @@ fn plasma_turret_upgrade_owns_complete_definitions_and_rejects_customizations() 
 }
 
 #[test]
-fn hyperspace_upgrade_initializes_only_technology_and_preserves_customizations() {
+fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizations() {
     let latest = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
     let key = CatalogKey::Research(ResearchId::HyperspaceTechnology);
     let mut artifact = latest.artifact.clone();
@@ -628,17 +628,43 @@ fn hyperspace_upgrade_initializes_only_technology_and_preserves_customizations()
     let entry = artifact.catalog.iter_mut().find(|e| e.key == key).unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .remove(&ResearchId::HyperspaceDrive);
+    let drive = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
+        .unwrap();
+    drive.enabled = false;
+    drive.requirements.clear();
+    artifact
+        .ships
+        .get_mut(&ShipType::Bomber)
+        .unwrap()
+        .hyperspace_drive = None;
     let previous = Ruleset::from_artifact(artifact, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);
     let delta = validate_rules_update(&previous, &next).unwrap();
-    assert_eq!(delta.add_research, vec![ResearchId::HyperspaceTechnology]);
+    assert_eq!(
+        delta.add_research,
+        vec![
+            ResearchId::HyperspaceTechnology,
+            ResearchId::HyperspaceDrive
+        ]
+    );
     assert!(delta.add_buildings.is_empty());
-    assert_eq!(next.artifact.ships, previous.artifact.ships);
+    let mut ships = next.artifact.ships.clone();
+    ships.get_mut(&ShipType::Bomber).unwrap().hyperspace_drive = None;
+    assert_eq!(ships, previous.artifact.ships);
     assert_eq!(next.artifact.world, previous.artifact.world);
     for id in [
-        ResearchId::HyperspaceDrive,
         ResearchId::IntergalacticResearchNetwork,
+        ResearchId::GravitonTechnology,
     ] {
         assert!(
             !next
@@ -653,6 +679,12 @@ fn hyperspace_upgrade_initializes_only_technology_and_preserves_customizations()
         let mut artifact = next.artifact.clone();
         match custom {
             0 => {
+                artifact
+                    .catalog
+                    .iter_mut()
+                    .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
+                    .unwrap()
+                    .enabled = false;
                 artifact
                     .catalog
                     .iter_mut()

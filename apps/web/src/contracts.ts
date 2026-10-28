@@ -7119,6 +7119,7 @@ export interface components {
             drive: components["schemas"]["ResearchId3"];
             impulse_upgrade: components["schemas"]["ShipImpulseStatistics3"] | null;
             drive_coefficient?: string[];
+            hyperspace_upgrade?: components["schemas"]["ShipImpulseStatistics3"] | null;
         };
         ShipImpulseStatistics3: {
             minimum_level: number;

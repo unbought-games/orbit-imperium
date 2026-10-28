@@ -3549,3 +3549,6 @@ mod hyperspace;
 
 #[path = "progression/plasma_turret.rs"]
 mod plasma_turret;
+
+#[path = "progression/hyperspace_drive.rs"]
+mod hyperspace_drive;

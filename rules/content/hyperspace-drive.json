@@ -1,0 +1,30 @@
+{
+  "research": {
+    "base": [
+      10000,
+      20000,
+      6000
+    ],
+    "growth": [
+      2,
+      1
+    ]
+  },
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "ResearchLab",
+      "level": 7
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceTechnology",
+      "level": 3
+    }
+  ],
+  "bomber": {
+    "minimum_level": 8,
+    "base_speed": 5000,
+    "fuel": 1000
+  }
+}

@@ -28,6 +28,8 @@ pub struct ShipPropulsionStatistics {
     pub fuel_consumption: String,
     pub drive: ResearchId,
     pub impulse_upgrade: Option<ShipImpulseStatistics>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hyperspace_upgrade: Option<ShipImpulseStatistics>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ShipImpulseStatistics {
@@ -74,6 +76,16 @@ pub fn catalog_view(rules: &Ruleset) -> Result<Vec<CatalogEntryView>, ServiceErr
                                 base_speed: rule.base_speed.to_string(),
                                 fuel_consumption: rule.fuel.to_string(),
                                 drive: rule.drive.unwrap_or(ResearchId::CombustionDrive),
+                                hyperspace_upgrade: rule.hyperspace_drive.as_ref().map(|upgrade| {
+                                    ShipImpulseStatistics {
+                                        drive_coefficient: Some(
+                                            HYPERSPACE_UPGRADE_COEFFICIENT.map(|n| n.to_string()),
+                                        ),
+                                        minimum_level: upgrade.minimum_level,
+                                        base_speed: upgrade.base_speed.to_string(),
+                                        fuel_consumption: upgrade.fuel.to_string(),
+                                    }
+                                }),
                                 impulse_upgrade: rule.impulse_drive.as_ref().map(|upgrade| {
                                     ShipImpulseStatistics {
                                         drive_coefficient: Some(
@@ -187,6 +199,27 @@ mod tests {
             .unwrap()
             .ship_statistics
             .unwrap()
+    }
+    #[test]
+    fn bomber_projects_optional_hyperspace_profile_from_active_rules() {
+        let mut rules = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap();
+        let upgrade = ship(&rules, ShipType::Bomber)
+            .propulsion
+            .unwrap()
+            .hyperspace_upgrade
+            .unwrap();
+        assert_eq!(upgrade.minimum_level, 8);
+        assert_eq!(upgrade.base_speed, "5000");
+        assert_eq!(upgrade.fuel_consumption, "1000");
+        assert_eq!(upgrade.drive_coefficient.unwrap(), ["3", "10"]);
+        rules
+            .artifact
+            .ships
+            .get_mut(&ShipType::Bomber)
+            .unwrap()
+            .hyperspace_drive = None;
+        let legacy = serde_json::to_value(ship(&rules, ShipType::Bomber)).unwrap();
+        assert!(legacy["propulsion"].get("hyperspace_upgrade").is_none());
     }
     #[test]
     fn large_cargo_presents_activated_stats_and_probe_rapid_fire() {

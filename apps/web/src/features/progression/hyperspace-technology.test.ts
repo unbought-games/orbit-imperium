@@ -46,11 +46,32 @@ it('uses existing artwork and explains the current lack of dependent systems and
   expect(details.description).toContain(
     'no per-level cargo, speed, combat or production bonuses',
   )
+  expect(details.description).toContain('Unlocks Hyperspace Drive at level 3')
   expect(details.description).toContain(
-    'Hyperspace Drive and other dependent systems are unavailable',
-  )
-  expect(details.description).toContain(
-    'higher levels currently provide no additional benefit',
+    'Higher levels currently unlock no additional content',
   )
   expect(technicalUnlocks(hyperspace, [hyperspace], 'Planet')).toEqual([])
+})
+
+it('derives the Hyperspace Drive unlock at Technology 3 only when enabled', () => {
+  const drive: Entry = {
+    ...hyperspace,
+    key: { kind: 'Research', id: 'HyperspaceDrive' },
+    requirements: JSON.parse(
+      readFileSync('rules/content/hyperspace-drive.json', 'utf8'),
+    ).requirements,
+  }
+  expect(technicalUnlocks(hyperspace, [hyperspace, drive], 'Planet')).toEqual([
+    { entry: drive, level: 3 },
+  ])
+  expect(
+    technicalUnlocks(
+      hyperspace,
+      [hyperspace, { ...drive, enabled: false }],
+      'Planet',
+    ),
+  ).toEqual([])
+  expect(catalogContent(drive.key).art.src).toBe(
+    '/art/atlas/objects/hyperspace-drive-640.webp',
+  )
 })
