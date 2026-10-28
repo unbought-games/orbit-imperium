@@ -485,3 +485,175 @@ fn bomber_batch_requires_every_resource_before_payment() {
         );
     }
 }
+
+#[test]
+fn hyperspace_switch_mixed_fuel_stale_quote_and_committed_return() {
+    let (mut s, r, p, b, t) = setup();
+    set_units(&mut s, &r, b, BOMBER, 3);
+    fixture_research(&mut s, &r, p, ResearchId::HyperspaceDrive, 7);
+    fixture_research(&mut s, &r, p, ResearchId::CombustionDrive, 6);
+    let mut intent = intent(&s, p, b, t);
+    intent.ships[0].ship_type = ShipType::Bomber;
+    intent.cargo = Resources::default();
+    let before = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
+    assert_eq!(before.speeds, vec![(ShipType::Bomber, "8800".into())]);
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        1000,
+        8000,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: intent.clone(),
+                expected_terms_hash: before.terms_hash.clone(),
+            },
+        }),
+    );
+    let launched = apply(&mut s, result);
+    fixture_research(&mut s, &r, p, ResearchId::ComputerTechnology, 2);
+    fixture_research(&mut s, &r, p, ResearchId::HyperspaceDrive, 8);
+    let after = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
+    assert_eq!(after.speeds, vec![(ShipType::Bomber, "17000".into())]);
+    assert!(after.duration_ms < before.duration_ms);
+    assert_eq!(
+        (after.duration_ms, after.fuel),
+        exact_flight_arithmetic(after.distance, &[(17000, 1000, 1)], 100, 10).unwrap()
+    );
+    let mut new_launch = s.clone();
+    let stock = new_launch.bodies[&b].checkpoint.amounts;
+    let result = run(
+        &mut new_launch,
+        &r,
+        p,
+        b,
+        1000,
+        8010,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: intent.clone(),
+                expected_terms_hash: after.terms_hash.clone(),
+            },
+        }),
+    );
+    apply(&mut new_launch, result);
+    assert_eq!(
+        new_launch.bodies[&b].checkpoint.amounts.deuterium,
+        stock.deuterium - after.fuel
+    );
+    assert_eq!(
+        new_launch.bodies[&b].checkpoint.amounts.metal,
+        stock.metal - intent.cargo.metal
+    );
+    assert!(
+        new_launch
+            .world
+            .as_ref()
+            .unwrap()
+            .records
+            .fleets
+            .values()
+            .any(|f| f.terms == after)
+    );
+    // Recall uses elapsed time and keeps the original fuel payment after HD8.
+    let mut recalling = s.clone();
+    let original = recalling
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let stock = recalling.bodies[&b].checkpoint.clone();
+    let result = run(
+        &mut recalling,
+        &r,
+        p,
+        b,
+        2000,
+        8011,
+        Input::Command(Command::World {
+            action: WorldAction::RecallMission { fleet: original.id },
+        }),
+    );
+    let recalled = apply(&mut recalling, result);
+    assert_eq!(recalled.events[0].at, 3000);
+    assert_eq!(recalling.bodies[&b].checkpoint, stock);
+    assert_eq!(
+        recalling.world.as_ref().unwrap().records.fleets[&original.id].terms,
+        original.terms
+    );
+    let stale = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        1000,
+        8001,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: intent.clone(),
+                expected_terms_hash: before.terms_hash,
+            },
+        }),
+    );
+    assert_eq!(stale, TransitionResult::Rejected(GameError::QuoteChanged));
+    // The mixed fleet uses its slowest ship for duration, each own speed/fuel in the sum.
+    let mut mixed = intent.clone();
+    mixed.ships.push(ManifestStack {
+        owner: p,
+        ship_type: ShipType::Recycler,
+        count: 1,
+    });
+    let mixed = quote_fleet(&s, p, &mixed, 1000, &r).unwrap();
+    assert!(mixed.speeds.contains(&(ShipType::Recycler, "3200".into())));
+    assert_eq!(
+        (mixed.duration_ms, mixed.fuel),
+        exact_flight_arithmetic(mixed.distance, &[(17000, 1000, 1), (3200, 300, 1)], 100, 10)
+            .unwrap()
+    );
+    fixture_research(&mut s, &r, p, ResearchId::HyperspaceDrive, 17);
+    assert_eq!(
+        ship_propulsion(&r.artifact.ships[&ShipType::Recycler], &s.research[&p]).unwrap(),
+        (3200, 300)
+    );
+    // Serialization/restart and research completion cannot change an outbound obligation.
+    s = serde_json::from_slice(&serde_json::to_vec(&s).unwrap()).unwrap();
+    let arrival = &launched.events[0];
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        arrival.at,
+        8002,
+        Input::Event(arrival.event.clone()),
+    );
+    let arrived = apply(&mut s, result);
+    assert_eq!(arrived.events[0].at, arrival.at + before.duration_ms);
+    let returned = &arrived.events[0];
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        returned.at,
+        8003,
+        Input::Event(returned.event.clone()),
+    );
+    apply(&mut s, result);
+    validate_asset_lineage(&s).unwrap();
+    s.research
+        .get_mut(&p)
+        .unwrap()
+        .levels
+        .remove(&ResearchId::HyperspaceDrive);
+    assert_eq!(
+        quote_fleet(&s, p, &intent, returned.at, &r),
+        Err(GameError::PolicyUnavailable)
+    );
+}

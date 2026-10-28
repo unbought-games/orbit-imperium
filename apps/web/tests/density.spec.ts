@@ -78,7 +78,7 @@ for (const viewport of [
     })
     await firstViewport(page, [
       recall,
-      page.getByRole('link', { name: 'Dispatch a fleet' }),
+      page.getByRole('link', { name: 'Dispatch Fleet' }),
       page.getByText('Arrival in', { exact: true }),
     ])
     await diagnosticScreenshot(page, {
@@ -114,7 +114,7 @@ for (const viewport of [
     await page.getByRole('link', { name: 'All fleets' }).click()
     await expect(
       page.getByRole('navigation', { name: 'Fleet navigation' }),
-    ).toBeVisible()
+    ).toHaveCount(0)
   })
 
   test(`combat outcome and follow-up lead the first viewport at ${viewport.width}px`, async ({
@@ -302,7 +302,7 @@ for (const width of [1280, 390]) {
       page.getByRole('button', { name: 'Review recall', exact: true }),
     ).toHaveCount(1)
     const navigation = page.getByRole('navigation', {
-      name: 'Fleet navigation',
+      name: 'Main navigation',
     })
     await expect(navigation).toBeInViewport({ ratio: 1 })
     const allFleets = navigation.getByRole('link', {
@@ -323,8 +323,8 @@ for (const width of [1280, 390]) {
     ).toHaveCount(2)
     // A direct load also preserves navigation and the selected funding planet.
     await page.goto(detailUrl)
-    await navigation
-      .getByRole('link', { name: 'Dispatch', exact: true })
+    await page
+      .getByRole('link', { name: 'Dispatch Fleet', exact: true })
       .click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/dispatch`)
     await expect(
@@ -335,7 +335,7 @@ for (const width of [1280, 390]) {
     ).toHaveAttribute('data-value', body.id)
   })
 
-  test(`legacy fleet and dispatch tabs replace page titles at ${width}px`, async ({
+  test(`legacy fleet and dispatch navigation preserves transport controls at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 })
@@ -359,12 +359,11 @@ for (const width of [1280, 390]) {
         exact: true,
       })
       await expect(heading).toHaveCount(0)
-      await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toBeVisible()
-      // Preserve the accessible route heading without taking up visual space.
-      await expect.poll(async () => {
-        const box = await page.locator('main h1').locator('..').boundingBox()
-        return box?.height ?? Number.POSITIVE_INFINITY
-      }).toBeLessThanOrEqual(1)
+      await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
+      if (route === 'dispatch') {
+        await expect(page.getByRole('link', { name: 'Back to fleets' })).toBeVisible()
+        await expect(page.locator('main h1')).toBeVisible()
+      }
       await expect(
         page.getByRole('combobox', { name: 'Destination', exact: true }),
       ).toHaveValue(id(6))
@@ -391,20 +390,21 @@ for (const width of [390, 1280]) {
       ['research', 'Research', 'Develop'],
       ['shipyard', 'Shipyard', 'Develop'],
       ['defense', 'Defense', 'Develop'],
-      ['fleets', 'Fleets', 'Fleet'],
-      ['galaxy', 'Galaxy', 'Fleet'],
-      ['dispatch', 'Dispatch', 'Fleet'],
+      ['fleets', 'Fleets', 'Main'],
+      ['galaxy', 'Galaxy', 'Main'],
+      ['dispatch', 'Dispatch', 'Main'],
     ]) {
       await page.goto(`/u/andromeda/b/${body.id}/${route}`)
       const tabs = page.getByRole('navigation', { name: `${navigation} navigation` })
       await expect(tabs).toBeVisible()
-      await expect(tabs.getByRole('link', { name: title, exact: true })).toHaveAttribute('aria-current', 'page')
+      await expect(tabs.getByRole('link', { name: route === 'dispatch' ? 'Fleets' : title, exact: true })).toHaveAttribute('aria-current', 'page')
       await expect(page.locator('main h1')).toHaveText(title)
       await expect(page.locator('main h1')).toBeFocused()
-      await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
+      if (route !== 'dispatch')
+        await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
       await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(0)
       if (route === 'fleets') {
-        await expect(page.getByRole('link', { name: 'Dispatch a fleet' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Dispatch Fleet' })).toBeVisible()
         await expect(page.getByText(/Fleet slots:/)).toBeVisible()
       }
       if (route === 'dispatch') {

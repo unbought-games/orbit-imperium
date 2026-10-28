@@ -32,7 +32,7 @@ Add screen routes in `src/routes`; TanStack generates `routeTree.gen.ts` (do not
 
 Use native browser links for external destinations and same-page non-navigation helpers. Preserve route title/focus behavior, keyboard menu restoration, and direct-link login. Tests must cover browser-history navigation and actual server refreshes, since Vite's development fallback alone cannot prove production hosting works.
 
-## Editorial game shell
+## Mobile text selection
 
 On touch devices with a coarse primary pointer and no hover, native buttons,
 selects, disclosure summaries, and ARIA action/menu controls suppress text
@@ -50,7 +50,9 @@ viewport width alone never disables desktop selection.
 Do not target `nav` generically: ranking ranges, alliance counts, and public
 policy/support links retain native selection and link callouts.
 
-The shell uses a compact horizontal masthead and ledger, with four stable anchors: Empire, Develop, Fleet, Menu. Develop defaults to Resources and exposes the five implemented build destinations in secondary navigation. Fleet groups activity and Dispatch. The grouped modal Menu contains real implemented destinations only, with capability-unavailable entries disabled. At phone sizes the same anchors form the safe-area-aware thumb dock. There are no permanent desktop rails or in-game footer.
+## Editorial game shell
+
+The shell uses a compact horizontal masthead and ledger, with five stable anchors: Empire, Develop, Galaxy, Fleets, Menu. Develop defaults to Resources and exposes the five implemented build destinations in secondary navigation. Galaxy opens directly without secondary tabs. Fleets opens the movement list, with a Dispatch Fleet action and a Back to fleets link in Dispatch. The grouped modal Menu contains real implemented destinations only, with capability-unavailable entries disabled. At phone sizes the same anchors form the safe-area-aware thumb dock. There are no permanent desktop rails or in-game footer.
 
 On phones, a compact planet box shares one row with the resource ledger. `BodySelector` uses the shared Base UI `RichSelect`: each option shows artwork, a name (falling back to the body kind), coordinates, and a selected checkmark. The trigger truncates long text; popup labels wrap and the roster scrolls within the viewport. There is no search field. Starting/legacy planets without colony genesis come first, followed by colonies ordered by `colony.created_at`; equal or unknown creation times retain server order. Moons follow the owned planet at matching coordinates. Ordering is derived without changing game state. The select preserves route/funding context and provides keyboard navigation, typeahead, Escape, outside dismissal, and focus restoration.
 

@@ -174,3 +174,50 @@ it('identifies satellites as stationary while retaining combat comparisons', () 
   })
   expect(comparisonStats(satellite, research, 'current').attack).toBeDefined()
 })
+
+it('switches Bombers at Hyperspace Drive 8 and preserves unknown or retained profiles', () => {
+  const bomber = structuredClone(ship)
+  bomber.key.id = 'Bomber'
+  const p = bomber.ship_statistics!.propulsion!
+  Object.assign(p, {
+    drive: 'ImpulseDrive',
+    drive_coefficient: ['1', '5'],
+    base_speed: '4000',
+    fuel_consumption: '1000',
+    impulse_upgrade: null,
+    hyperspace_upgrade: {
+      minimum_level: 8,
+      base_speed: '5000',
+      fuel_consumption: '1000',
+      drive_coefficient: ['3', '10'],
+    },
+  })
+  const levels = (drive: number, impulse = 6): Research => [
+    { research: 'ImpulseDrive', level: impulse },
+    { research: 'HyperspaceDrive', level: drive },
+  ]
+  expect(comparisonStats(bomber, levels(7), 'current')).toMatchObject({
+    drive: 'ImpulseDrive',
+    speed: '8800',
+    fuel: '1000',
+  })
+  expect(comparisonStats(bomber, levels(8, 100), 'current')).toMatchObject({
+    drive: 'HyperspaceDrive',
+    speed: '17000',
+    fuel: '1000',
+  })
+  expect(comparisonStats(bomber, levels(9), 'current').speed).toBe('18500')
+  expect(comparisonStats(bomber, levels(8), 'base')).toMatchObject({
+    drive: 'ImpulseDrive',
+    speed: '4000',
+  })
+  expect(
+    comparisonStats(bomber, [{ research: 'ImpulseDrive', level: 6 }], 'current')
+      .speed,
+  ).toBeUndefined()
+  delete p.hyperspace_upgrade
+  expect(comparisonStats(bomber, levels(8), 'current')).toMatchObject({
+    drive: 'ImpulseDrive',
+    speed: '8800',
+  })
+})

@@ -23,6 +23,9 @@ pub struct ShipRule {
     /// Optional complete replacement profile; absent in retained rules artifacts.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub impulse_drive: Option<ImpulseDriveRule>,
+    /// Bomber replacement profile; omitted by retained rules artifacts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hyperspace_drive: Option<ImpulseDriveRule>,
     pub base_speed: i64,
     pub drive_coefficient: [i64; 2],
     pub fuel: i64,
@@ -271,6 +274,21 @@ impl Ruleset {
                     return Err(RulesError::Range);
                 }
             }
+            if let Some(upgrade) = &r.hyperspace_drive {
+                if *ship != ShipType::Bomber
+                    || r.drive != Some(ResearchId::ImpulseDrive)
+                    || artifact.world.is_none()
+                    || artifact
+                        .progression
+                        .as_ref()
+                        .is_none_or(|p| !p.research.contains_key(&ResearchId::HyperspaceDrive))
+                {
+                    return Err(RulesError::InvalidReference);
+                }
+                if upgrade.minimum_level == 0 || upgrade.base_speed <= 0 || upgrade.fuel <= 0 {
+                    return Err(RulesError::Range);
+                }
+            }
             if r.base_speed <= 0
                 || r.drive_coefficient[0] < 0
                 || r.drive_coefficient[1] <= 0
@@ -312,6 +330,18 @@ impl Ruleset {
                 .ships
                 .get(&ShipType::SmallCargo)
                 .is_some_and(|s| s.impulse_drive.is_none())
+        {
+            return Err(RulesError::InvalidReference);
+        }
+        // Enabling Hyperspace Drive in a universe with Bombers includes its switch.
+        if artifact
+            .catalog
+            .iter()
+            .any(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive) && e.enabled)
+            && artifact
+                .ships
+                .get(&ShipType::Bomber)
+                .is_some_and(|s| s.hyperspace_drive.is_none())
         {
             return Err(RulesError::InvalidReference);
         }

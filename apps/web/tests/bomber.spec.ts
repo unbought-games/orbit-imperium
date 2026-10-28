@@ -1,3 +1,4 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { setDestination } from './fixtures/coordinates'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
@@ -16,6 +17,11 @@ const bomber = catalog.find((e) => e.key.id === 'Bomber')!
 bomber.enabled = true
 bomber.requirements = definition.requirements
 bomber.ship_statistics = {
+  cost: [
+    String(definition.cost.metal),
+    String(definition.cost.crystal),
+    String(definition.cost.deuterium),
+  ],
   propulsion: {
     drive: 'ImpulseDrive',
     drive_coefficient: ['1', '5'],
@@ -25,6 +31,7 @@ bomber.ship_statistics = {
     impulse_upgrade: null,
   },
   combat: {
+    technology_bonus: ['1', '10'],
     attack_ticks: '100000000',
     shield_ticks: '50000000',
     hull_ticks: '750000000',
@@ -50,7 +57,14 @@ const bound = (request_id: string, data: unknown) => ({
 
 async function setup(
   page: Parameters<typeof shellFixture>[0],
-  { impulse = 6, plasma = 5, shipyard = 8, enabled = true } = {},
+  {
+    impulse = 6,
+    plasma = 5,
+    shipyard = 8,
+    enabled = true,
+    hyperspace = 0,
+    upgradedUniverse = false,
+  } = {},
 ) {
   const planet = {
     ...body,
@@ -71,12 +85,37 @@ async function setup(
     protocol: 4,
     bodies: [planet],
     catalog: catalog.map((e) =>
-      e.key.id === 'Bomber' ? { ...e, enabled } : e,
+      e.key.id === 'Bomber'
+        ? {
+            ...e,
+            enabled,
+            ship_statistics: {
+              ...e.ship_statistics!,
+              propulsion: {
+                ...e.ship_statistics!.propulsion!,
+                ...(upgradedUniverse
+                  ? {
+                      hyperspace_upgrade: {
+                        minimum_level: 8,
+                        base_speed: '5000',
+                        fuel_consumption: '1000',
+                        drive_coefficient: ['3', '10'],
+                      },
+                    }
+                  : {}),
+              },
+            },
+          }
+        : e,
     ),
     research: [
       { research: 'PlasmaTechnology', level: plasma },
       { research: 'ImpulseDrive', level: impulse },
+      { research: 'HyperspaceDrive', level: hyperspace },
       { research: 'EnergyTechnology', level: 1 },
+      { research: 'WeaponsTechnology', level: 0 },
+      { research: 'ShieldingTechnology', level: 0 },
+      { research: 'ArmourTechnology', level: 0 },
     ],
     extraCapabilities: ['Attack'],
     missions: {
@@ -350,3 +389,62 @@ test('Bombers can be selected, quoted and launched in an attack fleet', async ({
       },
     })
 })
+
+for (const width of [390, 1440]) {
+  test(`Bomber Hyperspace profile is explained and compared at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await setup(page, { hyperspace: 8, upgradedUniverse: true })
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard/bomber`)
+    const pane = page.getByRole('region', { name: 'Progression quote' })
+    await pane.getByText('Technical data', { exact: true }).click()
+    const stats = pane.getByRole('region', {
+      name: 'Ship technical statistics',
+    })
+    await expect(stats).toContainText('At Hyperspace Drive level 8')
+    await expect(stats).toContainText('5,000')
+    await page
+      .locator('main img')
+      .evaluateAll((images) =>
+        Promise.all(
+          images.map((image) => (image as HTMLImageElement).decode()),
+        ),
+      )
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0)
+    await diagnosticScreenshot(page, {
+      path: testInfo.outputPath(`bomber-upgrade-${width}x900.png`),
+      fullPage: true,
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    await page.locator('summary').filter({ hasText: 'Compare ships' }).click()
+    await page
+      .getByRole('checkbox', { name: 'Light Fighter', exact: true })
+      .uncheck()
+    await page
+      .getByRole('checkbox', { name: 'Heavy Fighter', exact: true })
+      .uncheck()
+    await page.getByRole('checkbox', { name: 'Bomber', exact: true }).check()
+    const table = page.getByRole('table', {
+      name: 'Current player ship statistics · per ship',
+    })
+    const column = table.getByRole('columnheader', {
+      name: 'Bomber',
+      exact: true,
+    })
+    await expect(column).toBeVisible()
+    await expect(table).toContainText('17,000')
+    await expect(table).toContainText('Hyperspace Drive')
+    await table.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, {
+      path: testInfo.outputPath(`bomber-comparison-${width}x900.png`),
+      fullPage: false,
+    })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+  })
+}

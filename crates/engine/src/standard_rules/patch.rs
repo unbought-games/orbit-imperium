@@ -68,12 +68,14 @@ impl Location {
 pub(super) struct Patch {
     pub location: Location,
     pub value: Value,
+    pub previous: Option<Value>,
 }
 impl Patch {
     pub fn field(path: impl Into<String>, value: Value) -> Self {
         Self {
             location: Location::Field(path.into()),
             value,
+            previous: None,
         }
     }
     pub fn entry(list: &'static str, key: &'static str, value: Value) -> Self {
@@ -84,6 +86,7 @@ impl Patch {
                 keys: vec![(key, identity)],
             },
             value,
+            previous: None,
         }
     }
     pub fn rapid_fire(value: Value) -> Self {
@@ -96,7 +99,12 @@ impl Patch {
                 ],
             },
             value,
+            previous: None,
         }
+    }
+    pub fn with_previous(mut self, previous: Value) -> Self {
+        self.previous = Some(previous);
+        self
     }
     pub fn apply(&self, current: &mut Value, baseline: &Value) -> Result<(), RulesUpgradeConflict> {
         let before = self.location.read(current);
@@ -104,7 +112,7 @@ impl Patch {
             return Ok(());
         }
         let older = self.location.read(baseline);
-        if before.is_some() && before != older {
+        if before.is_some() && before != older && before != self.previous.as_ref() {
             return Err(RulesUpgradeConflict {
                 path: self.location.label(),
                 current: before.cloned(),

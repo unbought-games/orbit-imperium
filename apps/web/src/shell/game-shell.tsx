@@ -18,6 +18,7 @@ import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
+import { ButtonLink } from '../ui/button'
 import { Brand } from '../ui/brand'
 import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
@@ -27,9 +28,9 @@ import { ActionStatus } from '../ui/action-status'
 import { bodyName, coordinates } from '../ui/format'
 import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
-import { buildPages, fleetPages, pageTitles } from './navigation-model'
+import { buildPages, pageTitles } from './navigation-model'
 import { Popover } from '../ui/popover'
-import { WifiOff } from 'lucide-react'
+import { ArrowLeft, WifiOff } from 'lucide-react'
 import { usePinnedHeader } from './use-pinned-header'
 import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
 import { developmentActivity } from './navigation-activity'
@@ -163,7 +164,8 @@ export function GameShell() {
     available &&
     (page === 'overview' ||
       buildPages.includes(page) ||
-      fleetPages.includes(page) ||
+      page === 'galaxy' ||
+      page === 'fleets' ||
       page === 'settings' ||
       (view.protocol === 4 && page === 'reports'))
   const title = !available
@@ -208,7 +210,6 @@ export function GameShell() {
             view={view}
             body={body?.id}
             page={page}
-            detail={view.protocol === 4 && !!route.item}
             onLogout={() => void logout()}
             onVisit={(p) =>
               void model.recordPresence(
@@ -329,6 +330,21 @@ export function GameShell() {
                   prepareDispatch,
                 }}
               >
+                {page === 'dispatch' && (
+                  <ButtonLink
+                    variant="secondary"
+                    {...routeTarget(universeName, 'fleets', body?.id)}
+                  >
+                    <ArrowLeft size={18} aria-hidden="true" /> Back to fleets
+                  </ButtonLink>
+                )}
+                {page === 'fleets' && view.protocol !== 4 && (
+                  <ButtonLink
+                    {...routeTarget(universeName, 'dispatch', body?.id)}
+                  >
+                    Dispatch Fleet
+                  </ButtonLink>
+                )}
                 <Outlet />
               </ScreenContext.Provider>
             )}

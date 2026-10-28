@@ -69,7 +69,7 @@ it('derives turret gates, unlocks and artwork from the enabled catalog', () => {
   expect(details.description).toContain('Shipyard 8 and Plasma Technology 7')
 })
 
-it('derives Bomber unlocks and presents its Impulse-only role', () => {
+it('derives Bomber unlocks and presents its propulsion upgrade', () => {
   const definition = JSON.parse(
     readFileSync('rules/content/bomber.json', 'utf8'),
   )
@@ -98,9 +98,9 @@ it('derives Bomber unlocks and presents its Impulse-only role', () => {
   }
   const details = catalogContent(bomber.key)
   expect(details.art.src).toBe('/art/atlas/objects/bomber-1200.webp')
-  expect(details.description).toContain(
-    'Shipyard 8, Impulse Drive 6 and Plasma Technology 5',
+  expect(details.description).not.toMatch(
+    /Requires|Shipyard 8|Plasma Technology 5/,
   )
-  expect(details.description).toContain('no Hyperspace upgrade is available')
+  expect(details.description).toContain('Hyperspace Drive level 8 upgrade')
   expect(catalogContent(plasma.key).description).toContain('Bombers at level 5')
 })

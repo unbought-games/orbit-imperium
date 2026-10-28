@@ -14,7 +14,10 @@ export function ShipStatistics({ entry }: { entry: Entry }) {
   const stats = entry.ship_statistics
   const propulsion = stats?.propulsion
   const combat = stats?.combat
-  const upgrade = propulsion?.impulse_upgrade
+  const upgrade = propulsion?.hyperspace_upgrade ?? propulsion?.impulse_upgrade
+  const upgradeDrive = propulsion?.hyperspace_upgrade
+    ? 'HyperspaceDrive'
+    : 'ImpulseDrive'
   return (
     <DetailSection title="Ship technical statistics">
       <p className={styles.note}>
@@ -61,8 +64,8 @@ export function ShipStatistics({ entry }: { entry: Entry }) {
           )}
           {upgrade && (
             <p className={styles.note}>
-              At Impulse Drive level {upgrade.minimum_level}, the propulsion
-              profile changes to base speed{' '}
+              At {label(upgradeDrive)} level {upgrade.minimum_level}, the
+              propulsion profile changes to base speed{' '}
               <NumberValue value={upgrade.base_speed} /> and base fuel
               consumption{' '}
               <ResourceValue resource="deuterium">

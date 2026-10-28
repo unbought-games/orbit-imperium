@@ -14,7 +14,8 @@ full cancellation refunds and completion-at-deadline rules apply.
 Plasma Technology unlocks [Plasma Turrets](plasma-turret.md) at level 7 with
 Shipyard 8 on the producing planet. It has no mining, combat or other per-level
 bonus. [Bombers](bomber.md) unlock at Plasma 5 with Shipyard 8 and Impulse Drive 6.
-Bombers use Impulse propulsion; the later Hyperspace upgrade is not implemented.
+Bombers use Impulse propulsion below completed Hyperspace Drive 8; the
+[Hyperspace Drive bundle](hyperspace-drive.md) adds the classic level-8 switch.
 Higher Plasma levels remain possible within numeric limits without an additional
 benefit.
 

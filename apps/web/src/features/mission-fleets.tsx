@@ -137,7 +137,7 @@ export function MissionFleets({
             </Link>
           )}
           <ButtonLink {...routeTarget(universeName, 'dispatch', origin)}>
-            Dispatch a fleet
+            Dispatch Fleet
           </ButtonLink>
           <FleetSlots
             used={occupiedFleetSlots(state)}
