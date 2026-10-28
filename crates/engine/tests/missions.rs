@@ -2879,5 +2879,7 @@ fn large_shield_dome_raid_reports_destruction_and_recovery_without_defense_debri
     }
 }
 
+#[path = "missions/battlecruiser.rs"]
+mod battlecruiser;
 #[path = "missions/bomber.rs"]
 mod bomber;

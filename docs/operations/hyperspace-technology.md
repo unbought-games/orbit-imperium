@@ -14,8 +14,8 @@ refunds and completion-at-deadline rules apply.
 
 This is prerequisite research with no per-level cargo, speed, combat, production
 or construction bonus. It unlocks [Hyperspace Drive](hyperspace-drive.md) at level 3
-in the standard bundle. Higher levels remain researchable within numeric limits;
-other dependent systems remain unavailable. Hyperspace Technology itself does not
+and [Battlecruisers](battlecruiser.md) at level 5 in the standard bundle. Higher
+levels remain researchable within numeric limits. Hyperspace Technology itself does not
 change Bomber propulsion.
 
 ## Prepare and activate
@@ -49,7 +49,7 @@ and disabled base prerequisites produce conflicts rather than silent overwrites.
 Use the existing export/diff/apply workflow for selective or custom activation.
 See [Rules updates](rules-updates.md) for the full operational contract.
 
-To stop new research, disable its catalog entry and its Hyperspace Drive dependent
+To stop new research, disable its catalog entry and its Hyperspace Drive and Battlecruiser dependents
 using a fresh export and forward apply. Retain its definition and earned levels. Already-paid work keeps its
 accepted payment and completion time; cancellation refunds its original payment.
 A standard upgrade will not silently re-enable deliberately disabled technology.

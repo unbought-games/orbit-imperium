@@ -37,6 +37,8 @@ const content: Record<string, string> = {
     'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
   Cruiser:
     'A fast impulse-powered combat ship with rapid fire against Light Fighters, Rocket Launchers and Espionage Probes. Cargo capacity is shared by resources and mission fuel.',
+  Battlecruiser:
+    'A hyperspace-powered combat ship with rapid fire against Small Cargo, Large Cargo, Heavy Fighters, Cruisers, Espionage Probes and Solar Satellites. Cargo capacity is shared by resources and mission fuel.',
   Bomber:
     'An impulse-powered siege ship with rapid fire against Rocket Launchers, Light Lasers, Heavy Lasers, Ion Cannons, Espionage Probes and Solar Satellites. Cargo capacity is shared by resources and mission fuel. Uses Impulse Drive until the Hyperspace Drive level 8 upgrade in the standard rules; see technical statistics for this universe’s propulsion profiles.',
   Recycler: 'Collects metal and crystal from debris fields.',
@@ -59,15 +61,15 @@ const content: Record<string, string> = {
   LargeShieldDome:
     'A stationary dome with five times the base shield strength of the Small Shield Dome. Its shield protects itself, not other units. Requires Shipyard 6 and Shielding Technology 6. Only one large shield dome can be stationed or queued here; a small shield dome can coexist with it.',
   LaserTechnology:
-    'Unlocks concentrated energy weapons, including Light Lasers at level 3 and Heavy Lasers at level 6. Requires Research Lab 1 and Energy Technology 2. Weapon damage is improved by Weapons Technology.',
+    'Unlocks concentrated energy weapons, including Light Lasers at level 3 and Heavy Lasers at level 6. Requires Research Lab 1 and Energy Technology 2. Level 12 is required for Battlecruisers in the standard rules. Weapon damage is improved by Weapons Technology.',
   IonTechnology:
     'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Level 5 is required for Plasma Technology. Ion research does not improve combat stats or reduce demolition costs.',
   PlasmaTechnology:
     'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 and Bombers at level 5 with Shipyard 8 in the standard rules. Bombers also require Impulse Drive 6. Provides no per-level production or combat bonuses.',
   HyperspaceDrive:
-    'At level 8, Bombers switch to a 5,000 base speed with a 30% speed bonus per completed Hyperspace Drive level in the standard rules. The bonus adds to base speed and replaces Impulse propulsion. Base fuel consumption remains 1,000 deuterium.',
+    'Unlocks Battlecruisers at level 5 in the standard rules. At level 8, Bombers switch to a 5,000 base speed with a 30% speed bonus per completed Hyperspace Drive level in the standard rules. The bonus adds to base speed and replaces Impulse propulsion. Base fuel consumption remains 1,000 deuterium.',
   HyperspaceTechnology:
-    'Unlocks Hyperspace Drive at level 3 in the standard rules. Provides no per-level cargo, speed, combat or production bonuses. Higher levels currently unlock no additional content in the standard rules.',
+    'Unlocks Hyperspace Drive at level 3 in the standard rules. Provides no per-level cargo, speed, combat or production bonuses. Level 5 is required for Battlecruisers, alongside Hyperspace Drive 5, Laser Technology 12 and Shipyard 8 in the standard rules.',
   ArmourTechnology:
     'Improves the structural resilience of ships and defensive units.',
   WeaponsTechnology: 'Improves weapon performance in combat.',

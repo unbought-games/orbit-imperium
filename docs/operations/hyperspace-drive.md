@@ -7,6 +7,9 @@ all costs double each level. At Lab 7 and research speed 5, levels 1–3 take 2,
 5,400 and 10,800 seconds. Research is player-wide within the universe, paid by its
 origin, with the existing single slot, Lab locks and exact cancellation refunds.
 
+At level 5, the Drive unlocks [Battlecruisers](battlecruiser.md), whose native
+Hyperspace propulsion uses base speed 10,000 and a 30% bonus per level.
+
 The classic Bomber switch is included: below completed Drive 8, Bombers use base
 speed 4,000 plus 20% per Impulse level. At Drive 8 they replace that profile with
 base speed 5,000 plus 30% per Hyperspace Drive level: 17,000 at level 8, 18,500 at
@@ -17,7 +20,8 @@ terms across research, activation and restart. Mixed fleets use the slowest ship
 for travel time and each ship's selected profile for fuel.
 
 `rules/content/hyperspace-drive.json` owns research costs/gates and the Bomber
-replacement. No later Recycler switch, cargo bonus or new ship is included.
+replacement. Battlecruiser definitions live in their own content file. No later Recycler
+switch or cargo bonus is included.
 The catalog derives technical data from active rules; the optional
 `hyperspace_upgrade` API field keeps retained profiles and older responses readable.
 No database migration, new endpoint or protocol version is needed.
@@ -46,9 +50,9 @@ customized profiles, research costs, prerequisites and intentionally disabled
 content. Use export/diff/apply for reviewed custom activation. Retained artifacts
 omit the optional profile, preserving their serialization and hashes.
 
-To stop new research, disable the Drive catalog entry while retaining its
+To stop new research, disable the Drive and dependent Battlecruiser catalog entries while retaining its
 research definition, earned levels and Bomber profile. Paid work keeps its original
 terms; cancellation refunds the original payment. Disabling research does not
 remove earned speed. Disabling Hyperspace Technology also requires disabling its
-Drive dependent. Removing definitions or replaying an older export is not rollback.
+Drive and Battlecruiser dependents. Removing definitions or replaying an older export is not rollback.
 See [Rules updates](rules-updates.md) for the operational contract.
