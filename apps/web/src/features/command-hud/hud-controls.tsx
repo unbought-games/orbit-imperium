@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import {
   Atom,
   Check,
@@ -13,7 +13,8 @@ import {
   Swords,
   Telescope,
 } from 'lucide-react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useReducedMotion } from '../../ui/use-reduced-motion'
 import { useToastSwipe } from '../../ui/use-toast-swipe'
 import { ResourceSummary } from '../../ui/number-value'
 import {
@@ -133,7 +134,43 @@ export function HudToast({
     </motion.div>
   )
 }
+function OrbSymbol({ kind }: { kind: HudIcon | null }) {
+  const reduced = useReducedMotion()
+  const icon = kind ? (
+    <HudIconMark kind={kind} size={28} />
+  ) : (
+    <Orbit size={30} strokeWidth={1.25} />
+  )
+  if (reduced)
+    return (
+      <span
+        className={styles.orbSymbol}
+        data-orb-symbol={kind ?? 'idle'}
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+    )
+  return (
+    <AnimatePresence initial={false} mode="sync">
+      <motion.span
+        key={kind ?? 'idle'}
+        className={styles.orbSymbol}
+        data-orb-symbol={kind ?? 'idle'}
+        aria-hidden="true"
+        initial={{ opacity: 0, scale: 0.82, filter: 'blur(3px)' }}
+        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, scale: 0.82, filter: 'blur(3px)' }}
+        transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+      >
+        {icon}
+      </motion.span>
+    </AnimatePresence>
+  )
+}
+
 export function CommandOrb({ hud }: { hud: CommandHudState }) {
+  const [pressed, setPressed] = useState(false)
   const appearance = orbAppearance(hud.state, hud.recent)
   const caption = hud.caption
   const unread = hasUnreadIntelligence(hud.state)
@@ -142,7 +179,11 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
   const total =
     hud.state.view?.protocol === 4 ? hud.state.view.missions.fleet_slots : '0'
   return (
-    <div className={styles.orbDock} data-tone={appearance.tone}>
+    <div
+      className={styles.orbDock}
+      data-tone={appearance.tone}
+      data-pressed={pressed || undefined}
+    >
       {caption && (
         <span
           key={caption.id}
@@ -167,18 +208,28 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
         data-testid="command-orb"
         data-tone={appearance.tone}
         aria-label={`${appearance.tone === 'red' ? 'Threat detected. ' : ''}${unreadCount ? `${unreadCount === 99 ? '99 or more' : unreadCount} unread items. ` : unread ? 'Unread intelligence. ' : ''}Open command HUD`}
-        onClick={() => hud.select('inbox')}
+        onPointerDown={() => setPressed(true)}
+        onPointerUp={() => setPressed(false)}
+        onPointerCancel={() => setPressed(false)}
+        onPointerLeave={() => setPressed(false)}
+        onLostPointerCapture={() => setPressed(false)}
+        onBlur={() => setPressed(false)}
+        onClick={() => {
+          setPressed(false)
+          hud.select('inbox')
+        }}
       >
         <span className={styles.outerOrbit} />
         <span className={styles.innerOrbit} />
         <span className={styles.orbCore}>
           <span className={styles.coreShimmer} />
-          {appearance.icon ? (
-            <HudIconMark kind={appearance.icon} size={28} />
-          ) : (
-            <Orbit size={30} strokeWidth={1.25} />
-          )}
+          <OrbSymbol kind={appearance.icon} />
         </span>
+        <span
+          className={styles.orbCharge}
+          data-testid="orb-charge"
+          aria-hidden="true"
+        />
         {unreadCount > 0 && (
           <span
             className={styles.badge}
