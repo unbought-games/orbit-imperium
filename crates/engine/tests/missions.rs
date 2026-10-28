@@ -2881,3 +2881,6 @@ fn large_shield_dome_raid_reports_destruction_and_recovery_without_defense_debri
 
 #[path = "missions/bomber.rs"]
 mod bomber;
+
+#[path = "missions/destroyer.rs"]
+mod destroyer;

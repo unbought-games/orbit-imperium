@@ -2049,3 +2049,6 @@ mod bomber;
 
 #[path = "rules_updates/hyperspace_drive.rs"]
 mod hyperspace_drive;
+
+#[path = "rules_updates/destroyer.rs"]
+mod destroyer;

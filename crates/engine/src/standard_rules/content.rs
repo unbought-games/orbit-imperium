@@ -226,6 +226,12 @@ pub(super) fn patches() -> Vec<Patch> {
         "Bomber",
         &read(include_bytes!("../../../../rules/content/bomber.json")),
     );
+    unit(
+        &mut out,
+        "Ship",
+        "Destroyer",
+        &read(include_bytes!("../../../../rules/content/destroyer.json")),
+    );
     let fusion = read(include_bytes!(
         "../../../../rules/content/fusion-reactor.json"
     ));

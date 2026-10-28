@@ -26,13 +26,16 @@ file. `--universe UUID` selects an existing world. Without it, the command uses
 Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
 --help` works without a database. An empty database needs `orbit setup` first.
 
-The bundled content release is currently **0.7.0**. This is the content bundle's
+The bundled content release is currently **0.8.0**. This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
 Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon, Large Shield Dome and
 Plasma Technology. The current development bundle also includes
 [Plasma Turrets](plasma-turret.md), requiring Shipyard 8 and Plasma Technology 7.
+[Destroyers](destroyer.md) require Shipyard 9, Hyperspace Technology 5 and
+Hyperspace Drive 6. They use native Hyperspace propulsion and rapid fire against
+Light Lasers, Espionage Probes and Solar Satellites.
 [Bombers](bomber.md) require Shipyard 8, Impulse Drive 6 and Plasma Technology 5;
 they use Impulse propulsion until the Hyperspace Drive 8 switch. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
 including fuel-aware production and level-zero initialization. The original signup

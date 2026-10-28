@@ -8,6 +8,27 @@ fn rules() -> Ruleset {
 fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_legacy_hash() {
     let latest = rules();
     let mut artifact = latest.artifact.clone();
+    artifact.ships.remove(&ShipType::Destroyer);
+    let destroyer = ManufacturedItem::Ship(ShipType::Destroyer);
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .retain(|u| u.item != destroyer);
+    let combat = &mut artifact.world.as_mut().unwrap().combat;
+    combat.units.retain(|u| u.item != destroyer);
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != destroyer && rf.target != destroyer);
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == destroyer.catalog_key())
+        .unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+
     artifact
         .progression
         .as_mut()
@@ -46,7 +67,15 @@ fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_lega
     assert_eq!(delta.add_research, vec![ResearchId::HyperspaceDrive]);
     assert!(delta.add_buildings.is_empty());
     assert_eq!(previous.protocol(), next.protocol());
-    assert_eq!(previous.artifact.world, next.artifact.world);
+    let mut retained_world = next.artifact.world.clone();
+    let combat = &mut retained_world.as_mut().unwrap().combat;
+    combat
+        .units
+        .retain(|u| u.item != ManufacturedItem::Ship(ShipType::Destroyer));
+    combat
+        .rapid_fire
+        .retain(|rf| rf.shooter != ManufacturedItem::Ship(ShipType::Destroyer));
+    assert_eq!(previous.artifact.world, retained_world);
     assert_eq!(previous.artifact.universe, next.artifact.universe);
     assert!(validate_rules_update(&next, &previous).is_err());
     let mut custom = previous.artifact.clone();
@@ -115,6 +144,11 @@ fn hyperspace_rules_reject_incomplete_unsupported_and_invalid_switches() {
     a.catalog
         .iter_mut()
         .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
+        .unwrap()
+        .enabled = false;
+    a.catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Ship(ShipType::Destroyer))
         .unwrap()
         .enabled = false;
     let disabled = Ruleset::from_artifact(a, latest.speed).unwrap();

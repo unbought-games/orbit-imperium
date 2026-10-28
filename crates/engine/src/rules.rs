@@ -245,18 +245,19 @@ impl Ruleset {
         }
         for (ship, r) in &artifact.ships {
             if let Some(drive) = r.drive
-                && (drive != ResearchId::ImpulseDrive
-                    || !matches!(
-                        ship,
+                && (!matches!(
+                    (ship, drive),
+                    (
                         ShipType::ColonyShip
                             | ShipType::HeavyFighter
                             | ShipType::Cruiser
-                            | ShipType::Bomber
-                    )
-                    || artifact
-                        .progression
-                        .as_ref()
-                        .is_none_or(|p| !p.research.contains_key(&drive)))
+                            | ShipType::Bomber,
+                        ResearchId::ImpulseDrive
+                    ) | (ShipType::Destroyer, ResearchId::HyperspaceDrive)
+                ) || artifact
+                    .progression
+                    .as_ref()
+                    .is_none_or(|p| !p.research.contains_key(&drive)))
             {
                 return Err(RulesError::InvalidReference);
             }

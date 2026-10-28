@@ -148,25 +148,28 @@ fn bomber_manufacturing_charges_all_resources_but_times_only_metal_and_crystal()
 fn bomber_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
     let mut previous = latest.artifact.clone();
-    previous.ships.remove(&ShipType::Bomber);
-    previous
-        .progression
-        .as_mut()
-        .unwrap()
-        .unit_costs
-        .retain(|u| u.item != BOMBER);
-    let combat = &mut previous.world.as_mut().unwrap().combat;
-    combat.units.retain(|u| u.item != BOMBER);
-    combat
-        .rapid_fire
-        .retain(|rf| rf.shooter != BOMBER && rf.target != BOMBER);
-    let entry = previous
-        .catalog
-        .iter_mut()
-        .find(|e| e.key == BOMBER.catalog_key())
-        .unwrap();
-    entry.enabled = false;
-    entry.requirements.clear();
+    for ship in [ShipType::Bomber, ShipType::Destroyer] {
+        let item = ManufacturedItem::Ship(ship);
+        previous.ships.remove(&ship);
+        previous
+            .progression
+            .as_mut()
+            .unwrap()
+            .unit_costs
+            .retain(|u| u.item != item);
+        let combat = &mut previous.world.as_mut().unwrap().combat;
+        combat.units.retain(|u| u.item != item);
+        combat
+            .rapid_fire
+            .retain(|rf| rf.shooter != item && rf.target != item);
+        let entry = previous
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == item.catalog_key())
+            .unwrap();
+        entry.enabled = false;
+        entry.requirements.clear();
+    }
     let previous = Ruleset::from_artifact(previous, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);
