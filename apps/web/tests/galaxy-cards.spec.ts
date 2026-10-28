@@ -521,7 +521,7 @@ test('shared columns align all debris and controls; mobile rows reach both edges
     { 3: { debris: { ...debris, metal: '999999999', crystal: '123456789' } } },
   )
   const controls = page.getByRole('group', { name: 'Galaxy controls' })
-  const nav = page.getByRole('navigation', { name: 'Fleet navigation' })
+  const nav = page.locator('[data-sticky-navigation]')
   for (const width of [320, 390, 599, 600, 767, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 640 })
     await page.evaluate(() => window.scrollTo(0, 0))
@@ -592,7 +592,7 @@ test('shared columns align all debris and controls; mobile rows reach both edges
     await page.evaluate(() => window.scrollTo(0, 400))
     await expect
       .poll(async () => {
-        const tabs = (await nav.boundingBox())!,
+        const tabs = (await (width < 768 ? nav : page.getByRole('banner').locator('..')).boundingBox())!,
           bar = (await controls.boundingBox())!
         return Math.abs(bar.y - tabs.y - tabs.height - (width >= 768 ? 1 : 0))
       })
@@ -639,9 +639,8 @@ test('incoming fleets and report details use the supplied public name without an
       identityRequests.push(request.url())
   })
   await shellFixture(page, { protocol: 4, playerNames })
-  await page.getByRole('link', { name: 'Fleet', exact: true }).click()
   await page
-    .getByRole('navigation', { name: 'Fleet navigation' })
+    .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('link', { name: 'Fleets', exact: true })
     .click()
   await expect(
@@ -1845,3 +1844,81 @@ test('browser-history navigation away from a harvest target does not reopen its 
   await expect(popover).not.toBeVisible()
   await expect(actions(page, 2)).toBeEnabled()
 })
+
+for (const width of [320, 390, 768, 1440]) {
+  test(`Galaxy and Fleets are separate destinations with nested Dispatch at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const now = Date.now()
+    await page.clock.setFixedTime(now)
+    const fleet: components['schemas']['OwnMission4'] = {
+      id: id(80),
+      intent: {
+        origin: body.id,
+        destination: { type: 'Body', id: id(6), expected_kind: 'Planet', expected_owner: binding.player },
+        mission: 'Transport',
+        ships: [{ owner: binding.player, ship_type: 'SmallCargo', count: '2' }],
+        cargo: { metal: '100000000', crystal: '0', deuterium: '0' },
+        speed_percent: 100,
+      },
+      origin: body.coordinates,
+      destination: { galaxy: 1, system: 371, position: 13 },
+      leg: 'Outbound',
+      ships: [{ ship_type: 'SmallCargo', count: '2' }],
+      cargo: { metal: '100000000', crystal: '0', deuterium: '0' },
+      due_at: now + 180000,
+      launched_at: now - 180000,
+      duration_ms: 360000,
+      paid_fuel: '1000000',
+      can_recall: true,
+    }
+    await setup(page, null, {
+      catalog: [{ key: { kind: 'Ship', id: 'SmallCargo' }, requirements: [], enabled: true, mobile: true, body_kinds: ['Planet'] }],
+      missions: {
+        fleets: [fleet, { ...fleet, id: id(81), leg: 'Returning' }],
+        incoming: [{ sender: id(9), origin: { galaxy: 1, system: 372, position: 3 }, target: body.id, mission: 'Transport', arrival_at: now + 300000, ships: { visibility: 'Unknown' } }],
+        score_value_micro: '0', fleet_slots: '4',
+      },
+    })
+    const nav = page.getByRole('navigation', { name: 'Main navigation' })
+    await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop', 'Galaxy', 'Fleets'])
+    const galaxy = nav.getByRole('link', { name: 'Galaxy', exact: true })
+    const fleets = nav.getByRole('link', { name: 'Fleets', exact: true })
+    await galaxy.click()
+    await expect(galaxy).toHaveAttribute('aria-current', 'page')
+    await expect(fleets).not.toHaveAttribute('aria-current')
+    await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
+    await expect(rows(page)).toHaveCount(15)
+    const capture = async (screen: string) => {
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+      if (width === 390 || width === 1440) {
+        await diagnosticScreenshot(page, { path: `test-results/navigation-${screen}-${width}x900.png`, animations: 'disabled' })
+      }
+    }
+    await capture('galaxy')
+    await fleets.click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(fleets).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('heading', { name: 'Your transport · Outbound' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Your transport · Returning' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Incoming fleets' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
+    await capture('fleets')
+    await page.getByRole('link', { name: 'Dispatch Fleet', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/dispatch`)
+    await expect(fleets).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('textbox', { name: 'Destination coordinates' })).toBeVisible()
+    await expect(page.getByText('Looking up destination…', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: /^Small Cargo/ })).toBeVisible()
+    await page.getByRole('textbox', { name: 'Destination coordinates' }).fill('1:371:2')
+    await expect(page.getByLabel('Destination preview')).toContainText('CommanderAndromedaTheUnreasonablyLongName')
+    await capture('dispatch')
+    await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+    await expect(page.getByRole('heading', { name: 'Your transport · Outbound' })).toBeVisible()
+    // A direct Dispatch load also offers a deterministic return to the list.
+    await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+    await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+  })
+}

@@ -1396,7 +1396,11 @@ for (const width of [320, 390, 1280]) {
       if (index > 0) expect(row.top).toBeGreaterThanOrEqual(rows[index - 1].bottom)
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await diagnosticScreenshot(page, { path: `test-results/dispatch-composition-${width}.png`, fullPage: true })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-composition-${width}.png` })
+    await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
   })
 }
 
