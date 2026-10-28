@@ -12,64 +12,35 @@ The backend is written in Rust with PostgreSQL for persistent game state. A Reac
 - Docker with Docker Compose
 - PostgreSQL 16.10 (provided by Docker Compose)
 
-## Running Locally
-
-From the repository root:
+## Running locally
 
 ```sh
-npm ci
-make dev-setup
 make dev
 ```
 
-`make dev-setup` runs `orbit setup` to migrate the database and create one universe at the default 5× speed. Repeating setup reuses the sole existing universe without resetting it. Optionally pass `UNIVERSE=UUID` to choose its identity. `make dev` starts PostgreSQL, builds the application, and starts the existing world. Open [localhost:8080](http://localhost:8080) and choose **Create an account** to play.
+This prepares dependencies, starts PostgreSQL in a Compose project isolated to this checkout, builds the server, creates a rich playground if missing, and starts the backend and hot-reloading frontend. The command prints the actual URL. Sign in with **user/password**. Ports and the frontend proxy are configured automatically.
 
-Run `make dev` again to restart. Game data persists in the Docker volume. The local database uses `orbit` for its username, password, and database name and listens on `127.0.0.1:55432`. Set `ORBIT_DB_PASSWORD` to override the local password.
+Run `make dev` again to resume retained progress. Use `make dev-reset` to restore the current playground and standard rules. Reset affects only this checkout's development database. An existing running local stack sees the replacement; when stopped, reset starts the stack. `make dev-setup` prepares the world without serving it.
 
-## Development
-
-For frontend hot reload, start the backend with the development frontend origin:
+Edit the running world with the built-in CLI:
 
 ```sh
-ORBIT_ORIGIN=http://localhost:5173 make dev
+./orbit world show
+./orbit world set ships 1:50:8 cruiser=100 --user user
+./orbit world scenario apply edits.json
 ```
 
-In another terminal, start Vite:
+See [world management](operations/world-management.md) and [scenario recipes](../scenarios/README.md). `dev-seed` is retired; no password files or universe UUIDs are needed for the default playground.
+
+For phone testing, bind to your computer's LAN address, which is also used for the frontend origin:
 
 ```sh
-npm run dev
+ORBIT_DEV_HOST=192.168.50.48 make dev
 ```
 
-Open [localhost:5173](http://localhost:5173). Vite proxies API requests to the Rust server.
+Replace the example address with your computer's address. Open the printed URL on both devices. Local development enables HTTP cookies with `ORBIT_ALLOW_INSECURE_HTTP=1`. Explicit `ORBIT_ORIGIN` selects the frontend origin and port; `ORBIT_DEV_HOST` controls the interface Vite binds to.
 
-For a phone on the same Wi-Fi, use your computer's private LAN IP as the frontend
-origin and expose Vite on the network:
-
-```sh
-ORBIT_ORIGIN=http://192.168.50.48:5173 make dev
-# In another terminal:
-npm run dev -- --host 0.0.0.0
-```
-
-Replace the example IP with your computer's address, then open that URL on both
-devices. Local development enables `ORBIT_ALLOW_INSECURE_HTTP=1`, which explicitly permits HTTP
-cookies for the configured origin. Public/private hostnames and IPs work, with or
-without an explicit port. Official production uses HTTPS; see the
-[origin and migration guidance](architecture/deployment.md#browser-origin-http-and-https). The backend can remain bound to loopback behind Vite.
-
-The project is organized into these components:
-
-| Directory | Responsibility |
-| --- | --- |
-| `apps/web` | React frontend |
-| `crates/engine` | Game rules and calculations |
-| `crates/application` | Signup, login, player authorization, game commands, and game-state queries |
-| `crates/storage-postgres` | PostgreSQL persistence and migrations |
-| `crates/transport-http` | HTTP API |
-| `crates/server` | Server configuration and startup |
-| `contracts` | OpenAPI specification and API schemas |
-
-After changing the OpenAPI specification, run `npm run contracts` to regenerate the frontend types.
+For a separately managed database, use the `orbit` binary with `DATABASE_URL`, `orbit setup`, and `orbit serve`. Make's local lifecycle refuses an ambient `DATABASE_URL` so resetting a playground cannot target a production database.
 
 ## Deploying and enabling content
 
@@ -96,6 +67,8 @@ Use controlled clocks and deterministic fixtures, investigate slow setup, and re
 Install the pinned Node/npm/Rust tools and npm dependencies. Rust tests additionally need **cargo-nextest 0.9.114** (`cargo install cargo-nextest --version 0.9.114 --locked`, or the [official prebuilt binary](https://nexte.st/docs/installation/pre-built-binaries/)). CI installs that pinned prebuilt version. `make test-tooling` uses Node’s built-in test runner for all tooling tests; no separate environment or test dependencies are needed. No custom test scheduler or timing framework is used.
 
 `make check` runs the three unit classes, static/contract/boundary checks and one frontend build. It does not compile a release binary or start a database. Nextest prepares test binaries before execution; Make runs database suites two at a time, each against its own disposable database, with tests inside each suite serial. Database commands require PostgreSQL already running. CI sets up its own Compose project and removes it in an `always()` step. Install Chromium with `npx playwright install chromium` before browser validation.
+
+`make test-world-local` explicitly exercises two isolated checkout roots, login, live CLI/JSON edits, retained restart, reset, and cleanup. It creates and removes its own disposable Compose projects.
 
 Full-system and container validation remain **explicit-only**. Generous guards allow cold builds and full journeys: Rust and container-image preparation each get 15 minutes, web preparation 5 minutes, individual suites 10 minutes (recovery 15 minutes), combined acceptance 30 minutes, container behavior tests 10 minutes, and database startup/cleanup 3 minutes each. The manual workflow's outer job guard is two hours. The [deadline helper](../scripts/test-timeout.mjs) and [named durations](../scripts/test-budgets.json) apply only to explicit validation, preparation and cleanup. Image building completes under its own preparation guard before the container smoke/isolation deadline begins.
 

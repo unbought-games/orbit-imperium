@@ -161,3 +161,6 @@ pub use alliances::*;
 
 mod social;
 pub use social::*;
+
+mod world_edit;
+pub use world_edit::*;

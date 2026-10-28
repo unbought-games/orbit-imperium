@@ -310,7 +310,7 @@ impl PgStore {
             .unwrap_or(self.admission_limit))
     }
 }
-async fn create_in_tx(
+pub(crate) async fn create_in_tx(
     tx: &mut Tx<'_>,
     request: &UniverseCreate,
 ) -> Result<UniverseConfigDocument, String> {

@@ -37,7 +37,7 @@ Each new player receives 1,000 metal, 1,000 crystal, zero deuterium, a 163-field
 
 No email verification or password recovery ships in this MVP. This explicitly supersedes the broader account-policy spec for MVP admission.
 
-The old `mvp-*-bootstrap` and `dev-seed` commands are available only in builds with the `orbit-server/test-support` feature, for historical regression fixtures. Production builds never read five-account credential files.
+The historical `mvp-*-bootstrap` and `test-foundation-create` commands are available only in builds with the `orbit-server/test-support` feature, for historical regression fixtures. Production builds never read five-account credential files.
 
 ## Verification
 

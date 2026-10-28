@@ -1,5 +1,5 @@
 use super::*;
-pub(super) async fn apply(
+pub(crate) async fn apply(
     tx: &mut Tx<'_>,
     b: Binding,
     a: &SocialAction,

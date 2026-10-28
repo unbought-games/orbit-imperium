@@ -1,176 +1,53 @@
-import { test } from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  copyFileSync,
-  mkdirSync,
-  symlinkSync,
-  existsSync,
-  writeFileSync,
-} from 'node:fs'
-import { join } from 'node:path'
-import { temporaryDirectory, executable, exec, root } from './test-helpers.mjs'
+import { spawnSync } from 'node:child_process'
+test('retired fixture commands explain the replacement without touching a database', () => {
+  for (const command of ['dev-seed', 'dev-reset']) {
+    const result = spawnSync(process.execPath, ['scripts/local.mjs', command], {
+      encoding: 'utf8',
+    })
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /retired.*make dev/)
+  }
+})
 
-function fixture(t) {
-  const directory = temporaryDirectory(t)
-  copyFileSync(join(root, 'Makefile'), join(directory, 'Makefile'))
-  symlinkSync(join(root, 'scripts'), join(directory, 'scripts'))
-  mkdirSync(join(directory, 'target/debug'), { recursive: true })
-  executable(
-    join(directory, 'target/debug/orbit'),
-    `console.log(JSON.stringify({args: process.argv.slice(2), url: process.env.DATABASE_URL, insecure: process.env.ORBIT_ALLOW_INSECURE_HTTP, passwords: process.env.ORBIT_SEED_PASSWORD_FILE}))`,
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+test('operator defaults and explicit connection overrides are preserved', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'orbit-operator-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  mkdirSync(join(root, 'target/debug'), { recursive: true })
+  writeFileSync(
+    join(root, 'target/debug/orbit'),
+    `#!${process.execPath}\nconsole.log(JSON.stringify({args:process.argv.slice(2),url:process.env.DATABASE_URL,insecure:process.env.ORBIT_ALLOW_INSECURE_HTTP}))`,
+    { mode: 0o755 },
   )
   const env = { ...process.env }
-  for (const key of [
-    'DATABASE_URL',
-    'ORBIT_DB_PASSWORD',
-    'UNIVERSE',
-    'AT',
-    'MAKEFLAGS',
-    'MFLAGS',
-    'ORBIT_ALLOW_INSECURE_HTTP',
-    'ORBIT_SEED_PASSWORD_FILE',
-  ])
-    delete env[key]
-  const run = (...args) =>
-    exec('make', ['--no-print-directory', '-s', ...args], {
-      cwd: directory,
-      env,
-      signal: t.signal,
-    })
-  return {
-    directory,
-    env,
-    run,
-    result: async (...args) =>
-      JSON.parse((await run(...args)).stdout.trim().split('\n').at(-1)),
-  }
-}
-
-test('seed generates fresh UUIDs and current milliseconds, preserving individual overrides', async (t) => {
-  const { result } = fixture(t)
-  const before = Date.now()
-  const first = (await result('dev-seed')).args
-  const second = (await result('dev-seed')).args
-  assert.equal(first[0], 'dev-seed')
-  assert.match(
-    first[2],
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
-  )
-  assert.notEqual(first[2], second[2])
-  assert.ok(Number(first[4]) >= before && Number(first[4]) <= Date.now())
-  const universe = '12345678-1234-4234-8234-123456789abc'
-  for (const overrides of [
-    [`UNIVERSE=${universe}`],
-    ['AT=0'],
-    [`UNIVERSE=${universe}`, 'AT=123456'],
-  ]) {
-    const { args } = await result('dev-seed', ...overrides)
-    assert.equal(args.length, 5)
-    if (overrides[0].startsWith('UNIVERSE=')) assert.equal(args[2], universe)
-    if (overrides.at(-1).startsWith('AT='))
-      assert.equal(args[4], overrides.at(-1).slice(3))
-  }
-})
-
-test('reset requires a universe and defaults time without changing the supplied universe', async (t) => {
-  const { result, run } = fixture(t)
-  await assert.rejects(
-    run('dev-reset'),
-    (error) =>
-      error.stderr.includes('--universe') && !error.stdout.includes('"args"'),
-  )
-  const universe = '12345678-1234-4234-8234-123456789abc'
-  const { args } = await result('dev-reset', `UNIVERSE=${universe}`)
-  assert.deepEqual(args.slice(0, 3), ['dev-reset', '--universe', universe])
-  assert.ok(Number(args[4]) > 0)
-})
-
-test('invalid seed options fail before launching the server', async (t) => {
-  const { run } = fixture(t)
-  for (const option of ['UNIVERSE=invalid', 'AT=-1', 'AT=invalid']) {
-    await assert.rejects(
-      run('dev-seed', option),
-      (error) => !error.stdout.includes('"args"'),
+  delete env.DATABASE_URL
+  delete env.ORBIT_DB_PASSWORD
+  delete env.ORBIT_ALLOW_INSECURE_HTTP
+  const call = () => {
+    const r = spawnSync(
+      process.execPath,
+      [resolve('scripts/local.mjs'), 'db-init'],
+      { cwd: root, env, encoding: 'utf8' },
     )
+    assert.equal(r.status, 0, r.stderr)
+    return JSON.parse(r.stdout)
   }
-})
-
-test('local defaults need no secret files and explicit environment values win', async (t) => {
-  const { directory, env, result } = fixture(t)
-  assert.deepEqual(await result('db-init'), {
+  assert.deepEqual(call(), {
     args: ['db-init'],
     url: 'postgres://orbit:orbit@127.0.0.1:55432/orbit',
     insecure: '1',
-    passwords: '.secrets/players',
   })
-  assert.equal(existsSync(join(directory, '.secrets')), false)
-  env.DATABASE_URL = 'postgres://test:password@example.test/custom'
-  env.ORBIT_DB_PASSWORD = 'ignored'
-  env.ORBIT_ALLOW_INSECURE_HTTP = '0'
-  env.ORBIT_SEED_PASSWORD_FILE = '/private/players'
-  assert.deepEqual(await result('db-init'), {
-    args: ['db-init'],
-    url: env.DATABASE_URL,
-    insecure: '0',
-    passwords: '/private/players',
-  })
-})
-
-test('local password is encoded as a URL component', async (t) => {
-  const { env, result } = fixture(t)
   env.ORBIT_DB_PASSWORD = 'local@password:/?#%'
-  const url = new URL((await result('db-init')).url)
-  assert.equal(url.hostname, '127.0.0.1')
-  assert.equal(decodeURIComponent(url.password), env.ORBIT_DB_PASSWORD)
-})
-
-test('seed and reset flush buffered identifiers before replacing the launcher', async (t) => {
-  const { directory, env } = fixture(t)
-  const preload = join(directory, 'buffer-stdout.mjs')
-  // Hold real stream writes until the event loop is idle. An immediate execve
-  // discards the queued line; awaiting the write lets beforeExit drain it.
-  writeFileSync(
-    preload,
-    "process.stdout.cork(); process.once('beforeExit', () => process.stdout.uncork())",
+  assert.equal(
+    decodeURIComponent(new URL(call().url).password),
+    env.ORBIT_DB_PASSWORD,
   )
-  for (const args of [
-    ['dev-seed'],
-    ['dev-reset', '--universe', '12345678-1234-4234-8234-123456789abc'],
-  ]) {
-    const { stdout } = await exec(
-      process.execPath,
-      ['--import', preload, join(root, 'scripts/local.mjs'), ...args],
-      { cwd: directory, env, signal: t.signal },
-    )
-    const lines = stdout.trim().split('\n')
-    assert.equal(lines.length, 2, 'identifier log must precede server output')
-    const server = JSON.parse(lines[1])
-    assert.equal(
-      lines[0],
-      `${args[0]}: UNIVERSE=${server.args[2]} AT=${server.args[4]}`,
-    )
-  }
-})
-
-
-test('dev setup uses the repeatable setup command; dev only serves', async (t) => {
-  const { directory, env, run } = fixture(t)
-  executable(join(directory, 'cargo'), 'process.exit(0)')
-  executable(join(directory, 'npm'), 'process.exit(0)')
-  executable(join(directory, 'docker'), 'process.exit(0)')
-  env.PATH = `${directory}:${env.PATH}`
-  const universe = '12345678-1234-4234-8234-123456789abc'
-  const setup = (await run('dev-setup', `UNIVERSE=${universe}`)).stdout.trim().split('\n').map(JSON.parse)
-  assert.deepEqual(setup.map(x => x.args), [['setup', '--universe', universe]])
-  assert.deepEqual(JSON.parse((await run('dev-setup')).stdout.trim()).args, ['setup'])
-  assert.deepEqual(JSON.parse((await run('dev')).stdout.trim()).args, ['serve'])
-  executable(join(directory, 'target/debug/orbit'), `
-    const args = process.argv.slice(2)
-    console.log(JSON.stringify({ args }))
-    if (args[0] === 'setup') process.exit(1)
-  `)
-  await assert.rejects(run('dev-setup', `UNIVERSE=${universe}`), error => {
-    assert.deepEqual(error.stdout.trim().split('\n').map(JSON.parse).map(x => x.args), [['setup', '--universe', universe]])
-    return error.code !== 0
-  })
+  env.DATABASE_URL = 'postgres://test:password@example.test/custom'
+  env.ORBIT_ALLOW_INSECURE_HTTP = '0'
+  assert.equal(call().url, env.DATABASE_URL)
+  assert.equal(call().insecure, '0')
 })

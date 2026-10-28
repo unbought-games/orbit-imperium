@@ -7,7 +7,7 @@ use crate::{
 use orbit_application::*;
 use sqlx::{Row, postgres::PgRow};
 use uuid::Uuid;
-mod commands;
+pub(crate) mod commands;
 mod reads;
 
 async fn lock(tx: &mut Tx<'_>, b: Binding) -> Result<(), StoreError> {

@@ -16,7 +16,7 @@ try{
  compose('exec','-T','db','createdb','-U','orbit',db);
  writeFileSync(secret,passwords.join('\n'),{mode:0o600});
  const env={...process.env,ORBIT_TEST_SEEDED:"1",DATABASE_URL:`postgres://orbit:${encodeURIComponent(process.env.ORBIT_DB_PASSWORD || 'orbit')}@127.0.0.1:${process.env.ORBIT_TEST_DB_PORT??'55432'}/${db}`,ORBIT_SEED_PASSWORD_FILE:secret,ORBIT_BIND:`127.0.0.1:${port}`,ORBIT_ORIGIN:base,ORBIT_TEST_BASE_URL:base,ORBIT_ALLOW_INSECURE_HTTP:'1',ALPHA_PASSWORD:passwords[0],BETA_PASSWORD:passwords[1],TEST_DB_NAME:db};
- exec('target/debug/orbit',['dev-seed','--universe',randomUUID(),'--at','1000000'],env);
+ exec('target/debug/orbit',['test-foundation-create','--universe',randomUUID(),'--at','1000000'],env);
  compose('exec','-T','db','psql','-U','orbit','-d',db,'-c','CREATE TABLE orbit_test_clock(at_ms bigint NOT NULL); INSERT INTO orbit_test_clock VALUES(1000000)');
  await portLease.release();
  server=spawn('target/debug/orbit',['serve'],{env,stdio:'ignore'});

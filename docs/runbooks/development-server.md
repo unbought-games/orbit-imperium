@@ -8,7 +8,7 @@ Follow the [local setup instructions](../development.md#running-locally). Compos
 
 `make dev` serves on localhost:8080; stop with Ctrl-C. It retains state. The independent Vite proxy on localhost:5173 requires `ORBIT_ORIGIN=http://localhost:5173` on the backend. `make test-db`, `make test-migrations`, `make test-e2e` and `make test-recovery` create and delete only their own disposable databases. Test time and commit barriers exist only behind the `test-support` Cargo feature; production images do not enable it.
 
-`dev-reset --universe EXACT_UUID --at UNIX_MS` requires all application processes stopped and a development-marked universe. It preserves neither old epochs nor old sessions. It deletes and reseeds the exact universe in one transaction, and refuses while any server holds the shared operator lock. Credentials come from `ORBIT_SEED_PASSWORD_FILE`. Do not reset an existing database to troubleshoot an ordinary restart.
+`make dev-reset` recreates this checkout’s playground with the current standard rules. For operator editing and explicit replacement, use [world management](../operations/world-management.md). The old binary `dev-reset` and `dev-seed` commands are retired. Do not reset retained data to troubleshoot an ordinary restart.
 
 ## Fresh database cutover
 
@@ -19,7 +19,7 @@ The earlier fresh-baseline release squashed the previous migration chain into `0
 3. Run `orbit db-init`, then `orbit universe create --universe UUID` against that empty database. Start the server and create new accounts for the restarted game. This is the historical baseline cutover, separate from the additive [universe configuration bridge upgrade](../operations/universe-configuration.md).
 4. Verify `/health/ready` and signup/login before restoring traffic.
 
-`dev-reset` only resets a world and cannot perform this cutover. Do not delete migration ledger rows or edit their checksums to bypass the reset. Older binaries cannot use the fresh database; rollback requires restoring the old database and its matching binary together. Future migrations start after this new baseline and must be reviewed for compatibility as usual.
+`make dev-reset` only replaces the local playground and cannot perform this cutover. Do not delete migration ledger rows or edit their checksums to bypass the reset. Older binaries cannot use the fresh database; rollback requires restoring the old database and its matching binary together. Future migrations start after this new baseline and must be reviewed for compatibility as usual.
 
 ## Hosted server operation
 

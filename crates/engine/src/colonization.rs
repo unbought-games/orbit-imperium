@@ -41,7 +41,7 @@ pub struct ColonyGenesis {
     pub input: InputId,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GeneratedColony {
     pub fields: u32,
     pub diameter_km: u32,

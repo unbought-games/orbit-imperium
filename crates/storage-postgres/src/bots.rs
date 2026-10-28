@@ -401,11 +401,12 @@ impl PgStore {
         q: WorldQuery,
     ) -> Result<Option<ReadSnapshot<BoundWorld<serde_json::Value>>>, StoreError> {
         let b = q.context.binding;
-        let mut tx = self.begin_tx(self.admission_pool()?).await?;
+        let mut tx = self.begin_unlocked(self.admission_pool()?).await?;
         sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
             .execute(&mut *tx)
             .await
             .map_err(db_error)?;
+        crate::pools::world_edit_gate(&mut tx, false).await?;
         crate::binding::check_read(&mut tx, b).await?;
         if lock_bot(&mut tx, b.universe, b.player).await?.is_none() {
             return Ok(None);

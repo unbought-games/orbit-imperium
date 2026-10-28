@@ -29,7 +29,7 @@ impl PgStore {
     ) -> Result<ReportShareStatus, StoreError> {
         let b = q.context.binding;
         let action = q.action.clone();
-        let mut tx = self.admission_pool()?.begin().await.map_err(db_error)?;
+        let mut tx = self.begin_tx(self.admission_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
         let bot = crate::bots::lock_bot(&mut tx, b.universe, b.player)
             .await?

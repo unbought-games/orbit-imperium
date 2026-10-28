@@ -57,7 +57,7 @@ pub(crate) async fn wrap<T>(
 }
 
 pub(crate) async fn begin(store: &PgStore, pool: &sqlx::PgPool) -> Result<Tx<'static>, StoreError> {
-    let mut tx = store.begin_tx(pool).await?;
+    let mut tx = store.begin_unlocked(pool).await?;
     sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         .execute(&mut *tx)
         .await

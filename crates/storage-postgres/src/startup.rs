@@ -118,7 +118,7 @@ impl PgStore {
     }
     async fn check_startup_inner(&self, speed: Option<i32>) -> Result<(), StartupError> {
         self.check_migrations().await?;
-        let mut tx = self.begin_tx(&self.pool).await?;
+        let mut tx = self.begin_unlocked(&self.pool).await?;
         for setting in [
             "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
             "SET LOCAL statement_timeout='1500ms'",

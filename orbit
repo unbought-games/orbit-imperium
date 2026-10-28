@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+// Checkout convenience wrapper; the Rust binary owns every world command.
+import { execFileSync } from 'node:child_process'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { resolveLocalWorld, database } from './scripts/local-world.mjs'
+const root = dirname(fileURLToPath(import.meta.url))
+try {
+  execFileSync('make', ['_dev-binary'], {
+    cwd: root,
+    stdio: ['ignore', 'ignore', 'inherit'],
+  })
+  const env = { ...process.env }
+  if (!process.argv.slice(2).includes('--help'))
+    env.DATABASE_URL ??= database(resolveLocalWorld(root))
+  process.execve(
+    join(root, 'target', 'debug', 'orbit'),
+    ['orbit', ...process.argv.slice(2)],
+    env,
+  )
+} catch (error) {
+  console.error(error.message)
+  process.exitCode = 1
+}

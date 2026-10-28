@@ -27,7 +27,7 @@ impl PgStore {
     }
     async fn audit_snapshot(&self, u: UniverseId) -> Result<bool, StoreError> {
         self.check_migrations().await?;
-        let mut tx = self.begin_tx(&self.pool).await?;
+        let mut tx = self.begin_unlocked(&self.pool).await?;
         for setting in [
             "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
             "SET LOCAL lock_timeout='250ms'",
