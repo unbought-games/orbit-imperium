@@ -46,12 +46,50 @@ battlecruiser.ship_statistics = {
     rapid_fire_from: [],
   },
 }
-for (const key of [
-  'HyperspaceDrive',
-  'HyperspaceTechnology',
-  'LaserTechnology',
-])
-  catalog.find((e) => e.key.id === key)!.enabled = true
+const researchDefinitions = {
+  HyperspaceDrive: JSON.parse(
+    readFileSync('rules/content/hyperspace-drive.json', 'utf8'),
+  ),
+  HyperspaceTechnology: JSON.parse(
+    readFileSync('rules/content/hyperspace-technology.json', 'utf8'),
+  ),
+  LaserTechnology: (() => {
+    const laser = JSON.parse(
+      readFileSync('rules/content/light-laser.json', 'utf8'),
+    ).research
+    return { research: laser.definition, requirements: laser.requirements }
+  })(),
+}
+for (const [key, definition] of Object.entries(researchDefinitions)) {
+  const entry = catalog.find((e) => e.key.id === key)!
+  entry.enabled = true
+  entry.requirements = definition.requirements
+  entry.technical_data = {
+    bonuses:
+      key === 'HyperspaceDrive'
+        ? [
+            {
+              label: 'Base speed',
+              fraction: ['3', '10'],
+              subject: item,
+              condition: null,
+            },
+          ]
+        : [],
+    facts: [
+      {
+        label: 'Effect',
+        value:
+          key === 'HyperspaceDrive'
+            ? 'Bonuses add to base speed. Actual travel time and fuel depend on the slowest ship, route, universe speed and speed setting.'
+            : 'Prerequisite research. No additional per-level production, combat, cargo or construction bonus is implemented in this universe.',
+        subject: null,
+      },
+    ],
+    storage_capacities: null,
+    combat: null,
+  }
+}
 const bound = (request_id: string, data: unknown) => ({
   protocol: 4,
   binding,
@@ -94,7 +132,7 @@ async function setup(
       ...body.levels,
       Shipyard: shipyard,
       RoboticsFactory: 2,
-      ResearchLab: 4,
+      ResearchLab: 7,
     },
     inventories: [{ item, count: '2' }],
   }
@@ -108,9 +146,9 @@ async function setup(
       { research: 'HyperspaceDrive', level: hyperspace },
       { research: 'HyperspaceTechnology', level: technology },
       { research: 'LaserTechnology', level: laser },
-      { research: 'EnergyTechnology', level: 1 },
+      { research: 'EnergyTechnology', level: 5 },
       { research: 'WeaponsTechnology', level: 0 },
-      { research: 'ShieldingTechnology', level: 0 },
+      { research: 'ShieldingTechnology', level: 5 },
       { research: 'ArmourTechnology', level: 0 },
     ],
     extraCapabilities: ['Attack'],
@@ -123,6 +161,54 @@ async function setup(
   })
   await page.route('**/progression-options', async (route) => {
     const { context, request } = route.request().postDataJSON()
+    if (
+      request.type === 'Research' &&
+      request.research in researchDefinitions
+    ) {
+      const definition =
+        researchDefinitions[
+          request.research as keyof typeof researchDefinitions
+        ]
+      const level = {
+        HyperspaceDrive: hyperspace,
+        HyperspaceTechnology: technology,
+        LaserTechnology: laser,
+      }[request.research as keyof typeof researchDefinitions]
+      const cost = Object.fromEntries(
+        ['metal', 'crystal', 'deuterium'].map((resource, i) => [
+          resource,
+          String(
+            BigInt(definition.research.base[i]) *
+              2n ** BigInt(level) *
+              1000000n,
+          ),
+        ]),
+      )
+      await route.fulfill({
+        json: {
+          ...bound(context.request_id, null),
+          request,
+          terms: {
+            type: 'Research',
+            profile_hash: 'a'.repeat(64),
+            host: body.id,
+            research: request.research,
+            source_level: level,
+            target_level: level + 1,
+            paid: cost,
+            duration_ms: 360000,
+            formula: 'ResearchClassic',
+            labs: [{ body: body.id, level: 7 }],
+            effective_lab: '7',
+            required_energy: '0',
+          },
+          terms_hash: 'b'.repeat(64),
+          blockers: [],
+          estimates: null,
+        },
+      })
+      return
+    }
     const battlecruiser =
       enabled &&
       request.type === 'Manufacture' &&
@@ -267,6 +353,9 @@ for (const width of [390, 1440]) {
       })
     })
     await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    await expect(
+      page.getByRole('link', { name: 'Build Battlecruiser', exact: true }),
+    ).toBeVisible()
     await capture(
       page,
       testInfo.outputPath(`battlecruiser-catalog-${width}x900.png`),
@@ -461,12 +550,10 @@ for (const width of [390, 1440]) {
             images.map((image) => (image as HTMLImageElement).decode()),
           ),
         )
-      await diagnosticScreenshot(page, {
-        path: testInfo.outputPath(
-          `${slug}-battlecruiser-unlock-${width}x900.png`,
-        ),
-        fullPage: true,
-      })
+      await capture(
+        page,
+        testInfo.outputPath(`${slug}-battlecruiser-unlock-${width}x900.png`),
+      )
     }
   })
 }
