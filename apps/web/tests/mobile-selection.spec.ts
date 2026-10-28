@@ -103,7 +103,7 @@ async function capture(page: Page, name: string) {
   const { width, height } = page.viewportSize()!
   await diagnosticScreenshot(page, {
     path: `test-results/touch-selection/${name}-${width}x${height}.png`,
-    fullPage: true,
+    fullPage: false,
   })
 }
 
