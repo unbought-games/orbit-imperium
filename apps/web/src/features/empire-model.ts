@@ -105,8 +105,11 @@ export function bodyTraffic(flights: EmpireFlight[], id: string) {
   }
 }
 
-/** Sum current owned assets once, never launch intent, spent fuel or foreign traffic. */
-export function empireTotals(view: BoundView) {
+/** Sum current owned assets and reserved launch cargo once, excluding spent fuel and foreign traffic. */
+export function empireTotals(
+  view: BoundView,
+  pendingCargo: components['schemas']['Resources'][] = [],
+) {
   const cargo =
     view.protocol === 4
       ? view.missions.fleets.map((fleet) => fleet.cargo)
@@ -124,7 +127,13 @@ export function empireTotals(view: BoundView) {
     ) as components['schemas']['Resources']
   const onWorlds = sum(view.bodies.map((body) => body.amounts))
   const inTransit = sum(cargo)
-  return { onWorlds, inTransit, total: sum([onWorlds, inTransit]) }
+  const launching = sum(pendingCargo)
+  return {
+    onWorlds,
+    inTransit,
+    launching,
+    total: sum([onWorlds, inTransit, launching]),
+  }
 }
 
 /** Older servers may only expose colony metadata; never infer diameter from fields. */

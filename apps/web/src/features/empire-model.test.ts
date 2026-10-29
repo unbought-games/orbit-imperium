@@ -290,6 +290,7 @@ it('counts current cargo on both owned legs, once for self-transports, excluding
       crystal: '500003',
       deuterium: '21',
     },
+    launching: { metal: '0', crystal: '0', deuterium: '0' },
     total: {
       metal: '1801439850948198623',
       crystal: '3500003',

@@ -1,3 +1,5 @@
+import { useStore } from 'zustand'
+import { pendingFleetCargo } from '../client-model/game-projection'
 import { FleetCargo } from './fleet-cargo'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
@@ -569,7 +571,9 @@ export function EmpireOverview({
   model: Coordinator
 }) {
   const flights = empireFlights(view)
-  const totals = empireTotals(view)
+  const state = useStore(model.store)
+  const pendingCargo = pendingFleetCargo(state)
+  const totals = empireTotals(view, pendingCargo)
   const planets = view.bodies.filter((b) => b.kind === 'Planet').length
   const moons = view.bodies.length - planets
   const researchHost =
@@ -638,6 +642,17 @@ export function EmpireOverview({
                     />
                   </dd>
                 </div>
+                {pendingCargo.length > 0 && (
+                  <div>
+                    <dt>Launching</dt>
+                    <dd>
+                      <ResourceQuantity
+                        resource={name}
+                        value={totals.launching[name]}
+                      />
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
           </div>
