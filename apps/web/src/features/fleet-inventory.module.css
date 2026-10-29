@@ -104,7 +104,9 @@
   gap: 12px;
 }
 .selectionHeader > button {
-  --button-min-size: 44px;
+  --button-min-size: 32px;
+  --button-padding: 4px 10px;
+  font-size: 0.75rem;
 }
 .shipAmount {
   max-width: 8rem;

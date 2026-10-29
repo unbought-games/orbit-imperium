@@ -2062,8 +2062,11 @@ for (const width of [320, 390, 1440]) {
     expect(reviewRequests).toHaveLength(0)
     await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
     expect(state.launches).toBe(0)
-    const inputBox = (await smallCargo.boundingBox())!
-    const actionBox = (await fillCargo.boundingBox())!
+    // Measure together: a destination lookup can move the table between frames.
+    const { inputBox, actionBox } = await smallCargo.evaluate(input => ({
+      inputBox: input.getBoundingClientRect().toJSON(),
+      actionBox: input.parentElement!.querySelector('button')!.getBoundingClientRect().toJSON(),
+    }))
     expect(actionBox.x + actionBox.width).toBe(inputBox.x + inputBox.width - 4)
     expect(actionBox.y).toBe(inputBox.y + 4)
     expect(actionBox.height).toBe(36)
