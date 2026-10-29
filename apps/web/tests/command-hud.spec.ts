@@ -1076,3 +1076,109 @@ test('orb popup animates out on close, Escape and backdrop dismissal before rele
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
   await diagnosticScreenshot(page,{path:`${output}/popup-desktop-1440x900.png`})
 })
+
+async function setAppHidden(page: Page, hidden: boolean) {
+  await page.evaluate((value) => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value })
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: value ? 'hidden' : 'visible' })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, hidden)
+}
+
+test('return refresh waits for success after five minutes and plays once with accessible reduced motion', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.clock.install()
+  await page.addInitScript(()=>{Math.random=()=>0})
+  await intelligenceFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const caption = page.getByTestId('orb-caption')
+  await expect(caption).toHaveText('Systems Online')
+  await page.clock.fastForward(6000)
+  const initial = await page.evaluate(()=>Date.now())
+  await setAppHidden(page, true)
+  await page.clock.setSystemTime(initial + 4*60*1000)
+  await setAppHidden(page, false)
+  await page.clock.runFor(300)
+  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
+
+  let failed = 0
+  await page.route('**/api/**/overview', async route => {
+    failed++
+    await route.fulfill({status:503,json:{code:'Unavailable'}})
+  })
+  await setAppHidden(page, true)
+  await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 5*60*1000)
+  await setAppHidden(page, false)
+  await page.clock.runFor(300)
+  await expect.poll(()=>failed).toBeGreaterThan(0)
+  await expect(caption).toHaveText('Connection lost.')
+  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
+  await page.unroute('**/api/**/overview')
+  await page.clock.fastForward(6000)
+  await refreshGame(page)
+  await page.clock.runFor(300)
+  await expect(caption).toHaveText('Updated')
+  await expect(page.getByRole('status').filter({hasText:'Updated'})).toBeVisible()
+  await expect(page.getByTestId('orb-refresh-pulse').locator('span').first()).toHaveCSS('animation-name','none')
+  await diagnosticScreenshot(page,{path:`${output}/updated-reduced-motion-390x844.png`})
+  await page.clock.fastForward(6000)
+  await refreshGame(page)
+  await page.clock.runFor(300)
+  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
+  await expect(caption).toHaveCount(0)
+})
+
+test('return refresh animation preview at mobile and desktop sizes', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'no-preference'})
+  await page.addInitScript(()=>{Math.random=()=>0})
+  await page.clock.install()
+  await intelligenceFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
+  // Playwright's clock advances JS timers, not the CSS animation timeline.
+  // Wait for the real entrance to finish so this replay shows only refresh.
+  await page.getByTestId('command-orb').evaluate(async orb => {
+    await Promise.all(orb.getAnimations()
+      .filter(animation => animation instanceof CSSAnimation && animation.animationName.includes('orbIn'))
+      .map(animation => animation.finished))
+  })
+  await expect(page.getByTestId('command-orb')).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 0)')
+  await expect(page.getByTestId('command-orb')).toHaveCSS('opacity','1')
+  await page.clock.fastForward(6000)
+  await expect(page.getByTestId('orb-caption')).toHaveCount(0)
+  if(process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await page.screenshot({path:`${output}/refresh-idle-390x844.png`})
+    for(let frame=0;frame<10;frame++)
+      await page.screenshot({path:`${output}/refresh-review-frames/frame-${String(frame).padStart(2,'0')}.png`})
+  }
+  await setAppHidden(page, true)
+  await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 25*60*1000)
+  await setAppHidden(page, false)
+  await expect(page.getByTestId('orb-caption')).toHaveText('Updated')
+  const pulse=page.getByTestId('orb-refresh-pulse')
+  expect(await pulse.locator('span').first().evaluate(el=>getComputedStyle(el).animationName)).toContain('refreshWave')
+  if(process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    // Sample the actual CSS animations deterministically for a reviewable replay.
+    await page.clock.pauseAt(await page.evaluate(()=>Date.now()))
+    const animations = await page.evaluateHandle(() => document.getAnimations().map(animation => {
+      animation.pause()
+      return {animation, start: Number(animation.currentTime ?? 0)}
+    }))
+    for(let frame=0;frame<40;frame++) {
+      await animations.evaluate((items,time)=>items.forEach(({animation,start})=>{animation.currentTime=start+time}),frame*100)
+      await page.screenshot({path:`${output}/refresh-review-frames/frame-${String(frame+10).padStart(2,'0')}.png`})
+      if(frame===7) await page.screenshot({path:`${output}/updated-390x844.png`})
+    }
+    await animations.evaluate(items=>items.forEach(({animation,start})=>{animation.currentTime=start+700}))
+    await animations.dispose()
+  }
+  await page.setViewportSize({width:320,height:740})
+  const bounds=(await page.getByTestId('orb-caption').boundingBox())!
+  expect(bounds.x).toBeGreaterThanOrEqual(0)
+  await diagnosticScreenshot(page,{path:`${output}/updated-320x740.png`})
+  await page.setViewportSize({width:1440,height:900})
+  await expect(page.getByTestId('command-orb')).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/updated-desktop-1440x900.png`})
+})

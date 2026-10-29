@@ -96,10 +96,13 @@ it('copy fits a narrow mobile caption and every event uses bounded shared timing
     const rule = captionRules[kind] as {
       explanation?: string
       personality?: readonly string[]
+      confirmations?: readonly string[]
     }
-    for (const text of [rule.explanation, ...(rule.personality ?? [])].filter(
-      (line): line is string => !!line,
-    )) {
+    for (const text of [
+      rule.explanation,
+      ...(rule.personality ?? []),
+      ...(rule.confirmations ?? []),
+    ].filter((line): line is string => !!line)) {
       expect(text.length).toBeLessThanOrEqual(36)
       expect(captionTiming(text).lifetimeMs).toBeLessThanOrEqual(4750)
       expect(captionTiming(text).typingMs).toBeGreaterThanOrEqual(500)
@@ -113,5 +116,49 @@ it('existing threats can suppress new humor without suppressing explanations', (
   advance(10_000)
   expect(e.snapshot()).toBeNull()
   e.handle([{ id: 'offline', kind: 'disconnected' }], false)
+  expect(e.snapshot()?.text).toBe('Connection lost.')
+})
+
+it('confirms refresh immediately, without a humor roll, and rotates through all 15 lines', () => {
+  const e = engine(() => 0.99)
+  e.handle([{ id: 'refresh-1', kind: 'updated' }])
+  const first = e.snapshot()!
+  expect(first.category).toBe('updated')
+  expect(captionRules.updated.confirmations).toHaveLength(15)
+  expect(
+    captionRules.updated.confirmations.map((_, index) => {
+      const selection = engine(() => index / 15)
+      selection.handle([{ id: 'refresh', kind: 'updated' }])
+      return selection.snapshot()?.text
+    }),
+  ).toEqual(captionRules.updated.confirmations)
+  e.handle([{ id: 'refresh-1', kind: 'updated' }])
+  expect(e.snapshot()).toBe(first)
+  e.handle([{ id: 'refresh-2', kind: 'updated' }])
+  expect(e.snapshot()?.text).not.toBe(first.text)
+  advance(6000)
+  expect(e.snapshot()).toBeNull()
+})
+it('keeps the refresh confirmation visible through follow-up inbox hydration', () => {
+  const e = engine()
+  e.handle([{ id: 'refresh', kind: 'updated' }])
+  const caption = e.snapshot()
+  e.handle([
+    { id: 'unread', kind: 'unread' },
+    { id: 'mail', kind: 'message.received' },
+  ])
+  expect(e.snapshot()).toBe(caption)
+})
+it('uses a factual update around existing threats and lets new threats interrupt confirmation', () => {
+  const e = engine(() => 0.9)
+  e.handle([{ id: 'refresh-1', kind: 'updated' }], false)
+  expect(e.snapshot()?.text).toBe('Updated')
+  e.handle([
+    { id: 'refresh-2', kind: 'updated' },
+    { id: 'attack', kind: 'attack.incoming' },
+  ])
+  expect(e.snapshot()).toBeNull()
+  e.handle([{ id: 'refresh-3', kind: 'updated' }])
+  e.handle([{ id: 'lost', kind: 'disconnected' }])
   expect(e.snapshot()?.text).toBe('Connection lost.')
 })

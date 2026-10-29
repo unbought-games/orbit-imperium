@@ -4,6 +4,25 @@ export const captionRules = {
   unread: { explanation: 'Champagne means unread.', once: true },
   disconnected: { explanation: 'Connection lost.' },
   reconnected: { explanation: 'Connection restored.' },
+  updated: {
+    confirmations: [
+      'Updated',
+      'Refreshed',
+      'F5',
+      'Reloaded',
+      'Syncing...',
+      'Synced',
+      'Bits arrived',
+      'Bytes are here',
+      'Loading... jk',
+      'Oh, btw',
+      'Caught up',
+      'WiFi slow',
+      'LTE?',
+      'Finally 5G',
+      "Huh, that's odd...",
+    ],
+  },
   'probe.launched': {
     personality: [
       'Act natural.',
@@ -69,13 +88,14 @@ type CaptionRule = {
   explanation?: string
   once?: boolean
   personality?: readonly string[]
+  confirmations?: readonly string[]
 }
 export type CaptionEventKind = keyof typeof captionRules
 export type CaptionEvent = { id: string; kind: CaptionEventKind }
 export type Caption = {
   id: number
   text: string
-  category: 'explanation' | 'personality'
+  category: 'explanation' | 'personality' | 'updated'
   typingMs: number
   lifetimeMs: number
 }
@@ -105,9 +125,11 @@ const priority = (kind: CaptionEventKind) =>
       ? 90
       : kind === 'probe.destroyed'
         ? 80
-        : kind === 'unread' || kind === 'reconnected'
-          ? 60
-          : 10
+        : kind === 'updated'
+          ? 70
+          : kind === 'unread' || kind === 'reconnected'
+            ? 60
+            : 10
 
 /** Session-local presentation history. No game facts or persistent notification state. */
 export function createCaptionEngine(
@@ -157,7 +179,31 @@ export function createCaptionEngine(
       cancelPending()
       if (caption?.category === 'personality') clear()
       const event = fresh.sort((a, b) => priority(b.kind) - priority(a.kind))[0]
+      // Mailbox/report hydration often follows the game snapshot. Let the
+      // confirmation finish; a threat or disconnect still interrupts it.
+      if (
+        caption?.category === 'updated' &&
+        event.kind !== 'updated' &&
+        priority(event.kind) < 90
+      )
+        return
       const rule: CaptionRule = captionRules[event.kind]
+      if (rule.confirmations) {
+        const choices = rule.confirmations.filter(
+          (line) => line !== lastLine.get(event.kind),
+        )
+        const text = allowHumor
+          ? choices[
+              Math.min(
+                choices.length - 1,
+                Math.floor(random() * choices.length),
+              )
+            ]
+          : 'Updated'
+        lastLine.set(event.kind, text)
+        show(text, 'updated')
+        return
+      }
       if (rule.explanation && (!rule.once || !explained.has(event.kind))) {
         explained.add(event.kind)
         show(rule.explanation, 'explanation')

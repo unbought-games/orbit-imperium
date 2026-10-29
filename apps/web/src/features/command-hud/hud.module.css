@@ -60,7 +60,35 @@
 .hudLayer {
   display: none;
 }
+.refreshAnnouncement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 @media (max-width: 767px) {
+  .refreshPulse {
+    position: absolute;
+    inset: -3px;
+    pointer-events: none;
+  }
+  .refreshPulse > span {
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid var(--hud);
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(var(--hud-rgb), 0.45);
+    animation: refreshWave 1600ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+  .refreshPulse > span + span {
+    animation-delay: 240ms !important;
+  }
+  .orb[data-updated] .orbCore {
+    animation: refreshGlow 1400ms ease-out both !important;
+  }
   .hudLayer {
     position: fixed;
     bottom: calc(96px + env(safe-area-inset-bottom));
@@ -807,6 +835,34 @@
     transform: scale(1);
   }
 }
+@keyframes refreshWave {
+  0% {
+    opacity: 0;
+    scale: 0.78;
+  }
+  18% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.3;
+  }
+}
+@keyframes refreshGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+    scale: 1;
+  }
+  28% {
+    filter: brightness(1.8);
+    scale: 1.1;
+  }
+  60% {
+    filter: brightness(1.2);
+    scale: 0.98;
+  }
+}
 @keyframes typeCaption {
   from {
     width: 0;
@@ -908,6 +964,14 @@
 }
 /* This experiment deliberately opts into motion above the game's global reset. */
 @media (prefers-reduced-motion: reduce) {
+  .refreshPulse > span {
+    opacity: 0.65;
+  }
+  .refreshPulse > span + span {
+    display: none;
+  }
+  .surface .refreshPulse > span,
+  .surface .orb[data-updated] .orbCore,
   .surface .typedCaption > span,
   .surface .dialog[open],
   .surface *,
