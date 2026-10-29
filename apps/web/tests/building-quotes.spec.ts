@@ -14,7 +14,7 @@ import {
 type S = components['schemas']
 const now = Date.now()
 
-async function buildingFixture(page: Page, active = false) {
+async function buildingFixture(page: Page, active = false, activeBuilding: S['BuildingId3'] = 'CrystalMine') {
   await page.clock.install({ time: now })
   const planet = structuredClone(body)
   planet.amounts = {
@@ -27,8 +27,8 @@ async function buildingFixture(page: Page, active = false) {
         {
           id: id(10),
           body: body.id,
-          building: 'CrystalMine',
-          target_level: 2,
+          building: activeBuilding,
+          target_level: planet.levels[activeBuilding]! + 1,
           due_at: now + 60000,
           paid: { metal: '76000000', crystal: '38000000', deuterium: '0' },
         },
@@ -1000,3 +1000,169 @@ for (const response of ['early', 'late', 'rejected'] as const) {
     }
   })
 }
+
+// Authoritative server projections deliberately differ from rated output and
+// from current live output, so swapping any of them is observable.
+for (const width of [390, 1440]) {
+  for (const scenario of ['fusion-first', 'fusion-fuel-limited', 'crystal-active', 'crystal-demolition'] as const) {
+    test(`${scenario} preserves the target forecast at ${width}px`, async ({ page }) => {
+      const height = width === 390 ? 844 : 1000
+      await page.clock.install({ time: now })
+      await page.setViewportSize({ width, height })
+      const fusion = scenario.startsWith('fusion')
+      const limited = scenario === 'fusion-fuel-limited'
+      const demolition = scenario === 'crystal-demolition'
+      const building = fusion ? 'FusionReactor' : 'CrystalMine'
+      const planet = structuredClone(body)
+      planet.capacity = { metal: '100000000000', crystal: '100000000000', deuterium: '100000000000' }
+      planet.levels.FusionReactor = 0
+      planet.levels.CrystalMine = 13
+      planet.amounts = { metal: '50000000000', crystal: '50000000000', deuterium: limited ? '0' : '10000000000' }
+      planet.energy = { supply: '100000000', demand: '134000000', utilization: '746268' }
+      const targetLevel = fusion ? 1 : demolition ? 12 : 14
+      const constructions: S['Construction3'][] = fusion ? [] : [{
+        id: id(20), body: planet.id, building, target_level: targetLevel,
+        due_at: now + 3000000,
+        paid: { metal: '21617000000', crystal: '10808000000', deuterium: '0' },
+      }]
+      let revision = '1'
+      await shellFixture(page, {
+        protocol: 4, bodies: [planet], constructions, viewerRevision: () => revision,
+        missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+        catalog: [{ key: { kind: 'Building', id: building }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] }],
+        production: [{
+          body: planet.id, settings_revision: '1',
+          settings: { metal_mine: 100, crystal_mine: 100, deuterium_synthesizer: 100, solar_plant: 100, fusion_reactor: limited ? 50 : 100, solar_satellite: 100 },
+          editable: [], gross_per_hour: { metal: '1000000000', crystal: '2689000000', deuterium: '8000000' },
+          fuel_deuterium_per_hour: '0', net_deuterium_per_hour: { sign: 'Nonnegative', magnitude: '8000000' },
+          energy_supply: '100000000', energy_demand: '134000000', utilization: '746268', fuel_utilization: '1000000',
+        }],
+      })
+      const requests: string[] = []
+      await page.route('**/progression-options', async route => {
+        const { context, request } = route.request().postDataJSON()
+        requests.push(request.type)
+        const current = {
+          energy_supply: '100000000', energy_demand: '134000000', utilization: '746268',
+          fusion_supply: '0', fuel_deuterium_per_hour: '0', fuel_utilization: '1000000',
+          net_deuterium_per_hour: '8000000', metal_per_hour: '1000000000', crystal_per_hour: '2689000000',
+        }
+        const response: S['BoundProgressionOptions4'] = {
+          protocol: 4, binding, request_id: context.request_id, viewer_revision: revision,
+          sampled_at: now, as_of_ms: now, request, terms_hash: 'b'.repeat(64), estimates: null,
+          blockers: constructions.length ? [{ code: 'ActiveConstruction', requirement: null, required: null, actual: null, resource: null, unit: null }] : [],
+          terms: {
+            type: 'Building', profile_hash: 'a'.repeat(64), body: planet.id, building, action: request.type,
+            source_level: planet.levels[building]!, target_level: planet.levels[building]! + (request.type === 'Demolition' ? -1 : 1),
+            paid: { metal: '900000000', crystal: '360000000', deuterium: '180000000' },
+            duration_ms: 30000, formula: 'BuildingRedesign2011', facilities: [], required_energy: '0', reserve_fields: 1,
+          },
+          building_benefit: fusion ? { kind: 'Energy', current: '0', target: '32000000' } : { kind: 'CrystalPerHour', current: '2700000000', target: '3300000000' },
+          building_energy: { current_consumption: fusion ? '0' : '100000000', target_consumption: fusion ? '0' : demolition ? '70000000' : '183000000' },
+          building_production: { current, target: {
+            ...current,
+            energy_supply: fusion ? limited ? '108000000' : '132000000' : '100000000',
+            energy_demand: fusion ? '134000000' : demolition ? '104000000' : '217000000',
+            crystal_per_hour: fusion ? '2689000000' : demolition ? '2400000000' : '3045000000',
+            fusion_supply: fusion ? limited ? '8000000' : '32000000' : '0',
+            fuel_deuterium_per_hour: fusion ? limited ? '8000000' : '33000000' : '0',
+            fuel_utilization: limited ? '500000' : '1000000',
+          } },
+        }
+        await route.fulfill({ json: response })
+      })
+      await page.goto(`/u/andromeda/b/${planet.id}/resources/${fusion ? 'fusion-reactor' : 'crystal-mine'}`)
+      const section = fusion ? page.getByLabel('Target level and benefit') : page.getByRole('region', { name: 'Active construction', exact: true })
+      const energyLabel = fusion ? 'Energy after build' : demolition ? 'Energy after demolition' : 'Energy after upgrade'
+      const energy = section.getByRole('button', { name: `${energyLabel} details`, exact: true })
+      await expect(energy).toHaveText(fusion ? limited ? '-26 (+8)' : '-2 (+32)' : demolition ? '-4 (+30)' : '-117 (-83)')
+      if (fusion) {
+        const output = section.locator('dl > div').filter({ has: page.getByText('Energy supplied', { exact: true }) })
+        await expect(output.getByTitle('New total', { exact: true })).toHaveText(limited ? '8' : '32')
+        await expect(section.locator('dl > div').filter({ has: page.getByText('Deuterium fuel / hour', { exact: true }) })).toHaveText(limited ? /0 → 8/ : /0 → 33/)
+      } else {
+        await expect(section.getByRole('heading')).toHaveText(`${demolition ? 'Tearing down' : 'Upgrading'} to level ${targetLevel}`)
+        const output = section.locator('dl > div').filter({ has: page.getByText('Planet output', { exact: true }) })
+        await expect(output.getByTitle('Current output', { exact: true })).toHaveText('2,689 / h')
+        await expect(output.getByTitle('New total', { exact: true })).toHaveText(demolition ? '2,400 / h' : '3,045 / h')
+        await expect(page.getByLabel('Current level and benefit')).toContainText('Level 13')
+        await expect(page.getByLabel('Current level and benefit')).toContainText('2,689 / h')
+        await expect(section.getByRole('button', { name: 'Completion time details' })).toHaveText('50m')
+        await expect(section.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
+        await expect(page.getByRole('button', { name: 'Confirm upgrade', exact: true })).toHaveCount(0)
+        expect(requests.at(-1)).toBe(demolition ? 'Demolition' : 'Upgrade')
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await page.clock.runFor(1000)
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/${scenario}-${width}x${height}.png` })
+      await energy.click()
+      const details = page.getByRole('dialog', { name: energyLabel, exact: true })
+      await expect(details).toContainText('Current balance: -34')
+      await diagnosticScreenshot(page, { path: `test-results/${scenario}-energy-details-${width}x${height}.png`, fullPage: false })
+      await page.keyboard.press('Escape')
+      if (!fusion) {
+        await section.getByRole('button', { name: 'Cancel construction', exact: true }).click()
+        await expect(page.getByRole('dialog', { name: 'Cancel construction?', exact: true })).toContainText(`Crystal Mine to level ${targetLevel}`)
+        await diagnosticScreenshot(page, { path: `test-results/${scenario}-cancel-${width}x${height}.png`, fullPage: false })
+        await page.keyboard.press('Escape')
+        await expect(energy).toBeVisible()
+        constructions.length = 0
+        planet.levels.CrystalMine = targetLevel
+        revision = '2'
+        await refreshGame(page)
+        await expect(section).toHaveCount(0)
+        await expect(page.getByLabel('Current level and benefit')).toContainText(`Level ${targetLevel}`)
+        await expect(page.getByRole('heading', { name: `Next · level ${targetLevel + 1}`, exact: true })).toBeVisible()
+      }
+    })
+  }
+}
+
+for (const width of [390, 1440]) {
+  test(`active forecast failure preserves cancellation and retries at ${width}px`, async ({ page }) => {
+    const height = width === 390 ? 844 : 1000
+    await page.setViewportSize({ width, height })
+    await buildingFixture(page, true)
+    const fail = (route: import('@playwright/test').Route) => route.fulfill({ status: 503 })
+    await page.route('**/progression-options', fail)
+    await page.goto(`/u/andromeda/b/${body.id}/resources/crystal-mine`)
+    const active = page.getByRole('region', { name: 'Active construction', exact: true })
+    await expect(active.getByRole('alert')).toContainText('Unable to inspect this action')
+    await expect(active.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
+    await expect(active.getByRole('button', { name: 'Completion time details', exact: true })).toBeVisible()
+    await page.clock.runFor(1000)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/crystal-active-error-${width}x${height}.png`, fullPage: false })
+    await page.unroute('**/progression-options', fail)
+    await active.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(active.getByRole('alert')).toHaveCount(0)
+    await expect(active.getByRole('button', { name: 'Energy after upgrade details', exact: true })).toBeVisible()
+  })
+}
+
+for (const width of [390, 1440]) {
+  test(`active storage retains its capacity benefit at ${width}px`, async ({ page }) => {
+    const height = width === 390 ? 844 : 1000
+    await page.setViewportSize({ width, height })
+    await buildingFixture(page, true, 'MetalStorage')
+    await page.goto(`/u/andromeda/b/${body.id}/resources/metal-storage`)
+    const active = page.getByRole('region', { name: 'Active construction', exact: true })
+    await expect(active.getByRole('heading')).toHaveText('Upgrading to level 1')
+    await expect(active.getByTitle('New total', { exact: true })).toHaveText('20,000')
+    await page.clock.runFor(1000)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/storage-active-${width}x${height}.png` })
+  })
+}
+
+test('active facility inspection follows its actual target after direct navigation', async ({ page }) => {
+  await buildingFixture(page, true, 'ResearchLab')
+  const inspection = page.waitForRequest(request => request.url().endsWith('/progression-options') && request.postDataJSON().request.building === 'ResearchLab')
+  await page.goto(`/u/andromeda/b/${body.id}/facilities/research-lab`)
+  expect((await inspection).postDataJSON().request.type).toBe('Upgrade')
+  const active = page.getByRole('region', { name: 'Active construction', exact: true })
+  await expect(active.getByRole('heading')).toHaveText('Upgrading to level 1')
+  await expect(active.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
+  await expect(active.getByText('Completion forecast unavailable.', { exact: true })).toHaveCount(0)
+})
