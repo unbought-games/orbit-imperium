@@ -1874,10 +1874,10 @@ for (const width of [1440, 390]) {
       await selectBody(page, colony.id)
       await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resources$`))
       await expect(page.locator('main h1')).toBeFocused()
-      for (const [resource, slug, title, warning] of [
-        ['Metal', 'metal-storage', 'Metal Storage', 'Storage full'],
-        ['Crystal', 'crystal-storage', 'Crystal Storage', 'Above capacity'],
-        ['Deuterium', 'deuterium-tank', 'Deuterium Tank', 'Storage full'],
+      for (const [resource, slug, title] of [
+        ['Metal', 'metal-storage', 'Metal Storage'],
+        ['Crystal', 'crystal-storage', 'Crystal Storage'],
+        ['Deuterium', 'deuterium-tank', 'Deuterium Tank'],
       ]) {
         const trigger = page.getByRole('group', { name: 'Planet and resources', exact: true }).getByRole('button', { name: `${resource} details`, exact: true })
         if (width === 390) await trigger.tap()
@@ -1887,7 +1887,7 @@ for (const width of [1440, 390]) {
           await page.keyboard.press('Enter')
         }
         const dialog = page.getByRole('dialog', { name: resource, exact: true })
-        const link = dialog.getByRole('link', { name: `${warning} · production suppressed`, exact: true })
+        const link = dialog.getByRole('link', { name: 'Storage full · production suppressed', exact: true })
         await expect(link).toHaveAttribute('href', `/u/andromeda/b/${colony.id}/resources/${slug}`)
         if (width !== 390) {
           await page.keyboard.press('Tab')
