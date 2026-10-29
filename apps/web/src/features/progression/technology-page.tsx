@@ -217,12 +217,19 @@ function TechnologyInspector({
       buildingUnavailableReason(selected, body)
     ) &&
     !(
-      selected.key.kind === 'Building' && progress?.building === selected.key.id
-    ) &&
-    !(
       selected.key.kind === 'Research' && research?.research === selected.key.id
     )
-      ? technologyRequest(selected.key, body.id, action, '1')
+      ? technologyRequest(
+          selected.key,
+          body.id,
+          selected.key.kind === 'Building' &&
+            progress?.building === selected.key.id
+            ? progress.direction === 'down'
+              ? 'Demolition'
+              : 'Upgrade'
+            : action,
+          '1',
+        )
       : null
   const {
     proposal,

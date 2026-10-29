@@ -112,10 +112,14 @@ function ResourceInspector({
   const { proposal, loading, error, retry } = useProgressionOptions(
     model,
     view,
-    !buildingUnavailableReason(entry, body, building.id) &&
-      progress?.building !== building.id
+    !buildingUnavailableReason(entry, body, building.id)
       ? {
-          type: action,
+          type:
+            progress?.building === building.id
+              ? progress.direction === 'down'
+                ? 'Demolition'
+                : 'Upgrade'
+              : action,
           body: body.id,
           building: building.id as components['schemas']['BuildingId3'],
         }
