@@ -278,8 +278,10 @@ test('active fleet routes show current public names and fit a phone', async ({
     `${home.name} [1:371:12] → ${target.name} [1:371:8]`,
   )
   await fleet.getByText('Flight path', { exact: true }).click()
-  await expect(fleet.getByTitle(home.name)).toBeVisible()
-  await expect(fleet.getByTitle(target.name)).toBeVisible()
+  const schematic = fleet.getByRole('figure', { name: 'Mission route schematic' })
+  await expect(schematic.getByTitle(home.name)).toBeVisible()
+  await expect(schematic.getByTitle(target.name)).toBeVisible()
+  await expect(fleet.getByRole('img', { name: `Outbound: ${home.name} [1:371:12] → ${target.name} [1:371:8]`, exact: true })).toBeVisible()
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

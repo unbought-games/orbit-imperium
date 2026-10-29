@@ -1420,6 +1420,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   })
   await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   const mission = page.getByRole('article', { name: 'Transport fleet' })
+  await mission.getByRole('button', { name: 'Transport ship composition: 4 ships', exact: true }).click()
   await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
   await expect(mission).toContainText('6m')
   await expect(mission).toContainText(/6m \d+s/)
@@ -1428,7 +1429,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     new Date(fleet.due_at).toISOString(),
   )
   await expect(page.getByText('No visible incoming fleets.')).toBeVisible()
-  await mission.getByRole('link', { name: 'Mission details' }).click()
+  await mission.getByRole('link', { name: /^View .* fleet$/ }).click()
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   // History updates before the lazy detail route commits. Wait for its screen
   // before using the shared selector, which still belongs to the outgoing list.

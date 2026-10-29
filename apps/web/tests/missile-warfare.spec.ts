@@ -493,6 +493,23 @@ for (const width of [1440, 390])
       type: 'LaunchMissiles',
       intent: { count: '2', primary: 'RocketLauncher', target },
     })
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    const empireMissile = page
+      .getByRole('region', { name: 'Fleet movements' })
+      .getByRole('listitem', { name: 'Outgoing missile attack', exact: true })
+    await expect(
+      empireMissile.getByRole('button', { name: /recall/i }),
+    ).toHaveCount(0)
+    await expect(
+      empireMissile.getByRole('group', { name: 'Carried resources' }),
+    ).toHaveCount(0)
+    const missileDetails = await empireMissile
+      .getByRole('link', { name: 'View missile attack details' })
+      .getAttribute('href')
+    await empireMissile
+      .getByText('Cannot be recalled.', { exact: true })
+      .click()
+    await expect(page).toHaveURL(missileDetails!)
     await page.goto(`/u/andromeda/b/${body.id}/fleets`)
     await expect(
       page.getByRole('region', { name: 'Incoming fleets' }),
@@ -528,10 +545,13 @@ for (const width of [1440, 390])
       page.locator('main').getByRole('button', { name: 'Fleet slots: 1 used / 1 total', exact: true }),
     ).toBeVisible()
     await capture('incoming-missiles')
-    await page
-      .getByRole('article', { name: 'Outgoing missile attack' })
-      .getByRole('link', { name: 'Mission details' })
-      .click()
+    const outgoing = page.getByRole('article', {
+      name: 'Outgoing missile attack',
+    })
+    await expect(
+      outgoing.getByText('Mission details', { exact: true }),
+    ).toHaveCount(0)
+    await outgoing.getByText('Cannot be recalled.', { exact: true }).click()
     await expect(
       page.getByRole('article', { name: 'Outgoing missile attack' }),
     ).toBeVisible()

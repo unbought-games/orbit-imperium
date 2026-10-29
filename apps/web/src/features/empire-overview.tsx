@@ -1,6 +1,11 @@
 import { useStore } from 'zustand'
-import { pendingFleetCargo } from '../client-model/game-projection'
+import {
+  currentServerTime,
+  pendingFleetCargo,
+} from '../client-model/game-projection'
+import { MissileFlight } from './missile-flight'
 import { FleetCargo } from './fleet-cargo'
+import { MissionFleetCard } from './mission-fleet-card'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
 import { PlanetRename } from './planet-rename'
@@ -81,77 +86,123 @@ function FlightList({
   flights,
   view,
   body,
+  fullRows = false,
 }: {
   flights: EmpireFlight[]
   view: BoundView
   body: string
+  fullRows?: boolean
 }) {
   useProfileSource(
     flights.some((f) => f.sender) ? { type: 'Incoming' } : null,
     view.viewer_revision,
   )
   const countdown = useCountdown(view.sampled_at, 'compact')
-  const { universeName } = useGameSession()
+  const { universeName, model } = useGameSession()
+  const now = useStore(model.store, currentServerTime)
   const available = resolveDestination(
     { universe: view.binding.universe, page: 'fleets', body },
     view,
   ).available
+  const ownFleets =
+    fullRows && view.protocol === 4
+      ? new Map(view.missions.fleets.map((fleet) => [fleet.id, fleet]))
+      : null
+  const ownMissiles =
+    fullRows && view.protocol === 4
+      ? new Map(
+          (view.missiles ?? [])
+            .filter((flight) => flight.outgoing)
+            .map((flight) => [flight.id, flight]),
+        )
+      : null
   return (
-    <ol className={styles.flightList}>
-      {flights.map((flight) => (
-        <li
-          key={flight.key}
-          className={
-            flight.hostile ? styles.combatFlight : styles.peacefulFlight
-          }
-        >
-          <span className={styles.flightIcon}>
-            {flight.hostile ? (
-              <ShieldAlert size={18} />
-            ) : flight.leg === 'Outbound' ? (
-              <ArrowUpRight size={18} />
-            ) : (
-              <ArrowDownLeft size={18} />
-            )}
-          </span>
-          <div className={styles.flightCopy}>
-            <div className={styles.flightHeading}>
-              <strong>{flight.mission}</strong>
-              <span className={styles.leg}>{flight.leg}</span>
-              <time
-                dateTime={new Date(flight.due).toISOString()}
-                title={new Date(flight.due).toLocaleString()}
-              >
-                {countdown(flight.due)}
-              </time>
+    <ol className={fullRows ? styles.fleetRows : styles.flightList}>
+      {flights.map((flight) => {
+        const fleet =
+          flight.kind === 'fleet' ? ownFleets?.get(flight.key) : undefined
+        if (fullRows && view.protocol === 4 && fleet) {
+          return (
+            <MissionFleetCard
+              key={flight.key}
+              as="li"
+              model={model}
+              view={view}
+              fleet={fleet}
+              detail={false}
+              origin={body}
+              linkEnabled={available}
+            />
+          )
+        }
+        const missile =
+          flight.kind === 'missile' ? ownMissiles?.get(flight.key) : undefined
+        if (fullRows && view.protocol === 4 && missile) {
+          return (
+            <MissileFlight
+              key={flight.key}
+              as="li"
+              flight={missile}
+              view={view}
+              now={now}
+              origin={body}
+              linkEnabled={available}
+            />
+          )
+        }
+        return (
+          <li
+            key={flight.key}
+            className={`${styles.flightEntry} ${flight.hostile ? styles.combatFlight : styles.peacefulFlight}`}
+          >
+            <span className={styles.flightIcon}>
+              {flight.hostile ? (
+                <ShieldAlert size={18} />
+              ) : flight.leg === 'Outbound' ? (
+                <ArrowUpRight size={18} />
+              ) : (
+                <ArrowDownLeft size={18} />
+              )}
+            </span>
+            <div className={styles.flightCopy}>
+              <div className={styles.flightHeading}>
+                <strong>{flight.mission}</strong>
+                <span className={styles.leg}>{flight.leg}</span>
+                <time
+                  dateTime={new Date(flight.due).toISOString()}
+                  title={new Date(flight.due).toLocaleString()}
+                >
+                  {countdown(flight.due)}
+                </time>
+              </div>
+              {flight.sender && (
+                <small>
+                  From{' '}
+                  <PlayerName
+                    player={flight.sender}
+                    names={view.protocol === 4 ? view.player_names : undefined}
+                  />
+                </small>
+              )}
+              <span className={styles.route}>{flight.route}</span>
+              <small>{flight.ships || 'No ships reported'}</small>
+              {flight.kind === 'fleet' && flight.leg !== 'Incoming' && (
+                <FleetCargo cargo={flight.cargo} />
+              )}
             </div>
-            {flight.sender && (
-              <small>
-                From{' '}
-                <PlayerName
-                  player={flight.sender}
-                  names={view.protocol === 4 ? view.player_names : undefined}
-                />
-              </small>
+            {available && (
+              <Link
+                data-touch-control=""
+                className={styles.flightLink}
+                {...routeTarget(universeName, 'fleets', body, flight.item)}
+                aria-label={`View ${flight.mission} ${flight.leg.toLowerCase()} fleet`}
+              >
+                <ArrowRight size={16} />
+              </Link>
             )}
-            <span className={styles.route}>{flight.route}</span>
-            <small>{flight.ships || 'No ships reported'}</small>
-            {flight.kind === 'fleet' && flight.leg !== 'Incoming' && (
-              <FleetCargo cargo={flight.cargo} />
-            )}
-          </div>
-          {available && (
-            <Link
-              data-touch-control=""
-              className={styles.flightLink}
-              {...routeTarget(universeName, 'fleets', body, flight.item)}
-              aria-label={`View ${flight.mission} ${flight.leg.toLowerCase()} fleet`}
-            >
-              <ArrowRight size={16} />
-            </Link>
-          )}
-        </li>
-      ))}
+          </li>
+        )
+      })}
     </ol>
   )
 }
@@ -296,7 +347,7 @@ function FleetBoard({
       </div>
       <div className={styles.fleetBody}>
         {flights.length ? (
-          <FlightList flights={flights} view={view} body={body.id} />
+          <FlightList flights={flights} view={view} body={body.id} fullRows />
         ) : (
           <EmptyState
             icon={Radar}

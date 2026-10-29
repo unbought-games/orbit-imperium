@@ -210,8 +210,14 @@ test('empire shows every body, its own work and resources, and directional fleet
   page,
 }) => {
   await page.setViewportSize({ width: 1672, height: 1100 })
-  const options = empireFixture()
-  const purchases = await shellFixture(page, options)
+  const now = Date.parse('2026-10-24T12:00:00Z')
+  await page.clock.install({ time: now })
+  // Pin wall time before pausing so a delayed protocol round-trip cannot make
+  // the target timestamp older than the running fake clock.
+  await page.clock.setFixedTime(now)
+  await page.clock.pauseAt(now)
+  const options = empireFixture(now)
+  const purchases = await shellFixture(page, { ...options, sampledAt: now })
   await expect(page).toHaveTitle('Empire · Andromeda · Orbit Imperium')
   await expect(page.getByRole('article')).toHaveCount(4)
   const planet = page.getByRole('article', {
@@ -388,7 +394,7 @@ for (const longContent of [false, true]) {
       name: 'Fleet movements',
       exact: true,
     })
-    const list = board.getByRole('list')
+    const list = board.getByRole('list').first()
     const scrollArea = list.locator('..')
     for (const width of [1778, 1024, 768, 430, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 })
@@ -430,7 +436,13 @@ for (const longContent of [false, true]) {
     }
     if (longContent) {
       await expect(list).toContainText('W'.repeat(40))
-      await expect(list).toContainText('9223372036854775807 Light Fighter')
+      const owned = list.getByRole('listitem', { name: 'Transport fleet', exact: true }).first()
+      const manifest = owned.getByRole('button', { name: 'Transport ship composition: 18,446,744,073,709,551,614 ships', exact: true })
+      await manifest.click()
+      await expect(owned.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText([
+        'Light Fighter 9,223,372,036,854,775,807', 'Small Cargo 9,223,372,036,854,775,807',
+      ])
+      await manifest.click()
       await expect(list).toContainText('[1:499:15]')
     }
     await list
@@ -519,6 +531,12 @@ for (const width of [320, 390, 1280]) {
     await shellFixture(page, { ...options, sampledAt: now.getTime() })
     const board = page.getByRole('region', { name: 'Fleet movements', exact: true })
     await expect(board.getByRole('listitem')).toHaveCount(13)
+    const rows = await board.getByRole('listitem').all()
+    for (let index = 1; index < rows.length; index++) {
+      const previous = (await rows[index - 1].boundingBox())!
+      const current = (await rows[index].boundingBox())!
+      expect(current.y).toBeGreaterThanOrEqual(previous.y + previous.height)
+    }
     await expect(board.getByRole('button', { name: /movements/ })).toHaveCount(0)
     await expect(board).toContainText('1 incoming hostile fleet detected')
     const appearance = async (mission: string, leg: string) => {
@@ -529,7 +547,7 @@ for (const width of [320, 390, 1280]) {
       return row.evaluate((el) => ({
         border: getComputedStyle(el).borderLeftColor,
         background: getComputedStyle(el).backgroundColor,
-        title: getComputedStyle(el.querySelector('strong')!).color,
+        title: getComputedStyle(el.querySelector('h3') ?? el.querySelector('strong')!).color,
       }))
     }
     const peaceful = await appearance('Transport', 'outbound')
@@ -539,9 +557,10 @@ for (const width of [320, 390, 1280]) {
     expect(peaceful.title).not.toBe(combat.title)
     for (const mission of missions) {
       for (const leg of ['outbound', 'returning']) {
-        expect(await appearance(mission, leg)).toEqual(
-          peaceful,
-        )
+        const owned = await appearance(mission, leg)
+        expect(owned.border).toBe(peaceful.border)
+        expect(owned.background).toBe(peaceful.background)
+        expect(owned.title).not.toBe(combat.title)
       }
     }
     // Every row participates in page scrolling, with no clipped inner panel.
@@ -613,7 +632,7 @@ for (const width of [320, 390, 1280]) {
     await expect(page.getByRole('region', { name: 'Incoming fleets' }).getByRole('group', { name: 'Carried resources' })).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await diagnosticScreenshot(cards.nth(2), { path: `test-results/cargo-returning-attack-${width}.png` })
-    await cards.nth(2).getByRole('link', { name: 'Mission details' }).click()
+    await cards.nth(2).getByRole('link', { name: /^View .* fleet$/ }).click()
     await verifyCargo(page.getByRole('article', { name: 'Attack fleet', exact: true }), 2)
   })
 }
