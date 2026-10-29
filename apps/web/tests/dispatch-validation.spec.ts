@@ -1743,3 +1743,49 @@ test('background flight estimates preserve an explicit moon destination', async 
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   expect(state.launches).toBe(0)
 })
+
+
+for (const width of [390, 1440]) {
+  test(`Empire retains cargo wealth while launching and restores rejected reservations at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page)
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    await page.route('**/commands', async (route) => {
+      await gate
+      await route.fallback()
+    })
+    try {
+      await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
+      await review(page).click()
+      await page.getByRole('button', { name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) / }).click()
+      await expect(dispatchResult(page)).toContainText('Sending fleet order…')
+      await page.getByRole('link', { name: 'Empire', exact: true }).click()
+      const ledger = page.getByLabel('Empire resource totals')
+      const metal = ledger.getByRole('group', { name: 'metal wealth', exact: true })
+      const deuterium = ledger.getByRole('group', { name: 'deuterium wealth', exact: true })
+      const launching = metal.locator('dl > div').filter({ hasText: 'Launching' })
+      await expect(launching.locator('dd')).toHaveText('42')
+      await expect(metal.locator('strong')).toHaveText('13,323')
+      await expect(metal.locator('dl > div').filter({ hasText: 'On planets and moons' }).locator('dd')).toHaveText('13,281')
+      await expect(deuterium.locator('strong')).toHaveText('6,243')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      for (const group of await ledger.getByRole('group').all()) {
+        const centers = await group.locator('dt > svg').evaluateAll(icons => icons.map(icon => {
+          const box = icon.getBoundingClientRect()
+          return box.x + box.width / 2
+        }))
+        expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(1)
+      }
+      await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-launching-${width}x1000.png` })
+      release()
+      await expect(launching).toHaveCount(0)
+      await expect(metal.locator('strong')).toHaveText('13,323')
+      await expect(metal.locator('dl > div').filter({ hasText: 'On planets and moons' }).locator('dd')).toHaveText('13,323')
+      await expect(deuterium.locator('strong')).toHaveText('6,244')
+      await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-rejected-${width}x1000.png` })
+    } finally {
+      release()
+    }
+  })
+}
