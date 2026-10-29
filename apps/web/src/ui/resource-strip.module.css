@@ -7,6 +7,11 @@
 .warning a {
   color: var(--accent);
 }
+.warning a {
+  display: inline;
+  min-height: 0;
+  min-width: 0;
+}
 @media (max-width: 767px) {
   .resources {
     display: flex;
