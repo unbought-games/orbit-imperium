@@ -93,7 +93,25 @@ export function Reports({
     ) : null
   return (
     <Section className={styles.screen}>
-      {!item && <TaskHeader title="Reports" />}
+      {!item && (
+        <TaskHeader title="Reports">
+          {page && (
+            <Button
+              variant="secondary"
+              size="small"
+              aria-expanded={triage}
+              disabled={cleanup.submitting}
+              onClick={() => {
+                setTriage(!triage)
+                setOptions(defaultTriage)
+                setSelected(new Set())
+              }}
+            >
+              Sort, filter & clean up
+            </Button>
+          )}
+        </TaskHeader>
+      )}
       {item && !detail && (
         <ButtonLink
           variant="secondary"
@@ -245,18 +263,6 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
-          <Button
-            variant="secondary"
-            aria-expanded={triage}
-            disabled={cleanup.submitting}
-            onClick={() => {
-              setTriage(!triage)
-              setOptions(defaultTriage)
-              setSelected(new Set())
-            }}
-          >
-            Sort, filter & clean up
-          </Button>
           {triage && (
             <>
               {!complete && error === null && (

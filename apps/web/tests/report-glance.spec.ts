@@ -108,6 +108,14 @@ test('report glances expose historical mission facts in compact rows on desktop 
     await expect(rows.nth(1)).toContainText('[1:1:3]')
     await expect(rows.nth(2)).toContainText('Commander Cassiopeia · Luna (Moon)')
     await expect(rows.nth(2)).toContainText('[1:2:7]')
+    const title = page.getByRole('heading', { name: 'Reports', exact: true, level: 2 })
+    const options = page.getByRole('button', { name: 'Sort, filter & clean up' })
+    const titleBox = (await title.boundingBox())!
+    const optionsBox = (await options.boundingBox())!
+    const rowBox = (await rows.first().boundingBox())!
+    expect(Math.abs(titleBox.y + titleBox.height / 2 - optionsBox.y - optionsBox.height / 2)).toBeLessThanOrEqual(1)
+    expect(Math.abs(optionsBox.x + optionsBox.width - rowBox.x - rowBox.width)).toBeLessThanOrEqual(1)
+    await expect(rows.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
     const heading = rows.first().locator('strong')
     expect((await heading.boundingBox())!.x).toBe((await rows.first().boundingBox())!.x)
     expect((await rows.first().boundingBox())!.height).toBeLessThanOrEqual(width >= 600 ? 72 : 96)
