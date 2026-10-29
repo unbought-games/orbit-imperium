@@ -221,7 +221,7 @@ export function MissionFleets({
                 label="origin"
               >
                 {missionLocation(view, fleet.intent.origin, fleet.origin)}
-              </CoordinateLink>
+              </CoordinateLink>{' '}
               <span
                 className={fleetStyles.direction}
                 role="img"
@@ -232,7 +232,7 @@ export function MissionFleets({
                 }
               >
                 {fleet.leg === 'Returning' ? '←' : '→'}
-              </span>
+              </span>{' '}
               <CoordinateLink
                 at={fleet.destination}
                 target={
