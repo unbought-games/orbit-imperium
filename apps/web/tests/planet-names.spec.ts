@@ -268,6 +268,11 @@ test('active fleet routes show current public names and fit a phone', async ({
     },
   })
   await page.goto(`/u/andromeda/fleets/${id(71)}?body=${body.id}`)
+  // The legacy URL redirects and remounts the route. Wait before opening the
+  // native details element so that navigation cannot close it after the click.
+  await expect(page).toHaveURL(
+    `/u/andromeda/b/${body.id}/fleets/${id(71)}`,
+  )
   const fleet = page.getByRole('article', { name: 'Transport fleet' })
   await expect(fleet).toContainText(
     `${home.name} [1:371:12] → ${target.name} [1:371:8]`,
