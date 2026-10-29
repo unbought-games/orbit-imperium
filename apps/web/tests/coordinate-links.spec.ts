@@ -254,6 +254,9 @@ test('planet selector is one target while empire coordinates browse without chan
       await page.mouse.click(point.x, point.y)
       await expect(page.getByRole('listbox')).toBeVisible()
       await page.keyboard.press('Escape')
+      // Escape returns focus before the closing popup is hidden. Let that
+      // visible state settle before clicking the trigger again.
+      await expect(page.locator('[role="listbox"]:visible')).toHaveCount(0)
       await expect(selector).toBeFocused()
       await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
     }
