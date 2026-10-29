@@ -1868,8 +1868,8 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   ).toBeVisible()
   await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue('1')
   await expect(
-    page.getByRole('complementary', { name: 'Departure context' }),
-  ).toContainText('Fleet slots: 1 used / 5 total')
+    page.getByRole('button', { name: 'Fleet slots: 1 used / 5 total', exact: true }),
+  ).toBeVisible()
   const recovery = page.getByLabel('Action needs attention')
   // Exercise recovery explicitly so this assertion does not depend on whether
   // the background receipt poll runs before the layout checks finish.
@@ -1890,7 +1890,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     // Read both boxes in one frame: resize and focus restoration can change
     // scroll/header offsets between separate browser round trips.
     const bounds = await page
-      .getByText(/^Fleet slots: .* used \/ .* total$/)
+      .getByRole('group', { name: 'Origin', exact: true })
       .first()
       .evaluate((intro) => {
         const notice = document.querySelector('aside[aria-label="Action needs attention"]')!

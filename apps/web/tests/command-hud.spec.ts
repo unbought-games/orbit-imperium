@@ -329,7 +329,7 @@ for (const attackEnabled of [true, false]) {
     expect(await page.evaluate(()=>history.state.dispatchObservation)).toMatchObject({target:{type:'Body',id:observation.target.body,expected_owner:observation.target.owner,expected_kind:observation.target.kind},observedAt:baseTime})
     await expect(panel).not.toBeVisible()
     expect(await page.evaluate(()=>document.body.style.position)).toBe('')
-    await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Attack')
+    await expect(page.getByRole('radio', { checked: true })).toHaveValue('Attack')
     // The same action remains in the full report at desktop sizes.
     await page.setViewportSize({width:1440,height:900})
     await page.goto(`/u/andromeda/b/${body.id}/reports/${id(850)}`)

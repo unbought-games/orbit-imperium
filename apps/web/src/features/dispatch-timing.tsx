@@ -16,14 +16,20 @@ export function DispatchTiming({
   mission,
   now,
   message,
+  availableFuel,
 }: {
-  terms?: components['schemas']['FleetTerms4']
+  terms?: Pick<components['schemas']['FleetTerms4'], 'duration_ms' | 'fuel'>
   mission: components['schemas']['Mission4']
   now: number
   message?: string
+  availableFuel?: string
 }) {
+  const insufficientFuel =
+    terms &&
+    availableFuel !== undefined &&
+    BigInt(terms.fuel) > BigInt(availableFuel)
   const schedule = terms
-    ? flightSchedule(terms.duration_ms, now, terms.intent.mission)
+    ? flightSchedule(terms.duration_ms, now, mission)
     : null
   return (
     <section
@@ -65,9 +71,12 @@ export function DispatchTiming({
         </div>
         <div>
           <dt>Deuterium consumed</dt>
-          <dd>
+          <dd className={insufficientFuel ? styles.fieldError : undefined}>
             {terms ? (
-              <ResourceQuantity resource="deuterium" value={terms.fuel} />
+              <>
+                <ResourceQuantity resource="deuterium" value={terms.fuel} />
+                {insufficientFuel && <span> · Insufficient fuel</span>}
+              </>
             ) : (
               '—'
             )}

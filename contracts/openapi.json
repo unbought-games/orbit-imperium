@@ -12450,6 +12450,11 @@
             "items": {
               "$ref": "#/components/schemas/MissileFlightView4"
             }
+          },
+          "homeworld_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Viewer homeworld identity from the saved membership manifest; omitted when unknown."
           }
         },
         "required": [
@@ -12821,6 +12826,22 @@
               "intent"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "FleetEstimate"
+              },
+              "intent": {
+                "$ref": "#/components/schemas/FleetIntent4"
+              }
+            },
+            "required": [
+              "type",
+              "intent"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12911,6 +12932,26 @@
               "context"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "FleetEstimate"
+              },
+              "intent": {
+                "$ref": "#/components/schemas/FleetIntent4"
+              },
+              "context": {
+                "$ref": "#/components/schemas/QueryContext"
+              }
+            },
+            "required": [
+              "type",
+              "intent",
+              "context"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12953,6 +12994,9 @@
               },
               {
                 "$ref": "#/components/schemas/MissileTerms4"
+              },
+              {
+                "$ref": "#/components/schemas/FleetEstimate4"
               }
             ]
           },
@@ -18692,6 +18736,46 @@
           "target_kind",
           "outcome",
           "sent"
+        ],
+        "additionalProperties": false
+      },
+      "FleetEstimate4": {
+        "type": "object",
+        "description": "Read-only flight arithmetic; not a launch quote. Affordability and mission eligibility are revalidated at review and launch.",
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/FleetIntent4"
+          },
+          "profile_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fuel": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "capacity": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "maximum_payload": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "estimate": {
+            "const": true
+          }
+        },
+        "required": [
+          "intent",
+          "profile_hash",
+          "duration_ms",
+          "fuel",
+          "capacity",
+          "maximum_payload",
+          "estimate"
         ],
         "additionalProperties": false
       }

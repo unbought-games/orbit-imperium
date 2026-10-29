@@ -248,11 +248,12 @@ test('satellites manufacture by quantity but never appear in fleet selection', a
     })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect(
-    page.getByRole('combobox', { name: 'Mission', exact: true }),
+    page.getByRole('radio', { checked: true }),
   ).toBeVisible()
   await expect(
     page.getByRole('textbox', { name: /Solar Satellite.*available/ }),
   ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Add all ships', exact: true })).toBeDisabled()
 })
 test('production controls show satellite quantity and submit group throttling', async ({
   page,

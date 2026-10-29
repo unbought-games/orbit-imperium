@@ -762,7 +762,10 @@ export class Coordinator {
           await this.port.world(context, captured),
         )
         if (!this.responseMatches(pending, result)) return null
-        if (captured.type === 'FleetQuote') {
+        if (
+          captured.type === 'FleetQuote' ||
+          captured.type === 'FleetEstimate'
+        ) {
           if (!('intent' in result.data) || !('ships' in result.data.intent))
             return null
           const normalize = (

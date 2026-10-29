@@ -55,6 +55,7 @@ export async function installGameFixture(
     protocol?: 2 | 3 | 4
     hasUnreadReports?: () => boolean
     viewerRevision?: () => string
+    homeworldId?: string
     playerNames?: components['schemas']['PublicPlayerNames4']
     missiles?: components['schemas']['MissileFlightView4'][]
     missions?: components['schemas']['MissionView4']
@@ -187,6 +188,7 @@ export async function installGameFixture(
       sampled_at: sampledAt,
       as_of_ms: sampledAt,
       speed: 1,
+      ...(protocol === 4 && options.homeworldId ? { homeworld_id: options.homeworldId } : {}),
       bodies: (
         options.bodies ?? [
           body,

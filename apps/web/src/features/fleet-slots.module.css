@@ -1,0 +1,46 @@
+.slots {
+  display: inline-grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 76px;
+  min-height: 44px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.label {
+  color: var(--text-muted);
+  font-size: 0.625rem;
+  line-height: 1;
+}
+.usage {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.usage svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.usage strong {
+  font-weight: 650;
+}
+.total {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.compact {
+  min-width: 44px;
+  padding: 3px;
+  border-color: transparent;
+}
+.compact .usage {
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+}

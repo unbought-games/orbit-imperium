@@ -1,3 +1,7 @@
+import { useStore } from 'zustand'
+import { occupiedFleetSlots } from '../client-model/game-projection'
+import { FleetSlots } from '../features/fleet-slots'
+import { ContentColumn } from '../ui/content-column'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
 import {
@@ -38,6 +42,7 @@ import { developmentActivity } from './navigation-activity'
 export function GameShell() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
+  const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
   const location = useRouterState({ select: (state) => state.location })
@@ -325,15 +330,39 @@ export function GameShell() {
               Connection interrupted — awaiting server confirmation.
             </p>
           )}
-          <main id="main" tabIndex={-1} className={styles['work-area']}>
+          <ContentColumn
+            as="main"
+            width={page === 'dispatch' ? 'focused' : 'full'}
+            id="main"
+            tabIndex={-1}
+            className={styles['work-area']}
+          >
             <div
               className={
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']
               }
             >
+              {page === 'dispatch' && (
+                <ButtonLink
+                  variant="secondary"
+                  size="icon-small"
+                  aria-label="Back to fleets"
+                  title="Back to fleets"
+                  {...routeTarget(universeName, 'fleets', body?.id)}
+                >
+                  <ArrowLeft size={18} aria-hidden="true" />
+                </ButtonLink>
+              )}
               <Heading level={1} tabIndex={-1} ref={heading}>
                 {title}
               </Heading>
+              {page === 'dispatch' && view.protocol === 4 && (
+                <FleetSlots
+                  className={styles.headerSlots}
+                  used={occupiedSlots}
+                  total={view.missions.fleet_slots}
+                />
+              )}
             </div>
             <ActionStatus model={model} selectedBody={body?.id} />
             {!available ? (
@@ -358,14 +387,6 @@ export function GameShell() {
                   prepareDispatch,
                 }}
               >
-                {page === 'dispatch' && (
-                  <ButtonLink
-                    variant="secondary"
-                    {...routeTarget(universeName, 'fleets', body?.id)}
-                  >
-                    <ArrowLeft size={18} aria-hidden="true" /> Back to fleets
-                  </ButtonLink>
-                )}
                 {page === 'fleets' && view.protocol !== 4 && (
                   <ButtonLink
                     {...routeTarget(universeName, 'dispatch', body?.id)}
@@ -376,7 +397,7 @@ export function GameShell() {
                 <Outlet />
               </ScreenContext.Provider>
             )}
-          </main>
+          </ContentColumn>
         </div>
       </div>
       <CommandHud body={body?.id} onDraft={prepareDispatch} />

@@ -6404,6 +6404,11 @@ export interface components {
             progress?: components["schemas"]["SnapshotProgress"];
             player_names?: components["schemas"]["PublicPlayerNames4"];
             missiles?: components["schemas"]["MissileFlightView4"][];
+            /**
+             * Format: uuid
+             * @description Viewer homeworld identity from the saved membership manifest; omitted when unknown.
+             */
+            homeworld_id?: string;
         };
         CapabilityState4: {
             /** @enum {unknown} */
@@ -6483,6 +6488,10 @@ export interface components {
             /** @constant */
             type: "MissileQuote";
             intent: components["schemas"]["MissileIntent4"];
+        } | {
+            /** @constant */
+            type: "FleetEstimate";
+            intent: components["schemas"]["FleetIntent4"];
         };
         WorldQuery4: {
             /** @constant */
@@ -6505,6 +6514,11 @@ export interface components {
             type: "MissileQuote";
             intent: components["schemas"]["MissileIntent4"];
             context: components["schemas"]["QueryContext"];
+        } | {
+            /** @constant */
+            type: "FleetEstimate";
+            intent: components["schemas"]["FleetIntent4"];
+            context: components["schemas"]["QueryContext"];
         };
         BoundWorld4: {
             /** @constant */
@@ -6515,7 +6529,7 @@ export interface components {
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;
-            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"];
+            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"];
             progress?: components["schemas"]["SnapshotProgress"];
         };
         ReportHeader4: {
@@ -7856,6 +7870,17 @@ export interface components {
             primary?: components["schemas"]["DefenseId3"] | null;
             interceptors_spent?: components["schemas"]["Decimal"];
             interceptors_remaining?: components["schemas"]["Decimal"];
+        };
+        /** @description Read-only flight arithmetic; not a launch quote. Affordability and mission eligibility are revalidated at review and launch. */
+        FleetEstimate4: {
+            intent: components["schemas"]["FleetIntent4"];
+            profile_hash: string;
+            duration_ms: number;
+            fuel: components["schemas"]["Decimal"];
+            capacity: components["schemas"]["Decimal"];
+            maximum_payload: components["schemas"]["Decimal"];
+            /** @constant */
+            estimate: true;
         };
     };
     responses: never;

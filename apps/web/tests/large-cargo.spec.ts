@@ -334,8 +334,7 @@ test('Large Cargos can be selected, quoted and launched in a transport fleet', a
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page
-    .getByRole('combobox', { name: 'Mission', exact: true })
-    .selectOption('Transport')
+    .getByRole('radio', { name: 'Transport', exact: true }).check()
   await setDestination(page, { position: '8' })
   await page
     .getByRole('textbox', { name: 'Large Cargo · 2 available' })

@@ -42,6 +42,7 @@ pub(super) fn world_projection(
     progression.sampled_at = snapshot.at;
     progression.capabilities = world_capabilities(progression.capabilities, &snapshot.rules);
     Ok(BoundView4 {
+        homeworld_id: snapshot.homeworld.as_ref().map(|(id, _)| *id),
         missiles: world
             .records
             .missiles

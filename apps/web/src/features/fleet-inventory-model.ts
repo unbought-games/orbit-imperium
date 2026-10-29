@@ -1,3 +1,4 @@
+import { compareShips } from './ship-order'
 import type { ProgressionProps } from './progression/shared'
 import { unitCounts } from './progression/unit-counts'
 
@@ -7,6 +8,7 @@ export function fleetInventoryRows(
 ) {
   return view.catalog
     .filter((entry) => entry.key.kind === 'Ship')
+    .sort(compareShips)
     .map((entry) => ({ entry, counts: unitCounts(view, body, entry) }))
     .filter(
       ({ entry, counts }) =>

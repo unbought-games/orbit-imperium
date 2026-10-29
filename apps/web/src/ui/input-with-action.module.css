@@ -1,0 +1,15 @@
+.field {
+  position: relative;
+  min-width: 0;
+}
+.field input {
+  padding-inline-end: 44px;
+}
+.action {
+  --button-min-size: 36px;
+}
+.field > .action {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+}

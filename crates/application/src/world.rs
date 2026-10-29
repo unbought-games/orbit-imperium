@@ -117,6 +117,8 @@ pub struct MissionView {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoundView4 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub homeworld_id: Option<BodyId>,
     #[serde(default)]
     pub missiles: Vec<MissileFlightView>,
     #[serde(default)]
@@ -140,6 +142,7 @@ pub enum WorldQueryKind {
     Galaxy { galaxy: u32, system: u32 },
     ResolveDestination { selection: DestinationSelection },
     FleetQuote { intent: FleetIntent },
+    FleetEstimate { intent: FleetIntent },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportHeader4 {
@@ -267,6 +270,10 @@ impl<S: GameStore> GameService<S> {
             }
             WorldQueryKind::ResolveDestination { selection } => serde_json::to_value(
                 resolve_destination(&facts.state, selection, &facts.rules)
+                    .map_err(ServiceError::GameRejected)?,
+            ),
+            WorldQueryKind::FleetEstimate { intent } => serde_json::to_value(
+                estimate_fleet(&facts.state, p.player, &intent, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
             ),
             WorldQueryKind::MissileQuote { intent } => serde_json::to_value(

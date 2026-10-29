@@ -116,6 +116,16 @@ pub fn fleet_terms(
     research: &ResearchLevels,
     r: &Ruleset,
 ) -> Result<FleetTerms, GameError> {
+    flight_terms(intent, origin, target, research, r, true)
+}
+fn flight_terms(
+    intent: &FleetIntent,
+    origin: Coordinates,
+    target: Coordinates,
+    research: &ResearchLevels,
+    r: &Ruleset,
+    require_capacity: bool,
+) -> Result<FleetTerms, GameError> {
     if !r.world() {
         return Err(GameError::UnavailableContent);
     }
@@ -180,10 +190,10 @@ pub fn fleet_terms(
     let maximum_payload = capacity
         .checked_add(probe_capacity)
         .and_then(|v| v.checked_sub(fuel))
-        .filter(|v| *v >= 0)
-        .ok_or(GameError::CargoCapacity)?
-        .min(capacity);
-    if sum(intent.cargo)? > maximum_payload {
+        .ok_or(GameError::CargoCapacity)?;
+    if require_capacity
+        && (maximum_payload < 0 || sum(intent.cargo)? > maximum_payload.min(capacity))
+    {
         return Err(GameError::CargoCapacity);
     }
     Ok(FleetTerms {
@@ -194,11 +204,63 @@ pub fn fleet_terms(
         duration_ms,
         fuel,
         capacity,
-        maximum_payload,
+        maximum_payload: maximum_payload.max(0).min(capacity),
         slot_limit: 0,
         terms_hash: Hash(String::new()),
     })
 }
+/// Read-only flight arithmetic. This contains no launch authorization or terms hash.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct FleetEstimate {
+    pub estimate: bool,
+    pub intent: FleetIntent,
+    pub profile_hash: Hash,
+    pub duration_ms: i64,
+    #[serde(with = "crate::decimal_wire")]
+    pub fuel: i64,
+    #[serde(with = "crate::decimal_wire")]
+    pub capacity: i64,
+    #[serde(with = "crate::decimal_wire")]
+    pub maximum_payload: i64,
+}
+pub fn estimate_fleet(
+    s: &GameState,
+    owner: PlayerId,
+    intent: &FleetIntent,
+    r: &Ruleset,
+) -> Result<FleetEstimate, GameError> {
+    let estimate = || -> Result<FleetEstimate, Fault> {
+        let origin = body(s, intent.origin, r)?;
+        if origin.owner != owner || intent.ships.iter().any(|ship| ship.owner != owner) {
+            return Err(GameError::NotOwned.into());
+        }
+        if !s.coverage.research_players.contains(&owner) {
+            return Err(invariant("incomplete estimate research"));
+        }
+        let (coordinates, _) = target(s, &intent.destination, r)?;
+        let research = s
+            .research
+            .get(&owner)
+            .ok_or_else(|| invariant("missing research"))?;
+        validate_research_catalog(research, r)?;
+        let terms = flight_terms(intent, origin.coordinates, coordinates, research, r, false)?;
+        Ok(FleetEstimate {
+            estimate: true,
+            intent: terms.intent,
+            profile_hash: terms.profile_hash,
+            duration_ms: terms.duration_ms,
+            fuel: terms.fuel,
+            capacity: terms.capacity,
+            maximum_payload: terms.maximum_payload,
+        })
+    };
+    match estimate() {
+        Ok(estimate) => Ok(estimate),
+        Err(Fault::Game(error)) => Err(error),
+        Err(Fault::Invariant(_)) => Err(GameError::PolicyUnavailable),
+    }
+}
+
 /// Concurrent mission slots unlocked by completed computer technology.
 pub fn fleet_slot_limit(computer_level: u32) -> i64 {
     1 + i64::from(computer_level)

@@ -387,7 +387,9 @@ impl PgStore {
         if !bot
             || matches!(
                 q.query,
-                WorldQueryKind::FleetQuote { .. } | WorldQueryKind::MissileQuote { .. }
+                WorldQueryKind::FleetQuote { .. }
+                    | WorldQueryKind::FleetEstimate { .. }
+                    | WorldQueryKind::MissileQuote { .. }
             )
         {
             return Ok(None);
@@ -461,7 +463,9 @@ impl PgStore {
                 orbit_engine::resolve_destination(&facts.state, selection, &facts.rules)
                     .map(|d| serde_json::to_value(d).expect("destination"))
             }
-            WorldQueryKind::FleetQuote { .. } | WorldQueryKind::MissileQuote { .. } => {
+            WorldQueryKind::FleetQuote { .. }
+            | WorldQueryKind::FleetEstimate { .. }
+            | WorldQueryKind::MissileQuote { .. } => {
                 unreachable!()
             }
         };
@@ -584,7 +588,7 @@ pub(crate) async fn unmetered_world_query(
             )
             .await
         }
-        WorldQueryKind::FleetQuote { intent } => {
+        WorldQueryKind::FleetQuote { intent } | WorldQueryKind::FleetEstimate { intent } => {
             require_destination_observation(tx, b, &intent.destination).await
         }
         WorldQueryKind::Galaxy { .. } | WorldQueryKind::ResolveDestination { .. } => {

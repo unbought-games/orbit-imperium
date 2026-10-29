@@ -1,35 +1,42 @@
+import { BodyIllustration } from './body-illustration'
+import { playerLabel } from './player-label'
+import {
+  LocationSummary,
+  LocationSummaryMedia,
+  LocationSummaryContent,
+  LocationSummaryLabel,
+  LocationSummaryTitle,
+  LocationSummaryDescription,
+  LocationSummaryCoordinates,
+} from '../ui/location-summary'
+import { RangeInput } from '../ui/form'
+import { DispatchShips } from './dispatch-ships'
 import { DispatchDestinationPreview } from './dispatch-destination-preview'
 import { CoordinateLink } from './coordinate-link'
-import { ArrowUp } from 'lucide-react'
+import { InputWithAction, FillButton } from '../ui/input-with-action'
 import { useAtomValue } from 'jotai'
 import { copiedLocationAtom } from './coordinate-memory'
 import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useUniverseName } from '../shell/session-context'
 import { DispatchReview } from './dispatch-review'
-import { useStore } from 'zustand'
-import { FleetSlots } from './fleet-slots'
-import { occupiedFleetSlots } from '../client-model/game-projection'
 import { useDispatch } from './use-dispatch'
 import { canSubmitQuote } from '../client-model/game-projection'
-import { ButtonLink } from '../ui/button'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
 import { resourceNames } from '../client-model/resources'
-import { Select } from '../ui/form'
+import { MissionSelector } from './mission-selector'
 import { Field } from '../ui/form'
 import { Form } from '../ui/form'
 import { Section } from '../ui/section'
 import { Text } from '../ui/typography'
-import { Heading } from '../ui/typography'
 import styles from './missions.module.css'
 import { TaskHeader } from '../ui/task-header'
 import { DispatchTiming } from './dispatch-timing'
 import { DispatchFeedback } from './dispatch-feedback'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
-import { routeTarget } from '../shell/route-target'
-import { bodyName, label } from '../ui/format'
+import { bodyName } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
   ships?: Record<string, string>
@@ -61,7 +68,6 @@ export function Dispatch({
 }) {
   const universeName = useUniverseName()
   const recentlyCopied = useAtomValue(copiedLocationAtom)
-  const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const {
     coordinateProblems,
     coordinatesValid,
@@ -111,14 +117,34 @@ export function Dispatch({
       {!quote && (
         <>
           <TaskHeader>
-            <span>
-              Origin {bodyName(body)}{' '}
-              <CoordinateLink at={body.coordinates} label="origin" /> ·{' '}
-              <FleetSlots
-                used={occupiedSlots}
-                total={view.missions.fleet_slots}
-              />
-            </span>
+            <div className={styles.origin}>
+              <LocationSummaryLabel>Origin</LocationSummaryLabel>
+              <LocationSummary role="group" aria-label="Origin">
+                <LocationSummaryMedia>
+                  <BodyIllustration
+                    body={body}
+                    className={styles.originArt}
+                    sizes="(max-width: 479px) 56px, 80px"
+                  />
+                </LocationSummaryMedia>
+                <LocationSummaryContent>
+                  <LocationSummaryTitle title={bodyName(body)}>
+                    {bodyName(body)}
+                  </LocationSummaryTitle>
+                  <LocationSummaryDescription>
+                    {body.kind} ·{' '}
+                    {playerLabel(view.binding.player, view.player_names)}
+                  </LocationSummaryDescription>
+                  <LocationSummaryCoordinates>
+                    <CoordinateLink
+                      at={body.coordinates}
+                      target={body.kind === 'Moon' ? 'moon' : 'planet'}
+                      label="origin"
+                    />
+                  </LocationSummaryCoordinates>
+                </LocationSummaryContent>
+              </LocationSummary>
+            </div>
           </TaskHeader>
           {mission === 'Colonize' && (
             <Text role="status">
@@ -130,7 +156,7 @@ export function Dispatch({
           {mission === 'Deploy' && (
             <Text>
               Deployment transfers ships and cargo permanently to another owned
-              planet and credits half the paid fuel, rounded down.
+              planet or moon and credits half the paid fuel, rounded down.
             </Text>
           )}
           {draft?.observedAt !== undefined && (
@@ -153,43 +179,19 @@ export function Dispatch({
             className={styles.destinationFields}
             aria-label="Mission and destination"
           >
-            <Field>
-              Mission
-              <Select
-                value={mission}
-                onChange={(e) => {
-                  setMission(e.target.value as DispatchDraft['mission'])
-                  if (e.target.value === 'Harvest') setTargetKind('debris')
-                  else if (
-                    targetKind === 'debris' ||
-                    e.target.value === 'Colonize'
-                  )
-                    setTargetKind('planet')
-                  clear()
-                }}
-              >
-                {(
-                  [
-                    'Transport',
-                    'Espionage',
-                    'Harvest',
-                    'Attack',
-                    'Colonize',
-                    'Deploy',
-                  ] as const
-                )
-                  .filter(
-                    (m) =>
-                      m === mission ||
-                      view.capabilities.some(
-                        (c) => c.capability === m && c.enabled,
-                      ),
-                  )
-                  .map((m) => (
-                    <option key={m}>{m}</option>
-                  ))}
-              </Select>
-            </Field>
+            <MissionSelector
+              value={mission}
+              available={view.capabilities
+                .filter((c) => c.enabled)
+                .map((c) => c.capability)}
+              onChange={(nextMission) => {
+                setMission(nextMission)
+                if (nextMission === 'Harvest') setTargetKind('debris')
+                else if (targetKind === 'debris' || nextMission === 'Colonize')
+                  setTargetKind('planet')
+                clear()
+              }}
+            />
             <DispatchDestinationPreview
               coordinates={destinationCoordinates}
               kind={targetKind}
@@ -264,46 +266,28 @@ export function Dispatch({
               </Text>
             )}
           </fieldset>
-          <fieldset className={styles.fieldset}>
-            <legend>Ships</legend>
-            {types.map((k) => {
-              const available =
-                body.inventories.find((i) => i.item.id === k)?.count ?? '0'
-              return (
-                <Field key={k}>
-                  {label(k)} · {available} available
-                  <NumberInput
-                    value={ships[k] ?? '0'}
-                    placeholder="0"
-                    onBlur={(e) => {
-                      if (!e.target.value.trim())
-                        setShips({ ...ships, [k]: '0' })
-                    }}
-                    onChange={(e) => {
-                      setShips({ ...ships, [k]: e.target.value })
-                      clear()
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShips({ ...ships, [k]: available })
-                      clear()
-                    }}
-                  >
-                    All {label(k)}
-                  </Button>
-                </Field>
-              )
-            })}
-          </fieldset>
+          <DispatchShips
+            view={view}
+            body={body}
+            types={types}
+            ships={ships}
+            onNormalize={(id) => setShips({ ...ships, [id]: '0' })}
+            onAddAll={(allShips) => {
+              setShips(allShips)
+              clear()
+            }}
+            onChange={(id, value) => {
+              setShips({ ...ships, [id]: value })
+              clear()
+            }}
+          />
           <fieldset className={styles.cargoFields} aria-label="Cargo">
             <div className={styles.cargoHeader}>
               <span>Cargo</span>
             </div>
             <div className={styles.cargoInputs}>
               {resourceNames.map((resource, i) => (
-                <div className={styles.cargoInput} key={resource}>
+                <InputWithAction className={styles.cargoInput} key={resource}>
                   <Field title={resource[0].toUpperCase() + resource.slice(1)}>
                     <ResourceMark resource={resource} />
                     <NumberInput
@@ -322,19 +306,13 @@ export function Dispatch({
                       }}
                     />
                   </Field>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-small"
-                    className={styles.maxCargo}
+                  <FillButton
                     aria-label={`Max ${resource}`}
                     title={`Max ${resource}, reserving space for other cargo and fuel`}
                     disabled={busy || !coordinatesValid || !!targetProblem}
                     onClick={() => void maxCargo(resource)}
-                  >
-                    <ArrowUp size={18} aria-hidden="true" />
-                  </Button>
-                </div>
+                  />
+                </InputWithAction>
               ))}
               <Button
                 type="button"
@@ -353,24 +331,25 @@ export function Dispatch({
             aria-label="Speed and flight estimates"
           >
             <Field>
-              Speed
-              <Select
+              <span className={styles.speedLabel}>
+                Speed <span aria-hidden="true">{speed}%</span>
+              </span>
+              <RangeInput
                 aria-label="Speed"
+                aria-valuetext={`${speed}%`}
+                min={10}
+                max={100}
+                step={10}
                 value={speed}
                 onChange={(e) => {
                   setSpeed(Number(e.target.value))
                   clear()
                 }}
-              >
-                {Array.from({ length: 10 }, (_, i) => (
-                  <option key={i} value={(i + 1) * 10}>
-                    {(i + 1) * 10}%
-                  </option>
-                ))}
-              </Select>
+              />
             </Field>
             <DispatchTiming
               terms={timing}
+              availableFuel={body.amounts.deuterium}
               mission={mission}
               now={now}
               message={timingMessage}
@@ -394,26 +373,6 @@ export function Dispatch({
             {busy ? 'Reviewing…' : 'Review fleet'}
           </Button>
         </Form>
-        <aside className={styles.dispatchAside} aria-label="Departure context">
-          <Heading level={3}>
-            Departing from{' '}
-            <CoordinateLink at={body.coordinates} label="origin" />
-          </Heading>
-          <Text>
-            <FleetSlots
-              used={occupiedSlots}
-              total={view.missions.fleet_slots}
-            />
-            . Returning fleets occupy a slot.
-          </Text>
-          <Text>
-            Review checks the current destination, fuel, capacity and mission
-            eligibility before you commit.
-          </Text>
-          <ButtonLink {...routeTarget(universeName, 'fleets', body.id)}>
-            View fleet activity
-          </ButtonLink>
-        </aside>
       </div>
       {quote && (
         <DispatchReview
@@ -427,7 +386,6 @@ export function Dispatch({
             system: Number(system),
             position: Number(position),
           }}
-          occupiedSlots={occupiedSlots}
           now={now}
           observedAt={draft?.observedAt}
           colonyWarning={
