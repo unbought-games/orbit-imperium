@@ -1770,6 +1770,13 @@ for (const width of [390, 1440]) {
       await expect(metal.locator('dl > div').filter({ hasText: 'On planets and moons' }).locator('dd')).toHaveText('13,281')
       await expect(deuterium.locator('strong')).toHaveText('6,243')
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      for (const group of await ledger.getByRole('group').all()) {
+        const centers = await group.locator('svg').evaluateAll(icons => icons.map(icon => {
+          const box = icon.getBoundingClientRect()
+          return box.x + box.width / 2
+        }))
+        expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(1)
+      }
       await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-launching-${width}x1000.png` })
       release()
       await expect(launching).toHaveCount(0)

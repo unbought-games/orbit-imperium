@@ -650,6 +650,13 @@ for (const width of [390, 1440]) {
       await expect(group.getByRole('term')).toHaveText(['On planets and moons', 'On fleets in transit'])
       await expect(group.locator('[title="On planets and moons"]')).toBeVisible()
       await expect(group.locator('[title="On fleets in transit"]')).toBeVisible()
+      const iconCenters = await group.locator('svg').evaluateAll(icons => icons.map(icon => {
+        const box = icon.getBoundingClientRect()
+        return box.x + box.width / 2
+      }))
+      expect(Math.max(...iconCenters) - Math.min(...iconCenters)).toBeLessThan(1)
+      const amountStarts = await group.locator('strong, dd').evaluateAll(amounts => amounts.map(amount => amount.getBoundingClientRect().x))
+      expect(Math.max(...amountStarts) - Math.min(...amountStarts)).toBeLessThan(1)
       const onWorlds = options.bodies.reduce((sum, b) => sum + BigInt(b.amounts[name]), 0n)
       const inTransit = options.missions.fleets.reduce((sum, f) => sum + BigInt(f.cargo[name]), 0n)
       await expect(group.locator('strong')).toHaveText(((onWorlds + inTransit) / 1000000n).toLocaleString('en-US'))

@@ -620,43 +620,41 @@ export function EmpireOverview({
             aria-label={`${label(name)} wealth`}
           >
             <ResourceMark resource={name} width={22} height={22} />
-            <div className={styles.totalContent}>
-              {name}
-              <strong>
-                <ResourceNumber value={totals.total[name]} />
-              </strong>
-              <dl className={styles.wealthBreakdown}>
-                <div title="On planets and moons">
+            <span className={styles.totalContent}>{name}</span>
+            <strong>
+              <ResourceNumber value={totals.total[name]} />
+            </strong>
+            <dl className={styles.wealthBreakdown}>
+              <div title="On planets and moons">
+                <dt>
+                  <Globe2 size={14} aria-hidden="true" />
+                  <span className={styles.srOnly}>On planets and moons</span>
+                </dt>
+                <dd>
+                  <ResourceNumber value={totals.onWorlds[name]} />
+                </dd>
+              </div>
+              <div title="On fleets in transit">
+                <dt>
+                  <Rocket size={14} aria-hidden="true" />
+                  <span className={styles.srOnly}>On fleets in transit</span>
+                </dt>
+                <dd>
+                  <ResourceNumber value={totals.inTransit[name]} />
+                </dd>
+              </div>
+              {pendingCargo.length > 0 && (
+                <div title="Launching">
                   <dt>
-                    <Globe2 size={14} aria-hidden="true" />
-                    <span className={styles.srOnly}>On planets and moons</span>
+                    <Hourglass size={14} aria-hidden="true" />
+                    <span className={styles.srOnly}>Launching</span>
                   </dt>
                   <dd>
-                    <ResourceNumber value={totals.onWorlds[name]} />
+                    <ResourceNumber value={totals.launching[name]} />
                   </dd>
                 </div>
-                <div title="On fleets in transit">
-                  <dt>
-                    <Rocket size={14} aria-hidden="true" />
-                    <span className={styles.srOnly}>On fleets in transit</span>
-                  </dt>
-                  <dd>
-                    <ResourceNumber value={totals.inTransit[name]} />
-                  </dd>
-                </div>
-                {pendingCargo.length > 0 && (
-                  <div title="Launching">
-                    <dt>
-                      <Hourglass size={14} aria-hidden="true" />
-                      <span className={styles.srOnly}>Launching</span>
-                    </dt>
-                    <dd>
-                      <ResourceNumber value={totals.launching[name]} />
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </div>
+              )}
+            </dl>
           </div>
         ))}
       </div>
