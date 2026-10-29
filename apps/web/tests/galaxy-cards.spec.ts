@@ -1946,6 +1946,14 @@ for (const width of [390, 1280]) {
           (request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')) requests.push(request.url())
     })
     await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+    // The hit area ends at the content, not at the edge of the grid column.
+    const buttonBox = (await trigger.boundingBox())!
+    const amountsBox = (await trigger.locator(':scope > span').boundingBox())!
+    expect(buttonBox.x + buttonBox.width).toBeCloseTo(amountsBox.x + amountsBox.width, 1)
+    if (width === 1280) {
+      await page.mouse.click(buttonBox.x + buttonBox.width + 20, buttonBox.y + buttonBox.height / 2)
+      await expect(dialog).not.toBeVisible()
+    }
     await page.keyboard.press('Tab')
     await trigger.focus()
     await expect(trigger).toBeFocused()

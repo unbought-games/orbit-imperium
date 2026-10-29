@@ -215,6 +215,7 @@
 .debrisTrigger {
   padding: 0;
   min-height: 44px;
+  justify-self: start;
   justify-content: flex-start;
   text-align: left;
 }
