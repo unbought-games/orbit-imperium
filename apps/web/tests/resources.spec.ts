@@ -1901,6 +1901,11 @@ for (const width of [1440, 390]) {
         await expect(dialog).toHaveCount(0)
         await expect(page.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeEnabled()
         if (resource === 'Metal') {
+          if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+            await page.locator('main img').evaluateAll(async (images) => {
+              await Promise.all(images.map((image) => (image as HTMLImageElement).decode()))
+            })
+          }
           await diagnosticScreenshot(page, { path: `test-results/storage-link-destination-${width}x900.png`, fullPage: true })
           // Activating the warning on its own destination still dismisses it.
           if (width === 390) await trigger.tap()
