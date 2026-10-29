@@ -322,7 +322,7 @@ fn unsupported_protocol_is_not_a_ready_snapshot() {
 fn planet_temperature_comes_from_body_state_without_colony_metadata() {
     futures::executor::block_on(async {
         for protocol in [3, 4] {
-            for temperature in [-120, 0, 260] {
+            for (temperature, known_homeworld) in [(-120, true), (0, true), (260, false)] {
                 let (mut store, session) = setup(protocol);
                 let facts = &mut store.facts;
                 let body = Body {
@@ -358,6 +358,18 @@ fn planet_temperature_comes_from_body_state_without_colony_metadata() {
                     .inventory_owners
                     .insert((body.id, body.owner));
                 facts.bodies.push(body.clone());
+                if known_homeworld {
+                    facts.homeworld = Some((
+                        body.id,
+                        Homeworld {
+                            coordinates: body.coordinates,
+                            diameter_km: 12800,
+                            fields: 163,
+                            max_temperature: 66,
+                            rng_bytes: 8,
+                        },
+                    ));
+                }
                 for state in [&mut facts.progression, &mut facts.world]
                     .into_iter()
                     .flatten()
@@ -389,6 +401,15 @@ fn planet_temperature_comes_from_body_state_without_colony_metadata() {
                 let json = serde_json::to_value(result).unwrap();
                 assert_eq!(json["view"]["bodies"][0]["max_temperature"], temperature);
                 assert!(json["view"]["bodies"][0].get("colony").is_none());
+                assert_eq!(
+                    json["view"]["bodies"][0]["min_temperature"],
+                    temperature - 40
+                );
+                if known_homeworld {
+                    assert_eq!(json["view"]["bodies"][0]["diameter_km"], 12800);
+                } else {
+                    assert!(json["view"]["bodies"][0].get("diameter_km").is_none());
+                }
             }
         }
     });

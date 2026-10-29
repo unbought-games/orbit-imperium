@@ -5898,6 +5898,10 @@ export interface components {
             };
         };
         BodyV3: {
+            /** @description Planet diameter from saved homeworld or colony creation metadata. Omitted when unavailable and for moons. */
+            diameter_km?: number;
+            /** @description Minimum planet temperature in degrees Celsius, derived from authoritative current climate. Omitted for moons and older servers. */
+            min_temperature?: number;
             /** @description Maximum planet temperature in degrees Celsius, from authoritative body state. Omitted for moons and older servers. */
             max_temperature?: number;
             /** Format: uuid */

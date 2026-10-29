@@ -415,14 +415,21 @@ async fn colony_creation_is_atomic_replayable_private_and_usable_after_restart()
         )
         .await
         .unwrap();
-    assert!(
-        view.progression
-            .bodies
-            .iter()
-            .find(|b| b.id == colony.id)
-            .unwrap()
-            .colony
-            .is_some()
+    let projected_colony = view
+        .progression
+        .bodies
+        .iter()
+        .find(|b| b.id == colony.id)
+        .unwrap();
+    let genesis = projected_colony.colony.as_ref().unwrap();
+    assert_eq!(projected_colony.diameter_km, Some(genesis.diameter_km));
+    assert_eq!(
+        projected_colony.min_temperature,
+        Some(genesis.min_temperature)
+    );
+    assert_eq!(
+        projected_colony.max_temperature,
+        Some(genesis.max_temperature)
     );
     assert!(
         view.progression
