@@ -105,16 +105,45 @@ export function bodyTraffic(flights: EmpireFlight[], id: string) {
   }
 }
 
-/** BigInt arithmetic preserves the server's micro-resource precision. */
+/** Sum current owned assets once, never launch intent, spent fuel or foreign traffic. */
 export function empireTotals(view: BoundView) {
-  return Object.fromEntries(
-    resourceNames.map((name) => [
-      name,
-      view.bodies
-        .reduce((sum, b) => sum + BigInt(b.amounts[name]), 0n)
-        .toString(),
-    ]),
-  ) as Record<(typeof resourceNames)[number], string>
+  const cargo =
+    view.protocol === 4
+      ? view.missions.fleets.map((fleet) => fleet.cargo)
+      : view.fleets
+          .filter((fleet) => fleet.status !== 'Completed')
+          .map((fleet) => fleet.payload)
+  const sum = (amounts: components['schemas']['Resources'][]) =>
+    Object.fromEntries(
+      resourceNames.map((name) => [
+        name,
+        amounts
+          .reduce((total, resources) => total + BigInt(resources[name]), 0n)
+          .toString(),
+      ]),
+    ) as components['schemas']['Resources']
+  const onWorlds = sum(view.bodies.map((body) => body.amounts))
+  const inTransit = sum(cargo)
+  return { onWorlds, inTransit, total: sum([onWorlds, inTransit]) }
+}
+
+/** Older servers may only expose colony metadata; never infer diameter from fields. */
+export function planetPhysicalFacts(body: BoundView['bodies'][number]) {
+  if (body.kind !== 'Planet') return []
+  const colony = 'colony' in body ? body.colony : undefined
+  const diameter =
+    ('diameter_km' in body ? body.diameter_km : undefined) ??
+    colony?.diameter_km
+  const minimum =
+    ('min_temperature' in body ? body.min_temperature : undefined) ??
+    colony?.min_temperature
+  const maximum = planetMaxTemperature(body)
+  return [
+    ...(diameter === undefined ? [] : [`${diameter} km`]),
+    ...(minimum === undefined || maximum === undefined
+      ? []
+      : [`${minimum} to ${maximum} °C`]),
+  ]
 }
 
 export function storagePercent(amount: string, capacity: string) {

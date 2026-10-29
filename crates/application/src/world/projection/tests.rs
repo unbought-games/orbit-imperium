@@ -328,6 +328,7 @@ fn snapshot() -> ViewerSnapshot {
         collection_revisions: Default::default(),
     };
     ViewerSnapshot {
+        homeworld: None,
         unread_report: None,
         world: Some(state.clone()),
         progression: Some(state),

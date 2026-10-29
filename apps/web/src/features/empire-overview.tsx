@@ -36,6 +36,7 @@ import {
   empireNodes,
   empirePaths,
   empireTotals,
+  planetPhysicalFacts,
   storagePercent,
   planetMaxTemperature,
   type EmpireFlight,
@@ -405,6 +406,7 @@ function PlanetDossier({
   model: Coordinator
   flights: EmpireFlight[]
 }) {
+  const physicalFacts = planetPhysicalFacts(body)
   const rates = currentResourceRates(view, body)
   const traffic = bodyTraffic(flights, body.id)
   const energy = BigInt(body.energy.supply) - BigInt(body.energy.demand)
@@ -441,10 +443,9 @@ function PlanetDossier({
             {body.fields_used}/{body.fields} fields · {body.fields_reserved}{' '}
             reserved
           </span>
-          {'colony' in body && body.colony && (
+          {physicalFacts.length > 0 && (
             <span className={styles.bodyFacts}>
-              {body.colony.diameter_km} km · {body.colony.min_temperature} to{' '}
-              {body.colony.max_temperature} °C
+              {physicalFacts.join(' · ')}
             </span>
           )}
         </div>
@@ -602,18 +603,43 @@ export function EmpireOverview({
         <div className={styles.ledgerLabel}>
           <Globe2 size={17} />
           <span>
-            Empire reserves<small>Across all planets & moons</small>
+            Empire wealth<small>Worlds & owned fleet cargo</small>
           </span>
         </div>
         {resourceNames.map((name) => (
-          <div className={styles.total} key={name}>
+          <div
+            className={styles.total}
+            key={name}
+            role="group"
+            aria-label={`${label(name)} wealth`}
+          >
             <ResourceMark resource={name} width={22} height={22} />
-            <span>
+            <div className={styles.totalContent}>
               {name}
               <strong>
-                <ResourceNumber value={totals[name]} />
+                <ResourceNumber value={totals.total[name]} />
               </strong>
-            </span>
+              <dl className={styles.wealthBreakdown}>
+                <div>
+                  <dt>On worlds</dt>
+                  <dd>
+                    <ResourceQuantity
+                      resource={name}
+                      value={totals.onWorlds[name]}
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>In transit</dt>
+                  <dd>
+                    <ResourceQuantity
+                      resource={name}
+                      value={totals.inTransit[name]}
+                    />
+                  </dd>
+                </div>
+              </dl>
+            </div>
           </div>
         ))}
       </div>

@@ -570,6 +570,7 @@ impl PgStore {
             .as_ref()
             .map_or(coverage, |s| s.coverage.clone());
         let snapshot = ViewerSnapshot {
+            homeworld: crate::bootstrap::viewer_homeworld(&mut tx, universe, player).await?,
             unread_report: None,
             world,
             progression,

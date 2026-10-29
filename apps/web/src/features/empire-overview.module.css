@@ -76,7 +76,7 @@
 }
 .empireLedger {
   display: grid;
-  grid-template-columns: 1.15fr repeat(3, 1fr);
+  grid-template-columns: 1.15fr repeat(3, minmax(0, 1fr));
   border: 1px solid var(--hud-border);
   background: linear-gradient(110deg, #a4dbef08, #a4dbef02);
   margin-bottom: 20px;
@@ -99,13 +99,34 @@
   color: var(--hud-muted);
 }
 .total {
+  min-width: 0;
   border-left: 1px solid var(--hud-border);
 }
-.total > span {
+.totalContent {
+  min-width: 0;
   text-transform: uppercase;
   color: var(--hud-muted);
   font-size: 0.5625rem;
   letter-spacing: 0.15em;
+}
+.wealthBreakdown {
+  margin: 10px 0 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.625rem;
+}
+.wealthBreakdown > div {
+  margin-top: 6px;
+}
+.wealthBreakdown dd {
+  margin: 2px 0 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.total > svg {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 14px;
 }
 .total strong {
   display: block;
@@ -574,6 +595,7 @@
   letter-spacing: 0.08em;
 }
 .bodyFacts {
+  display: block;
   font-size: 0.625rem;
   color: var(--hud-muted);
 }
@@ -899,7 +921,7 @@
     height: 14px;
     flex-shrink: 0;
   }
-  .total > span {
+  .totalContent {
     font-size: 0.5rem;
     letter-spacing: 0.04em;
     min-width: 0;

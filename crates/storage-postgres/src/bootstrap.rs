@@ -218,6 +218,30 @@ impl PgStore {
     }
 }
 
+/// Read only the viewer's saved creation metadata in the view's transaction.
+/// Fixtures and historical universes without a manifest have no physical metadata.
+pub(crate) async fn viewer_homeworld(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    universe: UniverseId,
+    player: PlayerId,
+) -> Result<Option<(BodyId, Homeworld)>, StoreError> {
+    let member = sqlx::query_scalar::<_, serde_json::Value>(
+        "SELECT member FROM mvp_bootstraps CROSS JOIN LATERAL jsonb_array_elements(manifest->'members') AS member WHERE universe=$1 AND member->>'player'=$2",
+    )
+    .bind(universe.0)
+    .bind(player.0.to_string())
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(db_error)?;
+    member
+        .map(|value| {
+            let member: Member =
+                serde_json::from_value(value).map_err(|_| StoreError::CorruptData)?;
+            Ok((BodyId(member.body), member.homeworld))
+        })
+        .transpose()
+}
+
 pub(crate) async fn load_manifest(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     u: UniverseId,

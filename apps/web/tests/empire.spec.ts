@@ -28,6 +28,8 @@ function empireFixture(now = Date.now()) {
       },
       fields_used: 87,
       max_temperature: -20,
+      min_temperature: -60,
+      diameter_km: 12800,
       inventories: [
         ...body.inventories,
         { item: { kind: 'Ship', id: 'SolarSatellite' }, count: '4' },
@@ -626,3 +628,53 @@ test('empty ship and defense sections describe their own unit category', async (
   await expect(planet.getByRole('region', { name: 'Orbital fleet', exact: true })).toHaveText('No ships stationed here.')
   await expect(planet.getByRole('region', { name: 'Planetary defenses', exact: true })).toHaveText('No defenses stationed here.')
 })
+
+
+for (const width of [390, 1440]) {
+  test(`empire wealth and physical metadata at ${width}px`, async ({ page }) => {
+    const now = new Date('2026-10-29T12:00:00Z')
+    await page.clock.install({ time: now })
+    await page.clock.pauseAt(now)
+    await page.setViewportSize({ width, height: 1000 })
+    const options = empireFixture(now.getTime())
+    options.missions.fleets[0].cargo = { metal: '1250000000', crystal: '2000000', deuterium: '3500000' }
+    options.missions.fleets[1].cargo = { metal: '11000000', crystal: '12000000', deuterium: '13000000' }
+    options.missions.fleets[2].cargo = { metal: '0', crystal: '0', deuterium: '0' }
+    await shellFixture(page, { ...options, sampledAt: now.getTime() })
+    const ledger = page.getByLabel('Empire resource totals')
+    for (const name of ['metal', 'crystal', 'deuterium'] as const) {
+      const group = ledger.getByRole('group', { name: `${name} wealth`, exact: false })
+      const onWorlds = options.bodies.reduce((sum, b) => sum + BigInt(b.amounts[name]), 0n)
+      const inTransit = options.missions.fleets.reduce((sum, f) => sum + BigInt(f.cargo[name]), 0n)
+      await expect(group.locator('strong')).toHaveText(((onWorlds + inTransit) / 1000000n).toLocaleString('en-US'))
+      await expect(group.locator('dl > div').filter({ hasText: 'On worlds' }).locator('dd')).toHaveText((onWorlds / 1000000n).toLocaleString('en-US'))
+      await expect(group.locator('dl > div').filter({ hasText: 'In transit' }).locator('dd')).toHaveText((inTransit / 1000000n).toLocaleString('en-US'))
+    }
+    await diagnosticScreenshot(page, { path: `test-results/empire-wealth-${width}x1000.png` })
+    const home = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
+    const colony = page.getByRole('article', { name: 'Planet [1:380:8] dossier', exact: true })
+    const moon = page.getByRole('article', { name: 'Moon [1:371:4] dossier', exact: true })
+    await expect(home).toContainText('12800 km · -60 to -20 °C')
+    await expect(colony).toContainText('15191 km · 24 to 64 °C')
+    await expect(moon).not.toContainText('km')
+    const physical = home.getByText('12800 km · -60 to -20 °C')
+    const fields = home.getByText(/87\/163 fields/)
+    expect((await physical.boundingBox())!.y).toBeGreaterThan((await fields.boundingBox())!.y)
+    await home.locator('header').scrollIntoViewIfNeeded()
+    await page.evaluate(() => scrollBy(0, -100))
+    await diagnosticScreenshot(page, { path: `test-results/empire-homeworld-${width}x1000.png` })
+    await home.getByText('Maximum temperature: -20 °C').click()
+    await diagnosticScreenshot(page, { path: `test-results/empire-homeworld-climate-${width}x1000.png` })
+    await colony.locator('header').scrollIntoViewIfNeeded()
+    await page.evaluate(() => scrollBy(0, -100))
+    await diagnosticScreenshot(colony.locator('header'), { path: `test-results/empire-colony-${width}x1000.png` })
+    options.missions.fleets = []
+    await refreshGame(page)
+    await page.clock.runFor(1000)
+    for (const row of await ledger.locator('dl > div').filter({ hasText: 'In transit' }).all()) {
+      await expect(row.locator('dd')).toHaveText('0')
+    }
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-empty-${width}x1000.png` })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
