@@ -67,7 +67,7 @@ export function DispatchDestinationPreview({
           ? 'Checking for salvage…'
           : lookup === 'unavailable'
             ? 'Salvage unknown. Review will check again.'
-            : 'Observed debris field. Availability is checked again before departure.'
+            : 'System observation checked. Review verifies current salvage.'
         : lookup === 'loading'
           ? 'Checking the current system observation.'
           : lookup === 'unavailable'
