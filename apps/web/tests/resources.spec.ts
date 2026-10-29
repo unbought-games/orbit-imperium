@@ -1134,6 +1134,11 @@ for (const [pageName, building, title] of [
     const sent = new Map<string, components['schemas']['CommandEnvelopeV3']>()
     const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
     const deliveries: string[] = []
+    let receiptReads = 0
+    await page.route('**/commands/*?epoch=*', route => {
+      receiptReads++
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    })
     await page.route('**/commands', async (route) => {
       const envelope = route.request().postDataJSON()
       deliveries.push(envelope.command_id)
@@ -1184,8 +1189,16 @@ for (const [pageName, building, title] of [
     await confirmCancellation(page)
     await expect(cancel).toBeDisabled()
     await expect(pane).toContainText('Cancelling')
-    // The first response was lost; recovery must replay the original identity.
-    await expect.poll(() => deliveries.length).toBeGreaterThan(1)
+    // Losing the response may trigger receipt checks, but never another send.
+    const retry = page.getByRole('complementary', { name: 'Action needs attention' })
+      .getByRole('button', { name: 'Retry order', exact: true })
+    await expect(retry).toBeVisible()
+    await refreshGame(page)
+    await expect.poll(() => receiptReads).toBeGreaterThan(0)
+    expect(deliveries).toHaveLength(1)
+    // Only the player's retry can replay the original identity.
+    await retry.click()
+    await expect.poll(() => deliveries.length).toBe(2)
     expect(sent.size).toBe(1)
     expect([...sent.values()][0].command).toEqual({
       type: 'CancelConstruction',
@@ -1505,7 +1518,7 @@ for (const dismissFirst of ['message', 'saved action'] as const) {
       .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
       .click()
     await page.getByRole('button', { name: 'Confirm upgrade' }).click()
-    const saved = page.getByRole('group', { name: 'Saved action', exact: true })
+    const saved = page.getByRole('group', { name: 'Order status', exact: true })
     await expect(saved).toContainText('Action rejected')
     await page.getByRole('link', { name: /^Back to / }).click()
     await page
