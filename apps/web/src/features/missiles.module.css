@@ -1,0 +1,46 @@
+.form {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.form p {
+  margin: 0;
+}
+.form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin: 0.5rem 0;
+}
+.stats dt {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.stats dd {
+  margin: 0.35rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.note {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+.silo {
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+.silo h3 {
+  margin-top: 0;
+}

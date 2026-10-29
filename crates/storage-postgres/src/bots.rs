@@ -387,7 +387,9 @@ impl PgStore {
         if !bot
             || matches!(
                 q.query,
-                WorldQueryKind::FleetQuote { .. } | WorldQueryKind::FleetEstimate { .. }
+                WorldQueryKind::FleetQuote { .. }
+                    | WorldQueryKind::FleetEstimate { .. }
+                    | WorldQueryKind::MissileQuote { .. }
             )
         {
             return Ok(None);
@@ -461,7 +463,9 @@ impl PgStore {
                 orbit_engine::resolve_destination(&facts.state, selection, &facts.rules)
                     .map(|d| serde_json::to_value(d).expect("destination"))
             }
-            WorldQueryKind::FleetQuote { .. } | WorldQueryKind::FleetEstimate { .. } => {
+            WorldQueryKind::FleetQuote { .. }
+            | WorldQueryKind::FleetEstimate { .. }
+            | WorldQueryKind::MissileQuote { .. } => {
                 unreachable!()
             }
         };
@@ -541,6 +545,8 @@ pub(crate) async fn participation_body(
     match c {
         Command::SetProduction{body,..}|Command::StartUpgrade{body,..}|Command::StartDemolition{body,..}|Command::StartManufacture{body,..}=>Ok(Some(*body)),
         Command::StartResearch{host,..}=>Ok(Some(*host)),
+        Command::World{action:WorldAction::LaunchMissiles{intent,..}}=>Ok(Some(intent.origin)),
+        Command::World{action:WorldAction::ScrapMissiles{body,..}}=>Ok(Some(*body)),
         Command::World{action:WorldAction::RenamePlanet{body,..}}=>Ok(Some(*body)),
         Command::World{action:WorldAction::LaunchFleet{intent,..}}=>Ok(Some(intent.origin)),
         Command::CancelConstruction{operation}=>sqlx::query_scalar::<_,uuid::Uuid>("SELECT body FROM constructions WHERE universe=$1 AND id=$2 AND owner=$3").bind(b.universe.0).bind(operation.0).bind(b.player.0).fetch_optional(&mut **tx).await.map(|id|id.map(BodyId)).map_err(db_error),
@@ -570,6 +576,18 @@ pub(crate) async fn unmetered_world_query(
         return Ok(());
     }
     match q {
+        WorldQueryKind::MissileQuote { intent } => {
+            require_destination_observation(
+                tx,
+                b,
+                &orbit_engine::MissionDestination::Body {
+                    id: intent.target.id,
+                    expected_kind: intent.target.expected_kind,
+                    expected_owner: intent.target.expected_owner,
+                },
+            )
+            .await
+        }
         WorldQueryKind::FleetQuote { intent } | WorldQueryKind::FleetEstimate { intent } => {
             require_destination_observation(tx, b, &intent.destination).await
         }

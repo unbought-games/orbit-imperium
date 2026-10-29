@@ -143,6 +143,13 @@ fn has_definition(a: &RulesArtifact, key: CatalogKey) -> bool {
                 .iter()
                 .any(|u| u.item == ManufacturedItem::Defense(k))
         }),
-        CatalogKey::Missile(_) => false,
+        CatalogKey::Missile(k) => {
+            a.world.as_ref().is_some_and(|w| w.missiles.is_some())
+                && a.progression.as_ref().is_some_and(|p| {
+                    p.unit_costs
+                        .iter()
+                        .any(|u| u.item == ManufacturedItem::Missile(k))
+                })
+        }
     }
 }

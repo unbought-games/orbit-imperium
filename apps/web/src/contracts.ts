@@ -5763,6 +5763,7 @@ export interface components {
             /** @constant */
             formula: "ManufactureClassic";
             facilities: components["schemas"]["FacilityTerm"][];
+            silo_slots?: number;
         } | {
             /** @constant */
             type: "Transport";
@@ -5794,7 +5795,7 @@ export interface components {
             progress?: components["schemas"]["SnapshotProgress"];
         };
         /** @enum {unknown} */
-        GameError3: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted";
+        GameError3: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy";
         ProgressionBlocker: {
             code: components["schemas"]["GameError3"];
             requirement: components["schemas"]["Requirement3"] | null;
@@ -5915,6 +5916,7 @@ export interface components {
             colony?: components["schemas"]["Colony4"];
             /** @description Public planet name; omitted until named. Display the body kind as the fallback. */
             name?: string;
+            silo?: components["schemas"]["SiloCapacity4"];
         };
         BoundView3: {
             viewer_revision: components["schemas"]["Decimal"];
@@ -6177,6 +6179,18 @@ export interface components {
             /** Format: uuid */
             report: string;
             starred: boolean;
+        } | {
+            /** @constant */
+            type: "LaunchMissiles";
+            intent: components["schemas"]["MissileIntent4"];
+            expected_terms_hash: string;
+        } | {
+            /** @constant */
+            type: "ScrapMissiles";
+            /** Format: uuid */
+            body: string;
+            item: components["schemas"]["MissileId"];
+            count: components["schemas"]["PositiveDecimal"];
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -6205,7 +6219,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -6380,6 +6394,7 @@ export interface components {
             missions: components["schemas"]["MissionView4"];
             progress?: components["schemas"]["SnapshotProgress"];
             player_names?: components["schemas"]["PublicPlayerNames4"];
+            missiles?: components["schemas"]["MissileFlightView4"][];
             /**
              * Format: uuid
              * @description Viewer homeworld identity from the saved membership manifest; omitted when unknown.
@@ -6388,14 +6403,14 @@ export interface components {
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -6462,6 +6477,10 @@ export interface components {
             intent: components["schemas"]["FleetIntent4"];
         } | {
             /** @constant */
+            type: "MissileQuote";
+            intent: components["schemas"]["MissileIntent4"];
+        } | {
+            /** @constant */
             type: "FleetEstimate";
             intent: components["schemas"]["FleetIntent4"];
         };
@@ -6483,6 +6502,11 @@ export interface components {
             context: components["schemas"]["QueryContext"];
         } | {
             /** @constant */
+            type: "MissileQuote";
+            intent: components["schemas"]["MissileIntent4"];
+            context: components["schemas"]["QueryContext"];
+        } | {
+            /** @constant */
             type: "FleetEstimate";
             intent: components["schemas"]["FleetIntent4"];
             context: components["schemas"]["QueryContext"];
@@ -6496,7 +6520,7 @@ export interface components {
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;
-            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["FleetEstimate4"];
+            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"];
             progress?: components["schemas"]["SnapshotProgress"];
         };
         ReportHeader4: {
@@ -6751,7 +6775,7 @@ export interface components {
             own_lost_ships: components["schemas"]["PublicShip4"][];
             own_cargo_loss: components["schemas"]["Resources"];
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -6862,7 +6886,7 @@ export interface components {
             event: components["schemas"]["StreamEvent"];
         };
         SubmittedIntent: {
-            quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"];
+            quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"];
             submittedAt: number;
             baseRevision: components["schemas"]["Decimal"];
             /** Format: uuid */
@@ -7100,6 +7124,23 @@ export interface components {
             destination_coordinates?: components["schemas"]["Coordinates"];
             /** @enum {unknown} */
             reason?: "Occupied" | "PositionLocked" | "ColonyCapacity";
+        } | {
+            /** @constant */
+            kind: "MissileImpact";
+            /** Format: uuid */
+            attacker?: string;
+            origin?: components["schemas"]["Coordinates"];
+            target?: components["schemas"]["Coordinates"];
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon";
+            /** @enum {unknown} */
+            outcome?: "Impacted" | "NoTarget";
+            sent?: components["schemas"]["Decimal"];
+            intercepted?: components["schemas"]["Decimal"];
+            penetrating?: components["schemas"]["Decimal"];
+            destroyed?: {
+                [key: string]: components["schemas"]["Decimal"];
+            };
         };
         RankingPlayer: {
             /** Format: uuid */
@@ -7735,6 +7776,91 @@ export interface components {
             contacts: components["schemas"]["SocialContact"][];
             contact: components["schemas"]["SocialContact"] | null;
             next_cursor: string | null;
+        };
+        SiloCapacity4: {
+            occupied: components["schemas"]["Decimal"];
+            reserved: components["schemas"]["Decimal"];
+            total: components["schemas"]["Decimal"];
+        };
+        MissileTarget4: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {unknown} */
+            expected_kind: "Planet" | "Moon";
+            /** Format: uuid */
+            expected_owner: string;
+        };
+        MissileIntent4: {
+            /** Format: uuid */
+            origin: string;
+            target: components["schemas"]["MissileTarget4"];
+            count: components["schemas"]["PositiveDecimal"];
+            primary: components["schemas"]["DefenseId3"] | null;
+        };
+        PositiveDecimal: components["schemas"]["Decimal"] & unknown;
+        MissileRules4: {
+            /** @constant */
+            version: "oi-classic-missile-v1";
+            slots_per_level: number;
+            abm_weight: number;
+            ipm_weight: number;
+            range_factor: number;
+            range_offset: number;
+            base_seconds: number;
+            seconds_per_system: number;
+            base_attack: number;
+        };
+        MissileTerms4: {
+            intent: components["schemas"]["MissileIntent4"];
+            source_coordinates: components["schemas"]["Coordinates"];
+            target_coordinates: components["schemas"]["Coordinates"];
+            /** Format: uuid */
+            interceptor_body: string;
+            distance: number;
+            range: number;
+            duration_ms: number;
+            weapons: number;
+            speed: number;
+            rules: components["schemas"]["MissileRules4"];
+            profile_hash: string;
+            terms_hash: string;
+        };
+        MissileFlightView4: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            attacker: string;
+            origin: components["schemas"]["Coordinates"];
+            target: components["schemas"]["Coordinates"];
+            /** Format: uuid */
+            target_body: string;
+            /** @enum {unknown} */
+            target_kind: "Planet" | "Moon";
+            count: components["schemas"]["Decimal"];
+            arrival_at: number;
+            outgoing: boolean;
+        };
+        MissileImpactPayload4: {
+            /** @constant */
+            kind: "MissileImpact";
+            at: number;
+            /** Format: uuid */
+            attacker: string;
+            origin: components["schemas"]["Coordinates"];
+            target: components["schemas"]["Coordinates"];
+            /** @enum {unknown} */
+            target_kind: "Planet" | "Moon";
+            /** @enum {unknown} */
+            outcome: "Impacted" | "NoTarget";
+            sent: components["schemas"]["Decimal"];
+            intercepted?: components["schemas"]["Decimal"];
+            penetrating?: components["schemas"]["Decimal"];
+            destroyed?: {
+                [key: string]: components["schemas"]["Decimal"];
+            };
+            primary?: components["schemas"]["DefenseId3"] | null;
+            interceptors_spent?: components["schemas"]["Decimal"];
+            interceptors_remaining?: components["schemas"]["Decimal"];
         };
         /** @description Read-only flight arithmetic; not a launch quote. Affordability and mission eligibility are revalidated at review and launch. */
         FleetEstimate4: {

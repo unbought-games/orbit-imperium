@@ -108,14 +108,23 @@ test('report glances expose historical mission facts in compact rows on desktop 
     await expect(rows.nth(1)).toContainText('[1:1:3]')
     await expect(rows.nth(2)).toContainText('Commander Cassiopeia · Luna (Moon)')
     await expect(rows.nth(2)).toContainText('[1:2:7]')
+    const title = page.getByRole('heading', { name: 'Reports', exact: true, level: 2 })
+    const options = page.getByRole('button', { name: 'Sort, filter & clean up' })
+    const titleBox = (await title.boundingBox())!
+    const optionsBox = (await options.boundingBox())!
+    const rowBox = (await rows.first().boundingBox())!
+    expect(Math.abs(titleBox.y + titleBox.height / 2 - optionsBox.y - optionsBox.height / 2)).toBeLessThanOrEqual(1)
+    expect(Math.abs(optionsBox.x + optionsBox.width - rowBox.x - rowBox.width)).toBeLessThanOrEqual(1)
+    await expect(rows.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
     const heading = rows.first().locator('strong')
     expect((await heading.boundingBox())!.x).toBe((await rows.first().boundingBox())!.x)
     expect((await rows.first().boundingBox())!.height).toBeLessThanOrEqual(width >= 600 ? 72 : 96)
     const icon = (await remove.locator('svg').boundingBox())!
     const age = (await rows.first().locator('time').boundingBox())!
     expect(Math.abs(icon.y + icon.height / 2 - age.y - age.height / 2)).toBeLessThanOrEqual(1)
-    expect((await remove.boundingBox())!.height).toBe(24)
-    expect((await remove.boundingBox())!.width).toBe(24)
+    expect((await remove.boundingBox())!.height).toBe(width < 768 ? 48 : 24)
+    expect((await remove.boundingBox())!.width).toBe(width < 768 ? 48 : 24)
+    expect((await remove.locator('svg').boundingBox())!.width).toBe(width < 768 ? 20 : 16)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await diagnosticScreenshot(page, { path: `test-results/report-glance-${width}.png` })
     if (width === 390) await diagnosticScreenshot(rows.first().locator('..'), { path: 'test-results/report-glance-preview.png' })

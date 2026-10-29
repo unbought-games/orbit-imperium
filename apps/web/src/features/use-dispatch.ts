@@ -346,7 +346,7 @@ export function useDispatch({
           throw Error(resourceProblem || dispatchFailure(failure, intent))
         })
       if (requestGeneration !== generation.current) return
-      if (!terms || !('terms_hash' in terms))
+      if (!terms || !('maximum_payload' in terms) || !('terms_hash' in terms))
         throw Error(
           'Unable to confirm this fleet quote. Review it again after reconnecting.',
         )

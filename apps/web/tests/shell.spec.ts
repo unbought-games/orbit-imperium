@@ -312,7 +312,7 @@ test('mobile resource stock uses icons and compact balances with capacity detail
   const details = page.getByRole('dialog', { name: 'Metal', exact: true })
   await expect(details).toContainText('Available 1,000,000,000')
   await expect(details).toContainText('Capacity 10,000')
-  await expect(details).toContainText('Above capacity')
+  await expect(details).toContainText('Storage full')
   await page.keyboard.press('Escape')
   await page.setViewportSize({ width: 1440, height: 900 })
   expect((await metal.innerText()).trim()).toBe('1B')
@@ -324,7 +324,7 @@ test('mobile resource stock uses icons and compact balances with capacity detail
   await metal.click()
   await expect(details).toContainText('Available 1,000,000,000')
   await expect(details).toContainText('Capacity 10,000')
-  await expect(details).toContainText('Above capacity')
+  await expect(details).toContainText('Storage full')
 })
 
 test('mobile planet selector grows into free space while resource widths stay fixed', async ({ page }) => {

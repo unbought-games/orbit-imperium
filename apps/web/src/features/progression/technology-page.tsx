@@ -1,3 +1,4 @@
+import { SiloSummary } from '../missile-inventory'
 import { ShipComparison } from './ship-comparison'
 import { useState } from 'react'
 import { Network } from 'lucide-react'
@@ -44,7 +45,8 @@ export function TechnologyPage(props: ProgressionProps) {
           : 'Defense'
   const entries = view.catalog.filter(
     (x) =>
-      x.key.kind === kind &&
+      (x.key.kind === kind ||
+        (kind === 'Defense' && x.key.kind === 'Missile')) &&
       (kind !== 'Building' ||
         (facilityIds.includes(x.key.id) && visibleFacility(x, body))),
   )
@@ -59,6 +61,7 @@ export function TechnologyPage(props: ProgressionProps) {
         'Combat ships',
         'Civil ships',
         'Defensive structures',
+        'Missile warfare',
       ].indexOf(a) -
       [
         'Facility buildings',
@@ -69,12 +72,15 @@ export function TechnologyPage(props: ProgressionProps) {
         'Combat ships',
         'Civil ships',
         'Defensive structures',
+        'Missile warfare',
       ].indexOf(b),
   )
   const confirmedBody =
     model.store.getState().view?.bodies.find((x) => x.id === body.id) ?? body
   function count(entry: Entry) {
-    return entry.key.kind === 'Ship' || entry.key.kind === 'Defense'
+    return entry.key.kind === 'Ship' ||
+      entry.key.kind === 'Defense' ||
+      entry.key.kind === 'Missile'
       ? (confirmedBody.inventories.find(
           (x) => x.item.kind === entry.key.kind && x.item.id === entry.key.id,
         )?.count ?? '0')
@@ -98,6 +104,7 @@ export function TechnologyPage(props: ProgressionProps) {
   }
   return (
     <>
+      {page === 'defense' && <SiloSummary body={body} />}
       <WorkSummaries
         view={view}
         body={body}
@@ -217,12 +224,19 @@ function TechnologyInspector({
       buildingUnavailableReason(selected, body)
     ) &&
     !(
-      selected.key.kind === 'Building' && progress?.building === selected.key.id
-    ) &&
-    !(
       selected.key.kind === 'Research' && research?.research === selected.key.id
     )
-      ? technologyRequest(selected.key, body.id, action, '1')
+      ? technologyRequest(
+          selected.key,
+          body.id,
+          selected.key.kind === 'Building' &&
+            progress?.building === selected.key.id
+            ? progress.direction === 'down'
+              ? 'Demolition'
+              : 'Upgrade'
+            : action,
+          '1',
+        )
       : null
   const {
     proposal,

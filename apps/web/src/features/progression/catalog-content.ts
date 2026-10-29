@@ -9,6 +9,12 @@ export type CatalogContent = {
   description: string
 }
 const content: Record<string, string> = {
+  MissileSilo:
+    'Stores offensive missiles and automatic interceptors. Each completed level adds silo capacity. The planet’s interceptors will also defend its future moon.',
+  AntiBallisticMissile:
+    'Automatically destroys one incoming Interplanetary Missile at impact. Built in the shared manufacturing queue and stored in the planetary silo.',
+  InterplanetaryMissile:
+    'Permanently destroys enemy defenses, bypassing shields. Range grows with Impulse Drive; Weapons Technology increases damage. Launch from the galaxy. Missiles cannot be recalled.',
   RoboticsFactory: 'Robotic workers accelerate construction on this planet.',
   Shipyard:
     'Builds ships and defensive structures. Higher levels reduce manufacturing time.',
@@ -108,6 +114,7 @@ export const facilityIds = [
 ]
 export function catalogGroup(key: Key) {
   if (key.kind === 'Building') return 'Facility buildings'
+  if (key.kind === 'Missile') return 'Missile warfare'
   if (key.kind === 'Defense') return 'Defensive structures'
   if (key.kind === 'Ship')
     return [

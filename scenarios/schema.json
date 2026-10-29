@@ -233,6 +233,13 @@
           },
           "travel_time": {
             "type": "string"
+          },
+          "missiles": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         }
       }

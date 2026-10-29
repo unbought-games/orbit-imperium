@@ -87,6 +87,18 @@ pub struct OwnMission {
     pub can_recall: bool,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MissileFlightView {
+    pub id: OperationId,
+    pub attacker: PlayerId,
+    pub origin: Coordinates,
+    pub target: Coordinates,
+    pub target_body: BodyId,
+    pub target_kind: BodyKind,
+    pub count: String,
+    pub arrival_at: i64,
+    pub outgoing: bool,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IncomingMission {
     pub sender: PlayerId,
     pub origin: Coordinates,
@@ -107,6 +119,8 @@ pub struct BoundView4 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub homeworld_id: Option<BodyId>,
     #[serde(default)]
+    pub missiles: Vec<MissileFlightView>,
+    #[serde(default)]
     pub has_unread_reports: bool,
     #[serde(default)]
     pub player_names: PublicPlayerNames,
@@ -123,6 +137,7 @@ pub struct WorldQuery {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldQueryKind {
+    MissileQuote { intent: MissileIntent },
     Galaxy { galaxy: u32, system: u32 },
     ResolveDestination { selection: DestinationSelection },
     FleetQuote { intent: FleetIntent },
@@ -260,6 +275,10 @@ impl<S: GameStore> GameService<S> {
                 estimate_fleet(&facts.state, p.player, &intent, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
             ),
+            WorldQueryKind::MissileQuote { intent } => serde_json::to_value(
+                quote_missiles(&facts.state, p.player, &intent, facts.at, &facts.rules)
+                    .map_err(ServiceError::GameRejected)?,
+            ),
             WorldQueryKind::FleetQuote { intent } => serde_json::to_value(
                 quote_fleet(&facts.state, p.player, &intent, facts.at, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
@@ -324,6 +343,7 @@ impl<S: GameStore> GameService<S> {
                     .incoming
                     .iter()
                     .map(|f| f.sender)
+                    .chain(projected.facts.missiles.iter().map(|f| f.attacker))
                     .collect(),
             )
             .await?;

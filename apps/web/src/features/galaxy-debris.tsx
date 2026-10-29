@@ -1,6 +1,7 @@
 import { formatWholeNumber } from '../ui/whole-number'
 import { formatCompactResource } from '../ui/compact-resource'
 import { ResourceValue } from '../ui/resource-value'
+import { Button } from '../ui/button'
 import type { components } from '../contracts'
 import styles from './galaxy.module.css'
 
@@ -27,14 +28,18 @@ function DebrisAmount({ value }: { value: string }) {
   )
 }
 
-export function GalaxyDebris({ debris }: { debris: NonNullable<Debris> }) {
+export function GalaxyDebris({
+  debris,
+  target,
+  onHarvest,
+}: {
+  debris: NonNullable<Debris>
+  target: string
+  onHarvest?: (opener: HTMLButtonElement) => void
+}) {
   const size = debrisFieldSize(debris.metal, debris.crystal)
-  return (
-    <div
-      className={styles.debris}
-      aria-label={`${size} debris field`}
-      title={`${size[0].toUpperCase()}${size.slice(1)} debris field`}
-    >
+  const contents = (
+    <>
       <img
         src={`/art/debris/debris-${size}.webp`}
         className={styles.debrisArt}
@@ -44,7 +49,7 @@ export function GalaxyDebris({ debris }: { debris: NonNullable<Debris> }) {
         loading="lazy"
         decoding="async"
       />
-      <div className={styles.debrisAmounts}>
+      <span className={styles.debrisAmounts}>
         <span className={styles.srOnly}>Debris field</span>
         <ResourceValue resource="metal">
           <DebrisAmount value={debris.metal} />
@@ -52,7 +57,28 @@ export function GalaxyDebris({ debris }: { debris: NonNullable<Debris> }) {
         <ResourceValue resource="crystal">
           <DebrisAmount value={debris.crystal} />
         </ResourceValue>
-      </div>
+      </span>
+    </>
+  )
+  return onHarvest ? (
+    <Button
+      type="button"
+      variant="ghost"
+      className={`${styles.debris} ${styles.debrisTrigger}`}
+      aria-label={`Quick harvest debris at ${target}: Metal ${formatWholeNumber(debris.metal)}, Crystal ${formatWholeNumber(debris.crystal)}`}
+      aria-haspopup="dialog"
+      title={`Quick harvest · ${size} debris field`}
+      onClick={(event) => onHarvest(event.currentTarget)}
+    >
+      {contents}
+    </Button>
+  ) : (
+    <div
+      className={styles.debris}
+      aria-label={`${size} debris field`}
+      title={`${size[0].toUpperCase()}${size.slice(1)} debris field`}
+    >
+      {contents}
     </div>
   )
 }

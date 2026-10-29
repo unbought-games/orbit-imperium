@@ -27,7 +27,7 @@ export function catalogSlug(id: string) {
 export function catalogPage(key: Key): Page {
   if (key.kind === 'Research') return 'research'
   if (key.kind === 'Ship') return 'shipyard'
-  if (key.kind === 'Defense') return 'defense'
+  if (key.kind === 'Defense' || key.kind === 'Missile') return 'defense'
   return resources.includes(key.id) ? 'resources' : 'facilities'
 }
 /** Resolve only known catalog identities, including disabled entries. */

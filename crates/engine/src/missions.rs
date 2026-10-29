@@ -618,6 +618,12 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     s.research_operations.get(operation).map(|op| op.host)
                 }
                 Command::World {
+                    action: WorldAction::ScrapMissiles { body, .. },
+                } => Some(*body),
+                Command::World {
+                    action: WorldAction::LaunchMissiles { intent, .. },
+                } => Some(intent.origin),
+                Command::World {
                     action: WorldAction::RenamePlanet { body, .. },
                 } => Some(*body),
                 Command::World {
@@ -665,6 +671,12 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action: WorldAction::LaunchMissiles { .. } | WorldAction::ScrapMissiles { .. },
+        })
+        | Input::Event(ScheduledEvent::MissileImpact { .. }) => {
+            crate::missiles::resolve(s, i, r, &mut c, &mut w, &mut audits)?;
+        }
         Input::Command(Command::World {
             action: WorldAction::RenamePlanet { body, name },
         }) => {

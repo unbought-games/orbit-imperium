@@ -128,6 +128,12 @@ const messages: Partial<Record<S['GameError4'], string>> = {
     'This mission is not valid. Check the destination, select ships suitable for the mission, and review again.',
   NumericRange:
     'One of the entered amounts is too large. Reduce the ship or cargo amounts and review again.',
+  InsufficientMissiles:
+    'Not enough completed missiles are available on this planet.',
+  OutOfRange:
+    'The target must be within missile range in the same galaxy. Research Impulse Drive to increase range.',
+  SiloBusy:
+    'Missile production is unavailable while the silo is being demolished.',
   InsufficientShips:
     'These ships are no longer available. Update your fleet selection and review again.',
   InsufficientResources:
