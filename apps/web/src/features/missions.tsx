@@ -156,7 +156,7 @@ export function Dispatch({
           {mission === 'Deploy' && (
             <Text>
               Deployment transfers ships and cargo permanently to another owned
-              planet and credits half the paid fuel, rounded down.
+              planet or moon and credits half the paid fuel, rounded down.
             </Text>
           )}
           {draft?.observedAt !== undefined && (

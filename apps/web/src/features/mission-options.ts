@@ -4,7 +4,7 @@ export const missionOptions = {
   Transport: { icon: Package, description: 'Deliver cargo, then return home.' },
   Deploy: {
     icon: Flag,
-    description: 'Move ships and cargo to another owned planet.',
+    description: 'Move ships and cargo to an owned planet or moon.',
   },
   Attack: {
     icon: Swords,
