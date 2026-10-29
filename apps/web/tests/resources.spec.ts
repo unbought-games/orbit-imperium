@@ -1887,7 +1887,7 @@ for (const width of [1440, 390]) {
           await page.keyboard.press('Enter')
         }
         const dialog = page.getByRole('dialog', { name: resource, exact: true })
-        const link = dialog.getByRole('link', { name: 'Storage full · production suppressed', exact: true })
+        const link = dialog.getByRole('link', { name: 'Storage full', exact: true })
         await expect(link).toHaveAttribute('href', `/u/andromeda/b/${colony.id}/resources/${slug}`)
         if (width !== 390) {
           await page.keyboard.press('Tab')
@@ -1920,7 +1920,7 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(new RegExp(`/b/${body.id}/resources/deuterium-tank$`))
       await page.getByRole('group', { name: 'Planet and resources', exact: true }).getByRole('button', { name: 'Metal details', exact: true }).click()
       await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
-      await expect(page.getByRole('link', { name: /production suppressed/ })).toHaveCount(0)
+      await expect(page.getByRole('link', { name: 'Storage full', exact: true })).toHaveCount(0)
       expect(sent).toHaveLength(0)
     } finally {
       await context.close()

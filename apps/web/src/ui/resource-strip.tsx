@@ -32,7 +32,7 @@ export function ResourceStrip({
         const value = body.amounts[name]
         const capacity = BigInt(body.capacity[name])
         const full = capacity > 0n && BigInt(value) >= capacity
-        const warning = 'Storage full · production suppressed'
+        const warning = 'Storage full'
         return (
           <ResourceAmount
             key={name}
