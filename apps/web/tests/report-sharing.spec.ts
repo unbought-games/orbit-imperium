@@ -217,7 +217,10 @@ for (const width of [390, 1440])
     await page
       .getByRole('button', { name: 'Unstar report', exact: true })
       .click()
-    await expect(page.getByRole('dialog')).toContainText(
+    const unstarDialog = page.getByRole('dialog', {
+      name: 'Unstar this shared report?', exact: true,
+    })
+    await expect(unstarDialog).toContainText(
       'Deleting it also permanently removes its shared links.',
     )
     await diagnosticScreenshot(page, {
@@ -232,8 +235,7 @@ for (const width of [390, 1440])
     await page
       .getByRole('button', { name: 'Unstar report', exact: true })
       .click()
-    await page
-      .getByRole('dialog')
+    await unstarDialog
       .getByRole('button', { name: 'Unstar report', exact: true })
       .click()
     await expect(
@@ -255,8 +257,7 @@ for (const width of [390, 1440])
     await expect(page.locator('button[aria-label="Star report"]')).toHaveCount(
       1,
     )
-    await page
-      .getByRole('dialog')
+    await unstarDialog
       .getByRole('button', { name: 'Unstar report', exact: true })
       .click()
     expect(starCommands).toEqual([false, true])
