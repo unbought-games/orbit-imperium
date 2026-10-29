@@ -210,8 +210,11 @@ test('empire shows every body, its own work and resources, and directional fleet
   page,
 }) => {
   await page.setViewportSize({ width: 1672, height: 1100 })
-  const options = empireFixture()
-  const purchases = await shellFixture(page, options)
+  const now = Date.parse('2026-10-24T12:00:00Z')
+  await page.clock.install({ time: now })
+  await page.clock.pauseAt(now)
+  const options = empireFixture(now)
+  const purchases = await shellFixture(page, { ...options, sampledAt: now })
   await expect(page).toHaveTitle('Empire · Andromeda · Orbit Imperium')
   await expect(page.getByRole('article')).toHaveCount(4)
   const planet = page.getByRole('article', {
