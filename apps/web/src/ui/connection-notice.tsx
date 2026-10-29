@@ -16,12 +16,11 @@ export function ConnectionNotice({
           {status.message}
         </p>
       )}
-      <VisuallyHidden
-        role={status?.kind === 'connection' ? 'alert' : 'status'}
-        aria-live={status?.kind === 'connection' ? 'assertive' : 'polite'}
-        aria-atomic="true"
-      >
-        {status?.announcement ?? ''}
+      <VisuallyHidden aria-live="assertive" aria-atomic="true">
+        {status?.kind === 'connection' ? status.announcement : ''}
+      </VisuallyHidden>
+      <VisuallyHidden role="status" aria-live="polite" aria-atomic="true">
+        {status?.kind !== 'connection' ? (status?.announcement ?? '') : ''}
       </VisuallyHidden>
     </>
   )

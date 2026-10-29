@@ -757,6 +757,11 @@ for (const width of [1280, 390]) {
     await page.clock.install({ time: now })
     await page.clock.pauseAt(now)
     const fixture = await reportsFixture(page)
+    // Prime the assertive channel before failure; never change its urgency.
+    const alert = page.locator('[aria-live=assertive]')
+    await expect(alert).toHaveCount(1)
+    await expect(alert).toBeEmpty()
+    const primedAlert = (await alert.elementHandle())!
     const submitted: string[] = []
     let throttled = true
     await page.route('**/commands', async route => {
@@ -816,11 +821,15 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('button', { name: 'Resolve saved command' })).toHaveCount(0)
     expect(fixture.headers.every(r => r.hidden)).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/rate-limit-recovered-${width}x900.png`, fullPage: true })
+    expect(await primedAlert.getAttribute('aria-live')).toBe('assertive')
+    expect(await primedAlert.textContent()).toBe('')
     // A real transport failure must still report a connection problem.
     await page.route('**/overview', route => route.abort('failed'))
     await refreshGame(page)
     await page.clock.runFor(1000)
     await expect(page.locator('p[aria-live=off]').filter({ hasText: 'Connection interrupted — awaiting server confirmation.' })).toBeVisible()
+    expect(await primedAlert.getAttribute('aria-live')).toBe('assertive')
+    expect(await primedAlert.textContent()).toBe('Connection interrupted — awaiting server confirmation.')
     await diagnosticScreenshot(page, { path: `test-results/rate-limit-network-${width}x900.png`, fullPage: true })
     if (width < 768) {
     await page.getByTestId('command-orb').click()

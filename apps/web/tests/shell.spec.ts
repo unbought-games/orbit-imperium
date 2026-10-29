@@ -1351,7 +1351,7 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   )
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Connection interrupted' }),
+    page.locator('[aria-live=assertive]').filter({ hasText: 'Connection interrupted' }),
   ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)

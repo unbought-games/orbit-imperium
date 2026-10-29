@@ -32,7 +32,7 @@ test('malformed responses preserve the last validated private view',async({page}
  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill('beta');await page.getByLabel('Password').fill(process.env.BETA_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible()
  await page.route('**/overview',async route=>{const response=await route.fetch();const body=await response.json();body.bodies[0].amounts.metal='-999';await route.fulfill({response,json:body})})
  await foreground(page)
- await expect(page.getByRole('alert').filter({hasText:'Connection interrupted — awaiting server confirmation.'})).toBeVisible();await expect(page.getByText('-999',{exact:true})).toHaveCount(0);await expect(page.getByRole('heading',{level:1}).filter({hasText:'Planet [1:1:9]'})).toBeVisible();await page.unrouteAll({behavior:'wait'})
+ await expect(page.locator('[aria-live=assertive]').filter({hasText:'Connection interrupted — awaiting server confirmation.'})).toBeVisible();await expect(page.getByText('-999',{exact:true})).toHaveCount(0);await expect(page.getByRole('heading',{level:1}).filter({hasText:'Planet [1:1:9]'})).toBeVisible();await page.unrouteAll({behavior:'wait'})
 })
 test('a wrong-principal first overview is never rendered or activated',async({page})=>{
  await page.route('**/api/v1/session?bootstrap=true',async route=>{const response=await route.fetch();const body=await response.json();body.result.game.snapshot.view.binding.player='22222222-2222-4222-8222-222222222222';await route.fulfill({response,json:body})})
