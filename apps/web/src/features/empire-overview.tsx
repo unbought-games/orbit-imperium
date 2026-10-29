@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Crosshair,
   Globe2,
+  Rocket,
+  Hourglass,
   Orbit,
   Radar,
   ShieldAlert,
@@ -624,32 +626,32 @@ export function EmpireOverview({
                 <ResourceNumber value={totals.total[name]} />
               </strong>
               <dl className={styles.wealthBreakdown}>
-                <div>
-                  <dt>On worlds</dt>
+                <div title="On planets and moons">
+                  <dt>
+                    <Globe2 size={14} aria-hidden="true" />
+                    <span className={styles.srOnly}>On planets and moons</span>
+                  </dt>
                   <dd>
-                    <ResourceQuantity
-                      resource={name}
-                      value={totals.onWorlds[name]}
-                    />
+                    <ResourceNumber value={totals.onWorlds[name]} />
                   </dd>
                 </div>
-                <div>
-                  <dt>In transit</dt>
+                <div title="On fleets in transit">
+                  <dt>
+                    <Rocket size={14} aria-hidden="true" />
+                    <span className={styles.srOnly}>On fleets in transit</span>
+                  </dt>
                   <dd>
-                    <ResourceQuantity
-                      resource={name}
-                      value={totals.inTransit[name]}
-                    />
+                    <ResourceNumber value={totals.inTransit[name]} />
                   </dd>
                 </div>
                 {pendingCargo.length > 0 && (
-                  <div>
-                    <dt>Launching</dt>
+                  <div title="Launching">
+                    <dt>
+                      <Hourglass size={14} aria-hidden="true" />
+                      <span className={styles.srOnly}>Launching</span>
+                    </dt>
                     <dd>
-                      <ResourceQuantity
-                        resource={name}
-                        value={totals.launching[name]}
-                      />
+                      <ResourceNumber value={totals.launching[name]} />
                     </dd>
                   </div>
                 )}

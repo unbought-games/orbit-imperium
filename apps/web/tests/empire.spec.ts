@@ -644,11 +644,17 @@ for (const width of [390, 1440]) {
     const ledger = page.getByLabel('Empire resource totals')
     for (const name of ['metal', 'crystal', 'deuterium'] as const) {
       const group = ledger.getByRole('group', { name: `${name} wealth`, exact: false })
+      await expect(group.locator('svg[data-resource]')).toHaveCount(1)
+      await expect(group.locator('dl svg[data-resource]')).toHaveCount(0)
+      await expect(group.locator('dt > svg')).toHaveCount(2)
+      await expect(group.getByRole('term')).toHaveText(['On planets and moons', 'On fleets in transit'])
+      await expect(group.locator('[title="On planets and moons"]')).toBeVisible()
+      await expect(group.locator('[title="On fleets in transit"]')).toBeVisible()
       const onWorlds = options.bodies.reduce((sum, b) => sum + BigInt(b.amounts[name]), 0n)
       const inTransit = options.missions.fleets.reduce((sum, f) => sum + BigInt(f.cargo[name]), 0n)
       await expect(group.locator('strong')).toHaveText(((onWorlds + inTransit) / 1000000n).toLocaleString('en-US'))
-      await expect(group.locator('dl > div').filter({ hasText: 'On worlds' }).locator('dd')).toHaveText((onWorlds / 1000000n).toLocaleString('en-US'))
-      await expect(group.locator('dl > div').filter({ hasText: 'In transit' }).locator('dd')).toHaveText((inTransit / 1000000n).toLocaleString('en-US'))
+      await expect(group.locator('dl > div').filter({ hasText: 'On planets and moons' }).locator('dd')).toHaveText((onWorlds / 1000000n).toLocaleString('en-US'))
+      await expect(group.locator('dl > div').filter({ hasText: 'On fleets in transit' }).locator('dd')).toHaveText((inTransit / 1000000n).toLocaleString('en-US'))
     }
     await diagnosticScreenshot(page, { path: `test-results/empire-wealth-${width}x1000.png` })
     const home = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
@@ -671,7 +677,7 @@ for (const width of [390, 1440]) {
     options.missions.fleets = []
     await refreshGame(page)
     await page.clock.runFor(1000)
-    for (const row of await ledger.locator('dl > div').filter({ hasText: 'In transit' }).all()) {
+    for (const row of await ledger.locator('dl > div').filter({ hasText: 'On fleets in transit' }).all()) {
       await expect(row.locator('dd')).toHaveText('0')
     }
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-empty-${width}x1000.png` })
