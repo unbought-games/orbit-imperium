@@ -1494,7 +1494,7 @@ it.each([
 
 it('includes only evidenced legacy launch reservations for owned bodies and active bindings', () => {
   const s = state()
-  s.view = { ...snapshot(), protocol: 3 }
+  s.view = { ...snapshot(), protocol: 3, capabilities: [] }
   const command: Command = {
     type: 'LaunchTransport',
     origin: 'body',
