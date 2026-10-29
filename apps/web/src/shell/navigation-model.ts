@@ -37,7 +37,8 @@ export const pageTitles: Record<Page, string> = {
 }
 export function navigationAnchor(page: Page) {
   if (page === 'overview') return 'Empire'
-  if (buildPages.includes(page)) return 'Develop'
+  if (page === 'resource-settings' || buildPages.includes(page))
+    return 'Develop'
   if (page === 'galaxy') return 'Galaxy'
   if (fleetPages.includes(page)) return 'Fleets'
   return 'Menu'
