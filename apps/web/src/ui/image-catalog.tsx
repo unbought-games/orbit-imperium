@@ -37,7 +37,11 @@ export function CatalogImage({
   const sprite = art.sprite
   const ratio = sprite?.cellAspectRatio ?? 1
   return (
-    <span aria-hidden="true" className={classes(styles.image, className)}>
+    <span
+      aria-hidden="true"
+      data-touch-control=""
+      className={classes(styles.image, className)}
+    >
       {sprite ? (
         <svg
           viewBox={`${sprite.column * ratio} ${sprite.row} ${ratio} 1`}
@@ -74,14 +78,23 @@ export function CatalogImage({
 
 export function CatalogSection({
   title,
+  actions,
   children,
 }: {
   title: string
+  actions?: ReactNode
   children: ReactNode
 }) {
   return (
     <section className={styles.frame} aria-label={title}>
-      <h2>{title}</h2>
+      {actions ? (
+        <div className={styles.header}>
+          <h2>{title}</h2>
+          <div className={styles.headerActions}>{actions}</div>
+        </div>
+      ) : (
+        <h2>{title}</h2>
+      )}
       {children}
     </section>
   )
@@ -142,7 +155,7 @@ export function ImageTile({
   const progressId = useId()
   const Tile = href ? 'a' : 'button'
   return (
-    <div className={styles.tileContainer}>
+    <div className={styles.tileContainer} data-touch-control="">
       <Tile
         href={href}
         type={href ? undefined : 'button'}

@@ -50,6 +50,9 @@ export function incomingThreats(state: GameState) {
     ? state.view.missions.incoming.filter((f) => isHostileMission(f.mission))
     : []
 }
+export function incomingAttacks(state: GameState) {
+  return incomingThreats(state).filter((fleet) => fleet.mission === 'Attack')
+}
 export function unreadReports(state: GameState) {
   return [...state.reportHeaders.keys()]
     .flatMap((id) => {
@@ -230,7 +233,7 @@ export function noticeContent(
     return {
       title: `${label(header.kind)} report`,
       detail: preview.location || 'New intelligence · Tap to read',
-      tone: header.kind === 'SpyContact' ? 'red' : 'champagne',
+      tone: 'champagne',
       icon: header.kind === 'SpyContact' ? 'scan' : 'report',
     }
   }
@@ -267,22 +270,18 @@ export function noticeContent(
         ? 'Hostile fleet inbound'
         : 'Enemy probes detected',
     detail: `${incomingManifest(fleet.ships)} → ${body ? missionLocation(state.view, body.id, body.coordinates) : 'Unrevealed location'}`,
-    tone: 'red',
+    tone: fleet.mission === 'Attack' ? 'red' : 'champagne',
     icon: fleet.mission === 'Attack' ? 'attack' : 'scan',
     deadline: fleet.arrival_at,
     body: fleet.target,
   }
 }
 export function orbAppearance(state: GameState, notices: HudNotice[]) {
-  const threat = incomingThreats(state).at(-1)
-  const contact = unreadReports(state).find((r) => r.kind === 'SpyContact')
-  if (threat || contact)
+  const attack = incomingThreats(state).some((f) => f.mission === 'Attack')
+  if (attack)
     return {
       tone: 'red' as HudTone,
-      icon:
-        threat?.mission === 'Attack'
-          ? ('attack' as HudIcon)
-          : ('scan' as HudIcon),
+      icon: 'attack' as HudIcon,
     }
   const success = notices
     .map((n) => noticeContent(state, n))

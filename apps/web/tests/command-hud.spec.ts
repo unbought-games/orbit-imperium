@@ -7,7 +7,7 @@ type S = components['schemas']
 const output = 'test-results/live-hud'
 const baseTime = 1793120000000
 const emptyMissions = ():S['MissionView4'] => ({fleets:[],incoming:[],fleet_slots:'8',score_value_micro:'0'})
-async function intelligenceFixture(page: Page, attack = true) {
+async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'][] = [body], destinations: S['Destination'][] = [], playerNames?: S['PublicPlayerNames4']) {
   let revision = 1
   const missions = emptyMissions()
   const headers:S['ReportHeader4'][]=[]
@@ -15,7 +15,7 @@ async function intelligenceFixture(page: Page, attack = true) {
   const circulars:S['SocialCircular'][]=[]
   let failMailbox = false
   const reads:string[]=[]
-  await installGameFixture(page,{protocol:4,missions,sampledAt:baseTime,viewerRevision:()=>String(revision),hasUnreadReports:()=>headers.some(h=>!h.read&&!h.hidden),extraCapabilities:['Reports','Espionage',...(attack ? ['Attack' as const] : [])]})
+  await installGameFixture(page,{protocol:4,bodies,destinations,playerNames,missions,sampledAt:baseTime,viewerRevision:()=>String(revision),hasUnreadReports:()=>headers.some(h=>!h.read&&!h.hidden),extraCapabilities:['Reports','Espionage',...(attack ? ['Attack' as const] : [])]})
   await page.route('**/api/**/reports',route=>{
     const {context,cursor}=route.request().postDataJSON()
     const start=cursor?headers.findIndex(h=>h.id===cursor)+1:0
@@ -108,7 +108,7 @@ test('live mobile HUD receives reports, messages and threats across navigation a
   await expect(orb).toHaveAttribute('data-tone','red')
   await orb.click()
   await diagnosticScreenshot(page,{path:`${output}/inbox-390x844.png`})
-  await page.getByRole('dialog').getByRole('link',{name:'Fleet activity',exact:true}).click()
+  await page.getByRole('dialog').getByRole('link',{name:'All fleets',exact:true}).click()
   await expect(page).toHaveURL(/\/fleets\/?$/)
   await expect(orb).toHaveAttribute('data-tone','red')
   f.missions.incoming.length=0;await f.refresh()
@@ -673,17 +673,17 @@ test('orb symbols overlap in a holographic dissolve, settle after rapid changes,
   await f.refresh()
   await expect(orb).toHaveAttribute('data-tone','champagne')
   await expect(symbols).toHaveCount(2)
-  f.missions.incoming.push({...incoming,mission:'Espionage'})
+  f.missions.incoming.push(incoming)
   await f.refresh()
-  await expect(orb.locator('[data-orb-symbol="scan"]')).toHaveCount(1)
+  await expect(orb.locator('[data-orb-symbol="attack"]')).toHaveCount(1)
   await expect(symbols).toHaveCount(1)
-  await expect(symbols).toHaveAttribute('data-orb-symbol','scan')
+  await expect(symbols).toHaveAttribute('data-orb-symbol','attack')
   await expect(symbols).toHaveCSS('opacity','1')
   // Refreshing the same icon must not create a second layer or replay the entrance.
   await f.refresh()
   await expect(symbols).toHaveCount(1)
   await expect(symbols).toHaveCSS('opacity','1')
-  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-scan-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-retarget-390x844.png`})
   await page.emulateMedia({reducedMotion:'reduce'})
   f.missions.incoming.length=0
   await f.refresh()
@@ -735,6 +735,7 @@ test('orb hover charges every layer, preserves its hit area and palette, and sup
   await page.mouse.up()
   await expect(page.getByRole('dialog',{name:'Command uplink'})).toBeVisible()
   await page.getByRole('button',{name:'Close command HUD'}).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.mouse.move(5,5)
   await expect.poll(()=>channel('charge')).toBe(0)
   await expect.poll(()=>channel('press')).toBe(0)
@@ -812,4 +813,414 @@ test('a missing report cursor offers retry without an observer render loop', asy
   await panel.getByRole('button',{name:'Retry loading'}).click()
   await expect.poll(()=>requests).toBeGreaterThan(before)
   await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+})
+
+
+test('spy contacts are regular unread notifications and only active attacks make the orb red', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  const f = await intelligenceFixture(page)
+  f.headers.push({id:id(870),kind:'SpyContact',observed_at:baseTime-86400000,read:false,hidden:false})
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const orb = page.getByTestId('command-orb')
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await expect(orb).toHaveAccessibleName('1 unread items. Open command HUD')
+  await expect(orb).toHaveCSS('color','rgb(236, 211, 159)')
+  await expect(page.getByLabel('Recent game events').getByRole('button')).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/spy-unread-login-390x844.png`})
+  await orb.click()
+  await expect(page.getByRole('dialog').getByRole('button',{name:/Spy Contact report/})).toHaveAttribute('data-tone','champagne')
+  await diagnosticScreenshot(page,{path:`${output}/spy-unread-inbox-390x844.png`})
+  await page.getByRole('button',{name:'Close command HUD'}).click()
+  f.headers.unshift({id:id(871),kind:'SpyContact',observed_at:baseTime,read:false,hidden:false})
+  await f.refresh()
+  const report = page.getByLabel('Recent game events').getByRole('button',{name:/Spy Contact report/})
+  await expect(report).toHaveAttribute('data-tone','champagne')
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await diagnosticScreenshot(page,{path:`${output}/spy-contact-toast-390x844.png`})
+  const probe = {sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Espionage' as const,arrival_at:baseTime+180000,ships:{visibility:'Unknown' as const}}
+  f.missions.incoming.push(probe)
+  await f.refresh()
+  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Enemy probes detected/})).toHaveAttribute('data-tone','champagne')
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await diagnosticScreenshot(page,{path:`${output}/spy-incoming-390x844.png`})
+  f.missions.incoming.unshift({...probe,mission:'Attack'})
+  await f.refresh()
+  await expect(orb).toHaveAttribute('data-tone','red')
+  await expect(orb.locator('[data-orb-symbol]')).toHaveAttribute('data-orb-symbol','attack')
+  await diagnosticScreenshot(page,{path:`${output}/spy-with-active-attack-390x844.png`})
+  f.missions.incoming.shift()
+  await f.refresh()
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await page.setViewportSize({width:1440,height:900})
+  await expect(orb).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/spy-unread-desktop-1440x900.png`})
+})
+
+test('fleet accordion shows empire-wide flight paths, live timing, massive manifests and compact navigation', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.clock.install({time:baseTime})
+  await page.clock.pauseAt(baseTime)
+  const f = await intelligenceFixture(page, true, [{...body,name:'Aster Prime'},{...body,id:id(6),name:'Vesper',coordinates:{galaxy:1,system:370,position:4}}], [{id:id(47),name:'Nova Bastion',kind:'Planet',coordinates:{galaxy:1,system:372,position:3}}])
+  const massive: S['PublicShip4'][] = [
+    {ship_type:'LightFighter',count:'120000'}, {ship_type:'HeavyFighter',count:'60000'},
+    {ship_type:'Cruiser',count:'30000'}, {ship_type:'Battleship',count:'20000'},
+    {ship_type:'Battlecruiser',count:'10000'}, {ship_type:'Bomber',count:'5000'},
+    {ship_type:'Destroyer',count:'4000'}, {ship_type:'Dreadnought',count:'1000'},
+  ]
+  const makeFleet = (n:number, mission:S['Mission4'], leg:S['OwnMission4']['leg'], due:number):S['OwnMission4'] => {
+    const ships = n===912 ? massive : [{ship_type:'SmallCargo' as const,count:'3'}]
+    const duration = n===912 ? 7200000 : 300000
+    return {
+      id:id(n), intent:{origin:n===910?body.id:id(6),destination:{type:'Body',id:id(47),expected_owner:id(99),expected_kind:'Planet'},mission,ships:ships.map(ship=>({...ship,owner:binding.player})),cargo:{metal:'0',crystal:'0',deuterium:'0'},speed_percent:100},
+      origin:n===910?body.coordinates:{galaxy:1,system:370,position:4}, destination:{galaxy:1,system:372,position:3}, leg, ships,
+      cargo:{metal:'0',crystal:'0',deuterium:'0'},due_at:baseTime+due,launched_at:baseTime+due-(leg==='Returning'?2:1)*duration,duration_ms:duration,paid_fuel:'1000000',can_recall:leg==='Outbound',
+    }
+  }
+  f.missions.fleets.push(makeFleet(910,'Transport','Outbound',185000),makeFleet(911,'Harvest','Returning',65000),makeFleet(912,'Attack','Outbound',3725000))
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
+  await page.getByTestId('command-orb').click()
+  const panel = page.getByRole('dialog',{name:'Command uplink'})
+  const toggle = panel.getByRole('button',{name:/Fleets/})
+  const list = panel.getByRole('list',{name:'Empire fleets',exact:true})
+  await expect(toggle).toHaveAttribute('aria-expanded','false')
+  await expect(toggle).toContainText('3 / 8 slots')
+  await expect(list).toBeHidden()
+  const allFleets = panel.getByRole('link',{name:'All fleets',exact:true})
+  await expect(allFleets).toHaveCount(1)
+  await expect(allFleets).toHaveText('')
+  await expect(allFleets).toHaveAttribute('title','All fleets')
+  await diagnosticScreenshot(page,{path:`${output}/fleets-collapsed-390x844.png`})
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded','true')
+  const rows = list.getByRole('article')
+  await expect(rows).toHaveCount(3)
+  await expect(rows.nth(0)).toContainText('Harvest')
+  await expect(rows.nth(0)).toContainText('Returning')
+  await expect(rows.nth(0).getByRole('img',{name:'Returning: Vesper [1:370:4] ← Nova Bastion [1:372:3]',exact:true})).toBeVisible()
+  await expect(rows.nth(1).getByRole('img',{name:'Outbound: Aster Prime [1:371:12] → Nova Bastion [1:372:3]',exact:true})).toBeVisible()
+  await expect(rows.nth(2)).toContainText('250,000 ships')
+  await expect(rows.nth(2).getByRole('timer')).toHaveText('Arrives in 1h 2m 5s')
+  await expect(rows.nth(0).getByRole('timer')).toHaveText('Home in 1m 5s')
+  await expect(panel.locator('time')).toHaveCount(0)
+  await expect(rows.getByRole('timer')).toHaveCount(3)
+  await diagnosticScreenshot(page,{path:`${output}/fleets-expanded-390x844.png`})
+  await page.clock.runFor(5000)
+  await expect(rows.nth(2).getByRole('timer')).toHaveText('Arrives in 1h 2m 0s')
+  await page.setViewportSize({width:320,height:740})
+  expect(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
+  expect(await list.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
+  await diagnosticScreenshot(page,{path:`${output}/fleets-expanded-320x740.png`})
+  await toggle.focus();await page.keyboard.press('Enter')
+  await expect(list).toBeHidden()
+  await page.keyboard.press('Space')
+  await expect(list).toBeVisible()
+  f.missions.fleets.splice(0,2)
+  await f.refresh()
+  await page.clock.runFor(1)
+  await expect(rows).toHaveCount(1)
+  await expect(toggle).toContainText('1 / 8 slots')
+  await page.setViewportSize({width:390,height:844})
+  await toggle.blur()
+  await diagnosticScreenshot(page,{path:`${output}/fleets-massive-390x844.png`})
+  const manifest = rows.getByRole('button',{name:'Attack ship composition: 250,000 ships',exact:true})
+  await expect(manifest).toHaveAttribute('aria-expanded','false')
+  await manifest.click()
+  const ships = rows.getByRole('list',{name:'Ship composition'})
+  await expect(ships.getByRole('listitem')).toHaveCount(8)
+  await expect(ships.getByRole('listitem').first()).toContainText('Light Fighter 120,000')
+  await expect(ships.getByRole('listitem').last()).toContainText('Dreadnought 1,000')
+  await diagnosticScreenshot(page,{path:`${output}/fleets-manifest-390x844.png`})
+  await page.setViewportSize({width:320,height:740})
+  expect(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
+  await diagnosticScreenshot(page,{path:`${output}/fleets-manifest-320x740.png`})
+  await manifest.click()
+  await expect(ships).toBeHidden()
+  await list.getByRole('link',{name:'Attack fleet details'}).click()
+  await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/fleets/${id(912)}$`))
+  await expect(panel).not.toBeVisible()
+  f.missions.fleets.length=0
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await page.getByTestId('command-orb').click()
+  await toggle.click()
+  await expect(panel.getByText('No active fleets. All fleet slots are available.')).toBeVisible()
+  await expect(toggle).toContainText('0 / 8 slots')
+  await diagnosticScreenshot(page,{path:`${output}/fleets-empty-320x740.png`})
+  await panel.getByRole('link',{name:'All fleets',exact:true}).click()
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/fleets$`))
+  await expect(panel).not.toBeVisible()
+  await page.setViewportSize({width:1440,height:900})
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await expect(page.locator('main h1')).toContainText('Empire —')
+  await expect(page.getByTestId('command-orb')).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/fleets-desktop-1440x900.png`})
+})
+
+
+test('enemy attacks open above fleets, use red, keep hidden intelligence hidden, and collapse independently', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.clock.install({time:baseTime})
+  await page.clock.pauseAt(baseTime)
+  const f=await intelligenceFixture(page,true,[{...body,name:'Aster Prime'}],[{id:id(47),kind:'Planet',name:'Nova Bastion',coordinates:{galaxy:1,system:372,position:3}}],{[id(99)]:'Nova',[id(98)]:'Rook'})
+  const ships:S['PublicShip4'][]=[{ship_type:'Cruiser',count:'1200'},{ship_type:'Battleship',count:'300'}]
+  const own=(n:number,mission:S['Mission4'],leg:S['OwnMission4']['leg']):S['OwnMission4']=>({
+    id:id(n),intent:{origin:body.id,destination:{type:'Body',id:id(47),expected_owner:id(99),expected_kind:'Planet'},mission,ships:ships.map(ship=>({...ship,owner:binding.player})),cargo:{metal:'0',crystal:'0',deuterium:'0'},speed_percent:100},
+    origin:body.coordinates,destination:{galaxy:1,system:372,position:3},leg,ships,cargo:{metal:'0',crystal:'0',deuterium:'0'},due_at:baseTime+10000,launched_at:baseTime-10000,duration_ms:20000,paid_fuel:'0',can_recall:leg==='Outbound',
+  })
+  f.missions.fleets.push(own(930,'Attack','Outbound'),own(931,'Transport','Returning'))
+  const attack:S['IncomingMission4']={sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Attack',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}}
+  f.missions.incoming.push(attack,{...attack,sender:id(98),arrival_at:baseTime+300000,ships:{visibility:'Exact',total:'1500',ships}},{...attack,mission:'Transport'})
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
+  await page.getByTestId('command-orb').click()
+  const panel=page.getByRole('dialog',{name:'Command uplink'})
+  const enemyToggle=panel.getByRole('button',{name:'Enemy attacks 2',exact:true})
+  const ownToggle=panel.getByRole('button',{name:/^Fleets/})
+  const enemies=panel.getByRole('list',{name:'Enemy attacks',exact:true})
+  const fleets=panel.getByRole('list',{name:'Empire fleets',exact:true})
+  await expect(enemyToggle).toHaveAttribute('aria-expanded','true')
+  await expect(enemies.getByRole('article')).toHaveCount(2)
+  await expect(enemies.getByRole('article').first()).toContainText('Ships unknown')
+  await expect(enemies.getByRole('article').first()).toContainText('Nova')
+  await expect(enemies.getByRole('timer').first()).toHaveText('Arrives in 3m 0s')
+  await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(0)
+  expect((await enemyToggle.boundingBox())!.y).toBeLessThan((await ownToggle.boundingBox())!.y)
+  await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-390x844.png`})
+  await ownToggle.click()
+  await expect(fleets.locator('img')).toHaveCount(4)
+  await expect.poll(()=>fleets.locator('img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).complete&&(image as HTMLImageElement).naturalWidth>0))).toBe(true)
+  const colors=await panel.getByRole('article').evaluateAll(rows=>rows.map(row=>getComputedStyle(row).getPropertyValue('--flight').trim()))
+  expect(colors).toEqual(['#ff7d83','#ff7d83','#ecd39f','#a4dbef'])
+  await diagnosticScreenshot(page,{path:`${output}/enemy-and-own-fleets-390x844.png`})
+  await page.setViewportSize({width:320,height:740})
+  expect(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
+  await diagnosticScreenshot(page,{path:`${output}/enemy-and-own-fleets-320x740.png`})
+  await enemies.getByRole('button',{name:'Enemy ship composition: 1,500 ships'}).click()
+  await expect(enemies.getByRole('list',{name:'Ship composition'})).toContainText('Cruiser 1,200')
+  await diagnosticScreenshot(page,{path:`${output}/enemy-manifest-320x740.png`})
+  await enemyToggle.click()
+  await expect(enemies).toBeHidden()
+  await expect(fleets).toBeVisible()
+  await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-collapsed-320x740.png`})
+  const marker=fleets.getByRole('article').first().locator('svg g').first()
+  const start=await marker.getAttribute('transform')
+  await page.emulateMedia({reducedMotion:'no-preference'})
+  await page.clock.runFor(250)
+  expect(await marker.getAttribute('transform')).not.toBe(start)
+  const animation=await marker.evaluate(el=>({transition:getComputedStyle(el).transitionProperty,duration:getComputedStyle(el).transitionDuration,active:el.getAnimations().map(animation=>animation.constructor.name)}))
+  expect(animation.transition).toBe('transform')
+  expect(animation.duration).toBe('0.25s')
+  expect(animation.active).toContain('CSSTransition')
+  await page.emulateMedia({reducedMotion:'reduce'})
+  expect(await marker.evaluate(el=>getComputedStyle(el).transitionDuration)).toBe('0s')
+  await enemyToggle.click()
+  await enemies.getByRole('button',{name:'Attack',exact:true}).first().click()
+  await expect(panel).toHaveCount(0)
+  await expect(page.getByRole('dialog',{name:'Hostile fleet inbound'})).toBeVisible()
+  await page.getByRole('button',{name:'Back to list'}).click()
+  f.missions.incoming.length=0
+  await f.refresh();await page.clock.runFor(1)
+  await expect(panel.getByRole('button',{name:'Enemy attacks 0',exact:true})).toBeVisible()
+  await expect(enemies.getByRole('article')).toHaveCount(0)
+  await expect(panel.getByText('No enemy attacks inbound.')).toBeVisible()
+  await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-cleared-320x740.png`})
+})
+
+
+test('orb popup animates out on close, Escape and backdrop dismissal before releasing the modal', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'no-preference'})
+  await intelligenceFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const orb=page.getByTestId('command-orb')
+  const panel=page.getByRole('dialog',{name:'Command uplink',exact:true})
+  await expect(orb).toBeVisible()
+  await page.evaluate(()=>window.scrollTo(0,150))
+  const originalY=await page.evaluate(()=>scrollY)
+  for(const dismissal of ['button','escape','backdrop'] as const){
+    await orb.click()
+    await expect(panel).toBeVisible()
+    await expect.poll(()=>panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+    await expect(panel).toContainText('No new intelligence. All channels clear.')
+    if(dismissal==='button')await diagnosticScreenshot(page,{path:`${output}/popup-open-390x844.png`})
+    const samples=await panel.evaluate(async (el,dismissal)=>{
+      const dialog=el as HTMLDialogElement
+      if(dismissal==='button')dialog.querySelector<HTMLButtonElement>('[aria-label="Close command HUD"]')!.click()
+      else if(dismissal==='escape')dialog.dispatchEvent(new Event('cancel',{cancelable:true}))
+      else dialog.click()
+      const samples=[]
+      while(dialog.isConnected){
+        samples.push({
+          opacity:Number(getComputedStyle(dialog).opacity),
+          transform:getComputedStyle(dialog).transform,
+          backdropOpacity:Number(getComputedStyle(dialog,'::backdrop').opacity),
+          modal:dialog.matches(':modal'),
+          locked:document.body.style.position==='fixed',
+          content:dialog.textContent,
+          closing:dialog.hasAttribute('data-closing'),
+          inert:dialog.firstElementChild!.hasAttribute('inert'),
+        })
+        await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
+      }
+      return samples
+    },dismissal)
+    const fading=samples.filter(s=>s.closing&&s.opacity>0&&s.opacity<0.95)
+    expect(fading.length,`${dismissal} must visibly fade before unmounting`).toBeGreaterThan(0)
+    for(const sample of fading){
+      expect(sample.modal).toBe(true)
+      expect(sample.locked).toBe(true)
+      expect(sample.inert).toBe(true)
+      expect(sample.content).toContain('No new intelligence. All channels clear.')
+      expect(sample.transform).not.toBe('none')
+    }
+    expect(samples.some(s=>s.backdropOpacity>0&&s.backdropOpacity<0.95)).toBe(true)
+    await expect(panel).toHaveCount(0)
+    await expect(orb).toBeFocused()
+    expect(await page.evaluate(()=>document.body.style.position)).toBe('')
+    expect(await page.evaluate(()=>scrollY)).toBe(originalY)
+  }
+  await diagnosticScreenshot(page,{path:`${output}/popup-closed-390x844.png`})
+  if(process.env.ORBIT_TEST_SCREENSHOTS==='1'){
+    await orb.click()
+    await expect.poll(()=>panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+    await panel.evaluate(async el=>{
+      el.querySelector<HTMLButtonElement>('[aria-label="Close command HUD"]')!.click()
+      await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))
+      for(const animation of el.getAnimations()){
+        animation.pause()
+        animation.currentTime=Number(animation.effect!.getTiming().duration)/2
+      }
+    })
+    await diagnosticScreenshot(page,{path:`${output}/popup-closing-390x844.png`})
+    await panel.evaluate(el=>{for(const animation of el.getAnimations())animation.play()})
+    await expect(panel).toHaveCount(0)
+  }
+  // Native Escape must be prevented while the exit plays, then return focus.
+  await orb.click()
+  await expect(panel).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+  await expect(orb).toBeFocused()
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await orb.click()
+  expect(await panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+  expect(await panel.evaluate(el=>getComputedStyle(el,'::backdrop').animationName)).toBe('none')
+  await page.getByRole('button',{name:'Close command HUD'}).click()
+  await expect(panel).toHaveCount(0)
+  await orb.click()
+  await expect(panel).toBeVisible()
+  await page.setViewportSize({width:1440,height:900})
+  await expect(orb).toHaveCount(0)
+  await expect(panel).toHaveCount(0)
+  expect(await page.evaluate(()=>document.body.style.position)).toBe('')
+  await diagnosticScreenshot(page,{path:`${output}/popup-desktop-1440x900.png`})
+})
+
+async function setAppHidden(page: Page, hidden: boolean) {
+  await page.evaluate((value) => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value })
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: value ? 'hidden' : 'visible' })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, hidden)
+}
+
+test('return refresh waits for success after five minutes and plays once with accessible reduced motion', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.clock.install()
+  await page.addInitScript(()=>{Math.random=()=>0})
+  await intelligenceFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const caption = page.getByTestId('orb-caption')
+  await expect(caption).toHaveText('Systems Online')
+  await page.clock.fastForward(6000)
+  const initial = await page.evaluate(()=>Date.now())
+  await setAppHidden(page, true)
+  await page.clock.setSystemTime(initial + 4*60*1000)
+  await setAppHidden(page, false)
+  await page.clock.runFor(300)
+  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
+
+  let failed = 0
+  await page.route('**/api/**/overview', async route => {
+    failed++
+    await route.fulfill({status:503,json:{code:'Unavailable'}})
+  })
+  await setAppHidden(page, true)
+  await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 5*60*1000)
+  await setAppHidden(page, false)
+  await page.clock.runFor(300)
+  await expect.poll(()=>failed).toBeGreaterThan(0)
+  await expect(caption).toHaveText('Connection lost.')
+  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
+  await page.unroute('**/api/**/overview')
+  await page.clock.fastForward(6000)
+  await refreshGame(page)
+  await page.clock.runFor(300)
+  await expect(caption).toHaveText('Updated')
+  await expect(page.getByRole('status').filter({hasText:'Updated'})).toBeVisible()
+  await expect(page.getByTestId('orb-refresh-pulse').locator('span').first()).toHaveCSS('animation-name','none')
+  await diagnosticScreenshot(page,{path:`${output}/updated-reduced-motion-390x844.png`})
+  await page.clock.fastForward(6000)
+  await refreshGame(page)
+  await page.clock.runFor(300)
+  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
+  await expect(caption).toHaveCount(0)
+})
+
+test('return refresh animation preview at mobile and desktop sizes', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'no-preference'})
+  await page.addInitScript(()=>{Math.random=()=>0})
+  await page.clock.install()
+  await intelligenceFixture(page)
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
+  // Playwright's clock advances JS timers, not the CSS animation timeline.
+  // Wait for the real entrance to finish so this replay shows only refresh.
+  await page.getByTestId('command-orb').evaluate(async orb => {
+    await Promise.all(orb.getAnimations()
+      .filter(animation => animation instanceof CSSAnimation && animation.animationName.includes('orbIn'))
+      .map(animation => animation.finished))
+  })
+  await expect(page.getByTestId('command-orb')).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 0)')
+  await expect(page.getByTestId('command-orb')).toHaveCSS('opacity','1')
+  await page.clock.fastForward(6000)
+  await expect(page.getByTestId('orb-caption')).toHaveCount(0)
+  if(process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await diagnosticScreenshot(page,{path:`${output}/refresh-idle-390x844.png`})
+    for(let frame=0;frame<10;frame++)
+      await diagnosticScreenshot(page,{path:`${output}/refresh-review-frames/frame-${String(frame).padStart(2,'0')}.png`})
+  }
+  await setAppHidden(page, true)
+  await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 25*60*1000)
+  await setAppHidden(page, false)
+  await expect(page.getByTestId('orb-caption')).toHaveText('Updated')
+  const pulse=page.getByTestId('orb-refresh-pulse')
+  expect(await pulse.locator('span').first().evaluate(el=>getComputedStyle(el).animationName)).toContain('refreshWave')
+  if(process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    // Sample the actual CSS animations deterministically for a reviewable replay.
+    await page.clock.pauseAt(await page.evaluate(()=>Date.now()))
+    const animations = await page.evaluateHandle(() => document.getAnimations().map(animation => {
+      animation.pause()
+      return {animation, start: Number(animation.currentTime ?? 0)}
+    }))
+    for(let frame=0;frame<40;frame++) {
+      await animations.evaluate((items,time)=>items.forEach(({animation,start})=>{animation.currentTime=start+time}),frame*100)
+      await diagnosticScreenshot(page,{path:`${output}/refresh-review-frames/frame-${String(frame+10).padStart(2,'0')}.png`})
+      if(frame===7) await diagnosticScreenshot(page,{path:`${output}/updated-390x844.png`})
+    }
+    await animations.evaluate(items=>items.forEach(({animation,start})=>{animation.currentTime=start+700}))
+    await animations.dispose()
+  }
+  await page.setViewportSize({width:320,height:740})
+  const bounds=(await page.getByTestId('orb-caption').boundingBox())!
+  expect(bounds.x).toBeGreaterThanOrEqual(0)
+  await diagnosticScreenshot(page,{path:`${output}/updated-320x740.png`})
+  await page.setViewportSize({width:1440,height:900})
+  await expect(page.getByTestId('command-orb')).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/updated-desktop-1440x900.png`})
 })

@@ -70,6 +70,17 @@
   font-size: 0.75rem;
   line-height: 1.4;
 }
+.productionValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.capacityWarning {
+  color: var(--warning);
+  min-width: 44px;
+  min-height: 44px;
+  margin-block: -8px;
+}
 .note {
   margin: 6px 0 0;
 }

@@ -1,4 +1,7 @@
 use orbit_engine::*;
+#[path = "common/prior_content.rs"]
+mod prior_content;
+use prior_content::without_native_hyperspace_ships;
 
 fn rules() -> Ruleset {
     standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap()
@@ -7,7 +10,7 @@ fn rules() -> Ruleset {
 #[test]
 fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_legacy_hash() {
     let latest = rules();
-    let mut artifact = latest.artifact.clone();
+    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
     artifact
         .progression
         .as_mut()
@@ -46,7 +49,10 @@ fn drive_upgrade_from_technology_release_is_atomic_idempotent_and_preserves_lega
     assert_eq!(delta.add_research, vec![ResearchId::HyperspaceDrive]);
     assert!(delta.add_buildings.is_empty());
     assert_eq!(previous.protocol(), next.protocol());
-    assert_eq!(previous.artifact.world, next.artifact.world);
+    assert_eq!(
+        previous.artifact.world,
+        without_native_hyperspace_ships(next.artifact.clone()).world
+    );
     assert_eq!(previous.artifact.universe, next.artifact.universe);
     assert!(validate_rules_update(&next, &previous).is_err());
     let mut custom = previous.artifact.clone();
@@ -117,6 +123,17 @@ fn hyperspace_rules_reject_incomplete_unsupported_and_invalid_switches() {
         .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
         .unwrap()
         .enabled = false;
+    a.catalog
+        .iter_mut()
+        .filter(|e| {
+            matches!(
+                e.key,
+                CatalogKey::Ship(
+                    ShipType::Battlecruiser | ShipType::Battleship | ShipType::Destroyer
+                )
+            )
+        })
+        .for_each(|e| e.enabled = false);
     let disabled = Ruleset::from_artifact(a, latest.speed).unwrap();
     let research = ResearchLevels {
         owner: PlayerId(uuid::Uuid::nil()),

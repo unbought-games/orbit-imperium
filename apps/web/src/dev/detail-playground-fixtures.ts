@@ -27,6 +27,12 @@ export const scenes = [
     item: 'MetalMine',
   },
   {
+    id: 'mine-full',
+    title: 'Metal Mine · storage full',
+    category: 'Buildings',
+    item: 'MetalMine',
+  },
+  {
     id: 'mine-energy',
     title: 'Metal Mine · energy deficit',
     category: 'Buildings',
@@ -185,6 +191,7 @@ export async function createDetailPreview(
     body.amounts = resources(0, 0, 0)
     body.capacity = resources(100, 50, 100)
   }
+  if (sceneId === 'mine-full') body.amounts.metal = scaled(22000)
   if (sceneId === 'mine-short') body.amounts = resources(120, 20, 40)
   if (sceneId === 'storage-full') {
     body.levels.MetalStorage = 1

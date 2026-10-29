@@ -234,6 +234,7 @@ export function WorkSummaries({
                     <p>
                       {compactWork ? (
                         <Link
+                          data-touch-control=""
                           {...target}
                           className={styles.workLink}
                           title={host ?? undefined}
@@ -246,7 +247,13 @@ export function WorkSummaries({
                         </Link>
                       ) : (
                         <>
-                          {target ? <Link {...target}>{name}</Link> : name}
+                          {target ? (
+                            <Link data-touch-control="" {...target}>
+                              {name}
+                            </Link>
+                          ) : (
+                            name
+                          )}
                           {layout !== 'cards' &&
                             work &&
                             (work.status !== 'In progress' || host) && (
@@ -329,6 +336,7 @@ export function WorkSummaries({
                   {showLink &&
                     (enabled ? (
                       <Link
+                        data-touch-control=""
                         {...routeTarget(universeName, page as Page, body.id)}
                       >
                         Open{' '}
@@ -356,6 +364,7 @@ export function WorkSummaries({
                       view,
                     ).available && (
                       <Link
+                        data-touch-control=""
                         {...routeTarget(universeName, 'facilities', body.id)}
                       >
                         Facilities <ArrowRight size={12} aria-hidden="true" />
@@ -371,7 +380,10 @@ export function WorkSummaries({
                       },
                       view,
                     ).available && (
-                      <Link {...routeTarget(universeName, 'defense', body.id)}>
+                      <Link
+                        data-touch-control=""
+                        {...routeTarget(universeName, 'defense', body.id)}
+                      >
                         Open defenses{' '}
                         <ArrowRight size={12} aria-hidden="true" />
                       </Link>

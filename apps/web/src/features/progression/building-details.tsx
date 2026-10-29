@@ -5,8 +5,9 @@ import {
   ResourceSummary,
 } from '../../ui/number-value'
 import { progressionCommand } from './options'
-import { ArrowDown, ArrowUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, TriangleAlert } from 'lucide-react'
 import { Button } from '../../ui/button'
+import { InfoTooltip } from '../../ui/info-tooltip'
 import { ConfirmationButton } from '../../ui/confirmation-button'
 import { label } from '../../ui/format'
 import { ProgressionBlockers } from './quote-review'
@@ -66,6 +67,7 @@ export function BuildingDetails({
   const unavailable = buildingUnavailableReason(entry, body, building.id)
   const command = progressionCommand(proposal)
   const insight = buildingInsights(view, body, building.id, proposal)
+  const isMine = insight.benefit?.kind.endsWith('PerHour') ?? false
   const canBuild =
     !unavailable &&
     !loading &&
@@ -122,17 +124,34 @@ export function BuildingDetails({
             <DetailStat label="Current level">Level {level}</DetailStat>
             {insight.benefit && (
               <DetailStat label={benefitLabel(insight.benefit)}>
-                <BenefitValue insight={insight.benefit} />
+                <span className={styles.productionValue}>
+                  <BenefitValue insight={insight.benefit} />
+                  {insight.productionPaused && (
+                    <InfoTooltip
+                      label="Storage capacity reached"
+                      description="Production is paused because storage is full. It resumes when storage has room. The values shown are production before storage limits."
+                      className={styles.capacityWarning}
+                    >
+                      <TriangleAlert size={18} aria-hidden="true" />
+                    </InfoTooltip>
+                  )}
+                </span>
               </DetailStat>
             )}
           </div>
-          {insight.storage && (
+          {insight.storage && !isMine && (
             <StorageInsight
               storage={insight.storage}
               showRate={!insight.benefit?.planetTotal}
             />
           )}
         </DetailSection>
+      )}
+      {insight.productionPaused && level === 0 && (
+        <p className={styles.note}>
+          Production is paused because storage is full. It resumes when storage
+          has room.
+        </p>
       )}
       {work ? (
         <ConstructionDetails work={work} model={model} />
@@ -176,8 +195,11 @@ export function BuildingDetails({
                 />
                 {insight.benefit && (
                   <DetailRow label={benefitLabel(insight.benefit)}>
-                    <span title="Change">
-                      <BenefitValue insight={insight.benefit} change />
+                    <span title={isMine ? 'Current output' : 'Change'}>
+                      <BenefitValue
+                        insight={insight.benefit}
+                        change={!isMine}
+                      />
                     </span>{' '}
                     <span aria-hidden="true">→</span>{' '}
                     <strong title="New total">
@@ -200,6 +222,13 @@ export function BuildingDetails({
                   insight.energy.constructionBlocked) && (
                   <EnergyComparison
                     energy={insight.energy}
+                    balanceLabel={
+                      action === 'Demolition'
+                        ? 'Energy after demolition'
+                        : firstBuild
+                          ? 'Energy after build'
+                          : 'Energy after upgrade'
+                    }
                     firstBuild={firstBuild && !insight.benefit?.planetTotal}
                     view={view}
                     body={body}
@@ -233,9 +262,7 @@ export function BuildingDetails({
                 )}
               </dl>
               {insight.benefit?.qualifier &&
-                (!firstBuild ||
-                  !insight.benefit.planetTotal ||
-                  insight.storage?.state === 'full') && (
+                (!firstBuild || !insight.benefit.planetTotal) && (
                   <p className={styles.note}>{insight.benefit.qualifier}.</p>
                 )}
             </>

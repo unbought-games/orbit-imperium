@@ -1,0 +1,93 @@
+{
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 9
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceTechnology",
+      "level": 5
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceDrive",
+      "level": 6
+    }
+  ],
+  "ship": {
+    "drive": "HyperspaceDrive",
+    "base_speed": 5000,
+    "drive_coefficient": [
+      3,
+      10
+    ],
+    "fuel": 1000,
+    "capacity": 2000
+  },
+  "cost": {
+    "metal": 60000,
+    "crystal": 50000,
+    "deuterium": 15000
+  },
+  "combat": {
+    "item": {
+      "kind": "Ship",
+      "id": "Destroyer"
+    },
+    "cost": [
+      60000,
+      50000,
+      15000
+    ],
+    "attack_hundredths": 200000,
+    "shield_hundredths": 50000
+  },
+  "rapid_fire": [
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "LightLaser"
+      },
+      "factor": 10
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "SolarSatellite"
+      },
+      "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "factor": 2
+    }
+  ]
+}

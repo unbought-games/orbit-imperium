@@ -7,11 +7,14 @@ export const buildPages: Page[] = [
   'shipyard',
   'defense',
 ]
-export const fleetPages: Page[] = ['galaxy', 'dispatch', 'fleets']
+export const fleetPages: Page[] = ['fleets', 'dispatch']
 export const navigationGroups: { title: string; pages: Page[] }[] = [
   { title: 'Empire', pages: ['overview', 'resource-settings'] },
   { title: 'Develop', pages: buildPages },
-  { title: 'Fleet & intelligence', pages: [...fleetPages, 'reports'] },
+  {
+    title: 'Fleet & intelligence',
+    pages: ['galaxy', ...fleetPages, 'reports'],
+  },
   { title: 'Community', pages: ['high-scores', 'alliance', 'messages'] },
   { title: 'Account', pages: ['settings'] },
 ]
@@ -34,7 +37,9 @@ export const pageTitles: Record<Page, string> = {
 }
 export function navigationAnchor(page: Page) {
   if (page === 'overview') return 'Empire'
-  if (buildPages.includes(page)) return 'Develop'
-  if (fleetPages.includes(page)) return 'Fleet'
+  if (page === 'resource-settings' || buildPages.includes(page))
+    return 'Develop'
+  if (page === 'galaxy') return 'Galaxy'
+  if (fleetPages.includes(page)) return 'Fleets'
   return 'Menu'
 }

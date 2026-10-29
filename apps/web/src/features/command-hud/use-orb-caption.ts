@@ -4,6 +4,7 @@ import { incomingThreats } from './model'
 import { bindingKey } from '../../client-model/commands'
 import { createCaptionEngine } from './caption-engine'
 import { captionEvents, initialCaptionEvents } from './caption-events'
+import { createReturnRefresh } from './return-refresh'
 
 const sessions = new WeakMap<
   Coordinator,
@@ -11,6 +12,7 @@ const sessions = new WeakMap<
     binding: string
     engine: ReturnType<typeof createCaptionEngine>
     initialized: boolean
+    returnRefresh: ReturnType<typeof createReturnRefresh>
   }
 >()
 /** Route changes and mobile remounts retain the session's humor budget. */
@@ -19,7 +21,12 @@ export function useOrbCaption(model: Coordinator) {
   const session = useMemo(() => {
     let entry = sessions.get(model)
     if (!entry || entry.binding !== binding) {
-      entry = { binding, engine: createCaptionEngine(), initialized: false }
+      entry = {
+        binding,
+        engine: createCaptionEngine(),
+        initialized: false,
+        returnRefresh: createReturnRefresh(),
+      }
       sessions.set(model, entry)
     }
     return entry
@@ -31,27 +38,32 @@ export function useOrbCaption(model: Coordinator) {
   )
   useEffect(() => {
     let before = model.store.getState()
+    session.returnRefresh.visibility(document.hidden, before)
     if (!session.initialized) {
       session.initialized = true
       session.engine.handle(initialCaptionEvents(before))
     }
     const stop = model.subscribe((after) => {
-      const events = captionEvents(before, after)
+      const events = [
+        ...captionEvents(before, after),
+        ...session.returnRefresh.observe(after),
+      ]
       before = after
-      if (events.length)
+      if (events.length && !document.hidden)
         session.engine.handle(
           events,
           !after.stale && incomingThreats(after).length === 0,
         )
     })
-    const hide = () => {
+    const visibility = () => {
+      session.returnRefresh.visibility(document.hidden, model.store.getState())
       if (document.hidden) session.engine.suspend()
     }
-    document.addEventListener('visibilitychange', hide)
+    document.addEventListener('visibilitychange', visibility)
     return () => {
       stop()
       session.engine.suspend()
-      document.removeEventListener('visibilitychange', hide)
+      document.removeEventListener('visibilitychange', visibility)
     }
   }, [model, session])
   return caption

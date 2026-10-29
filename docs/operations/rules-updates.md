@@ -26,13 +26,16 @@ file. `--universe UUID` selects an existing world. Without it, the command uses
 Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
 --help` works without a database. An empty database needs `orbit setup` first.
 
-The bundled content release is currently **0.7.0**. This is the content bundle's
+The bundled content release is currently **0.10.0**. This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
 Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon, Large Shield Dome and
 Plasma Technology. The current development bundle also includes
 [Plasma Turrets](plasma-turret.md), requiring Shipyard 8 and Plasma Technology 7.
+[Destroyers](destroyer.md) require Shipyard 9, Hyperspace Technology 5 and
+Hyperspace Drive 6. They use native Hyperspace propulsion and rapid fire against
+Light Lasers, Battlecruisers, Espionage Probes and Solar Satellites.
 [Bombers](bomber.md) require Shipyard 8, Impulse Drive 6 and Plasma Technology 5;
 they use Impulse propulsion until the Hyperspace Drive 8 switch. The current development bundle also includes [Fusion Reactor](fusion-reactor.md),
 including fuel-aware production and level-zero initialization. The original signup
@@ -41,7 +44,8 @@ The development bundle also includes [Hyperspace Technology](hyperspace-technolo
 requiring Research Lab 7, Energy Technology 5 and Shielding Technology 5. It is
 prerequisite research without per-level bonuses. [Hyperspace Drive](hyperspace-drive.md)
 requires Lab 7 and Hyperspace Technology 3 and includes the classic Bomber switch
-at Drive 8. Other dependent systems remain unavailable.
+at Drive 8. [Battleships](battleship.md) require Shipyard 7 and Hyperspace Drive 4;
+they use Hyperspace propulsion from the outset. Other dependent systems remain unavailable.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
 
@@ -283,3 +287,6 @@ In scoped mode, `rules apply` durably queues a global boundary. Earlier conflict
 If observation lasts longer than 30 seconds, the CLI reports a durable pending activation ID. The activation remains queued and workers continue it. Retrying the same file observes the same request; do not interpret a disconnected/pending CLI as cancellation. A different proposal cannot replace a pending boundary. Serial/preparing mode retains the older idle-boundary behavior until activation.
 
 Process restarts do not need a gameplay audit or a caught-up simulation. Private lag metrics and blocked-scope diagnostics are operational signals, not readiness failures for an otherwise compatible API. Unsupported vocabulary still stops an incompatible process locally.
+
+[Battlecruisers](battlecruiser.md) use the same standard upgrade path, with existing
+Laser and Hyperspace research prerequisites and no inventory backfill.

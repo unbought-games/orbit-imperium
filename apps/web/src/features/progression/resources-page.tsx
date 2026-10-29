@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import { Settings } from 'lucide-react'
+import { ButtonLink } from '../../ui/button'
+import { useGameScreen } from '../../shell/screen-context'
+import { routeTarget } from '../../shell/route-target'
 import { CatalogStage } from '../../ui/catalog-stage'
 import { CatalogSection, ImageCatalog } from '../../ui/image-catalog'
 import { label } from '../../ui/format'
@@ -14,6 +18,7 @@ import { buildingProgress } from '../../client-model/building-progress'
 import { ProgressionTile } from './progression-tile'
 export function ResourcesPage(props: ProgressionProps) {
   const { coordinator: model, view, body, selection } = props
+  const { universeName } = useGameScreen()
   const progress = buildingProgress(model.store.getState(), body.id)
   const selectedId = selection.selectedId
   const selected = resourceBuildings.find(
@@ -38,7 +43,20 @@ export function ResourcesPage(props: ProgressionProps) {
         layout="compact"
         only="buildings"
       />
-      <CatalogSection title="Resource buildings">
+      <CatalogSection
+        title="Resource buildings"
+        actions={
+          <ButtonLink
+            variant="ghost"
+            size="icon-small"
+            aria-label="Resource settings"
+            title="Resource settings"
+            {...routeTarget(universeName, 'resource-settings', body.id)}
+          >
+            <Settings size={14} aria-hidden="true" />
+          </ButtonLink>
+        }
+      >
         <ImageCatalog>
           {resourceBuildings.map((building) => {
             const level = body.levels[building.id as keyof typeof body.levels]
