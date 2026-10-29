@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/test'
-import { installGameFixture } from './fixtures/game'
+import { body, installGameFixture } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 async function anonymous(page: import('@playwright/test').Page, signup = true) {
@@ -233,8 +233,12 @@ test('returning players go straight to their empire without loading marketing im
     await route.fulfill({ response, body: (await response.text()).replace('</head>', '<link data-orbit-home-head rel="canonical" href="https://community.example/"><meta data-orbit-home-head property="og:url" content="https://community.example/"></head>') })
   })
   await page.goto('/')
+  // Initial bootstrap and cold Vite compilation finish before the game route
+  // renders. Synchronize with the redirect before checking its content.
+  await page.waitForURL(`/u/andromeda/b/${body.id}/overview`)
   await expect(page.locator('main h1')).toContainText('Empire —')
   await expect(page.locator('#mobile')).toHaveCount(0)
+  await expect(page.locator('[data-orbit-home-head]')).toHaveCount(0)
   expect(images).toEqual([])
 })
 
