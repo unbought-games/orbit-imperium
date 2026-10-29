@@ -68,3 +68,47 @@
     padding: 0.4rem 0.2rem;
   }
 }
+
+.selection {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.selectionTitle {
+  font:
+    1.45rem Georgia,
+    serif;
+  color: #efdfc4;
+}
+.selection input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding-block: 6px;
+  padding-inline-start: 8px;
+  text-align: right;
+}
+.ships .group th {
+  text-align: left;
+  width: auto;
+  padding-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.selectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.selectionHeader > button {
+  --button-min-size: 32px;
+  --button-padding: 4px 10px;
+  font-size: 0.75rem;
+}
+.shipAmount {
+  max-width: 8rem;
+  margin-inline-start: auto;
+}

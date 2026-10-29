@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 pub enum GameError {
+    #[error("InsufficientMissiles")]
+    InsufficientMissiles,
+    #[error("OutOfRange")]
+    OutOfRange,
+    #[error("SiloBusy")]
+    SiloBusy,
     #[error("PositionOccupied")]
     PositionOccupied,
     #[error("NoHarvestTarget")]

@@ -94,6 +94,18 @@ async fn planet_names_survive_restart_publish_to_other_players_and_retry_once() 
     let initial = game.world_view(principal(b), context(b)).await.unwrap();
     let body = &initial.progression.bodies[0];
     assert!(body.name.is_none());
+    assert_eq!(initial.homeworld_id, Some(body.id));
+    assert_eq!(body.diameter_km, Some(12800));
+    assert_eq!(
+        body.min_temperature,
+        body.max_temperature.map(|max| max - 40)
+    );
+    assert!(body.colony.is_none());
+    // Physical homeworld facts come from the saved manifest, not field counts.
+    let snapshot = store.bound_view(b).await.unwrap();
+    let (home_id, home) = snapshot.homeworld.as_ref().unwrap();
+    assert_eq!(*home_id, body.id);
+    assert_eq!(home.diameter_km, body.diameter_km.unwrap());
     let before = store.bound_world(b).await.unwrap().facts.0.state.bodies[&body.id].clone();
     let updates = store.read_updates(b, None, 128).await.unwrap();
     let cursor = updates.items[0].cursor.as_deref();
@@ -219,6 +231,23 @@ async fn planet_names_survive_restart_publish_to_other_players_and_retry_once() 
         .await
         .unwrap();
     let terms: FleetTerms = serde_json::from_value(quote.data.clone()).unwrap();
+    let estimate = restored
+        .world_query(
+            principal(other),
+            WorldQuery {
+                context: context(other),
+                query: WorldQueryKind::FleetEstimate {
+                    intent: intent.clone(),
+                },
+            },
+        )
+        .await
+        .unwrap();
+    let flight: FleetEstimate = serde_json::from_value(estimate.data.clone()).unwrap();
+    assert_eq!(flight.fuel, terms.fuel);
+    assert_eq!(flight.duration_ms, terms.duration_ms);
+    assert!(estimate.data.get("terms_hash").is_none());
+
     let mut launch = pair(other, origin, "unused");
     launch.gameplay.command = CommandDto3::Progression(Command::World {
         action: WorldAction::LaunchFleet {

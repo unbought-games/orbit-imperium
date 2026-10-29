@@ -204,6 +204,7 @@ fn run(
                     i.payload,
                     Input::Command(Command::World {
                         action: WorldAction::SetReportHidden { .. }
+                            | WorldAction::SetReportsHidden { .. }
                             | WorldAction::MarkReportRead { .. }
                             | WorldAction::SetReportStarred { .. }
                     })
@@ -1571,7 +1572,9 @@ fn sequential_defense_raids(defense: DefenseId) {
             }
         }
         for body in s.bodies.values_mut() {
-            body.levels.insert(Building::FusionReactor, 0);
+            for key in r.building_keys() {
+                body.levels.entry(key).or_insert(0);
+            }
         }
     }
     // Heavier defenses need a larger attack to exercise destruction and recovery.
@@ -2737,6 +2740,91 @@ fn report_removal_is_recipient_scoped_reversible_and_preserves_evidence() {
     let result = run(&mut s, &r, p, b, 1000, 8812, action(shared, true));
     apply(&mut s, result);
     assert_eq!(s.world.as_ref().unwrap().records.reports, evidence);
+    let bulk = |reports, hidden| {
+        Input::Command(Command::World {
+            action: WorldAction::SetReportsHidden { reports, hidden },
+        })
+    };
+    for (n, hidden) in [(8820, true), (8821, true), (8822, false)] {
+        let result = run(
+            &mut s,
+            &r,
+            p,
+            b,
+            1000,
+            n,
+            bulk(vec![shared, private, shared], hidden),
+        );
+        let changes = apply(&mut s, result);
+        assert_eq!(changes.affected_viewers, BTreeSet::from([p]));
+        let records = &s.world.as_ref().unwrap().records;
+        let own: Vec<_> = records
+            .report_states
+            .iter()
+            .filter(|state| state.recipient == p)
+            .collect();
+        assert_eq!(own.len(), 2);
+        assert!(
+            own.iter()
+                .all(|state| state.hidden == hidden && !state.read)
+        );
+        assert!(
+            records
+                .report_states
+                .iter()
+                .find(|state| state.recipient == other)
+                .unwrap()
+                .hidden
+        );
+        assert_eq!(records.reports, evidence);
+    }
+    let before = s.world.as_ref().unwrap().records.report_states.clone();
+    for (n, reports) in [
+        (8823, vec![]),
+        (8824, vec![shared, ReportId(Uuid::from_u128(999999))]),
+    ] {
+        assert!(matches!(
+            run(&mut s, &r, p, b, 1000, n, bulk(reports, true)),
+            TransitionResult::Rejected(_)
+        ));
+        assert_eq!(s.world.as_ref().unwrap().records.report_states, before);
+    }
+    assert_eq!(
+        run(
+            &mut s,
+            &r,
+            other,
+            t,
+            1000,
+            8825,
+            bulk(vec![shared, private], false)
+        ),
+        TransitionResult::Rejected(GameError::NotFound)
+    );
+    let result = run(&mut s, &r, p, b, 1000, 8826, star(private, true));
+    apply(&mut s, result);
+    assert_eq!(
+        run(
+            &mut s,
+            &r,
+            p,
+            b,
+            1000,
+            8827,
+            bulk(vec![shared, private], true)
+        ),
+        TransitionResult::Rejected(GameError::InvalidInput)
+    );
+    assert!(
+        s.world
+            .as_ref()
+            .unwrap()
+            .records
+            .report_states
+            .iter()
+            .filter(|state| state.recipient == p)
+            .all(|state| !state.hidden)
+    );
 }
 
 #[path = "missions/cruiser.rs"]
@@ -2886,6 +2974,64 @@ mod bomber;
 
 #[path = "missions/destroyer.rs"]
 mod destroyer;
+#[path = "missions/missiles.rs"]
+mod missiles;
 
 #[path = "missions/battleship.rs"]
 mod battleship;
+
+#[test]
+fn flight_estimate_retains_fuel_without_resources_and_cannot_authorize_launch() {
+    let (mut s, r, p, b, t) = fixture();
+    let mut request = intent(&s, p, b, t);
+    request.cargo = Resources::default();
+    let legal = quote_fleet(&s, p, &request, 0, &r).unwrap();
+    s.bodies.get_mut(&b).unwrap().checkpoint.amounts = Resources::default();
+    let estimate = estimate_fleet(&s, p, &request, &r).unwrap();
+    assert_eq!(estimate.fuel, legal.fuel);
+    assert_eq!(estimate.duration_ms, legal.duration_ms);
+    assert!(estimate.fuel > 0);
+    assert_eq!(
+        quote_fleet(&s, p, &request, 0, &r),
+        Err(GameError::InsufficientResources)
+    );
+    let value = serde_json::to_value(&estimate).unwrap();
+    assert_eq!(value["estimate"], true);
+    assert!(value.get("terms_hash").is_none());
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        0,
+        99001,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: request.clone(),
+                expected_terms_hash: legal.terms_hash,
+            },
+        }),
+    );
+    assert!(matches!(
+        result,
+        TransitionResult::Rejected(GameError::InsufficientResources)
+    ));
+    request.cargo = Resources::all(100_000 * SCALE);
+    assert_eq!(
+        estimate_fleet(&s, p, &request, &r).unwrap().fuel,
+        estimate.fuel
+    );
+    assert_eq!(
+        quote_fleet(&s, p, &request, 0, &r),
+        Err(GameError::CargoCapacity)
+    );
+    assert!(matches!(
+        estimate_fleet(&s, PlayerId(Uuid::from_u128(999)), &request, &r),
+        Err(GameError::NotOwned)
+    ));
+    s.coverage.research_players.remove(&p);
+    assert!(matches!(
+        estimate_fleet(&s, p, &request, &r),
+        Err(GameError::PolicyUnavailable)
+    ));
+}

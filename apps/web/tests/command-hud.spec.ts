@@ -329,7 +329,7 @@ for (const attackEnabled of [true, false]) {
     expect(await page.evaluate(()=>history.state.dispatchObservation)).toMatchObject({target:{type:'Body',id:observation.target.body,expected_owner:observation.target.owner,expected_kind:observation.target.kind},observedAt:baseTime})
     await expect(panel).not.toBeVisible()
     expect(await page.evaluate(()=>document.body.style.position)).toBe('')
-    await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Attack')
+    await expect(page.getByRole('radio', { checked: true })).toHaveValue('Attack')
     // The same action remains in the full report at desktop sizes.
     await page.setViewportSize({width:1440,height:900})
     await page.goto(`/u/andromeda/b/${body.id}/reports/${id(850)}`)
@@ -673,17 +673,19 @@ test('orb symbols overlap in a holographic dissolve, settle after rapid changes,
   await f.refresh()
   await expect(orb).toHaveAttribute('data-tone','champagne')
   await expect(symbols).toHaveCount(2)
-  f.missions.incoming.push({...incoming,mission:'Espionage'})
+  f.missions.incoming.push(incoming)
   await f.refresh()
-  await expect(orb.locator('[data-orb-symbol="scan"]')).toHaveCount(1)
-  await expect(symbols).toHaveCount(1)
-  await expect(symbols).toHaveAttribute('data-orb-symbol','scan')
-  await expect(symbols).toHaveCSS('opacity','1')
+  await expect(orb).toHaveAttribute('data-tone','red')
+  // Wait for the requested state, then sample its settled layers atomically.
+  // Separate count/attribute reads can straddle the start of a retargeted dissolve.
+  await expect.poll(()=>symbols.evaluateAll(nodes=>nodes.map(node=>({
+    kind:node.getAttribute('data-orb-symbol'),opacity:getComputedStyle(node).opacity,
+  })))).toEqual([{kind:'attack',opacity:'1'}])
   // Refreshing the same icon must not create a second layer or replay the entrance.
   await f.refresh()
   await expect(symbols).toHaveCount(1)
   await expect(symbols).toHaveCSS('opacity','1')
-  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-scan-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-retarget-390x844.png`})
   await page.emulateMedia({reducedMotion:'reduce'})
   f.missions.incoming.length=0
   await f.refresh()
@@ -813,6 +815,48 @@ test('a missing report cursor offers retry without an observer render loop', asy
   await panel.getByRole('button',{name:'Retry loading'}).click()
   await expect.poll(()=>requests).toBeGreaterThan(before)
   await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+})
+
+
+test('spy contacts are regular unread notifications and only active attacks make the orb red', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await page.emulateMedia({reducedMotion:'reduce'})
+  const f = await intelligenceFixture(page)
+  f.headers.push({id:id(870),kind:'SpyContact',observed_at:baseTime-86400000,read:false,hidden:false})
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const orb = page.getByTestId('command-orb')
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await expect(orb).toHaveAccessibleName('1 unread items. Open command HUD')
+  await expect(orb).toHaveCSS('color','rgb(236, 211, 159)')
+  await expect(page.getByLabel('Recent game events').getByRole('button')).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/spy-unread-login-390x844.png`})
+  await orb.click()
+  await expect(page.getByRole('dialog').getByRole('button',{name:/Spy Contact report/})).toHaveAttribute('data-tone','champagne')
+  await diagnosticScreenshot(page,{path:`${output}/spy-unread-inbox-390x844.png`})
+  await page.getByRole('button',{name:'Close command HUD'}).click()
+  f.headers.unshift({id:id(871),kind:'SpyContact',observed_at:baseTime,read:false,hidden:false})
+  await f.refresh()
+  const report = page.getByLabel('Recent game events').getByRole('button',{name:/Spy Contact report/})
+  await expect(report).toHaveAttribute('data-tone','champagne')
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await diagnosticScreenshot(page,{path:`${output}/spy-contact-toast-390x844.png`})
+  const probe = {sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Espionage' as const,arrival_at:baseTime+180000,ships:{visibility:'Unknown' as const}}
+  f.missions.incoming.push(probe)
+  await f.refresh()
+  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Enemy probes detected/})).toHaveAttribute('data-tone','champagne')
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await diagnosticScreenshot(page,{path:`${output}/spy-incoming-390x844.png`})
+  f.missions.incoming.unshift({...probe,mission:'Attack'})
+  await f.refresh()
+  await expect(orb).toHaveAttribute('data-tone','red')
+  await expect(orb.locator('[data-orb-symbol]')).toHaveAttribute('data-orb-symbol','attack')
+  await diagnosticScreenshot(page,{path:`${output}/spy-with-active-attack-390x844.png`})
+  f.missions.incoming.shift()
+  await f.refresh()
+  await expect(orb).toHaveAttribute('data-tone','champagne')
+  await page.setViewportSize({width:1440,height:900})
+  await expect(orb).toHaveCount(0)
+  await diagnosticScreenshot(page,{path:`${output}/spy-unread-desktop-1440x900.png`})
 })
 
 test('fleet accordion shows empire-wide flight paths, live timing, massive manifests and compact navigation', async ({page}) => {

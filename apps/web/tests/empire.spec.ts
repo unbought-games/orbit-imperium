@@ -28,6 +28,8 @@ function empireFixture(now = Date.now()) {
       },
       fields_used: 87,
       max_temperature: -20,
+      min_temperature: -60,
+      diameter_km: 12800,
       inventories: [
         ...body.inventories,
         { item: { kind: 'Ship', id: 'SolarSatellite' }, count: '4' },
@@ -626,3 +628,159 @@ test('empty ship and defense sections describe their own unit category', async (
   await expect(planet.getByRole('region', { name: 'Orbital fleet', exact: true })).toHaveText('No ships stationed here.')
   await expect(planet.getByRole('region', { name: 'Planetary defenses', exact: true })).toHaveText('No defenses stationed here.')
 })
+
+
+for (const width of [390, 1440]) {
+  test(`empire wealth and physical metadata at ${width}px`, async ({ page }) => {
+    const now = new Date('2026-10-29T12:00:00Z')
+    await page.clock.install({ time: now })
+    await page.clock.pauseAt(now)
+    await page.setViewportSize({ width, height: 1000 })
+    const options = empireFixture(now.getTime())
+    options.missions.fleets[0].cargo = { metal: '1250000000', crystal: '2000000', deuterium: '3500000' }
+    options.missions.fleets[1].cargo = { metal: '11000000', crystal: '12000000', deuterium: '13000000' }
+    options.missions.fleets[2].cargo = { metal: '0', crystal: '0', deuterium: '0' }
+    await shellFixture(page, { ...options, sampledAt: now.getTime() })
+    const ledger = page.getByLabel('Empire resource totals')
+    for (const name of ['metal', 'crystal', 'deuterium'] as const) {
+      const group = ledger.getByRole('group', { name: `${name} wealth`, exact: false })
+      await expect(group.locator('svg[data-resource]')).toHaveCount(1)
+      await expect(group.locator('dl svg[data-resource]')).toHaveCount(0)
+      await expect(group.locator('dt > svg')).toHaveCount(2)
+      await expect(group.getByRole('term')).toHaveText(['On planets and moons', 'On fleets in transit'])
+      await expect(group.locator('[title="On planets and moons"]')).toBeVisible()
+      await expect(group.locator('[title="On fleets in transit"]')).toBeVisible()
+      const iconCenters = await group.locator('dt > svg').evaluateAll(icons => icons.map(icon => {
+        const box = icon.getBoundingClientRect()
+        return box.x + box.width / 2
+      }))
+      expect(Math.max(...iconCenters) - Math.min(...iconCenters)).toBeLessThan(1)
+      const amountStarts = await group.locator('dd').evaluateAll(amounts => amounts.map(amount => amount.getBoundingClientRect().x))
+      expect(Math.max(...amountStarts) - Math.min(...amountStarts)).toBeLessThan(1)
+      const totalStart = (await group.locator('strong').boundingBox())!.x
+      expect(amountStarts[0]).toBeGreaterThan(totalStart + 10)
+      const resource = (await group.locator('svg[data-resource]').boundingBox())!
+      expect(iconCenters[0]).toBeGreaterThan(resource.x + resource.width / 2 + 10)
+      const onWorlds = options.bodies.reduce((sum, b) => sum + BigInt(b.amounts[name]), 0n)
+      const inTransit = options.missions.fleets.reduce((sum, f) => sum + BigInt(f.cargo[name]), 0n)
+      await expect(group.locator('strong')).toHaveText(((onWorlds + inTransit) / 1000000n).toLocaleString('en-US'))
+      await expect(group.locator('dl > div').filter({ hasText: 'On planets and moons' }).locator('dd')).toHaveText((onWorlds / 1000000n).toLocaleString('en-US'))
+      await expect(group.locator('dl > div').filter({ hasText: 'On fleets in transit' }).locator('dd')).toHaveText((inTransit / 1000000n).toLocaleString('en-US'))
+    }
+    await diagnosticScreenshot(page, { path: `test-results/empire-wealth-${width}x1000.png` })
+    const home = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
+    const colony = page.getByRole('article', { name: 'Planet [1:380:8] dossier', exact: true })
+    const moon = page.getByRole('article', { name: 'Moon [1:371:4] dossier', exact: true })
+    await expect(home).toContainText('12800 km · -60 to -20 °C')
+    await expect(colony).toContainText('15191 km · 24 to 64 °C')
+    await expect(moon).not.toContainText('km')
+    const physical = home.getByText('12800 km · -60 to -20 °C')
+    const fields = home.getByText(/87\/163 fields/)
+    expect((await physical.boundingBox())!.y).toBeGreaterThan((await fields.boundingBox())!.y)
+    await home.locator('header').scrollIntoViewIfNeeded()
+    await page.evaluate(() => scrollBy(0, -100))
+    await diagnosticScreenshot(page, { path: `test-results/empire-homeworld-${width}x1000.png` })
+    await home.getByText('Maximum temperature: -20 °C').click()
+    await diagnosticScreenshot(page, { path: `test-results/empire-homeworld-climate-${width}x1000.png` })
+    await colony.locator('header').scrollIntoViewIfNeeded()
+    await page.evaluate(() => scrollBy(0, -100))
+    await diagnosticScreenshot(colony.locator('header'), { path: `test-results/empire-colony-${width}x1000.png` })
+    options.missions.fleets = []
+    await refreshGame(page)
+    await page.clock.runFor(1000)
+    for (const row of await ledger.locator('dl > div').filter({ hasText: 'On fleets in transit' }).all()) {
+      await expect(row.locator('dd')).toHaveText('0')
+    }
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-empty-${width}x1000.png` })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
+for (const width of [390, 1440]) {
+  test(`Empire wealth guide slowly repeats at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    // Pause at animation start so captures do not depend on page-load speed.
+    await page.addInitScript(() => {
+      document.addEventListener('animationstart', event => {
+        if (!(event as AnimationEvent).animationName.includes('wealthGuide')) return
+        for (const animation of (event.target as Element).getAnimations({ subtree: true })) {
+          animation.pause()
+          animation.currentTime = 0
+        }
+      })
+    })
+    await shellFixture(page, empireFixture())
+    const ledger = page.getByLabel('Empire resource totals')
+    const guide = ledger.locator('dl').first()
+    const sample = async (time: number) => {
+      await ledger.evaluate((element, time) => {
+        for (const animation of element.getAnimations({ subtree: true })) {
+          animation.pause()
+          animation.currentTime = time
+        }
+      }, time)
+      return guide.evaluate(element => ({
+        pulsePosition: getComputedStyle(element, '::after').backgroundPositionY,
+        pulseOpacity: getComputedStyle(element, '::after').opacity,
+        lineColor: getComputedStyle(element, '::before').borderLeftColor,
+        glow: getComputedStyle(element, '::before').filter,
+      }))
+    }
+    const resting = await sample(0)
+    const early = await sample(1200)
+    const late = await sample(4800)
+    const percent = (position: string) => Number(position.match(/(-?[\d.]+)%/)![1])
+    expect(percent(late.pulsePosition)).toBeGreaterThan(percent(early.pulsePosition))
+    expect(Number(late.pulseOpacity)).toBeGreaterThan(0)
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-pulse-${width}x1000.png` })
+    const glowing = await sample(5400)
+    expect(Number(glowing.pulseOpacity)).toBeGreaterThan(0)
+    for (const group of await ledger.getByRole('group').all()) {
+      const colors = await group.evaluate(element => {
+        const guide = element.querySelector('dl')!
+        return {
+          icon: getComputedStyle(element.querySelector('svg[data-resource]')!).color,
+          line: getComputedStyle(guide, '::before').borderLeftColor,
+          branch: getComputedStyle(guide.querySelector('div')!, '::before').borderTopColor,
+          pulse: getComputedStyle(guide, '::after').backgroundImage,
+          glow: getComputedStyle(guide, '::before').filter,
+        }
+      })
+      expect(colors.line).toBe(colors.icon)
+      expect(colors.branch).toBe(colors.icon)
+      expect(colors.pulse).toContain(colors.icon)
+      expect(colors.glow).toContain(colors.icon)
+    }
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-glow-${width}x1000.png` })
+    const fading = await sample(8400)
+    expect(fading.lineColor).not.toBe(glowing.lineColor)
+    const settled = await sample(10800)
+    expect(settled.pulseOpacity).toBe('0')
+    expect(settled.lineColor).not.toBe(glowing.lineColor)
+    expect(settled.glow).toBe(resting.glow)
+    await diagnosticScreenshot(page, { path: `test-results/empire-wealth-settled-${width}x1000.png` })
+    for (const row of await ledger.locator('dl > div').all()) {
+      await expect(row).toHaveCSS('border-top-width', '0px')
+    }
+    const repeated = await sample(16800)
+    expect(repeated).toEqual(late)
+  })
+
+  test(`Empire wealth guide stops for reduced motion at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await shellFixture(page, empireFixture())
+    const ledger = page.getByLabel('Empire resource totals')
+    const guide = ledger.locator('dl').first()
+    // Exercise real running animations, without the sampling test's manual pauses.
+    await expect.poll(() => ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBeGreaterThan(0)
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect.poll(() => ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
+    expect(await guide.evaluate(element => getComputedStyle(element, '::after').opacity)).toBe('0')
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-reduced-motion-${width}x1000.png` })
+    await page.reload()
+    await expect(ledger).toBeVisible()
+    expect(await ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
+  })
+}

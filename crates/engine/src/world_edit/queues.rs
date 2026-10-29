@@ -231,7 +231,9 @@ pub(super) fn start(
     let b = &s.bodies[&id];
     let mut c = ChangeSet::new(s, i, r);
     let operation = OperationId(derived_id(i.id, "queue"));
-    if e.buildings.len() + e.research.len() + e.ships.len() + e.defenses.len() != 1 {
+    if e.buildings.len() + e.research.len() + e.ships.len() + e.defenses.len() + e.missiles.len()
+        != 1
+    {
         return Err("queue requires exactly one catalog item".into());
     }
     if e.paid.is_some_and(|p| p.values().iter().any(|n| *n < 0)) {
@@ -328,7 +330,28 @@ pub(super) fn start(
             },
         )
     } else {
-        let (item, n) = if !e.ships.is_empty() {
+        let (item, n) = if !e.missiles.is_empty() {
+            let (m, n) = canonical_map(
+                &e.missiles,
+                [
+                    MissileId::AntiBallisticMissile,
+                    MissileId::InterplanetaryMissile,
+                ],
+            )?
+            .into_iter()
+            .next()
+            .unwrap();
+            let rule = missile_rules(r).ok_or("missiles unavailable")?;
+            let slots = silo_capacity(s, b, rule).map_err(error)?;
+            if n.checked_mul(rule.weight(m))
+                .and_then(|v| v.checked_add(slots.occupied))
+                .and_then(|v| v.checked_add(slots.reserved))
+                .is_none_or(|v| v > slots.total)
+            {
+                return Err("missile queue exceeds silo capacity".into());
+            }
+            (ManufacturedItem::Missile(m), n)
+        } else if !e.ships.is_empty() {
             let (k, n) = canonical_map(&e.ships, r.artifact.ships.keys().copied())?
                 .into_iter()
                 .next()

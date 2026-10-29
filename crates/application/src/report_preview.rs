@@ -4,6 +4,17 @@ use serde_json::{Map, Value};
 /// The caller must select the authorized recipient's payload before projecting it.
 pub fn report_preview(payload: &Value) -> Value {
     let fields: &[&str] = match payload["kind"].as_str() {
+        Some("MissileImpact") => &[
+            "attacker",
+            "origin",
+            "target",
+            "target_kind",
+            "outcome",
+            "sent",
+            "intercepted",
+            "penetrating",
+            "destroyed",
+        ],
         Some("Espionage") => &[
             "target",
             "resources",

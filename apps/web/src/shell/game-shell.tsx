@@ -1,4 +1,8 @@
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
+import { useStore } from 'zustand'
+import { occupiedFleetSlots } from '../client-model/game-projection'
+import { FleetSlots } from '../features/fleet-slots'
+import { ContentColumn } from '../ui/content-column'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
 import {
@@ -16,6 +20,7 @@ import {
 } from './routes'
 import { validateGalaxySearch } from './galaxy-location'
 import { routeTarget } from './route-target'
+import { catalogSlug } from './catalog-routes'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
@@ -45,6 +50,7 @@ export function GameShell() {
 function GameShellContent() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
+  const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
   const location = useRouterState({ select: (state) => state.location })
@@ -239,7 +245,10 @@ function GameShellContent() {
               >
                 <span className={styles.hostileStatus} role="status">
                   {incomingHostile
-                    ? 'Incoming hostile fleet: attack or espionage detected.'
+                    ? view.protocol === 4 &&
+                      view.missiles?.some((f) => !f.outgoing)
+                      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
+                      : 'Incoming hostile fleet: attack or espionage detected.'
                     : ''}
                 </span>
                 <div className={styles['mobile-context']}>
@@ -255,6 +264,30 @@ function GameShellContent() {
                     <ResourceStrip
                       view={view}
                       body={body}
+                      renderStorageWarning={(building, warning) =>
+                        resolveDestination(
+                          {
+                            universe: view.binding.universe,
+                            page: 'resources',
+                            body: body.id,
+                            item: catalogSlug(building),
+                          },
+                          view,
+                        ).available ? (
+                          <Link
+                            {...routeTarget(
+                              universeName,
+                              'resources',
+                              body.id,
+                              building,
+                            )}
+                          >
+                            {warning}
+                          </Link>
+                        ) : (
+                          warning
+                        )
+                      }
                       energyLink={
                         resolveDestination(
                           {
@@ -284,16 +317,40 @@ function GameShellContent() {
           </Navigation>
         </div>
         <div className={styles.center}>
-          <main id="main" tabIndex={-1} className={styles['work-area']}>
+          <ContentColumn
+            as="main"
+            width={page === 'dispatch' ? 'focused' : 'full'}
+            id="main"
+            tabIndex={-1}
+            className={styles['work-area']}
+          >
             <ErrorBannerSlot model={model} />
             <div
               className={
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']
               }
             >
+              {page === 'dispatch' && (
+                <ButtonLink
+                  variant="secondary"
+                  size="icon-small"
+                  aria-label="Back to fleets"
+                  title="Back to fleets"
+                  {...routeTarget(universeName, 'fleets', body?.id)}
+                >
+                  <ArrowLeft size={18} aria-hidden="true" />
+                </ButtonLink>
+              )}
               <Heading level={1} tabIndex={-1} ref={heading}>
                 {title}
               </Heading>
+              {page === 'dispatch' && view.protocol === 4 && (
+                <FleetSlots
+                  className={styles.headerSlots}
+                  used={occupiedSlots}
+                  total={view.missions.fleet_slots}
+                />
+              )}
             </div>
             {!available ? (
               <StatePanel title="Choose an available destination">
@@ -317,14 +374,6 @@ function GameShellContent() {
                   prepareDispatch,
                 }}
               >
-                {page === 'dispatch' && (
-                  <ButtonLink
-                    variant="secondary"
-                    {...routeTarget(universeName, 'fleets', body?.id)}
-                  >
-                    <ArrowLeft size={18} aria-hidden="true" /> Back to fleets
-                  </ButtonLink>
-                )}
                 {page === 'fleets' && view.protocol !== 4 && (
                   <ButtonLink
                     {...routeTarget(universeName, 'dispatch', body?.id)}
@@ -335,7 +384,7 @@ function GameShellContent() {
                 <Outlet />
               </ScreenContext.Provider>
             )}
-          </main>
+          </ContentColumn>
         </div>
       </div>
       <CommandHud body={body?.id} onDraft={prepareDispatch} />

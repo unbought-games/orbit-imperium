@@ -33,7 +33,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
    expect(request.selection.type).toBe('EmptyPositionAt')
    data={type:'EmptyPosition',coordinates:request.selection.coordinates,slot_revision:'0'}
   }else{
-   expect(request.type).toBe('FleetQuote')
+   expect(['FleetQuote', 'FleetEstimate']).toContain(request.type)
    data={intent:request.intent,profile_hash:'a'.repeat(64),terms_hash:'b'.repeat(64),distance:1020,speeds:[['ColonyShip','4000'],['SmallCargo','5000']],duration_ms:120000,fuel:'100000000',capacity:'20000000000',maximum_payload:'19900000000',slot_limit:'2'}
   }
   await route.fulfill({json:bound(request.context.request_id,data)})
@@ -51,13 +51,13 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  await lockedSlot.click()
  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
  await page.getByRole('menuitem',{name:'Colonize',exact:true}).click()
- await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Colonize')
+ await expect(page.getByRole('radio', { checked: true })).toHaveValue('Colonize')
  await expect(page.getByRole('status').filter({hasText:'Astrophysics level 4'}).first()).toBeVisible()
  await expect(page.getByRole('button',{name:'Review fleet',exact:true})).toBeDisabled()
  await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
  await cards.nth(3).getByRole('button',{name:/^Actions for/}).click()
  await page.getByRole('menuitem',{name:'Colonize',exact:true}).click()
- await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toHaveValue('Colonize')
+ await expect(page.getByRole('radio', { checked: true })).toHaveValue('Colonize')
  await expect(page.getByRole('status').filter({hasText:'Planets:'})).toContainText('2 / 2')
  await page.getByRole('textbox',{name:'Colony Ship · 2 available'}).fill('2')
  await page.getByRole('textbox',{name:'Small Cargo · 2 available'}).fill('1')
@@ -69,7 +69,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  await expect.poll(()=>launches).toBe(1)
  expect(sent).toMatchObject({type:'World',action:{type:'LaunchFleet',intent:{mission:'Colonize',destination:{type:'EmptyPosition',coordinates:{galaxy:1,system:371,position:4},slot_revision:'0'},cargo:{metal:'1000000000',crystal:'0',deuterium:'0'}},expected_terms_hash:'b'.repeat(64)}})
  await page.reload()
- await expect(page.getByRole('combobox',{name:'Mission',exact:true})).toBeVisible()
+ await expect(page.getByRole('radio', { checked: true })).toBeVisible()
  expect(launches).toBe(1)
 })
 
@@ -121,10 +121,10 @@ test('occupied colony positions retain the actionable error through shared dispa
     await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PositionOccupied' } })
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
-  await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toBeVisible()
+  await expect(page.getByRole('radio', { checked: true })).toBeVisible()
   await page.clock.runFor(250)
   await expect.poll(() => observed).toBe(1)
-  await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
+  await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
   await setDestination(page, { position: '8' })
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
   // Settle the debounced read-only preview before explicitly requesting review.
@@ -146,7 +146,7 @@ test('dispatch blocks a known locked colony position and enables an eligible pos
     if (request.url().endsWith('/world')) requests.push(request.postDataJSON().type)
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
-  await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
+  await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
   await setDestination(page, { position: '3' })
   await expect(page.getByRole('status').filter({ hasText: 'Planets:' })).toContainText('Astrophysics level 4 is required for this position.')
   await expect(page.getByRole('button', { name: 'Review fleet', exact: true })).toBeDisabled()
@@ -170,13 +170,13 @@ test('authoritative colony quote rejection explains the position research requir
     if (request.type === 'ResolveDestination') {
       await route.fulfill({ json: bound(request.context.request_id, { type: 'EmptyPosition', coordinates: request.selection.coordinates, slot_revision: '0' }) })
     } else {
-      expect(request.type).toBe('FleetQuote')
+      expect(['FleetQuote', 'FleetEstimate']).toContain(request.type)
       await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PrerequisiteMissing' } })
     }
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await expect.poll(() => requests).toEqual(['Galaxy'])
-  await page.getByRole('combobox', { name: 'Mission', exact: true }).selectOption('Colonize')
+  await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
   await setDestination(page, { position: '3' })
   // The unified control refreshes its system preview for the new mission.
   await expect.poll(() => requests).toEqual(['Galaxy', 'Galaxy'])

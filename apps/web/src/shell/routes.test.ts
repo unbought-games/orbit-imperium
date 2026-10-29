@@ -175,3 +175,31 @@ it('exposes alliances only in protocol four without requiring a planet', () => {
     resolveDestination({ universe: 'u', page: 'alliance' }, current),
   ).toMatchObject({ available: true, page: 'alliance', body: null })
 })
+
+it('allows only currently visible outgoing missile mission details', () => {
+  const world = {
+    ...view,
+    protocol: 4,
+    capabilities: [
+      { capability: 'Transport', enabled: true, reason: 'Available' },
+    ],
+    missions: { fleets: [] },
+    missiles: [
+      { id: 'outgoing', outgoing: true },
+      { id: 'incoming', outgoing: false },
+    ],
+  } as unknown as Extract<BoundView, { protocol: 4 }>
+  const destination = {
+    universe: 'u',
+    page: 'fleets' as const,
+    body: 'a',
+    item: 'outgoing',
+  }
+  expect(resolveDestination(destination, world).available).toBe(true)
+  expect(
+    resolveDestination({ ...destination, item: 'incoming' }, world).available,
+  ).toBe(false)
+  expect(
+    resolveDestination(destination, { ...world, missiles: [] }).available,
+  ).toBe(false)
+})

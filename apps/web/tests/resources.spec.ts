@@ -38,14 +38,18 @@ function production(): components['schemas']['ProductionDto'] {
     fuel_utilization: '1000000',
   }
 }
-async function setup(page: Page, blocked = false, commandReferences = false) {
-  const economy = production()
-  const planet = structuredClone(body)
+async function setup(
+  page: Page,
+  blocked = false,
+  commandReferences = false,
+  planet = structuredClone(body),
+) {
+  const economy = { ...production(), body: planet.id }
   if (blocked) planet.amounts.metal = '0'
   const sent: components['schemas']['CommandEnvelopeV3'][] = []
   await installGameFixture(page, {
     production: [economy],
-    bodies: [planet],
+    bodies: planet.id === body.id ? [planet] : [structuredClone(body), planet],
     commandReferences,
   })
   await page.route('**/progression-options', async (route) => {
@@ -1871,3 +1875,72 @@ test('touch taps navigate to energy settings and set a production slider', async
   expect(sent[0].command).toMatchObject({ type: 'SetProduction', settings: { metal_mine: 50 } })
   await context.close()
 })
+
+
+for (const width of [1440, 390]) {
+  test(`full-storage warnings open the selected planet's matching storage at ${width}px`, async ({ browser }) => {
+    const context = await browser.newContext({
+      hasTouch: width === 390,
+      viewport: { width, height: 900 },
+    })
+    const page = await context.newPage()
+    try {
+      const colony = { ...structuredClone(body), id: '00000000-0000-4000-8000-000000000006' }
+      colony.amounts = { ...colony.capacity, crystal: '11000000000' }
+      const { sent } = await setup(page, false, false, colony)
+      await selectBody(page, colony.id)
+      await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resources$`))
+      await expect(page.locator('main h1')).toBeFocused()
+      for (const [resource, slug, title] of [
+        ['Metal', 'metal-storage', 'Metal Storage'],
+        ['Crystal', 'crystal-storage', 'Crystal Storage'],
+        ['Deuterium', 'deuterium-tank', 'Deuterium Tank'],
+      ]) {
+        const trigger = page.getByRole('group', { name: 'Planet and resources', exact: true }).getByRole('button', { name: `${resource} details`, exact: true })
+        if (width === 390) await trigger.tap()
+        else {
+          await trigger.focus()
+          await page.keyboard.press('Escape')
+          await page.keyboard.press('Enter')
+        }
+        const dialog = page.getByRole('dialog', { name: resource, exact: true })
+        const link = dialog.getByRole('link', { name: 'Storage full', exact: true })
+        await expect(link).toHaveAttribute('href', `/u/andromeda/b/${colony.id}/resources/${slug}`)
+        if (width !== 390) {
+          await page.keyboard.press('Tab')
+          await expect(link).toBeFocused()
+        }
+        await diagnosticScreenshot(page, { path: `test-results/storage-link-${slug}-${width}x900.png`, fullPage: true })
+        if (width === 390) await link.tap()
+        else await page.keyboard.press('Enter')
+        await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resources/${slug}$`))
+        await expect(page.getByRole('region', { name: 'Progression quote' }).getByRole('heading', { name: title, exact: true })).toBeVisible()
+        await expect(dialog).toHaveCount(0)
+        await expect(page.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeEnabled()
+        if (resource === 'Metal') {
+          if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+            await page.locator('main img').evaluateAll(async (images) => {
+              await Promise.all(images.map((image) => (image as HTMLImageElement).decode()))
+            })
+          }
+          await diagnosticScreenshot(page, { path: `test-results/storage-link-destination-${width}x900.png`, fullPage: true })
+          // Activating the warning on its own destination still dismisses it.
+          if (width === 390) await trigger.tap()
+          else await trigger.click()
+          await expect(dialog).toBeVisible()
+          if (width === 390) await link.tap()
+          else await link.click()
+          await expect(dialog).toHaveCount(0)
+        }
+      }
+      await selectBody(page, body.id)
+      await expect(page).toHaveURL(new RegExp(`/b/${body.id}/resources/deuterium-tank$`))
+      await page.getByRole('group', { name: 'Planet and resources', exact: true }).getByRole('button', { name: 'Metal details', exact: true }).click()
+      await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Storage full', exact: true })).toHaveCount(0)
+      expect(sent).toHaveLength(0)
+    } finally {
+      await context.close()
+    }
+  })
+}

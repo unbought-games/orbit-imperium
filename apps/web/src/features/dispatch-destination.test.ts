@@ -112,3 +112,24 @@ describe('dispatch destination identity', () => {
     ).toBeUndefined()
   })
 })
+
+it('uses the saved homeworld ID, not names or ordering, and leaves missing identity unknown', () => {
+  const home = { ...planet, name: 'Renamed Home' }
+  expect(
+    destinationBody({ ...view, bodies: [home] }, coordinates, 'planet'),
+  ).toMatchObject({ homeworld: false })
+  const colony = { ...planet, colony: { created_at: 1 } } as S['BodyV3']
+  expect(
+    destinationBody(
+      { ...view, homeworld_id: home.id, bodies: [home] },
+      coordinates,
+      'planet',
+    ),
+  ).toMatchObject({ homeworld: true })
+  expect(
+    destinationBody({ ...view, bodies: [colony] }, coordinates, 'planet'),
+  ).toMatchObject({ homeworld: false })
+  expect(
+    destinationBody({ ...view, bodies: [moon] }, coordinates, 'moon'),
+  ).toMatchObject({ homeworld: false })
+})

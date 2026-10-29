@@ -44,6 +44,7 @@ export function ActiveWorkDetails({
   status,
   paid,
   children,
+  summary,
 }: {
   label: string
   title: ReactNode
@@ -53,6 +54,7 @@ export function ActiveWorkDetails({
   status: string
   paid: components['schemas']['Resources']
   children: ReactNode
+  summary?: ReactNode
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
   useLayoutEffect(() => {
@@ -64,6 +66,7 @@ export function ActiveWorkDetails({
       <h3 ref={heading} tabIndex={-1} aria-label={accessibleTitle}>
         {title}
       </h3>
+      {summary}
       <dl className={styles.compare}>
         {status !== 'In progress' && (
           <DetailRow label="Status">

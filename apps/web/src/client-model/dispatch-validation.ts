@@ -87,6 +87,10 @@ export function destinationError(
   origin: string,
 ): string {
   if (destination.type !== 'Body') return ''
+  if (mission === 'Colonize')
+    return 'This position is occupied. Choose an empty position.'
+  if (mission === 'Deploy' && destination.expected_owner !== player)
+    return 'Deploy requires another planet or moon that you own.'
   if (
     destination.expected_owner === player &&
     (mission === 'Attack' || mission === 'Espionage')
@@ -124,6 +128,12 @@ const messages: Partial<Record<S['GameError4'], string>> = {
     'This mission is not valid. Check the destination, select ships suitable for the mission, and review again.',
   NumericRange:
     'One of the entered amounts is too large. Reduce the ship or cargo amounts and review again.',
+  InsufficientMissiles:
+    'Not enough completed missiles are available on this planet.',
+  OutOfRange:
+    'The target must be within missile range in the same galaxy. Research Impulse Drive to increase range.',
+  SiloBusy:
+    'Missile production is unavailable while the silo is being demolished.',
   InsufficientShips:
     'These ships are no longer available. Update your fleet selection and review again.',
   InsufficientResources:
@@ -172,4 +182,37 @@ export function dispatchFailure(
     messages[code as S['GameError4']] ??
     'Unable to validate this mission. Check your connection and review again.'
   )
+}
+
+/** A current estimate explains affordability; the server still authorizes launch. */
+export function dispatchResourceProblem(
+  available: S['Resources'],
+  cargo: S['Resources'],
+  fuel: string,
+): string {
+  if (BigInt(available.deuterium) < BigInt(fuel))
+    return 'Not enough deuterium for fuel. Reduce the fleet or speed, or supply more deuterium at the origin.'
+  if (
+    BigInt(cargo.metal) > BigInt(available.metal) ||
+    BigInt(cargo.crystal) > BigInt(available.crystal) ||
+    BigInt(cargo.deuterium) + BigInt(fuel) > BigInt(available.deuterium)
+  )
+    return 'Not enough resources for the selected cargo after reserving deuterium for fuel. Reduce the cargo.'
+  return ''
+}
+
+/** Attack availability can differ from espionage availability in the active rules. */
+export function observedMissionWarning(
+  mission: S['Mission4'],
+  target?: Pick<S['PublicBody4'], 'attack_blocker' | 'espionage_eligible'>,
+): string {
+  if (mission === 'Attack' && target?.attack_blocker)
+    return dispatchFailure(target.attack_blocker)
+  if (mission === 'Espionage' && target && !target.espionage_eligible) {
+    return target.attack_blocker &&
+      target.attack_blocker !== 'UnavailableContent'
+      ? dispatchFailure(target.attack_blocker)
+      : 'Espionage is not eligible for this target in the current observation. Review checks it again.'
+  }
+  return ''
 }

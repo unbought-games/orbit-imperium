@@ -124,6 +124,29 @@ pub fn check_mission_eligibility(
     {
         return Err(GameError::UnavailableContent);
     }
+    check_action_policy(s, actor, target, Some(mission), at, r)
+}
+/// Missile hostility uses the same player protections independently of fleet slots and missions.
+pub fn check_missile_eligibility(
+    s: &GameState,
+    actor: PlayerId,
+    target: PlayerId,
+    at: Timestamp,
+    r: &Ruleset,
+) -> Result<(), GameError> {
+    if missile_rules(r).is_none() {
+        return Err(GameError::UnavailableContent);
+    }
+    check_action_policy(s, actor, Some(target), None, at, r)
+}
+fn check_action_policy(
+    s: &GameState,
+    actor: PlayerId,
+    target: Option<PlayerId>,
+    mission: Option<Mission>,
+    at: Timestamp,
+    r: &Ruleset,
+) -> Result<(), GameError> {
     let w = world_facts(s).map_err(|_| GameError::PolicyUnavailable)?;
     let p = w
         .records
@@ -141,7 +164,7 @@ pub fn check_mission_eligibility(
         return Err(GameError::ActorDraining);
     }
     if let Some(target) = target {
-        if mission == Mission::Deploy && actor != target {
+        if mission == Some(Mission::Deploy) && actor != target {
             return Err(GameError::NotOwned);
         }
         let t = w
@@ -156,7 +179,7 @@ pub fn check_mission_eligibility(
         if t.lifecycle == PlayerLifecycle::Removed {
             return Err(GameError::NotFound);
         }
-        if matches!(mission, Mission::Espionage | Mission::Attack) {
+        if matches!(mission, None | Some(Mission::Espionage | Mission::Attack)) {
             if actor == target {
                 return Err(GameError::InvalidInput);
             }
@@ -182,7 +205,7 @@ pub fn check_mission_eligibility(
                 return Err(GameError::BeginnerProtected);
             }
         }
-    } else if !matches!(mission, Mission::Harvest | Mission::Colonize) {
+    } else if !matches!(mission, Some(Mission::Harvest | Mission::Colonize)) {
         return Err(GameError::InvalidInput);
     }
     Ok(())

@@ -11,10 +11,11 @@ import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
 import { GalaxyHarvestAction } from './galaxy-harvest-action'
+import { MissileLaunchAction } from './missile-launch-action'
 import { GalaxyPosition } from './galaxy-position'
 import { galaxyMissionCapabilities } from './galaxy-mission-actions'
 import { colonizationStatus } from '../client-model/colonization'
-import { FleetSlotCount } from './fleet-slots'
+import { FleetSlots } from './fleet-slots'
 import {
   currentServerTime,
   occupiedFleetSlots,
@@ -190,7 +191,8 @@ export function Galaxy({
         browse={browse}
         fleetSlots={
           espionage.state.view?.protocol === 4 && (
-            <FleetSlotCount
+            <FleetSlots
+              compact
               className={styles.slots}
               used={occupiedFleetSlots(espionage.state)}
               total={espionage.state.view.missions.fleet_slots}
@@ -240,6 +242,14 @@ export function Galaxy({
                 )}
                 <GalaxyPosition
                   position={position}
+                  missileAction={
+                    <MissileLaunchAction
+                      key={`${origin}:${position.body?.id}:${position.body?.owner}`}
+                      model={model}
+                      origin={origin}
+                      position={position}
+                    />
+                  }
                   playerNames={data.player_names}
                   playerIdentity={
                     position.body ? (

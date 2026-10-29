@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { buildingProgress } from '../../client-model/building-progress'
 import { WorkCancellationButton } from '../work-cancellation-button'
@@ -9,9 +10,11 @@ import styles from './detail-layout.module.css'
 export function ConstructionDetails({
   work,
   model,
+  summary,
 }: {
   work: NonNullable<ReturnType<typeof buildingProgress>>
   model: Coordinator
+  summary?: ReactNode
 }) {
   const verb = work.direction === 'down' ? 'Tearing down' : 'Upgrading'
   const target = `${verb} ${label(work.building)} to level ${work.targetLevel}`
@@ -24,6 +27,7 @@ export function ConstructionDetails({
       dueAt={work.dueAt}
       status={work.status}
       paid={work.paid}
+      summary={summary}
     >
       <WorkCancellationButton
         model={model}

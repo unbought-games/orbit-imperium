@@ -116,6 +116,16 @@ pub fn fleet_terms(
     research: &ResearchLevels,
     r: &Ruleset,
 ) -> Result<FleetTerms, GameError> {
+    flight_terms(intent, origin, target, research, r, true)
+}
+fn flight_terms(
+    intent: &FleetIntent,
+    origin: Coordinates,
+    target: Coordinates,
+    research: &ResearchLevels,
+    r: &Ruleset,
+    require_capacity: bool,
+) -> Result<FleetTerms, GameError> {
     if !r.world() {
         return Err(GameError::UnavailableContent);
     }
@@ -180,10 +190,10 @@ pub fn fleet_terms(
     let maximum_payload = capacity
         .checked_add(probe_capacity)
         .and_then(|v| v.checked_sub(fuel))
-        .filter(|v| *v >= 0)
-        .ok_or(GameError::CargoCapacity)?
-        .min(capacity);
-    if sum(intent.cargo)? > maximum_payload {
+        .ok_or(GameError::CargoCapacity)?;
+    if require_capacity
+        && (maximum_payload < 0 || sum(intent.cargo)? > maximum_payload.min(capacity))
+    {
         return Err(GameError::CargoCapacity);
     }
     Ok(FleetTerms {
@@ -194,11 +204,63 @@ pub fn fleet_terms(
         duration_ms,
         fuel,
         capacity,
-        maximum_payload,
+        maximum_payload: maximum_payload.max(0).min(capacity),
         slot_limit: 0,
         terms_hash: Hash(String::new()),
     })
 }
+/// Read-only flight arithmetic. This contains no launch authorization or terms hash.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct FleetEstimate {
+    pub estimate: bool,
+    pub intent: FleetIntent,
+    pub profile_hash: Hash,
+    pub duration_ms: i64,
+    #[serde(with = "crate::decimal_wire")]
+    pub fuel: i64,
+    #[serde(with = "crate::decimal_wire")]
+    pub capacity: i64,
+    #[serde(with = "crate::decimal_wire")]
+    pub maximum_payload: i64,
+}
+pub fn estimate_fleet(
+    s: &GameState,
+    owner: PlayerId,
+    intent: &FleetIntent,
+    r: &Ruleset,
+) -> Result<FleetEstimate, GameError> {
+    let estimate = || -> Result<FleetEstimate, Fault> {
+        let origin = body(s, intent.origin, r)?;
+        if origin.owner != owner || intent.ships.iter().any(|ship| ship.owner != owner) {
+            return Err(GameError::NotOwned.into());
+        }
+        if !s.coverage.research_players.contains(&owner) {
+            return Err(invariant("incomplete estimate research"));
+        }
+        let (coordinates, _) = target(s, &intent.destination, r)?;
+        let research = s
+            .research
+            .get(&owner)
+            .ok_or_else(|| invariant("missing research"))?;
+        validate_research_catalog(research, r)?;
+        let terms = flight_terms(intent, origin.coordinates, coordinates, research, r, false)?;
+        Ok(FleetEstimate {
+            estimate: true,
+            intent: terms.intent,
+            profile_hash: terms.profile_hash,
+            duration_ms: terms.duration_ms,
+            fuel: terms.fuel,
+            capacity: terms.capacity,
+            maximum_payload: terms.maximum_payload,
+        })
+    };
+    match estimate() {
+        Ok(estimate) => Ok(estimate),
+        Err(Fault::Game(error)) => Err(error),
+        Err(Fault::Invariant(_)) => Err(GameError::PolicyUnavailable),
+    }
+}
+
 /// Concurrent mission slots unlocked by completed computer technology.
 pub fn fleet_slot_limit(computer_level: u32) -> i64 {
     1 + i64::from(computer_level)
@@ -556,6 +618,12 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     s.research_operations.get(operation).map(|op| op.host)
                 }
                 Command::World {
+                    action: WorldAction::ScrapMissiles { body, .. },
+                } => Some(*body),
+                Command::World {
+                    action: WorldAction::LaunchMissiles { intent, .. },
+                } => Some(intent.origin),
+                Command::World {
                     action: WorldAction::RenamePlanet { body, .. },
                 } => Some(*body),
                 Command::World {
@@ -578,6 +646,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 Command::World {
                     action: WorldAction::MarkReportRead { .. }
                         | WorldAction::SetReportHidden { .. }
+                        | WorldAction::SetReportsHidden { .. }
                         | WorldAction::SetReportStarred { .. }
                 }
             ) {
@@ -603,6 +672,12 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action: WorldAction::LaunchMissiles { .. } | WorldAction::ScrapMissiles { .. },
+        })
+        | Input::Event(ScheduledEvent::MissileImpact { .. }) => {
+            crate::missiles::resolve(s, i, r, &mut c, &mut w, &mut audits)?;
+        }
         Input::Command(Command::World {
             action: WorldAction::RenamePlanet { body, name },
         }) => {
@@ -992,50 +1067,65 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         }
         Input::Command(Command::World {
             action:
-                WorldAction::MarkReportRead { report }
-                | WorldAction::SetReportHidden { report, .. }
-                | WorldAction::SetReportStarred { report, .. },
+                action @ (WorldAction::MarkReportRead { .. }
+                | WorldAction::SetReportHidden { .. }
+                | WorldAction::SetReportsHidden { .. }
+                | WorldAction::SetReportStarred { .. }),
         }) => {
             let Actor::Player(owner) = i.actor else {
                 return Err(invariant("report actor"));
             };
-            if !w
-                .reports
-                .get(report)
-                .is_some_and(|r| r.payloads.contains_key(&owner))
-            {
-                return Err(GameError::NotFound.into());
+            let reports = action.report_ids();
+            if reports.is_empty() {
+                return Err(GameError::InvalidInput.into());
             }
-            let pos = w
-                .report_states
-                .iter()
-                .position(|x| x.report == *report && x.recipient == owner);
-            let idx = if let Some(idx) = pos {
-                idx
-            } else {
-                w.report_states.push(RecipientReportState {
-                    report: *report,
-                    recipient: owner,
-                    read: false,
-                    hidden: false,
-                    starred: false,
-                });
-                w.report_states.len() - 1
-            };
-            match &i.payload {
-                Input::Command(Command::World {
-                    action: WorldAction::SetReportHidden { hidden, .. },
-                }) => {
-                    if *hidden && w.report_states[idx].starred {
-                        return Err(GameError::InvalidInput.into());
-                    }
-                    w.report_states[idx].hidden = *hidden;
+            // Validate the entire batch before changing any recipient preference.
+            for report in &reports {
+                if !w
+                    .reports
+                    .get(report)
+                    .is_some_and(|r| r.payloads.contains_key(&owner))
+                {
+                    return Err(GameError::NotFound.into());
                 }
-                Input::Command(Command::World {
-                    action: WorldAction::SetReportStarred { starred, .. },
-                }) => w.report_states[idx].starred = *starred,
-                _ => w.report_states[idx].read = true,
-            };
+                if matches!(
+                    action,
+                    WorldAction::SetReportHidden { hidden: true, .. }
+                        | WorldAction::SetReportsHidden { hidden: true, .. }
+                ) && w.report_states.iter().any(|state| {
+                    state.report == *report && state.recipient == owner && state.starred
+                }) {
+                    return Err(GameError::InvalidInput.into());
+                }
+            }
+            for report in reports {
+                let idx = if let Some(idx) = w
+                    .report_states
+                    .iter()
+                    .position(|x| x.report == report && x.recipient == owner)
+                {
+                    idx
+                } else {
+                    w.report_states.push(RecipientReportState {
+                        report,
+                        recipient: owner,
+                        read: false,
+                        hidden: false,
+                        starred: false,
+                    });
+                    w.report_states.len() - 1
+                };
+                match action {
+                    WorldAction::SetReportHidden { hidden, .. }
+                    | WorldAction::SetReportsHidden { hidden, .. } => {
+                        w.report_states[idx].hidden = *hidden
+                    }
+                    WorldAction::SetReportStarred { starred, .. } => {
+                        w.report_states[idx].starred = *starred
+                    }
+                    _ => w.report_states[idx].read = true,
+                }
+            }
             c.affected_viewers.insert(owner);
         }
         _ => {

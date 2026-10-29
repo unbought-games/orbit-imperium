@@ -1,6 +1,5 @@
 import { usePlayerDisplays } from '../shell/player-profiles-context'
 import { reportMetric, type ReportSort } from './report-triage'
-import { ReportStarButton } from './report-star-button'
 import { CoordinateLink } from './coordinate-link'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -179,11 +178,6 @@ export function ReportListRow({
         {reportAge(report.observed_at, now)}
       </time>
       <div className={styles.rowActions}>
-        <ReportStarButton
-          model={model}
-          report={report.id}
-          disabled={disabled}
-        />
         <ReportVisibilityButton
           model={model}
           report={report.id}

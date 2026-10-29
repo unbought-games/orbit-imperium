@@ -21,7 +21,12 @@ export function destinationBody(
       body.coordinates.position === coordinates.position,
   )
   if (owned)
-    return { ...owned, owner: view.binding.player, source: 'empire' as const }
+    return {
+      ...owned,
+      homeworld: owned.kind === 'Planet' && owned.id === view.homeworld_id,
+      owner: view.binding.player,
+      source: 'empire' as const,
+    }
   if (
     observation?.galaxy !== coordinates.galaxy ||
     observation.system !== coordinates.system

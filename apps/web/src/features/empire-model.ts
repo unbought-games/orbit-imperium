@@ -6,6 +6,7 @@ import { resourceNames } from '../client-model/resources'
 import { coordinates, label } from '../ui/format'
 
 export type EmpireFlight = {
+  kind: 'fleet' | 'missile'
   key: string
   item?: string
   sender?: string
@@ -39,6 +40,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
         const from = returning ? f.target : f.origin
         const to = returning ? f.origin : f.target
         return {
+          kind: 'fleet',
           key: f.id,
           item: f.id,
           mission: 'Transport',
@@ -60,6 +62,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
     const originLabel = missionLocation(view, f.intent.origin, f.origin)
     const targetLabel = missionLocation(view, destination, f.destination)
     return {
+      kind: 'fleet',
       key: f.id,
       item: f.id,
       mission: label(f.intent.mission),
@@ -77,6 +80,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
   })
   const incoming = view.missions.incoming.map(
     (f, index): EmpireFlight => ({
+      kind: 'fleet',
       key: `incoming:${index}`,
       mission: label(f.mission),
       leg: 'Incoming',
@@ -95,7 +99,32 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
       hostile: isHostileMission(f.mission),
     }),
   )
-  return [...owned, ...incoming].sort((a, b) => a.due - b.due)
+  const missiles = (view.missiles ?? []).map((f): EmpireFlight => {
+    const origin = f.outgoing
+      ? view.bodies.find(
+          (b) =>
+            b.kind === 'Planet' &&
+            b.coordinates.galaxy === f.origin.galaxy &&
+            b.coordinates.system === f.origin.system &&
+            b.coordinates.position === f.origin.position,
+        )
+      : undefined
+    return {
+      kind: 'missile',
+      key: f.id,
+      item: f.outgoing ? f.id : undefined,
+      mission: 'Missile attack',
+      leg: f.outgoing ? 'Outbound' : 'Incoming',
+      sender: f.outgoing ? undefined : f.attacker,
+      from: origin?.id,
+      to: f.target_body,
+      route: `${missionLocation(view, origin?.id, f.origin)} → ${missionLocation(view, f.target_body, f.target)}`,
+      due: f.arrival_at,
+      ships: `${f.count} Interplanetary Missiles`,
+      hostile: !f.outgoing,
+    }
+  })
+  return [...owned, ...incoming, ...missiles].sort((a, b) => a.due - b.due)
 }
 
 export function bodyTraffic(flights: EmpireFlight[], id: string) {
@@ -105,16 +134,54 @@ export function bodyTraffic(flights: EmpireFlight[], id: string) {
   }
 }
 
-/** BigInt arithmetic preserves the server's micro-resource precision. */
-export function empireTotals(view: BoundView) {
-  return Object.fromEntries(
-    resourceNames.map((name) => [
-      name,
-      view.bodies
-        .reduce((sum, b) => sum + BigInt(b.amounts[name]), 0n)
-        .toString(),
-    ]),
-  ) as Record<(typeof resourceNames)[number], string>
+/** Sum current owned assets and reserved launch cargo once, excluding spent fuel and foreign traffic. */
+export function empireTotals(
+  view: BoundView,
+  pendingCargo: components['schemas']['Resources'][] = [],
+) {
+  const cargo =
+    view.protocol === 4
+      ? view.missions.fleets.map((fleet) => fleet.cargo)
+      : view.fleets
+          .filter((fleet) => fleet.status !== 'Completed')
+          .map((fleet) => fleet.payload)
+  const sum = (amounts: components['schemas']['Resources'][]) =>
+    Object.fromEntries(
+      resourceNames.map((name) => [
+        name,
+        amounts
+          .reduce((total, resources) => total + BigInt(resources[name]), 0n)
+          .toString(),
+      ]),
+    ) as components['schemas']['Resources']
+  const onWorlds = sum(view.bodies.map((body) => body.amounts))
+  const inTransit = sum(cargo)
+  const launching = sum(pendingCargo)
+  return {
+    onWorlds,
+    inTransit,
+    launching,
+    total: sum([onWorlds, inTransit, launching]),
+  }
+}
+
+/** Older servers may only expose colony metadata; never infer diameter from fields. */
+export function planetPhysicalFacts(body: BoundView['bodies'][number]) {
+  if (body.kind !== 'Planet') return []
+  const colony = 'colony' in body ? body.colony : undefined
+  const diameter =
+    ('diameter_km' in body ? body.diameter_km : undefined) ??
+    colony?.diameter_km
+  const minimum =
+    ('min_temperature' in body ? body.min_temperature : undefined) ??
+    colony?.min_temperature
+  const maximum = planetMaxTemperature(body)
+  return [
+    ...(diameter === undefined ? [] : [`${diameter} km`]),
+    ...(minimum === undefined || maximum === undefined
+      ? []
+      : [`${minimum} to ${maximum} °C`]),
+  ]
 }
 
 export function storagePercent(amount: string, capacity: string) {
@@ -125,19 +192,11 @@ export function storagePercent(amount: string, capacity: string) {
     : Number(((value < 0n ? 0n : value > cap ? cap : value) * 100n) / cap)
 }
 
-/** A schematic layout, deliberately not a map of physical distance. */
+/** A schematic layout in authoritative server order, not physical distance. */
 export function empireNodes(bodies: BoundView['bodies']) {
-  const sorted = [...bodies].sort(
-    (a, b) =>
-      a.coordinates.galaxy - b.coordinates.galaxy ||
-      a.coordinates.system - b.coordinates.system ||
-      a.coordinates.position - b.coordinates.position ||
-      b.kind.localeCompare(a.kind) ||
-      a.id.localeCompare(b.id),
-  )
-  return sorted.map((body, i) => {
+  return bodies.map((body, i) => {
     const column = i % 2
-    const count = Math.ceil((sorted.length - column) / 2)
+    const count = Math.ceil((bodies.length - column) / 2)
     return {
       body,
       x: column ? 85 : 15,

@@ -16,6 +16,8 @@ test('playground and handwritten multi-user batches conform to the published sch
       edits: [
         { op: 'set', user: 'alice', planet: '1:50:8', ships: { CRUISER: 10 } },
         { op: 'set', user: 'bob', research: { astrophysics: 15 } },
+        { op: 'set', user: 'alice', planet: '1:50:8', missiles: { InterplanetaryMissile: 10 } },
+        { op: 'queue', user: 'alice', planet: '1:50:8', missiles: { AntiBallisticMissile: 2 } },
       ],
     },
   ])

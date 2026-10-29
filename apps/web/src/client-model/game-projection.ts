@@ -20,6 +20,7 @@ export type SubmittedQuote =
   | BoundQuote
   | Quote
   | S['FleetTerms4']
+  | S['MissileTerms4']
 // These are submission inputs and server facts, never a second resource balance.
 export type SubmittedIntent = S['SubmittedIntent']
 
@@ -64,6 +65,10 @@ export function activeAttempt(attempt: Attempt, view: BoundView | null) {
 }
 
 export function commandBody(command: Command, view: BoundView | null) {
+  if (command.type === 'World' && command.action.type === 'LaunchMissiles')
+    return command.action.intent.origin
+  if (command.type === 'World' && command.action.type === 'ScrapMissiles')
+    return command.action.body
   if (command.type === 'World' && command.action.type === 'RenamePlanet')
     return command.action.body
   if ('body' in command) return command.body
@@ -314,7 +319,8 @@ export function matchesQuote(
   if ('intent' in quote)
     return (
       command.type === 'World' &&
-      command.action.type === 'LaunchFleet' &&
+      (command.action.type === 'LaunchFleet' ||
+        command.action.type === 'LaunchMissiles') &&
       command.action.expected_terms_hash === quote.terms_hash &&
       quote.profile_hash === view.profile_hash &&
       canonical(command.action.intent) === canonical(quote.intent)
@@ -488,6 +494,29 @@ export function pendingFleetLaunches(state: GameState) {
     })
 }
 
+/** Cargo reserved by the same overlay that deducts it from on-world balances.
+ * Fuel remains spent; submissions without payment evidence reserve no resources.
+ */
+export function pendingFleetCargo(state: GameState): S['Resources'][] {
+  const view = state.view
+  if (!view) return []
+  return submittedIntents(state).flatMap(({ attempt, intent }) => {
+    const command = attempt.envelope.command
+    const fleet =
+      command.type === 'World' && command.action.type === 'LaunchFleet'
+        ? command.action.intent
+        : command.type === 'LaunchTransport'
+          ? command
+          : null
+    return fleet &&
+      view.bodies.some((body) => body.id === fleet.origin) &&
+      overlayApplies(attempt, intent, view) &&
+      payment(command, intent, view, state)
+      ? [fleet.cargo]
+      : []
+  })
+}
+
 // Keep the last confirmed snapshot while a newer revision could either precede
 // or contain an optimistic action. Only its receipt disambiguates those cases.
 // Polling already recovers receipts before refreshing; this adds no network work.
@@ -578,7 +607,7 @@ function payment(
         : null
   if (!fleet) return null
   const fuel =
-    intent.quote && 'intent' in intent.quote
+    intent.quote && 'fuel' in intent.quote
       ? intent.quote.fuel
       : (legacy?.fuel ??
         (terms?.type === 'Transport' ? terms.legacy.fuel : undefined))

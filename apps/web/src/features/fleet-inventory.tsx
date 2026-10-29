@@ -1,3 +1,5 @@
+import { Fragment } from 'react'
+import { shipGroup } from './ship-order'
 import { CoordinateLink } from './coordinate-link'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
@@ -78,47 +80,58 @@ export function FleetInventory({
               </tr>
             </thead>
             <tbody>
-              {ships.map(({ entry, counts }) => {
+              {ships.map(({ entry, counts }, index) => {
                 const name = label(entry.key.id)
                 return (
-                  <tr key={entry.key.id}>
-                    <th scope="row">
-                      <Link
-                        data-touch-control=""
-                        {...routeTarget(
-                          universe,
-                          'shipyard',
-                          body.id,
-                          entry.key.id,
-                        )}
-                        aria-label={`Build more ${name} in Shipyard`}
-                        title={`Build more ${name} in Shipyard`}
-                        className={styles.build}
-                      >
-                        {name}
-                      </Link>
-                    </th>
-                    <td>
-                      <NumberValue value={counts.stationed} />
-                    </td>
-                    <td>
-                      {counts.flying === null ? (
-                        entry.mobile ? (
-                          'Unknown'
+                  <Fragment key={entry.key.id}>
+                    {(index === 0 ||
+                      shipGroup(ships[index - 1].entry) !==
+                        shipGroup(entry)) && (
+                      <tr className={styles.group}>
+                        <th scope="rowgroup" role="rowheader" colSpan={4}>
+                          {shipGroup(entry)}
+                        </th>
+                      </tr>
+                    )}
+                    <tr>
+                      <th scope="row">
+                        <Link
+                          data-touch-control=""
+                          {...routeTarget(
+                            universe,
+                            'shipyard',
+                            body.id,
+                            entry.key.id,
+                          )}
+                          aria-label={`Build more ${name} in Shipyard`}
+                          title={`Build more ${name} in Shipyard`}
+                          className={styles.build}
+                        >
+                          {name}
+                        </Link>
+                      </th>
+                      <td>
+                        <NumberValue value={counts.stationed} />
+                      </td>
+                      <td>
+                        {counts.flying === null ? (
+                          entry.mobile ? (
+                            'Unknown'
+                          ) : (
+                            '—'
+                          )
                         ) : (
-                          '—'
-                        )
-                      ) : (
-                        <NumberValue value={counts.flying} />
-                      )}
-                      {counts.flying === null && !entry.mobile && (
-                        <span className={styles.srOnly}>Stationary</span>
-                      )}
-                    </td>
-                    <td>
-                      <NumberValue value={counts.ordered} />
-                    </td>
-                  </tr>
+                          <NumberValue value={counts.flying} />
+                        )}
+                        {counts.flying === null && !entry.mobile && (
+                          <span className={styles.srOnly}>Stationary</span>
+                        )}
+                      </td>
+                      <td>
+                        <NumberValue value={counts.ordered} />
+                      </td>
+                    </tr>
+                  </Fragment>
                 )
               })}
             </tbody>

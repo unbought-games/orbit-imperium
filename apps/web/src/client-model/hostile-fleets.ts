@@ -8,6 +8,7 @@ export function isHostileMission(mission: string): boolean {
 export function hasIncomingHostileFleet(view: BoundView): boolean {
   return (
     view.protocol === 4 &&
-    view.missions.incoming.some(({ mission }) => isHostileMission(mission))
+    (view.missions.incoming.some(({ mission }) => isHostileMission(mission)) ||
+      (view.missiles ?? []).some((f) => !f.outgoing))
   )
 }

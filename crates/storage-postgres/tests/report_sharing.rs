@@ -292,9 +292,43 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
         .token
         .unwrap();
     assert_ne!(new_token, token);
+    // A second recipient-owned report lets bulk commands exercise fact loading,
+    // atomic protection and persistence for more than one report in one receipt.
+    let second = ReportId(Uuid::new_v4());
+    let second_event = InputId(Uuid::new_v4());
+    let second_report = MissionReport {
+        id: second,
+        event: second_event,
+        kind: "Combat".into(),
+        at: 1000,
+        fleet: None,
+        rules_hash: Ruleset::mvp_fleets().unwrap().hash,
+        payloads: std::collections::BTreeMap::from([(
+            a.player,
+            json!({"kind":"ContactLost","at":1000,"target":{"galaxy":1,"system":1,"position":2},"own_lost_ships":[],"own_cargo_loss":{"metal":"0","crystal":"0","deuterium":"0"}}),
+        )]),
+    };
+    sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) VALUES($1,$2,$3,'Combat',1000,$4)")
+        .bind(u.0).bind(second.0).bind(second_event.0).bind(sqlx::types::Json(second_report)).execute(&pool).await.unwrap();
+    sqlx::query(
+        "INSERT INTO mission_report_recipients(report,recipient,created_revision) VALUES($1,$2,1)",
+    )
+    .bind(second.0)
+    .bind(a.player.0)
+    .execute(&pool)
+    .await
+    .unwrap();
     // Stars protect the report and its shared link. Once unstarred, deletion
     // revokes the link; restoring the report must not revive it.
     for (action, rejected, link_present) in [
+        (
+            WorldAction::SetReportsHidden {
+                reports: vec![second, id],
+                hidden: true,
+            },
+            true,
+            true,
+        ),
         (
             WorldAction::SetReportHidden {
                 report: id,
@@ -310,6 +344,22 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
             },
             false,
             true,
+        ),
+        (
+            WorldAction::SetReportsHidden {
+                reports: vec![second, id, second],
+                hidden: true,
+            },
+            false,
+            false,
+        ),
+        (
+            WorldAction::SetReportsHidden {
+                reports: vec![second, id],
+                hidden: false,
+            },
+            false,
+            false,
         ),
         (
             WorldAction::SetReportHidden {
@@ -334,6 +384,10 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
             binding: a,
             command_id: id,
             command: CommandDto3::Progression(Command::World { action }),
+        };
+        let batch_hidden = match &action {
+            WorldAction::SetReportsHidden { hidden, .. } => Some(*hidden),
+            _ => None,
         };
         let pair = ForegroundAction {
             gameplay: envelope(command_id, action),
@@ -363,6 +417,27 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
             );
         } else {
             assert!(matches!(receipt.status, ReceiptStatus::Committed { .. }));
+        }
+        if let Some(hidden) = batch_hidden {
+            let second_hidden: bool = sqlx::query_scalar(
+                "SELECT hidden FROM mission_report_recipients WHERE report=$1 AND recipient=$2",
+            )
+            .bind(second.0)
+            .bind(a.player.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            assert_eq!(second_hidden, !rejected && hidden);
+            assert!(
+                !store
+                    .world_report(b, id)
+                    .await
+                    .unwrap()
+                    .facts
+                    .0
+                    .header
+                    .hidden
+            );
         }
         if link_present {
             assert!(game.shared_report(new_token).await.is_ok());

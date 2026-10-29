@@ -16,7 +16,11 @@ type Request = {
   coordinates: S['Coordinates']
   intent: Omit<S['FleetIntent4'], 'destination'>
 }
-type Result = { key: string; terms?: S['FleetTerms4']; error?: string }
+type Result = {
+  key: string
+  terms?: S['FleetTerms4'] | S['FleetEstimate4']
+  error?: string
+}
 
 /** A read-only server quote; only explicit Review opens the launch confirmation. */
 export function useDispatchTiming(
@@ -24,9 +28,12 @@ export function useDispatchTiming(
   request: Request | null,
   revision: string,
   enabled: boolean,
+  estimateOnly = false,
 ) {
   const key =
-    request && enabled ? JSON.stringify({ ...request, revision }) : null
+    request && enabled
+      ? JSON.stringify({ ...request, revision, estimateOnly })
+      : null
   const [result, setResult] = useState<Result | null>(null)
   useEffect(() => {
     if (!key || !enabled) return
@@ -59,11 +66,12 @@ export function useDispatchTiming(
             return
           }
           const terms = await model.world({
-            type: 'FleetQuote',
+            type: estimateOnly ? 'FleetEstimate' : 'FleetQuote',
             intent: { ...input.intent, destination },
           })
           if (!current) return
-          if (!terms || !('duration_ms' in terms)) throw Error('Unavailable')
+          if (!terms || !('maximum_payload' in terms))
+            throw Error('Unavailable')
           setResult({ key, terms })
         } catch (error) {
           if (current) setResult({ key, error: dispatchFailure(error) })
@@ -74,6 +82,6 @@ export function useDispatchTiming(
       current = false
       clearTimeout(timer)
     }
-  }, [model, key, revision, enabled])
+  }, [model, key, revision, enabled, estimateOnly])
   return key && result?.key === key ? result : null
 }

@@ -294,48 +294,56 @@ it.each(['quote', 'progressionOptions'] as const)(
   },
 )
 
-it('normalizes fleet ship order while checking intent and the current profile', async () => {
-  const { model, port } = await setup()
-  const query: Extract<WorldQuery, { type: 'FleetQuote' }> = {
-    type: 'FleetQuote',
-    intent: {
-      origin: id(40),
-      destination,
-      mission: 'Transport',
-      cargo: resources,
-      speed_percent: 100,
-      ships: [
-        { owner: id(2), ship_type: 'SmallCargo', count: '1' },
-        { owner: id(2), ship_type: 'LargeCargo', count: '2' },
-      ],
-    },
-  }
-  const terms = {
-    intent: {
-      ...query.intent,
-      ships: structuredClone(query.intent.ships).reverse(),
-    },
-    profile_hash: 'a'.repeat(64),
-    terms_hash: 'b'.repeat(64),
-    distance: 5,
-    speeds: [],
-    duration_ms: 1000,
-    fuel: '0',
-    capacity: '1',
-    maximum_payload: '1',
-    slot_limit: '1',
-  }
-  port.world.mockImplementation(async (context) => ({
-    ...metadata(context),
-    data: structuredClone(terms),
-  }))
-  expect(await model.world(query)).toEqual(terms)
-  terms.intent.ships[0].count = '3'
-  expect(await model.world(query)).toBeNull()
-  terms.intent.ships[0].count = '2'
-  terms.profile_hash = 'c'.repeat(64)
-  expect(await model.world(query)).toBeNull()
-})
+it.each(['FleetQuote', 'FleetEstimate'] as const)(
+  '%s normalizes fleet ship order while checking intent and the current profile',
+  async (type) => {
+    const { model, port } = await setup()
+    const query: Extract<WorldQuery, { type: 'FleetQuote' | 'FleetEstimate' }> =
+      {
+        type,
+        intent: {
+          origin: id(40),
+          destination,
+          mission: 'Transport',
+          cargo: resources,
+          speed_percent: 100,
+          ships: [
+            { owner: id(2), ship_type: 'SmallCargo', count: '1' },
+            { owner: id(2), ship_type: 'LargeCargo', count: '2' },
+          ],
+        },
+      }
+    const terms = {
+      intent: {
+        ...query.intent,
+        ships: structuredClone(query.intent.ships).reverse(),
+      },
+      profile_hash: 'a'.repeat(64),
+      ...(type === 'FleetEstimate'
+        ? { estimate: true as const }
+        : {
+            terms_hash: 'b'.repeat(64),
+            distance: 5,
+            speeds: [],
+            slot_limit: '1',
+          }),
+      duration_ms: 1000,
+      fuel: '0',
+      capacity: '1',
+      maximum_payload: '1',
+    }
+    port.world.mockImplementation(async (context) => ({
+      ...metadata(context),
+      data: structuredClone(terms),
+    }))
+    expect(await model.world(query)).toEqual(terms)
+    terms.intent.ships[0].count = '3'
+    expect(await model.world(query)).toBeNull()
+    terms.intent.ships[0].count = '2'
+    terms.profile_hash = 'c'.repeat(64)
+    expect(await model.world(query)).toBeNull()
+  },
+)
 
 it('keeps the newer view when an older request returns a higher revision', async () => {
   const { model, port } = await setup()

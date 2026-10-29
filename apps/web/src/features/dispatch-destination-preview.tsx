@@ -1,3 +1,10 @@
+import {
+  LocationSummary,
+  LocationSummaryMedia,
+  LocationSummaryContent,
+  LocationSummaryTitle,
+  LocationSummaryDescription,
+} from '../ui/location-summary'
 import { useRef } from 'react'
 import { Orbit, Radar } from 'lucide-react'
 import type { components } from '../contracts'
@@ -61,9 +68,13 @@ export function DispatchDestinationPreview({
   const detail = !coordinates
     ? 'Enter valid coordinates or choose one of your planets.'
     : target
-      ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? 'Your colony' : 'You (last observed)') : playerLabel(target.owner, playerNames)}`
+      ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? (target.kind === 'Moon' ? 'Your moon' : target.homeworld ? 'Your Homeworld' : target.colony ? 'Your colony' : 'Your planet') : 'You (last observed)') : playerLabel(target.owner, playerNames)}`
       : kind === 'debris'
-        ? 'Review verifies salvage at these coordinates.'
+        ? lookup === 'loading'
+          ? 'Checking for salvage…'
+          : lookup === 'unavailable'
+            ? 'Salvage unknown. Review will check again.'
+            : 'System observation checked. Review verifies current salvage.'
         : lookup === 'loading'
           ? 'Checking the current system observation.'
           : lookup === 'unavailable'
@@ -72,12 +83,12 @@ export function DispatchDestinationPreview({
               ? 'Review verifies whether a moon is available here.'
               : 'No planet in the current system observation.'
   return (
-    <div
+    <LocationSummary
       ref={field}
       className={styles.destinationPreview}
       aria-label="Destination preview"
     >
-      <div className={styles.destinationArt} aria-hidden="true">
+      <LocationSummaryMedia aria-hidden="true">
         {target && coordinates ? (
           <BodyIllustration
             body={{ ...target, coordinates }}
@@ -89,8 +100,8 @@ export function DispatchDestinationPreview({
         ) : (
           <Radar />
         )}
-      </div>
-      <div className={styles.destinationIdentity}>
+      </LocationSummaryMedia>
+      <LocationSummaryContent>
         {planets ? (
           <RichSelect
             label="Your other planets"
@@ -123,24 +134,26 @@ export function DispatchDestinationPreview({
               ),
             }))}
           >
-            <strong title={title} className={styles.destinationName}>
+            <LocationSummaryTitle
+              title={title}
+              className={styles.destinationName}
+            >
               {title}
-            </strong>
+            </LocationSummaryTitle>
           </RichSelect>
         ) : (
-          <strong title={title} className={styles.destinationName}>
+          <LocationSummaryTitle
+            title={title}
+            className={styles.destinationName}
+          >
             {title}
-          </strong>
+          </LocationSummaryTitle>
         )}
-        <span
-          className={styles.destinationDetail}
-          aria-live="polite"
-          aria-atomic="true"
-        >
+        <LocationSummaryDescription aria-live="polite" aria-atomic="true">
           <span className={styles.destinationAnnouncement}>{title}. </span>
           {detail}
           {refreshing && ' · Last observation · Updating…'}
-        </span>
+        </LocationSummaryDescription>
         <CoordinateInput
           embedded
           value={value}
@@ -148,7 +161,7 @@ export function DispatchDestinationPreview({
           error={error}
           onChange={onChange}
         />
-      </div>
-    </div>
+      </LocationSummaryContent>
+    </LocationSummary>
   )
 }

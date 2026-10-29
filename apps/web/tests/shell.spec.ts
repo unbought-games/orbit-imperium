@@ -312,7 +312,7 @@ test('mobile resource stock uses icons and compact balances with capacity detail
   const details = page.getByRole('dialog', { name: 'Metal', exact: true })
   await expect(details).toContainText('Available 1,000,000,000')
   await expect(details).toContainText('Capacity 10,000')
-  await expect(details).toContainText('Above capacity')
+  await expect(details).toContainText('Storage full')
   await page.keyboard.press('Escape')
   await page.setViewportSize({ width: 1440, height: 900 })
   expect((await metal.innerText()).trim()).toBe('1B')
@@ -324,7 +324,7 @@ test('mobile resource stock uses icons and compact balances with capacity detail
   await metal.click()
   await expect(details).toContainText('Available 1,000,000,000')
   await expect(details).toContainText('Capacity 10,000')
-  await expect(details).toContainText('Above capacity')
+  await expect(details).toContainText('Storage full')
 })
 
 test('mobile planet selector grows into free space while resource widths stay fixed', async ({ page }) => {
@@ -1867,8 +1867,8 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   ).toBeVisible()
   await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue('1')
   await expect(
-    page.getByRole('complementary', { name: 'Departure context' }),
-  ).toContainText('Fleet slots: 1 used / 5 total')
+    page.getByRole('button', { name: 'Fleet slots: 1 used / 5 total', exact: true }),
+  ).toBeVisible()
   const recovery = page.getByLabel('Action needs attention')
   // Exercise recovery explicitly so this assertion does not depend on whether
   // the background receipt poll runs before the layout checks finish.
@@ -1889,7 +1889,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     // Read both boxes in one frame: resize and focus restoration can change
     // scroll/header offsets between separate browser round trips.
     const bounds = await page
-      .getByText(/^Fleet slots: .* used \/ .* total$/)
+      .getByRole('group', { name: 'Origin', exact: true })
       .first()
       .evaluate((intro) => {
         const notice = document.querySelector('aside[aria-label="Action needs attention"]')!
@@ -2259,7 +2259,13 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await page.addInitScript(() => {
         const events: string[] = []
         Object.assign(window, { uiMotionEvents: events })
-        document.addEventListener('animationstart', event => { if (!(event.target instanceof Element && event.target.closest('[data-command-hud]'))) events.push('animation') }, true)
+        document.addEventListener('animationstart', event => {
+          const target = event.target
+          const isWealthCue = target instanceof Element &&
+            target.closest('[aria-label="Empire resource totals"] dl') &&
+            /wealthGuide(Glow|Pulse)/.test((event as AnimationEvent).animationName)
+          if (!(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue) events.push('animation')
+        }, true)
         document.addEventListener('transitionrun', event => { if (!(event.target instanceof Element && event.target.closest('[data-command-hud]'))) events.push('transition') }, true)
         const start = document.startViewTransition.bind(document)
         document.startViewTransition = (...args) => {
@@ -2267,15 +2273,21 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           return start(...args)
         }
       })
-      // Navigation stays motionless; the explicitly animated command HUD is
-      // checked separately, and the intentional hostile-fleet signal has
+      // Navigation stays motionless; the explicitly animated command HUD and
+      // slow wealth-guide pulse are checked separately. The hostile-fleet signal has
       // its own coverage, so keep this fixture free of incoming threats.
       const purchases = await shellFixture(page, {
         protocol: 4,
         missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
       })
       const assertStill = async () => {
-        expect(await page.evaluate(() => document.getAnimations().filter(animation => { const target = (animation.effect as KeyframeEffect | null)?.target; return !(target instanceof Element && target.closest('[data-command-hud]')) }).length)).toBe(0)
+        expect(await page.evaluate(() => document.getAnimations().filter(animation => {
+          const target = (animation.effect as KeyframeEffect | null)?.target
+          const isWealthCue = animation instanceof CSSAnimation && target instanceof Element &&
+            target.closest('[aria-label="Empire resource totals"] dl') &&
+            /wealthGuide(Glow|Pulse)/.test(animation.animationName)
+          return !(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue
+        }).length)).toBe(0)
         expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
       }
       await assertStill()
@@ -2700,14 +2712,25 @@ for (const width of [320, 390, 1440]) {
     const first = colony(8, 'Nova Roma', 100)
     const later = colony(9, 'A long planet name that wraps safely', 200)
     const moon = { ...home, id: id(10), name: undefined, kind: 'Moon' as const }
-    const purchases = await shellFixture(page, {
+    const purchases = await installGameFixture(page, {
       protocol: 4,
-      bodies: [later, moon, first, home],
+      bodies: [home, moon, first, later],
     })
-    await page.goto(`/u/andromeda/b/${home.id}/overview`)
+    await page.goto('/u/andromeda')
+    // A fresh open also loads the cold Vite route modules before rendering.
+    await expect(page.locator('main h1')).toContainText('Empire —', {
+      timeout: 30_000,
+    })
     const trigger = page.getByRole('combobox', { name: 'Selected body' })
     await expect(trigger).toContainText('Martialis')
     await expect(trigger).toHaveAttribute('data-value', home.id)
+    await expect(page).toHaveURL(new RegExp(`/b/${home.id}/overview$`))
+    await expect(
+      page.getByRole('article', { name: / dossier$/ }).first(),
+    ).toHaveAttribute('aria-label', 'Martialis [1:19:6] dossier')
+    await diagnosticScreenshot(page, {
+      path: `test-results/homeworld-default-${width}.png`,
+    })
     await expect(
       page.getByRole('searchbox', { name: 'Search owned worlds' }),
     ).toHaveCount(0)

@@ -115,6 +115,24 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
             return Err(InvariantError("invalid policy coverage or profile".into()));
         }
     }
+    for f in w.records.missiles.values() {
+        let mut terms = f.terms.clone();
+        let expected = terms.terms_hash.clone();
+        terms.terms_hash = Hash(String::new());
+        if (terms.intent.target.expected_kind == BodyKind::Planet
+            && terms.interceptor_body != terms.intent.target.id)
+            || terms.intent.count <= 0
+            || terms.duration_ms <= 0
+            || f.generation < 0
+            || !(1..=100).contains(&terms.speed)
+            || f.owner == terms.intent.target.expected_owner
+            || deadline(f.launched_at, terms.duration_ms).ok() != Some(f.due_at)
+            || terms.rules.validate().is_err()
+            || hash(&serde_json::json!({"protocol":4,"missile_terms":terms})) != expected
+        {
+            return Err(InvariantError("invalid immutable missile terms".into()));
+        }
+    }
     for fleet in w.records.fleets.values() {
         let mut material = fleet.terms.clone();
         let expected = material.terms_hash.clone();

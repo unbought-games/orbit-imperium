@@ -86,3 +86,37 @@ it('keeps optimistic report actions quiet except for failure and uncertainty', (
     else expect(message).toBe('')
   }
 })
+
+it('labels bulk report deletion and only announces failures', () => {
+  for (const hidden of [true, false]) {
+    const command = {
+      type: 'World' as const,
+      action: {
+        type: 'SetReportsHidden' as const,
+        reports: ['first', 'second'],
+        hidden,
+      },
+    }
+    expect(actionLabel(command)).toBe(
+      hidden ? 'Delete reports' : 'Restore reports',
+    )
+    for (const status of [
+      'submitting',
+      'pending',
+      'committed',
+      'rejected',
+      'uncertain',
+    ] as const) {
+      const attempt = {
+        envelope: { command_id: 'batch', command },
+        status,
+        reconciled: false,
+        receipt: null,
+      } as Attempt
+      const message = changedAnnouncements(new Map(), [attempt]).message
+      if (status === 'rejected' || status === 'uncertain')
+        expect(message).toContain(`${actionLabel(command)}:`)
+      else expect(message).toBe('')
+    }
+  }
+})

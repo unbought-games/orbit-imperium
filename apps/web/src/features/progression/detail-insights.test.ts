@@ -7,6 +7,7 @@ import {
   affordabilitySummary,
   blockerExplanation,
   buildingInsights,
+  constructionProjection,
   energySources,
   nextLevelDependents,
   storageProjection,
@@ -684,3 +685,49 @@ for (const [building, resource, kind] of [
     },
   )
 }
+
+it('only accepts an authoritative projection for the active body, building and target', () => {
+  const { view, body, proposal } = fixture()
+  const work = { building: 'MetalMine', targetLevel: 5 }
+  proposal.terms = {
+    type: 'Building',
+    profile_hash: view.profile_hash,
+    body: body.id,
+    building: 'MetalMine',
+    action: 'Upgrade',
+    source_level: 4,
+    target_level: 5,
+    paid: body.amounts,
+    duration_ms: 1000,
+    formula: 'BuildingRedesign2011',
+    facilities: [],
+    required_energy: '0',
+    reserve_fields: 1,
+  }
+  expect(constructionProjection(proposal, body, work)).toBe(proposal)
+  expect(constructionProjection(null, body, work)).toBeNull()
+  expect(
+    constructionProjection(proposal, body, { ...work, targetLevel: 6 }),
+  ).toBeNull()
+  expect(
+    constructionProjection(proposal, body, {
+      ...work,
+      building: 'CrystalMine',
+    }),
+  ).toBeNull()
+  expect(
+    constructionProjection(proposal, { ...body, id: id(99) }, work),
+  ).toBeNull()
+  expect(
+    constructionProjection(
+      proposal,
+      { ...body, levels: { ...body.levels, MetalMine: 5 } },
+      work,
+    ),
+  ).toBeNull()
+  proposal.terms.action = 'Demolition'
+  proposal.terms.target_level = 3
+  expect(
+    constructionProjection(proposal, body, { ...work, targetLevel: 3 }),
+  ).toBe(proposal)
+})
