@@ -37,6 +37,8 @@ mod tests {
 
     fn planet(id: u128, position: u32, created_at: Option<i64>) -> BodyV3 {
         BodyV3 {
+            diameter_km: None,
+            min_temperature: None,
             silo: None,
             max_temperature: None,
             name: None,
