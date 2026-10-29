@@ -2,7 +2,6 @@ import type { BoundView } from '../client-model/commands'
 import { RichSelect } from '../ui/rich-select'
 import { bodyName, coordinates } from '../ui/format'
 import { resolveBodyArt } from '../ui/artwork'
-import { orderedBodies } from './body-selection'
 import styles from './body-selector.module.css'
 
 function BodyLabel({ body }: { body: BoundView['bodies'][number] }) {
@@ -47,7 +46,7 @@ export function BodySelector({
       label="Selected body"
       value={body?.id}
       className={styles.selector}
-      options={orderedBodies(bodies).map((entry) => ({
+      options={bodies.map((entry) => ({
         value: entry.id,
         label: `${bodyName(entry)} ${coordinates(entry)}`,
         content: <BodyLabel body={entry} />,

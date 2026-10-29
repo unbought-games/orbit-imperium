@@ -28,6 +28,7 @@ pub(super) fn world_projection(
             });
         }
     }
+    super::body_order::order_bodies(&mut progression.bodies);
     let research = state
         .research
         .get(&viewer)

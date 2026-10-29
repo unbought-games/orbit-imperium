@@ -431,6 +431,15 @@ async fn colony_creation_is_atomic_replayable_private_and_usable_after_restart()
         projected_colony.max_temperature,
         Some(genesis.max_temperature)
     );
+    assert_eq!(
+        view.progression
+            .bodies
+            .iter()
+            .map(|body| body.id)
+            .collect::<Vec<_>>(),
+        [origin, colony.id],
+        "the homeworld remains the default after colonization and restart"
+    );
     assert!(
         view.progression
             .capabilities
