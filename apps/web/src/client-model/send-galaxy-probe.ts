@@ -15,6 +15,7 @@ export async function sendGalaxyProbe(
   current: () => boolean,
 ) {
   const state = model.store.getState()
+  if (state.rateLimited) return
   const binding = state.binding
   const blocked = probeAvailability(state, origin)
   if (blocked) throw Error(blocked)
@@ -60,6 +61,8 @@ export async function sendGalaxyProbe(
     },
     terms,
   )
+  // The shared cooldown banner owns throttled-send feedback.
+  if (!commandId && model.store.getState().rateLimited) return
   if (!commandId)
     throw Error(
       model.store.getState().message ||

@@ -1390,6 +1390,27 @@ describe('galaxy fleet actions', () => {
     expect(model.send).toHaveBeenCalledExactlyOnceWith(command, terms)
   })
 
+  it.each(['before', 'during'])(
+    'leaves throttled probe feedback to the banner when blocked %s sending',
+    async (when) => {
+      const store = createGameStore()
+      store.setState(spyState())
+      store.setState({ rateLimited: when === 'before' })
+      const model = {
+        store,
+        world: vi.fn(async () => terms),
+        send: vi.fn(async () => {
+          store.setState({ rateLimited: true })
+          return undefined
+        }),
+      }
+      await expect(
+        sendGalaxyProbe(model, 'body', at.body!, () => true),
+      ).resolves.toBeUndefined()
+      expect(model.send).toHaveBeenCalledTimes(when === 'before' ? 0 : 1)
+    },
+  )
+
   it('does not send after navigation or a binding change while quoting', async () => {
     const store = createGameStore()
     store.setState(spyState())

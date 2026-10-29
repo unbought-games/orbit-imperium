@@ -57,6 +57,7 @@ export function GalaxyPosition({
   espionage?: {
     send: () => void
     busy: boolean
+    paused?: boolean
     reason: string | null
     error: string | null
     notice?: string | null
@@ -184,6 +185,7 @@ export function GalaxyPosition({
               name={body.name ?? target}
               reason={spyReason}
               busy={espionage?.busy}
+              paused={espionage?.paused}
               error={espionage?.error}
               onSend={() =>
                 espionage ? espionage.send() : onDraft(coordinates, 'Espionage')

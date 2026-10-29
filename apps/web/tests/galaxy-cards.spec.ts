@@ -2020,3 +2020,49 @@ test('debris quick harvest follows capability eligibility and supports own and e
     await expect(trigger).toBeFocused()
   }
 })
+
+for (const mission of ['Espionage', 'Harvest'] as const) {
+  for (const width of [1280, 390]) {
+    test(`${mission} throttling shows only the cooldown explanation at ${width}px`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      const now = new Date('2026-10-29T14:00:00Z')
+      if (mission === 'Harvest') await setupHarvest(page)
+      else await setup(page)
+      await page.setViewportSize({ width, height: 900 })
+      await page.route('**/world', async route => {
+        const request = route.request().postDataJSON()
+        if (request.type !== 'FleetQuote') return route.fallback()
+        await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { ...harvestTerms(request.intent), speeds: [[mission === 'Harvest' ? 'Recycler' : 'EspionageProbe', '100000000']] } } })
+      })
+      let submissions = 0
+      await page.route('**/commands', async route => {
+        submissions++
+        await route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
+      })
+      if (mission === 'Harvest') {
+        const form = await openHarvest(page)
+        await page.clock.install({ time: now })
+        await page.clock.pauseAt(now)
+        await form.getByRole('button', { name: 'Send', exact: true }).click()
+        await expect.poll(() => submissions).toBe(1)
+        await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
+        await expect(form.getByRole('alert')).toHaveCount(0)
+        await expect(form).not.toContainText('Reconnect before')
+        await page.keyboard.press('Escape')
+      } else {
+        await page.clock.install({ time: now })
+        await page.clock.pauseAt(now)
+        await rows(page).nth(1).getByRole('button', { name: /^(Spy on|Probe requested for) / }).click()
+      }
+      const banner = page.getByTestId('game-error-banner')
+      await expect(banner).toContainText('Try again in 60 seconds.')
+      if (mission === 'Espionage') await expect(spy(page)).toHaveAttribute('data-feedback', 'false')
+      await expect(page.getByText(/probe could not be sent|harvest mission could not be sent/)).toHaveCount(0)
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/unified-${mission.toLowerCase()}-cooldown-${width}x900.png`, fullPage: true })
+      await page.clock.runFor(61000)
+      await expect(banner).not.toContainText('Try again in')
+      expect(submissions).toBe(1)
+    })
+  }
+}

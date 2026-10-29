@@ -217,3 +217,22 @@ it('server quote failures and unavailable local inventory never send', async () 
   ).rejects.toThrow('No recyclers')
   expect(empty.world).not.toHaveBeenCalled()
 })
+
+it.each(['before', 'during'])(
+  'leaves throttled harvest feedback to the banner when blocked %s sending',
+  async (when) => {
+    const model = fixture()
+    model.store.setState({ rateLimited: when === 'before' })
+    model.send.mockImplementation(async () => {
+      model.store.setState({ rateLimited: true, stale: true })
+      return undefined
+    })
+    await expect(
+      sendGalaxyHarvest(model, id(10), position, '3', () => true),
+    ).resolves.toBeUndefined()
+    expect(model.send).toHaveBeenCalledTimes(when === 'before' ? 0 : 1)
+    expect(
+      galaxyHarvest(model.store.getState(), id(10), position).blockers,
+    ).toEqual([])
+  },
+)

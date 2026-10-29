@@ -8,12 +8,14 @@ export function GalaxySpyButton({
   name,
   reason,
   busy,
+  paused,
   error,
   onSend,
 }: {
   name: string
   reason?: string | null
   busy?: boolean
+  paused?: boolean
   error?: string | null
   onSend: () => void
 }) {
@@ -23,13 +25,13 @@ export function GalaxySpyButton({
     const timer = setTimeout(() => setAcknowledgement(0), 1400)
     return () => clearTimeout(timer)
   }, [acknowledgement])
-  const showCheck = acknowledgement > 0 && !error
+  const showCheck = acknowledgement > 0 && !error && !paused
   return (
     <Button
       variant="ghost"
       className={styles.spyButton}
       data-feedback={showCheck}
-      disabled={!!reason || busy || showCheck}
+      disabled={!!reason || busy || paused || showCheck}
       title={
         showCheck ? 'Probe requested' : (reason ?? 'Send one espionage probe')
       }

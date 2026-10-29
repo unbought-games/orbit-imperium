@@ -1944,3 +1944,41 @@ for (const width of [1440, 390]) {
     }
   })
 }
+
+for (const width of [1280, 390]) {
+  test(`production throttling has one cooldown message and waits for retry at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const now = new Date()
+    await page.clock.install({ time: now })
+    const { sent } = await setup(page)
+    let submissions = 0
+    let throttled = true
+    await page.route('**/commands', async route => {
+      submissions++
+      if (throttled) return route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
+      return route.fallback()
+    })
+    await openProductionSettings(page)
+    await page.clock.pauseAt(new Date(now.getTime() + 10000))
+    await moveProductionSlider(page, 'metal mine production', '50')
+    await page.clock.runFor(300)
+    const banner = page.getByTestId('game-error-banner')
+    await expect(banner).toContainText('Try again in 60 seconds.')
+    await expect(banner.getByRole('group', { name: 'Production settings error' })).toHaveCount(0)
+    await expect(page.getByText(/Unable to save production|Saving production changes/)).toHaveCount(0)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-production-cooldown-${width}x900.png`, fullPage: true })
+    await page.clock.runFor(61000)
+    await refreshGame(page)
+    await expect(banner).toContainText('Your production changes weren’t saved.')
+    await expect(page.getByLabel('metal mine production')).toHaveValue('50')
+    expect(submissions).toBe(1)
+    expect(sent).toHaveLength(0)
+    await diagnosticScreenshot(page, { path: `test-results/unified-production-retry-${width}x900.png`, fullPage: true })
+    throttled = false
+    await page.getByRole('button', { name: 'Retry production changes' }).click()
+    await expect.poll(() => submissions).toBe(2)
+    await expect.poll(() => sent.length).toBe(1)
+  })
+}

@@ -48,7 +48,11 @@ export function galaxyHarvest(
         )?.ship_statistics?.propulsion?.cargo_capacity
       : undefined
   const blockers: string[] = []
-  if (!state.ready || state.stale || state.view?.protocol !== 4)
+  if (
+    !state.ready ||
+    (state.stale && !state.rateLimited) ||
+    state.view?.protocol !== 4
+  )
     blockers.push('Reconnect before sending recyclers.')
   if (
     !state.view?.capabilities.some(
@@ -99,6 +103,7 @@ export async function sendGalaxyHarvest(
 ) {
   const state = model.store.getState(),
     binding = state.binding
+  if (state.rateLimited) return
   const availability = galaxyHarvest(state, origin, position)
   const problem =
     availability.blockers[0] ?? harvestCountError(count, availability.available)
@@ -143,6 +148,8 @@ export async function sendGalaxyHarvest(
     },
     terms,
   )
+  // The shared cooldown banner owns throttled-send feedback.
+  if (!id && model.store.getState().rateLimited) return
   if (!id)
     throw Error(
       model.store.getState().message ||

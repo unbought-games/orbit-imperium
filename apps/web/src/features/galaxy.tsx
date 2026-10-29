@@ -279,6 +279,7 @@ export function Galaxy({
                     position.body
                       ? {
                           send: () => void espionage.send(position.body!),
+                          paused: espionage.state.rateLimited,
                           busy:
                             espionage.sending === position.body.id ||
                             pendingProbe(

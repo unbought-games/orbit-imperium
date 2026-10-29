@@ -48,6 +48,7 @@ export function useGalaxyHarvest(
       : ''
   async function send() {
     if (
+      state.rateLimited ||
       lock.current ||
       awaiting ||
       !open ||
@@ -89,6 +90,7 @@ export function useGalaxyHarvest(
     send,
     error: rejection || error,
     busy: sending || awaiting,
+    paused: state.rateLimited,
     uncertain: attempt?.status === 'uncertain',
     commandId,
   }

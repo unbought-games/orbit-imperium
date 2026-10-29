@@ -435,6 +435,28 @@ describe('production autosave', () => {
     expect(sent).toHaveLength(1)
   })
 
+  it('retains throttled edits without resending when the cooldown ends', async () => {
+    const { model, autosave, sent } = setup()
+    vi.mocked(model.send).mockImplementationOnce(async () => {
+      model.store.setState({ rateLimited: true })
+      return undefined
+    })
+    autosave.change('metal_mine', 50)
+    await settle()
+    expect(autosave.store.getState().error).toContain('weren’t saved')
+    expect(autosave.store.getState().edits).toEqual({ metal_mine: 50 })
+    await autosave.retry()
+    expect(model.refresh).not.toHaveBeenCalled()
+    model.store.setState({ rateLimited: false })
+    await settle()
+    expect(model.send).toHaveBeenCalledTimes(1)
+    expect(sent).toHaveLength(0)
+    await autosave.retry()
+    await settle()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({ settings: { metal_mine: 50 } })
+  })
+
   it('does not carry queued edits into another account/binding', async () => {
     const { model, autosave, sent } = setup()
     autosave.change('metal_mine', 50)
