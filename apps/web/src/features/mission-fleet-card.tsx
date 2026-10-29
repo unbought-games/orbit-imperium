@@ -11,6 +11,7 @@ import { useUniverseName } from '../shell/session-context'
 import { routeTarget } from '../shell/route-target'
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
+import { useRowLink } from '../ui/use-row-link'
 import { Heading, Text } from '../ui/typography'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { formatWholeNumber } from '../ui/whole-number'
@@ -114,29 +115,51 @@ export function MissionFleetCard({
   fleet,
   detail,
   origin,
+  as: Container = 'article',
+  linkEnabled = true,
 }: {
   model: Coordinator
   view: S['BoundView4']
   fleet: S['OwnMission4']
   detail: boolean
   origin: string
+  as?: 'article' | 'li'
+  linkEnabled?: boolean
 }) {
   const universeName = useUniverseName()
   const state = useStore(model.store)
   const now = currentServerTime(state)
   const [showShips, setShowShips] = useState(detail)
   const shipsId = useId()
+  const { linkRef, rowProps } = useRowLink(!detail && linkEnabled)
   const row = ownFleetSummary(view, fleet)
   const count = fleetShipCount(fleet.ships)
   return (
-    <article
+    <Container
+      {...rowProps}
       className={fleetStyles.card}
       data-flight-tone={ownFleetTone(fleet.intent.mission)}
       aria-label={`${fleet.intent.mission} fleet`}
     >
       <header className={fleetStyles.heading}>
-        <Heading level={3} className={fleetStyles.title}>
-          {fleet.intent.mission} <span>{fleet.leg}</span>
+        <Heading
+          level={3}
+          className={fleetStyles.title}
+          aria-label={`${fleet.intent.mission} ${fleet.leg}`}
+        >
+          {!detail && linkEnabled ? (
+            <Link
+              ref={linkRef}
+              className={fleetStyles.rowLink}
+              {...routeTarget(universeName, 'fleets', origin, fleet.id)}
+              aria-label={`View ${fleet.intent.mission} ${fleet.leg.toLowerCase()} fleet`}
+            >
+              {fleet.intent.mission}
+            </Link>
+          ) : (
+            fleet.intent.mission
+          )}{' '}
+          <span>{fleet.leg}</span>
         </Heading>
         <Button
           variant="ghost"
@@ -215,14 +238,6 @@ export function MissionFleetCard({
             type: 'World',
             action: { type: 'RecallMission', fleet: fleet.id },
           })) && <FleetRecall model={model} fleetId={fleet.id} fleet={fleet} />}
-        {!detail && (
-          <Link
-            data-touch-control=""
-            {...routeTarget(universeName, 'fleets', origin, fleet.id)}
-          >
-            Mission details
-          </Link>
-        )}
       </div>
       {detail && (
         <>
@@ -272,6 +287,6 @@ export function MissionFleetCard({
           </details>
         </>
       )}
-    </article>
+    </Container>
   )
 }

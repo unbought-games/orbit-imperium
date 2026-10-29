@@ -85,7 +85,7 @@ for (const viewport of [
       path: `test-results/density-fleets-${viewport.width}.png`,
     })
     await page
-      .getByRole('link', { name: 'Mission details', exact: true })
+      .getByRole('link', { name: /^View .* fleet$/ })
       .click()
     await firstViewport(page, [
       recall,

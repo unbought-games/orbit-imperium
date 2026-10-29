@@ -190,7 +190,7 @@ for (const width of [1280, 390, 320]) {
       page.getByRole('button', { name: 'Review recall', exact: true }),
     ).toBeVisible()
     await expect(
-      page.getByRole('link', { name: 'Mission details', exact: true }),
+      page.getByRole('link', { name: /^View .* fleet$/ }),
     ).toBeVisible()
   })
 }

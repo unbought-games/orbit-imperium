@@ -1429,7 +1429,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     new Date(fleet.due_at).toISOString(),
   )
   await expect(page.getByText('No visible incoming fleets.')).toBeVisible()
-  await mission.getByRole('link', { name: 'Mission details' }).click()
+  await mission.getByRole('link', { name: /^View .* fleet$/ }).click()
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   // History updates before the lazy detail route commits. Wait for its screen
   // before using the shared selector, which still belongs to the outgoing list.

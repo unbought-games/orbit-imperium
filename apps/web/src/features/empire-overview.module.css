@@ -392,7 +392,7 @@
   display: grid;
   gap: 6px;
 }
-.flightList > li {
+.flightEntry {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -1159,4 +1159,13 @@
 }
 .climate p {
   margin: 8px 0 0;
+}
+
+.fleetRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
 }
