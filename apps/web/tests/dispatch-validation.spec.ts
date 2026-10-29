@@ -23,17 +23,17 @@ test('destination focus glow is desktop only', async ({ page }) => {
 
 async function setup(page: Page) {
   const colony = {
-    ...body,
+    ...structuredClone(body),
     id: id(6),
     colony: { diameter_km: 12000, min_temperature: 0, max_temperature: 40, created_at: 1000, profile: 'oi-redesign-reconstructed-v1' },
     coordinates: { galaxy: 1, system: 1, position: 2 },
   }
   const bodies = [
       {
-        ...body,
+        ...structuredClone(body),
         name: 'Aster Haven',
         inventories: [
-          ...body.inventories,
+          ...structuredClone(body.inventories),
           ...(['EspionageProbe', 'Recycler', 'ColonyShip'] as const).map(
             (id) => ({ item: { kind: 'Ship' as const, id }, count: '1' }),
           ),
@@ -2108,6 +2108,7 @@ for (const width of [320, 390, 1440]) {
 
 test('Add All reads current inventory and disables on an empty origin', async ({ page }) => {
   const state = await setup(page)
+  const originalCargo = body.inventories.find(stack => stack.item.id === 'SmallCargo')!.count
   const addAll = page.getByRole('button', { name: 'Add all ships', exact: true })
   const cargo = state.bodies[0].inventories.find(stack => stack.item.id === 'SmallCargo')!
   cargo.count = '9007199254740993'
@@ -2128,4 +2129,5 @@ test('Add All reads current inventory and disables on an empty origin', async ({
   const fleet = page.getByRole('group', { name: 'Ships', exact: true })
   for (const fill of await fleet.getByRole('button', { name: /^Max / }).all()) await expect(fill).toBeDisabled()
   await expect(page.getByLabel('Small Cargo · 0 available')).toHaveValue('0')
+  expect(body.inventories.find(stack => stack.item.id === 'SmallCargo')!.count).toBe(originalCargo)
 })
