@@ -1930,3 +1930,85 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
   })
 }
+
+for (const width of [390, 1280]) {
+  test(`debris art and amounts open quick harvest with keyboard access at ${width}px`, async ({ page }) => {
+    await setupHarvest(page)
+    await page.setViewportSize({ width, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const trigger = rows(page).nth(1).getByRole('button', {
+      name: 'Quick harvest debris at [1:371:2]: Metal 40,000, Crystal 1', exact: true,
+    })
+    const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
+    const requests: string[] = []
+    page.on('request', request => {
+      if (request.url().endsWith('/commands') ||
+          (request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')) requests.push(request.url())
+    })
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+    // The hit area ends at the content, not at the edge of the grid column.
+    const buttonBox = (await trigger.boundingBox())!
+    const amountsBox = (await trigger.locator(':scope > span').boundingBox())!
+    expect(buttonBox.x + buttonBox.width).toBeCloseTo(amountsBox.x + amountsBox.width, 1)
+    if (width === 1280) {
+      await page.mouse.click(buttonBox.x + buttonBox.width + 20, buttonBox.y + buttonBox.height / 2)
+      await expect(dialog).not.toBeVisible()
+    }
+    await page.keyboard.press('Tab')
+    await trigger.focus()
+    await expect(trigger).toBeFocused()
+    await diagnosticScreenshot(page, { path: `test-results/debris-trigger-${width}x844.png`, animations: 'disabled' })
+    // The image and resource text are both inside the same native button.
+    await trigger.locator('img').click()
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText('Debris at [1:371:2]')
+    await expect(dialog.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('3')
+    await expect(dialog.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+    await diagnosticScreenshot(page, { path: `test-results/debris-harvest-${width}x844.png`, animations: 'disabled' })
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+    await expect(trigger).toBeFocused()
+    await trigger.getByText(width === 390 ? '40K' : '40,000', { exact: true }).filter({ visible: true }).click()
+    await expect(dialog).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(trigger).toBeFocused()
+    for (const key of ['Enter', 'Space']) {
+      await trigger.press(key)
+      await expect(dialog).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(dialog).not.toBeVisible()
+      await expect(trigger).toBeFocused()
+    }
+    expect(requests).toEqual([])
+    await expect(page).toHaveURL(/\/galaxy$/)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+  })
+
+  test(`debris quick harvest preserves blocked mission explanations at ${width}px`, async ({ page }) => {
+    await setupHarvest(page, '0', '0')
+    await page.setViewportSize({ width, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await rows(page).nth(1).getByRole('button', { name: /^Quick harvest debris/ }).click()
+    const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
+    await expect(dialog).toContainText('No recyclers available')
+    await expect(dialog).toContainText('No fleet slots available')
+    await expect(dialog.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
+    await diagnosticScreenshot(page, { path: `test-results/debris-blocked-${width}x844.png`, animations: 'disabled' })
+  })
+}
+
+test('debris quick harvest follows capability eligibility and supports own and empty positions', async ({ page }) => {
+  await setup(page, null, { extraCapabilities: [] })
+  await expect(rows(page).nth(1)).toContainText('1,500')
+  await expect(page.getByRole('button', { name: /^Quick harvest debris/ })).toHaveCount(0)
+  await setup(page, null, {}, { 1: { debris } })
+  for (const position of [1, 4]) {
+    const trigger = rows(page).nth(position - 1).getByRole('button', { name: /^Quick harvest debris/ })
+    await trigger.click()
+    const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
+    await expect(dialog).toContainText(`Debris at [1:371:${position}]`)
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+    await expect(trigger).toBeFocused()
+  }
+})
