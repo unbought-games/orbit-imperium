@@ -1172,11 +1172,15 @@ for (const width of [320, 390, 1280]) {
     expect(fieldBox.height).toBe(36)
     expect(fieldBox.width).toBeGreaterThan(width < 400 ? 130 : 250)
     const selectors = await group
-      .locator('select')
+      .getByRole('group', { name: 'Mission', exact: true }).locator('label')
       .evaluateAll((elements) =>
         elements.map((element) => element.getBoundingClientRect().height),
       )
-    expect(selectors).toEqual([44])
+    expect(selectors).toHaveLength(6)
+    for (const height of selectors) {
+      expect(height).toBeGreaterThanOrEqual(44)
+      expect(height).toBeLessThanOrEqual(56)
+    }
     const speed = page.getByRole('group', { name: 'Speed and flight estimates' })
       .getByRole('slider', { name: 'Speed', exact: true })
     expect((await speed.boundingBox())!.height).toBe(44)
