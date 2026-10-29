@@ -1,3 +1,4 @@
+import { ContentColumn } from '../ui/content-column'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
 import {
@@ -297,7 +298,13 @@ export function GameShell() {
               Connection interrupted — awaiting server confirmation.
             </p>
           )}
-          <main id="main" tabIndex={-1} className={styles['work-area']}>
+          <ContentColumn
+            as="main"
+            width={page === 'dispatch' ? 'focused' : 'full'}
+            id="main"
+            tabIndex={-1}
+            className={styles['work-area']}
+          >
             <div
               className={
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']
@@ -351,7 +358,7 @@ export function GameShell() {
                 <Outlet />
               </ScreenContext.Provider>
             )}
-          </main>
+          </ContentColumn>
         </div>
       </div>
       <CommandHud body={body?.id} onDraft={prepareDispatch} />

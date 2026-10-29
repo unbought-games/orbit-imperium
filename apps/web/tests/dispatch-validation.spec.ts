@@ -1849,3 +1849,39 @@ test('espionage protection is observed before ships and remains advisory until r
   await expect(page.getByRole('status').filter({ hasText: 'Beginner protection prevents' })).toBeVisible()
   expect(state.launches).toBe(0)
 })
+
+test('Dispatch shares a centered responsive content column with its review', async ({ page }) => {
+  await setup(page)
+  await selectDestinationPlanet(page, id(6))
+  const content = page.locator('main')
+  for (const width of [390, 767, 768, 1199, 1200, 1440, 1599, 1600, 1920]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const cap = width >= 1600 ? 896 : width >= 1200 ? 768 : width >= 768 ? 640 : Infinity
+    const geometry = await content.evaluate(element => {
+      const current = element.getBoundingClientRect()
+      const parent = element.parentElement!.getBoundingClientRect()
+      return { width: current.width, center: current.x + current.width / 2, available: parent.width, parentCenter: parent.x + parent.width / 2 }
+    })
+    expect(geometry.width).toBeCloseTo(Math.min(cap, geometry.available), 0)
+    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+    if ([390, 768, 1440, 1920].includes(width)) {
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-${width}x1000.png`, fullPage: width >= 768 })
+    }
+  }
+  await review(page).click()
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const geometry = await content.evaluate(element => {
+      const rect = element.getBoundingClientRect(), parent = element.parentElement!.getBoundingClientRect()
+      return { width: rect.width, available: parent.width, center: rect.x + rect.width / 2, parentCenter: parent.x + parent.width / 2 }
+    })
+    expect(geometry.width).toBeCloseTo(Math.min(width === 1440 ? 768 : Infinity, geometry.available), 0)
+    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-review-${width}x1000.png`, fullPage: true })
+  }
+})
