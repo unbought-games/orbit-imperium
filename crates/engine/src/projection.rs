@@ -1,6 +1,8 @@
 use crate::*;
 #[derive(Clone, Debug)]
 pub struct ViewerSnapshot {
+    /// Saved creation facts for this viewer, read from the bootstrap manifest.
+    pub homeworld: Option<(BodyId, Homeworld)>,
     /// A visible unread report, selected from the full recipient archive.
     pub unread_report: Option<ReportId>,
     pub world: Option<GameState>,

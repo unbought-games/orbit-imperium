@@ -8,6 +8,7 @@ import {
   empireTotals,
   storagePercent,
   planetMaxTemperature,
+  planetPhysicalFacts,
 } from './empire-model'
 
 function fixture() {
@@ -42,6 +43,7 @@ function fixture() {
       fleets: [
         {
           id: 'own',
+          cargo: { metal: '0', crystal: '0', deuterium: '0' },
           intent: {
             origin: 'a',
             destination: { type: 'Body', id: 'b' },
@@ -144,7 +146,7 @@ it('preserves every visibility tier without inventing ship details', () => {
   expect(empireFlights(view)[0].ships).toBe('8 Light Fighter')
 })
 it('sums micro-resources exactly before formatting and clamps storage meters', () => {
-  expect(empireTotals(fixture())).toEqual({
+  expect(empireTotals(fixture()).total).toEqual({
     metal: '900719925474099310',
     crystal: '3000000',
     deuterium: '10',
@@ -270,6 +272,110 @@ it('uses authoritative maximum temperature, preserving zero and negative tempera
     expect(planetMaxTemperature(planet)).toBe(temperature)
   }
   expect(planetMaxTemperature({ ...planet, kind: 'Moon' })).toBeUndefined()
+})
+
+it('counts current cargo on both owned legs, once for self-transports, excluding fuel and foreign incoming fleets', () => {
+  const view = fixture()
+  const own = view.missions.fleets[0]
+  own.cargo = {
+    metal: '900719925474099311',
+    crystal: '500000',
+    deuterium: '17',
+  }
+  own.intent.cargo = { metal: '999', crystal: '999', deuterium: '999' }
+  own.paid_fuel = '999'
+  view.missions.fleets.push({
+    ...own,
+    id: 'return',
+    leg: 'Returning',
+    cargo: { metal: '2', crystal: '3', deuterium: '4' },
+  })
+  expect(empireTotals(view)).toEqual({
+    onWorlds: {
+      metal: '900719925474099310',
+      crystal: '3000000',
+      deuterium: '10',
+    },
+    inTransit: {
+      metal: '900719925474099313',
+      crystal: '500003',
+      deuterium: '21',
+    },
+    launching: { metal: '0', crystal: '0', deuterium: '0' },
+    total: {
+      metal: '1801439850948198623',
+      crystal: '3500003',
+      deuterium: '31',
+    },
+  })
+  // Delivery moves cargo into a world. Returning empty and then completing
+  // the self-transport must leave wealth unchanged.
+  const before = empireTotals(view).total
+  for (const name of ['metal', 'crystal', 'deuterium'] as const) {
+    view.bodies[2].amounts[name] = (
+      BigInt(view.bodies[2].amounts[name]) + BigInt(own.cargo[name])
+    ).toString()
+  }
+  own.leg = 'Returning'
+  own.cargo = { metal: '0', crystal: '0', deuterium: '0' }
+  expect(empireTotals(view).total).toEqual(before)
+  view.missions.fleets.shift()
+  expect(empireTotals(view).total).toEqual(before)
+  view.missions.fleets = []
+  expect(empireTotals(view).inTransit).toEqual({
+    metal: '0',
+    crystal: '0',
+    deuterium: '0',
+  })
+})
+
+it('counts legacy outbound and recalled cargo but excludes completed payloads', () => {
+  const view = {
+    ...fixture(),
+    protocol: 2,
+    fleets: [
+      {
+        status: 'Outbound',
+        payload: { metal: '1', crystal: '2', deuterium: '3' },
+      },
+      {
+        status: 'Returning',
+        payload: { metal: '4', crystal: '5', deuterium: '6' },
+      },
+      {
+        status: 'Completed',
+        payload: { metal: '999', crystal: '999', deuterium: '999' },
+      },
+    ],
+  } as unknown as BoundView
+  expect(empireTotals(view).inTransit).toEqual({
+    metal: '5',
+    crystal: '7',
+    deuterium: '9',
+  })
+})
+
+it('shows physical metadata only when known, with current values ahead of colony fallback', () => {
+  const planet = fixture().bodies[0]
+  planet.fields = 163
+  expect(planetPhysicalFacts(planet)).toEqual([])
+  planet.diameter_km = 12800
+  planet.min_temperature = -40
+  planet.max_temperature = 0
+  expect(planetPhysicalFacts(planet)).toEqual(['12800 km', '-40 to 0 °C'])
+  expect(planetPhysicalFacts({ ...planet, kind: 'Moon' })).toEqual([])
+  planet.colony = {
+    diameter_km: 15191,
+    min_temperature: 24,
+    max_temperature: 64,
+    created_at: 0,
+    profile: 'oi-redesign-reconstructed-v1',
+  }
+  expect(planetPhysicalFacts(planet)).toEqual(['12800 km', '-40 to 0 °C'])
+  delete planet.diameter_km
+  delete planet.min_temperature
+  delete planet.max_temperature
+  expect(planetPhysicalFacts(planet)).toEqual(['15191 km', '24 to 64 °C'])
 })
 
 it('merges missile attacks with fleets by arrival and preserves direction and body identity', () => {

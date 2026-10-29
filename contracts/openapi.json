@@ -10289,6 +10289,18 @@
       "BodyV3": {
         "type": "object",
         "properties": {
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "description": "Planet diameter from saved homeworld or colony creation metadata. Omitted when unavailable and for moons."
+          },
+          "min_temperature": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647,
+            "description": "Minimum planet temperature in degrees Celsius, derived from authoritative current climate. Omitted for moons and older servers."
+          },
           "max_temperature": {
             "type": "integer",
             "minimum": -2147483648,

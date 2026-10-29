@@ -494,6 +494,29 @@ export function pendingFleetLaunches(state: GameState) {
     })
 }
 
+/** Cargo reserved by the same overlay that deducts it from on-world balances.
+ * Fuel remains spent; submissions without payment evidence reserve no resources.
+ */
+export function pendingFleetCargo(state: GameState): S['Resources'][] {
+  const view = state.view
+  if (!view) return []
+  return submittedIntents(state).flatMap(({ attempt, intent }) => {
+    const command = attempt.envelope.command
+    const fleet =
+      command.type === 'World' && command.action.type === 'LaunchFleet'
+        ? command.action.intent
+        : command.type === 'LaunchTransport'
+          ? command
+          : null
+    return fleet &&
+      view.bodies.some((body) => body.id === fleet.origin) &&
+      overlayApplies(attempt, intent, view) &&
+      payment(command, intent, view, state)
+      ? [fleet.cargo]
+      : []
+  })
+}
+
 // Keep the last confirmed snapshot while a newer revision could either precede
 // or contain an optimistic action. Only its receipt disambiguates those cases.
 // Polling already recovers receipts before refreshing; this adds no network work.
