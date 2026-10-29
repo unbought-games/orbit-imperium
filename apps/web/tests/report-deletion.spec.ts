@@ -721,7 +721,7 @@ for (const width of [1440, 390]) {
       await expect.poll(() => fixture.submitted()).toBe(1)
       release()
       await expect(page.getByRole('article')).toHaveCount(2)
-      await expect(page.getByText(mode === 'rejected' ? /Action rejected/ : /Response uncertain/).first()).toBeVisible()
+      await expect(page.getByTestId('game-error-banner')).toContainText(mode === 'rejected' ? 'Action rejected' : 'We’re checking whether this order went through.')
       expect(fixture.headers.every(r => !r.hidden)).toBe(true)
       expect(fixture.submitted()).toBe(1)
       await diagnosticScreenshot(page, { path: `test-results/bulk-${mode}-${width}x900.png`, fullPage: true })
@@ -817,7 +817,8 @@ test.describe('report touch actions', () => {
         const submitted = fixture.submitted()
         await remove.tap({ position: { x, y } })
         await expect.poll(fixture.submitted).toBe(submitted + 1)
-        await expect(row).toContainText('Action rejected: Not Found')
+        await expect(page.getByTestId('game-error-banner')).toContainText('Action rejected: Not Found')
+        await expect(row.getByRole('alert')).toHaveCount(0)
         await expect(remove).toBeEnabled()
         const removeBox = (await remove.boundingBox())!
         const rowBox = (await row.boundingBox())!
