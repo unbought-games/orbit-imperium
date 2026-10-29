@@ -15,6 +15,7 @@ import {
 } from './routes'
 import { validateGalaxySearch } from './galaxy-location'
 import { routeTarget } from './route-target'
+import { catalogSlug } from './catalog-routes'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
@@ -260,8 +261,33 @@ export function GameShell() {
                 <div className={styles.masthead}>
                   {body ? (
                     <ResourceStrip
+                      key={`${body.id}:${location.pathname}`}
                       view={view}
                       body={body}
+                      renderStorageWarning={(building, warning) =>
+                        resolveDestination(
+                          {
+                            universe: view.binding.universe,
+                            page: 'resources',
+                            body: body.id,
+                            item: catalogSlug(building),
+                          },
+                          view,
+                        ).available ? (
+                          <Link
+                            {...routeTarget(
+                              universeName,
+                              'resources',
+                              body.id,
+                              building,
+                            )}
+                          >
+                            {warning}
+                          </Link>
+                        ) : (
+                          warning
+                        )
+                      }
                       energyLink={
                         resolveDestination(
                           {

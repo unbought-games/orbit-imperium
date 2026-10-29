@@ -3,7 +3,8 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
 }
-.warning {
+.warning,
+.warning a {
   color: var(--accent);
 }
 @media (max-width: 767px) {
