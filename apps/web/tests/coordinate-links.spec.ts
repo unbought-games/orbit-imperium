@@ -254,6 +254,7 @@ test('planet selector is one target while empire coordinates browse without chan
       await page.mouse.click(point.x, point.y)
       await expect(page.getByRole('listbox')).toBeVisible()
       await page.keyboard.press('Escape')
+      await expect(page.getByRole('listbox')).toHaveCount(0)
       await expect(selector).toBeFocused()
       await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
     }
