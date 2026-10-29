@@ -143,20 +143,81 @@ describe('live HUD sources', () => {
     expect(changedHudTargets(empty, first)).toEqual([
       { kind: 'report', id: 'report' },
     ])
+  })
+  it('treats historical and newly received spy contacts as regular unread intelligence', () => {
+    const state = fixture()
+    const header = {
+      id: 'contact',
+      kind: 'SpyContact',
+      observed_at: 1,
+      read: false,
+      hidden: false,
+    }
+    state.reportHeaders.set(header.id, { header, revision: '1' })
+    expect(orbAppearance(state, [])).toEqual({
+      tone: 'champagne',
+      icon: 'message',
+    })
+    expect(unreadBadgeCount(state)).toBe(1)
+    const target = { kind: 'report' as const, id: header.id }
+    expect(noticeContent(state, target)).toMatchObject({
+      tone: 'champagne',
+      icon: 'scan',
+    })
+    expect(orbAppearance(state, [{ ...target, shownAt: state.now }])).toEqual({
+      tone: 'champagne',
+      icon: 'message',
+    })
+    for (const dismissed of [
+      { read: true, hidden: false },
+      { read: false, hidden: true },
+    ]) {
+      state.reportHeaders.set(header.id, {
+        header: { ...header, ...dismissed },
+        revision: '2',
+      })
+      expect(orbAppearance(state, []).tone).toBe('ice')
+      expect(unreadBadgeCount(state)).toBe(0)
+    }
+  })
+  it('reserves red for active attacks even when probes arrive later', () => {
+    const state = fixture()
+    const probe = {
+      sender: 'enemy',
+      origin: { galaxy: 1, system: 2, position: 3 },
+      target: 'home',
+      mission: 'Espionage' as const,
+      arrival_at: 9000,
+      ships: { visibility: 'Unknown' as const },
+    }
+    state.view.missions.incoming = [probe]
+    const target = { kind: 'incoming' as const, id: incomingKey(probe) }
+    expect(noticeContent(state, target)).toMatchObject({
+      tone: 'champagne',
+      icon: 'scan',
+    })
+    expect(orbAppearance(state, []).tone).toBe('ice')
+    const attack = { ...probe, mission: 'Attack' as const }
+    state.view.missions.incoming = [attack, probe]
+    expect(orbAppearance(state, [])).toEqual({ tone: 'red', icon: 'attack' })
     expect(
-      orbAppearance(
-        {
-          ...first,
-          reportHeaders: new Map([
-            [
-              'report',
-              { header: { ...report, kind: 'SpyContact' }, revision: '1' },
-            ],
-          ]),
-        },
-        [],
-      ).tone,
+      noticeContent(state, { kind: 'incoming', id: incomingKey(attack) })?.tone,
     ).toBe('red')
+    state.reportHeaders.set('contact', {
+      header: {
+        id: 'contact',
+        kind: 'SpyContact',
+        observed_at: 1,
+        read: false,
+        hidden: false,
+      },
+      revision: '1',
+    })
+    state.view.missions.incoming = [probe]
+    expect(orbAppearance(state, [])).toEqual({
+      tone: 'champagne',
+      icon: 'message',
+    })
   })
   it('uses authoritative fleet timing and shared slots; never invents an arrival before the snapshot', () => {
     const state = fixture()
