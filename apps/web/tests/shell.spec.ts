@@ -2260,7 +2260,13 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await page.addInitScript(() => {
         const events: string[] = []
         Object.assign(window, { uiMotionEvents: events })
-        document.addEventListener('animationstart', event => { if (!(event.target instanceof Element && event.target.closest('[data-command-hud]'))) events.push('animation') }, true)
+        document.addEventListener('animationstart', event => {
+          const target = event.target
+          const isWealthCue = target instanceof Element &&
+            target.closest('[aria-label="Empire resource totals"] dl') &&
+            /wealthGuide(Glow|Pulse)/.test((event as AnimationEvent).animationName)
+          if (!(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue) events.push('animation')
+        }, true)
         document.addEventListener('transitionrun', event => { if (!(event.target instanceof Element && event.target.closest('[data-command-hud]'))) events.push('transition') }, true)
         const start = document.startViewTransition.bind(document)
         document.startViewTransition = (...args) => {
@@ -2268,15 +2274,21 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           return start(...args)
         }
       })
-      // Navigation stays motionless; the explicitly animated command HUD is
-      // checked separately, and the intentional hostile-fleet signal has
+      // Navigation stays motionless; the explicitly animated command HUD and
+      // wealth-guide entry cue are checked separately. The hostile-fleet signal has
       // its own coverage, so keep this fixture free of incoming threats.
       const purchases = await shellFixture(page, {
         protocol: 4,
         missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
       })
       const assertStill = async () => {
-        expect(await page.evaluate(() => document.getAnimations().filter(animation => { const target = (animation.effect as KeyframeEffect | null)?.target; return !(target instanceof Element && target.closest('[data-command-hud]')) }).length)).toBe(0)
+        expect(await page.evaluate(() => document.getAnimations().filter(animation => {
+          const target = (animation.effect as KeyframeEffect | null)?.target
+          const isWealthCue = animation instanceof CSSAnimation && target instanceof Element &&
+            target.closest('[aria-label="Empire resource totals"] dl') &&
+            /wealthGuide(Glow|Pulse)/.test(animation.animationName)
+          return !(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue
+        }).length)).toBe(0)
         expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
       }
       await assertStill()
