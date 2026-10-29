@@ -12,6 +12,7 @@ import { routeTarget } from '../shell/route-target'
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
 import { useRowLink } from '../ui/use-row-link'
+import rowLinkStyles from '../ui/row-link.module.css'
 import { Heading, Text } from '../ui/typography'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { formatWholeNumber } from '../ui/whole-number'
@@ -137,7 +138,7 @@ export function MissionFleetCard({
   return (
     <Container
       {...rowProps}
-      className={fleetStyles.card}
+      className={`${fleetStyles.card} ${rowLinkStyles.row}`}
       data-flight-tone={ownFleetTone(fleet.intent.mission)}
       aria-label={`${fleet.intent.mission} fleet`}
     >
@@ -150,7 +151,7 @@ export function MissionFleetCard({
           {!detail && linkEnabled ? (
             <Link
               ref={linkRef}
-              className={fleetStyles.rowLink}
+              className={rowLinkStyles.link}
               {...routeTarget(universeName, 'fleets', origin, fleet.id)}
               aria-label={`View ${fleet.intent.mission} ${fleet.leg.toLowerCase()} fleet`}
             >

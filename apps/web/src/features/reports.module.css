@@ -221,12 +221,26 @@
 
 .rowActions {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   max-width: 160px;
 }
 .rowActions .compactVisibility > button {
-  grid-column: 2;
+  grid-column: 1;
+  justify-self: end;
+}
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .reportLink {
+    /* The stretched link already fills the row; keep wrapped headings compact. */
+    min-height: 24px;
+  }
+  .rowActions button {
+    --button-min-size: 48px;
+  }
+  .rowActions button > svg {
+    width: 20px;
+    height: 20px;
+  }
 }
 .selection {
   display: flex;

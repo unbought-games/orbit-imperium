@@ -1,0 +1,69 @@
+.link {
+  display: inline-flex;
+  min-height: 0;
+  min-width: 44px;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+}
+.link:hover {
+  color: inherit;
+}
+.link:focus-visible {
+  outline: none;
+}
+.row[data-clickable] {
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    border-color 120ms,
+    box-shadow 120ms;
+}
+.row:has(.link:focus-visible) {
+  outline: 2px solid var(--flight, var(--accent));
+  outline-offset: 3px;
+}
+@media (hover: hover) {
+  .row[data-clickable]:hover:not(
+      :has(
+        :is(
+          button,
+          a:not(.link),
+          input,
+          select,
+          textarea,
+          summary,
+          [data-coordinate]
+        ):hover
+      )
+    ) {
+    border-color: color-mix(
+      in srgb,
+      var(--flight, var(--accent)) 55%,
+      transparent
+    );
+    background-color: color-mix(
+      in srgb,
+      var(--flight, var(--accent)) 7%,
+      transparent
+    );
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--flight, var(--accent)) 12%, transparent);
+  }
+}
+.row[data-clickable][data-pressed],
+.row[data-clickable]:has(.link:active) {
+  border-color: var(--flight, var(--accent));
+  background-color: color-mix(
+    in srgb,
+    var(--flight, var(--accent)) 15%,
+    transparent
+  );
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--flight, var(--accent)) 40%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .row[data-clickable] {
+    transition: none;
+  }
+}

@@ -143,7 +143,8 @@ impl Ruleset {
                 .any(|k| !artifact.buildings.contains_key(k))
             || artifact.buildings.keys().any(|k| {
                 !Building::MVP.contains(k)
-                    && (*k != Building::FusionReactor || artifact.progression.is_none())
+                    && (!matches!(k, Building::FusionReactor | Building::MissileSilo)
+                        || artifact.progression.is_none())
             })
         {
             return Err(RulesError::InvalidReference);
@@ -218,7 +219,13 @@ impl Ruleset {
                 .progression
                 .as_ref()
                 .ok_or(RulesError::InvalidReference)?;
-            if w.combat.units.len() != progression.unit_costs.len() {
+            if w.combat.units.len()
+                != progression
+                    .unit_costs
+                    .iter()
+                    .filter(|u| !matches!(u.item, ManufacturedItem::Missile(_)))
+                    .count()
+            {
                 return Err(RulesError::InvalidReference);
             }
             for unit in &w.combat.units {

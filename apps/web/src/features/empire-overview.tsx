@@ -1,3 +1,6 @@
+import { useStore } from 'zustand'
+import { currentServerTime } from '../client-model/game-projection'
+import { MissileFlight } from './missile-flight'
 import { FleetCargo } from './fleet-cargo'
 import { MissionFleetCard } from './mission-fleet-card'
 import { EmptyState } from '../ui/empty-state'
@@ -90,18 +93,28 @@ function FlightList({
   )
   const countdown = useCountdown(view.sampled_at, 'compact')
   const { universeName, model } = useGameSession()
+  const now = useStore(model.store, currentServerTime)
   const available = resolveDestination(
     { universe: view.binding.universe, page: 'fleets', body },
     view,
   ).available
   const ownFleets =
-    view.protocol === 4
+    fullRows && view.protocol === 4
       ? new Map(view.missions.fleets.map((fleet) => [fleet.id, fleet]))
+      : null
+  const ownMissiles =
+    fullRows && view.protocol === 4
+      ? new Map(
+          (view.missiles ?? [])
+            .filter((flight) => flight.outgoing)
+            .map((flight) => [flight.id, flight]),
+        )
       : null
   return (
     <ol className={fullRows ? styles.fleetRows : styles.flightList}>
       {flights.map((flight) => {
-        const fleet = ownFleets?.get(flight.key)
+        const fleet =
+          flight.kind === 'fleet' ? ownFleets?.get(flight.key) : undefined
         if (fullRows && view.protocol === 4 && fleet) {
           return (
             <MissionFleetCard
@@ -111,6 +124,21 @@ function FlightList({
               view={view}
               fleet={fleet}
               detail={false}
+              origin={body}
+              linkEnabled={available}
+            />
+          )
+        }
+        const missile =
+          flight.kind === 'missile' ? ownMissiles?.get(flight.key) : undefined
+        if (fullRows && view.protocol === 4 && missile) {
+          return (
+            <MissileFlight
+              key={flight.key}
+              as="li"
+              flight={missile}
+              view={view}
+              now={now}
               origin={body}
               linkEnabled={available}
             />
@@ -152,7 +180,9 @@ function FlightList({
               )}
               <span className={styles.route}>{flight.route}</span>
               <small>{flight.ships || 'No ships reported'}</small>
-              {flight.leg !== 'Incoming' && <FleetCargo cargo={flight.cargo} />}
+              {flight.kind === 'fleet' && flight.leg !== 'Incoming' && (
+                <FleetCargo cargo={flight.cargo} />
+              )}
             </div>
             {available && (
               <Link

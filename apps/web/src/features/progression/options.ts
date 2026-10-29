@@ -164,6 +164,7 @@ export function technologyRequest(
       return { type: 'Research', host: body, research: key.id }
     case 'Ship':
     case 'Defense':
+    case 'Missile':
       if (
         !/^[1-9][0-9]*$/.test(quantity) ||
         quantity.length > 19 ||

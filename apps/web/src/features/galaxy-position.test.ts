@@ -13,6 +13,7 @@ it.each([
     const markup = renderToStaticMarkup(
       createElement(GalaxyDebris, {
         debris: { field_identity: 'field', metal, crystal },
+        target: '[1:371:2]',
       }),
     )
     for (const full of [m, c]) expect(markup).toContain(`title="${full}"`)

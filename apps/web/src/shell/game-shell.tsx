@@ -15,6 +15,7 @@ import {
 } from './routes'
 import { validateGalaxySearch } from './galaxy-location'
 import { routeTarget } from './route-target'
+import { catalogSlug } from './catalog-routes'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
@@ -246,7 +247,10 @@ export function GameShell() {
               >
                 <span className={styles.hostileStatus} role="status">
                   {incomingHostile
-                    ? 'Incoming hostile fleet: attack or espionage detected.'
+                    ? view.protocol === 4 &&
+                      view.missiles?.some((f) => !f.outgoing)
+                      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
+                      : 'Incoming hostile fleet: attack or espionage detected.'
                     : ''}
                 </span>
                 <div className={styles['mobile-context']}>
@@ -262,6 +266,30 @@ export function GameShell() {
                     <ResourceStrip
                       view={view}
                       body={body}
+                      renderStorageWarning={(building, warning) =>
+                        resolveDestination(
+                          {
+                            universe: view.binding.universe,
+                            page: 'resources',
+                            body: body.id,
+                            item: catalogSlug(building),
+                          },
+                          view,
+                        ).available ? (
+                          <Link
+                            {...routeTarget(
+                              universeName,
+                              'resources',
+                              body.id,
+                              building,
+                            )}
+                          >
+                            {warning}
+                          </Link>
+                        ) : (
+                          warning
+                        )
+                      }
                       energyLink={
                         resolveDestination(
                           {

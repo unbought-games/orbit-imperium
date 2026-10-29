@@ -368,6 +368,19 @@ pub(crate) async fn persist_changes(
         result_ids.extend(
             world
                 .records
+                .missiles
+                .keys()
+                .filter(|id| {
+                    !facts
+                        .world
+                        .as_ref()
+                        .is_some_and(|w| w.records.missiles.contains_key(id))
+                })
+                .map(ToString::to_string),
+        );
+        result_ids.extend(
+            world
+                .records
                 .fleets
                 .keys()
                 .filter(|id| {

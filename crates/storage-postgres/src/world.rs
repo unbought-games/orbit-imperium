@@ -278,6 +278,23 @@ pub(crate) async fn load_selected(
             s.coverage.bodies.insert(id);
         }
     }
+    let missile_id = match input {
+        Input::Event(ScheduledEvent::MissileImpact { flight, .. }) => Some(flight.0),
+        _ => None,
+    };
+    let missiles: Vec<MissileFlight> = sqlx::query_scalar::<_, serde_json::Value>(
+        "SELECT data FROM missile_flights WHERE universe=$1 AND (data->>'status'='InFlight' OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR data->'terms'->'intent'->'target'->>'expected_owner'=$5) ORDER BY id"
+    ).bind(u.0).bind(missile_id).bind(selected.all).bind(&owners).bind(selected.incoming_for.map(|p|p.to_string())).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?;
+    for f in &missiles {
+        s.coverage.bodies.insert(f.terms.intent.target.id);
+        s.coverage.bodies.insert(f.terms.interceptor_body);
+    }
+    if let Input::Command(Command::World {
+        action: WorldAction::LaunchMissiles { intent, .. },
+    }) = input
+    {
+        s.coverage.bodies.extend([intent.origin, intent.target.id]);
+    }
     let report = match input {
         Input::Command(Command::World {
             action:
@@ -459,6 +476,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     s.world = Some(WorldFacts {
         planet_slots,
         records: WorldRecords {
+            missiles: missiles.into_iter().map(|f| (f.id, f)).collect(),
             colonies: colonies.into_iter().map(|c| (c.body, c)).collect(),
             policies: policies.into_iter().map(|x| (x.player, x)).collect(),
             activity: activity.into_iter().map(|x| (x.body, x)).collect(),
@@ -615,6 +633,11 @@ pub(crate) async fn save(
             .execute(&mut **tx)
             .await
             .map_err(db_error)?;
+    }
+    for (id, f) in &c.records.missiles {
+        if old.missiles.get(id) != Some(f) {
+            sqlx::query("INSERT INTO missile_flights(universe,id,owner,data) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET data=excluded.data WHERE missile_flights.universe=excluded.universe").bind(u.0).bind(id.0).bind(f.owner.0).bind(sqlx::types::Json(f)).execute(&mut **tx).await.map_err(db_error)?;
+        }
     }
     for (x, f) in &c.records.fleets {
         if old.fleets.get(x) != Some(f) {

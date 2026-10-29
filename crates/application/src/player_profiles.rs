@@ -106,14 +106,13 @@ impl<S: GameStore> GameService<S> {
                 }
             }
             ProfileSource::Incoming => {
+                let view = self.world_view(p, q.context).await?.facts;
+                players.extend(view.missions.incoming.into_iter().map(|f| f.sender));
                 players.extend(
-                    self.world_view(p, q.context)
-                        .await?
-                        .facts
-                        .missions
-                        .incoming
+                    view.missiles
                         .into_iter()
-                        .map(|fleet| fleet.sender),
+                        .filter(|f| !f.outgoing)
+                        .map(|f| f.attacker),
                 );
             }
             ProfileSource::Report { report } => {
@@ -141,6 +140,7 @@ pub fn report_profile_players(payload: &serde_json::Value) -> BTreeSet<PlayerId>
     let mut players = BTreeSet::new();
     match payload["kind"].as_str() {
         Some("Espionage") => add_player(&mut players, &payload["target"]["owner"]),
+        Some("MissileImpact") => add_player(&mut players, &payload["attacker"]),
         Some("SpyContact") => add_player(&mut players, &payload["sender"]),
         Some("Combat") => {
             for key in [
