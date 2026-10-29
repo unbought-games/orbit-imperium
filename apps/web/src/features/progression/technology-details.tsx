@@ -21,6 +21,7 @@ import { TechnicalData } from './technical-data'
 import { catalogContent } from './catalog-content'
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { components } from '../../contracts'
+import { ScrapMissiles, SiloSummary } from '../missile-inventory'
 import { ResearchWorkDetails } from './research-work-details'
 import { researchProgress } from '../../client-model/research-progress'
 import { currentServerTime } from '../../client-model/game-projection'
@@ -72,7 +73,10 @@ export function TechnologyDetails({
       ? research
       : null
   const quantityErrorId = useId()
-  const manufacture = entry.key.kind === 'Ship' || entry.key.kind === 'Defense'
+  const manufacture =
+    entry.key.kind === 'Ship' ||
+    entry.key.kind === 'Defense' ||
+    entry.key.kind === 'Missile'
   const quantityError =
     manufacture &&
     quantity !== '' &&
@@ -368,6 +372,12 @@ export function TechnologyDetails({
             />
           )}
         </DetailSection>
+      )}
+      {entry.key.kind === 'Missile' && (
+        <>
+          <SiloSummary body={body} />
+          <ScrapMissiles coordinator={model} body={body} item={entry.key.id} />
+        </>
       )}
       <TechnicalData
         key={`${entry.key.kind}:${entry.key.id}`}

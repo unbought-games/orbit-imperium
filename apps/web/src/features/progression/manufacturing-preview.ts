@@ -68,6 +68,17 @@ export function manufacturingPreview(
     count > 1n
   )
     blockers.push(block('CapacityReserved'))
+  if (unit.item.kind === 'Missile') {
+    if (!body.silo || !unit.silo_slots)
+      blockers.push(block('UnavailableContent'))
+    else if (
+      BigInt(body.silo.occupied) +
+        BigInt(body.silo.reserved) +
+        n * BigInt(unit.silo_slots) >
+      BigInt(body.silo.total)
+    )
+      blockers.push(block('CapacityReserved'))
+  }
   const names = {
     metal: 'Metal',
     crystal: 'Crystal',

@@ -7,7 +7,7 @@ use std::fmt;
 mod content;
 mod patch;
 
-pub const STANDARD_RULES_RELEASE: &str = "0.7.0";
+pub const STANDARD_RULES_RELEASE: &str = "0.8.0";
 
 #[derive(Debug, Serialize)]
 pub struct RulesUpgradeConflict {
@@ -87,7 +87,15 @@ pub fn upgrade_standard_rules(current: &Ruleset) -> Result<Ruleset, StandardRule
     if !conflicts.is_empty() {
         return Err(StandardRulesError::Conflicts(conflicts));
     }
-    let artifact = serde_json::from_value(next).map_err(|_| RulesError::Malformed)?;
+    let mut artifact: RulesArtifact =
+        serde_json::from_value(next).map_err(|_| RulesError::Malformed)?;
+    // Partial content upgrades must converge regardless of which rows were absent.
+    artifact
+        .progression
+        .as_mut()
+        .ok_or(RulesError::InvalidReference)?
+        .unit_costs
+        .sort_by_key(|u| u.item);
     let next = Ruleset::from_artifact(artifact, current.speed)?;
     validate_rules_update(current, &next)?;
     Ok(next)

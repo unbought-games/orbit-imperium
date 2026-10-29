@@ -161,6 +161,12 @@ async fn settle_and_initialize(
     state.profile_hash = next.hash.clone();
     for body in state.bodies.values() {
         validate_body(state, body.id, next).map_err(|_| StoreError::CorruptData)?;
+        if let Some(rule) = missile_rules(next) {
+            let slots = silo_capacity(state, body, rule).map_err(|_| StoreError::CorruptData)?;
+            if slots.occupied + slots.reserved > slots.total {
+                return Err(StoreError::GameRejected(GameError::CapacityReserved));
+            }
+        }
         // Validate new production/capacity terms before publishing the profile.
         settle_rules_boundary(
             body,

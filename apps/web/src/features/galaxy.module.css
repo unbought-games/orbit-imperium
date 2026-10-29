@@ -41,7 +41,7 @@
 .positionList {
   list-style: none;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) minmax(180px, 0.7fr) 156px;
+  grid-template-columns: 52px minmax(0, 1fr) minmax(180px, 0.7fr) max-content;
   column-gap: 14px;
   row-gap: 0;
   margin: 0;
@@ -226,6 +226,10 @@
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
+}
+.quickActions > button {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .actionIcon {
   display: none;

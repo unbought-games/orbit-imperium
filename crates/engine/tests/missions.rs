@@ -1571,7 +1571,9 @@ fn sequential_defense_raids(defense: DefenseId) {
             }
         }
         for body in s.bodies.values_mut() {
-            body.levels.insert(Building::FusionReactor, 0);
+            for key in r.building_keys() {
+                body.levels.entry(key).or_insert(0);
+            }
         }
     }
     // Heavier defenses need a larger attack to exercise destruction and recovery.
@@ -2881,3 +2883,6 @@ fn large_shield_dome_raid_reports_destruction_and_recovery_without_defense_debri
 
 #[path = "missions/bomber.rs"]
 mod bomber;
+
+#[path = "missions/missiles.rs"]
+mod missiles;

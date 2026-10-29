@@ -141,7 +141,16 @@ pub(super) fn edit_body(
     )?
     .into_iter()
     .map(|(k, n)| (ManufacturedItem::Defense(k), n));
-    for (item, n) in ships.chain(defenses) {
+    let missiles = canonical_map(
+        &e.missiles,
+        r.artifact.catalog.iter().filter_map(|e| match e.key {
+            CatalogKey::Missile(m) if e.enabled => Some(m),
+            _ => None,
+        }),
+    )?
+    .into_iter()
+    .map(|(m, n)| (ManufacturedItem::Missile(m), n));
+    for (item, n) in ships.chain(defenses).chain(missiles) {
         let key = item.catalog_key();
         let at = s
             .inventories
@@ -183,6 +192,12 @@ pub(super) fn edit_body(
                 count: target,
                 revision: 0,
             })
+        }
+    }
+    if let Some(rule) = missile_rules(r) {
+        let slots = silo_capacity(s, &b, rule).map_err(error)?;
+        if slots.occupied + slots.reserved > slots.total {
+            return Err("missile inventory exceeds silo capacity".into());
         }
     }
     b.revision += 1;
@@ -287,6 +302,13 @@ pub(super) fn restore_values_at(
             "building" => CatalogKey::Building(catalog_key(&v.item, r.building_keys())?),
             "research" => CatalogKey::Research(catalog_key(&v.item, r.research_keys())?),
             "ship" => CatalogKey::Ship(catalog_key(&v.item, r.artifact.ships.keys().copied())?),
+            "missile" => CatalogKey::Missile(catalog_key(
+                &v.item,
+                [
+                    MissileId::AntiBallisticMissile,
+                    MissileId::InterplanetaryMissile,
+                ],
+            )?),
             "defense" => CatalogKey::Defense(catalog_key(
                 &v.item,
                 r.artifact.catalog.iter().filter_map(|e| match e.key {

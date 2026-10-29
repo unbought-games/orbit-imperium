@@ -146,7 +146,9 @@ impl ProgressionRules {
                             | DefenseId::IonCannon
                             | DefenseId::PlasmaTurret
                     ),
-                    ManufacturedItem::Missile(_) => true,
+                    ManufacturedItem::Missile(_) => {
+                        a.world.as_ref().is_none_or(|w| w.missiles.is_none())
+                    }
                 }
             {
                 return Err(RulesError::InvalidReference);
@@ -218,6 +220,8 @@ pub enum ProgressionMaterial {
         required_energy: i64,
     },
     Manufacture {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        silo_slots: Option<i64>,
         profile_hash: Hash,
         body: BodyId,
         item: ManufacturedItem,
@@ -540,6 +544,11 @@ pub fn manufacture_terms(
             .ok_or(GameError::NumericRange)?,
     )?;
     Ok(ProgressionMaterial::Manufacture {
+        silo_slots: if let ManufacturedItem::Missile(m) = item {
+            missile_rules(rules).map(|rule| rule.weight(m))
+        } else {
+            None
+        },
         profile_hash: rules.hash.clone(),
         body: body.id,
         item,

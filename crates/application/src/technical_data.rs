@@ -97,6 +97,24 @@ pub(crate) fn technical_data(
             cost_scaling(&mut data, rule, research == ResearchId::Astrophysics);
             research_data(&mut data, research, rules);
         }
+        CatalogKey::Missile(item) => {
+            if let Some(m) = missile_rules(rules) {
+                data.fact("Silo slots", m.weight(item).to_string());
+                if item == MissileId::AntiBallisticMissile {
+                    data.fact("Interception", "Each interceptor automatically stops one incoming missile at impact. Completed interceptors defend immediately.");
+                } else {
+                    data.fact(
+                        "Range",
+                        format!(
+                            "{} × completed Impulse Drive level {:+} systems in the same galaxy.",
+                            m.range_factor, m.range_offset
+                        ),
+                    );
+                    data.fact("Travel",format!("({} + {} × system distance) seconds / universe speed, rounded up to milliseconds. Fixed at launch; no recall.",m.base_seconds,m.seconds_per_system));
+                    data.fact("Damage",format!("{} base attack, +10% per Weapons Technology level at launch. Target Armour applies at impact; shields are bypassed. Defense losses are permanent.",m.base_attack));
+                }
+            }
+        }
         CatalogKey::Defense(defense) => {
             data.combat = combat_statistics(rules, ManufacturedItem::Defense(defense))?;
             if let Some(world) = &rules.artifact.world {
@@ -143,6 +161,7 @@ fn building_data(data: &mut TechnicalData, building: Building, rules: &Ruleset) 
         }
     }
     match building {
+        Building::MissileSilo => { if let Some(m) = missile_rules(rules) { data.fact("Silo capacity",format!("{} slots per completed level. Anti-Ballistic Missiles use {} slot(s); Interplanetary Missiles use {}. Queued missiles reserve capacity immediately.",m.slots_per_level,m.abm_weight,m.ipm_weight)); data.fact("Interception", "Interceptors defend automatically at impact. A planetary silo also supplies its future moon; moons cannot build silos."); } },
         Building::MetalStorage | Building::CrystalStorage | Building::DeuteriumTank => {
             data.storage_capacities = r.progression.as_ref().map(|p| p.storage_capacities.iter().map(ToString::to_string).collect());
             data.fact("Storage", "Production stops for this resource at capacity. Incoming deliveries can exceed capacity.");

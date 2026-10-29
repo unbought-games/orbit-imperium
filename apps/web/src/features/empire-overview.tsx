@@ -127,7 +127,9 @@ function FlightList({
             )}
             <span className={styles.route}>{flight.route}</span>
             <small>{flight.ships || 'No ships reported'}</small>
-            {flight.leg !== 'Incoming' && <FleetCargo cargo={flight.cargo} />}
+            {flight.kind === 'fleet' && flight.leg !== 'Incoming' && (
+              <FleetCargo cargo={flight.cargo} />
+            )}
           </div>
           {available && (
             <Link

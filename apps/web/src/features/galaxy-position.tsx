@@ -36,6 +36,7 @@ export function GalaxyPosition({
   flights = [],
   now,
   espionage,
+  missileAction,
 }: {
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
@@ -51,6 +52,7 @@ export function GalaxyPosition({
   ) => void
   flights?: GalaxyFlight[]
   now?: number
+  missileAction?: ReactNode
   espionage?: {
     send: () => void
     busy: boolean
@@ -170,6 +172,7 @@ export function GalaxyPosition({
               }
             />
           )}
+          {missileAction}
           <GalaxyActionMenu
             target={target}
             coordinates={coordinates}

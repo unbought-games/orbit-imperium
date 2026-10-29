@@ -245,7 +245,10 @@ export function GameShell() {
               >
                 <span className={styles.hostileStatus} role="status">
                   {incomingHostile
-                    ? 'Incoming hostile fleet: attack or espionage detected.'
+                    ? view.protocol === 4 &&
+                      view.missiles?.some((f) => !f.outgoing)
+                      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
+                      : 'Incoming hostile fleet: attack or espionage detected.'
                     : ''}
                 </span>
                 <div className={styles['mobile-context']}>

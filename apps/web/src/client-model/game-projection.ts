@@ -20,6 +20,7 @@ export type SubmittedQuote =
   | BoundQuote
   | Quote
   | S['FleetTerms4']
+  | S['MissileTerms4']
 // These are submission inputs and server facts, never a second resource balance.
 export type SubmittedIntent = S['SubmittedIntent']
 
@@ -64,6 +65,10 @@ export function activeAttempt(attempt: Attempt, view: BoundView | null) {
 }
 
 export function commandBody(command: Command, view: BoundView | null) {
+  if (command.type === 'World' && command.action.type === 'LaunchMissiles')
+    return command.action.intent.origin
+  if (command.type === 'World' && command.action.type === 'ScrapMissiles')
+    return command.action.body
   if (command.type === 'World' && command.action.type === 'RenamePlanet')
     return command.action.body
   if ('body' in command) return command.body
@@ -314,7 +319,8 @@ export function matchesQuote(
   if ('intent' in quote)
     return (
       command.type === 'World' &&
-      command.action.type === 'LaunchFleet' &&
+      (command.action.type === 'LaunchFleet' ||
+        command.action.type === 'LaunchMissiles') &&
       command.action.expected_terms_hash === quote.terms_hash &&
       quote.profile_hash === view.profile_hash &&
       canonical(command.action.intent) === canonical(quote.intent)
@@ -578,7 +584,7 @@ function payment(
         : null
   if (!fleet) return null
   const fuel =
-    intent.quote && 'intent' in intent.quote
+    intent.quote && 'fuel' in intent.quote
       ? intent.quote.fuel
       : (legacy?.fuel ??
         (terms?.type === 'Transport' ? terms.legacy.fuel : undefined))

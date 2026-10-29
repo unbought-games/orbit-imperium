@@ -40,6 +40,26 @@ pub(super) fn world_projection(
     progression.sampled_at = snapshot.at;
     progression.capabilities = world_capabilities(progression.capabilities, &snapshot.rules);
     Ok(BoundView4 {
+        missiles: world
+            .records
+            .missiles
+            .values()
+            .filter(|f| {
+                f.status == MissileStatus::InFlight
+                    && (f.owner == viewer || f.terms.intent.target.expected_owner == viewer)
+            })
+            .map(|f| MissileFlightView {
+                id: f.id,
+                attacker: f.owner,
+                origin: f.terms.source_coordinates,
+                target: f.terms.target_coordinates,
+                target_body: f.terms.intent.target.id,
+                target_kind: f.terms.intent.target.expected_kind,
+                count: f.terms.intent.count.to_string(),
+                arrival_at: f.due_at,
+                outgoing: f.owner == viewer,
+            })
+            .collect(),
         has_unread_reports: snapshot.unread_report.is_some(),
         player_names: Default::default(),
         progression,
@@ -168,6 +188,13 @@ fn world_capabilities(
         });
         capabilities.push(CapabilityState {
             capability: "Deploy".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+    }
+    if missile_rules(rules).is_some() {
+        capabilities.push(CapabilityState {
+            capability: "Missiles".into(),
             enabled: true,
             reason: "Available".into(),
         });

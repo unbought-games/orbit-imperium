@@ -243,5 +243,28 @@ pub(super) fn patches() -> Vec<Patch> {
         false,
         fusion["requirements"].clone(),
     ));
+    let missiles = read(include_bytes!(
+        "../../../../rules/content/missile-warfare.json"
+    ));
+    out.push(Patch::field(
+        "/buildings/MissileSilo",
+        missiles["building"].clone(),
+    ));
+    out.push(catalog(
+        "Building",
+        "MissileSilo",
+        false,
+        missiles["requirements"].clone(),
+    ));
+    out.push(Patch::field("/world/missiles", missiles["rules"].clone()));
+    for id in ["AntiBallisticMissile", "InterplanetaryMissile"] {
+        let entry = &missiles[id];
+        out.push(catalog("Missile", id, false, entry["requirements"].clone()));
+        out.push(Patch::entry(
+            "/progression/unit_costs",
+            "item",
+            json!({"item":{"kind":"Missile","id":id},"cost":entry["cost"]}),
+        ));
+    }
     out
 }
