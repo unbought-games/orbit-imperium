@@ -1,3 +1,4 @@
+import { empireTotals } from '../features/empire-model'
 import { describe, expect, it, vi } from 'vitest'
 import { galaxyFlights, pendingProbe, probeAvailability } from './galaxy-fleets'
 import { sendGalaxyProbe } from './send-galaxy-probe'
@@ -16,6 +17,7 @@ import {
   matchesQuote,
   canSubmitIntent,
   pendingFleetLaunches,
+  pendingFleetCargo,
   occupiedFleetSlots,
   snapshotNeedsReceipt,
   pendingBody,
@@ -718,7 +720,7 @@ describe('one live game projection', () => {
     attempt.status = 'rejected'
     expect(pendingBody(s, 'body')).toBe(false)
   })
-  it('reserves fleet cargo, fuel and stationed ships together', () => {
+  it('reserves fleet cargo, fuel and stationed ships together without losing wealth during confirmation', () => {
     const s = state()
     const fleet: S['FleetTerms4'] = {
       intent: {
@@ -756,6 +758,13 @@ describe('one live game projection', () => {
       },
       fleet,
     )
+    const wealth = () => empireTotals(projectGameView(s)!, pendingFleetCargo(s))
+    expect(wealth().launching).toEqual(fleet.intent.cargo)
+    expect(wealth().total).toEqual({
+      metal: '1000',
+      crystal: '1000',
+      deuterium: '925',
+    })
     const projected = projectGameView(s)
     expect(projected?.bodies[0].amounts).toEqual({
       metal: '700',
@@ -768,13 +777,30 @@ describe('one live game projection', () => {
     expect(pendingFleetLaunches(s)).toHaveLength(1)
     expect(occupiedFleetSlots(s)).toBe(1)
     launch.status = 'uncertain'
+    expect(wealth().total).toEqual({
+      metal: '1000',
+      crystal: '1000',
+      deuterium: '925',
+    })
     expect(occupiedFleetSlots(s)).toBe(1)
     launch.status = 'pending'
     const savedIntents = s.intents
     s.intents = new Map()
+    expect(pendingFleetCargo(s)).toEqual([])
+    expect(wealth().total).toEqual({
+      metal: '1000',
+      crystal: '1000',
+      deuterium: '1000',
+    })
     expect(occupiedFleetSlots(s)).toBe(1)
     s.intents = savedIntents
     launch.status = 'rejected'
+    expect(pendingFleetCargo(s)).toEqual([])
+    expect(wealth().total).toEqual({
+      metal: '1000',
+      crystal: '1000',
+      deuterium: '1000',
+    })
     expect(occupiedFleetSlots(s)).toBe(0)
     launch.status = 'committed'
     launch.receipt = {
@@ -788,8 +814,14 @@ describe('one live game projection', () => {
       result_ids: ['fleet'],
     }
     expect(occupiedFleetSlots(s)).toBe(1)
+    expect(wealth().total).toEqual({
+      metal: '1000',
+      crystal: '1000',
+      deuterium: '925',
+    })
     if (s.view?.protocol !== 4) throw Error('fixture protocol')
     s.view.viewer_revision = '2'
+    s.view.bodies[0].amounts = projected!.bodies[0].amounts
     s.view.missions.fleets = [
       {
         id: 'fleet',
@@ -808,6 +840,12 @@ describe('one live game projection', () => {
     ]
     expect(occupiedFleetSlots(s)).toBe(1)
     expect(pendingFleetLaunches(s)).toHaveLength(0)
+    expect(pendingFleetCargo(s)).toEqual([])
+    expect(wealth().total).toEqual({
+      metal: '1000',
+      crystal: '1000',
+      deuterium: '925',
+    })
   })
   it('uses one fleet confirmation gate for pending commands, resources, stationed ships and global slots', () => {
     const s = state()
@@ -1453,3 +1491,39 @@ it.each([
     )
   },
 )
+
+it('includes only evidenced legacy launch reservations for owned bodies and active bindings', () => {
+  const s = state()
+  s.view = { ...snapshot(), protocol: 3, capabilities: [] }
+  const command: Command = {
+    type: 'LaunchTransport',
+    origin: 'body',
+    target: 'other',
+    ships: [{ owner: 'p', ship_type: 'SmallCargo', count: '1' }],
+    cargo: { metal: '300', crystal: '100', deuterium: '50' },
+    speed_percent: 100,
+    expected_terms_hash: 'legacy',
+  }
+  const launch = intent(s, command, {
+    profile_hash: 'profile',
+    terms_hash: 'legacy',
+    duration: 10000,
+    target_level: null,
+    cost: { metal: '0', crystal: '0', deuterium: '0' },
+    fuel: '75',
+    capacity: '1000',
+    maximum_payload: '925',
+  })
+  expect(pendingFleetCargo(s)).toEqual([command.cargo])
+  expect(empireTotals(projectGameView(s)!, pendingFleetCargo(s)).total).toEqual(
+    { metal: '1000', crystal: '1000', deuterium: '925' },
+  )
+  s.view.viewer_revision = '2'
+  expect(pendingFleetCargo(s)).toEqual([])
+  s.view.viewer_revision = '1'
+  command.origin = 'foreign'
+  expect(pendingFleetCargo(s)).toEqual([])
+  command.origin = 'body'
+  launch.envelope.binding = { ...launch.envelope.binding, player: 'other' }
+  expect(pendingFleetCargo(s)).toEqual([])
+})

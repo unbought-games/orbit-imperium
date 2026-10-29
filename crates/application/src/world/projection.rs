@@ -18,6 +18,7 @@ pub(super) fn world_projection(
                 .bodies
                 .get(&body.id)
                 .ok_or(ServiceError::InvariantFailure)?;
+            body.diameter_km = Some(genesis.diameter_km);
             body.colony = Some(crate::progression::ColonyDto {
                 diameter_km: genesis.diameter_km,
                 min_temperature: source.max_temperature - 40,
