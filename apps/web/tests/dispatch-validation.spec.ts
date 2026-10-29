@@ -96,6 +96,7 @@ async function setup(page: Page) {
     fuel: '1000000',
     resolves: 0,
     quotes: 0,
+    estimates: 0,
     launches: 0,
     hold: null as ((route: Route) => Promise<void>) | null,
   }
@@ -159,7 +160,8 @@ async function setup(page: Page) {
                 expected_owner: own ? binding.player : id(30),
               })
     } else {
-      state.quotes++
+      if (query.type === 'FleetEstimate') state.estimates++
+      else state.quotes++
       if (query.type === 'FleetEstimate' ? state.estimateError : state.quoteError)
         return route.fulfill({
           status: 422,
@@ -940,6 +942,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
     await page.clock.runFor(1000)
     expect(state.resolves).toBe(0)
     expect(state.quotes).toBe(0)
+    expect(state.estimates).toBe(0)
   }
   // Keep this edit invalid throughout; a temporary valid position can resolve.
   await setDestination(page, { position: '1', system: '500' })
@@ -966,6 +969,7 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   }
   expect(state.resolves).toBe(0)
   expect(state.quotes).toBe(0)
+  expect(state.estimates).toBe(0)
   await setDestination(page, { galaxy: '1' })
   await setDestination(page, { system: '499' })
   await setDestination(page, { position: '15' })
@@ -973,7 +977,8 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   await expect(position).toHaveAttribute('aria-invalid', 'false')
   await page.clock.runFor(1000)
   await expect.poll(() => state.resolves).toBe(1)
-  await expect.poll(() => state.quotes).toBe(1)
+  await expect.poll(() => state.estimates).toBe(1)
+  expect(state.quotes).toBe(0)
 })
 
 test('own-planet attack is actionable, while transport to another owned planet and own-position harvest stay available', async ({
@@ -994,6 +999,7 @@ test('own-planet attack is actionable, while transport to another owned planet a
   // Advance beyond the timing debounce only after the invalid attack is selected.
   await page.clock.runFor(1000)
   expect(state.quotes).toBe(0)
+  expect(state.estimates).toBe(0)
   await page.getByRole('radio', { name: 'Transport', exact: true }).check()
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
@@ -1018,7 +1024,7 @@ test('protection is explained before review, rechecked at review, and launch rac
       .getByRole('status')
       .filter({ hasText: 'Beginner protection prevents' }),
   ).toBeVisible()
-  // Timing now requests read-only quotes before the explicit review step.
+  // Timing requests read-only estimates before the explicit review step.
   expect(state.launches).toBe(0)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 900 })
@@ -1540,6 +1546,8 @@ test('planet renames, removal and origin changes update the picker and preview f
 
 test('selecting a planet invalidates an in-flight review for manual coordinates', async ({ page }) => {
   const state = await setup(page)
+  // Exercise the race after background estimation, which is not a review quote.
+  await expect.poll(() => state.estimates).toBeGreaterThan(0)
   let release!: () => void
   let held = false
   const gate = new Promise<void>(resolve => { release = resolve })
@@ -1558,6 +1566,7 @@ test('selecting a planet invalidates an in-flight review for manual coordinates'
   state.hold = null
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Haven Colony')
+  expect(state.quotes).toBe(1)
 })
 
 
