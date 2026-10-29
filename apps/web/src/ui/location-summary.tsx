@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef } from 'react'
+import type { ComponentPropsWithRef, ComponentPropsWithoutRef } from 'react'
 import { classes } from './classes'
 import styles from './location-summary.module.css'
 
@@ -6,7 +6,7 @@ import styles from './location-summary.module.css'
 export function LocationSummary({
   className,
   ...props
-}: ComponentPropsWithoutRef<'div'>) {
+}: ComponentPropsWithRef<'div'>) {
   return <div {...props} className={classes(styles.summary, className)} />
 }
 export function LocationSummaryMedia({
@@ -44,4 +44,17 @@ export function LocationSummaryActions({
   ...props
 }: ComponentPropsWithoutRef<'div'>) {
   return <div {...props} className={classes(styles.actions, className)} />
+}
+
+export function LocationSummaryDescription({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<'span'>) {
+  return <span {...props} className={classes(styles.description, className)} />
+}
+export function LocationSummaryCoordinates({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<'div'>) {
+  return <div {...props} className={classes(styles.coordinates, className)} />
 }

@@ -1,3 +1,10 @@
+import {
+  LocationSummary,
+  LocationSummaryMedia,
+  LocationSummaryContent,
+  LocationSummaryTitle,
+  LocationSummaryDescription,
+} from '../ui/location-summary'
 import { useRef } from 'react'
 import { Orbit, Radar } from 'lucide-react'
 import type { components } from '../contracts'
@@ -76,12 +83,12 @@ export function DispatchDestinationPreview({
               ? 'Review verifies whether a moon is available here.'
               : 'No planet in the current system observation.'
   return (
-    <div
+    <LocationSummary
       ref={field}
       className={styles.destinationPreview}
       aria-label="Destination preview"
     >
-      <div className={styles.destinationArt} aria-hidden="true">
+      <LocationSummaryMedia aria-hidden="true">
         {target && coordinates ? (
           <BodyIllustration
             body={{ ...target, coordinates }}
@@ -93,8 +100,8 @@ export function DispatchDestinationPreview({
         ) : (
           <Radar />
         )}
-      </div>
-      <div className={styles.destinationIdentity}>
+      </LocationSummaryMedia>
+      <LocationSummaryContent>
         {planets ? (
           <RichSelect
             label="Your other planets"
@@ -127,24 +134,26 @@ export function DispatchDestinationPreview({
               ),
             }))}
           >
-            <strong title={title} className={styles.destinationName}>
+            <LocationSummaryTitle
+              title={title}
+              className={styles.destinationName}
+            >
               {title}
-            </strong>
+            </LocationSummaryTitle>
           </RichSelect>
         ) : (
-          <strong title={title} className={styles.destinationName}>
+          <LocationSummaryTitle
+            title={title}
+            className={styles.destinationName}
+          >
             {title}
-          </strong>
+          </LocationSummaryTitle>
         )}
-        <span
-          className={styles.destinationDetail}
-          aria-live="polite"
-          aria-atomic="true"
-        >
+        <LocationSummaryDescription aria-live="polite" aria-atomic="true">
           <span className={styles.destinationAnnouncement}>{title}. </span>
           {detail}
           {refreshing && ' · Last observation · Updating…'}
-        </span>
+        </LocationSummaryDescription>
         <CoordinateInput
           embedded
           value={value}
@@ -152,7 +161,7 @@ export function DispatchDestinationPreview({
           error={error}
           onChange={onChange}
         />
-      </div>
-    </div>
+      </LocationSummaryContent>
+    </LocationSummary>
   )
 }

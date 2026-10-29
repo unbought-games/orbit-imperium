@@ -6,7 +6,8 @@ import {
   LocationSummaryContent,
   LocationSummaryLabel,
   LocationSummaryTitle,
-  LocationSummaryDetails,
+  LocationSummaryDescription,
+  LocationSummaryCoordinates,
 } from '../ui/location-summary'
 import { RangeInput } from '../ui/form'
 import { DispatchShips } from './dispatch-ships'
@@ -116,29 +117,34 @@ export function Dispatch({
       {!quote && (
         <>
           <TaskHeader>
-            <LocationSummary role="group" aria-label="Origin">
-              <LocationSummaryMedia>
-                <BodyIllustration
-                  body={body}
-                  className={styles.originArt}
-                  sizes="48px"
-                />
-              </LocationSummaryMedia>
-              <LocationSummaryContent>
-                <LocationSummaryLabel>Origin</LocationSummaryLabel>
-                <LocationSummaryTitle>{bodyName(body)}</LocationSummaryTitle>
-                <LocationSummaryDetails>
-                  <span>
-                    {playerLabel(view.binding.player, view.player_names)}
-                  </span>
-                  <CoordinateLink
-                    at={body.coordinates}
-                    target={body.kind === 'Moon' ? 'moon' : 'planet'}
-                    label="origin"
+            <div className={styles.origin}>
+              <LocationSummaryLabel>Origin</LocationSummaryLabel>
+              <LocationSummary role="group" aria-label="Origin">
+                <LocationSummaryMedia>
+                  <BodyIllustration
+                    body={body}
+                    className={styles.originArt}
+                    sizes="(max-width: 479px) 56px, 80px"
                   />
-                </LocationSummaryDetails>
-              </LocationSummaryContent>
-            </LocationSummary>
+                </LocationSummaryMedia>
+                <LocationSummaryContent>
+                  <LocationSummaryTitle title={bodyName(body)}>
+                    {bodyName(body)}
+                  </LocationSummaryTitle>
+                  <LocationSummaryDescription>
+                    {body.kind} ·{' '}
+                    {playerLabel(view.binding.player, view.player_names)}
+                  </LocationSummaryDescription>
+                  <LocationSummaryCoordinates>
+                    <CoordinateLink
+                      at={body.coordinates}
+                      target={body.kind === 'Moon' ? 'moon' : 'planet'}
+                      label="origin"
+                    />
+                  </LocationSummaryCoordinates>
+                </LocationSummaryContent>
+              </LocationSummary>
+            </div>
           </TaskHeader>
           {mission === 'Colonize' && (
             <Text role="status">

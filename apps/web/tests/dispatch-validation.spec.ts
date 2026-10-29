@@ -1945,3 +1945,32 @@ for (const width of [320, 390, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
+
+for (const width of [390, 1440]) {
+  test(`Origin shares the planet selector presentation at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page)
+    await selectDestinationPlanet(page, id(6))
+    const origin = page.getByRole('group', { name: 'Origin', exact: true })
+    const destination = page.getByLabel('Destination preview')
+    await expect(origin).toContainText('Aster Haven')
+    await expect(origin).toContainText('Planet · Commander')
+    await expect(origin.locator('img')).toHaveJSProperty('complete', true)
+    const originArt = (await origin.locator('img').boundingBox())!
+    const destinationArt = (await destination.locator('img').boundingBox())!
+    expect(originArt.width).toBe(width < 480 ? 56 : 80)
+    expect(originArt.width).toBe(destinationArt.width)
+    expect((await origin.boundingBox())!.width).toBe((await destination.boundingBox())!.width)
+    await expect(origin.getByText('Aster Haven', { exact: true })).toHaveCSS('font-family', 'Georgia, serif')
+    await expect(origin.getByRole('link', { name: /origin/ })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 40s')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-origin-card-${width}x1000.png`, fullPage: width >= 768 })
+    await diagnosticScreenshot(origin, { path: `test-results/origin-card-detail-${width}x1000.png` })
+    await page.getByRole('combobox', { name: 'Your other planets' }).click()
+    await expect(page.getByRole('listbox', { name: 'Your other planets' })).toBeVisible()
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-origin-picker-${width}x1000.png` })
+    await page.keyboard.press('Escape')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
