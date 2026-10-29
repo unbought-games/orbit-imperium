@@ -1894,7 +1894,7 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
     }
     await expect(result).toContainText(outcome === 'Pending'
       ? 'Order accepted; awaiting the game result.'
-      : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'We’re checking whether this order went through. It won’t be sent again unless you retry.')
+      : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'We’re checking whether this order went through.')
     await expect(result).not.toContainText('confirmed')
     await expect(page.getByLabel('Defenses quantity')).toHaveValue('4')
     if (outcome === 'Rejected') await expect(build).toBeEnabled()

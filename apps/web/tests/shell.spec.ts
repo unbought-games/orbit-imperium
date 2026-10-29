@@ -1861,7 +1861,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     .click()
   await expect(
     page.getByRole('complementary', { name: 'Action needs attention' }),
-  ).toContainText('We’re checking whether this order went through. It won’t be sent again unless you retry.')
+  ).toContainText('We’re checking whether this order went through.')
   await expect(
     page.getByRole('button', { name: 'Retry order', exact: true }),
   ).toBeVisible()

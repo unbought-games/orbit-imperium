@@ -17,7 +17,7 @@ it('announces only meaningful changed outcomes, not polling or unchanged older a
     { ...a, envelope: { ...a.envelope, command_id: 'b' }, status: 'uncertain' },
   ])
   expect(second.message).toBe(
-    'Start Upgrade: We’re checking whether this order went through. It won’t be sent again unless you retry.',
+    'Start Upgrade: We’re checking whether this order went through.',
   )
   expect(changedAnnouncements(second.current, [a]).message).toBe('')
   expect(
@@ -46,7 +46,7 @@ it('identifies nested world actions in live announcements', () => {
     reconciled: false,
   }
   expect(changedAnnouncements(new Map(), [world]).message).toBe(
-    'Recall Mission: We’re checking whether this order went through. It won’t be sent again unless you retry.',
+    'Recall Mission: We’re checking whether this order went through.',
   )
 })
 

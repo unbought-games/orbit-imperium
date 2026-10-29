@@ -508,7 +508,7 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
         ? 'Order accepted. Waiting for launch confirmation…'
         : outcome === 'Rejected'
           ? 'Fleet not sent: Beginner protection prevents'
-          : 'We’re checking whether your fleet launched. It won’t be sent again unless you retry.',
+          : 'We’re checking whether your fleet launched.',
     )
     await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
     await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(

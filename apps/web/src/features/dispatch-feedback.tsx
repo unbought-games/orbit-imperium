@@ -40,7 +40,7 @@ export function DispatchFeedback({
         ? 'Fleet sent. You can prepare another fleet.'
         : 'Fleet sent. Updating ships, resources and fleet activity…'
       : attempt.status === 'uncertain'
-        ? 'We’re checking whether your fleet launched. It won’t be sent again unless you retry.'
+        ? 'We’re checking whether your fleet launched.'
         : attempt.status === 'submitting'
           ? 'Sending fleet order…'
           : attempt.status === 'pending'

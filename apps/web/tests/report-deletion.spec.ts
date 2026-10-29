@@ -261,7 +261,7 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
   expect(fixture.headers[0].hidden).toBe(false)
   fixture.setMode('uncertain')
   await row.getByRole('button', { name: 'Delete report' }).click()
-  await expect(row).toContainText('We’re checking whether this order went through. It won’t be sent again unless you retry.')
+  await expect(row).toContainText('We’re checking whether this order went through.')
   await expect(
     row.getByRole('button', { name: 'Delete report' }),
   ).toBeDisabled()
@@ -772,7 +772,7 @@ for (const width of [1280, 390]) {
     await page.getByRole('button', { name: 'Select all matching (2)' }).click()
     await page.getByRole('button', { name: 'Delete selected (2)' }).click()
     await expect(page.getByText('Cleanup stopped.', { exact: false })).toBeVisible()
-    await expect(page.getByText('Orders are coming in too fast. Try again in 60 seconds. We won’t retry for you.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Orders are coming in too fast. Try again in 60 seconds.', { exact: true })).toBeVisible()
     await expect(page.getByText('Connection lost.', { exact: false })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Retry order' })).toHaveCount(0)
     expect(fixture.headers.map(r => r.hidden)).toEqual([true, false])
@@ -821,7 +821,7 @@ for (const width of [1280, 390]) {
     await page.route('**/overview', route => route.abort('failed'))
     await refreshGame(page)
     await page.clock.runFor(1000)
-    const disconnected = 'Connection lost. Reconnecting… Your orders won’t be retried automatically.'
+    const disconnected = 'Connection lost. Reconnecting…'
     await expect(page.locator('p[aria-live=off]').filter({ hasText: disconnected })).toBeVisible()
     expect(await primedAlert.getAttribute('aria-live')).toBe('assertive')
     expect(await primedAlert.textContent()).toBe(disconnected)
