@@ -7,6 +7,7 @@ import {
 import { createAppRouter } from '../router'
 import { SessionContext } from '../shell/session-context'
 import { catalogPage, catalogSlug } from '../shell/catalog-routes'
+import { ErrorBanner } from '../ui/error-banner'
 import { ResourceStrip } from '../ui/resource-strip'
 import { Button } from '../ui/button'
 import { projectGameView } from '../client-model/game-projection'
@@ -108,6 +109,7 @@ function ItemPreview({ runtime }: { runtime: Preview }) {
             <span>Shipyard</span>
             <span>Defense</span>
           </div>
+          <ErrorBanner model={model} />
           <main>
             <PreviewDecision
               key={entry.key.id}

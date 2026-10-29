@@ -1501,7 +1501,9 @@ it('does not erase a genuine connection failure when a concurrent request is thr
   now = 1000
   c.tick()
   await c.refresh()
-  expect(connectionStatus(c.store.getState())?.signal).toBe('CONNECTION LOST')
+  expect(connectionStatus(c.store.getState())?.message).toContain(
+    'Connection lost.',
+  )
   port.view = originalView
   await c.refresh()
   expect(connectionStatus(c.store.getState())).toBeNull()

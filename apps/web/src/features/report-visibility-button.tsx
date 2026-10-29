@@ -4,7 +4,6 @@ import type { Coordinator } from '../client-model/coordinator'
 import { Button } from '../ui/button'
 import { useStore } from 'zustand'
 import { projectedReportHeader } from '../client-model/report-state'
-import { Text } from '../ui/typography'
 import { useReportVisibility } from './use-report-visibility'
 
 export function ReportVisibilityButton({
@@ -58,7 +57,6 @@ export function ReportVisibilityButton({
           'Delete report'
         )}
       </Button>
-      {visibility.status && <Text role="status">{visibility.status}</Text>}
     </div>
   )
 }

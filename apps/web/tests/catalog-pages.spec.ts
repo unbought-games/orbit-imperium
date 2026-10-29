@@ -1892,10 +1892,12 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
       // Never leave an intercepted response held when an assertion fails.
       release()
     }
-    await expect(result).toContainText(outcome === 'Pending'
+    const feedback = outcome === 'Pending' ? result : page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })
+    if (outcome !== 'Pending') await expect(result).toHaveCount(0)
+    await expect(feedback).toContainText(outcome === 'Pending'
       ? 'Order accepted; awaiting the game result.'
       : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'We’re checking whether this order went through.')
-    await expect(result).not.toContainText('confirmed')
+    await expect(feedback).not.toContainText('confirmed')
     await expect(page.getByLabel('Defenses quantity')).toHaveValue('4')
     if (outcome === 'Rejected') await expect(build).toBeEnabled()
     else await expect(build).toBeDisabled()
@@ -1903,13 +1905,13 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
       for (const feedbackWidth of [1280, 390]) {
         await page.setViewportSize({ width: feedbackWidth, height: 900 })
         await page.evaluate(() => window.scrollTo(0, 0))
-        await diagnosticScreenshot(page, { path: `test-results/manual-order-unknown-${feedbackWidth}x900.png`, fullPage: true })
+        await diagnosticScreenshot(page, { path: `test-results/unified-order-error-${feedbackWidth}x900.png`, fullPage: true })
       }
       await page.route('**/commands/*?epoch=*', route => route.fulfill({ json: {
         protocol: 3, binding, command_id: new URL(route.request().url()).pathname.split('/').at(-1),
         admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1',
       } }))
-      await result.getByRole('button', { name: 'Retry order' }).click()
+      await feedback.getByRole('button', { name: 'Retry order' }).click()
       await expect(result).toContainText('Order confirmed.')
       await expect(page.getByLabel('Defenses quantity')).toHaveValue('0')
     }

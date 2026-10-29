@@ -283,6 +283,10 @@ export function Galaxy({
                             espionage.error?.target === position.body.id
                               ? espionage.error.message
                               : null,
+                          notice:
+                            espionage.localError?.target === position.body.id
+                              ? espionage.localError.message
+                              : null,
                         }
                       : undefined
                   }

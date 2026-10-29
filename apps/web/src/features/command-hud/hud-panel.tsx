@@ -1,4 +1,4 @@
-import { ConnectionNotice } from '../../ui/connection-notice'
+import { ErrorBanner } from '../../ui/error-banner'
 import { connectionStatus } from '../../client-model/connection-status'
 import type { DispatchDraft } from '../missions'
 import { useLayoutEffect, useRef } from 'react'
@@ -75,6 +75,7 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
       ref={ref}
       className={styles.dialog}
       data-closing={!present || undefined}
+      data-error-dialog=""
       initial={reducedMotion ? false : { opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -119,15 +120,17 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
             ? 'Command uplink'
             : (content?.title ?? 'Intelligence')}
         </h2>
-        <div className={styles.signal}>
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-          {connection?.signal ?? 'SECURE CONNECTION'}
-        </div>
-        <ConnectionNotice status={connection} className={styles.noticeText} />
+        {!connection && (
+          <div className={styles.signal}>
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            SECURE CONNECTION
+          </div>
+        )}
+        <ErrorBanner model={model} surface="dialog" />
         <div className={styles.panelContent}>
           {selected && (
             <HudInbox

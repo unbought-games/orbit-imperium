@@ -131,7 +131,7 @@ export class ProductionAutosave {
         this.store.setState({
           flight: null,
           error:
-            'Production changes were rejected. Your edits are retained. Retry to apply them to the latest settings.',
+            'Your production edits are retained. Retry to apply them to the latest settings.',
         })
         return
       }

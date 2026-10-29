@@ -1,3 +1,4 @@
+import { ErrorBannerMessage } from '../ui/error-banner'
 import { useState } from 'react'
 import type { useReportCleanup } from './use-report-cleanup'
 import type { components } from '../contracts'
@@ -170,7 +171,11 @@ export function ReportTriageControls({
         Age cleanup covers the entire inbox, regardless of filters. Starred
         reports are always protected.
       </p>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <ErrorBannerMessage>
+          <p role="alert">{error}</p>
+        </ErrorBannerMessage>
+      )}
       {submitting && <p role="status">Submitting cleanup…</p>}
     </div>
   )

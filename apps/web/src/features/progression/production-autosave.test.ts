@@ -197,7 +197,10 @@ describe('production autosave', () => {
     await settle()
     receipt('1', 'rejected', true)
     await settle()
-    expect(autosave.store.getState().error).toContain('rejected')
+    expect(model.store.getState().attempts.get('1')?.status).toBe('rejected')
+    expect(autosave.store.getState().error).toContain(
+      'Your production edits are retained',
+    )
     autosave.change('metal_mine', 40)
     snapshot({ crystal_mine: 60 }, '3')
     await settle()

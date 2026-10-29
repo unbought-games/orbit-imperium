@@ -14,7 +14,7 @@
   grid-area: header;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: 'identity world' 'secondary secondary' 'connection connection';
+  grid-template-areas: 'identity world' 'secondary secondary';
   align-items: center;
   column-gap: clamp(12px, 2vw, 32px);
   position: sticky;
@@ -68,23 +68,6 @@
   display: grid;
   align-items: center;
 }
-.connectionSlot {
-  grid-area: connection;
-}
-.connectionSlot:empty {
-  display: none;
-}
-.connection {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px;
-  min-height: 44px;
-  font: inherit;
-}
-.connection > * {
-  color: var(--danger);
-}
 .center {
   grid-area: content;
 }
@@ -117,12 +100,6 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.stale {
-  padding: 12px 16px;
-  border-left: 2px solid var(--danger);
-  background: var(--surface);
-  color: var(--danger);
-}
 @media (max-width: 767px) {
   .game-shell {
     --shell-inline-gutter: 18px;
@@ -131,7 +108,7 @@
   }
   .shell-columns {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'world' 'connection' 'content';
+    grid-template-areas: 'world' 'content';
     gap: 0;
   }
   .header {

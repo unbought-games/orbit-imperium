@@ -1,0 +1,28 @@
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Keep the live regions mounted and primed even when there is no visible error. */
+.banner:has([data-error-entry]) {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-left: 2px solid var(--danger);
+  background: var(--surface);
+  color: var(--danger);
+}
+.banner p {
+  margin: 0;
+}
+.banner [data-error-entry] button {
+  margin-top: 8px;
+}
+.portal {
+  display: contents;
+}
+
+/* The modal has its own active banner; do not expose the page copy behind it. */
+:global(body:has(dialog[data-error-dialog][open]))
+  .banner[data-error-surface='page'] {
+  visibility: hidden;
+}

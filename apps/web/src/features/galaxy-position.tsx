@@ -1,3 +1,4 @@
+import { ErrorBannerMessage } from '../ui/error-banner'
 import { CoordinateLink } from './coordinate-link'
 import { playerLabel, type PlayerNames } from './player-label'
 import type { ReactNode } from 'react'
@@ -56,6 +57,7 @@ export function GalaxyPosition({
     busy: boolean
     reason: string | null
     error: string | null
+    notice?: string | null
   }
 }) {
   const { body, debris, coordinates } = position
@@ -150,10 +152,14 @@ export function GalaxyPosition({
             </div>
           )}
           <GalaxyFlightSummary flights={flights} now={now} target={target} />
-          {espionage?.error && (
-            <p className={styles.inlineError} role="alert">
-              {espionage.error}
-            </p>
+          {espionage?.notice && (
+            <ErrorBannerMessage>
+              <p role="alert">
+                Espionage at{' '}
+                <CoordinateLink at={position.coordinates} origin={origin} /> ·{' '}
+                {espionage.notice}
+              </p>
+            </ErrorBannerMessage>
           )}
         </div>
         {debris && <GalaxyDebris debris={debris} />}

@@ -1,3 +1,4 @@
+import { ErrorBannerMessage } from '../../ui/error-banner'
 import { NumberValue, ResourceQuantity } from '../../ui/number-value'
 import { Button } from '../../ui/button'
 import { Section } from '../../ui/section'
@@ -192,12 +193,14 @@ export function Production({
         </table>
         <div className={styles.save}>
           {autosave.error ? (
-            <>
-              <span role="alert">{autosave.error}</span>
-              <Button type="button" onClick={() => void autosave.retry()}>
-                Retry production changes
-              </Button>
-            </>
+            <ErrorBannerMessage>
+              <div role="group" aria-label="Production settings error">
+                <p role="alert">{autosave.error}</p>
+                <Button type="button" onClick={() => void autosave.retry()}>
+                  Retry production changes
+                </Button>
+              </div>
+            </ErrorBannerMessage>
           ) : (
             <span role="status">{autosave.status}</span>
           )}

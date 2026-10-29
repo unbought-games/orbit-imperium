@@ -1,7 +1,6 @@
 import { useStore } from 'zustand'
-import { CheckCircle2, Clock3, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, Clock3 } from 'lucide-react'
 import type { Coordinator } from '../../client-model/coordinator'
-import { Button } from '../../ui/button'
 import { actionLabel, actionMessage } from '../../ui/action-announcements'
 import {
   latestProgressionAttempt,
@@ -17,13 +16,9 @@ export function ProgressionActionFeedback({
 }: ActionTarget & { model: Coordinator }) {
   const attempts = useStore(model.store, (state) => state.attempts)
   const latest = latestProgressionAttempt(attempts, { body, item })
-  if (!latest) return null
-  const warning = latest.status === 'uncertain' || latest.status === 'rejected'
-  const Icon = warning
-    ? AlertTriangle
-    : latest.status === 'committed'
-      ? CheckCircle2
-      : Clock3
+  if (!latest || latest.status === 'uncertain' || latest.status === 'rejected')
+    return null
+  const Icon = latest.status === 'committed' ? CheckCircle2 : Clock3
   return (
     <div
       className={styles.feedback}
@@ -37,14 +32,6 @@ export function ProgressionActionFeedback({
       <div>
         <strong>Last submitted: {actionLabel(latest.envelope.command)}</strong>
         <p>{actionMessage(latest)}</p>
-        {latest.status === 'uncertain' && (
-          <Button
-            variant="secondary"
-            onClick={() => void model.retryOrder(latest.envelope.command_id)}
-          >
-            Retry order
-          </Button>
-        )}
       </div>
     </div>
   )

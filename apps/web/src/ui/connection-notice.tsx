@@ -12,7 +12,7 @@ export function ConnectionNotice({
   return (
     <>
       {status && (
-        <p className={className} aria-live="off">
+        <p data-error-entry="" className={className} aria-live="off">
           {status.message}
         </p>
       )}

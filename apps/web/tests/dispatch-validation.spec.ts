@@ -207,7 +207,8 @@ async function setup(page: Page) {
     })
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
-  await expect(page.locator('main h1')).toHaveText('Dispatch')
+  // Cold route compilation can share the host with other fixture workers.
+  await expect(page.locator('main h1')).toHaveText('Dispatch', { timeout: 30000 })
   await expect(
     page.getByText('Latest departure order', { exact: true }),
   ).toHaveCount(0)
@@ -503,14 +504,16 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
     } finally {
       release()
     }
-    await expect(dispatchResult(page)).toContainText(
+    const feedback = outcome === 'Pending' ? dispatchResult(page) : page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })
+    if (outcome !== 'Pending') await expect(dispatchResult(page)).toHaveCount(0)
+    await expect(feedback).toContainText(
       outcome === 'Pending'
         ? 'Order accepted. Waiting for launch confirmation…'
         : outcome === 'Rejected'
           ? 'Fleet not sent: Beginner protection prevents'
-          : 'We’re checking whether your fleet launched.',
+          : 'We’re checking whether this order went through.',
     )
-    await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
+    await expect(feedback).not.toContainText('Fleet sent.')
     await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
       '1',
     )
@@ -522,7 +525,7 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
       for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 900 })
         await page.evaluate(() => window.scrollTo(0, 0))
-        await diagnosticScreenshot(page, { path: `test-results/manual-fleet-unknown-${width}x900.png`, fullPage: true })
+        await diagnosticScreenshot(page, { path: `test-results/unified-fleet-error-${width}x900.png`, fullPage: true })
       }
       await page.route('**/commands/*?epoch=*', (route) =>
         route.fulfill({
@@ -538,8 +541,8 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
           },
         }),
       )
-      await dispatchResult(page)
-        .getByRole('button', { name: 'Retry fleet order' })
+      await feedback
+        .getByRole('button', { name: 'Retry order' })
         .click()
       await expect(dispatchResult(page)).toContainText('Fleet sent.')
       await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(

@@ -29,8 +29,8 @@ export function useReportCleanup(
   const coolingDown = state.now < state.retryAt
   const error =
     failure === 'cooldown'
-      ? coolingDown
-        ? 'Cleanup stopped. Wait for the countdown, then delete the remaining selected reports.'
+      ? coolingDown || state.stale
+        ? ''
         : 'Cooldown over. Delete the remaining selected reports when you’re ready.'
       : failure === 'other'
         ? 'Cleanup stopped. Check the remaining reports before trying again.'

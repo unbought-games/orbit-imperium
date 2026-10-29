@@ -198,8 +198,13 @@ test('a rejected rename preserves the draft and leaves the confirmed name unchan
   await page.getByRole('textbox', { name: 'Planet name' }).fill('New Terra')
   await page.getByRole('button', { name: 'Save name' }).click()
   await expect(
-    page.getByRole('status').filter({ hasText: /^Action rejected:/ }),
+    page.getByTestId('game-error-banner').getByRole('alert').filter({ hasText: 'Action rejected:' }),
   ).toContainText('Not Owned')
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-rename-error-${width}x900.png`, fullPage: true })
+  }
   await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
     'New Terra',
   )

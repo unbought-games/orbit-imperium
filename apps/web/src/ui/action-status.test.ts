@@ -3,10 +3,10 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import type { Attempt } from '../client-model/commands'
 import type { components } from '../contracts'
-import { createGameStore } from '../client-model/game-store'
+import { createGameStore, type GameState } from '../client-model/game-store'
 import type { Coordinator } from '../client-model/coordinator'
 import { changedAnnouncements } from './action-announcements'
-import { ActionStatus } from './action-status'
+import { ErrorBanner } from './error-banner'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -14,16 +14,22 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 
-async function render(attempts: Attempt[], message = '') {
+async function render(
+  attempts: Attempt[],
+  message = '',
+  state: Partial<GameState> = {},
+) {
+  const store = createGameStore()
+  store.setState(state)
   const model = {
-    store: createGameStore(),
+    store,
     message,
     ledger: new Map(
       attempts.map((attempt) => [attempt.envelope.command_id, attempt]),
     ),
   } as Coordinator
   const routeTree = createRootRoute({
-    component: () => createElement(ActionStatus, { model }),
+    component: () => createElement(ErrorBanner, { model }),
   })
   const router = createRouter({ routeTree, history: createMemoryHistory() })
   await router.load()
@@ -181,4 +187,30 @@ it('resolves uncertain presence quietly without hiding player actions or actual 
   const rejected = await render([{ ...presence, status: 'rejected' }])
   expect(rejected).toContain('Record Foreground Presence')
   expect(rejected).toContain('Action rejected')
+})
+
+it('puts connection and action failures in one banner while preserving recovery', async () => {
+  const html = await render(
+    [attempt('uncertain', 'unknown')],
+    'Unable to save action.',
+    {
+      stale: true,
+      connectionInterrupted: true,
+    },
+  )
+  expect(html.match(/data-testid="game-error-banner"/g)).toHaveLength(1)
+  expect(html).toContain('Connection lost. Reconnecting')
+  expect(html).toContain('Unable to save action.')
+  expect(html).toContain('Retry order')
+  expect(html).toContain('Dismiss message')
+})
+it('keeps older failures accessible in the same banner', async () => {
+  const html = await render([
+    attempt('rejected', 'older'),
+    attempt('uncertain', 'newer'),
+  ])
+  expect(html).toContain('1 more order needs attention')
+  expect(html).toContain('Action rejected: Insufficient Resources')
+  expect(html).toContain('Retry order')
+  expect(html).toContain('Dismiss notice')
 })

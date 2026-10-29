@@ -22,7 +22,7 @@ export function useProductionAutosave(model: Coordinator, body: string) {
     retry: autosave.retry,
     error,
     status: pending.some((attempt) => attempt.status === 'uncertain')
-      ? 'Waiting for confirmation. Your changes are retained.'
+      ? ''
       : flight || pending.length || Object.keys(edits).length
         ? 'Saving production changes… Totals show confirmed settings.'
         : 'All changes saved automatically.',

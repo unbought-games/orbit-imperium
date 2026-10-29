@@ -635,12 +635,16 @@ test('production rejection retains edits and retry preserves unrelated server ch
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
   await moveProductionSlider(page, 'metal mine production', '50')
   const panel = page.getByRole('region', { name: 'Production controls' })
-  await expect(panel.getByRole('alert')).toContainText('rejected')
+  await expect(page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })).toContainText('Settings Changed')
+  await expect(page.getByTestId('game-error-banner').getByRole('group', { name: 'Production settings error' })).toContainText('Your production edits are retained')
+  await expect(panel.getByRole('alert')).toHaveCount(0)
   await expect(page.getByLabel('metal mine production')).toHaveValue('50')
   expect(sent).toHaveLength(0)
-  await diagnosticScreenshot(panel, {
-    path: 'test-results/production-autosave-rejected-1440.png',
-  })
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-production-error-${width}x900.png`, fullPage: true })
+  }
   await page.route('**/commands', async (route) => {
     const envelope = route.request().postDataJSON()
     sent.push(envelope)
@@ -659,7 +663,7 @@ test('production rejection retains edits and retry preserves unrelated server ch
       },
     })
   })
-  await panel.getByRole('button', { name: 'Retry production changes' }).click()
+  await page.getByTestId('game-error-banner').getByRole('button', { name: 'Retry production changes' }).click()
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toMatchObject({
     expected_settings_revision: '2',

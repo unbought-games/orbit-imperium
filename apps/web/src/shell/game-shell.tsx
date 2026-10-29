@@ -1,5 +1,4 @@
-import { ConnectionNotice } from '../ui/connection-notice'
-import { connectionStatus } from '../client-model/connection-status'
+import { ErrorBanner, ErrorBannerTarget } from '../ui/error-banner'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
 import {
@@ -24,19 +23,30 @@ import { ButtonLink } from '../ui/button'
 import { Brand } from '../ui/brand'
 import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ResourceStrip } from '../ui/resource-strip'
-import { ActionStatus } from '../ui/action-status'
 import { bodyName, coordinates } from '../ui/format'
 import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
 import { buildPages, pageTitles } from './navigation-model'
-import { Popover } from '../ui/popover'
-import { ArrowLeft, Timer, WifiOff } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { usePinnedHeader } from './use-pinned-header'
 import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
 import { developmentActivity } from './navigation-activity'
 export function GameShell() {
+  const [errorTarget, setErrorTarget] = useState<HTMLDivElement | null>(null)
+  return (
+    <ErrorBannerTarget.Provider value={errorTarget}>
+      <GameShellContent portalRef={setErrorTarget} />
+    </ErrorBannerTarget.Provider>
+  )
+}
+
+function GameShellContent({
+  portalRef,
+}: {
+  portalRef: (node: HTMLDivElement | null) => void
+}) {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
   const incomingHostile = hasIncomingHostileFleet(view)
@@ -175,26 +185,6 @@ export function GameShell() {
     : page === 'overview'
       ? `Empire — ${body ? bodyName(body) : 'Planet'} ${body ? coordinates(body) : ''}`
       : pageTitles[page]
-  const connection = connectionStatus(model.store.getState())
-  const freshness = connection && (
-    <Popover
-      label="Connection"
-      className={styles.connection}
-      trigger={
-        <>
-          {connection.kind === 'connection' ? (
-            <WifiOff size={14} />
-          ) : (
-            <Timer size={14} />
-          )}
-          <span>{connection.label}</span>
-        </>
-      }
-    >
-      <p>{connection.message}</p>
-      <p>Confirmed {new Date(view.as_of_ms).toLocaleString()}</p>
-    </Popover>
-  )
   return (
     <div
       className={styles['game-shell']}
@@ -296,11 +286,10 @@ export function GameShell() {
               </div>
             )}
           </Navigation>
-          <div className={styles.connectionSlot}>{freshness}</div>
         </div>
         <div className={styles.center}>
-          <ConnectionNotice status={connection} className={styles.stale} />
           <main id="main" tabIndex={-1} className={styles['work-area']}>
+            <ErrorBanner model={model} portalRef={portalRef} />
             <div
               className={
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']
@@ -310,7 +299,6 @@ export function GameShell() {
                 {title}
               </Heading>
             </div>
-            <ActionStatus model={model} selectedBody={body?.id} />
             {!available ? (
               <StatePanel title="Choose an available destination">
                 <Text>{route?.reason}</Text>

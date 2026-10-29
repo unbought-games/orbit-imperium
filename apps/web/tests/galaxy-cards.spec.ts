@@ -1102,7 +1102,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   expect(launches).toBe(1)
 })
 
-test('galaxy espionage explains quote failures inline without navigating or launching', async ({
+test('galaxy espionage explains quote failures in the banner without navigating or launching', async ({
   page,
 }) => {
   await setup(page)
@@ -1121,7 +1121,13 @@ test('galaxy espionage explains quote failures inline without navigating or laun
   await target
     .getByRole('button', { name: /^(Spy on|Probe requested for) / })
     .click()
-  await expect(target.getByRole('alert')).toContainText('not enough resources')
+  await expect(page.getByTestId('game-error-banner').getByRole('alert')).toContainText('not enough resources')
+  await expect(target.getByRole('alert')).toHaveCount(0)
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-galaxy-error-${width}x900.png`, fullPage: true })
+  }
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(
     target.getByRole('button', { name: /^(Spy on|Probe requested for) / }),
@@ -1475,15 +1481,16 @@ for (const width of [390, 1280])
     const after = (await button.boundingBox())!
     expect([after.width, after.height]).toEqual([before.width, before.height])
     release()
-    await expect(rows(page).nth(1).getByRole('alert')).toContainText(
+    await expect(page.getByTestId('game-error-banner').getByRole('alert')).toContainText(
       'not enough resources',
     )
+    await expect(rows(page).nth(1).getByRole('alert')).toHaveCount(0)
     await expect(button).toBeEnabled()
     expect(launches).toBe(0)
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   })
 
-test('a rejected launch clears the optimistic check and reports the authoritative error inline', async ({
+test('a rejected launch clears the optimistic check and reports the authoritative error in the banner', async ({
   page,
 }) => {
   const now = 1793000000000
@@ -1539,9 +1546,10 @@ test('a rejected launch clears the optimistic check and reports the authoritativ
   await button.click()
   await expect(button).toHaveAttribute('data-feedback', 'true')
   release()
-  await expect(rows(page).nth(1).getByRole('alert')).toContainText(
+  await expect(page.getByTestId('game-error-banner').getByRole('alert')).toContainText(
     'not enough resources',
   )
+  await expect(rows(page).nth(1).getByRole('alert')).toHaveCount(0)
   await expect(button).toHaveAttribute('data-feedback', 'false')
   await expect(button).toBeEnabled()
 })
