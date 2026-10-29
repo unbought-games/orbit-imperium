@@ -39,6 +39,7 @@ async function buildingFixture(page: Page, active = false, activeBuilding: S['Bu
   )
   await shellFixture(page, {
     protocol: 4,
+    sampledAt: () => now,
     bodies: [planet],
     constructions,
     catalog: [
@@ -1027,7 +1028,7 @@ for (const width of [390, 1440]) {
       }]
       let revision = '1'
       await shellFixture(page, {
-        protocol: 4, bodies: [planet], constructions, viewerRevision: () => revision,
+        protocol: 4, bodies: [planet], constructions, viewerRevision: () => revision, sampledAt: () => now,
         missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
         catalog: [{ key: { kind: 'Building', id: building }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] }],
         production: [{
