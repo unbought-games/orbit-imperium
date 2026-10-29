@@ -525,7 +525,7 @@ for (const width of [1440, 390])
       'Incoming attack fleet',
     ])
     await expect(
-      page.getByText('Fleet slots: 1 used / 1 total', { exact: true }),
+      page.locator('main').getByRole('button', { name: 'Fleet slots: 1 used / 1 total', exact: true }),
     ).toBeVisible()
     await capture('incoming-missiles')
     await page
