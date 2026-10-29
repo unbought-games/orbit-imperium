@@ -62,3 +62,8 @@ export function missionLocation(
   )?.name
   return `${name ? `${name} ` : ''}${coordinates({ coordinates: at })}`
 }
+
+/** due_at is the next server event, including the return leg. Equal times retain source order. */
+export function chronologicalFleets(fleets: readonly S['OwnMission4'][]) {
+  return [...fleets].sort((a, b) => a.due_at - b.due_at)
+}

@@ -34,8 +34,10 @@ import {
   arrivalCountdown,
   exactTime,
   recallEstimate,
+  chronologicalFleets,
 } from './mission-presentation'
 import styles from './missions.module.css'
+import fleetStyles from './mission-fleets.module.css'
 type S = components['schemas']
 
 function Recall({
@@ -58,7 +60,10 @@ function Recall({
     ? recallEstimate(fleet, currentServerTime(state))
     : null
   return (
-    <div className={styles.recall}>
+    <div
+      className={styles.recall}
+      data-reviewing={(reviewing && !pending) || undefined}
+    >
       {reviewing && !pending ? (
         <section aria-label="Review recall" className={styles.recallReview}>
           <Heading level={3}>Review recall</Heading>
@@ -118,8 +123,8 @@ export function MissionFleets({
   const state = useStore(model.store)
   useProfileSource(item ? null : { type: 'Incoming' }, view.viewer_revision)
   const now = currentServerTime(state)
-  const fleets = view.missions.fleets.filter(
-    (fleet) => !item || fleet.id === item,
+  const fleets = chronologicalFleets(
+    view.missions.fleets.filter((fleet) => !item || fleet.id === item),
   )
   const launches = pendingFleetLaunches(state).filter(
     (launch) => !item || launch.fleetId === item,
@@ -184,50 +189,14 @@ export function MissionFleets({
           key={fleet.id}
           aria-label={`${fleet.intent.mission} fleet`}
         >
-          <div className={styles.missionFacts}>
-            <div>
-              <Heading level={3} className={styles.missionTitle}>
-                Your {fleet.intent.mission.toLowerCase()} · {fleet.leg}
-              </Heading>
-              <ShipComposition ships={fleet.ships} />
-              <FleetCargo cargo={fleet.cargo} />
-              <Text>
-                <CoordinateLink
-                  at={fleet.origin}
-                  target={
-                    view.bodies.find((b) => b.id === fleet.intent.origin)
-                      ?.kind === 'Moon'
-                      ? 'moon'
-                      : 'planet'
-                  }
-                  label="origin"
-                >
-                  {missionLocation(view, fleet.intent.origin, fleet.origin)}
-                </CoordinateLink>{' '}
-                {fleet.leg === 'Returning' ? '←' : '→'}{' '}
-                <CoordinateLink
-                  at={fleet.destination}
-                  target={
-                    fleet.intent.destination.type === 'Body' &&
-                    fleet.intent.destination.expected_kind === 'Moon'
-                      ? 'moon'
-                      : fleet.intent.destination.type === 'Debris'
-                        ? 'debris'
-                        : 'planet'
-                  }
-                  label="destination"
-                >
-                  {missionLocation(
-                    view,
-                    fleet.intent.destination.type === 'Body'
-                      ? fleet.intent.destination.id
-                      : undefined,
-                    fleet.destination,
-                  )}
-                </CoordinateLink>
-              </Text>
-            </div>
-            <div className={styles.arrival}>
+          <div className={fleetStyles.facts}>
+            <Heading
+              level={3}
+              className={`${styles.missionTitle} ${fleetStyles.title}`}
+            >
+              Your {fleet.intent.mission.toLowerCase()} · {fleet.leg}
+            </Heading>
+            <div className={`${styles.arrival} ${fleetStyles.arrival}`}>
               <span>
                 {fleet.leg === 'Returning' ? 'Return in' : 'Arrival in'}
               </span>
@@ -236,8 +205,57 @@ export function MissionFleets({
                 {exactTime(fleet.due_at)}
               </time>
             </div>
+            <div className={fleetStyles.manifest}>
+              <ShipComposition ships={fleet.ships} />
+              <FleetCargo cargo={fleet.cargo} />
+            </div>
+            <div className={fleetStyles.route}>
+              <CoordinateLink
+                at={fleet.origin}
+                target={
+                  view.bodies.find((b) => b.id === fleet.intent.origin)
+                    ?.kind === 'Moon'
+                    ? 'moon'
+                    : 'planet'
+                }
+                label="origin"
+              >
+                {missionLocation(view, fleet.intent.origin, fleet.origin)}
+              </CoordinateLink>
+              <span
+                className={fleetStyles.direction}
+                role="img"
+                aria-label={
+                  fleet.leg === 'Returning'
+                    ? 'Returning to origin'
+                    : 'Travelling to destination'
+                }
+              >
+                {fleet.leg === 'Returning' ? '←' : '→'}
+              </span>
+              <CoordinateLink
+                at={fleet.destination}
+                target={
+                  fleet.intent.destination.type === 'Body' &&
+                  fleet.intent.destination.expected_kind === 'Moon'
+                    ? 'moon'
+                    : fleet.intent.destination.type === 'Debris'
+                      ? 'debris'
+                      : 'planet'
+                }
+                label="destination"
+              >
+                {missionLocation(
+                  view,
+                  fleet.intent.destination.type === 'Body'
+                    ? fleet.intent.destination.id
+                    : undefined,
+                  fleet.destination,
+                )}
+              </CoordinateLink>
+            </div>
           </div>
-          <div className={styles.actions}>
+          <div className={`${styles.actions} ${fleetStyles.actions}`}>
             {(fleet.can_recall ||
               pendingCommand(state, {
                 type: 'World',
