@@ -156,7 +156,19 @@ export function GalaxyPosition({
             </p>
           )}
         </div>
-        {debris && <GalaxyDebris debris={debris} />}
+        {debris && (
+          <GalaxyDebris
+            debris={debris}
+            target={target}
+            onHarvest={
+              actions.some(
+                (action) => action.mission === 'Harvest' && !action.reason,
+              )
+                ? (opener) => onDraft(coordinates, 'Harvest', opener)
+                : undefined
+            }
+          />
+        )}
         <div className={styles.quickActions}>
           {canTarget && !owned && (
             <GalaxySpyButton
