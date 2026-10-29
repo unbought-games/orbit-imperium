@@ -68,32 +68,40 @@ function endpoint(
   }
 }
 
+/** Confirmed mission facts shared by the Orb and the active fleet cards. */
+export function ownFleetSummary(
+  view: S['BoundView4'],
+  fleet: S['OwnMission4'],
+): FleetSummaryRow {
+  return {
+    key: fleet.id,
+    id: fleet.id,
+    origin: fleet.intent.origin,
+    mission: fleet.intent.mission,
+    leg: fleet.leg,
+    ships: fleet.ships,
+    home: endpoint(view, fleet.intent.origin, fleet.origin, 'Planet'),
+    target: endpoint(
+      view,
+      fleet.intent.destination.type === 'Body'
+        ? fleet.intent.destination.id
+        : undefined,
+      fleet.destination,
+      fleet.intent.destination.type === 'Body'
+        ? fleet.intent.destination.expected_kind
+        : fleet.intent.destination.type,
+    ),
+    dueAt: fleet.due_at,
+    duration: fleet.duration_ms,
+  }
+}
+
 /** Empire-wide facts derived from the snapshot and unreconciled departures. */
 export function fleetSummaryRows(state: GameState): FleetSummaryRow[] {
   const view = state.view
   if (view?.protocol !== 4) return []
-  const confirmed = view.missions.fleets.map(
-    (fleet): FleetSummaryRow => ({
-      key: fleet.id,
-      id: fleet.id,
-      origin: fleet.intent.origin,
-      mission: fleet.intent.mission,
-      leg: fleet.leg,
-      ships: fleet.ships,
-      home: endpoint(view, fleet.intent.origin, fleet.origin, 'Planet'),
-      target: endpoint(
-        view,
-        fleet.intent.destination.type === 'Body'
-          ? fleet.intent.destination.id
-          : undefined,
-        fleet.destination,
-        fleet.intent.destination.type === 'Body'
-          ? fleet.intent.destination.expected_kind
-          : fleet.intent.destination.type,
-      ),
-      dueAt: fleet.due_at,
-      duration: fleet.duration_ms,
-    }),
+  const confirmed = view.missions.fleets.map((fleet) =>
+    ownFleetSummary(view, fleet),
   )
   const pending = [...state.attempts.values()].flatMap(
     (attempt): FleetSummaryRow[] => {

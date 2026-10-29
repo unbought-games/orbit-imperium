@@ -33,3 +33,27 @@ it('keeps old views without missiles readable', () => {
   expect(outgoingMovements(view, null)).toEqual([])
   expect(incomingMovements(view)).toEqual([])
 })
+
+it('orders next arrivals and returns without mutating the source or reordering ties', () => {
+  const fleets = [
+    { id: 'later', due_at: 3000, leg: 'Outbound' },
+    { id: 'return', due_at: 2000, leg: 'Returning' },
+    { id: 'overdue', due_at: 0, leg: 'Outbound' },
+    { id: 'tie', due_at: 2000, leg: 'Outbound' },
+  ] as components['schemas']['OwnMission4'][]
+  const view = {
+    missions: { fleets, incoming: [] },
+  } as unknown as S['BoundView4']
+  expect(outgoingMovements(view, null).map((row) => row.flight.id)).toEqual([
+    'overdue',
+    'return',
+    'tie',
+    'later',
+  ])
+  expect(fleets.map((fleet) => fleet.id)).toEqual([
+    'later',
+    'return',
+    'overdue',
+    'tie',
+  ])
+})

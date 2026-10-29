@@ -1,0 +1,127 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-block: 8px 24px;
+  max-width: 80rem;
+}
+.list[data-detail] {
+  max-width: 44rem;
+}
+.card {
+  --flight: #a4dbef;
+  min-width: 0;
+  padding: 8px 14px;
+  border: 1px solid #ffffff1c;
+  border-radius: 6px;
+  background: linear-gradient(110deg, #a4dbef05, transparent 65%);
+}
+.card[data-flight-tone='attack'] {
+  --flight: #ecd39f;
+  background: linear-gradient(110deg, #ecd39f05, transparent 65%);
+}
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  color: var(--flight);
+  font: 600 0.875rem/1.4 var(--font-interface, sans-serif);
+}
+.title > span {
+  color: #91a9b9;
+  font-size: 0.65rem;
+  font-weight: 400;
+}
+.manifestToggle {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  min-height: 32px;
+  gap: 4px;
+  color: #c8d8df;
+  font-size: 0.75rem;
+}
+.manifestToggle > svg {
+  color: #7895a7;
+}
+.manifestToggle[aria-expanded='true'] > svg {
+  transform: rotate(180deg);
+}
+.flight {
+  --fleet-label-size: 12px;
+  --fleet-coordinate-size: 10px;
+  --fleet-time-size: 13px;
+  margin-bottom: 12px;
+}
+.manifest {
+  padding-block: 12px;
+  border-block: 1px solid #ffffff12;
+  margin-top: 12px;
+  color: #b4c6d2;
+  font-size: 0.8rem;
+}
+.manifest[hidden] {
+  display: none;
+}
+.exactArrival {
+  margin: 8px 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.coordinateActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.direction {
+  flex-shrink: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+}
+.recall {
+  min-width: 0;
+}
+.recall[data-reviewing] {
+  flex-basis: 100%;
+}
+.recallButton {
+  min-height: 32px;
+  color: #b4c6d2;
+  font-size: 0.75rem;
+}
+.recall > p {
+  margin: 4px 0;
+  font-size: 0.75rem;
+}
+.recallReview {
+  padding: 12px;
+  margin-block: 8px;
+  border-left: 2px solid var(--accent);
+  background: #cbb68d08;
+  font-size: 0.875rem;
+}
+@media (max-width: 767px) {
+  .manifestToggle,
+  .recallButton {
+    margin-left: auto;
+    min-height: 40px;
+  }
+}

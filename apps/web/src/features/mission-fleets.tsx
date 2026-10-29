@@ -1,109 +1,30 @@
 import { MissileFlight } from './missile-flight'
 import { incomingMovements, outgoingMovements } from './fleet-movements'
 import { Radar, Rocket } from 'lucide-react'
-import { EmptyState } from '../ui/empty-state'
-import { CoordinateLink } from './coordinate-link'
-import { IncomingFleet } from './incoming-fleet'
-import { useProfileSource } from '../shell/player-profiles-context'
-import { useUniverseName } from '../shell/session-context'
-import {
-  NumberValue,
-  ResourceNumber,
-  ResourceQuantity,
-} from '../ui/number-value'
-import { useState } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import {
   currentServerTime,
-  pendingCommand,
   occupiedFleetSlots,
   pendingFleetLaunches,
 } from '../client-model/game-projection'
-import { Button, ButtonLink } from '../ui/button'
+import { useProfileSource } from '../shell/player-profiles-context'
+import { useUniverseName } from '../shell/session-context'
+import { routeTarget } from '../shell/route-target'
+import { EmptyState } from '../ui/empty-state'
+import { ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
-import { routeTarget } from '../shell/route-target'
+import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { TaskHeader } from '../ui/task-header'
+import { IncomingFleet } from './incoming-fleet'
 import { FleetSlots } from './fleet-slots'
-import { ShipComposition } from './ship-composition'
 import { FleetInventory } from './fleet-inventory'
-import { FleetCargo } from './fleet-cargo'
-import { MissionTrajectory } from './mission-trajectory'
-import {
-  missionLocation,
-  arrivalCountdown,
-  exactTime,
-  recallEstimate,
-} from './mission-presentation'
+import { FleetRecall, MissionFleetCard } from './mission-fleet-card'
 import styles from './missions.module.css'
+import fleetStyles from './mission-fleets.module.css'
 type S = components['schemas']
-
-function Recall({
-  model,
-  fleetId,
-  fleet,
-}: {
-  model: Coordinator
-  fleetId: string
-  fleet?: S['OwnMission4']
-}) {
-  const [reviewing, setReviewing] = useState(false)
-  const state = useStore(model.store)
-  const command = {
-    type: 'World',
-    action: { type: 'RecallMission', fleet: fleetId },
-  } as const
-  const pending = pendingCommand(state, command)
-  const estimate = fleet
-    ? recallEstimate(fleet, currentServerTime(state))
-    : null
-  return (
-    <div className={styles.recall}>
-      {reviewing && !pending ? (
-        <section aria-label="Review recall" className={styles.recallReview}>
-          <Heading level={3}>Review recall</Heading>
-          <Text>
-            Fuel is not refunded. Surviving ships and carried cargo return to
-            their origin.
-          </Text>
-          <Text>
-            {estimate !== null
-              ? `Estimated return if recalled now: ${exactTime(estimate)}. The return leg equals time already travelled.`
-              : 'The server will confirm the return time when it accepts recall.'}{' '}
-            Arrival may resolve before a recall reaches the server.
-          </Text>
-          <div className={styles.actions}>
-            <Button variant="secondary" onClick={() => setReviewing(false)}>
-              Keep mission
-            </Button>
-            <Button
-              disabled={pending || fleet?.can_recall === false}
-              onClick={() => {
-                void model.send(command)
-                setReviewing(false)
-              }}
-            >
-              Recall fleet
-            </Button>
-          </div>
-        </section>
-      ) : (
-        <Button
-          variant="secondary"
-          disabled={pending}
-          onClick={() => setReviewing(true)}
-        >
-          {pending ? 'Recall requested' : 'Review recall'}
-        </Button>
-      )}
-      {pending && (
-        <Text>Recall requested · confirming the return journey.</Text>
-      )}
-    </div>
-  )
-}
 
 export function MissionFleets({
   model,
@@ -173,164 +94,39 @@ export function MissionFleets({
               ? 'Awaiting launch confirmation. Reserved ships and cargo will reconcile with the server.'
               : 'Departure order accepted; awaiting the game result.'}
           </Text>
-          {fleetId && canRecall && <Recall model={model} fleetId={fleetId} />}
+          {fleetId && canRecall && (
+            <FleetRecall model={model} fleetId={fleetId} />
+          )}
           {recalling && (
             <Text>Recall requested · awaiting the game result.</Text>
           )}
         </article>
       ))}
-      {movements.map((movement) => {
-        if (movement.kind === 'missile')
-          return (
-            <MissileFlight
-              key={movement.key}
-              flight={movement.flight}
-              view={view}
-              now={now}
-            >
-              {!item && (
-                <Link
-                  data-touch-control=""
-                  {...routeTarget(
-                    universeName,
-                    'fleets',
-                    origin,
-                    movement.flight.id,
-                  )}
-                >
-                  Mission details
-                </Link>
-              )}
-            </MissileFlight>
-          )
-        const fleet = movement.flight
-        return (
-          <article
-            className={styles.fleet}
-            key={fleet.id}
-            aria-label={`${fleet.intent.mission} fleet`}
-          >
-            <div className={styles.missionFacts}>
-              <div>
-                <Heading level={3} className={styles.missionTitle}>
-                  Your {fleet.intent.mission.toLowerCase()} · {fleet.leg}
-                </Heading>
-                <ShipComposition ships={fleet.ships} />
-                <FleetCargo cargo={fleet.cargo} />
-                <Text>
-                  <CoordinateLink
-                    at={fleet.origin}
-                    target={
-                      view.bodies.find((b) => b.id === fleet.intent.origin)
-                        ?.kind === 'Moon'
-                        ? 'moon'
-                        : 'planet'
-                    }
-                    label="origin"
-                  >
-                    {missionLocation(view, fleet.intent.origin, fleet.origin)}
-                  </CoordinateLink>{' '}
-                  {fleet.leg === 'Returning' ? '←' : '→'}{' '}
-                  <CoordinateLink
-                    at={fleet.destination}
-                    target={
-                      fleet.intent.destination.type === 'Body' &&
-                      fleet.intent.destination.expected_kind === 'Moon'
-                        ? 'moon'
-                        : fleet.intent.destination.type === 'Debris'
-                          ? 'debris'
-                          : 'planet'
-                    }
-                    label="destination"
-                  >
-                    {missionLocation(
-                      view,
-                      fleet.intent.destination.type === 'Body'
-                        ? fleet.intent.destination.id
-                        : undefined,
-                      fleet.destination,
-                    )}
-                  </CoordinateLink>
-                </Text>
-              </div>
-              <div className={styles.arrival}>
-                <span>
-                  {fleet.leg === 'Returning' ? 'Return in' : 'Arrival in'}
-                </span>
-                <strong>{arrivalCountdown(fleet.due_at, now)}</strong>
-                <time dateTime={new Date(fleet.due_at).toISOString()}>
-                  {exactTime(fleet.due_at)}
-                </time>
-              </div>
-            </div>
-            <div className={styles.actions}>
-              {(fleet.can_recall ||
-                pendingCommand(state, {
-                  type: 'World',
-                  action: { type: 'RecallMission', fleet: fleet.id },
-                })) && (
-                <Recall model={model} fleetId={fleet.id} fleet={fleet} />
-              )}
-              {!item && (
-                <Link
-                  data-touch-control=""
-                  {...routeTarget(universeName, 'fleets', origin, fleet.id)}
-                >
-                  Mission details
-                </Link>
-              )}
-            </div>
-            {item && (
-              <>
-                <div className={styles.fuel}>
-                  <span>
-                    Fuel spent{' '}
-                    <strong>
-                      <ResourceQuantity
-                        resource={'deuterium'}
-                        value={fleet.paid_fuel}
-                      />{' '}
-                      deuterium
-                    </strong>
-                  </span>
-                  <span>
-                    Speed <strong>{fleet.intent.speed_percent}%</strong>
-                  </span>
-                </div>
-                <details className={styles.rules}>
-                  <summary>Flight path</summary>
-                  <MissionTrajectory
-                    origin={fleet.origin}
-                    originIdentity={view.bodies.find(
-                      (body) => body.id === fleet.intent.origin,
-                    )}
-                    destinationIdentity={
-                      fleet.intent.destination.type === 'Body'
-                        ? {
-                            id: fleet.intent.destination.id,
-                            name: [...view.bodies, ...view.destinations].find(
-                              (body) =>
-                                fleet.intent.destination.type === 'Body' &&
-                                body.id === fleet.intent.destination.id,
-                            )?.name,
-                            kind: fleet.intent.destination.expected_kind,
-                          }
-                        : fleet.intent.destination.type === 'Debris'
-                          ? {
-                              id: fleet.intent.destination.field_identity,
-                              kind: 'Debris',
-                            }
-                          : undefined
-                    }
-                    destination={fleet.destination}
-                    returning={fleet.leg === 'Returning'}
-                  />
-                </details>
-              </>
-            )}
-          </article>
-        )
-      })}
+      {movements.length > 0 && (
+        <div className={fleetStyles.list} data-detail={!!item || undefined}>
+          {movements.map((movement) =>
+            movement.kind === 'missile' ? (
+              <MissileFlight
+                key={movement.key}
+                flight={movement.flight}
+                view={view}
+                now={now}
+                origin={origin}
+                detail={!!item}
+              />
+            ) : (
+              <MissionFleetCard
+                key={`${movement.key}:${!!item}`}
+                model={model}
+                view={view}
+                fleet={movement.flight}
+                detail={!!item}
+                origin={origin}
+              />
+            ),
+          )}
+        </div>
+      )}
       {!item && (
         <section className={styles.incoming} aria-label="Incoming fleets">
           <Heading level={2}>Incoming fleets</Heading>
