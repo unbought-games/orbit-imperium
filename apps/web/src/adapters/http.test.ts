@@ -1,5 +1,5 @@
 import { it, expect, vi, afterEach } from 'vitest'
-import { gamePort } from './http'
+import { gamePort, request } from './http'
 import { readyFixture } from '../test-support/bootstrap'
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -112,3 +112,29 @@ it.each(['bootstrap', 'loginBootstrap', 'signupBootstrap'] as const)(
     )
   },
 )
+
+it.each([
+  ['60', 60000],
+  ['Thu, 29 Oct 2026 14:01:00 GMT', 60000],
+  ['Thu, 29 Oct 2026 13:59:00 GMT', 0],
+  ['invalid', 0],
+  [null, 0],
+])('preserves HTTP 429 and parses Retry-After %s', async (header, expected) => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-10-29T14:00:00Z'))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(JSON.stringify({ code: 'RateLimited' }), {
+          status: 429,
+          headers: header ? { 'Retry-After': header } : {},
+        }),
+    ),
+  )
+  await expect(request('/commands', 'POST')).rejects.toMatchObject({
+    status: 429,
+    code: 'RateLimited',
+    retryAfterMs: expected,
+  })
+})

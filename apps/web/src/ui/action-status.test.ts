@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import type { Attempt } from '../client-model/commands'
 import type { components } from '../contracts'
+import { createGameStore } from '../client-model/game-store'
 import type { Coordinator } from '../client-model/coordinator'
 import { changedAnnouncements } from './action-announcements'
 import { ActionStatus } from './action-status'
@@ -15,6 +16,7 @@ import {
 
 async function render(attempts: Attempt[], message = '') {
   const model = {
+    store: createGameStore(),
     message,
     ledger: new Map(
       attempts.map((attempt) => [attempt.envelope.command_id, attempt]),

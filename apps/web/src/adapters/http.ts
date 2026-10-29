@@ -23,6 +23,17 @@ export class HttpError extends Error {
     super(code)
   }
 }
+/** Retry-After permits delay-seconds or an HTTP date. Invalid values must not poison deadlines. */
+function retryDelay(value: string | null) {
+  if (!value) return 0
+  if (/^\d+(?:\.\d+)?$/.test(value.trim())) {
+    const delay = Number(value) * 1000
+    return Number.isFinite(delay) ? delay : 0
+  }
+  const deadline = Date.parse(value)
+  return Number.isFinite(deadline) ? Math.max(0, deadline - Date.now()) : 0
+}
+
 export async function request(
   path: string,
   method = 'GET',
@@ -49,7 +60,7 @@ export async function request(
       typeof problem === 'object' && problem && 'code' in problem
         ? String(problem.code)
         : 'Request failed',
-      Math.max(0, Number(res.headers.get('Retry-After') ?? 0) * 1000),
+      retryDelay(res.headers.get('Retry-After')),
     )
     if (problem && typeof problem === 'object' && 'game_code' in problem)
       error.message = String(problem.game_code)

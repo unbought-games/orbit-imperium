@@ -59,6 +59,9 @@ export function ActionStatus({
               )}
               {latest.status === 'uncertain' ? (
                 <Button
+                  disabled={
+                    model.store.getState().now < model.store.getState().retryAt
+                  }
                   onClick={() => void model.recover(latest.envelope.command_id)}
                 >
                   Resolve saved command

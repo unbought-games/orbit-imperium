@@ -129,17 +129,13 @@ export class Coordinator {
   private set accessLost(accessLost: GameState['accessLost']) {
     this.store.setState({ accessLost })
   }
-  get retryAfterMs() {
-    return this.store.getState().retryAfterMs
-  }
-  private set retryAfterMs(retryAfterMs: GameState['retryAfterMs']) {
-    this.store.setState({ retryAfterMs })
+  private get retryAt() {
+    return this.store.getState().retryAt
   }
   private delivery: DeliveryController | null = null
   private refreshWork: Promise<void> | null = null
   private recoveryWork: Promise<void> | null = null
   private pendingMinimum: string | undefined
-  private retryAt = 0
   private generation = 0
   private viewGeneration = 0
   private quoteGeneration = 0
@@ -185,7 +181,11 @@ export class Coordinator {
     this.delivery?.wake()
   }
   tick() {
-    this.store.setState({ now: this.platform.monotonicNowMs() })
+    const previous = this.store.getState()
+    const now = this.platform.monotonicNowMs()
+    this.store.setState({ now })
+    if (previous.now < previous.retryAt && now >= previous.retryAt)
+      this.delivery?.wake()
   }
   dismissMessage() {
     this.message = ''
@@ -237,6 +237,9 @@ export class Coordinator {
     this.pendingMinimum = undefined
     this.store.setState({
       ready: false,
+      retryAt: 0,
+      rateLimited: false,
+      connectionInterrupted: false,
       binding: null,
       view: null,
       settings: null,
@@ -413,11 +416,19 @@ export class Coordinator {
   private async problem(e: unknown, g: number, b: Binding) {
     if (!this.current(g, b)) return
     const f = failure(e)
-    this.retryAfterMs = Math.max(0, f.retryAfterMs ?? 0)
-    this.retryAt = Math.max(
-      this.retryAt,
-      this.platform.monotonicNowMs() + this.retryAfterMs,
-    )
+    const now = this.platform.monotonicNowMs()
+    const delay = Number.isFinite(f.retryAfterMs)
+      ? Math.max(0, f.retryAfterMs!)
+      : 0
+    this.store.setState({
+      now,
+      retryAt: Math.max(this.retryAt, now + delay),
+      ...(f.status === 429
+        ? { rateLimited: true }
+        : now >= this.retryAt
+          ? { rateLimited: false }
+          : {}),
+    })
     if (f.code === 'EpochChanged') {
       this.message =
         'Universe history changed. Previous unresolved actions are indeterminate; enter new actions after confirmation.'
@@ -430,7 +441,13 @@ export class Coordinator {
       this.invalidate()
       this.accessLost = true
       this.message = 'Universe membership is unavailable.'
-    } else this.stale = true
+    } else {
+      this.store.setState({
+        stale: true,
+        ...(f.status !== 429 ? { connectionInterrupted: true } : {}),
+      })
+      this.delivery?.pending()
+    }
   }
   private requestMinimum(minimum?: string) {
     if (
@@ -539,7 +556,11 @@ export class Coordinator {
       ) {
         this.pendingMinimum = undefined
       }
-      this.stale = false
+      this.store.setState({
+        stale: false,
+        connectionInterrupted: false,
+        ...(now >= this.retryAt ? { rateLimited: false } : {}),
+      })
       await this.reconcile()
     } catch (e) {
       if (q === this.viewGeneration) await this.problem(e, g, b)
@@ -869,8 +890,9 @@ export class Coordinator {
       this.message = 'Connect before confirming an action.'
       return
     }
-    this.message = ''
     this.tick()
+    if (this.platform.monotonicNowMs() < this.retryAt) return
+    this.message = ''
     const state = this.store.getState()
     if (pendingCommand(state, command)) return
     if (quote && (!state.view || !matchesQuote(command, quote, state.view))) {
@@ -959,6 +981,12 @@ export class Coordinator {
     return commandId
   }
   private async deliver(a: Attempt, g: number) {
+    // Another in-flight request can start a cooldown while this action is being
+    // persisted or its missing receipt is checked. Retain its ID for recovery.
+    if (this.platform.monotonicNowMs() < this.retryAt) {
+      await this.uncertain(a, g)
+      return
+    }
     try {
       await this.receive(
         a,
@@ -1120,7 +1148,6 @@ export class Coordinator {
   }
   async poll() {
     if (this.platform.monotonicNowMs() < this.retryAt) return
-    this.retryAfterMs = 0
     if (!this.ready) {
       await this.connect(this.account, this.universe)
       return

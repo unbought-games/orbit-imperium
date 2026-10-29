@@ -21,7 +21,7 @@ export function useReportCleanup(
       clearSelection()
     } catch {
       setError(
-        'Cleanup stopped. Unconfirmed reports remain available; check action status and try again.',
+        'Cleanup stopped before all reports were confirmed. Check action status before retrying any remaining reports.',
       )
     } finally {
       setSubmitting(false)

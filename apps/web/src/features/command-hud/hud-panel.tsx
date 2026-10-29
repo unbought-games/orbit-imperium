@@ -1,3 +1,4 @@
+import { connectionStatus } from '../../client-model/connection-status'
 import type { DispatchDraft } from '../missions'
 import { useLayoutEffect, useRef } from 'react'
 import { AnimatePresence, motion, useIsPresent } from 'motion/react'
@@ -32,6 +33,7 @@ export function HudPanel(props: HudPanelProps) {
   )
 }
 function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
+  const connection = connectionStatus(hud.state)
   const present = useIsPresent()
   const reducedMotion = useReducedMotion()
   const ref = useRef<HTMLDialogElement>(null)
@@ -122,8 +124,13 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
           <span />
           <span />
           <span />
-          {hud.state.stale ? 'CONNECTION INTERRUPTED' : 'SECURE CONNECTION'}
+          {connection?.signal ?? 'SECURE CONNECTION'}
         </div>
+        {connection && (
+          <p role="status" className={styles.noticeText}>
+            {connection.message}
+          </p>
+        )}
         <div className={styles.panelContent}>
           {selected && (
             <HudInbox

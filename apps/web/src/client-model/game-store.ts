@@ -29,7 +29,9 @@ export type GameState = {
   stale: boolean
   ready: boolean
   accessLost: boolean
-  retryAfterMs: number
+  retryAt: number
+  rateLimited: boolean
+  connectionInterrupted: boolean
 }
 
 // One store per session/coordinator; never share account state across sessions.
@@ -49,6 +51,8 @@ export function createGameStore() {
     stale: false,
     ready: false,
     accessLost: false,
-    retryAfterMs: 0,
+    retryAt: 0,
+    rateLimited: false,
+    connectionInterrupted: false,
   }))
 }

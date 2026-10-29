@@ -747,3 +747,83 @@ test('HUD infinite paging waits for a pending report preference, then resumes', 
   await expect(panel.getByLabel('Intelligence list').getByRole('button',{name:/Espionage report/})).toBeVisible()
   await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toHaveCount(0)
 })
+
+
+for (const width of [1280, 390]) {
+  test(`bulk cleanup rate limit and network recovery at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const now = new Date('2026-10-29T14:00:00Z')
+    await page.clock.install({ time: now })
+    await page.clock.pauseAt(now)
+    const fixture = await reportsFixture(page)
+    const submitted: string[] = []
+    let throttled = true
+    await page.route('**/commands', async route => {
+      const envelope = route.request().postDataJSON().gameplay
+      if (envelope?.command.action.type !== 'SetReportHidden') return route.fallback()
+      submitted.push(envelope.command_id)
+      if (throttled && submitted.length > 1)
+        return route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
+      return route.fallback()
+    })
+    await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
+    await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+    await page.getByRole('button', { name: 'Delete selected (2)' }).click()
+    await expect(page.getByText('Cleanup stopped before all reports were confirmed.', { exact: false })).toBeVisible()
+    await expect(page.getByText('Action limit reached. Try again in 60s. Saved actions will be checked automatically.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Connection interrupted', { exact: false })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Resolve saved command' })).toBeDisabled()
+    expect(fixture.headers.map(r => r.hidden)).toEqual([true, false])
+    // New mutations and receipt recovery must stay quiet until Retry-After.
+    await expect(page.getByRole('button', { name: 'Delete selected (1)' })).toBeDisabled()
+    await page.clock.runFor(59000)
+    expect(submitted).toHaveLength(2)
+    await expect(page.getByText(/Action limit reached. Try again in 1s/)).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/rate-limit-reports-${width}x900.png`, fullPage: true })
+    if (width < 768) {
+    await page.getByTestId('command-orb').click()
+    await expect(page.getByRole('dialog')).toContainText('ACTION COOLDOWN')
+    await diagnosticScreenshot(page, { path: `test-results/rate-limit-hud-${width}x900.png` })
+    await page.getByRole('button', { name: 'Close command HUD' }).click()
+    }
+    let releaseRefresh!: () => void
+    const refreshGate = new Promise<void>(resolve => { releaseRefresh = resolve })
+    await page.route('**/overview', async route => {
+      await refreshGate
+      return route.fallback()
+    })
+    throttled = false
+    // Let the zero-delay wake queued by the deadline tick run as well.
+    await page.clock.runFor(1001)
+    await expect.poll(() => submitted.length).toBe(3)
+    expect(submitted[2]).toBe(submitted[1])
+    await expect(page.getByText('Cooldown ended. Checking saved actions and refreshing game data.', { exact: true })).toBeVisible()
+    await diagnosticScreenshot(page, { path: `test-results/rate-limit-checking-${width}x900.png`, fullPage: true })
+    releaseRefresh()
+    await page.unroute('**/overview')
+    await expect(page.getByText(/Cooldown ended/)).toHaveCount(0)
+    await expect(page.getByText('Connection restored.', { exact: true })).toHaveCount(0)
+    await expect(page.getByText(/Action limit reached/)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Resolve saved command' })).toHaveCount(0)
+    expect(fixture.headers.every(r => r.hidden)).toBe(true)
+    await diagnosticScreenshot(page, { path: `test-results/rate-limit-recovered-${width}x900.png`, fullPage: true })
+    // A real transport failure must still report a connection problem.
+    await page.route('**/overview', route => route.abort('failed'))
+    await refreshGame(page)
+    await page.clock.runFor(1000)
+    await expect(page.getByText('Connection interrupted — awaiting server confirmation.', { exact: true })).toBeVisible()
+    await diagnosticScreenshot(page, { path: `test-results/rate-limit-network-${width}x900.png`, fullPage: true })
+    if (width < 768) {
+    await page.getByTestId('command-orb').click()
+    await expect(page.getByRole('dialog')).toContainText('CONNECTION INTERRUPTED')
+    await diagnosticScreenshot(page, { path: `test-results/rate-limit-network-hud-${width}x900.png` })
+    await page.getByRole('button', { name: 'Close command HUD' }).click()
+    }
+    await page.unroute('**/overview')
+    await refreshGame(page)
+    await page.clock.runFor(1000)
+    await expect(page.getByText(/Connection interrupted/)).toHaveCount(0)
+  })
+}

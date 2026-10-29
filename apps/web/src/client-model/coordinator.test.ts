@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { connectionStatus } from './connection-status'
 import { Coordinator } from './coordinator'
 import {
   currentServerTime,
@@ -41,7 +42,7 @@ const view = (request_id: string, revision = '0'): BoundView => ({
   reports_truncated: false,
   destinations_truncated: false,
 })
-function setup() {
+function setup(clock = () => 0) {
   const saved = new Map<string, Attempt>(),
     sent: string[] = []
   const storage: AttemptStorage = {
@@ -102,7 +103,7 @@ function setup() {
   let n = 10
   const c = new Coordinator(port, storage, {
     newId: () => id(n++),
-    monotonicNowMs: () => 0,
+    monotonicNowMs: clock,
     isOnline: () => true,
   })
   return { c, port, storage, saved, sent, receipts }
@@ -1432,4 +1433,136 @@ it('discards a rules refresh whose settings finish after logout', async () => {
   await refreshing
   expect(c.view).toBeNull()
   expect(c.settings).toBeNull()
+})
+
+it('distinguishes throttling, blocks new actions, and reconciles the same saved ID after cooldown', async () => {
+  let now = 1000
+  const { c, port, saved, sent } = setup(() => now)
+  await c.connect(binding.account, binding.universe)
+  const submit = port.submit
+  let throttled = true
+  port.submit = async (envelope) => {
+    if (throttled) {
+      sent.push(envelope.command_id)
+      throw { status: 429, retryAfterMs: 60000 }
+    }
+    return submit(envelope)
+  }
+  const command = { type: 'CancelConstruction' as const, operation: id(40) }
+  const commandId = (await c.send(command))!
+  expect(c.stale).toBe(true)
+  expect(connectionStatus(c.store.getState())).toMatchObject({
+    kind: 'cooldown',
+    label: 'Action cooldown · 60s',
+  })
+  expect(saved.get(commandId)?.status).toBe('uncertain')
+  now = 60999
+  c.tick()
+  expect(connectionStatus(c.store.getState())?.label).toBe(
+    'Action cooldown · 1s',
+  )
+  await c.send({ ...command, operation: id(41) })
+  await c.recover(commandId)
+  await c.poll()
+  expect(sent).toEqual([commandId])
+  expect(c.ledger.size).toBe(1)
+  now = 61000
+  c.tick()
+  expect(connectionStatus(c.store.getState())?.kind).toBe('checking')
+  throttled = false
+  // Receipt 404 recovery verifies the binding and resubmits the original ID.
+  await c.poll()
+  expect(sent).toEqual([commandId, commandId])
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  expect(c.stale).toBe(false)
+  expect(saved.get(commandId)?.status).toBe('pending')
+})
+
+it('does not erase a genuine connection failure when a concurrent request is throttled', async () => {
+  let now = 0
+  const { c, port } = setup(() => now)
+  await c.connect(binding.account, binding.universe)
+  const originalView = port.view
+  port.view = async () => {
+    throw new TypeError('Failed to fetch')
+  }
+  await c.refresh()
+  port.submit = async () => {
+    throw { status: 429, retryAfterMs: 1000 }
+  }
+  await c.send({ type: 'CancelConstruction', operation: id(40) })
+  expect(connectionStatus(c.store.getState())).toMatchObject({
+    kind: 'connection',
+  })
+  expect(connectionStatus(c.store.getState())?.message).toContain(
+    'Try again in 1s',
+  )
+  now = 1000
+  c.tick()
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())?.signal).toBe(
+    'CONNECTION INTERRUPTED',
+  )
+  port.view = originalView
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('keeps a cooldown through an in-flight successful snapshot and resets it on session invalidation', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const originalView = port.view
+  let release!: () => void
+  port.view = async (context) => {
+    await new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return originalView(context)
+  }
+  const refresh = c.refresh()
+  port.submit = async () => {
+    throw { status: 429, retryAfterMs: 60000 }
+  }
+  await c.send({ type: 'CancelConstruction', operation: id(40) })
+  release()
+  await refresh
+  expect(c.stale).toBe(false)
+  expect(connectionStatus(c.store.getState())?.kind).toBe('cooldown')
+  c.invalidate()
+  expect(c.store.getState()).toMatchObject({
+    rateLimited: false,
+    retryAt: 0,
+    connectionInterrupted: false,
+  })
+})
+
+it('holds an action whose persistence finishes after a concurrent rate limit', async () => {
+  const { c, port, storage, sent } = setup()
+  await c.connect(binding.account, binding.universe)
+  const put = storage.put
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let writes = 0
+  storage.put = async (attempt) => {
+    if (++writes === 1) await gate
+    await put(attempt)
+  }
+  const first = c.send({ type: 'CancelConstruction', operation: id(40) })
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw { status: 429, retryAfterMs: 60000 }
+  }
+  const secondId = await c.send({
+    type: 'CancelConstruction',
+    operation: id(41),
+  })
+  release()
+  const firstId = await first
+  expect(sent).toEqual([secondId])
+  expect(
+    [...c.ledger.values()].find((a) => a.envelope.command_id === firstId)
+      ?.status,
+  ).toBe('uncertain')
 })

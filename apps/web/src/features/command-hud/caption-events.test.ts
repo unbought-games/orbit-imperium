@@ -121,3 +121,21 @@ it('new loss reports emit the specific event; hydration, pagination and later re
     { id: 'initial:ready', kind: 'unread' },
   ])
 })
+
+it('does not call throttling or its recovery a lost or restored connection', () => {
+  const ready = fixture()
+  const throttled = { ...ready, stale: true, rateLimited: true, retryAt: 60000 }
+  expect(initialCaptionEvents(throttled)).toEqual([])
+  expect(captionEvents(ready, throttled)).toEqual([])
+  expect(captionEvents(throttled, ready)).toEqual([])
+  const disconnected = { ...throttled, connectionInterrupted: true }
+  expect(initialCaptionEvents(disconnected)).toEqual([
+    { id: 'initial:disconnected', kind: 'disconnected' },
+  ])
+  expect(captionEvents(throttled, disconnected)).toEqual([
+    { id: 'connection:true:0', kind: 'disconnected' },
+  ])
+  expect(captionEvents(disconnected, ready)).toEqual([
+    { id: 'connection:false:0', kind: 'reconnected' },
+  ])
+})

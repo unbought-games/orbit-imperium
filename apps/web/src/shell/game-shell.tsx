@@ -1,3 +1,4 @@
+import { connectionStatus } from '../client-model/connection-status'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
 import {
@@ -30,7 +31,7 @@ import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
 import { buildPages, pageTitles } from './navigation-model'
 import { Popover } from '../ui/popover'
-import { ArrowLeft, WifiOff } from 'lucide-react'
+import { ArrowLeft, Timer, WifiOff } from 'lucide-react'
 import { usePinnedHeader } from './use-pinned-header'
 import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
 import { developmentActivity } from './navigation-activity'
@@ -173,18 +174,23 @@ export function GameShell() {
     : page === 'overview'
       ? `Empire — ${body ? bodyName(body) : 'Planet'} ${body ? coordinates(body) : ''}`
       : pageTitles[page]
-  const freshness = model.stale && (
+  const connection = connectionStatus(model.store.getState())
+  const freshness = connection && (
     <Popover
       label="Connection"
       className={styles.connection}
       trigger={
         <>
-          <WifiOff size={14} />
-          <span>Disconnected</span>
+          {connection.kind === 'connection' ? (
+            <WifiOff size={14} />
+          ) : (
+            <Timer size={14} />
+          )}
+          <span>{connection.label}</span>
         </>
       }
     >
-      <p>Connection interrupted — awaiting server confirmation.</p>
+      <p>{connection.message}</p>
       <p>Confirmed {new Date(view.as_of_ms).toLocaleString()}</p>
     </Popover>
   )
@@ -292,9 +298,9 @@ export function GameShell() {
           <div className={styles.connectionSlot}>{freshness}</div>
         </div>
         <div className={styles.center}>
-          {model.stale && (
+          {connection && (
             <p className={styles.stale} role="alert">
-              Connection interrupted — awaiting server confirmation.
+              {connection.message}
             </p>
           )}
           <main id="main" tabIndex={-1} className={styles['work-area']}>
