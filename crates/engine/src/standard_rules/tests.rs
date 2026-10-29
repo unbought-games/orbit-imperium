@@ -120,7 +120,7 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
     }
     assert_eq!(
         validate_rules_update(&old, &next).unwrap().add_buildings,
-        vec![Building::FusionReactor]
+        vec![Building::FusionReactor, Building::MissileSilo]
     );
     assert_eq!(
         next.artifact.ships[&ShipType::SmallCargo],
@@ -743,4 +743,64 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
             Err(StandardRulesError::Conflicts(_))
         ));
     }
+}
+
+#[test]
+fn missile_bundle_has_separate_inventory_and_conflict_safe_activation() {
+    let before = Ruleset::mvp_raids().unwrap();
+    let next = upgrade_standard_rules(&before).unwrap();
+    assert_eq!(upgrade_standard_rules(&next).unwrap(), next);
+    assert!(
+        validate_rules_update(&before, &next)
+            .unwrap()
+            .add_buildings
+            .contains(&Building::MissileSilo)
+    );
+    let costs = &next.artifact.progression.as_ref().unwrap().unit_costs;
+    for (m, cost) in [
+        (MissileId::AntiBallisticMissile, [8000, 0, 2000]),
+        (MissileId::InterplanetaryMissile, [12500, 2500, 10000]),
+    ] {
+        assert_eq!(
+            costs
+                .iter()
+                .find(|u| u.item == ManufacturedItem::Missile(m))
+                .unwrap()
+                .cost
+                .values(),
+            cost
+        );
+        assert!(
+            !next
+                .artifact
+                .world
+                .as_ref()
+                .unwrap()
+                .combat
+                .units
+                .iter()
+                .any(|u| u.item == ManufacturedItem::Missile(m))
+        );
+    }
+    let mut customized = next.artifact.clone();
+    customized
+        .world
+        .as_mut()
+        .unwrap()
+        .missiles
+        .as_mut()
+        .unwrap()
+        .base_seconds = 31;
+    assert!(
+        upgrade_standard_rules(&Ruleset::from_artifact(customized, next.speed).unwrap()).is_err()
+    );
+    let mut disabled = next.artifact.clone();
+    disabled
+        .catalog
+        .iter_mut()
+        .filter(|e| matches!(e.key, CatalogKey::Missile(_)))
+        .for_each(|e| e.enabled = false);
+    assert!(
+        upgrade_standard_rules(&Ruleset::from_artifact(disabled, next.speed).unwrap()).is_err()
+    );
 }

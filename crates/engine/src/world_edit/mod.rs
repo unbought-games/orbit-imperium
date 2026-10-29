@@ -97,6 +97,12 @@ pub struct WorldEdit {
         skip_serializing_if = "BTreeMap::is_empty"
     )]
     pub defenses: BTreeMap<String, i64>,
+    #[serde(
+        default,
+        deserialize_with = "document::catalog_values",
+        skip_serializing_if = "BTreeMap::is_empty"
+    )]
+    pub missiles: BTreeMap<String, i64>,
 }
 pub fn coordinates(value: &str) -> EditResult<Coordinates> {
     let parts = value
@@ -222,6 +228,7 @@ pub fn edit_world(
                     || !edit.buildings.is_empty()
                     || !edit.ships.is_empty()
                     || !edit.defenses.is_empty()
+                    || !edit.missiles.is_empty()
                     || edit.name.is_some())
             {
                 return Err(

@@ -6,6 +6,7 @@ import { resourceNames } from '../client-model/resources'
 import { coordinates, label } from '../ui/format'
 
 export type EmpireFlight = {
+  kind: 'fleet' | 'missile'
   key: string
   item?: string
   sender?: string
@@ -39,6 +40,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
         const from = returning ? f.target : f.origin
         const to = returning ? f.origin : f.target
         return {
+          kind: 'fleet',
           key: f.id,
           item: f.id,
           mission: 'Transport',
@@ -60,6 +62,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
     const originLabel = missionLocation(view, f.intent.origin, f.origin)
     const targetLabel = missionLocation(view, destination, f.destination)
     return {
+      kind: 'fleet',
       key: f.id,
       item: f.id,
       mission: label(f.intent.mission),
@@ -77,6 +80,7 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
   })
   const incoming = view.missions.incoming.map(
     (f, index): EmpireFlight => ({
+      kind: 'fleet',
       key: `incoming:${index}`,
       mission: label(f.mission),
       leg: 'Incoming',
@@ -95,7 +99,32 @@ export function empireFlights(view: BoundView): EmpireFlight[] {
       hostile: isHostileMission(f.mission),
     }),
   )
-  return [...owned, ...incoming].sort((a, b) => a.due - b.due)
+  const missiles = (view.missiles ?? []).map((f): EmpireFlight => {
+    const origin = f.outgoing
+      ? view.bodies.find(
+          (b) =>
+            b.kind === 'Planet' &&
+            b.coordinates.galaxy === f.origin.galaxy &&
+            b.coordinates.system === f.origin.system &&
+            b.coordinates.position === f.origin.position,
+        )
+      : undefined
+    return {
+      kind: 'missile',
+      key: f.id,
+      item: f.outgoing ? f.id : undefined,
+      mission: 'Missile attack',
+      leg: f.outgoing ? 'Outbound' : 'Incoming',
+      sender: f.outgoing ? undefined : f.attacker,
+      from: origin?.id,
+      to: f.target_body,
+      route: `${missionLocation(view, origin?.id, f.origin)} → ${missionLocation(view, f.target_body, f.target)}`,
+      due: f.arrival_at,
+      ships: `${f.count} Interplanetary Missiles`,
+      hostile: !f.outgoing,
+    }
+  })
+  return [...owned, ...incoming, ...missiles].sort((a, b) => a.due - b.due)
 }
 
 export function bodyTraffic(flights: EmpireFlight[], id: string) {

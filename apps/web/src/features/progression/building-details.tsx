@@ -1,3 +1,4 @@
+import { SiloSummary } from '../missile-inventory'
 import {
   DurationValue,
   ResourceQuantity,
@@ -17,7 +18,11 @@ import { buildingProgress } from '../../client-model/building-progress'
 import { currentServerTime } from '../../client-model/game-projection'
 import { buildingUnavailableReason } from './building-availability'
 import { ConstructionDetails } from './construction-details'
-import { buildingInsights, affordabilityForecast } from './detail-insights'
+import {
+  buildingInsights,
+  affordabilityForecast,
+  constructionProjection,
+} from './detail-insights'
 import {
   DetailLayout,
   DetailSection,
@@ -28,12 +33,12 @@ import {
   BenefitValue,
   benefitLabel,
   StorageInsight,
-  EnergyComparison,
   DecisionCosts,
 } from './detail-metrics'
 import styles from './detail-layout.module.css'
 import { ProgressionActionFeedback } from './action-feedback'
 import { TechnicalData } from './technical-data'
+import { BuildingBenefits } from './building-benefits'
 
 export function BuildingDetails({
   building,
@@ -65,7 +70,10 @@ export function BuildingDetails({
   )
   const unavailable = buildingUnavailableReason(entry, body, building.id)
   const command = progressionCommand(proposal)
-  const insight = buildingInsights(view, body, building.id, proposal)
+  const projection = work
+    ? constructionProjection(proposal, body, work)
+    : proposal
+  const insight = buildingInsights(view, body, building.id, projection)
   const isMine = insight.benefit?.kind.endsWith('PerHour') ?? false
   const canBuild =
     !unavailable &&
@@ -153,7 +161,48 @@ export function BuildingDetails({
         </p>
       )}
       {work ? (
-        <ConstructionDetails work={work} model={model} />
+        <ConstructionDetails
+          work={work}
+          model={model}
+          summary={
+            <>
+              {loading && <p role="status">Loading completion forecast…</p>}
+              {error && (
+                <p role="alert">
+                  {error}{' '}
+                  <Button variant="secondary" onClick={() => onInspect(action)}>
+                    Retry
+                  </Button>
+                </p>
+              )}
+              {projection && (insight.benefit || insight.energy.show) ? (
+                <>
+                  <dl className={styles.compare}>
+                    <BuildingBenefits
+                      insight={insight}
+                      action={
+                        work.direction === 'down' ? 'Demolition' : 'Upgrade'
+                      }
+                      firstBuild={firstBuild}
+                      building={building}
+                      view={view}
+                      body={body}
+                    />
+                  </dl>
+                  <p className={styles.note}>
+                    {insight.benefit?.qualifier
+                      ? `On completion: ${insight.benefit.qualifier.toLowerCase()}.`
+                      : 'On completion.'}
+                  </p>
+                </>
+              ) : (
+                !projection &&
+                !loading &&
+                !error && <p role="status">Completion forecast unavailable.</p>
+              )}
+            </>
+          }
+        />
       ) : (
         <DetailSection
           title={
@@ -192,62 +241,14 @@ export function BuildingDetails({
                   available={body.amounts}
                   forecast={forecast!}
                 />
-                {insight.benefit && (
-                  <DetailRow label={benefitLabel(insight.benefit)}>
-                    <span title={isMine ? 'Current output' : 'Change'}>
-                      <BenefitValue
-                        insight={insight.benefit}
-                        change={!isMine}
-                      />
-                    </span>{' '}
-                    <span aria-hidden="true">→</span>{' '}
-                    <strong title="New total">
-                      <BenefitValue insight={insight.benefit} target />
-                    </strong>
-                  </DetailRow>
-                )}
-                {insight.benefit?.fullPowerTarget &&
-                  BigInt(insight.benefit.fullPowerTarget) / 1000000n >
-                    BigInt(insight.benefit.target) / 1000000n && (
-                    <DetailRow label="With enough energy">
-                      <BenefitValue
-                        insight={insight.benefit}
-                        target
-                        potential
-                      />
-                    </DetailRow>
-                  )}
-                {(insight.energy.show ||
-                  insight.energy.constructionBlocked) && (
-                  <EnergyComparison
-                    energy={insight.energy}
-                    balanceLabel={
-                      action === 'Demolition'
-                        ? 'Energy after demolition'
-                        : firstBuild
-                          ? 'Energy after build'
-                          : 'Energy after upgrade'
-                    }
-                    firstBuild={firstBuild && !insight.benefit?.planetTotal}
-                    view={view}
-                    body={body}
-                  />
-                )}
-                {insight.fuel &&
-                  (building.id === 'FusionReactor' ||
-                    insight.fuel.current !== insight.fuel.target) && (
-                    <DetailRow label="Deuterium fuel / hour">
-                      <ResourceQuantity
-                        resource="deuterium"
-                        value={insight.fuel.current}
-                      />
-                      {' → '}
-                      <ResourceQuantity
-                        resource="deuterium"
-                        value={insight.fuel.target}
-                      />
-                    </DetailRow>
-                  )}
+                <BuildingBenefits
+                  insight={insight}
+                  action={action}
+                  firstBuild={firstBuild}
+                  building={building}
+                  view={view}
+                  body={body}
+                />
                 <DetailRow label="Build time">
                   <DurationValue milliseconds={terms.duration_ms} />
                 </DetailRow>
@@ -329,6 +330,7 @@ export function BuildingDetails({
           )}
         </DetailSection>
       )}
+      {building.id === 'MissileSilo' && <SiloSummary body={body} />}
       {entry && (
         <TechnicalData
           key={entry.key.id}

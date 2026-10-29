@@ -122,6 +122,16 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    LaunchMissiles {
+        intent: MissileIntent,
+        expected_terms_hash: Hash,
+    },
+    ScrapMissiles {
+        body: BodyId,
+        item: MissileId,
+        #[serde(with = "decimal_wire")]
+        count: i64,
+    },
     RenamePlanet {
         body: BodyId,
         name: String,
@@ -172,6 +182,8 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub missiles: BTreeMap<OperationId, MissileFlight>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub colonies: BTreeMap<BodyId, ColonyGenesis>,
     pub policies: BTreeMap<PlayerId, PlayerPolicy>,
     pub activity: BTreeMap<BodyId, BodyActivity>,
@@ -204,6 +216,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub missiles: Option<MissileRules>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colonization: Option<ColonizationRules>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raiding: Option<String>,
@@ -228,6 +242,9 @@ fn is_default_beginner_protection_multiplier(value: &u32) -> bool {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if let Some(m) = &self.missiles {
+            m.validate()?;
+        }
         if self.beginner_protection_multiplier == 0 {
             return Err(RulesError::Range);
         }

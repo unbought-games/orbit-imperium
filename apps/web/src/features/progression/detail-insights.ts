@@ -392,3 +392,20 @@ export function nextLevelDependents(
     )
     .map((entry) => entry.key)
 }
+
+/** Never label a different level's quote as the active construction forecast. */
+export function constructionProjection(
+  proposal: BoundProgressionOptions | null,
+  body: S['BodyV3'],
+  work: { building: string; targetLevel: number },
+) {
+  const terms = proposal?.terms
+  return terms?.type === 'Building' &&
+    terms.body === body.id &&
+    terms.building === work.building &&
+    terms.source_level ===
+      body.levels[terms.building as keyof typeof body.levels] &&
+    terms.target_level === work.targetLevel
+    ? proposal
+    : null
+}

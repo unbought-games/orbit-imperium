@@ -609,6 +609,7 @@ for (const width of [1280, 390]) {
     const fixture = await reportsFixture(page)
     fixture.headers[0].preview = { kind: 'Espionage', resources: { visibility: 'Unknown' } }
     fixture.headers[1].preview = { kind: 'Espionage', resources: { visibility: 'Known', value: { metal: '1000000', crystal: '9000000', deuterium: '0' } } }
+    fixture.headers[1].starred = true
     // The mobile HUD independently hydrates the unread badge. Finish that
     // background page before measuring the triage operation's own request.
     if (width < 768) await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(1)
@@ -617,7 +618,7 @@ for (const width of [1280, 390]) {
     fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
     await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
     await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeDisabled()
-    await expect(page.getByRole('article').first().getByRole('button', { name: 'Star report', exact: true })).toBeDisabled()
+    await expect(page.getByRole('article').first().getByRole('button', { name: 'Delete report', exact: true })).toBeDisabled()
     await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length - beforeTriage).toBe(1)
     release()
     await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
@@ -625,19 +626,18 @@ for (const width of [1280, 390]) {
     const rows = page.getByRole('article')
     await expect(rows).toHaveCount(2)
     const time = await rows.first().locator('time').boundingBox()
-    const star = await rows.first().getByRole('button', { name: 'Star report', exact: true }).boundingBox()
-    expect(time && star && (time.x + time.width <= star.x || time.y >= star.y + star.height || time.y + time.height <= star.y)).toBeTruthy()
+    const remove = await rows.first().getByRole('button', { name: 'Delete report', exact: true }).boundingBox()
+    expect(time && remove && (time.x + time.width <= remove.x || time.y >= remove.y + remove.height || time.y + time.height <= remove.y)).toBeTruthy()
     await expect(rows.first()).toContainText('9')
-    await rows.first().getByRole('button', { name: 'Star report', exact: true }).focus()
-    await page.keyboard.press('Enter')
-    await expect(rows.first().getByRole('button', { name: 'Unstar report' })).toBeVisible()
+    await expect(rows.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
+    await expect(rows.first().getByRole('checkbox')).toBeDisabled()
     await expect(rows.first().getByRole('button', { name: 'Delete report', exact: true })).toBeDisabled()
     await expect(page.getByRole('button', { name: 'Delete older reports (1)', exact: true })).toBeEnabled()
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: `test-results/report-triage-${width}.png`, fullPage: true })
+    await rows.first().evaluate(el => el.scrollIntoView({ block: 'center' }))
+    await diagnosticScreenshot(page, { path: `test-results/report-triage-${width}.png` })
     await page.getByRole('button', { name: 'Delete older reports (1)', exact: true }).click()
     await expect(rows).toHaveCount(1)
-    await expect(rows.first().getByRole('button', { name: 'Unstar report' })).toBeVisible()
+    await expect(rows.first().getByRole('button', { name: 'Delete report', exact: true })).toBeDisabled()
     expect(fixture.headers[0].hidden).toBe(true)
     expect(fixture.headers[1].hidden).toBe(false)
   })
@@ -696,10 +696,18 @@ for (const width of [1280, 390]) {
     await expect(page).toHaveURL(inbox)
     await select.press('Space')
     await expect(select).not.toBeChecked()
-    await row.getByRole('button', { name: 'Star report', exact: true }).click()
-    await expect(row.getByRole('button', { name: 'Unstar report' })).toBeVisible()
-    // Let the optimistic star command reconcile before measuring a disabled control.
-    await expect(row.getByRole('button', { name: 'Unstar report' })).toBeEnabled()
+    await expect(row.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
+    const openTriage = async () => {
+      const options = page.getByRole('button', { name: 'Sort, filter & clean up' })
+      if (await options.getAttribute('aria-expanded') === 'false') await options.click()
+    }
+    await row.getByRole('link', { name: 'Espionage', exact: true }).click()
+    await page.getByRole('button', { name: 'Star report', exact: true }).press('Enter')
+    await expect(page.getByRole('button', { name: 'Unstar report', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: 'Unstar report', exact: true })).toBeEnabled()
+    await diagnosticScreenshot(page, { path: `test-results/report-detail-star-${width}x900.png` })
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await openTriage()
     await expect(select).toBeDisabled()
     const remove = row.getByRole('button', { name: 'Delete report', exact: true })
     await expect(remove).toBeDisabled()
@@ -711,8 +719,11 @@ for (const width of [1280, 390]) {
     await page.mouse.up()
     await expect(page).toHaveURL(inbox)
     expect(fixture.submitted()).toBe(0)
-    await expect(row.getByRole('button', { name: 'Unstar report' })).toBeEnabled()
-    await row.getByRole('button', { name: 'Unstar report' }).press('Enter')
+    await row.getByRole('link', { name: 'Espionage', exact: true }).click()
+    await page.getByRole('button', { name: 'Unstar report', exact: true }).press('Enter')
+    await expect(page.getByRole('button', { name: 'Star report', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await openTriage()
     await expect(remove).toBeEnabled()
     // Native Tab/Enter navigation still opens the same report.
     await select.focus()
@@ -727,6 +738,80 @@ for (const width of [1280, 390]) {
     await expect(page).toHaveURL(inbox)
   })
 }
+
+test.describe('report touch actions', () => {
+  test.use({ hasTouch: true })
+
+  for (const width of [320, 390, 820]) {
+    test(`delete edges stay independent from row navigation at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const fixture = await reportsFixture(page)
+      const inbox = `/u/andromeda/b/${body.id}/reports`
+      const row = page.getByRole('article').first()
+      const remove = row.getByRole('button', { name: 'Delete report', exact: true })
+      await expect(row.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
+      await expect(remove).toBeEnabled()
+      const box = (await remove.boundingBox())!
+      expect(box.width).toBeGreaterThanOrEqual(48)
+      expect(box.height).toBeGreaterThanOrEqual(48)
+      expect((await remove.locator('svg').boundingBox())!.width).toBe(20)
+
+      // Tap the enlarged padding near every corner, well outside the glyph.
+      fixture.setMode('rejected')
+      for (const [x, y] of [[2, 2], [46, 2], [2, 46], [46, 46]]) {
+        const submitted = fixture.submitted()
+        await remove.tap({ position: { x, y } })
+        await expect.poll(fixture.submitted).toBe(submitted + 1)
+        await expect(row).toContainText('Action rejected: Not Found')
+        await expect(remove).toBeEnabled()
+        const removeBox = (await remove.boundingBox())!
+        const rowBox = (await row.boundingBox())!
+        expect(Math.abs(removeBox.x + removeBox.width - rowBox.x - rowBox.width)).toBeLessThanOrEqual(1)
+        await expect(page).toHaveURL(inbox)
+        expect(fixture.readRequests).toEqual([])
+      }
+      await diagnosticScreenshot(page, { path: `test-results/report-actions-rejected-${width}x900.png` })
+
+      fixture.headers[0].starred = true
+      fixture.headers[0].shared = true
+      fixture.bumpRevision()
+      await page.reload()
+      await expect(remove).toBeDisabled()
+      await remove.scrollIntoViewIfNeeded()
+      const disabledBox = (await remove.boundingBox())!
+      for (const [x, y] of [[2, 2], [46, 2], [2, 46], [46, 46]]) {
+        await page.touchscreen.tap(disabledBox.x + x, disabledBox.y + y)
+        await expect(page).toHaveURL(inbox)
+        expect(fixture.submitted()).toBe(4)
+      }
+
+      // Shared reports can only be unstarred from their detail page.
+      await row.getByRole('link', { name: 'Espionage', exact: true }).tap()
+      const star = page.getByRole('button', { name: 'Unstar report', exact: true })
+      await expect(star).toHaveAttribute('aria-pressed', 'true')
+      await star.tap()
+      const dialog = page.getByRole('dialog', { name: 'Unstar this shared report?' })
+      await expect(dialog).toBeVisible()
+      await diagnosticScreenshot(page, { path: `test-results/report-actions-confirm-${width}x900.png` })
+      await dialog.getByRole('button', { name: 'Keep starred' }).tap()
+      await expect(dialog).toBeHidden()
+      expect(fixture.headers[0].starred).toBe(true)
+      await star.tap()
+      await dialog.getByRole('button', { name: 'Unstar report', exact: true }).tap()
+      await expect.poll(() => fixture.headers[0].starred).toBe(false)
+      await page.getByRole('link', { name: 'Back to reports' }).tap()
+      await expect(remove).toBeEnabled()
+      fixture.setMode('success')
+      // Recheck target size after detail navigation before tapping its padding.
+      expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+      await remove.tap({ position: { x: 2, y: 46 } })
+      await expect.poll(() => fixture.headers[0].hidden).toBe(true)
+      await expect(page).toHaveURL(inbox)
+      expect(fixture.readRequests).toEqual([])
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    })
+  }
+})
 
 test('HUD infinite paging waits for a pending report preference, then resumes', async ({page})=>{
   await page.setViewportSize({width:390,height:900})

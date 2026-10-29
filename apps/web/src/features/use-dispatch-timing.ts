@@ -63,7 +63,8 @@ export function useDispatchTiming(
             intent: { ...input.intent, destination },
           })
           if (!current) return
-          if (!terms || !('duration_ms' in terms)) throw Error('Unavailable')
+          if (!terms || !('maximum_payload' in terms))
+            throw Error('Unavailable')
           setResult({ key, terms })
         } catch (error) {
           if (current) setResult({ key, error: dispatchFailure(error) })

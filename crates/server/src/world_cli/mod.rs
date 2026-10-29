@@ -9,7 +9,7 @@ pub const HELP: &str = r#"orbit world COMMAND [--universe UUID] [--operation-id 
 Direct database world management. Uses DATABASE_URL; normal production builds supported.
 
   show [G:S:P] [--user USER]
-  set|give resources|ships|defenses|building G:S:P ITEM=VALUE... [--user USER]
+  set|give resources|ships|defenses|missiles|building G:S:P ITEM=VALUE... [--user USER]
   set|give research USER ITEM=LEVEL...
   set ships|building|resources --user USER --all-planets ITEM=VALUE...
   set player USER [--activity active|inactive7|inactive28] [--vacation true|false]
@@ -17,7 +17,7 @@ Direct database world management. Uses DATABASE_URL; normal production builds su
   add planet --owner USER [--planet G:S:P] [--name TEXT]
   add bot --name USER [--planet G:S:P] [--near G:S:P] [--preset weak|strong]
   attack|spy|transport G:S:P --from G:S:P [SHIP=COUNT...] [--arrives-in 30s]
-  queue G:S:P building|research|ships|defenses ITEM=VALUE [--arrives-in 30s]
+  queue G:S:P building|research|ships|defenses|missiles ITEM=VALUE [--arrives-in 30s]
   finish|clear queues G:S:P [--user USER]
   message USER --from USER --text TEXT
   report USER [--kind transport|espionage|combat] [RESOURCE=VALUE...]
@@ -251,6 +251,7 @@ pub fn parse(args: &[String]) -> Result<WorldCliCommand, String> {
             "resources" => &mut e.resources,
             "ships" => &mut e.ships,
             "defenses" => &mut e.defenses,
+            "missiles" => &mut e.missiles,
             "building" | "buildings" => &mut e.buildings,
             "research" => &mut e.research,
             "none" | "player" => &mut e.resources,

@@ -40,6 +40,18 @@ export function reportPreview(
   let at: S['Coordinates'] | undefined
   let identity = ''
   switch (preview.kind) {
+    case 'MissileImpact':
+      at = preview.target
+      facts.push(
+        preview.outcome === 'NoTarget'
+          ? 'Target unavailable'
+          : `${preview.intercepted ?? '0'} intercepted · ${preview.penetrating ?? '0'} penetrated`,
+      )
+      if (preview.destroyed)
+        facts.push(
+          `${Object.values(preview.destroyed).reduce((n, v) => n + BigInt(v), 0n)} defenses permanently destroyed`,
+        )
+      break
     case 'Espionage':
       at = preview.target?.coordinates
       identity = bodyIdentityLabel(preview.target?.name, preview.target?.kind)

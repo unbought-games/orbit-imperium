@@ -151,6 +151,8 @@ pub struct BodyV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_temperature: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub silo: Option<SiloCapacity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_temperature: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -412,6 +414,10 @@ pub(crate) fn progression_projection(
                 .filter(|(id, _)| *id == b.id && b.kind == BodyKind::Planet)
                 .map(|(_, homeworld)| homeworld.diameter_km),
             min_temperature: (b.kind == BodyKind::Planet).then_some(b.max_temperature - 40),
+            silo: missile_rules(&facts.rules)
+                .map(|r| silo_capacity(s, b, r))
+                .transpose()
+                .map_err(|_| ServiceError::InvariantFailure)?,
             max_temperature: (b.kind == BodyKind::Planet).then_some(b.max_temperature),
             colony: None,
             id: b.id,

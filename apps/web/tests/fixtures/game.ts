@@ -56,6 +56,7 @@ export async function installGameFixture(
     hasUnreadReports?: () => boolean
     viewerRevision?: () => string
     playerNames?: components['schemas']['PublicPlayerNames4']
+    missiles?: components['schemas']['MissileFlightView4'][]
     missions?: components['schemas']['MissionView4']
     fleets?: components['schemas']['Fleet'][]
     destinations?: components['schemas']['Destination'][]
@@ -66,6 +67,7 @@ export async function installGameFixture(
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
     extraCapabilities?: Array<
+      | 'Missiles'
       | 'Attack'
       | 'Espionage'
       | 'Harvest'
@@ -216,6 +218,7 @@ export async function installGameFixture(
       ),
       ...(protocol === 4
         ? {
+            missiles: options.missiles ?? [],
             has_unread_reports: options.hasUnreadReports?.() ?? false,
             player_names: options.playerNames,
             missions: options.missions ?? {

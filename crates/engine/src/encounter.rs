@@ -54,7 +54,12 @@ pub fn settle_encounter(
     let defenders = s
         .inventories
         .iter()
-        .filter(|x| x.body == id && x.owner == expected_owner && x.count > 0)
+        .filter(|x| {
+            x.body == id
+                && x.owner == expected_owner
+                && x.count > 0
+                && !matches!(x.item, ManufacturedItem::Missile(_))
+        })
         .map(|x| (x.item, x.count))
         .collect();
     let input = BattleInput {

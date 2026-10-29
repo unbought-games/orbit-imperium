@@ -482,6 +482,47 @@ pub fn inspect_progression(
         .values()
         .filter(|x| x.body == id && x.status == ManufacturingStatus::Active)
         .collect();
+    if let Some(rule) = missile_rules(r) {
+        let slots = silo_capacity(s, b, rule)?;
+        if matches!(
+            q,
+            QuoteRequest::Demolition {
+                building: Building::MissileSilo,
+                ..
+            }
+        ) && slots.occupied + slots.reserved > 0
+        {
+            out.blockers.push(block(GameError::CapacityReserved));
+        }
+        if let QuoteRequest::Manufacture {
+            item: ManufacturedItem::Missile(item),
+            quantity,
+            ..
+        } = q
+        {
+            if construction.is_some_and(|x| {
+                x.building == Building::MissileSilo
+                    && matches!(
+                        x.progression,
+                        Some(ProgressionMaterial::Building {
+                            action: BuildingAction::Demolition,
+                            ..
+                        })
+                    )
+            }) {
+                out.blockers.push(block(GameError::SiloBusy));
+            }
+            let requested = quantity
+                .checked_mul(rule.weight(*item))
+                .and_then(|v| v.checked_add(slots.occupied))
+                .and_then(|v| v.checked_add(slots.reserved));
+            if requested.is_none() {
+                out.blockers.push(block(GameError::NumericRange));
+            } else if requested.is_some_and(|v| v > slots.total) {
+                out.blockers.push(block(GameError::CapacityReserved));
+            }
+        }
+    }
     match q {
         QuoteRequest::Upgrade { building, .. } | QuoteRequest::Demolition { building, .. } => {
             if construction.is_some() {

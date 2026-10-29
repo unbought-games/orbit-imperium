@@ -50,6 +50,12 @@ pub(crate) async fn validate_rule_references(
             .map(|x| x.commitment.profile_hash.0.clone()),
     );
     if let Some(w) = &state.world {
+        hashes.extend(
+            w.records
+                .missiles
+                .values()
+                .map(|f| f.terms.profile_hash.0.clone()),
+        );
         hashes.extend(w.records.policies.values().map(|x| x.policy_hash.0.clone()));
         hashes.extend(w.records.fleets.values().flat_map(|x| {
             [
@@ -104,7 +110,8 @@ pub(crate) async fn load(
             | Command::StartManufacture { .. },
         )
         | Input::Event(
-            ScheduledEvent::FleetLegDue { .. }
+            ScheduledEvent::MissileImpact { .. }
+            | ScheduledEvent::FleetLegDue { .. }
             | ScheduledEvent::DebrisCleanupDue { .. }
             | ScheduledEvent::ResearchDue { .. }
             | ScheduledEvent::ManufacturingDue { .. },

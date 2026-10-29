@@ -366,3 +366,56 @@ it('shows physical metadata only when known, with current values ahead of colony
   delete planet.max_temperature
   expect(planetPhysicalFacts(planet)).toEqual(['15191 km', '24 to 64 °C'])
 })
+
+it('merges missile attacks with fleets by arrival and preserves direction and body identity', () => {
+  const view = fixture()
+  view.missiles = [
+    {
+      id: 'outgoing-missile',
+      attacker: 'self',
+      origin: view.bodies[0].coordinates,
+      target: view.bodies[2].coordinates,
+      target_body: 'b',
+      target_kind: 'Planet',
+      count: '4',
+      arrival_at: 150,
+      outgoing: true,
+    },
+    {
+      id: 'incoming-missile',
+      attacker: 'enemy',
+      origin: view.bodies[2].coordinates,
+      target: view.bodies[1].coordinates,
+      target_body: 'moon',
+      target_kind: 'Moon',
+      count: '2',
+      arrival_at: 50,
+      outgoing: false,
+    },
+  ]
+  const flights = empireFlights(view)
+  expect(flights.map((f) => f.key)).toEqual([
+    'incoming-missile',
+    'incoming:0',
+    'outgoing-missile',
+    'own',
+  ])
+  expect(flights[0]).toMatchObject({
+    kind: 'missile',
+    leg: 'Incoming',
+    hostile: true,
+    to: 'moon',
+    ships: '2 Interplanetary Missiles',
+  })
+  expect(flights[2]).toMatchObject({
+    kind: 'missile',
+    leg: 'Outbound',
+    hostile: false,
+    from: 'a',
+    item: 'outgoing-missile',
+  })
+  expect(flights[2].cargo).toBeUndefined()
+  expect(bodyTraffic(flights, 'a').outgoing).toHaveLength(2)
+  expect(bodyTraffic(flights, 'moon').outgoing).toHaveLength(0)
+  expect(bodyTraffic(flights, 'moon').incoming).toHaveLength(2)
+})

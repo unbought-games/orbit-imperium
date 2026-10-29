@@ -1,17 +1,28 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { NumberValue, ResourceQuantity } from './number-value'
 import styles from './resource-strip.module.css'
 import type { BoundView } from '../client-model/commands'
 import { ResourceAmount } from './resource-amount'
 import { currentResourceRates } from './resource-rates'
+const storageBuildings = {
+  metal: 'MetalStorage',
+  crystal: 'CrystalStorage',
+  deuterium: 'DeuteriumTank',
+} as const
+
 export function ResourceStrip({
   view,
   body,
   energyLink,
+  renderStorageWarning,
 }: {
   view: BoundView
   body: BoundView['bodies'][number]
   energyLink?: ComponentProps<typeof ResourceAmount>['link']
+  renderStorageWarning?: (
+    building: (typeof storageBuildings)[keyof typeof storageBuildings],
+    warning: string,
+  ) => ReactNode
 }) {
   const rates = currentResourceRates(view, body)
   const balance = BigInt(body.energy.supply) - BigInt(body.energy.demand)
@@ -21,6 +32,7 @@ export function ResourceStrip({
         const value = body.amounts[name]
         const capacity = BigInt(body.capacity[name])
         const full = capacity > 0n && BigInt(value) >= capacity
+        const warning = 'Storage full'
         return (
           <ResourceAmount
             key={name}
@@ -57,10 +69,9 @@ export function ResourceStrip({
             </p>
             {full && (
               <p className={styles.warning}>
-                {BigInt(value) > BigInt(body.capacity[name])
-                  ? 'Above capacity'
-                  : 'Storage full'}{' '}
-                · production suppressed
+                {renderStorageWarning
+                  ? renderStorageWarning(storageBuildings[name], warning)
+                  : warning}
               </p>
             )}
           </ResourceAmount>

@@ -194,10 +194,8 @@ impl PgStore {
                         ManufacturedItem::Defense(k) => {
                             edit.defenses.insert(format!("{k:?}"), item.count);
                         }
-                        _ => {
-                            return Err(
-                                "scenario export does not support missile inventories".into()
-                            );
+                        ManufacturedItem::Missile(k) => {
+                            edit.missiles.insert(format!("{k:?}"), item.count);
                         }
                     }
                 }
@@ -293,9 +291,18 @@ impl PgStore {
                     e.defenses
                         .insert(format!("{k:?}"), c.quantity - c.completed_prefix);
                 }
-                _ => return Err("scenario export does not support queued missiles".into()),
+                ManufacturedItem::Missile(k) => {
+                    e.missiles
+                        .insert(format!("{k:?}"), c.quantity - c.completed_prefix);
+                }
             }
             edits.push(e);
+        }
+        if w.missiles
+            .values()
+            .any(|f| f.status == MissileStatus::InFlight)
+        {
+            return Err("cannot export active missile flights; wait for impact first".into());
         }
         for f in w.fleets.values().filter(|f| f.active()) {
             let MissionDestination::Body { id: target, .. } = f.intent.destination else {
