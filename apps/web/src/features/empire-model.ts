@@ -154,19 +154,11 @@ export function storagePercent(amount: string, capacity: string) {
     : Number(((value < 0n ? 0n : value > cap ? cap : value) * 100n) / cap)
 }
 
-/** A schematic layout, deliberately not a map of physical distance. */
+/** A schematic layout in authoritative server order, not physical distance. */
 export function empireNodes(bodies: BoundView['bodies']) {
-  const sorted = [...bodies].sort(
-    (a, b) =>
-      a.coordinates.galaxy - b.coordinates.galaxy ||
-      a.coordinates.system - b.coordinates.system ||
-      a.coordinates.position - b.coordinates.position ||
-      b.kind.localeCompare(a.kind) ||
-      a.id.localeCompare(b.id),
-  )
-  return sorted.map((body, i) => {
+  return bodies.map((body, i) => {
     const column = i % 2
-    const count = Math.ceil((sorted.length - column) / 2)
+    const count = Math.ceil((bodies.length - column) / 2)
     return {
       body,
       x: column ? 85 : 15,

@@ -2701,14 +2701,25 @@ for (const width of [320, 390, 1440]) {
     const first = colony(8, 'Nova Roma', 100)
     const later = colony(9, 'A long planet name that wraps safely', 200)
     const moon = { ...home, id: id(10), name: undefined, kind: 'Moon' as const }
-    const purchases = await shellFixture(page, {
+    const purchases = await installGameFixture(page, {
       protocol: 4,
-      bodies: [later, moon, first, home],
+      bodies: [home, moon, first, later],
     })
-    await page.goto(`/u/andromeda/b/${home.id}/overview`)
+    await page.goto('/u/andromeda')
+    // A fresh open also loads the cold Vite route modules before rendering.
+    await expect(page.locator('main h1')).toContainText('Empire —', {
+      timeout: 30_000,
+    })
     const trigger = page.getByRole('combobox', { name: 'Selected body' })
     await expect(trigger).toContainText('Martialis')
     await expect(trigger).toHaveAttribute('data-value', home.id)
+    await expect(page).toHaveURL(new RegExp(`/b/${home.id}/overview$`))
+    await expect(
+      page.getByRole('article', { name: / dossier$/ }).first(),
+    ).toHaveAttribute('aria-label', 'Martialis [1:19:6] dossier')
+    await diagnosticScreenshot(page, {
+      path: `test-results/homeworld-default-${width}.png`,
+    })
     await expect(
       page.getByRole('searchbox', { name: 'Search owned worlds' }),
     ).toHaveCount(0)

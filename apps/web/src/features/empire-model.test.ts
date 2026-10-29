@@ -67,6 +67,17 @@ function fixture() {
     },
   } as unknown as Extract<BoundView, { protocol: 4 }>
 }
+it('keeps the server body order even when acquisition and coordinate order differ', () => {
+  const { bodies } = fixture()
+  const ordered = [bodies[2], bodies[0], bodies[1]]
+  expect(empireNodes(ordered).map((node) => node.body.id)).toEqual([
+    'b',
+    'a',
+    'moon',
+  ])
+  expect(ordered.map((body) => body.id)).toEqual(['b', 'a', 'moon'])
+})
+
 it('counts each fleet once across an empire and keeps colocated moons separate', () => {
   const flights = empireFlights(fixture())
   expect(flights.map((f) => f.key)).toEqual(['incoming:0', 'own'])
@@ -172,7 +183,7 @@ it('lays out every body deterministically without mutating the source', () => {
     original = structuredClone(view.bodies)
   const nodes = empireNodes(view.bodies)
   expect(nodes.map((n) => n.body.id)).toEqual(
-    empireNodes([...view.bodies].reverse()).map((n) => n.body.id),
+    empireNodes([...view.bodies]).map((n) => n.body.id),
   )
   expect(nodes.every((n) => Number.isFinite(n.x) && Number.isFinite(n.y))).toBe(
     true,
