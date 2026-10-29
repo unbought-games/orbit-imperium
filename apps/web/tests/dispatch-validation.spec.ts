@@ -41,6 +41,9 @@ async function setup(page: Page) {
       },
       { ...colony, name: 'Haven Colony' },
     ]
+  const capabilities: NonNullable<Parameters<typeof shellFixture>[1]>['extraCapabilities'] = [
+    'Attack', 'Espionage', 'Harvest', 'Deploy', 'Reports', 'Colonize',
+  ]
   let revision = 1
   await shellFixture(page, {
     viewerRevision: () => String(revision),
@@ -50,14 +53,7 @@ async function setup(page: Page) {
     missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '5' },
     playerNames: { [binding.player]: 'Commander' },
     research: [{ research: 'Astrophysics', level: 8 }],
-    extraCapabilities: [
-      'Attack',
-      'Espionage',
-      'Harvest',
-      'Deploy',
-      'Reports',
-      'Colonize',
-    ],
+    extraCapabilities: capabilities,
     catalog: [
       ...(['EspionageProbe', 'Recycler', 'ColonyShip'] as const).map((id) => ({
         key: { kind: 'Ship' as const, id },
@@ -86,6 +82,7 @@ async function setup(page: Page) {
   })
   const state = {
     bodies,
+    capabilities,
     ownedObservation: false,
     advanceRevision: () => { revision++ },
     blocker: null as S['GameError4'] | null,
@@ -231,7 +228,7 @@ async function selectDestinationPlanet(page: Page, id: string) {
 const review = (page: Page) =>
   page.getByRole('button', { name: 'Review fleet', exact: true })
 const mission = (page: Page) =>
-  page.getByRole('combobox', { name: 'Mission', exact: true })
+  page.getByRole('radio', { checked: true })
 const dispatchResult = (page: Page) =>
   page.getByRole('group', { name: 'Fleet dispatch result', exact: true })
 
@@ -284,7 +281,7 @@ for (const historical of [true, false]) {
     const state = await setup(page)
     state.launchError = null
     if (historical) await prepareHistoricalDraft(page)
-    await mission(page).selectOption('Deploy')
+    await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
     await setDestination(page, { position: '2' })
     await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
     for (const width of [390, 1440]) {
@@ -339,7 +336,7 @@ for (const change of ['identity', 'owner'] as const) {
   }) => {
     const state = await setup(page)
     await prepareHistoricalDraft(page)
-    await mission(page).selectOption('Transport')
+    await page.getByRole('radio', { name: 'Transport', exact: true }).check()
     await setDestination(page, { position: '2' })
     await review(page).click()
     await expect(
@@ -369,7 +366,7 @@ test('a historical body draft can switch to harvesting at the same coordinates',
 }) => {
   await setup(page)
   await prepareHistoricalDraft(page)
-  await mission(page).selectOption('Harvest')
+  await page.getByRole('radio', { name: 'Harvest', exact: true }).check()
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
 })
@@ -379,7 +376,7 @@ test('an edited historical deploy still reports authoritative quote rejection', 
 }) => {
   const state = await setup(page)
   await prepareHistoricalDraft(page)
-  await mission(page).selectOption('Deploy')
+  await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
   await setDestination(page, { position: '2' })
   state.quoteError = 'InvalidInput'
   await review(page).click()
@@ -656,7 +653,7 @@ for (const width of [320, 390, 1280]) {
     await setSpeed(page, 50)
     await expect(fuel.locator('dd')).toHaveText('250')
     await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
-    await mission(page).selectOption('Deploy')
+    await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
     await setDestination(page, { position: '2' })
     await expect(timing.locator('dt')).toHaveText(['To destination', 'Total flight', 'Deuterium consumed'])
     await expect(timing.locator('time')).toHaveCount(0)
@@ -822,7 +819,7 @@ test('mission changes preserve the observed destination and coordinate edits nev
   const preview = page.getByLabel('Destination preview')
   await expect(preview).toContainText('Ember Watch')
   for (const next of ['Attack', 'Espionage', 'Transport']) {
-    await mission(page).selectOption(next)
+    await page.getByRole('radio', { name: next, exact: true }).check()
     await expect(preview).toContainText('Ember Watch')
   }
   await setDestination(page, { position: '3' })
@@ -987,7 +984,7 @@ test('own-planet attack is actionable, while transport to another owned planet a
   await page.clock.pauseAt(now)
   const state = await setup(page)
   await setDestination(page, { position: '2' })
-  await mission(page).selectOption('Attack')
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
   await expect(
     page
       .getByRole('status')
@@ -997,11 +994,11 @@ test('own-planet attack is actionable, while transport to another owned planet a
   // Advance beyond the timing debounce only after the invalid attack is selected.
   await page.clock.runFor(1000)
   expect(state.quotes).toBe(0)
-  await mission(page).selectOption('Transport')
+  await page.getByRole('radio', { name: 'Transport', exact: true }).check()
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
   await page.getByRole('button', { name: 'Edit mission' }).click()
-  await mission(page).selectOption('Harvest')
+  await page.getByRole('radio', { name: 'Harvest', exact: true }).check()
   await setDestination(page, { system: String(body.coordinates.system) })
   await setDestination(page, { position: String(body.coordinates.position) })
   await expect(review(page)).toBeEnabled()
@@ -1015,7 +1012,7 @@ test('protection is explained before review, rechecked at review, and launch rac
   const state = await setup(page)
   await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
   state.blocker = 'BeginnerProtected'
-  await mission(page).selectOption('Attack')
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
   await expect(
     page
       .getByRole('status')
@@ -1057,7 +1054,7 @@ test('fresh destination ownership is checked even when it was not in the owned-p
   page,
 }) => {
   await setup(page)
-  await mission(page).selectOption('Attack')
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
   await page.route('**/world', async (route) => {
     const q = route.request().postDataJSON()
     if (q.type !== 'ResolveDestination') return route.fallback()
@@ -1105,7 +1102,7 @@ test('late eligibility and quote failures cannot overwrite an edited destination
       await gate
     }
   }
-  await mission(page).selectOption('Attack')
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
   await expect.poll(() => held).toBe(true)
   await setDestination(page, { system: '2' })
   const lateObservation = page.waitForResponse(
@@ -1223,7 +1220,7 @@ for (const width of [320, 390, 1280]) {
     await diagnosticScreenshot(page, {
       path: `test-results/dispatch-cargo-${width}.png`,
     })
-    await mission(page).selectOption('Attack')
+    await page.getByRole('radio', { name: 'Attack', exact: true }).check()
     await expect(
       page.getByText('Beginner protection can prevent attacks', {
         exact: false,
@@ -1256,7 +1253,7 @@ for (const kind of [
       await page.getByLabel('Small Cargo · 2 available').fill('0')
       await page.getByLabel(`${requiredShip} · 1 available`).fill('1')
     }
-    await mission(page).selectOption(kind)
+    await page.getByRole('radio', { name: kind, exact: true }).check()
     if (kind === 'Deploy') await setDestination(page, { position: '2' })
     if (kind === 'Colonize') await setDestination(page, { position: '6' })
     if (['Attack', 'Transport', 'Espionage'].includes(kind))
@@ -1346,7 +1343,7 @@ test('review retains honest unknown identities and keyboard coordinate actions',
 }) => {
   const state = await setup(page)
   state.observationAvailable = false
-  await mission(page).selectOption('Attack')
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
   await setDestination(page, { system: '2' })
   await review(page).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
@@ -1441,15 +1438,15 @@ for (const width of [320, 390, 1440]) {
     expect(await preview.textContent()).toBe(picked)
     await diagnosticScreenshot(page, { path: `test-results/destination-coordinate-${width}.png` })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await mission(page).selectOption('Deploy')
+    await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
     await expect(picker).toHaveAttribute('data-value', id(6))
     await review(page).click()
     await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Haven Colony')
     await page.getByRole('button', { name: 'Edit mission' }).click()
     // Mission chooses debris automatically; the planet picker explicitly returns to a planet.
-    await mission(page).selectOption('Harvest')
+    await page.getByRole('radio', { name: 'Harvest', exact: true }).check()
     await expect(preview).toContainText('Debris field')
-    await mission(page).selectOption('Transport')
+    await page.getByRole('radio', { name: 'Transport', exact: true }).check()
     await selectDestinationPlanet(page, id(6))
     await expect(preview).toContainText('Haven Colony')
     await input.fill('1:')
@@ -1563,7 +1560,7 @@ test('selecting a planet invalidates an in-flight review for manual coordinates'
 test('destination retains its last observation while refreshing the same system', async ({ page }) => {
   const state = await setup(page)
   const preview = page.getByLabel('Destination preview')
-  await mission(page).selectOption('Attack')
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
   await expect(preview).toContainText('Ember Watch')
   let release!: () => void
   let held = false
@@ -1655,10 +1652,10 @@ test('ordinary coordinate entry defaults to Planet and Harvest keeps debris inte
   await expect(preview).toContainText('Empty position')
   await input.fill('1:1:1')
   await expect(preview).toContainText('Planet · Stargazer')
-  await mission(page).selectOption('Harvest')
+  await page.getByRole('radio', { name: 'Harvest', exact: true }).check()
   await input.fill('1:1:3')
   await expect(preview).toContainText('Debris field')
-  await mission(page).selectOption('Transport')
+  await page.getByRole('radio', { name: 'Transport', exact: true }).check()
   await input.fill('1:1:1')
   await expect(preview).toContainText('Planet · Stargazer')
 })
@@ -1754,25 +1751,25 @@ for (const width of [390, 1440]) {
     const state = await setup(page)
     const table = page.getByRole('table', { name: 'Ships to dispatch' })
     await expect(table.getByRole('row').filter({ has: page.locator('input') }).locator('th')).toHaveText(['Light Fighter', 'Espionage Probe', 'Small Cargo', 'Recycler', 'Colony Ship'])
-    await expect(mission(page).locator('option')).toHaveText(['Transport', 'Deploy', 'Attack', 'Harvest', 'Espionage', 'Colonize'])
+    await expect(page.getByRole('group', { name: 'Mission', exact: true }).locator('label')).toHaveText(['Transport', 'Deploy', 'Attack', 'Harvest', 'Espionage', 'Colonize'])
     await page.getByRole('button', { name: 'All Small Cargo', exact: true }).click()
     await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('2')
     await expect(page.getByRole('button', { name: 'Next coordinate segment' })).toBeVisible({ visible: width < 768 })
     await expect(page.getByRole('complementary', { name: 'Departure context' })).toHaveCount(0)
     await page.getByLabel('Small Cargo · 2 available').fill('0')
-    await mission(page).selectOption('Colonize')
+    await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
     await expect(page.getByRole('status').filter({ hasText: 'This position is occupied' })).toBeVisible()
     await expect(review(page)).toBeDisabled()
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: `test-results/dispatch-occupied-${width}x1000.png`, fullPage: width >= 768 })
     state.debris = false
-    await mission(page).selectOption('Harvest')
+    await page.getByRole('radio', { name: 'Harvest', exact: true }).check()
     await expect(page.getByRole('status').filter({ hasText: 'no available debris field' })).toBeVisible()
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: `test-results/dispatch-debris-${width}x1000.png`, fullPage: width >= 768 })
-    await mission(page).selectOption('Deploy')
+    await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
     await expect(page.getByRole('status').filter({ hasText: 'you own' })).toBeVisible()
-    await mission(page).selectOption('Transport')
+    await page.getByRole('radio', { name: 'Transport', exact: true }).check()
     await page.getByLabel('Small Cargo · 2 available').fill('1')
     state.fuel = '4000000000'
     state.quoteError = 'InsufficientResources'
@@ -1803,7 +1800,7 @@ for (const width of [390, 1440]) {
 
 test('origin changes preserve destination and mission but discard origin-specific input and stale review', async ({ page }) => {
   const state = await setup(page)
-  await mission(page).selectOption('Espionage')
+  await page.getByRole('radio', { name: 'Espionage', exact: true }).check()
   await page.getByLabel('Espionage Probe · 1 available').fill('1')
   await page.getByLabel('Metal', { exact: true }).fill('12')
   let release!: () => void
@@ -1824,7 +1821,7 @@ test('origin changes preserve destination and mission but discard origin-specifi
   release()
   await response
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  await mission(page).selectOption('Transport')
+  await page.getByRole('radio', { name: 'Transport', exact: true }).check()
   await selectDestinationPlanet(page, body.id)
   await expect(page.getByLabel('Destination preview')).toContainText('Your Homeworld')
   expect(state.launches).toBe(0)
@@ -1846,7 +1843,7 @@ test('espionage protection is observed before ships and remains advisory until r
   const state = await setup(page)
   await page.getByLabel('Small Cargo · 2 available').fill('0')
   state.blocker = 'BeginnerProtected'
-  await mission(page).selectOption('Espionage')
+  await page.getByRole('radio', { name: 'Espionage', exact: true }).check()
   await expect(page.getByRole('status').filter({ hasText: 'Beginner protection prevents' })).toBeVisible()
   expect(state.launches).toBe(0)
 })
@@ -1974,3 +1971,64 @@ for (const width of [390, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
+
+for (const width of [320, 390, 640, 768, 1440]) {
+  test(`mission choices are compact and keyboard accessible at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page)
+    const selector = page.getByRole('group', { name: 'Mission', exact: true })
+    const radios = selector.getByRole('radio')
+    await expect(radios).toHaveCount(6)
+    await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toHaveCount(0)
+    expect(await selector.locator('label > span').evaluateAll(elements => elements.every(element => element.scrollWidth <= element.clientWidth))).toBe(true)
+    const transport = selector.getByRole('radio', { name: 'Transport', exact: true })
+    await expect(transport).toBeChecked()
+    const tiles = await selector.locator('label').evaluateAll(elements => elements.map(element => {
+      const { x, y, width, height } = element.getBoundingClientRect()
+      return { x, y, width, height }
+    }))
+    expect(new Set(tiles.map(tile => tile.y)).size).toBe(width < 768 ? 2 : 1)
+    for (const tile of tiles) {
+      expect(tile.height).toBeGreaterThanOrEqual(44)
+      expect(tile.x + tile.width).toBeLessThanOrEqual(width)
+    }
+    await transport.focus()
+    await transport.press('ArrowRight')
+    await expect(selector.getByRole('radio', { name: 'Deploy', exact: true })).toBeChecked()
+    await expect(selector).toContainText('Move ships and cargo')
+    await page.keyboard.press('ArrowRight')
+    const attack = selector.getByRole('radio', { name: 'Attack', exact: true })
+    await expect(attack).toBeChecked()
+    await expect(attack).toBeFocused()
+    await expect(attack.locator('+ span')).toHaveCSS('outline-style', 'solid')
+    await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
+    await diagnosticScreenshot(selector, { path: `test-results/mission-keyboard-detail-${width}x1000.png` })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-mission-keyboard-${width}x1000.png`, fullPage: width >= 768 })
+    await selector.getByRole('radio', { name: 'Harvest', exact: true }).check()
+    await expect(page.getByLabel('Destination preview')).toContainText('Debris field')
+    await transport.check()
+    await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
+    await expect(selector.getByRole('radio', { checked: true })).toHaveCount(1)
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+    await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 40s')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-mission-choices-${width}x1000.png`, fullPage: width >= 768 })
+    await diagnosticScreenshot(selector, { path: `test-results/mission-choices-detail-${width}x1000.png` })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
+test('mission choices honor capabilities and retain a selected unavailable mission', async ({ page }) => {
+  const state = await setup(page)
+  const selector = page.getByRole('group', { name: 'Mission', exact: true })
+  await selector.getByRole('radio', { name: 'Attack', exact: true }).check()
+  state.capabilities.splice(0)
+  state.advanceRevision()
+  await refreshGame(page)
+  await expect(selector.locator('label')).toHaveText(['Transport', 'Attack'])
+  await expect(selector.getByRole('radio', { name: 'Attack', exact: true })).toBeChecked()
+  await selector.getByRole('radio', { name: 'Transport', exact: true }).check()
+  await expect(selector.locator('label')).toHaveText(['Transport'])
+  await expect(selector.getByRole('radio', { name: 'Transport', exact: true })).toBeChecked()
+})

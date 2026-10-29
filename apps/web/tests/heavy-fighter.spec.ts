@@ -249,8 +249,7 @@ test('Heavy Fighters can be selected, quoted and launched in an attack fleet', a
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   await page
-    .getByRole('combobox', { name: 'Mission', exact: true })
-    .selectOption('Attack')
+    .getByRole('radio', { name: 'Attack', exact: true }).check()
   await setDestination(page, { position: '8' })
   await page
     .getByRole('textbox', { name: 'Heavy Fighter · 2 available' })

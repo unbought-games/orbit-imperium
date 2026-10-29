@@ -1,13 +1,6 @@
 import { useProfileSource } from '../shell/player-profiles-context'
-import {
-  ArrowRight,
-  Globe2,
-  Eye,
-  Flag,
-  Package,
-  Recycle,
-  Swords,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { missionOptions } from './mission-options'
 import type { Ref } from 'react'
 import type { components } from '../contracts'
 import { flightDuration, flightSchedule } from '../client-model/dispatch-timing'
@@ -32,14 +25,6 @@ import {
 import { ShipComposition } from './ship-composition'
 import styles from './missions.module.css'
 type S = components['schemas']
-const missionIcons = {
-  Attack: Swords,
-  Transport: Package,
-  Deploy: Flag,
-  Espionage: Eye,
-  Harvest: Recycle,
-  Colonize: Globe2,
-}
 
 export function DispatchReview({
   quote,
@@ -71,7 +56,7 @@ export function DispatchReview({
   onSend: () => void
 }) {
   const mission = quote.intent.mission
-  const Icon = missionIcons[mission]
+  const Icon = missionOptions[mission].icon
   const destination = reviewDestination(
     quote.intent.destination,
     coordinates,

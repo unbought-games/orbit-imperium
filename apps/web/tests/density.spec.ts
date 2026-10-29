@@ -218,7 +218,7 @@ for (const viewport of [
     })
     await page.getByRole('button', { name: 'Prepare harvest' }).click()
     await expect(
-      page.getByRole('combobox', { name: 'Mission', exact: true }),
+      page.getByRole('radio', { checked: true }),
     ).toHaveValue('Harvest')
     await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '372'))
     await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '10'))

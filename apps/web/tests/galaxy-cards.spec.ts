@@ -399,7 +399,7 @@ test('every row keeps its Actions control and your selected planet can harvest i
   await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
   await page.getByRole('dialog', { name: 'Harvest mission', exact: true }).getByRole('button', { name: 'Customize', exact: true }).click()
   await expect(
-    page.getByRole('combobox', { name: 'Mission', exact: true }),
+    page.getByRole('radio', { checked: true }),
   ).toHaveValue('Harvest')
   await expect(page.getByLabel('Destination preview')).toContainText(
     'Debris field',
@@ -460,7 +460,7 @@ for (const mission of ['Transport', 'Attack']) {
     await actions(page, 2).click()
     await page.getByRole('menuitem', { name: mission, exact: true }).click()
     await expect(
-      page.getByRole('combobox', { name: 'Mission', exact: true }),
+      page.getByRole('radio', { checked: true }),
     ).toHaveValue(mission)
     await expect(
       page.getByLabel('Destination coordinates', { exact: true }),
@@ -622,7 +622,7 @@ test('empty positions offer Colonize only when supported, and preserve the coord
   await actions(page, 5).click()
   await colonize.click()
   await expect(
-    page.getByRole('combobox', { name: 'Mission', exact: true }),
+    page.getByRole('radio', { checked: true }),
   ).toHaveValue('Colonize')
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
@@ -1621,7 +1621,7 @@ test('mobile harvest opens at half height, derives the count, and Customize pres
   expect(requests).toEqual([])
   await sheet.getByRole('button', { name: 'Customize', exact: true }).click()
   await expect(page).toHaveURL(/\/dispatch\?/)
-  await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toHaveValue('Harvest')
+  await expect(page.getByRole('radio', { checked: true })).toHaveValue('Harvest')
   await expect(page.getByLabel('Destination preview')).toContainText('Debris field')
   await expect(page).toHaveURL(/target=debris/)
   await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '2'))
@@ -1746,7 +1746,7 @@ test('desktop Harvest opens an anchored popover, selects the quantity and preser
   await openHarvest(page)
   await popover.getByRole('button', { name: 'Customize', exact: true }).click()
   await expect(page).toHaveURL(/\/dispatch\?/)
-  await expect(page.getByRole('combobox', { name: 'Mission', exact: true })).toHaveValue('Harvest')
+  await expect(page.getByRole('radio', { checked: true })).toHaveValue('Harvest')
 })
 
 for (const width of [390, 1280]) {

@@ -25,7 +25,7 @@ import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
 import { resourceNames } from '../client-model/resources'
-import { Select } from '../ui/form'
+import { MissionSelector } from './mission-selector'
 import { Field } from '../ui/form'
 import { Form } from '../ui/form'
 import { Section } from '../ui/section'
@@ -179,43 +179,19 @@ export function Dispatch({
             className={styles.destinationFields}
             aria-label="Mission and destination"
           >
-            <Field>
-              Mission
-              <Select
-                value={mission}
-                onChange={(e) => {
-                  setMission(e.target.value as DispatchDraft['mission'])
-                  if (e.target.value === 'Harvest') setTargetKind('debris')
-                  else if (
-                    targetKind === 'debris' ||
-                    e.target.value === 'Colonize'
-                  )
-                    setTargetKind('planet')
-                  clear()
-                }}
-              >
-                {(
-                  [
-                    'Transport',
-                    'Deploy',
-                    'Attack',
-                    'Harvest',
-                    'Espionage',
-                    'Colonize',
-                  ] as const
-                )
-                  .filter(
-                    (m) =>
-                      m === mission ||
-                      view.capabilities.some(
-                        (c) => c.capability === m && c.enabled,
-                      ),
-                  )
-                  .map((m) => (
-                    <option key={m}>{m}</option>
-                  ))}
-              </Select>
-            </Field>
+            <MissionSelector
+              value={mission}
+              available={view.capabilities
+                .filter((c) => c.enabled)
+                .map((c) => c.capability)}
+              onChange={(nextMission) => {
+                setMission(nextMission)
+                if (nextMission === 'Harvest') setTargetKind('debris')
+                else if (targetKind === 'debris' || nextMission === 'Colonize')
+                  setTargetKind('planet')
+                clear()
+              }}
+            />
             <DispatchDestinationPreview
               coordinates={destinationCoordinates}
               kind={targetKind}
