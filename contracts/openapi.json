@@ -11473,6 +11473,31 @@
             "type": "object",
             "properties": {
               "type": {
+                "const": "SetReportsHidden"
+              },
+              "hidden": {
+                "type": "boolean"
+              },
+              "reports": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "reports",
+              "hidden"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
                 "const": "RenamePlanet"
               },
               "body": {

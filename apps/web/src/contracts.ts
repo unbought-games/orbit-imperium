@@ -6172,6 +6172,11 @@ export interface components {
             hidden: boolean;
         } | {
             /** @constant */
+            type: "SetReportsHidden";
+            hidden: boolean;
+            reports: string[];
+        } | {
+            /** @constant */
             type: "RenamePlanet";
             /** Format: uuid */
             body: string;

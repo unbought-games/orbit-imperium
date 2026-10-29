@@ -3,7 +3,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { shellFixture, refreshGame, binding, body, id } from './fixtures/game'
 
-async function reportsFixture(page: Page) {
+async function reportsFixture(page: Page, quiet = false) {
   let revision = 1
   const headers: components['schemas']['ReportHeader4'][] = [
     {
@@ -24,6 +24,7 @@ async function reportsFixture(page: Page) {
   await shellFixture(page, {
     protocol: 4,
     extraCapabilities: ['Reports'],
+    ...(quiet ? { missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' } } : {}),
     hasUnreadReports: () => headers.some((r) => !r.read && !r.hidden),
     viewerRevision: () => String(revision),
   })
@@ -110,14 +111,16 @@ async function reportsFixture(page: Page) {
         result_ids: [], minimum_viewer_revision: String(revision),
       } })
     }
-    expect(envelope.command.action.type).toBe('SetReportHidden')
+    expect(['SetReportHidden', 'SetReportsHidden']).toContain(envelope.command.action.type)
     submitted++
     await pause
     if (mode === 'uncertain')
       return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     if (mode === 'success') {
-      headers.find((r) => r.id === envelope.command.action.report)!.hidden =
-        envelope.command.action.hidden
+      const reports = envelope.command.action.type === 'SetReportsHidden'
+        ? envelope.command.action.reports : [envelope.command.action.report]
+      for (const report of reports)
+        headers.find((r) => r.id === report)!.hidden = envelope.command.action.hidden
       revision++
     }
     await route.fulfill({
@@ -661,18 +664,55 @@ test('triage selection follows filters and rejected bulk cleanup restores report
 })
 
 
-test('bulk cleanup holds the inbox through intermediate receipts and reloads once at completion', async ({ page }) => {
-  const fixture = await reportsFixture(page)
-  await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
-  await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
-  const before = fixture.pageRequests.length
-  await page.getByRole('button', { name: 'Select all matching (2)' }).click()
-  await page.getByRole('button', { name: 'Delete selected (2)' }).click()
-  await expect(page.getByRole('article')).toHaveCount(0)
-  await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
-  await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
-  expect(fixture.pageRequests.slice(before)).toEqual([null])
-})
+for (const width of [1440, 390]) {
+  for (const cleanup of ['selected', 'older'] as const) {
+    test(`bulk ${cleanup} cleanup hides all reports before one RPC completes at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const fixture = await reportsFixture(page, true)
+      await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
+      await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
+      const before = fixture.pageRequests.length
+      if (cleanup === 'selected') await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+      let release!: () => void
+      fixture.pause(new Promise(resolve => { release = resolve }))
+      await diagnosticScreenshot(page, { path: `test-results/bulk-${cleanup}-before-${width}x900.png`, fullPage: true })
+      await page.getByRole('button', { name: cleanup === 'selected' ? 'Delete selected (2)' : 'Delete older reports (2)', exact: true }).click()
+      await expect(page.getByRole('article')).toHaveCount(0)
+      await expect.poll(() => fixture.submitted()).toBe(1)
+      expect(fixture.headers.every(r => !r.hidden)).toBe(true)
+      await diagnosticScreenshot(page, { path: `test-results/bulk-${cleanup}-pending-${width}x900.png`, fullPage: true })
+      release()
+      await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
+      await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
+      expect(fixture.submitted()).toBe(1)
+      // Mobile mounts a HUD reader alongside the open inbox; each refreshes once.
+      await expect.poll(() => fixture.pageRequests.slice(before)).toEqual(width < 768 ? [null, null] : [null])
+    })
+  }
+}
+
+for (const width of [1440, 390]) {
+  for (const mode of ['rejected', 'uncertain'] as const) {
+    test(`bulk cleanup restores every report after ${mode} response at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const fixture = await reportsFixture(page, true)
+      await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
+      await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+      let release!: () => void
+      fixture.setMode(mode)
+      fixture.pause(new Promise(resolve => { release = resolve }))
+      await page.getByRole('button', { name: 'Delete selected (2)', exact: true }).click()
+      await expect(page.getByRole('article')).toHaveCount(0)
+      await expect.poll(() => fixture.submitted()).toBe(1)
+      release()
+      await expect(page.getByRole('article')).toHaveCount(2)
+      await expect(page.getByText(mode === 'rejected' ? /Action rejected/ : /Response uncertain/).first()).toBeVisible()
+      expect(fixture.headers.every(r => !r.hidden)).toBe(true)
+      expect(fixture.submitted()).toBe(1)
+      await diagnosticScreenshot(page, { path: `test-results/bulk-${mode}-${width}x900.png`, fullPage: true })
+    })
+  }
+}
 
 
 for (const width of [1280, 390]) {

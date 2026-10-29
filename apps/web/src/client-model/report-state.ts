@@ -1,5 +1,5 @@
 import type { components } from '../contracts'
-import type { Attempt, BoundReceipt } from './commands'
+import type { Attempt, BoundReceipt, Command } from './commands'
 
 type Header = components['schemas']['ReportHeader4']
 export type ReportHeaders = Map<string, { header: Header; revision: string }>
@@ -30,43 +30,53 @@ export function mergeReportHeaders(
   return next
 }
 
-// A committed receipt is authoritative for this preference. Keep its revision
-// so an older list/detail response cannot undo a successful deletion.
+export function reportPreference(command: Command) {
+  if (command.type !== 'World') return
+  const action = command.action
+  if (
+    action.type === 'SetReportHidden' ||
+    action.type === 'SetReportsHidden' ||
+    action.type === 'SetReportStarred' ||
+    action.type === 'MarkReportRead'
+  )
+    return action
+}
+
+export function preferenceReports(
+  action: NonNullable<ReturnType<typeof reportPreference>>,
+) {
+  return action.type === 'SetReportsHidden' ? action.reports : [action.report]
+}
+
+// A committed receipt is authoritative for every preference in the batch.
+// Its revision prevents older list/detail responses undoing successful deletion.
 export function acceptReportVisibility(
   headers: ReportHeaders,
   attempt: Attempt,
   receipt: BoundReceipt,
 ): ReportHeaders {
-  const command = attempt.envelope.command
-  if (
-    command.type !== 'World' ||
-    (command.action.type !== 'SetReportHidden' &&
-      command.action.type !== 'SetReportStarred' &&
-      command.action.type !== 'MarkReportRead') ||
-    receipt.status !== 'Committed'
-  )
-    return headers
-  const previous = headers.get(command.action.report)
-  return previous
-    ? mergeReportHeaders(
-        headers,
-        [
-          {
-            ...previous.header,
-            ...(command.action.type === 'MarkReportRead'
-              ? { read: true }
-              : command.action.type === 'SetReportHidden'
-                ? {
-                    hidden: command.action.hidden,
-                    ...(command.action.hidden && previous.header.shared
-                      ? { shared: false }
-                      : {}),
-                  }
-                : { starred: command.action.starred }),
-          },
-        ],
-        receipt.minimum_viewer_revision,
-      )
+  const action = reportPreference(attempt.envelope.command)
+  if (!action || receipt.status !== 'Committed') return headers
+  const updated: Header[] = []
+  for (const report of preferenceReports(action)) {
+    const previous = headers.get(report)
+    if (!previous) continue
+    updated.push({
+      ...previous.header,
+      ...(action.type === 'MarkReportRead'
+        ? { read: true }
+        : action.type === 'SetReportStarred'
+          ? { starred: action.starred }
+          : {
+              hidden: action.hidden,
+              ...(action.hidden && previous.header.shared
+                ? { shared: false }
+                : {}),
+            }),
+    })
+  }
+  return updated.length
+    ? mergeReportHeaders(headers, updated, receipt.minimum_viewer_revision)
     : headers
 }
 
@@ -80,12 +90,11 @@ export function projectedReportHeader(
   let hidden = source.header.hidden
   let starred = source.header.starred
   for (const attempt of attempts) {
-    const command = attempt.envelope.command
+    const action = reportPreference(attempt.envelope.command)
     if (
-      command.type !== 'World' ||
-      (command.action.type !== 'SetReportHidden' &&
-        command.action.type !== 'SetReportStarred') ||
-      command.action.report !== report
+      !action ||
+      action.type === 'MarkReportRead' ||
+      !preferenceReports(action).includes(report)
     )
       continue
     if (
@@ -95,9 +104,8 @@ export function projectedReportHeader(
         BigInt(attempt.receipt.minimum_viewer_revision) >
           BigInt(source.revision))
     ) {
-      if (command.action.type === 'SetReportHidden')
-        hidden = command.action.hidden
-      else starred = command.action.starred
+      if (action.type === 'SetReportStarred') starred = action.starred
+      else hidden = action.hidden
     }
   }
   return hidden === source.header.hidden && starred === source.header.starred
@@ -105,23 +113,23 @@ export function projectedReportHeader(
     : { ...source.header, hidden, starred }
 }
 
-// Keep later failures and unresolved commands. Only a confirmed preference
-// supersedes earlier rejections for that same report.
+// A batch failure is superseded only after every affected preference succeeds.
 export function supersededReportFailures(
   attempts: import('./commands').AttemptLedger,
 ) {
   const confirmed = new Set<string>()
   return [...attempts].reverse().filter(([, attempt]) => {
-    const command = attempt.envelope.command
-    if (
-      command.type !== 'World' ||
-      (command.action.type !== 'SetReportHidden' &&
-        command.action.type !== 'SetReportStarred')
+    const action = reportPreference(attempt.envelope.command)
+    if (!action || action.type === 'MarkReportRead') return false
+    const kind = action.type === 'SetReportStarred' ? 'starred' : 'hidden'
+    const preferences = preferenceReports(action).map(
+      (report) => `${kind}:${report}`,
     )
-      return false
-    const preference = `${command.action.type}:${command.action.report}`
     if (attempt.status === 'committed' && attempt.reconciled)
-      confirmed.add(preference)
-    return attempt.status === 'rejected' && confirmed.has(preference)
+      for (const preference of preferences) confirmed.add(preference)
+    return (
+      attempt.status === 'rejected' &&
+      preferences.every((preference) => confirmed.has(preference))
+    )
   })
 }

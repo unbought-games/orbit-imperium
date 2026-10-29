@@ -1,3 +1,7 @@
+import {
+  preferenceReports,
+  reportPreference,
+} from '../client-model/report-state'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { actionMessage } from '../ui/action-announcements'
@@ -7,11 +11,12 @@ export function useReportVisibility(model: Coordinator, report: string) {
   const state = useStore(model.store)
   const pending = pendingReportVisibility(state.attempts.values(), report)
   const submitted = [...state.attempts.values()].reverse().find((attempt) => {
-    const command = attempt.envelope.command
+    const action = reportPreference(attempt.envelope.command)
     return (
-      command.type === 'World' &&
-      command.action.type === 'SetReportHidden' &&
-      command.action.report === report
+      action &&
+      (action.type === 'SetReportHidden' ||
+        action.type === 'SetReportsHidden') &&
+      preferenceReports(action).includes(report)
     )
   })
   return {

@@ -10,6 +10,7 @@ export function visibleAction(a: Attempt): boolean {
   if (
     command.type === 'World' &&
     (command.action.type === 'SetReportHidden' ||
+      command.action.type === 'SetReportsHidden' ||
       command.action.type === 'SetReportStarred')
   )
     return a.status === 'uncertain' || a.status === 'rejected'
@@ -22,6 +23,8 @@ export function visibleAction(a: Attempt): boolean {
 export function actionLabel(command: Command): string {
   if (command.type === 'World' && command.action.type === 'SetReportStarred')
     return command.action.starred ? 'Star report' : 'Unstar report'
+  if (command.type === 'World' && command.action.type === 'SetReportsHidden')
+    return command.action.hidden ? 'Delete reports' : 'Restore reports'
   if (command.type === 'StartManufacture')
     return `${command.quantity} × ${label(command.item.id)}`
   if (command.type === 'World' && command.action.type === 'SetReportHidden')

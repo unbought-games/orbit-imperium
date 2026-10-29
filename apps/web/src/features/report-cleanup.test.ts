@@ -25,25 +25,29 @@ function fixture() {
   })
   return store
 }
-it('rechecks live stars and skips missing reports between individual submissions', async () => {
+it('submits one batch, deduplicating IDs and rechecking live protection', async () => {
   const store = fixture()
-  const send = vi.fn(async () => {
-    store.setState((s) => ({
-      reportHeaders: mergeReportHeaders(
-        s.reportHeaders,
-        [{ ...s.reportHeaders.get('c')!.header, starred: true }],
-        '2',
-      ),
-    }))
-    return 'submitted'
-  })
-  await deleteReportSelection({ store, send }, ['a', 'b', 'c', 'missing'])
+  const send = vi.fn(async () => 'submitted')
+  await deleteReportSelection({ store, send }, ['a', 'b', 'c', 'missing', 'a'])
   expect(send).toHaveBeenCalledExactlyOnceWith({
     type: 'World',
-    action: { type: 'SetReportHidden', report: 'a', hidden: true },
+    action: { type: 'SetReportsHidden', reports: ['a', 'c'], hidden: true },
   })
 })
-it('stops on refused submission instead of silently losing the remaining selection', async () => {
+it('skips missing, starred and already hidden reports without sending an empty batch', async () => {
+  const store = fixture()
+  store.setState((s) => ({
+    reportHeaders: mergeReportHeaders(
+      s.reportHeaders,
+      [{ ...s.reportHeaders.get('a')!.header, hidden: true }],
+      '2',
+    ),
+  }))
+  const send = vi.fn(async () => 'submitted')
+  await deleteReportSelection({ store, send }, ['a', 'b', 'missing'])
+  expect(send).not.toHaveBeenCalled()
+})
+it('reports refused submission without claiming cleanup succeeded', async () => {
   const store = fixture(),
     send = vi.fn(async () => undefined)
   await expect(
@@ -51,16 +55,12 @@ it('stops on refused submission instead of silently losing the remaining selecti
   ).rejects.toThrow('not submitted')
   expect(send).toHaveBeenCalledTimes(1)
 })
-it('never sends the remaining selection under another account or universe binding', async () => {
-  const store = fixture()
-  const send = vi.fn(async () => {
-    store.setState((s) => ({
-      binding: { ...s.binding!, universe: 'another-universe' },
-    }))
-    return 'submitted'
-  })
+it('does not submit when the report context is no longer ready', async () => {
+  const store = fixture(),
+    send = vi.fn(async () => 'submitted')
+  store.setState({ ready: false })
   await expect(
     deleteReportSelection({ store, send }, ['a', 'c']),
   ).rejects.toThrow('context changed')
-  expect(send).toHaveBeenCalledTimes(1)
+  expect(send).not.toHaveBeenCalled()
 })

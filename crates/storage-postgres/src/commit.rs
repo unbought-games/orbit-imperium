@@ -75,15 +75,13 @@ impl PgStore {
         // slip between those steps and have its star overwritten by old facts.
         // Other recipients retain independent access to their own preferences.
         if let Actor::Player(recipient) = i.actor
-            && let Input::Command(Command::World {
-                action:
-                    WorldAction::MarkReportRead { report }
-                    | WorldAction::SetReportHidden { report, .. }
-                    | WorldAction::SetReportStarred { report, .. },
-            }) = &i.payload
+            && let Input::Command(Command::World { action }) = &i.payload
         {
-            sqlx::query("SELECT recipient FROM mission_report_recipients WHERE report=$1 AND recipient=$2 FOR UPDATE")
-                .bind(report.0).bind(recipient.0).fetch_all(&mut *tx).await.map_err(db_error)?;
+            let reports: Vec<_> = action.report_ids().iter().map(|id| id.0).collect();
+            if !reports.is_empty() {
+                sqlx::query("SELECT recipient FROM mission_report_recipients WHERE report=ANY($1) AND recipient=$2 ORDER BY report FOR UPDATE")
+                    .bind(&reports).bind(recipient.0).fetch_all(&mut *tx).await.map_err(db_error)?;
+            }
         }
         let rt = runtime(&mut tx, i.universe).await?;
         let (facts, rules) = match claim {

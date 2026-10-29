@@ -584,6 +584,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 Command::World {
                     action: WorldAction::MarkReportRead { .. }
                         | WorldAction::SetReportHidden { .. }
+                        | WorldAction::SetReportsHidden { .. }
                         | WorldAction::SetReportStarred { .. }
                 }
             ) {
@@ -1004,50 +1005,65 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         }
         Input::Command(Command::World {
             action:
-                WorldAction::MarkReportRead { report }
-                | WorldAction::SetReportHidden { report, .. }
-                | WorldAction::SetReportStarred { report, .. },
+                action @ (WorldAction::MarkReportRead { .. }
+                | WorldAction::SetReportHidden { .. }
+                | WorldAction::SetReportsHidden { .. }
+                | WorldAction::SetReportStarred { .. }),
         }) => {
             let Actor::Player(owner) = i.actor else {
                 return Err(invariant("report actor"));
             };
-            if !w
-                .reports
-                .get(report)
-                .is_some_and(|r| r.payloads.contains_key(&owner))
-            {
-                return Err(GameError::NotFound.into());
+            let reports = action.report_ids();
+            if reports.is_empty() {
+                return Err(GameError::InvalidInput.into());
             }
-            let pos = w
-                .report_states
-                .iter()
-                .position(|x| x.report == *report && x.recipient == owner);
-            let idx = if let Some(idx) = pos {
-                idx
-            } else {
-                w.report_states.push(RecipientReportState {
-                    report: *report,
-                    recipient: owner,
-                    read: false,
-                    hidden: false,
-                    starred: false,
-                });
-                w.report_states.len() - 1
-            };
-            match &i.payload {
-                Input::Command(Command::World {
-                    action: WorldAction::SetReportHidden { hidden, .. },
-                }) => {
-                    if *hidden && w.report_states[idx].starred {
-                        return Err(GameError::InvalidInput.into());
-                    }
-                    w.report_states[idx].hidden = *hidden;
+            // Validate the entire batch before changing any recipient preference.
+            for report in &reports {
+                if !w
+                    .reports
+                    .get(report)
+                    .is_some_and(|r| r.payloads.contains_key(&owner))
+                {
+                    return Err(GameError::NotFound.into());
                 }
-                Input::Command(Command::World {
-                    action: WorldAction::SetReportStarred { starred, .. },
-                }) => w.report_states[idx].starred = *starred,
-                _ => w.report_states[idx].read = true,
-            };
+                if matches!(
+                    action,
+                    WorldAction::SetReportHidden { hidden: true, .. }
+                        | WorldAction::SetReportsHidden { hidden: true, .. }
+                ) && w.report_states.iter().any(|state| {
+                    state.report == *report && state.recipient == owner && state.starred
+                }) {
+                    return Err(GameError::InvalidInput.into());
+                }
+            }
+            for report in reports {
+                let idx = if let Some(idx) = w
+                    .report_states
+                    .iter()
+                    .position(|x| x.report == report && x.recipient == owner)
+                {
+                    idx
+                } else {
+                    w.report_states.push(RecipientReportState {
+                        report,
+                        recipient: owner,
+                        read: false,
+                        hidden: false,
+                        starred: false,
+                    });
+                    w.report_states.len() - 1
+                };
+                match action {
+                    WorldAction::SetReportHidden { hidden, .. }
+                    | WorldAction::SetReportsHidden { hidden, .. } => {
+                        w.report_states[idx].hidden = *hidden
+                    }
+                    WorldAction::SetReportStarred { starred, .. } => {
+                        w.report_states[idx].starred = *starred
+                    }
+                    _ => w.report_states[idx].read = true,
+                }
+            }
             c.affected_viewers.insert(owner);
         }
         _ => {

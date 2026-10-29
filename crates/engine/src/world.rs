@@ -155,10 +155,31 @@ pub enum WorldAction {
         report: ReportId,
         starred: bool,
     },
+    SetReportsHidden {
+        reports: Vec<ReportId>,
+        hidden: bool,
+    },
     SetReportHidden {
         report: ReportId,
         hidden: bool,
     },
+}
+impl WorldAction {
+    /// Recipient preferences whose facts and locks must be loaded together.
+    pub fn report_ids(&self) -> Vec<ReportId> {
+        match self {
+            Self::MarkReportRead { report }
+            | Self::SetReportHidden { report, .. }
+            | Self::SetReportStarred { report, .. } => vec![*report],
+            Self::SetReportsHidden { reports, .. } => reports
+                .iter()
+                .copied()
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect(),
+            _ => vec![],
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissionReport {
