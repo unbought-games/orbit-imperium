@@ -61,9 +61,13 @@ export function DispatchDestinationPreview({
   const detail = !coordinates
     ? 'Enter valid coordinates or choose one of your planets.'
     : target
-      ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? 'Your colony' : 'You (last observed)') : playerLabel(target.owner, playerNames)}`
+      ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? (target.kind === 'Moon' ? 'Your moon' : target.homeworld ? 'Your Homeworld' : target.colony ? 'Your colony' : 'Your planet') : 'You (last observed)') : playerLabel(target.owner, playerNames)}`
       : kind === 'debris'
-        ? 'Review verifies salvage at these coordinates.'
+        ? lookup === 'loading'
+          ? 'Checking for salvage…'
+          : lookup === 'unavailable'
+            ? 'Salvage unknown. Review will check again.'
+            : 'Observed debris field. Availability is checked again before departure.'
         : lookup === 'loading'
           ? 'Checking the current system observation.'
           : lookup === 'unavailable'

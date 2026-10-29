@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import type { components } from '../contracts'
 import {
+  observedMissionWarning,
   coordinateErrors,
   destinationError,
   dispatchFailure,
@@ -329,4 +330,68 @@ it('does not carry planet evidence onto an explicitly selected co-located moon',
       { ...own, id: 'moon', expected_kind: 'Moon' },
     ),
   ).toBe('')
+})
+
+it('explains missing fuel separately from cargo resource shortages', async () => {
+  const { dispatchResourceProblem } = await import('./dispatch-validation')
+  const available = { metal: '100', crystal: '100', deuterium: '10' }
+  expect(
+    dispatchResourceProblem(
+      available,
+      { metal: '0', crystal: '0', deuterium: '0' },
+      '11',
+    ),
+  ).toContain('Not enough deuterium for fuel')
+  expect(
+    dispatchResourceProblem(
+      available,
+      { metal: '0', crystal: '0', deuterium: '6' },
+      '5',
+    ),
+  ).toContain('selected cargo')
+  expect(
+    dispatchResourceProblem(
+      available,
+      { metal: '101', crystal: '0', deuterium: '0' },
+      '5',
+    ),
+  ).toContain('selected cargo')
+  expect(
+    dispatchResourceProblem(
+      available,
+      { metal: '100', crystal: '100', deuterium: '5' },
+      '5',
+    ),
+  ).toBe('')
+})
+it('checks deployment ownership and occupied colonization before ships', () => {
+  expect(
+    destinationError(
+      'Deploy',
+      { ...own, expected_owner: 'other' },
+      'me',
+      'origin',
+    ),
+  ).toContain('you own')
+  expect(destinationError('Colonize', own, 'me', 'origin')).toContain(
+    'occupied',
+  )
+})
+
+it('does not apply disabled attack rules to eligible espionage', () => {
+  expect(
+    observedMissionWarning('Espionage', {
+      espionage_eligible: true,
+      attack_blocker: 'UnavailableContent',
+    }),
+  ).toBe('')
+  expect(
+    observedMissionWarning('Espionage', {
+      espionage_eligible: false,
+      attack_blocker: 'BeginnerProtected',
+    }),
+  ).toContain('Beginner protection')
+  expect(
+    observedMissionWarning('Espionage', { espionage_eligible: false }),
+  ).toContain('current observation')
 })

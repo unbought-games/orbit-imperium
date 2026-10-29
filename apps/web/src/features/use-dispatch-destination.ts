@@ -27,7 +27,7 @@ export function useDispatchDestination(
     observation?: S['GalaxySystem4']
   } | null>(null)
   const key = `${galaxy}:${system}`
-  const enabled = !!coordinates && kind !== 'debris'
+  const enabled = !!coordinates
   useEffect(() => {
     if (!enabled || galaxy === undefined || system === undefined) return
     let current = true
@@ -56,11 +56,26 @@ export function useDispatchDestination(
     enabled && read?.model === model && read.key === key ? read : null
   const observation = currentRead?.observation
   const target = destinationBody(view, coordinates, kind, observation)
+  const position =
+    observation?.galaxy === galaxy && observation?.system === system
+      ? observation?.positions.find(
+          (p) => p.coordinates.position === coordinates?.position,
+        )
+      : undefined
+  const problem =
+    currentRead?.revision === revision && position
+      ? mission === 'Harvest' && !position.debris
+        ? 'There is no available debris field here. Choose a current debris field in Galaxy.'
+        : mission === 'Colonize' && position.body
+          ? 'This position is occupied. Choose an empty position.'
+          : ''
+      : ''
   const planets = ownedDestinationPlanets(view.bodies, origin)
   const selectedPlanet = planets.find((planet) => planet.id === target?.id)
   return {
     target,
     observation,
+    problem,
     refreshing:
       !!currentRead &&
       currentRead.revision !== revision &&

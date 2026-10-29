@@ -303,6 +303,17 @@ export function GameShell() {
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']
               }
             >
+              {page === 'dispatch' && (
+                <ButtonLink
+                  variant="secondary"
+                  size="icon-small"
+                  aria-label="Back to fleets"
+                  title="Back to fleets"
+                  {...routeTarget(universeName, 'fleets', body?.id)}
+                >
+                  <ArrowLeft size={18} aria-hidden="true" />
+                </ButtonLink>
+              )}
               <Heading level={1} tabIndex={-1} ref={heading}>
                 {title}
               </Heading>
@@ -330,14 +341,6 @@ export function GameShell() {
                   prepareDispatch,
                 }}
               >
-                {page === 'dispatch' && (
-                  <ButtonLink
-                    variant="secondary"
-                    {...routeTarget(universeName, 'fleets', body?.id)}
-                  >
-                    <ArrowLeft size={18} aria-hidden="true" /> Back to fleets
-                  </ButtonLink>
-                )}
                 {page === 'fleets' && view.protocol !== 4 && (
                   <ButtonLink
                     {...routeTarget(universeName, 'dispatch', body?.id)}

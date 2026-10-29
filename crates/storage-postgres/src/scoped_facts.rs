@@ -93,7 +93,8 @@ pub(crate) async fn select_query(
     query: &WorldQueryKind,
     rules: &Ruleset,
 ) -> Result<Selection, StoreError> {
-    if let WorldQueryKind::FleetQuote { intent } = query {
+    if let WorldQueryKind::FleetQuote { intent } | WorldQueryKind::FleetEstimate { intent } = query
+    {
         return select(
             tx,
             b.universe,
@@ -136,7 +137,7 @@ pub(crate) async fn select_query(
             | DestinationSelection::DebrisAt { coordinates }) = selection;
             selected.coordinates.insert(*coordinates);
         }
-        WorldQueryKind::FleetQuote { .. } => unreachable!(),
+        WorldQueryKind::FleetQuote { .. } | WorldQueryKind::FleetEstimate { .. } => unreachable!(),
     }
     for coords in &selected.coordinates {
         let owners: Vec<uuid::Uuid> = sqlx::query_scalar("SELECT owner FROM bodies WHERE universe=$1 AND galaxy=$2 AND system=$3 AND position=$4")

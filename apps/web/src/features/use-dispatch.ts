@@ -29,6 +29,8 @@ import {
   dispatchFailure,
   dispatchObservationError,
   dispatchQuantity,
+  dispatchResourceProblem,
+  observedMissionWarning,
 } from '../client-model/dispatch-validation'
 type S = components['schemas']
 export function useDispatch({
@@ -89,7 +91,7 @@ export function useDispatch({
     (candidate) => candidate.body?.id === target?.id,
   )?.body
   const colony = colonizationStatus(view, Number(position))
-  const targetProblem =
+  const localTargetProblem =
     targetKind === 'moon' && (mission === 'Colonize' || mission === 'Harvest')
       ? 'Choose a planet position for colonization or debris for harvesting.'
       : targetKind === 'debris' && mission !== 'Harvest'
@@ -109,10 +111,11 @@ export function useDispatch({
                 body.id,
               )
             : ''
-  const attackWarning =
-    mission === 'Attack' && observedTarget?.attack_blocker
-      ? dispatchFailure(observedTarget.attack_blocker)
-      : ''
+  const targetProblem = localTargetProblem || destination.problem
+  const attackWarning = observedMissionWarning(
+    mission,
+    observedTarget ?? undefined,
+  )
   const types = view.catalog.flatMap((entry) =>
     entry.key.kind === 'Ship' &&
     entry.mobile &&
@@ -156,6 +159,7 @@ export function useDispatch({
       : null,
     view.viewer_revision,
     !busy && !quote,
+    true,
   )
   const reviewButtonRef = useRef<HTMLButtonElement>(null)
   const wasReviewing = useRef(false)
@@ -201,6 +205,17 @@ export function useDispatch({
     },
     [],
   )
+  const [origin, setOrigin] = useState(body.id)
+  if (origin !== body.id) {
+    generation.current++
+    setOrigin(body.id)
+    setShips({})
+    setCargo(['0', '0', '0'])
+    setQuote(null)
+    setError('')
+    setBusy(false)
+    setSubmitted(null)
+  }
   const clear = () => {
     generation.current++
     setSubmitted(null)
@@ -212,6 +227,7 @@ export function useDispatch({
     if (
       !command ||
       !quote ||
+      quote.intent.origin !== body.id ||
       !canSubmitQuote(model.store.getState(), command, quote)
     )
       return
@@ -307,8 +323,27 @@ export function useDispatch({
       }
       const terms = await model
         .world({ type: 'FleetQuote', intent })
-        .catch((failure: unknown) => {
-          throw Error(dispatchFailure(failure, intent))
+        .catch(async (failure: unknown) => {
+          const code = failure instanceof Error ? failure.message : failure
+          const estimate =
+            code === 'InsufficientResources'
+              ? (timing?.terms ??
+                (await model
+                  .world({ type: 'FleetEstimate', intent })
+                  .catch(() => null)))
+              : null
+          const origin = projectGameView(model.store.getState())?.bodies.find(
+            (candidate) => candidate.id === body.id,
+          )
+          const resourceProblem =
+            estimate && 'fuel' in estimate && origin
+              ? dispatchResourceProblem(
+                  origin.amounts,
+                  intent.cargo,
+                  estimate.fuel,
+                )
+              : ''
+          throw Error(resourceProblem || dispatchFailure(failure, intent))
         })
       if (requestGeneration !== generation.current) return
       if (!terms || !('terms_hash' in terms))

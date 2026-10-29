@@ -33,7 +33,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
    expect(request.selection.type).toBe('EmptyPositionAt')
    data={type:'EmptyPosition',coordinates:request.selection.coordinates,slot_revision:'0'}
   }else{
-   expect(request.type).toBe('FleetQuote')
+   expect(['FleetQuote', 'FleetEstimate']).toContain(request.type)
    data={intent:request.intent,profile_hash:'a'.repeat(64),terms_hash:'b'.repeat(64),distance:1020,speeds:[['ColonyShip','4000'],['SmallCargo','5000']],duration_ms:120000,fuel:'100000000',capacity:'20000000000',maximum_payload:'19900000000',slot_limit:'2'}
   }
   await route.fulfill({json:bound(request.context.request_id,data)})
@@ -170,7 +170,7 @@ test('authoritative colony quote rejection explains the position research requir
     if (request.type === 'ResolveDestination') {
       await route.fulfill({ json: bound(request.context.request_id, { type: 'EmptyPosition', coordinates: request.selection.coordinates, slot_revision: '0' }) })
     } else {
-      expect(request.type).toBe('FleetQuote')
+      expect(['FleetQuote', 'FleetEstimate']).toContain(request.type)
       await route.fulfill({ status: 422, json: { type: 'about:blank', status: 422, code: 'GameRejected', game_code: 'PrerequisiteMissing' } })
     }
   })

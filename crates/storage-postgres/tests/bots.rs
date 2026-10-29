@@ -919,6 +919,17 @@ async fn observed_coordinate_destinations_authorize_quotes_without_free_scanning
         store.bound_world_query(b, query(&intent)).await,
         Err(StoreError::NotFound)
     ));
+    assert!(matches!(
+        store
+            .bound_world_query(
+                b,
+                WorldQueryKind::FleetEstimate {
+                    intent: intent.clone()
+                }
+            )
+            .await,
+        Err(StoreError::NotFound)
+    ));
     let resolved = game
         .world_query(
             principal(b),
@@ -935,6 +946,15 @@ async fn observed_coordinate_destinations_authorize_quotes_without_free_scanning
     // Exercise the real persisted observation and scoped quote loading. The bot
     // still needs to buy a ship before the engine can approve a launch.
     store.bound_world_query(b, query(&intent)).await.unwrap();
+    store
+        .bound_world_query(
+            b,
+            WorldQueryKind::FleetEstimate {
+                intent: intent.clone(),
+            },
+        )
+        .await
+        .unwrap();
     assert_eq!(
         store.bot_status(principal(b)).await.unwrap().allowance_used,
         1

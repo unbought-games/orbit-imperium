@@ -528,6 +528,7 @@ pub(crate) async fn viewer_snapshot(
     .map_err(db_error)?
     .map(ReportId);
     Ok(ViewerSnapshot {
+        homeworld: crate::bootstrap::viewer_homeworld(tx, universe, player).await?,
         unread_report,
         coverage: state.coverage.clone(),
         bodies: state.bodies.values().cloned().collect(),

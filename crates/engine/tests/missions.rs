@@ -2889,3 +2889,59 @@ mod destroyer;
 
 #[path = "missions/battleship.rs"]
 mod battleship;
+
+#[test]
+fn flight_estimate_retains_fuel_without_resources_and_cannot_authorize_launch() {
+    let (mut s, r, p, b, t) = fixture();
+    let mut request = intent(&s, p, b, t);
+    request.cargo = Resources::default();
+    let legal = quote_fleet(&s, p, &request, 0, &r).unwrap();
+    s.bodies.get_mut(&b).unwrap().checkpoint.amounts = Resources::default();
+    let estimate = estimate_fleet(&s, p, &request, &r).unwrap();
+    assert_eq!(estimate.fuel, legal.fuel);
+    assert_eq!(estimate.duration_ms, legal.duration_ms);
+    assert!(estimate.fuel > 0);
+    assert_eq!(
+        quote_fleet(&s, p, &request, 0, &r),
+        Err(GameError::InsufficientResources)
+    );
+    let value = serde_json::to_value(&estimate).unwrap();
+    assert_eq!(value["estimate"], true);
+    assert!(value.get("terms_hash").is_none());
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        0,
+        99001,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: request.clone(),
+                expected_terms_hash: legal.terms_hash,
+            },
+        }),
+    );
+    assert!(matches!(
+        result,
+        TransitionResult::Rejected(GameError::InsufficientResources)
+    ));
+    request.cargo = Resources::all(100_000 * SCALE);
+    assert_eq!(
+        estimate_fleet(&s, p, &request, &r).unwrap().fuel,
+        estimate.fuel
+    );
+    assert_eq!(
+        quote_fleet(&s, p, &request, 0, &r),
+        Err(GameError::CargoCapacity)
+    );
+    assert!(matches!(
+        estimate_fleet(&s, PlayerId(Uuid::from_u128(999)), &request, &r),
+        Err(GameError::NotOwned)
+    ));
+    s.coverage.research_players.remove(&p);
+    assert!(matches!(
+        estimate_fleet(&s, p, &request, &r),
+        Err(GameError::PolicyUnavailable)
+    ));
+}

@@ -1,3 +1,4 @@
+import { DispatchShips } from './dispatch-ships'
 import { DispatchDestinationPreview } from './dispatch-destination-preview'
 import { CoordinateLink } from './coordinate-link'
 import { ArrowUp } from 'lucide-react'
@@ -11,7 +12,6 @@ import { FleetSlots } from './fleet-slots'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { useDispatch } from './use-dispatch'
 import { canSubmitQuote } from '../client-model/game-projection'
-import { ButtonLink } from '../ui/button'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
@@ -21,15 +21,13 @@ import { Field } from '../ui/form'
 import { Form } from '../ui/form'
 import { Section } from '../ui/section'
 import { Text } from '../ui/typography'
-import { Heading } from '../ui/typography'
 import styles from './missions.module.css'
 import { TaskHeader } from '../ui/task-header'
 import { DispatchTiming } from './dispatch-timing'
 import { DispatchFeedback } from './dispatch-feedback'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
-import { routeTarget } from '../shell/route-target'
-import { bodyName, label } from '../ui/format'
+import { bodyName } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
   ships?: Record<string, string>
@@ -171,11 +169,11 @@ export function Dispatch({
                 {(
                   [
                     'Transport',
-                    'Espionage',
-                    'Harvest',
-                    'Attack',
-                    'Colonize',
                     'Deploy',
+                    'Attack',
+                    'Harvest',
+                    'Espionage',
+                    'Colonize',
                   ] as const
                 )
                   .filter(
@@ -264,39 +262,17 @@ export function Dispatch({
               </Text>
             )}
           </fieldset>
-          <fieldset className={styles.fieldset}>
-            <legend>Ships</legend>
-            {types.map((k) => {
-              const available =
-                body.inventories.find((i) => i.item.id === k)?.count ?? '0'
-              return (
-                <Field key={k}>
-                  {label(k)} · {available} available
-                  <NumberInput
-                    value={ships[k] ?? '0'}
-                    placeholder="0"
-                    onBlur={(e) => {
-                      if (!e.target.value.trim())
-                        setShips({ ...ships, [k]: '0' })
-                    }}
-                    onChange={(e) => {
-                      setShips({ ...ships, [k]: e.target.value })
-                      clear()
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShips({ ...ships, [k]: available })
-                      clear()
-                    }}
-                  >
-                    All {label(k)}
-                  </Button>
-                </Field>
-              )
-            })}
-          </fieldset>
+          <DispatchShips
+            view={view}
+            body={body}
+            types={types}
+            ships={ships}
+            onNormalize={(id) => setShips({ ...ships, [id]: '0' })}
+            onChange={(id, value) => {
+              setShips({ ...ships, [id]: value })
+              clear()
+            }}
+          />
           <fieldset className={styles.cargoFields} aria-label="Cargo">
             <div className={styles.cargoHeader}>
               <span>Cargo</span>
@@ -371,6 +347,7 @@ export function Dispatch({
             </Field>
             <DispatchTiming
               terms={timing}
+              availableFuel={body.amounts.deuterium}
               mission={mission}
               now={now}
               message={timingMessage}
@@ -394,26 +371,6 @@ export function Dispatch({
             {busy ? 'Reviewing…' : 'Review fleet'}
           </Button>
         </Form>
-        <aside className={styles.dispatchAside} aria-label="Departure context">
-          <Heading level={3}>
-            Departing from{' '}
-            <CoordinateLink at={body.coordinates} label="origin" />
-          </Heading>
-          <Text>
-            <FleetSlots
-              used={occupiedSlots}
-              total={view.missions.fleet_slots}
-            />
-            . Returning fleets occupy a slot.
-          </Text>
-          <Text>
-            Review checks the current destination, fuel, capacity and mission
-            eligibility before you commit.
-          </Text>
-          <ButtonLink {...routeTarget(universeName, 'fleets', body.id)}>
-            View fleet activity
-          </ButtonLink>
-        </aside>
       </div>
       {quote && (
         <DispatchReview

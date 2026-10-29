@@ -25,6 +25,7 @@ async function setup(page: Page) {
   const colony = {
     ...body,
     id: id(6),
+    colony: { diameter_km: 12000, min_temperature: 0, max_temperature: 40, created_at: 1000, profile: 'oi-redesign-reconstructed-v1' },
     coordinates: { galaxy: 1, system: 1, position: 2 },
   }
   const bodies = [
@@ -44,7 +45,9 @@ async function setup(page: Page) {
   await shellFixture(page, {
     viewerRevision: () => String(revision),
     protocol: 4,
+    homeworldId: body.id,
     bodies,
+    missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '5' },
     playerNames: { [binding.player]: 'Commander' },
     research: [{ research: 'Astrophysics', level: 8 }],
     extraCapabilities: [
@@ -58,6 +61,7 @@ async function setup(page: Page) {
     catalog: [
       ...(['EspionageProbe', 'Recycler', 'ColonyShip'] as const).map((id) => ({
         key: { kind: 'Ship' as const, id },
+        ship_statistics: { propulsion: null, combat: null, cost: { EspionageProbe: ['0', '1000', '0'], Recycler: ['10000', '6000', '2000'], ColonyShip: ['10000', '20000', '10000'] }[id] },
         requirements: [],
         enabled: true,
         mobile: true,
@@ -84,6 +88,8 @@ async function setup(page: Page) {
     ownedObservation: false,
     advanceRevision: () => { revision++ },
     blocker: null as S['GameError4'] | null,
+    estimateError: null as S['GameError4'] | null,
+    debris: true,
     quoteError: null as S['GameError4'] | null,
     launchError: 'BeginnerProtected' as S['GameError4'] | null,
     destination: null as S['MissionDestination4'] | null,
@@ -124,11 +130,11 @@ async function setup(page: Page) {
                   activity: { type: 'None' },
                   inactivity: 'Active',
                   vacation: false,
-                  espionage_eligible: true,
+                  espionage_eligible: !observedBlocker,
                   attack_blocker: observedBlocker,
                 }
               : null,
-          debris: null,
+          debris: state.debris ? { field_identity: id(40), metal: '1000000', crystal: '1000000' } : null,
         })),
       }
     } else if (query.type === 'ResolveDestination') {
@@ -156,22 +162,19 @@ async function setup(page: Page) {
               })
     } else {
       state.quotes++
-      if (state.quoteError)
+      if (query.type === 'FleetEstimate' ? state.estimateError : state.quoteError)
         return route.fulfill({
           status: 422,
-          json: { code: 'GameRejected', game_code: state.quoteError },
+          json: { code: 'GameRejected', game_code: query.type === 'FleetEstimate' ? state.estimateError : state.quoteError },
         })
       data = {
         intent: query.intent,
         profile_hash: 'a'.repeat(64),
-        distance: 1000,
-        speeds: [],
-        duration_ms: (state.duration * 100) / query.intent.speed_percent,
+        ...(query.type === 'FleetEstimate' ? { estimate: true } : { distance: 1000, speeds: [], slot_limit: '1', terms_hash: 'b'.repeat(64) }),
+        duration_ms: Math.floor((state.duration * 100) / query.intent.speed_percent),
         fuel: state.fuel,
         capacity: '5000000000',
         maximum_payload: '4999000000',
-        slot_limit: '1',
-        terms_hash: 'b'.repeat(64),
       }
     }
     await route.fulfill({
@@ -589,6 +592,7 @@ test('flight timing updates with speed and selected ships without opening review
   const timing = page.getByRole('region', { name: 'Flight timing' })
   const ship = page.getByLabel('Small Cargo · 2 available')
   await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
+  await ship.blur()
   await ship.click()
   const initialShipPosition = (await ship.boundingBox())!.y
   await ship.press('Backspace')
@@ -617,7 +621,7 @@ test('flight timing updates with speed and selected ships without opening review
   const request = page.waitForRequest(
     (request) =>
       request.url().endsWith('/world') &&
-      request.postDataJSON().type === 'FleetQuote' &&
+      request.postDataJSON().type === 'FleetEstimate' &&
       request.postDataJSON().intent.ships[0]?.count === '2',
   )
   await ship.fill('2')
@@ -680,7 +684,7 @@ test('late timing replies cannot replace a newer speed and failed estimates clea
   })
   state.hold = async (route) => {
     const query = route.request().postDataJSON()
-    if (query.type === 'FleetQuote' && query.intent.speed_percent === 50) {
+    if (query.type === 'FleetEstimate' && query.intent.speed_percent === 50) {
       held = true
       await gate
     }
@@ -692,15 +696,15 @@ test('late timing replies cannot replace a newer speed and failed estimates clea
   const response = page.waitForResponse(
     (response) =>
       response.url().endsWith('/world') &&
-      response.request().postDataJSON().type === 'FleetQuote' &&
+      response.request().postDataJSON().type === 'FleetEstimate' &&
       response.request().postDataJSON().intent.speed_percent === 50,
   )
   release()
   await response
   await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
-  state.quoteError = 'TargetVacation'
+  state.estimateError = 'NotFound'
   await page.getByLabel('Speed', { exact: true }).selectOption('10')
-  await expect(timing).toContainText('vacation mode')
+  await expect(timing).toContainText('no longer available')
   await expect(timing.locator('time')).toHaveCount(0)
   expect(state.launches).toBe(0)
 })
@@ -1634,9 +1638,9 @@ test('unified destination supports keyboard planet selection, dismissal and coor
   await expect(page.getByRole('listbox')).toHaveCount(0)
   await expect(input).toHaveValue('1:1:2')
   await input.fill('1')
-  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.press('Space')
   await input.pressSequentially('1')
-  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.press('Space')
   await input.pressSequentially('2')
   await expect(input).toHaveValue('1:1:2')
   await expect(picker).toHaveAttribute('data-value', id(6))
@@ -1670,7 +1674,7 @@ test('explicit moon links retain their body intent through coordinate edits and 
   })
   await expect(preview).toContainText('Moon not observed')
   await input.fill('1')
-  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.press('Space')
   await input.pressSequentially('1 3')
   await expect(input).toHaveValue('1:1:3')
   await expect(preview).toContainText('Moon not observed')
@@ -1741,5 +1745,107 @@ test('background flight estimates preserve an explicit moon destination', async 
   })
   expect((await resolved).postDataJSON().selection).toEqual({ type: 'BodyAt', coordinates: { galaxy: 1, system: 1, position: 3 }, kind: 'Moon' })
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+})
+
+for (const width of [390, 1440]) {
+  test(`dispatch feedback and ship selection at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const state = await setup(page)
+    const table = page.getByRole('table', { name: 'Ships to dispatch' })
+    await expect(table.getByRole('row').filter({ has: page.locator('input') }).locator('th')).toHaveText(['Light Fighter', 'Small Cargo', 'Espionage Probe', 'Recycler', 'Colony Ship'])
+    await expect(mission(page).locator('option')).toHaveText(['Transport', 'Deploy', 'Attack', 'Harvest', 'Espionage', 'Colonize'])
+    await page.getByRole('button', { name: 'All Small Cargo', exact: true }).click()
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('2')
+    await expect(page.getByRole('button', { name: 'Next coordinate segment' })).toBeVisible({ visible: width < 768 })
+    await expect(page.getByRole('complementary', { name: 'Departure context' })).toHaveCount(0)
+    await page.getByLabel('Small Cargo · 2 available').fill('0')
+    await mission(page).selectOption('Colonize')
+    await expect(page.getByRole('status').filter({ hasText: 'This position is occupied' })).toBeVisible()
+    await expect(review(page)).toBeDisabled()
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-occupied-${width}x1000.png`, fullPage: width >= 768 })
+    state.debris = false
+    await mission(page).selectOption('Harvest')
+    await expect(page.getByRole('status').filter({ hasText: 'no available debris field' })).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-debris-${width}x1000.png`, fullPage: width >= 768 })
+    await mission(page).selectOption('Deploy')
+    await expect(page.getByRole('status').filter({ hasText: 'you own' })).toBeVisible()
+    await mission(page).selectOption('Transport')
+    await page.getByLabel('Small Cargo · 2 available').fill('1')
+    state.fuel = '4000000000'
+    state.quoteError = 'InsufficientResources'
+    await page.getByLabel('Speed', { exact: true }).selectOption('90')
+    const timing = page.getByRole('region', { name: 'Flight timing' })
+    await expect(timing).toContainText('4,000 · Insufficient fuel')
+    await expect(timing.locator('dd').first()).not.toHaveText('—')
+    await review(page).click()
+    await expect(page.getByRole('alert')).toContainText('Not enough deuterium for fuel')
+    await expect(timing).toContainText('4,000 · Insufficient fuel')
+    if (width < 768) await page.getByRole('alert').scrollIntoViewIfNeeded()
+    else await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-fuel-${width}x1000.png`, fullPage: width >= 768 })
+    state.fuel = '1000000'
+    state.quoteError = null
+    await selectDestinationPlanet(page, id(6))
+    await page.getByLabel('Speed', { exact: true }).selectOption('100')
+    await expect(timing.locator('dd').first()).toHaveText('1m 40s')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-ready-${width}x1000.png`, fullPage: width >= 768 })
+    await review(page).click()
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-review-${width}x1000.png`, fullPage: width >= 768 })
+    expect(state.launches).toBe(0)
+  })
+}
+
+test('origin changes preserve destination and mission but discard origin-specific input and stale review', async ({ page }) => {
+  const state = await setup(page)
+  await mission(page).selectOption('Espionage')
+  await page.getByLabel('Espionage Probe · 1 available').fill('1')
+  await page.getByLabel('Metal', { exact: true }).fill('12')
+  let release!: () => void
+  let held = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  state.hold = async route => {
+    if (route.request().postDataJSON().type === 'FleetQuote') { held = true; await gate }
+  }
+  await review(page).click()
+  await expect.poll(() => held).toBe(true)
+  await selectBody(page, id(6))
+  await expect(mission(page)).toHaveValue('Espionage')
+  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue('1:1:1')
+  await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('0')
+  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('0')
+  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'FleetQuote')
+  release()
+  await response
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  await mission(page).selectOption('Transport')
+  await selectDestinationPlanet(page, body.id)
+  await expect(page.getByLabel('Destination preview')).toContainText('Your Homeworld')
+  expect(state.launches).toBe(0)
+})
+
+for (const width of [390, 1440]) {
+  test(`homeworld identity survives origin changes at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page)
+    await selectBody(page, id(6))
+    await selectDestinationPlanet(page, body.id)
+    await expect(page.getByLabel('Destination preview')).toContainText('Planet · Your Homeworld')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-homeworld-${width}x1000.png`, fullPage: width >= 768 })
+  })
+}
+
+test('espionage protection is observed before ships and remains advisory until review', async ({ page }) => {
+  const state = await setup(page)
+  await page.getByLabel('Small Cargo · 2 available').fill('0')
+  state.blocker = 'BeginnerProtected'
+  await mission(page).selectOption('Espionage')
+  await expect(page.getByRole('status').filter({ hasText: 'Beginner protection prevents' })).toBeVisible()
   expect(state.launches).toBe(0)
 })

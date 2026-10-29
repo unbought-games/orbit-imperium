@@ -95,7 +95,7 @@ export function OperationsScreen({
     if (route.page === 'dispatch')
       return (
         <Dispatch
-          key={`${body.id}:${JSON.stringify(search)}`}
+          key={JSON.stringify(search)}
           model={model}
           view={view}
           body={view.bodies.find((b) => b.id === body.id)!}
