@@ -1693,6 +1693,32 @@ test('legacy item links inspect other buildings during construction without stal
   expect(purchases()).toBe(0)
 })
 
+for (const width of [1440, 390, 320]) {
+  test(`resource list Settings opens the selected planet's controls at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const colony = { ...structuredClone(body), id: '00000000-0000-4000-8000-000000000006' }
+    await installGameFixture(page, {
+      protocol: 4,
+      bodies: [body, colony],
+      production: [production(), { ...production(), body: colony.id }],
+    })
+    await page.goto(`/u/andromeda/b/${colony.id}/resources`)
+    const catalog = page.getByRole('region', { name: 'Resource buildings', exact: true })
+    const settings = catalog.getByRole('link', { name: 'Resource settings', exact: true })
+    await expect(settings).toHaveAttribute('href', `/u/andromeda/b/${colony.id}/resource-settings`)
+    await expect(settings).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await captureCatalog(page, `test-results/resource-list-settings-${width}x900.png`)
+    await settings.focus()
+    await diagnosticScreenshot(catalog, { path: `test-results/resource-list-settings-focused-${width}x900.png` })
+    await settings.press('Enter')
+    await expect(page.locator('main h1')).toHaveText('Resource settings')
+    await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
+    await page.goBack()
+    await expect(settings).toBeVisible()
+  })
+}
+
 for (const width of [1440, 390]) {
   test(`Menu opens resource settings with history and reload support at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -1707,7 +1733,9 @@ for (const width of [1440, 390]) {
     await expect(menu).not.toBeVisible()
     await expect(page.locator('main h1')).toHaveText('Resource settings')
     await expect(page.locator('main h1')).toBeFocused()
-    await expect(page.getByRole('button', { name: 'Menu', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('link', { name: 'Develop', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('button', { name: 'Menu', exact: true })).not.toHaveAttribute('aria-current')
+    await expect(page.getByRole('navigation', { name: 'Develop navigation', exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true })).toHaveCount(0)
     await page.reload()
@@ -1716,6 +1744,8 @@ for (const width of [1440, 390]) {
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
     await page.goForward()
     await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Develop', exact: true })).toHaveAttribute('aria-current', 'page')
+    await diagnosticScreenshot(page, { path: `test-results/resource-settings-develop-${width}x900.png`, fullPage: true })
   })
 }
 
@@ -1737,6 +1767,10 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
 for (const protocol of [2, 3, 4] as const) {
   test(`resource settings is unavailable without production data on protocol ${protocol}`, async ({ page }) => {
     await shellFixture(page, { protocol })
+    if (protocol !== 2) {
+      await page.goto(`/u/andromeda/b/${body.id}/resources`)
+      await expect(page.getByRole('region', { name: 'Resource buildings', exact: true }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
+    }
     await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
     await page.getByRole('button', { name: 'Menu', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Navigation' }).getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()

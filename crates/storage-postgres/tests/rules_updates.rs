@@ -2044,8 +2044,16 @@ async fn satellites_settle_inventory_at_completions_and_rules_boundaries_in_both
     }
 }
 
+#[path = "rules_updates/battlecruiser.rs"]
+mod battlecruiser;
 #[path = "rules_updates/bomber.rs"]
 mod bomber;
 
+#[path = "rules_updates/battleship.rs"]
+mod battleship;
+
 #[path = "rules_updates/hyperspace_drive.rs"]
 mod hyperspace_drive;
+
+#[path = "rules_updates/destroyer.rs"]
+mod destroyer;

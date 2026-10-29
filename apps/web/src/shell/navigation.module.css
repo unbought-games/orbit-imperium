@@ -165,12 +165,17 @@
     flex: 1;
     flex-direction: column;
     gap: 4px;
-    font-size: 1rem;
+    font-size: 0.8125rem;
     min-height: 60px;
     padding: 4px;
   }
   .primary svg {
     display: block;
+  }
+  .primary > a > svg,
+  .primary > button > svg {
+    width: 24px;
+    height: 24px;
   }
   .primary a[aria-current='page']::after {
     bottom: 0;
@@ -245,7 +250,7 @@
   .menuAlert {
     position: absolute;
     top: 0;
-    right: calc(50% - 34px);
+    right: max(0px, calc(50% - 34px));
   }
 }
 

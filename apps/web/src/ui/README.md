@@ -2,7 +2,7 @@
 
 Use shared React components for styled elements and compose them into feature components. Plain, unstyled HTML wrappers are fine; a new component should own a visual pattern or behavior.
 
-- `style.css` is only for document defaults, resets, global focus/scroll behavior, and the no-animation policy. Shared design values live in `styles/tokens.css`.
+- `style.css` is only for document defaults, resets, global focus/scroll/selection behavior, and the no-animation policy. Shared design values live in `styles/tokens.css`.
 - Keep component styles in an adjacent `*.module.css` file. Import the module in its owner, and keep responsive rules there too. Do not use global feature classes or `:global` escape hatches.
 - Reuse `Button`, `ButtonLink`, `Link`, form controls, `Panel`, `Section`, typography, and the catalog/quote components before adding a new visual pattern.
 - Choose explicit variants (`<Button variant="secondary">`, `<Panel tone="accent">`). Never infer an action's visual meaning from its position among siblings.
@@ -32,9 +32,27 @@ Add screen routes in `src/routes`; TanStack generates `routeTree.gen.ts` (do not
 
 Use native browser links for external destinations and same-page non-navigation helpers. Preserve route title/focus behavior, keyboard menu restoration, and direct-link login. Tests must cover browser-history navigation and actual server refreshes, since Vite's development fallback alone cannot prove production hosting works.
 
+## Mobile text selection
+
+On touch devices with a coarse primary pointer and no hover, native buttons,
+selects, disclosure summaries, and ARIA action/menu controls suppress text
+selection and iOS long-press callouts. Shared linked controls, game navigation
+chrome, catalog cards, and decorative game art opt in with `data-touch-control`.
+Use that attribute for new control surfaces, rather than disabling selection on
+entire screens or all links. Content remains selectable by default: descriptions,
+reports, messages,
+help, errors, identities, and ordinary coordinate links. Inputs, textareas, and
+editable elements explicitly retain selection and native copy/paste menus;
+`data-touch-selectable` does the same for copyable content nested in chrome.
+Keep explanatory popup/dialog bodies outside an opted-in control container.
+The policy lives in `style.css` and applies in mobile browsers and installed apps;
+viewport width alone never disables desktop selection.
+Do not target `nav` generically: ranking ranges, alliance counts, and public
+policy/support links retain native selection and link callouts.
+
 ## Editorial game shell
 
-The shell uses a compact horizontal masthead and ledger, with four stable anchors: Empire, Develop, Fleet, Menu. Develop defaults to Resources and exposes the five implemented build destinations in secondary navigation. Fleet groups activity and Dispatch. The grouped modal Menu contains real implemented destinations only, with capability-unavailable entries disabled. At phone sizes the same anchors form the safe-area-aware thumb dock. There are no permanent desktop rails or in-game footer.
+The shell uses a compact horizontal masthead and ledger, with five stable anchors: Empire, Develop, Galaxy, Fleets, Menu. Develop defaults to Resources and exposes the five implemented build destinations in secondary navigation. Galaxy opens directly without secondary tabs. Fleets opens the movement list, with a Dispatch Fleet action and a Back to fleets link in Dispatch. The grouped modal Menu contains real implemented destinations only, with capability-unavailable entries disabled. At phone sizes the same anchors form the safe-area-aware thumb dock. There are no permanent desktop rails or in-game footer.
 
 On phones, a compact planet box shares one row with the resource ledger. `BodySelector` uses the shared Base UI `RichSelect`: each option shows artwork, a name (falling back to the body kind), coordinates, and a selected checkmark. The trigger truncates long text; popup labels wrap and the roster scrolls within the viewport. There is no search field. Starting/legacy planets without colony genesis come first, followed by colonies ordered by `colony.created_at`; equal or unknown creation times retain server order. Moons follow the owned planet at matching coordinates. Ordering is derived without changing game state. The select preserves route/funding context and provides keyboard navigation, typeahead, Escape, outside dismissal, and focus restoration.
 
@@ -178,7 +196,7 @@ Send requests a fresh server quote for recyclers alone at 100% speed with no car
 
 The mobile protocol-4 shell mounts `features/command-hud` outside the scrolling game layout. It uses the coordinator's command ledger, submitted quotes, report headers, paginated mailbox observations, and incoming missions. Fleet capacity comes from `occupiedFleetSlots`; arrival times come from confirmed fleet snapshots, never the browser's wall clock or guessed launch times. Only committed gameplay commands acknowledge success. Restored successes and initial unread hydration do not replay toasts.
 
-The user explicitly requested an animated orb and swipe-dismissable notifications. This HUD is an exception to the no-animation rule: orb startup, a shared 700ms orb palette transition, terminal typing, orbit, pulse, toast lifetime, dialog entrance, and swipe feedback respect reduced motion. All captions type in, linger for 3 seconds, and fade away without shifting the orb. Routine cards do not automatically produce captions; the orb color, icon, and unread badge retain persistent meaning. HUD dialogs freeze the document with the shared iOS-compatible scroll lock, contain overscroll, and restore the original page position on close or unmount. Navigation and other screens retain their existing motion policy. Swiping clears a notification ID only; it never marks intelligence read or clears a hostile fleet. Incoming alerts remain red until authoritative removal; unread Spy Contact reports remain red until read. Reports reuse `ReportObservation` and mark read after loading; messages and circulars acknowledge reads only after their displayed content loads, with retry on failure.
+The user explicitly requested an animated orb and swipe-dismissable notifications. This HUD is an exception to the no-animation rule: orb startup, a shared 700ms orb palette transition, terminal typing, orbit, pulse, toast lifetime, dialog entrance/exit, and swipe feedback respect reduced motion. All captions type in, linger for 3 seconds, and fade away without shifting the orb. Routine cards do not automatically produce captions; the orb color, icon, and unread badge retain persistent meaning. HUD dialogs freeze the document with the shared iOS-compatible scroll lock, contain overscroll, and retain their content and modal scroll lock through the 400ms exit, then restore focus and the original page position on close or unmount. The panel opens over 600ms. The backdrop fades with the panel; reduced motion closes immediately. Navigation and other screens retain their existing motion policy. Swiping clears a notification ID only; it never marks intelligence read or clears a hostile fleet. Incoming alerts remain red until authoritative removal; unread Spy Contact reports remain red until read. Reports reuse `ReportObservation` and mark read after loading; messages and circulars acknowledge reads only after their displayed content loads, with retry on failure.
 
 While the mobile game is visible and connected, the HUD refreshes intelligence on viewer revision changes, foreground focus, and every 15 seconds. Mailbox reads traverse all conversation and circular pages. Account/epoch changes fence late results, and acknowledged reads fence older mailbox responses. Background failures preserve the last confirmed facts and expose retry inside the uplink. Desktop does not mount or poll the HUD.
 

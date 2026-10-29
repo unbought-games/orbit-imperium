@@ -60,7 +60,35 @@
 .hudLayer {
   display: none;
 }
+.refreshAnnouncement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 @media (max-width: 767px) {
+  .refreshPulse {
+    position: absolute;
+    inset: -3px;
+    pointer-events: none;
+  }
+  .refreshPulse > span {
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid var(--hud);
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(var(--hud-rgb), 0.45);
+    animation: refreshWave 1600ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+  .refreshPulse > span + span {
+    animation-delay: 240ms !important;
+  }
+  .orb[data-updated] .orbCore {
+    animation: refreshGlow 1400ms ease-out both !important;
+  }
   .hudLayer {
     position: fixed;
     bottom: calc(96px + env(safe-area-inset-bottom));
@@ -489,13 +517,14 @@
     overscroll-behavior: contain;
     touch-action: pan-y pinch-zoom;
   }
-  .dialog[open] {
-    animation: dialogIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  }
   .dialog::backdrop {
     touch-action: none;
     background: #030c15b8;
     backdrop-filter: blur(5px);
+    animation: backdropIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+  .dialog[data-closing]::backdrop {
+    animation: backdropOut 0.4s ease-in both !important;
   }
   .dialogInterior {
     padding: 16px 20px 0;
@@ -630,18 +659,6 @@
   .resourceGrid svg {
     width: 16px;
     height: 16px;
-  }
-  .reportRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    font-size: 11px;
-    color: #a6bdcb;
-  }
-  .reportRow strong {
-    color: #e1e8e7;
-    font: 12px monospace;
   }
   .intelNote {
     display: flex;
@@ -818,6 +835,34 @@
     transform: scale(1);
   }
 }
+@keyframes refreshWave {
+  0% {
+    opacity: 0;
+    scale: 0.78;
+  }
+  18% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.3;
+  }
+}
+@keyframes refreshGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+    scale: 1;
+  }
+  28% {
+    filter: brightness(1.8);
+    scale: 1.1;
+  }
+  60% {
+    filter: brightness(1.2);
+    scale: 0.98;
+  }
+}
 @keyframes typeCaption {
   from {
     width: 0;
@@ -901,18 +946,32 @@
     transform: scaleX(0);
   }
 }
-@keyframes dialogIn {
+@keyframes backdropIn {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: none;
+  }
+}
+@keyframes backdropOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 /* This experiment deliberately opts into motion above the game's global reset. */
 @media (prefers-reduced-motion: reduce) {
+  .refreshPulse > span {
+    opacity: 0.65;
+  }
+  .refreshPulse > span + span {
+    display: none;
+  }
+  .surface .refreshPulse > span,
+  .surface .orb[data-updated] .orbCore,
   .surface .typedCaption > span,
   .surface .dialog[open],
   .surface *,
@@ -920,6 +979,9 @@
   .surface *::after {
     animation: none !important;
     transition: none !important;
+  }
+  .surface .dialog::backdrop {
+    animation: none !important;
   }
 }
 
@@ -1000,5 +1062,275 @@
   .surface .orbCharge {
     scale: 1;
     translate: none;
+  }
+}
+
+.fleetAccordion {
+  margin-inline: -20px;
+  border-block: 1px solid #ffffff16;
+}
+.fleetControl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 20px;
+}
+.fleetToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #e5edf0;
+  text-align: left;
+}
+.fleetToggle > svg {
+  flex-shrink: 0;
+  color: var(--hud);
+}
+.fleetToggle > .fleetChevron {
+  color: #a6bdcb;
+  transition: transform 0.15s;
+}
+.fleetToggle[aria-expanded='true'] > .fleetChevron {
+  transform: rotate(90deg);
+}
+.fleetSlotCount {
+  margin-left: auto;
+  font: 12px var(--font-mono, monospace);
+  white-space: nowrap;
+}
+.fleetSlotCount small {
+  font: 10px var(--font-interface, sans-serif);
+  color: #a6bdcb;
+}
+.fleetViewAll {
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid #ecd39f38;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--hud);
+  text-decoration: none;
+}
+.fleetList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.fleetRow {
+  --flight: #a4dbef;
+  padding: 8px 20px;
+  border-top: 1px solid #ffffff12;
+  background: linear-gradient(110deg, #a4dbef05, transparent 65%);
+}
+.fleetRow[data-flight-tone='attack'] {
+  --flight: #ecd39f;
+  background: linear-gradient(110deg, #ecd39f05, transparent 65%);
+}
+.fleetRow[data-flight-tone='enemy'] {
+  --flight: #ff7d83;
+  background: linear-gradient(110deg, #ff7d8308, transparent 65%);
+}
+.fleetHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fleetHeading > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.fleetMission {
+  display: inline;
+  min-width: 0;
+  min-height: 0;
+  color: var(--flight);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.fleetLeg {
+  color: #91a9b9;
+  font-size: 9px;
+}
+.fleetRow[data-flight-tone='enemy'] .fleetLeg {
+  color: var(--flight);
+}
+.surface .fleetManifestToggle {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 4px;
+  flex-shrink: 0;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #c8d8df;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.fleetManifestToggle > svg {
+  color: #7895a7;
+}
+.fleetManifestToggle[aria-expanded='true'] > svg {
+  transform: rotate(180deg);
+}
+.fleetManifest {
+  margin-top: 6px;
+  padding: 10px 0;
+  border-block: 1px solid #ffffff12;
+  color: #b4c6d2;
+  font-size: 11px;
+}
+.fleetFlight {
+  position: relative;
+  height: 28px;
+  color: var(--flight);
+}
+.fleetFlight > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fleetTrackGlow {
+  stroke: var(--flight);
+  stroke-width: 5px;
+  opacity: 0.09;
+  filter: blur(4px);
+}
+.fleetTrack {
+  stroke: #8da6b755;
+  stroke-width: 1px;
+  stroke-dasharray: 2 4;
+}
+.fleetTrackActive {
+  stroke: var(--flight);
+  stroke-width: 1.2px;
+  filter: drop-shadow(0 0 3px var(--flight));
+}
+.fleetShip {
+  color: var(--flight);
+  filter: drop-shadow(0 0 5px var(--flight));
+}
+.fleetHomeWorld,
+.fleetTargetWorld {
+  position: absolute;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.fleetHomeWorld {
+  left: 0;
+  box-shadow: 0 0 15px #ecd39f12;
+}
+.fleetTargetWorld {
+  right: 0;
+  box-shadow: 0 0 15px #a4dbef12;
+}
+.fleetWorld {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px #a4dbef25);
+}
+.fleetEndpoints {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.fleetEndpoints > span {
+  min-width: 0;
+}
+.fleetEndpoints > span:last-child {
+  text-align: right;
+}
+.fleetEndpoints > span > strong {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #c8d8df;
+  font-weight: 500;
+}
+.fleetEndpoints > span > span {
+  display: block;
+  color: #7895a7;
+  font: 9px/1.6 var(--font-mono, monospace);
+}
+.panelContent .fleetCountdown {
+  margin: 0;
+  color: var(--flight);
+  text-align: center;
+  font: 11px/1.4 var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+}
+.fleetCountdown > span {
+  display: block;
+  color: #91a9b9;
+  font: 9px/1.6 var(--font-interface, sans-serif);
+}
+.fleetCountdown > strong {
+  display: block;
+  font-weight: 500;
+}
+.panelContent .fleetEmpty {
+  margin: 0;
+  padding: 12px 20px;
+  border-top: 1px solid #ffffff12;
+  color: #91a9b9;
+  font-size: 12px;
+}
+
+.fleetAccordion + .fleetAccordion {
+  border-top: 0;
+}
+.enemyAccordion[data-active='true'] .fleetToggle {
+  color: #ff7d83;
+}
+.surface .fleetInspect {
+  padding: 0;
+  min-height: 24px;
+  border: 0;
+  background: none;
+  color: var(--flight);
+  font-size: 13px;
+  font-weight: 600;
+}
+.enemyShipSummary {
+  flex-shrink: 0;
+  color: #c8d8df;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fleetRow[data-flight-tone='enemy'] .fleetTrack {
+  stroke: #ff7d8377;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .surface .fleetShip {
+    transition: transform 0.25s linear !important;
   }
 }

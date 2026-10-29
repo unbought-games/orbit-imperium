@@ -32,7 +32,10 @@ export function Requirements({
         )
         return (
           <li key={i}>
-            <Link {...routeTarget(universeName, page, body.id, id)}>
+            <Link
+              data-touch-control=""
+              {...routeTarget(universeName, page, body.id, id)}
+            >
               {label(id)} {r.level}
             </Link>
             <span>

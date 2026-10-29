@@ -84,6 +84,7 @@ export function FleetInventory({
                   <tr key={entry.key.id}>
                     <th scope="row">
                       <Link
+                        data-touch-control=""
                         {...routeTarget(
                           universe,
                           'shipyard',

@@ -23,10 +23,12 @@ export function useHudInbox(
   const targets = [
     ...new Map(
       [
-        ...incomingThreats(state).map((fleet) => ({
-          kind: 'incoming' as const,
-          id: incomingKey(fleet),
-        })),
+        ...incomingThreats(state)
+          .filter((fleet) => fleet.mission !== 'Attack')
+          .map((fleet) => ({
+            kind: 'incoming' as const,
+            id: incomingKey(fleet),
+          })),
         ...unreadTargets(state).filter(
           (target) => target.kind !== 'report' || reportIds.has(target.id),
         ),

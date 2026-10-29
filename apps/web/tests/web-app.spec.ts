@@ -161,7 +161,7 @@ test('mobile game navigation stays in the same document and app scope', async ({
   for (const [destination, path] of [
     ['Develop', `/u/andromeda/b/${body.id}/resources`],
     ['Facilities', `/u/andromeda/b/${body.id}/facilities`],
-    ['Fleet', `/u/andromeda/b/${body.id}/fleets`],
+    ['Fleets', `/u/andromeda/b/${body.id}/fleets`],
     ['Settings', '/u/andromeda/settings'],
     ['Empire', `/u/andromeda/b/${body.id}/overview`],
   ]) {

@@ -5,30 +5,31 @@ import {
   navigationAnchor,
   navigationGroups,
 } from './navigation-model'
-it('keeps the same four anchor meanings across every implemented route', () => {
+it('keeps the same five anchor meanings across every implemented route', () => {
   expect(navigationAnchor('overview')).toBe('Empire')
   for (const page of buildPages) expect(navigationAnchor(page)).toBe('Develop')
-  for (const page of ['galaxy', 'dispatch', 'fleets'] as const)
-    expect(navigationAnchor(page)).toBe('Fleet')
+  expect(navigationAnchor('resource-settings')).toBe('Develop')
+  for (const page of ['dispatch', 'fleets'] as const)
+    expect(navigationAnchor(page)).toBe('Fleets')
   for (const page of [
     'reports',
     'settings',
-    'resource-settings',
     'high-scores',
     'alliance',
   ] as const)
     expect(navigationAnchor(page)).toBe('Menu')
+  expect(navigationAnchor('galaxy')).toBe('Galaxy')
   expect(buildPages[0]).toBe('resources')
   expect(
     navigationGroups.find((group) => group.title === 'Develop')?.pages,
   ).toEqual(buildPages)
 })
-it('orders Fleet destinations as Galaxy, Dispatch, Fleets in the submenu and grouped menu', () => {
-  expect(fleetPages).toEqual(['galaxy', 'dispatch', 'fleets'])
+it('keeps Dispatch under Fleets and Galaxy independently accessible', () => {
+  expect(fleetPages).toEqual(['fleets', 'dispatch'])
   expect(
     navigationGroups.find((group) => group.title === 'Fleet & intelligence')
       ?.pages,
-  ).toEqual(['galaxy', 'dispatch', 'fleets', 'reports'])
+  ).toEqual(['galaxy', 'fleets', 'dispatch', 'reports'])
   expect(
     navigationGroups.find((group) => group.title === 'Empire')?.pages,
   ).toEqual(['overview', 'resource-settings'])

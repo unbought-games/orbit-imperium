@@ -110,14 +110,6 @@ export function DetailResourceValue({
     </span>
   )
 }
-export function SignedEnergy({ value }: { value: string }) {
-  return (
-    <>
-      {BigInt(value) > 0n ? '+' : ''}
-      <ResourceNumber value={value} />
-    </>
-  )
-}
 export function StorageInsight({
   storage,
   showRate = true,
@@ -167,11 +159,13 @@ export function StorageInsight({
 }
 export function EnergyComparison({
   energy,
+  balanceLabel,
   firstBuild = false,
   view,
   body,
 }: {
   energy: Insight['energy']
+  balanceLabel: string
   firstBuild?: boolean
   view: ProgressionProps['view']
   body: ProgressionProps['body']
@@ -182,35 +176,34 @@ export function EnergyComparison({
   return (
     <>
       {!firstBuild && (
-        <DetailRow label="Energy balance" warning={short}>
-          <EnergyDetails energy={energy} view={view} body={body}>
+        <DetailRow label={balanceLabel} warning={short}>
+          <EnergyDetails
+            energy={energy}
+            view={view}
+            body={body}
+            balanceLabel={balanceLabel}
+          >
             <DetailResourceValue resource="energy">
-              {energy.balanceChange === null ? (
-                'Unknown change'
-              ) : (
-                <span title="Change">
-                  <SignedEnergy value={energy.balanceChange} />
-                </span>
-              )}{' '}
-              <span aria-hidden="true">→</span>{' '}
               <strong title="New total">
                 {energy.after === null ? (
                   'Estimate unavailable'
                 ) : (
-                  <SignedEnergy value={energy.after} />
+                  <ResourceNumber value={energy.after} />
                 )}
-              </strong>
-              {short && energy.afterUtilization !== null && (
-                <>
-                  {' '}
-                  (
-                  <NumberValue
-                    value={energy.afterUtilization}
-                    divisor={10000}
-                  />
-                  %)
-                </>
-              )}
+              </strong>{' '}
+              <span title="Change">
+                (
+                {energy.balanceChange !== null &&
+                BigInt(energy.balanceChange) > 0n
+                  ? '+'
+                  : ''}
+                {energy.balanceChange === null ? (
+                  'Unknown change'
+                ) : (
+                  <ResourceNumber value={energy.balanceChange} />
+                )}
+                )
+              </span>
             </DetailResourceValue>
           </EnergyDetails>
         </DetailRow>
@@ -219,7 +212,13 @@ export function EnergyComparison({
         <DetailRow
           label={hasChange ? 'Power to operate' : 'Construction power'}
         >
-          <EnergyDetails energy={energy} view={view} body={body} firstBuild>
+          <EnergyDetails
+            energy={energy}
+            view={view}
+            body={body}
+            balanceLabel={balanceLabel}
+            firstBuild
+          >
             <DetailResourceValue resource="energy">
               {hasChange ? (
                 <ResourceNumber value={change < 0n ? -change : change} />
@@ -236,12 +235,14 @@ export function EnergyComparison({
 
 function EnergyDetails({
   energy,
+  balanceLabel,
   view,
   body,
   firstBuild = false,
   children,
 }: {
   energy: Insight['energy']
+  balanceLabel: string
   view: ProgressionProps['view']
   body: ProgressionProps['body']
   firstBuild?: boolean
@@ -251,14 +252,14 @@ function EnergyDetails({
   const change = energy.change === null ? null : BigInt(energy.change)
   return (
     <Popover
-      label={firstBuild ? 'Operating power' : 'Energy balance'}
+      label={firstBuild ? 'Operating power' : balanceLabel}
       className={styles.metricTrigger}
       trigger={children}
     >
       <p>
         Current balance:{' '}
         <DetailResourceValue resource="energy">
-          <SignedEnergy value={energy.current} />
+          <ResourceNumber value={energy.current} />
         </DetailResourceValue>
       </p>
       <p>
@@ -267,7 +268,7 @@ function EnergyDetails({
           'Estimate unavailable'
         ) : (
           <DetailResourceValue resource="energy">
-            <SignedEnergy value={energy.after} />
+            <ResourceNumber value={energy.after} />
           </DetailResourceValue>
         )}
       </p>
@@ -450,6 +451,7 @@ export function EnergyAdvice({
             <span key={entry.key.id}>
               {i > 0 && ' · '}
               <Link
+                data-touch-control=""
                 {...routeTarget(
                   universe,
                   catalogPage(entry.key),

@@ -1,11 +1,13 @@
 import type { DispatchDraft } from '../missions'
 import { useLayoutEffect, useRef } from 'react'
+import { AnimatePresence, motion, useIsPresent } from 'motion/react'
 import { ArrowLeft, Radio, Shield, X } from 'lucide-react'
 import type { Coordinator } from '../../client-model/coordinator'
 import { currentServerTime } from '../../client-model/game-projection'
 import { ButtonLink } from '../../ui/button'
 import { lockSheetDocument } from '../../ui/action-sheet-effects'
 import { ResourceSummary } from '../../ui/number-value'
+import { useReducedMotion } from '../../ui/use-reduced-motion'
 import { routeTarget } from '../../shell/route-target'
 import { IncomingFleet } from '../incoming-fleet'
 import { arrivalCountdown } from '../mission-presentation'
@@ -15,19 +17,23 @@ import { HudMessage } from './hud-message'
 import { incomingThreats, incomingKey, noticeContent, noticeKey } from './model'
 import type { CommandHudState } from './use-command-hud'
 import styles from './hud.module.css'
-export function HudPanel({
-  hud,
-  model,
-  universe,
-  body,
-  onDraft,
-}: {
+type HudPanelProps = {
   hud: CommandHudState
   model: Coordinator
   universe: string
   body?: string
   onDraft: (draft: DispatchDraft) => void
-}) {
+}
+export function HudPanel(props: HudPanelProps) {
+  return (
+    <AnimatePresence>
+      {props.hud.selection !== null && <OpenHudPanel {...props} />}
+    </AnimatePresence>
+  )
+}
+function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
+  const present = useIsPresent()
+  const reducedMotion = useReducedMotion()
   const ref = useRef<HTMLDialogElement>(null)
   const title = useRef<HTMLHeadingElement>(null)
   const inboxScroll = useRef(0)
@@ -35,11 +41,10 @@ export function HudPanel({
   const selectionKey =
     selected && selected !== 'inbox' ? noticeKey(selected) : selected
   const detail = selected === 'inbox' ? null : selected
-  const open = selected !== null
   const close = () => hud.select(null)
   useLayoutEffect(() => {
     const dialog = ref.current
-    if (!open || !dialog) return
+    if (!dialog) return
     inboxScroll.current = 0
     const unlock = lockSheetDocument()
     dialog.showModal()
@@ -47,7 +52,7 @@ export function HudPanel({
       dialog.close()
       unlock()
     }
-  }, [open])
+  }, [])
   useLayoutEffect(() => {
     if (!selectionKey) return
     if (ref.current)
@@ -63,18 +68,29 @@ export function HudPanel({
       ? threats.find((f) => incomingKey(f) === selected.id)
       : null
   return (
-    <dialog
+    <motion.dialog
       ref={ref}
       className={styles.dialog}
+      data-closing={!present || undefined}
+      initial={reducedMotion ? false : { opacity: 0, y: 24, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 24, scale: 0.96 }}
+      transition={{
+        duration: reducedMotion ? 0 : present ? 0.6 : 0.4,
+        ease: present ? [0.16, 1, 0.3, 1] : [0.4, 0, 1, 1],
+      }}
       data-tone={content?.tone ?? 'champagne'}
       aria-labelledby="command-hud-title"
-      onCancel={close}
+      onCancel={(event) => {
+        event.preventDefault()
+        close()
+      }}
       onClose={close}
       onClick={(event) => {
         if (event.target === event.currentTarget) close()
       }}
     >
-      <div className={styles.dialogInterior}>
+      <div className={styles.dialogInterior} inert={!present}>
         <header className={styles.dialogHeader}>
           {selected && selected !== 'inbox' ? (
             <button
@@ -204,6 +220,6 @@ export function HudPanel({
           </span>
         </footer>
       </div>
-    </dialog>
+    </motion.dialog>
   )
 }
