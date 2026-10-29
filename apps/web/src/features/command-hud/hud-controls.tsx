@@ -185,6 +185,13 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
       data-tone={appearance.tone}
       data-pressed={pressed || undefined}
     >
+      <span
+        className={styles.refreshAnnouncement}
+        role="status"
+        aria-atomic="true"
+      >
+        {caption?.category === 'updated' ? caption.text : ''}
+      </span>
       {caption && (
         <span
           key={caption.id}
@@ -208,6 +215,7 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
         className={styles.orb}
         data-testid="command-orb"
         data-tone={appearance.tone}
+        data-updated={caption?.category === 'updated' || undefined}
         aria-label={`${appearance.tone === 'red' ? 'Threat detected. ' : ''}${unreadCount ? `${unreadCount === 99 ? '99 or more' : unreadCount} unread items. ` : unread ? 'Unread intelligence. ' : ''}Open command HUD`}
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
@@ -220,6 +228,17 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
           hud.select('inbox')
         }}
       >
+        {caption?.category === 'updated' && (
+          <span
+            key={caption.id}
+            className={styles.refreshPulse}
+            data-testid="orb-refresh-pulse"
+            aria-hidden="true"
+          >
+            <span />
+            <span />
+          </span>
+        )}
         <span className={styles.outerOrbit} />
         <span className={styles.innerOrbit} />
         <span className={styles.orbCore}>
