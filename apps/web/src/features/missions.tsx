@@ -1,3 +1,14 @@
+import { BodyIllustration } from './body-illustration'
+import { playerLabel } from './player-label'
+import {
+  LocationSummary,
+  LocationSummaryMedia,
+  LocationSummaryContent,
+  LocationSummaryLabel,
+  LocationSummaryTitle,
+  LocationSummaryDetails,
+} from '../ui/location-summary'
+import { RangeInput } from '../ui/form'
 import { DispatchShips } from './dispatch-ships'
 import { DispatchDestinationPreview } from './dispatch-destination-preview'
 import { CoordinateLink } from './coordinate-link'
@@ -7,9 +18,6 @@ import { copiedLocationAtom } from './coordinate-memory'
 import { coordinateText, type LocationKind } from '../shell/location-address'
 import { useUniverseName } from '../shell/session-context'
 import { DispatchReview } from './dispatch-review'
-import { useStore } from 'zustand'
-import { FleetSlots } from './fleet-slots'
-import { occupiedFleetSlots } from '../client-model/game-projection'
 import { useDispatch } from './use-dispatch'
 import { canSubmitQuote } from '../client-model/game-projection'
 import { Button } from '../ui/button'
@@ -59,7 +67,6 @@ export function Dispatch({
 }) {
   const universeName = useUniverseName()
   const recentlyCopied = useAtomValue(copiedLocationAtom)
-  const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const {
     coordinateProblems,
     coordinatesValid,
@@ -109,14 +116,29 @@ export function Dispatch({
       {!quote && (
         <>
           <TaskHeader>
-            <span>
-              Origin {bodyName(body)}{' '}
-              <CoordinateLink at={body.coordinates} label="origin" /> ·{' '}
-              <FleetSlots
-                used={occupiedSlots}
-                total={view.missions.fleet_slots}
-              />
-            </span>
+            <LocationSummary role="group" aria-label="Origin">
+              <LocationSummaryMedia>
+                <BodyIllustration
+                  body={body}
+                  className={styles.originArt}
+                  sizes="48px"
+                />
+              </LocationSummaryMedia>
+              <LocationSummaryContent>
+                <LocationSummaryLabel>Origin</LocationSummaryLabel>
+                <LocationSummaryTitle>{bodyName(body)}</LocationSummaryTitle>
+                <LocationSummaryDetails>
+                  <span>
+                    {playerLabel(view.binding.player, view.player_names)}
+                  </span>
+                  <CoordinateLink
+                    at={body.coordinates}
+                    target={body.kind === 'Moon' ? 'moon' : 'planet'}
+                    label="origin"
+                  />
+                </LocationSummaryDetails>
+              </LocationSummaryContent>
+            </LocationSummary>
           </TaskHeader>
           {mission === 'Colonize' && (
             <Text role="status">
@@ -329,21 +351,21 @@ export function Dispatch({
             aria-label="Speed and flight estimates"
           >
             <Field>
-              Speed
-              <Select
+              <span className={styles.speedLabel}>
+                Speed <span aria-hidden="true">{speed}%</span>
+              </span>
+              <RangeInput
                 aria-label="Speed"
+                aria-valuetext={`${speed}%`}
+                min={10}
+                max={100}
+                step={10}
                 value={speed}
                 onChange={(e) => {
                   setSpeed(Number(e.target.value))
                   clear()
                 }}
-              >
-                {Array.from({ length: 10 }, (_, i) => (
-                  <option key={i} value={(i + 1) * 10}>
-                    {(i + 1) * 10}%
-                  </option>
-                ))}
-              </Select>
+              />
             </Field>
             <DispatchTiming
               terms={timing}
@@ -384,7 +406,6 @@ export function Dispatch({
             system: Number(system),
             position: Number(position),
           }}
-          occupiedSlots={occupiedSlots}
           now={now}
           observedAt={draft?.observedAt}
           colonyWarning={

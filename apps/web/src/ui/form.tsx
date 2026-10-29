@@ -66,3 +66,16 @@ export function FormGrid({
 }: ComponentPropsWithRef<'div'>) {
   return <div className={classes(styles.grid, className)} {...props} />
 }
+
+export function RangeInput({
+  className,
+  ...props
+}: Omit<ComponentPropsWithRef<'input'>, 'type'>) {
+  return (
+    <input
+      {...props}
+      type="range"
+      className={classes(styles.range, className)}
+    />
+  )
+}

@@ -3,7 +3,7 @@ import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { NumberValue } from '../ui/number-value'
 import { label } from '../ui/format'
-import { compareShips, shipGroup } from './ship-order'
+import { compareShips, shipGroup, shipGroups } from './ship-order'
 import styles from './fleet-inventory.module.css'
 type S = components['schemas']
 
@@ -38,7 +38,7 @@ export function DispatchShips({
             <th scope="col">Send</th>
           </tr>
         </thead>
-        {['Warships', 'Transports', 'Utility'].map((group) => {
+        {shipGroups.map((group) => {
           const rows = entries.filter((entry) => shipGroup(entry) === group)
           return (
             rows.length > 0 && (

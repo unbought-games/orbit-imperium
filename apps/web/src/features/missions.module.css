@@ -387,7 +387,7 @@
   gap: 12px;
 }
 .flightSettings > label {
-  width: min(100%, 10rem);
+  width: min(100%, 24rem);
 }
 .flightTiming {
   grid-column: 1 / -1;
@@ -683,4 +683,19 @@
 }
 .destinationOptionArt {
   flex-shrink: 0;
+}
+
+.speedLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.speedLabel > span {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.originArt {
+  width: 100%;
+  height: 100%;
 }

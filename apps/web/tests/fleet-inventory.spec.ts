@@ -17,6 +17,7 @@ function inventoryFixture() {
   const catalog: S['CatalogEntry3'][] = [
     {
       key: { kind: 'Ship', id: 'SmallCargo' },
+      ship_statistics: { propulsion: null, combat: null, cost: ['2000', '2000', '0'] },
       enabled: true,
       mobile: true,
       body_kinds: ['Planet', 'Moon'],
@@ -24,6 +25,7 @@ function inventoryFixture() {
     },
     {
       key: { kind: 'Ship', id: 'LightFighter' },
+      ship_statistics: { propulsion: null, combat: null, cost: ['3000', '1000', '0'] },
       enabled: true,
       mobile: true,
       body_kinds: ['Planet', 'Moon'],
@@ -31,6 +33,7 @@ function inventoryFixture() {
     },
     {
       key: { kind: 'Ship', id: 'SolarSatellite' },
+      ship_statistics: { propulsion: null, combat: null, cost: ['0', '2000', '500'] },
       enabled: true,
       mobile: false,
       body_kinds: ['Planet'],
@@ -154,10 +157,10 @@ for (const width of [320, 390, 1280]) {
     ])
     await expect(panel.getByRole('columnheader')).toHaveText(['Ship', 'Stationed', 'Flying', 'Queued'])
     await expect(panel.getByRole('row')).toHaveCount(3)
-    await expect(panel.getByRole('rowheader', { name: 'Transports', exact: true })).toBeVisible()
+    await expect(panel.getByRole('rowheader', { name: 'Peace', exact: true })).toBeVisible()
     expect((await panel.getByRole('row').first().boundingBox())!.height).toBeLessThan(44)
     await expect(panel.getByRole('rowheader', { name: /Light Fighter|Solar Satellite/ })).toHaveCount(0)
-    await expect(page.getByText('Fleet slots: 2 used / 8 total', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Fleet slots: 2 used / 8 total', exact: true })).toBeVisible()
     expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
       true,
     )
@@ -189,7 +192,7 @@ for (const width of [320, 390, 1280]) {
     await selectBody(page, id(6))
     await expect(panel).toContainText('No ships stationed here.')
     await expect(cargo.getByRole('cell')).toHaveText(['0', '9', '7'])
-    await expect(page.getByText('Fleet slots: 2 used / 8 total', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Fleet slots: 2 used / 8 total', exact: true })).toBeVisible()
     await panel
       .getByRole('link', { name: 'Open Shipyard', exact: true })
       .click()
@@ -256,7 +259,8 @@ for (const width of [390, 1440]) {
     await installGameFixture(page, options)
     await page.goto(`/u/andromeda/b/${body.id}/fleets`)
     const panel = page.getByRole('region', { name: 'Stationed ships', exact: true })
-    await expect(panel.getByRole('rowheader')).toHaveText(['Warships', 'Light Fighter', 'Transports', 'Small Cargo', 'Stationary', 'Solar Satellite'])
+    await expect(panel.getByRole('rowheader')).toHaveText(['War', 'Light Fighter', 'Peace', 'Solar Satellite', 'Small Cargo'])
+    await diagnosticScreenshot(page.locator('main header').first(), { path: `test-results/fleets-slots-header-${width}x1000.png` })
     await panel.scrollIntoViewIfNeeded()
     await diagnosticScreenshot(panel, { path: `test-results/stationed-groups-${width}x1000.png` })
     expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)

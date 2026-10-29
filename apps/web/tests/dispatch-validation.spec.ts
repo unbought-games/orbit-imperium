@@ -69,6 +69,7 @@ async function setup(page: Page) {
       })),
       {
         key: { kind: 'Ship', id: 'SmallCargo' },
+        ship_statistics: { propulsion: null, combat: null, cost: ['2000', '2000', '0'] },
         requirements: [],
         enabled: true,
         mobile: true,
@@ -608,7 +609,7 @@ test('flight timing updates with speed and selected ships without opening review
     (await timing.locator('time').getAttribute('datetime'))!,
   )
   const started = await page.evaluate(() => performance.now())
-  await page.getByLabel('Speed', { exact: true }).selectOption('50')
+  await setSpeed(page, 50)
   await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
   await expect(timing.locator('dd').nth(2)).toHaveText('6m 40s')
   const slowerReturn = Date.parse(
@@ -639,7 +640,7 @@ for (const width of [320, 390, 1280]) {
     await page.setViewportSize({ width, height: 950 })
     const state = await setup(page)
     const settings = page.getByRole('group', { name: 'Speed and flight estimates' })
-    const speed = settings.getByRole('combobox', { name: 'Speed', exact: true })
+    const speed = settings.getByRole('slider', { name: 'Speed', exact: true })
     const timing = settings.getByRole('region', { name: 'Flight timing' })
     const fuel = timing.locator('div').filter({ has: page.locator('dt').getByText('Deuterium consumed', { exact: true }) })
     await expect(timing.locator('dt')).toHaveText(['To destination', 'Back at', 'Total flight', 'Deuterium consumed'])
@@ -652,7 +653,7 @@ for (const width of [320, 390, 1280]) {
     expect(timingBox.y).toBeGreaterThanOrEqual(speedBox.y + speedBox.height)
     expect((await review(page).boundingBox())!.y).toBeGreaterThanOrEqual(timingBox.y + timingBox.height)
     state.fuel = '250000000'
-    await speed.selectOption('50')
+    await setSpeed(page, 50)
     await expect(fuel.locator('dd')).toHaveText('250')
     await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
     await mission(page).selectOption('Deploy')
@@ -689,9 +690,9 @@ test('late timing replies cannot replace a newer speed and failed estimates clea
       await gate
     }
   }
-  await page.getByLabel('Speed', { exact: true }).selectOption('50')
+  await setSpeed(page, 50)
   await expect.poll(() => held).toBe(true)
-  await page.getByLabel('Speed', { exact: true }).selectOption('20')
+  await setSpeed(page, 20)
   await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
   const response = page.waitForResponse(
     (response) =>
@@ -703,7 +704,7 @@ test('late timing replies cannot replace a newer speed and failed estimates clea
   await response
   await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
   state.estimateError = 'NotFound'
-  await page.getByLabel('Speed', { exact: true }).selectOption('10')
+  await setSpeed(page, 10)
   await expect(timing).toContainText('no longer available')
   await expect(timing.locator('time')).toHaveCount(0)
   expect(state.launches).toBe(0)
@@ -1180,7 +1181,7 @@ for (const width of [320, 390, 1280]) {
       )
     expect(selectors).toEqual([44])
     const speed = page.getByRole('group', { name: 'Speed and flight estimates' })
-      .getByRole('combobox', { name: 'Speed', exact: true })
+      .getByRole('slider', { name: 'Speed', exact: true })
     expect((await speed.boundingBox())!.height).toBe(44)
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
@@ -1282,9 +1283,8 @@ for (const kind of [
     await expect(quote).toContainText('Commander')
     await expect(quote).toContainText('19m 32s')
     await expect(quote).toContainText('Payload capacity 4,999 after fuel')
-    await expect(quote.getByText('Fleet slots:', { exact: false })).toHaveCount(
-      1,
-    )
+    await expect(quote.getByRole('button', { name: /^Fleet slots:/ })).toHaveCount(0)
+    await expect(page.locator('main').getByRole('button', { name: /^Fleet slots:/ })).toHaveCount(1)
     await expect(page.getByText(/^Origin .*Fleet slots:/)).toHaveCount(0)
     const action = quote.getByRole('button', {
       name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
@@ -1753,7 +1753,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 1000 })
     const state = await setup(page)
     const table = page.getByRole('table', { name: 'Ships to dispatch' })
-    await expect(table.getByRole('row').filter({ has: page.locator('input') }).locator('th')).toHaveText(['Light Fighter', 'Small Cargo', 'Espionage Probe', 'Recycler', 'Colony Ship'])
+    await expect(table.getByRole('row').filter({ has: page.locator('input') }).locator('th')).toHaveText(['Light Fighter', 'Espionage Probe', 'Small Cargo', 'Recycler', 'Colony Ship'])
     await expect(mission(page).locator('option')).toHaveText(['Transport', 'Deploy', 'Attack', 'Harvest', 'Espionage', 'Colonize'])
     await page.getByRole('button', { name: 'All Small Cargo', exact: true }).click()
     await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('2')
@@ -1776,7 +1776,7 @@ for (const width of [390, 1440]) {
     await page.getByLabel('Small Cargo · 2 available').fill('1')
     state.fuel = '4000000000'
     state.quoteError = 'InsufficientResources'
-    await page.getByLabel('Speed', { exact: true }).selectOption('90')
+    await setSpeed(page, 90)
     const timing = page.getByRole('region', { name: 'Flight timing' })
     await expect(timing).toContainText('4,000 · Insufficient fuel')
     await expect(timing.locator('dd').first()).not.toHaveText('—')
@@ -1789,7 +1789,7 @@ for (const width of [390, 1440]) {
     state.fuel = '1000000'
     state.quoteError = null
     await selectDestinationPlanet(page, id(6))
-    await page.getByLabel('Speed', { exact: true }).selectOption('100')
+    await setSpeed(page, 100)
     await expect(timing.locator('dd').first()).toHaveText('1m 40s')
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: `test-results/dispatch-ready-${width}x1000.png`, fullPage: width >= 768 })
@@ -1815,6 +1815,7 @@ test('origin changes preserve destination and mission but discard origin-specifi
   await review(page).click()
   await expect.poll(() => held).toBe(true)
   await selectBody(page, id(6))
+  await expect(page.getByRole('group', { name: 'Origin', exact: true })).toContainText('Haven Colony')
   await expect(mission(page)).toHaveValue('Espionage')
   await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue('1:1:1')
   await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('0')
@@ -1885,3 +1886,62 @@ test('Dispatch shares a centered responsive content column with its review', asy
     await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-review-${width}x1000.png`, fullPage: true })
   }
 })
+
+async function setSpeed(page: Page, percent: number) {
+  const slider = page.getByRole('slider', { name: 'Speed', exact: true })
+  await slider.press('Home')
+  for (let value = 10; value < percent; value += 10) await slider.press('ArrowRight')
+  await expect(slider).toHaveValue(String(percent))
+}
+
+for (const width of [320, 390, 1440]) {
+  test(`compact Dispatch identities, fleet slots and speed at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const state = await setup(page)
+    const slots = page.locator('main').getByRole('button', { name: 'Fleet slots: 0 used / 5 total', exact: true })
+    const title = page.locator('main h1')
+    const bounds = await slots.evaluate(element => {
+      const badge = element.getBoundingClientRect(), heading = element.parentElement!.getBoundingClientRect()
+      return { right: badge.right, headerRight: heading.right, top: badge.top, bottom: badge.bottom }
+    })
+    expect(bounds.right).toBeCloseTo((await page.locator('main').boundingBox())!.x + (await page.locator('main').boundingBox())!.width, 0)
+    const titleBox = (await title.boundingBox())!
+    expect(titleBox.y + titleBox.height / 2).toBeGreaterThanOrEqual(bounds.top)
+    expect(titleBox.y + titleBox.height / 2).toBeLessThanOrEqual(bounds.bottom)
+    const origin = page.getByRole('group', { name: 'Origin', exact: true })
+    await expect(origin).toContainText('Aster Haven')
+    await expect(origin).toContainText('Commander')
+    await expect(origin.getByRole('link', { name: /origin/ })).toBeVisible()
+    await expect(page.getByRole('table', { name: 'Ships to dispatch' }).locator('tr').filter({ has: page.locator('th[scope="rowgroup"]') })).toHaveText(['War', 'Peace'])
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+    await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
+    await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 40s')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-polished-${width}x1000.png`, fullPage: width >= 768 })
+    await slots.click()
+    await expect(page.getByRole('tooltip')).toContainText('Outbound and returning fleets, including pending departures')
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-slots-help-${width}x1000.png` })
+    await page.keyboard.press('Escape')
+    const slider = page.getByRole('slider', { name: 'Speed', exact: true })
+    await slider.press('Home')
+    await expect(slider).toHaveValue('10')
+    await slider.press('ArrowLeft')
+    await expect(slider).toHaveValue('10')
+    await slider.press('End')
+    await expect(slider).toHaveValue('100')
+    await slider.press('ArrowRight')
+    await expect(slider).toHaveValue('100')
+    await slider.press('ArrowLeft')
+    await expect(slider).toHaveAttribute('aria-valuetext', '90%')
+    await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 52s')
+    await slider.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-speed-slider-${width}x1000.png` })
+    await review(page).click()
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('90% speed')
+    await expect(page.locator('main').getByRole('button', { name: /^Fleet slots:/ })).toHaveCount(1)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-polished-review-${width}x1000.png`, fullPage: width >= 768 })
+    expect(state.launches).toBe(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}

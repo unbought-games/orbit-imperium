@@ -259,3 +259,8 @@
     scroll-margin-block-end: calc(230px + env(safe-area-inset-bottom));
   }
 }
+
+.headerSlots {
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}

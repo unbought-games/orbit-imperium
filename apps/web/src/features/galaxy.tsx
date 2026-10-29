@@ -14,7 +14,7 @@ import { GalaxyHarvestAction } from './galaxy-harvest-action'
 import { GalaxyPosition } from './galaxy-position'
 import { galaxyMissionCapabilities } from './galaxy-mission-actions'
 import { colonizationStatus } from '../client-model/colonization'
-import { FleetSlotCount } from './fleet-slots'
+import { FleetSlots } from './fleet-slots'
 import {
   currentServerTime,
   occupiedFleetSlots,
@@ -190,7 +190,8 @@ export function Galaxy({
         browse={browse}
         fleetSlots={
           espionage.state.view?.protocol === 4 && (
-            <FleetSlotCount
+            <FleetSlots
+              compact
               className={styles.slots}
               used={occupiedFleetSlots(espionage.state)}
               total={espionage.state.view.missions.fleet_slots}

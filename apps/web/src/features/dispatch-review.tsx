@@ -29,7 +29,6 @@ import {
   reviewDestination,
   type DispatchTarget,
 } from './dispatch-review-model'
-import { FleetSlots } from './fleet-slots'
 import { ShipComposition } from './ship-composition'
 import styles from './missions.module.css'
 type S = components['schemas']
@@ -49,7 +48,6 @@ export function DispatchReview({
   target,
   playerNames,
   coordinates,
-  occupiedSlots,
   now,
   observedAt,
   colonyWarning,
@@ -64,7 +62,6 @@ export function DispatchReview({
   target?: DispatchTarget
   playerNames?: S['PublicPlayerNames4']
   coordinates: S['Coordinates']
-  occupiedSlots: number
   now: number
   observedAt?: number
   colonyWarning?: string | null
@@ -203,9 +200,6 @@ export function DispatchReview({
       {mission === 'Colonize' && colonyWarning && (
         <Text role="status">{colonyWarning}</Text>
       )}
-      <Text className={styles.reviewNote}>
-        <FleetSlots used={occupiedSlots} total={quote.slot_limit} />
-      </Text>
       <QuoteAction disabled={disabled} onClick={onSend}>
         {dispatchSendLabel(quote.intent, destination)}
       </QuoteAction>

@@ -1,18 +1,23 @@
 import type { components } from '../contracts'
 type Entry = components['schemas']['CatalogEntry3']
 
+export const shipGroups = ['War', 'Peace'] as const
 export function shipGroup(entry: Entry) {
-  if (!entry.mobile) return 'Stationary'
-  if (entry.key.id === 'SmallCargo' || entry.key.id === 'LargeCargo')
-    return 'Transports'
-  if (['EspionageProbe', 'Recycler', 'ColonyShip'].includes(entry.key.id))
-    return 'Utility'
-  return 'Warships'
+  return [
+    'SmallCargo',
+    'LargeCargo',
+    'EspionageProbe',
+    'Recycler',
+    'ColonyShip',
+    'SolarSatellite',
+  ].includes(entry.key.id)
+    ? 'Peace'
+    : 'War'
 }
-const groups = ['Warships', 'Transports', 'Utility', 'Stationary']
 // Older catalogs omit costs; keep a stable name order in that case.
 export function compareShips(a: Entry, b: Entry) {
-  const group = groups.indexOf(shipGroup(a)) - groups.indexOf(shipGroup(b))
+  const group =
+    shipGroups.indexOf(shipGroup(a)) - shipGroups.indexOf(shipGroup(b))
   if (group) return group
   const cost = (entry: Entry) =>
     entry.ship_statistics?.cost?.reduce(

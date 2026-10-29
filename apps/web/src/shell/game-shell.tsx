@@ -1,3 +1,6 @@
+import { useStore } from 'zustand'
+import { occupiedFleetSlots } from '../client-model/game-projection'
+import { FleetSlots } from '../features/fleet-slots'
 import { ContentColumn } from '../ui/content-column'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
@@ -38,6 +41,7 @@ import { developmentActivity } from './navigation-activity'
 export function GameShell() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
+  const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
   const location = useRouterState({ select: (state) => state.location })
@@ -324,6 +328,13 @@ export function GameShell() {
               <Heading level={1} tabIndex={-1} ref={heading}>
                 {title}
               </Heading>
+              {page === 'dispatch' && view.protocol === 4 && (
+                <FleetSlots
+                  className={styles.headerSlots}
+                  used={occupiedSlots}
+                  total={view.missions.fleet_slots}
+                />
+              )}
             </div>
             <ActionStatus model={model} selectedBody={body?.id} />
             {!available ? (

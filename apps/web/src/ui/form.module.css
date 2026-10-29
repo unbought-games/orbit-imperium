@@ -33,3 +33,17 @@
     grid-template-columns: 1fr;
   }
 }
+
+.range {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.range:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 4px;
+}

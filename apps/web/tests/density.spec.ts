@@ -405,10 +405,10 @@ for (const width of [390, 1280]) {
       await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(0)
       if (route === 'fleets') {
         await expect(page.getByRole('link', { name: 'Dispatch Fleet' })).toBeVisible()
-        await expect(page.getByText(/Fleet slots:/)).toBeVisible()
+        await expect(page.getByRole('button', { name: /^Fleet slots:/ })).toBeVisible()
       }
       if (route === 'dispatch') {
-        await expect(page.getByText(/^Fleet slots: .* used \/ .* total$/).first()).toBeVisible()
+        await expect(page.getByRole('button', { name: /^Fleet slots:/ }).first()).toBeVisible()
         await expect(page.getByRole('group', { name: 'Mission and destination' })).toBeVisible()
       }
     }

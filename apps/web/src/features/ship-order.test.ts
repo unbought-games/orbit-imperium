@@ -18,14 +18,14 @@ it('groups ships and sorts by total point cost, including colony ships and stati
   expect(ships.sort(compareShips).map((x) => x.key.id)).toEqual([
     'LightFighter',
     'Cruiser',
+    'EspionageProbe',
+    'SolarSatellite',
     'SmallCargo',
     'LargeCargo',
-    'EspionageProbe',
     'Recycler',
     'ColonyShip',
-    'SolarSatellite',
   ])
-  expect(shipGroup(ships.at(-1)!)).toBe('Stationary')
+  expect(shipGroup(ships.at(-1)!)).toBe('Peace')
   expect(
     compareShips(
       entry('Cruiser', ['9007199254740993']),
