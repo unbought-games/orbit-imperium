@@ -1,13 +1,11 @@
 .list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
-  align-items: start;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   margin-block: 8px 24px;
   max-width: 80rem;
 }
 .list[data-detail] {
-  grid-template-columns: minmax(0, 1fr);
   max-width: 44rem;
 }
 .card {

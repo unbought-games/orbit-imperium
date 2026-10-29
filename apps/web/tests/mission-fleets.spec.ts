@@ -86,6 +86,16 @@ for (const width of [320, 390, 1280]) {
       'Attack Outbound',
       'Deploy Outbound',
     ])
+    const bounds = await Promise.all(
+      (await cards.all()).map((card) => card.boundingBox()),
+    )
+    for (let index = 1; index < bounds.length; index++) {
+      expect(bounds[index]!.y).toBeGreaterThanOrEqual(
+        bounds[index - 1]!.y + bounds[index - 1]!.height,
+      )
+      expect(bounds[index]!.x).toBe(bounds[0]!.x)
+      expect(bounds[index]!.width).toBe(bounds[0]!.width)
+    }
     const returning = cards.first()
     await expect(returning).toContainText('Home in')
     await expect(
