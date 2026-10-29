@@ -624,7 +624,14 @@ export function EmpireOverview({
             <strong>
               <ResourceNumber value={totals.total[name]} />
             </strong>
-            <dl className={styles.wealthBreakdown}>
+            <dl
+              className={styles.wealthBreakdown}
+              style={
+                {
+                  '--wealth-guide-color': `var(--resource-${name})`,
+                } as CSSProperties
+              }
+            >
               <div title="On planets and moons">
                 <dt>
                   <Globe2 size={14} aria-hidden="true" />

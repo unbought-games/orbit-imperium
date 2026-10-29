@@ -735,6 +735,22 @@ for (const width of [390, 1440]) {
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-pulse-${width}x1000.png` })
     const glowing = await sample(1600)
     expect(glowing.pulseOpacity).toBe('0')
+    for (const group of await ledger.getByRole('group').all()) {
+      const colors = await group.evaluate(element => {
+        const guide = element.querySelector('dl')!
+        return {
+          icon: getComputedStyle(element.querySelector('svg[data-resource]')!).color,
+          line: getComputedStyle(guide, '::before').borderLeftColor,
+          branch: getComputedStyle(guide.querySelector('div')!, '::before').borderTopColor,
+          pulse: getComputedStyle(guide, '::after').backgroundImage,
+          glow: getComputedStyle(guide, '::before').filter,
+        }
+      })
+      expect(colors.line).toBe(colors.icon)
+      expect(colors.branch).toBe(colors.icon)
+      expect(colors.pulse).toContain(colors.icon)
+      expect(colors.glow).toContain(colors.icon)
+    }
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-glow-${width}x1000.png` })
     const fading = await sample(3500)
     expect(fading.lineColor).not.toBe(glowing.lineColor)

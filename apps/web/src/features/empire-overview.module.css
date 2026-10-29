@@ -119,6 +119,11 @@
 }
 .wealthBreakdown {
   --branch-inset: 17px;
+  --wealth-guide-rest: color-mix(
+    in srgb,
+    var(--wealth-guide-color) 30%,
+    transparent
+  );
   position: relative;
   display: grid;
   grid-column: 1 / -1;
@@ -138,7 +143,7 @@
   left: 0;
   top: -8px;
   bottom: 12px;
-  border-left: 1px solid var(--hud-border);
+  border-left: 1px solid var(--wealth-guide-rest);
   animation: wealthGuideGlow 4s ease-out !important;
 }
 .wealthBreakdown::after {
@@ -148,10 +153,15 @@
   top: -8px;
   bottom: 12px;
   width: 2px;
-  background: linear-gradient(transparent, var(--ice), transparent) no-repeat;
+  background: linear-gradient(
+      transparent,
+      var(--wealth-guide-color),
+      transparent
+    )
+    no-repeat;
   background-size: 100% 18px;
   opacity: 0;
-  filter: drop-shadow(0 0 3px var(--ice));
+  filter: drop-shadow(0 0 3px var(--wealth-guide-color));
   pointer-events: none;
   animation: wealthGuidePulse 1s ease-in-out !important;
 }
@@ -169,7 +179,7 @@
   left: calc(-1 * var(--branch-inset));
   top: 50%;
   width: calc(var(--branch-inset) - 5px);
-  border-top: 1px solid var(--hud-border);
+  border-top: 1px solid var(--wealth-guide-rest);
   animation: wealthGuideGlow 4s ease-out !important;
 }
 @keyframes wealthGuidePulse {
@@ -189,13 +199,13 @@
 @keyframes wealthGuideGlow {
   0%,
   100% {
-    border-color: var(--hud-border);
+    border-color: var(--wealth-guide-rest);
     filter: drop-shadow(0 0 0 transparent);
   }
   25%,
   60% {
-    border-color: var(--ice);
-    filter: drop-shadow(0 0 4px var(--ice));
+    border-color: var(--wealth-guide-color);
+    filter: drop-shadow(0 0 4px var(--wealth-guide-color));
   }
 }
 @media (prefers-reduced-motion: reduce) {
