@@ -1149,9 +1149,9 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
   await page.clock.fastForward(6000)
   await expect(page.getByTestId('orb-caption')).toHaveCount(0)
   if(process.env.ORBIT_TEST_SCREENSHOTS === '1') {
-    await page.screenshot({path:`${output}/refresh-idle-390x844.png`})
+    await diagnosticScreenshot(page,{path:`${output}/refresh-idle-390x844.png`})
     for(let frame=0;frame<10;frame++)
-      await page.screenshot({path:`${output}/refresh-review-frames/frame-${String(frame).padStart(2,'0')}.png`})
+      await diagnosticScreenshot(page,{path:`${output}/refresh-review-frames/frame-${String(frame).padStart(2,'0')}.png`})
   }
   await setAppHidden(page, true)
   await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 25*60*1000)
@@ -1168,8 +1168,8 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
     }))
     for(let frame=0;frame<40;frame++) {
       await animations.evaluate((items,time)=>items.forEach(({animation,start})=>{animation.currentTime=start+time}),frame*100)
-      await page.screenshot({path:`${output}/refresh-review-frames/frame-${String(frame+10).padStart(2,'0')}.png`})
-      if(frame===7) await page.screenshot({path:`${output}/updated-390x844.png`})
+      await diagnosticScreenshot(page,{path:`${output}/refresh-review-frames/frame-${String(frame+10).padStart(2,'0')}.png`})
+      if(frame===7) await diagnosticScreenshot(page,{path:`${output}/updated-390x844.png`})
     }
     await animations.evaluate(items=>items.forEach(({animation,start})=>{animation.currentTime=start+700}))
     await animations.dispose()
