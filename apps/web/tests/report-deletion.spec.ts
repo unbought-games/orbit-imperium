@@ -1009,6 +1009,7 @@ for (const width of [1280, 390]) {
 for (const width of [1280, 390]) {
   test(`a lost delete response is checked but retried only by the player at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.install({ time: new Date('2026-10-29T14:00:00Z') })
     await page.clock.pauseAt(new Date('2026-10-29T14:00:00Z'))
     const fixture = await reportsFixture(page)
