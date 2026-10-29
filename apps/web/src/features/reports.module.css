@@ -227,6 +227,7 @@
 }
 .rowActions .compactVisibility > button {
   grid-column: 1;
+  justify-self: end;
 }
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
   .reportLink {

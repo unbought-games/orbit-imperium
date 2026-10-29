@@ -740,7 +740,7 @@ for (const width of [1280, 390]) {
 }
 
 test.describe('report touch actions', () => {
-  test.use({ hasTouch: true, isMobile: true })
+  test.use({ hasTouch: true })
 
   for (const width of [320, 390, 820]) {
     test(`delete edges stay independent from row navigation at ${width}px`, async ({ page }) => {
@@ -764,6 +764,9 @@ test.describe('report touch actions', () => {
         await expect.poll(fixture.submitted).toBe(submitted + 1)
         await expect(row).toContainText('Action rejected: Not Found')
         await expect(remove).toBeEnabled()
+        const removeBox = (await remove.boundingBox())!
+        const rowBox = (await row.boundingBox())!
+        expect(Math.abs(removeBox.x + removeBox.width - rowBox.x - rowBox.width)).toBeLessThanOrEqual(1)
         await expect(page).toHaveURL(inbox)
         expect(fixture.readRequests).toEqual([])
       }
