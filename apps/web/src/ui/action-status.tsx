@@ -21,13 +21,16 @@ export function ActionStatus({
   const state = model.store.getState()
   const connection = connectionStatus(state)
   const attempts = [...model.ledger.values()].filter(visibleAction)
-  const previous = useRef(new Map<string, string>())
+  const previous = useRef<Map<string, string> | null>(null)
+  // Existing results are already visible on mount; announce only later changes.
+  if (!previous.current)
+    previous.current = changedAnnouncements(new Map(), attempts).current
   const [announcement, setAnnouncement] = useState('')
   const signature = attempts
     .map((a) => `${a.envelope.command_id}:${a.status}:${a.reconciled}`)
     .join('|')
   useEffect(() => {
-    const change = changedAnnouncements(previous.current, attempts)
+    const change = changedAnnouncements(previous.current ?? new Map(), attempts)
     previous.current = change.current
     setAnnouncement(change.message)
   }, [signature])
@@ -41,7 +44,12 @@ export function ActionStatus({
   return (
     <>
       <ConnectionNotice status={connection} />
-      <VisuallyHidden role="status" aria-live="polite" aria-atomic="true">
+      <VisuallyHidden
+        data-testid="order-announcement"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {announcement}
       </VisuallyHidden>
       {(latest || model.message) && (

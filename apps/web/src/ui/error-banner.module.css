@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-wrap: anywhere;
 }
 /* Keep the live regions mounted and primed even when there is no visible error. */
 .banner:has([data-error-entry]) {
@@ -19,10 +20,4 @@
 }
 .portal {
   display: contents;
-}
-
-/* The modal has its own active banner; do not expose the page copy behind it. */
-:global(body:has(dialog[data-error-dialog][open]))
-  .banner[data-error-surface='page'] {
-  visibility: hidden;
 }

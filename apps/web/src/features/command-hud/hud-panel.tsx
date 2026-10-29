@@ -1,4 +1,4 @@
-import { ErrorBanner } from '../../ui/error-banner'
+import { ErrorBannerSlot } from '../../ui/error-banner'
 import { connectionStatus } from '../../client-model/connection-status'
 import type { DispatchDraft } from '../missions'
 import { useLayoutEffect, useRef } from 'react'
@@ -75,7 +75,6 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
       ref={ref}
       className={styles.dialog}
       data-closing={!present || undefined}
-      data-error-dialog=""
       initial={reducedMotion ? false : { opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -130,7 +129,7 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
             SECURE CONNECTION
           </div>
         )}
-        <ErrorBanner model={model} surface="dialog" />
+        <ErrorBannerSlot model={model} surface="dialog" />
         <div className={styles.panelContent}>
           {selected && (
             <HudInbox
