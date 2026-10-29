@@ -2052,7 +2052,7 @@ for (const width of [320, 390, 1440]) {
     const addAll = fleet.getByRole('button', { name: 'Add all ships', exact: true })
     const smallCargo = page.getByLabel('Small Cargo · 2 available')
     await expect(addAll).toHaveText('Add All')
-    await expect(addAll).toHaveAttribute('data-button-variant', 'ghost')
+    await expect(addAll).toHaveAttribute('data-button-variant', 'secondary')
     await expect(fleet.getByRole('button', { name: 'Max Light Fighter', exact: true })).toBeDisabled()
     await smallCargo.fill('')
     const fillCargo = fleet.getByRole('button', { name: 'Max Small Cargo', exact: true })

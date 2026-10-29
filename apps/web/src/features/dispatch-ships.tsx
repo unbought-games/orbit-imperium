@@ -44,7 +44,7 @@ export function DispatchShips({
         </span>
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           size="small"
           aria-label="Add all ships"
           title="Add every available ship to this fleet"
