@@ -435,6 +435,17 @@ test('copy, menus and explicit dispatch actions preserve origin and recent copy'
     page.getByRole('menuitem', { name: 'Copy coordinates', exact: true }),
   ).toBeVisible()
   await page.keyboard.press('Escape')
+  // Context-menu dismissal restores focus asynchronously. Finish that handoff
+  // before opening the button menu, or late restoration can dismiss it.
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(
+    page
+      .getByRole('link', {
+        name: 'View destination [1:5:12] in galaxy',
+        exact: true,
+      })
+      .first(),
+  ).toBeFocused()
   await page
     .getByRole('button', { name: 'Location actions for [1:5:12]', exact: true })
     .first()
