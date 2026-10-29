@@ -212,6 +212,9 @@ test('empire shows every body, its own work and resources, and directional fleet
   await page.setViewportSize({ width: 1672, height: 1100 })
   const now = Date.parse('2026-10-24T12:00:00Z')
   await page.clock.install({ time: now })
+  // Pin wall time before pausing so a delayed protocol round-trip cannot make
+  // the target timestamp older than the running fake clock.
+  await page.clock.setFixedTime(now)
   await page.clock.pauseAt(now)
   const options = empireFixture(now)
   const purchases = await shellFixture(page, { ...options, sampledAt: now })
