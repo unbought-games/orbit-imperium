@@ -228,6 +228,22 @@
 .rowActions .compactVisibility > button {
   grid-column: 2;
 }
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .reportLink {
+    /* The stretched link already fills the row; keep wrapped headings compact. */
+    min-height: 24px;
+  }
+  .rowActions {
+    column-gap: 4px;
+  }
+  .rowActions button {
+    --button-min-size: 48px;
+  }
+  .rowActions button > svg {
+    width: 20px;
+    height: 20px;
+  }
+}
 .selection {
   display: flex;
   align-items: center;

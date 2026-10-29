@@ -728,6 +728,86 @@ for (const width of [1280, 390]) {
   })
 }
 
+test.describe('report touch actions', () => {
+  test.use({ hasTouch: true })
+
+  for (const width of [320, 390, 820]) {
+    test(`action edges stay independent from row navigation at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const fixture = await reportsFixture(page)
+      const inbox = `/u/andromeda/b/${body.id}/reports`
+      const row = page.getByRole('article').first()
+      const star = row.getByRole('button', { name: /^(Unstar|Star) report$/ })
+      const remove = row.getByRole('button', { name: 'Delete report', exact: true })
+      for (const button of [star, remove]) {
+        await expect(button).toBeEnabled()
+        const box = (await button.boundingBox())!
+        expect(box.width).toBeGreaterThanOrEqual(48)
+        expect(box.height).toBeGreaterThanOrEqual(48)
+        expect((await button.locator('svg').boundingBox())!.width).toBe(20)
+      }
+
+      // Tap the enlarged padding near each corner, well outside the glyph.
+      for (const [x, y] of [[2, 2], [46, 2], [2, 46], [46, 46]]) {
+        const submitted = fixture.submitted()
+        await star.tap({ position: { x, y } })
+        await expect(star).toHaveAttribute('aria-pressed', 'true')
+        await expect(remove).toBeDisabled()
+        await expect.poll(() => fixture.headers[0].starred).toBe(true)
+        await remove.scrollIntoViewIfNeeded()
+        const box = (await remove.boundingBox())!
+        await page.touchscreen.tap(box.x + x, box.y + y)
+        await expect(page).toHaveURL(inbox)
+        expect(fixture.submitted()).toBe(submitted)
+        await star.tap({ position: { x, y } })
+        await expect(star).toHaveAttribute('aria-pressed', 'false')
+        await expect.poll(() => fixture.headers[0].starred).toBe(false)
+
+        // Reject deletion so every corner can be exercised on the same report.
+        fixture.setMode('rejected')
+        await remove.tap({ position: { x, y } })
+        await expect.poll(fixture.submitted).toBe(submitted + 1)
+        await expect(row).toContainText('Action rejected: Not Found')
+        await expect(remove).toBeEnabled()
+        await expect(page).toHaveURL(inbox)
+        expect(fixture.readRequests).toEqual([])
+      }
+      await diagnosticScreenshot(page, { path: `test-results/report-actions-rejected-${width}x900.png`, fullPage: true })
+
+      // The small gap between the independent controls is safe to miss into.
+      const starBox = (await star.boundingBox())!
+      const deleteBox = (await remove.boundingBox())!
+      await page.touchscreen.tap((starBox.x + starBox.width + deleteBox.x) / 2, starBox.y + starBox.height / 2)
+      await expect(page).toHaveURL(inbox)
+      expect(fixture.submitted()).toBe(4)
+
+      fixture.headers[0].starred = true
+      fixture.headers[0].shared = true
+      fixture.bumpRevision()
+      await page.reload()
+      await expect(star).toHaveAttribute('aria-pressed', 'true')
+      await star.tap({ position: { x: 2, y: 46 } })
+      const dialog = page.getByRole('dialog', { name: 'Unstar this shared report?' })
+      await expect(dialog).toBeVisible()
+      await diagnosticScreenshot(page, { path: `test-results/report-actions-confirm-${width}x900.png`, fullPage: true })
+      await dialog.getByRole('button', { name: 'Keep starred' }).tap()
+      await expect(dialog).toBeHidden()
+      await expect(remove).toBeDisabled()
+      expect(fixture.headers[0].starred).toBe(true)
+      await star.tap({ position: { x: 46, y: 2 } })
+      await dialog.getByRole('button', { name: 'Unstar report', exact: true }).tap()
+      await expect.poll(() => fixture.headers[0].starred).toBe(false)
+      await expect(remove).toBeEnabled()
+      fixture.setMode('success')
+      await remove.tap({ position: { x: 2, y: 46 } })
+      await expect.poll(() => fixture.headers[0].hidden).toBe(true)
+      await expect(page).toHaveURL(inbox)
+      expect(fixture.readRequests).toEqual([])
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    })
+  }
+})
+
 test('HUD infinite paging waits for a pending report preference, then resumes', async ({page})=>{
   await page.setViewportSize({width:390,height:900})
   await page.emulateMedia({reducedMotion:'reduce'})
