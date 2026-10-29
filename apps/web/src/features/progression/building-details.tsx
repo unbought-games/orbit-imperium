@@ -1,3 +1,4 @@
+import { SiloSummary } from '../missile-inventory'
 import {
   DurationValue,
   ResourceQuantity,
@@ -329,6 +330,7 @@ export function BuildingDetails({
           )}
         </DetailSection>
       )}
+      {building.id === 'MissileSilo' && <SiloSummary body={body} />}
       {entry && (
         <TechnicalData
           key={entry.key.id}

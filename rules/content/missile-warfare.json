@@ -1,0 +1,74 @@
+{
+  "building": {
+    "base": [
+      20000,
+      20000,
+      1000
+    ],
+    "growth": [
+      2,
+      1
+    ]
+  },
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 1
+    }
+  ],
+  "rules": {
+    "version": "oi-classic-missile-v1",
+    "slots_per_level": 10,
+    "abm_weight": 1,
+    "ipm_weight": 2,
+    "range_factor": 5,
+    "range_offset": -1,
+    "base_seconds": 30,
+    "seconds_per_system": 60,
+    "base_attack": 12000
+  },
+  "AntiBallisticMissile": {
+    "cost": {
+      "metal": 8000,
+      "crystal": 0,
+      "deuterium": 2000
+    },
+    "requirements": [
+      {
+        "type": "BodyBuilding",
+        "building": "Shipyard",
+        "level": 1
+      },
+      {
+        "type": "BodyBuilding",
+        "building": "MissileSilo",
+        "level": 2
+      }
+    ]
+  },
+  "InterplanetaryMissile": {
+    "cost": {
+      "metal": 12500,
+      "crystal": 2500,
+      "deuterium": 10000
+    },
+    "requirements": [
+      {
+        "type": "BodyBuilding",
+        "building": "Shipyard",
+        "level": 1
+      },
+      {
+        "type": "BodyBuilding",
+        "building": "MissileSilo",
+        "level": 4
+      },
+      {
+        "type": "PlayerResearch",
+        "research": "ImpulseDrive",
+        "level": 1
+      }
+    ]
+  }
+}

@@ -118,7 +118,9 @@ export function resolveDestination(
     !(view.protocol === 4
       ? page === 'reports'
         ? /^[0-9a-f-]{36}$/.test(item)
-        : view.missions.fleets.some((f) => f.id === item)
+        : view.missions.fleets.some((f) => f.id === item) ||
+          (page === 'fleets' &&
+            view.missiles?.some((f) => f.outgoing && f.id === item))
       : (page === 'fleets' ? view.fleets : view.reports).some(
           (x) => x.id === item,
         ))

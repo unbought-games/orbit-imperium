@@ -147,6 +147,8 @@ pub struct BoundProgressionOptions {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BodyV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub silo: Option<SiloCapacity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_temperature: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -402,6 +404,10 @@ pub(crate) fn progression_projection(
         let energy = &economy.energy;
         let rate = economy.gross;
         bodies.push(BodyV3 {
+            silo: missile_rules(&facts.rules)
+                .map(|r| silo_capacity(s, b, r))
+                .transpose()
+                .map_err(|_| ServiceError::InvariantFailure)?,
             max_temperature: (b.kind == BodyKind::Planet).then_some(b.max_temperature),
             colony: None,
             id: b.id,

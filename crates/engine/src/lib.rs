@@ -67,6 +67,8 @@ mod world;
 pub use world::*;
 mod galaxy;
 pub use galaxy::*;
+mod missiles;
+pub use missiles::*;
 mod missions;
 pub use missions::*;
 mod encounter;

@@ -182,6 +182,60 @@ function ReportObservationContent({
   shared = false,
 }: ObservationProps) {
   const kind = payload.kind
+  if (kind === 'MissileImpact')
+    return (
+      <Panel
+        as="section"
+        aria-label="Missile impact report"
+        className={styles.observation}
+      >
+        <Heading level={3}>Missile impact</Heading>
+        <Text>
+          <PlayerName player={text(payload.attacker)} names={playerNames} /> ·{' '}
+          <CoordinateLink at={payload.origin} label="origin" /> →{' '}
+          <CoordinateLink at={payload.target} label="target" />
+        </Text>
+        {payload.outcome === 'NoTarget' ? (
+          <Text>
+            The target was no longer available. No interceptors were consumed
+            and no defenses were damaged.
+          </Text>
+        ) : (
+          <>
+            <dl className={styles.grid}>
+              {[
+                ['Sent', payload.sent],
+                ['Intercepted', payload.intercepted],
+                ['Penetrating', payload.penetrating],
+                ...('interceptors_remaining' in payload
+                  ? [
+                      [
+                        'Your interceptors remaining',
+                        payload.interceptors_remaining,
+                      ],
+                    ]
+                  : []),
+              ].map(([name, value]) => (
+                <div key={text(name)}>
+                  <dt>{text(name)}</dt>
+                  <dd>
+                    <NumberValue value={text(value)} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <Heading level={3}>Permanently destroyed defenses</Heading>
+            <Units
+              value={Object.entries(record(payload.destroyed)).map(
+                ([id, count]) => ({ item: { id }, count }),
+              )}
+              emptyLabel="No defenses destroyed"
+            />
+            <Text>Missile damage has no defense recovery or debris.</Text>
+          </>
+        )}
+      </Panel>
+    )
   if (kind === 'Colonized' || kind === 'ColonizationFailed') {
     const reasons: Record<string, string> = {
       Occupied: 'The position was occupied at arrival.',

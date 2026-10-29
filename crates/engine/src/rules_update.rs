@@ -51,6 +51,19 @@ pub fn validate_rules_update(
         .progression
         .as_ref()
         .ok_or(RulesError::InvalidReference)?;
+    if current
+        .artifact
+        .world
+        .as_ref()
+        .is_some_and(|w| w.missiles.is_some())
+        && next
+            .artifact
+            .world
+            .as_ref()
+            .is_none_or(|w| w.missiles.is_none())
+    {
+        return Err(RulesError::InvalidReference);
+    }
     if (before.fusion_reactor.is_some() && after.fusion_reactor.is_none())
         || (before.solar_satellite.is_some() && after.solar_satellite.is_none())
         || before

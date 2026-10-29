@@ -19,6 +19,7 @@ pub struct OrderKey {
 
 #[derive(Clone, Debug, Default)]
 pub struct ScopeReferences {
+    pub missiles: BTreeMap<OperationId, (PlayerId, PlayerId, Coordinates, Coordinates)>,
     pub bodies: BTreeMap<BodyId, (PlayerId, Coordinates)>,
     pub fleets: BTreeMap<FleetId, (PlayerId, Option<PlayerId>, Coordinates, Coordinates)>,
     pub operations: BTreeMap<OperationId, PlayerId>,
@@ -47,6 +48,13 @@ pub fn command_scopes(
 ) -> Result<BTreeSet<ScopeKey>, GameError> {
     let mut scopes = BTreeSet::from([ScopeKey::Player(actor)]);
     match command {
+        Command::World {
+            action: WorldAction::LaunchMissiles { intent, .. },
+        } => {
+            location(intent.origin, refs, &mut scopes);
+            location(intent.target.id, refs, &mut scopes);
+            scopes.insert(ScopeKey::Player(intent.target.expected_owner));
+        }
         Command::World {
             action: WorldAction::LaunchFleet { intent, .. },
         } => {
@@ -100,6 +108,16 @@ pub fn event_scopes(
     refs: &ScopeReferences,
 ) -> Result<BTreeSet<ScopeKey>, InvariantError> {
     let scopes = match event {
+        ScheduledEvent::MissileImpact { flight, .. } => {
+            refs.missiles.get(flight).map(|(a, b, c, d)| {
+                BTreeSet::from([
+                    ScopeKey::Player(*a),
+                    ScopeKey::Player(*b),
+                    ScopeKey::Location(*c),
+                    ScopeKey::Location(*d),
+                ])
+            })
+        }
         ScheduledEvent::FleetLegDue { fleet, .. }
         | ScheduledEvent::TransportArrived { fleet, .. }
         | ScheduledEvent::FleetReturned { fleet, .. } => fleet_scopes(*fleet, refs),

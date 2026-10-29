@@ -37,6 +37,7 @@ pub(super) fn report_players(payload: &serde_json::Value) -> BTreeSet<PlayerId> 
         }
     };
     match payload["kind"].as_str() {
+        Some("MissileImpact") => add(&payload["attacker"]),
         Some("Espionage") => add(&payload["target"]["owner"]),
         Some("SpyContact") => add(&payload["sender"]),
         Some("Combat") => {

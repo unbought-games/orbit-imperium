@@ -111,6 +111,32 @@ pub(crate) async fn load(
     let mut field = None;
     match input {
         Input::Command(Command::World {
+            action: WorldAction::LaunchMissiles { intent, .. },
+        }) => {
+            bodies.extend([intent.origin.0, intent.target.id.0]);
+        }
+        Input::Event(ScheduledEvent::MissileImpact { flight, .. }) => {
+            if let Some(value) =
+                sqlx::query_scalar("SELECT data FROM missile_flights WHERE universe=$1 AND id=$2")
+                    .bind(u.0)
+                    .bind(flight.0)
+                    .fetch_optional(&mut **tx)
+                    .await
+                    .map_err(db_error)?
+            {
+                let f: MissileFlight = decode_supported(value)?;
+                refs.missiles.insert(
+                    *flight,
+                    (
+                        f.owner,
+                        f.terms.intent.target.expected_owner,
+                        f.terms.source_coordinates,
+                        f.terms.target_coordinates,
+                    ),
+                );
+            }
+        }
+        Input::Command(Command::World {
             action: WorldAction::LaunchFleet { intent, .. },
         }) => {
             bodies.insert(intent.origin.0);
