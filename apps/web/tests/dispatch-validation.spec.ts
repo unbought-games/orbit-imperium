@@ -1771,7 +1771,7 @@ for (const width of [390, 1440]) {
       await expect(deuterium.locator('strong')).toHaveText('6,243')
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       for (const group of await ledger.getByRole('group').all()) {
-        const centers = await group.locator('svg').evaluateAll(icons => icons.map(icon => {
+        const centers = await group.locator('dt > svg').evaluateAll(icons => icons.map(icon => {
           const box = icon.getBoundingClientRect()
           return box.x + box.width / 2
         }))
