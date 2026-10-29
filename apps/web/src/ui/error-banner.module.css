@@ -14,7 +14,7 @@
 .banner p {
   margin: 0;
 }
-.banner [data-error-entry] button {
+.banner [data-error-entry] [role='group'] > button {
   margin-top: 8px;
 }
 .portal {
