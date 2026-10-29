@@ -777,7 +777,12 @@ for (const width of [1280, 390]) {
     expect(fixture.headers.map(r => r.hidden)).toEqual([true, false])
     // New mutations and receipt recovery must stay quiet until Retry-After.
     await expect(page.getByRole('button', { name: 'Delete selected (1)' })).toBeDisabled()
+    const liveCooldown = page.getByRole('status').filter({ hasText: 'Actions are temporarily paused.' })
+    await expect(liveCooldown).toHaveCount(1)
+    const announcement = await liveCooldown.textContent()
     await page.clock.runFor(59000)
+    await expect(liveCooldown).toHaveText(announcement!)
+    await expect(page.getByText(/Action limit reached. Try again in 1s/)).toHaveAttribute('aria-live', 'off')
     expect(submitted).toHaveLength(2)
     await expect(page.getByText(/Action limit reached. Try again in 1s/)).toBeVisible()
     await page.evaluate(() => window.scrollTo(0, 0))
@@ -785,6 +790,8 @@ for (const width of [1280, 390]) {
     if (width < 768) {
     await page.getByTestId('command-orb').click()
     await expect(page.getByRole('dialog')).toContainText('ACTION COOLDOWN')
+    await expect(page.getByRole('dialog').getByText(/Action limit reached. Try again in 1s/)).toHaveAttribute('aria-live', 'off')
+    await expect(page.getByRole('dialog').getByRole('status').filter({ hasText: 'Actions are temporarily paused.' })).toHaveText(announcement!)
     await diagnosticScreenshot(page, { path: `test-results/rate-limit-hud-${width}x900.png` })
     await page.getByRole('button', { name: 'Close command HUD' }).click()
     }
@@ -799,7 +806,7 @@ for (const width of [1280, 390]) {
     await page.clock.runFor(1001)
     await expect.poll(() => submitted.length).toBe(3)
     expect(submitted[2]).toBe(submitted[1])
-    await expect(page.getByText('Cooldown ended. Checking saved actions and refreshing game data.', { exact: true })).toBeVisible()
+    await expect(page.locator('p[aria-live=off]').filter({ hasText: 'Cooldown ended. Checking saved actions and refreshing game data.' })).toBeVisible()
     await diagnosticScreenshot(page, { path: `test-results/rate-limit-checking-${width}x900.png`, fullPage: true })
     releaseRefresh()
     await page.unroute('**/overview')
@@ -813,7 +820,7 @@ for (const width of [1280, 390]) {
     await page.route('**/overview', route => route.abort('failed'))
     await refreshGame(page)
     await page.clock.runFor(1000)
-    await expect(page.getByText('Connection interrupted — awaiting server confirmation.', { exact: true })).toBeVisible()
+    await expect(page.locator('p[aria-live=off]').filter({ hasText: 'Connection interrupted — awaiting server confirmation.' })).toBeVisible()
     await diagnosticScreenshot(page, { path: `test-results/rate-limit-network-${width}x900.png`, fullPage: true })
     if (width < 768) {
     await page.getByTestId('command-orb').click()

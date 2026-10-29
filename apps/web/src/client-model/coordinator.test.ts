@@ -1456,8 +1456,10 @@ it('distinguishes throttling, blocks new actions, and reconciles the same saved 
     label: 'Action cooldown · 60s',
   })
   expect(saved.get(commandId)?.status).toBe('uncertain')
+  const announcement = connectionStatus(c.store.getState())?.announcement
   now = 60999
   c.tick()
+  expect(connectionStatus(c.store.getState())?.announcement).toBe(announcement)
   expect(connectionStatus(c.store.getState())?.label).toBe(
     'Action cooldown · 1s',
   )

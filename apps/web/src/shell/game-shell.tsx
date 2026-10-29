@@ -1,3 +1,4 @@
+import { ConnectionNotice } from '../ui/connection-notice'
 import { connectionStatus } from '../client-model/connection-status'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
@@ -298,11 +299,7 @@ export function GameShell() {
           <div className={styles.connectionSlot}>{freshness}</div>
         </div>
         <div className={styles.center}>
-          {connection && (
-            <p className={styles.stale} role="alert">
-              {connection.message}
-            </p>
-          )}
+          <ConnectionNotice status={connection} className={styles.stale} />
           <main id="main" tabIndex={-1} className={styles['work-area']}>
             <div
               className={

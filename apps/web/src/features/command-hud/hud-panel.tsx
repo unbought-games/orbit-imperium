@@ -1,3 +1,4 @@
+import { ConnectionNotice } from '../../ui/connection-notice'
 import { connectionStatus } from '../../client-model/connection-status'
 import type { DispatchDraft } from '../missions'
 import { useLayoutEffect, useRef } from 'react'
@@ -126,11 +127,7 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
           <span />
           {connection?.signal ?? 'SECURE CONNECTION'}
         </div>
-        {connection && (
-          <p role="status" className={styles.noticeText}>
-            {connection.message}
-          </p>
-        )}
+        <ConnectionNotice status={connection} className={styles.noticeText} />
         <div className={styles.panelContent}>
           {selected && (
             <HudInbox
