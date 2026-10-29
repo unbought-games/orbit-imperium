@@ -295,40 +295,37 @@ pub(crate) async fn load_selected(
     {
         s.coverage.bodies.extend([intent.origin, intent.target.id]);
     }
-    let report = match input {
-        Input::Command(Command::World {
-            action:
-                WorldAction::MarkReportRead { report }
-                | WorldAction::SetReportHidden { report, .. }
-                | WorldAction::SetReportStarred { report, .. },
-        }) => Some(*report),
-        _ => None,
+    let report_ids = match input {
+        Input::Command(Command::World { action }) => action.report_ids(),
+        _ => vec![],
     };
+    let ids: Vec<_> = report_ids.iter().map(|id| id.0).collect();
     let mut reports = BTreeMap::new();
     let mut report_states = vec![];
-    if let Some(id) = report {
-        if let Some(data) =
-            sqlx::query_scalar("SELECT data FROM mission_reports WHERE universe=$1 AND id=$2")
-                .bind(u.0)
-                .bind(id.0)
-                .fetch_optional(&mut **tx)
-                .await
-                .map_err(db_error)?
+    if !ids.is_empty() {
+        for data in sqlx::query_scalar(
+            "SELECT data FROM mission_reports WHERE universe=$1 AND id=ANY($2) ORDER BY id",
+        )
+        .bind(u.0)
+        .bind(&ids)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(db_error)?
         {
             let r: MissionReport = decode(data)?;
             reports.insert(r.id, r);
         }
         for row in sqlx::query(
-            "SELECT recipient,read,hidden,starred FROM mission_report_recipients WHERE report=$1 AND recipient=ANY($2) ORDER BY recipient",
+            "SELECT report,recipient,read,hidden,starred FROM mission_report_recipients WHERE report=ANY($1) AND recipient=ANY($2) ORDER BY report,recipient",
         )
-        .bind(id.0)
+        .bind(&ids)
         .bind(&owners)
         .fetch_all(&mut **tx)
         .await
         .map_err(db_error)?
         {
             report_states.push(RecipientReportState {
-                report: id,
+                report: ReportId(row.try_get("report").map_err(db_error)?),
                 recipient: PlayerId(row.try_get("recipient").map_err(db_error)?),
                 read: row.try_get("read").map_err(db_error)?,
                 hidden: row.try_get("hidden").map_err(db_error)?,
@@ -336,7 +333,7 @@ pub(crate) async fn load_selected(
             });
         }
     }
-    let mut covered_reports: BTreeSet<ReportId> = report.into_iter().collect();
+    let mut covered_reports: BTreeSet<ReportId> = report_ids.into_iter().collect();
     if let (Some(input_id), Some(fleet)) = (input_id, fleet_id) {
         let ids: Vec<_> = [
             "Delivered",
@@ -680,28 +677,40 @@ pub(crate) async fn save(
             sqlx::query("INSERT INTO mission_report_recipients(report,recipient,created_revision) VALUES($1,$2,$3)").bind(id.0).bind(recipient.0).bind(revision).execute(&mut **tx).await.map_err(db_error)?;
         }
     }
-    for state in &c.records.report_states {
-        if old.report_states.contains(state) {
-            continue;
-        }
-        if !s
-            .world
-            .as_ref()
-            .ok_or(StoreError::CorruptData)?
-            .covered_players
-            .contains(&state.recipient)
-        {
-            return Err(StoreError::CorruptData);
-        }
-        sqlx::query("UPDATE mission_report_recipients SET read=$3,hidden=$4,starred=$5 WHERE report=$1 AND recipient=$2").bind(state.report.0).bind(state.recipient.0).bind(state.read).bind(state.hidden).bind(state.starred).execute(&mut **tx).await.map_err(db_error)?;
-        if state.hidden {
-            sqlx::query("DELETE FROM mission_report_shares WHERE report=$1 AND recipient=$2")
-                .bind(state.report.0)
-                .bind(state.recipient.0)
-                .execute(&mut **tx)
-                .await
-                .map_err(db_error)?;
-        }
+    let previous: BTreeMap<_, _> = old
+        .report_states
+        .iter()
+        .map(|state| ((state.report, state.recipient), state))
+        .collect();
+    let changed: Vec<_> = c
+        .records
+        .report_states
+        .iter()
+        .filter(|state| previous.get(&(state.report, state.recipient)).copied() != Some(*state))
+        .collect();
+    let covered = &s
+        .world
+        .as_ref()
+        .ok_or(StoreError::CorruptData)?
+        .covered_players;
+    if changed
+        .iter()
+        .any(|state| !covered.contains(&state.recipient))
+    {
+        return Err(StoreError::CorruptData);
+    }
+    if !changed.is_empty() {
+        let reports: Vec<_> = changed.iter().map(|state| state.report.0).collect();
+        let recipients: Vec<_> = changed.iter().map(|state| state.recipient.0).collect();
+        let read: Vec<_> = changed.iter().map(|state| state.read).collect();
+        let hidden: Vec<_> = changed.iter().map(|state| state.hidden).collect();
+        let starred: Vec<_> = changed.iter().map(|state| state.starred).collect();
+        sqlx::query("UPDATE mission_report_recipients AS recipient SET read=changes.read,hidden=changes.hidden,starred=changes.starred FROM UNNEST($1::uuid[],$2::uuid[],$3::boolean[],$4::boolean[],$5::boolean[]) AS changes(report,recipient,read,hidden,starred) WHERE recipient.report=changes.report AND recipient.recipient=changes.recipient")
+            .bind(&reports).bind(&recipients).bind(&read).bind(&hidden).bind(&starred)
+            .execute(&mut **tx).await.map_err(db_error)?;
+        sqlx::query("DELETE FROM mission_report_shares AS share USING UNNEST($1::uuid[],$2::uuid[],$3::boolean[]) AS changes(report,recipient,hidden) WHERE share.report=changes.report AND share.recipient=changes.recipient AND changes.hidden")
+            .bind(&reports).bind(&recipients).bind(&hidden)
+            .execute(&mut **tx).await.map_err(db_error)?;
     }
     sqlx::query("INSERT INTO world_evidence(universe,input,deltas,audits) VALUES($1,$2,$3,$4)")
         .bind(u.0)

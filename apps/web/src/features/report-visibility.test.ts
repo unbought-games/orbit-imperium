@@ -34,3 +34,31 @@ it('blocks both delete and restore while the same report has an unresolved prefe
     ).toBeUndefined()
   }
 })
+
+it('blocks every report in an unresolved batch, including durable uncertainty', () => {
+  const attempt = {
+    envelope: {
+      command: {
+        type: 'World',
+        action: {
+          type: 'SetReportsHidden',
+          reports: ['first', 'second'],
+          hidden: true,
+        },
+      },
+    },
+    status: 'pending',
+    reconciled: false,
+  } as Attempt
+  for (const status of ['submitting', 'pending', 'uncertain'] as const) {
+    const pending = { ...attempt, status }
+    expect(pendingReportVisibility([pending])).toBe(pending)
+    for (const report of ['first', 'second'])
+      expect(pendingReportVisibility([pending], report)).toBe(pending)
+    expect(pendingReportVisibility([pending], 'other')).toBeUndefined()
+  }
+  for (const status of ['committed', 'rejected'] as const)
+    expect(
+      pendingReportVisibility([{ ...attempt, status }], 'second'),
+    ).toBeUndefined()
+})

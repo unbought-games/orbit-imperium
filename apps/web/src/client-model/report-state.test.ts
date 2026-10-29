@@ -184,3 +184,78 @@ it('acknowledges a report read only after commitment and rejects older unread ob
   ).toBe(true)
   expect(headers.get('report')?.header.read).toBe(false)
 })
+
+function bulkAttempt(status: Attempt['status'], hidden = true) {
+  const batch = attempt(status)
+  batch.envelope.command = {
+    type: 'World',
+    action: { type: 'SetReportsHidden', reports: ['report', 'second'], hidden },
+  }
+  return batch
+}
+const batchHeaders = mergeReportHeaders(
+  headers,
+  [
+    { ...header, id: 'second' },
+    { ...header, id: 'unselected' },
+  ],
+  '1',
+)
+it('projects every batch member immediately, rolls back the whole batch on failure and leaves other reports alone', () => {
+  for (const status of [
+    'submitting',
+    'pending',
+    'rejected',
+    'uncertain',
+  ] as const) {
+    for (const id of ['report', 'second'])
+      expect(
+        projectedReportHeader(batchHeaders, [bulkAttempt(status)], id)?.hidden,
+      ).toBe(status === 'submitting' || status === 'pending')
+    expect(
+      projectedReportHeader(batchHeaders, [bulkAttempt(status)], 'unselected')
+        ?.hidden,
+    ).toBe(false)
+  }
+})
+it('reconciles the entire batch at one revision and prevents stale reads undoing it', () => {
+  const accepted = acceptReportVisibility(
+    batchHeaders,
+    bulkAttempt('committed'),
+    receipt,
+  )
+  const stale = mergeReportHeaders(
+    accepted,
+    [...batchHeaders.values()].map((v) => v.header),
+    '1',
+  )
+  for (const id of ['report', 'second']) {
+    expect(stale.get(id)?.header.hidden).toBe(true)
+    expect(
+      projectedReportHeader(
+        batchHeaders,
+        [{ ...bulkAttempt('committed'), receipt }],
+        id,
+      )?.hidden,
+    ).toBe(true)
+  }
+  const restored = acceptReportVisibility(
+    stale,
+    bulkAttempt('committed', false),
+    { ...receipt, minimum_viewer_revision: '3' },
+  )
+  for (const id of ['report', 'second'])
+    expect(restored.get(id)?.header.hidden).toBe(false)
+  expect(stale.get('unselected')?.header.hidden).toBe(false)
+})
+it('keeps a batch failure until all affected reports have later confirmed visibility actions', () => {
+  const failed = bulkAttempt('rejected')
+  const single = { ...attempt('committed'), reconciled: true }
+  const ledger = new Map([
+    ['batch', failed],
+    ['single', single],
+  ])
+  expect(supersededReportFailures(ledger)).toEqual([])
+  ledger.set('retry', { ...bulkAttempt('committed'), reconciled: true })
+  expect(supersededReportFailures(ledger).map(([id]) => id)).toEqual(['batch'])
+})
