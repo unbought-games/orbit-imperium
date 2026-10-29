@@ -8,12 +8,12 @@ import {
 it('keeps the same five anchor meanings across every implemented route', () => {
   expect(navigationAnchor('overview')).toBe('Empire')
   for (const page of buildPages) expect(navigationAnchor(page)).toBe('Develop')
+  expect(navigationAnchor('resource-settings')).toBe('Develop')
   for (const page of ['dispatch', 'fleets'] as const)
     expect(navigationAnchor(page)).toBe('Fleets')
   for (const page of [
     'reports',
     'settings',
-    'resource-settings',
     'high-scores',
     'alliance',
   ] as const)

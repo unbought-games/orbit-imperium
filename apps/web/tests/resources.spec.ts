@@ -1707,7 +1707,9 @@ for (const width of [1440, 390]) {
     await expect(menu).not.toBeVisible()
     await expect(page.locator('main h1')).toHaveText('Resource settings')
     await expect(page.locator('main h1')).toBeFocused()
-    await expect(page.getByRole('button', { name: 'Menu', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('link', { name: 'Develop', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('button', { name: 'Menu', exact: true })).not.toHaveAttribute('aria-current')
+    await expect(page.getByRole('navigation', { name: 'Develop navigation', exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true })).toHaveCount(0)
     await page.reload()
@@ -1716,6 +1718,8 @@ for (const width of [1440, 390]) {
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
     await page.goForward()
     await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Develop', exact: true })).toHaveAttribute('aria-current', 'page')
+    await diagnosticScreenshot(page, { path: `test-results/resource-settings-develop-${width}x900.png`, fullPage: true })
   })
 }
 
