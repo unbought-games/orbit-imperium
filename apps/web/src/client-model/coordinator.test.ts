@@ -461,7 +461,7 @@ describe('R1 attempt coordinator', () => {
     expect(c.ledger.size).toBe(2)
     expect(saved.size).toBe(2)
     const a = [...c.ledger.values()][0]
-    await c.recover(a.envelope.command_id)
+    await c.retryOrder(a.envelope.command_id)
     expect(sent).toEqual([sent[0], sent[1], sent[0]])
   })
   it('reconciles receipt revision 12 only against a confirmed view >=12', async () => {
@@ -497,7 +497,7 @@ describe('R1 attempt coordinator', () => {
     expect(c.message).toContain('save')
   })
 })
-it('reload preserves both accepted attempts and queries receipts before retrying their original IDs', async () => {
+it('reload checks both accepted attempts without retrying until the player requests it', async () => {
   const { c, sent } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(40) })
@@ -509,6 +509,9 @@ it('reload preserves both accepted attempts and queries receipts before retrying
   ])
   expect(sent).toHaveLength(2)
   await c.poll()
+  expect(sent).toHaveLength(2)
+  for (const attempt of c.ledger.values())
+    await c.retryOrder(attempt.envelope.command_id)
   expect(sent).toHaveLength(4)
 })
 it('a B receipt cannot resolve A and a view cannot infer commitment', async () => {
@@ -1435,49 +1438,45 @@ it('discards a rules refresh whose settings finish after logout', async () => {
   expect(c.settings).toBeNull()
 })
 
-it('distinguishes throttling, blocks new actions, and reconciles the same saved ID after cooldown', async () => {
+it('stops throttled orders and waits for a new player request after cooldown', async () => {
   let now = 1000
   const { c, port, saved, sent } = setup(() => now)
   await c.connect(binding.account, binding.universe)
   const submit = port.submit
-  let throttled = true
   port.submit = async (envelope) => {
-    if (throttled) {
-      sent.push(envelope.command_id)
-      throw { status: 429, retryAfterMs: 60000 }
-    }
-    return submit(envelope)
+    sent.push(envelope.command_id)
+    throw { status: 429, retryAfterMs: 60000 }
   }
   const command = { type: 'CancelConstruction' as const, operation: id(40) }
-  const commandId = (await c.send(command))!
+  expect(await c.send(command)).toBeUndefined()
   expect(c.stale).toBe(true)
-  expect(connectionStatus(c.store.getState())).toMatchObject({
-    kind: 'cooldown',
-    label: 'Action cooldown · 60s',
-  })
-  expect(saved.get(commandId)?.status).toBe('uncertain')
+  expect(connectionStatus(c.store.getState())?.message).toContain(
+    'Try again in 60 seconds',
+  )
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
   const announcement = connectionStatus(c.store.getState())?.announcement
   now = 60999
   c.tick()
   expect(connectionStatus(c.store.getState())?.announcement).toBe(announcement)
-  expect(connectionStatus(c.store.getState())?.label).toBe(
-    'Action cooldown · 1s',
+  expect(connectionStatus(c.store.getState())?.message).toContain(
+    'Try again in 1 second.',
   )
-  await c.send({ ...command, operation: id(41) })
-  await c.recover(commandId)
+  await c.send(command)
   await c.poll()
-  expect(sent).toEqual([commandId])
-  expect(c.ledger.size).toBe(1)
+  expect(sent).toHaveLength(1)
   now = 61000
   c.tick()
   expect(connectionStatus(c.store.getState())?.kind).toBe('checking')
-  throttled = false
-  // Receipt 404 recovery verifies the binding and resubmits the original ID.
+  port.submit = submit
   await c.poll()
-  expect(sent).toEqual([commandId, commandId])
+  await c.connect(binding.account, binding.universe)
+  await c.poll()
+  expect(sent).toHaveLength(1)
   expect(connectionStatus(c.store.getState())).toBeNull()
-  expect(c.stale).toBe(false)
-  expect(saved.get(commandId)?.status).toBe('pending')
+  const retried = await c.send(command)
+  expect(sent).toHaveLength(2)
+  expect(retried).not.toBe(sent[0])
 })
 
 it('does not erase a genuine connection failure when a concurrent request is throttled', async () => {
@@ -1497,14 +1496,12 @@ it('does not erase a genuine connection failure when a concurrent request is thr
     kind: 'connection',
   })
   expect(connectionStatus(c.store.getState())?.message).toContain(
-    'Try again in 1s',
+    'Try again in 1 second',
   )
   now = 1000
   c.tick()
   await c.refresh()
-  expect(connectionStatus(c.store.getState())?.signal).toBe(
-    'CONNECTION INTERRUPTED',
-  )
+  expect(connectionStatus(c.store.getState())?.signal).toBe('CONNECTION LOST')
   port.view = originalView
   await c.refresh()
   expect(connectionStatus(c.store.getState())).toBeNull()
@@ -1538,7 +1535,7 @@ it('keeps a cooldown through an in-flight successful snapshot and resets it on s
   })
 })
 
-it('holds an action whose persistence finishes after a concurrent rate limit', async () => {
+it('does not queue an unsent order behind a concurrent rate limit', async () => {
   const { c, port, storage, sent } = setup()
   await c.connect(binding.account, binding.universe)
   const put = storage.put
@@ -1562,9 +1559,82 @@ it('holds an action whose persistence finishes after a concurrent rate limit', a
   })
   release()
   const firstId = await first
-  expect(sent).toEqual([secondId])
+  expect(sent).toHaveLength(1)
+  expect(secondId).toBeUndefined()
+  expect(firstId).toBeUndefined()
+  expect(c.ledger.size).toBe(0)
+})
+
+it('checks lost responses without resending, but honors an explicit retry with the same ID', async () => {
+  const { c, port, sent, saved } = setup()
+  await c.connect(binding.account, binding.universe)
+  const submit = port.submit
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw new TypeError('Failed to fetch')
+  }
+  const commandId = (await c.send({
+    type: 'CancelConstruction',
+    operation: id(40),
+  }))!
+  port.submit = submit
+  await c.poll()
+  await c.recover(commandId)
+  await c.connect(binding.account, binding.universe)
+  await c.poll()
+  expect(sent).toEqual([commandId])
+  expect(saved.get(commandId)?.status).toBe('uncertain')
+  await c.retryOrder(commandId)
+  expect(sent).toEqual([commandId, commandId])
+})
+it('a failed local cleanup cannot cause a throttled order to resend after reload', async () => {
+  let now = 0
+  const { c, port, storage, sent } = setup(() => now)
+  await c.connect(binding.account, binding.universe)
+  storage.remove = async () => {
+    throw Error('storage unavailable')
+  }
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw { status: 429, retryAfterMs: 1000 }
+  }
+  await c.send({ type: 'CancelConstruction', operation: id(40) })
+  now = 1000
+  await c.poll()
+  await c.connect(binding.account, binding.universe)
+  await c.poll()
+  expect(sent).toHaveLength(1)
+})
+
+it('blocks concurrent clicks as soon as 429 arrives, before local cleanup finishes', async () => {
+  const { c, port, storage, sent } = setup()
+  await c.connect(binding.account, binding.universe)
+  let release!: () => void
+  let clearing!: () => void
+  const started = new Promise<void>((resolve) => {
+    clearing = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const remove = storage.remove
+  storage.remove = async (b, id) => {
+    clearing()
+    await gate
+    await remove(b, id)
+  }
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw { status: 429, retryAfterMs: 60000 }
+  }
+  const first = c.send({ type: 'CancelConstruction', operation: id(40) })
+  await started
+  expect(connectionStatus(c.store.getState())?.kind).toBe('cooldown')
   expect(
-    [...c.ledger.values()].find((a) => a.envelope.command_id === firstId)
-      ?.status,
-  ).toBe('uncertain')
+    await c.send({ type: 'CancelConstruction', operation: id(41) }),
+  ).toBeUndefined()
+  expect(sent).toHaveLength(1)
+  release()
+  await first
+  expect(c.ledger.size).toBe(0)
 })

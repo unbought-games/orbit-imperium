@@ -135,7 +135,7 @@ export function ReportTriageControls({
         </Button>
         <Button
           variant="secondary"
-          disabled={busy || !chosen.length}
+          disabled={busy || cleanup.coolingDown || !chosen.length}
           onClick={() => void remove(chosen)}
         >
           Delete selected ({chosen.length})
@@ -155,7 +155,12 @@ export function ReportTriageControls({
         </Field>
         <Button
           variant="secondary"
-          disabled={busy || !old.length || ageCutoff(hours, now) === null}
+          disabled={
+            busy ||
+            cleanup.coolingDown ||
+            !old.length ||
+            ageCutoff(hours, now) === null
+          }
           onClick={() => void remove(old)}
         >
           Delete older reports ({old.length})

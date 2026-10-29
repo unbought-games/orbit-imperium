@@ -49,7 +49,7 @@ export function ActionStatus({
             </div>
           )}
           {latest && (
-            <div role="group" aria-label="Saved action">
+            <div role="group" aria-label="Order status">
               <p role="alert">
                 <strong>{actionLabel(latest.envelope.command)}</strong> ·{' '}
                 {actionMessage(latest)}
@@ -62,9 +62,11 @@ export function ActionStatus({
                   disabled={
                     model.store.getState().now < model.store.getState().retryAt
                   }
-                  onClick={() => void model.recover(latest.envelope.command_id)}
+                  onClick={() =>
+                    void model.retryOrder(latest.envelope.command_id)
+                  }
                 >
-                  Resolve saved command
+                  Retry order
                 </Button>
               ) : (
                 <Button

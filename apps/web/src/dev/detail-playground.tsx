@@ -70,7 +70,7 @@ function ItemPreview({ runtime }: { runtime: Preview }) {
             send: async (command, quote) => {
               await model.send(command, quote)
             },
-            retry: (id) => model.recover(id),
+            retry: (id) => model.retryOrder(id),
             dismiss: (id) => model.dismiss(id),
             quote: async () => null,
           },

@@ -43,7 +43,7 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await page.route('**/api/v3/universes/*/commands',async route=>{originalEnvelope=route.request().postDataJSON();originalId=route.request().postDataJSON().command_id;await route.fetch();await route.abort('failed')},{times:1});
  await go('shipyard');
  await page.getByRole('link',{name:'Build Light Fighter',exact:true}).click();await page.getByLabel('Shipyard quantity').fill('2');await expect(page.getByRole('region',{name:'Progression quote'})).toContainText('No cancellation, pause, or reordering.');await page.getByRole('button',{name:'Build',exact:true}).click();
- await expect(page.getByRole('button',{name:'Resolve saved command'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Retry order'})).toBeVisible();
  expect(originalId).toBeTruthy();
  await go('resources');await page.reload();
  await expect(page.getByText('Light Fighter · 2 remaining',{exact:false})).toBeVisible();

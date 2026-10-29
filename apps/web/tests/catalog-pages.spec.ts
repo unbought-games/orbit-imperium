@@ -1894,17 +1894,22 @@ for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain
     }
     await expect(result).toContainText(outcome === 'Pending'
       ? 'Order accepted; awaiting the game result.'
-      : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'Response uncertain. Your action is saved.')
+      : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'We’re checking whether this order went through. It won’t be sent again unless you retry.')
     await expect(result).not.toContainText('confirmed')
     await expect(page.getByLabel('Defenses quantity')).toHaveValue('4')
     if (outcome === 'Rejected') await expect(build).toBeEnabled()
     else await expect(build).toBeDisabled()
     if (outcome === 'uncertain') {
+      for (const feedbackWidth of [1280, 390]) {
+        await page.setViewportSize({ width: feedbackWidth, height: 900 })
+        await page.evaluate(() => window.scrollTo(0, 0))
+        await diagnosticScreenshot(page, { path: `test-results/manual-order-unknown-${feedbackWidth}x900.png`, fullPage: true })
+      }
       await page.route('**/commands/*?epoch=*', route => route.fulfill({ json: {
         protocol: 3, binding, command_id: new URL(route.request().url()).pathname.split('/').at(-1),
         admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1',
       } }))
-      await result.getByRole('button', { name: 'Resolve saved command' }).click()
+      await result.getByRole('button', { name: 'Retry order' }).click()
       await expect(result).toContainText('Order confirmed.')
       await expect(page.getByLabel('Defenses quantity')).toHaveValue('0')
     }

@@ -508,7 +508,7 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
         ? 'Order accepted. Waiting for launch confirmation…'
         : outcome === 'Rejected'
           ? 'Fleet not sent: Beginner protection prevents'
-          : 'Launch outcome unknown. Resolve the saved order before sending again.',
+          : 'We’re checking whether your fleet launched. It won’t be sent again unless you retry.',
     )
     await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
     await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
@@ -519,6 +519,11 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
       path: `test-results/dispatch-${outcome}.png`,
     })
     if (outcome === 'uncertain') {
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 900 })
+        await page.evaluate(() => window.scrollTo(0, 0))
+        await diagnosticScreenshot(page, { path: `test-results/manual-fleet-unknown-${width}x900.png`, fullPage: true })
+      }
       await page.route('**/commands/*?epoch=*', (route) =>
         route.fulfill({
           json: {
@@ -534,7 +539,7 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
         }),
       )
       await dispatchResult(page)
-        .getByRole('button', { name: 'Resolve fleet order' })
+        .getByRole('button', { name: 'Retry fleet order' })
         .click()
       await expect(dispatchResult(page)).toContainText('Fleet sent.')
       await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(

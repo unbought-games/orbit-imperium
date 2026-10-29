@@ -261,12 +261,12 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
   expect(fixture.headers[0].hidden).toBe(false)
   fixture.setMode('uncertain')
   await row.getByRole('button', { name: 'Delete report' }).click()
-  await expect(row).toContainText('Response uncertain. Your action is saved.')
+  await expect(row).toContainText('We’re checking whether this order went through. It won’t be sent again unless you retry.')
   await expect(
     row.getByRole('button', { name: 'Delete report' }),
   ).toBeDisabled()
   await expect(
-    page.getByRole('button', { name: 'Resolve saved command', exact: true }),
+    page.getByRole('button', { name: 'Retry order', exact: true }),
   ).toBeVisible()
   expect(fixture.headers[0].hidden).toBe(false)
   expect(fixture.submitted()).toBe(2)
@@ -750,18 +750,14 @@ test('HUD infinite paging waits for a pending report preference, then resumes', 
 
 
 for (const width of [1280, 390]) {
-  test(`bulk cleanup rate limit and network recovery at ${width}px`, async ({ page }) => {
+  test(`bulk cleanup rate limit requires a player retry at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const now = new Date('2026-10-29T14:00:00Z')
     await page.clock.install({ time: now })
     await page.clock.pauseAt(now)
     const fixture = await reportsFixture(page)
-    // Prime the assertive channel before failure; never change its urgency.
-    const alert = page.locator('[aria-live=assertive]')
-    await expect(alert).toHaveCount(1)
-    await expect(alert).toBeEmpty()
-    const primedAlert = (await alert.elementHandle())!
+    const primedAlert = (await page.locator('[aria-live=assertive]').elementHandle())!
     const submitted: string[] = []
     let throttled = true
     await page.route('**/commands', async route => {
@@ -775,71 +771,100 @@ for (const width of [1280, 390]) {
     await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
     await page.getByRole('button', { name: 'Select all matching (2)' }).click()
     await page.getByRole('button', { name: 'Delete selected (2)' }).click()
-    await expect(page.getByText('Cleanup stopped before all reports were confirmed.', { exact: false })).toBeVisible()
-    await expect(page.getByText('Action limit reached. Try again in 60s. Saved actions will be checked automatically.', { exact: true })).toBeVisible()
-    await expect(page.getByText('Connection interrupted', { exact: false })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Resolve saved command' })).toBeDisabled()
+    await expect(page.getByText('Cleanup stopped.', { exact: false })).toBeVisible()
+    await expect(page.getByText('Orders are coming in too fast. Try again in 60 seconds. We won’t retry for you.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Connection lost.', { exact: false })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Retry order' })).toHaveCount(0)
     expect(fixture.headers.map(r => r.hidden)).toEqual([true, false])
-    // New mutations and receipt recovery must stay quiet until Retry-After.
     await expect(page.getByRole('button', { name: 'Delete selected (1)' })).toBeDisabled()
-    const liveCooldown = page.getByRole('status').filter({ hasText: 'Actions are temporarily paused.' })
+    const liveCooldown = page.getByRole('status').filter({ hasText: 'Wait for the countdown, then try again.' })
     await expect(liveCooldown).toHaveCount(1)
     const announcement = await liveCooldown.textContent()
     await page.clock.runFor(59000)
     await expect(liveCooldown).toHaveText(announcement!)
-    await expect(page.getByText(/Action limit reached. Try again in 1s/)).toHaveAttribute('aria-live', 'off')
+    await expect(page.getByText(/Orders are coming in too fast. Try again in 1 second/)).toHaveAttribute('aria-live', 'off')
     expect(submitted).toHaveLength(2)
-    await expect(page.getByText(/Action limit reached. Try again in 1s/)).toBeVisible()
     await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: `test-results/rate-limit-reports-${width}x900.png`, fullPage: true })
+    await diagnosticScreenshot(page, { path: `test-results/manual-rate-limit-reports-${width}x900.png`, fullPage: true })
     if (width < 768) {
-    await page.getByTestId('command-orb').click()
-    await expect(page.getByRole('dialog')).toContainText('ACTION COOLDOWN')
-    await expect(page.getByRole('dialog').getByText(/Action limit reached. Try again in 1s/)).toHaveAttribute('aria-live', 'off')
-    await expect(page.getByRole('dialog').getByRole('status').filter({ hasText: 'Actions are temporarily paused.' })).toHaveText(announcement!)
-    await diagnosticScreenshot(page, { path: `test-results/rate-limit-hud-${width}x900.png` })
-    await page.getByRole('button', { name: 'Close command HUD' }).click()
+      await page.getByTestId('command-orb').click()
+      await expect(page.getByRole('dialog')).toContainText('TOO MANY ORDERS')
+      await expect(page.getByRole('dialog').getByText(/Orders are coming in too fast. Try again in 1 second/)).toHaveAttribute('aria-live', 'off')
+      await expect(page.getByRole('dialog').getByRole('status').filter({ hasText: 'Wait for the countdown, then try again.' })).toHaveText(announcement!)
+      await diagnosticScreenshot(page, { path: `test-results/manual-rate-limit-hud-${width}x900.png` })
+      await page.getByRole('button', { name: 'Close command HUD' }).click()
     }
     let releaseRefresh!: () => void
-    const refreshGate = new Promise<void>(resolve => { releaseRefresh = resolve })
-    await page.route('**/overview', async route => {
-      await refreshGate
-      return route.fallback()
-    })
+    const gate = new Promise<void>(resolve => { releaseRefresh = resolve })
+    await page.route('**/overview', async route => { await gate; return route.fallback() })
     throttled = false
-    // Let the zero-delay wake queued by the deadline tick run as well.
     await page.clock.runFor(1001)
-    await expect.poll(() => submitted.length).toBe(3)
-    expect(submitted[2]).toBe(submitted[1])
-    await expect(page.locator('p[aria-live=off]').filter({ hasText: 'Cooldown ended. Checking saved actions and refreshing game data.' })).toBeVisible()
-    await diagnosticScreenshot(page, { path: `test-results/rate-limit-checking-${width}x900.png`, fullPage: true })
+    await expect(page.locator('p[aria-live=off]').filter({ hasText: 'Cooldown over. Refreshing your empire…' })).toBeVisible()
+    await diagnosticScreenshot(page, { path: `test-results/manual-rate-limit-refresh-${width}x900.png`, fullPage: true })
     releaseRefresh()
     await page.unroute('**/overview')
-    await expect(page.getByText(/Cooldown ended/)).toHaveCount(0)
-    await expect(page.getByText('Connection restored.', { exact: true })).toHaveCount(0)
-    await expect(page.getByText(/Action limit reached/)).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Resolve saved command' })).toHaveCount(0)
-    expect(fixture.headers.every(r => r.hidden)).toBe(true)
-    await diagnosticScreenshot(page, { path: `test-results/rate-limit-recovered-${width}x900.png`, fullPage: true })
-    expect(await primedAlert.getAttribute('aria-live')).toBe('assertive')
-    expect(await primedAlert.textContent()).toBe('')
-    // A real transport failure must still report a connection problem.
+    await expect(page.getByText(/Cooldown over. Refreshing/)).toHaveCount(0)
+    await page.clock.runFor(60000)
+    expect(submitted).toHaveLength(2)
+    expect(fixture.headers.map(r => r.hidden)).toEqual([true, false])
+    await expect(page.getByRole('button', { name: 'Delete selected (1)' })).toBeEnabled()
+    await expect(page.getByText('Cooldown over. Delete the remaining selected reports when you’re ready.')).toBeVisible()
+    await diagnosticScreenshot(page, { path: `test-results/manual-rate-limit-ready-${width}x900.png`, fullPage: true })
+    // Only another player click sends another delete request.
+    await page.getByRole('button', { name: 'Delete selected (1)' }).click()
+    await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
+    expect(submitted).toHaveLength(3)
+    expect(submitted[2]).not.toBe(submitted[1])
+    await expect(page.getByText(/Cleanup stopped|Cooldown over/)).toHaveCount(0)
+    await diagnosticScreenshot(page, { path: `test-results/manual-rate-limit-retried-${width}x900.png`, fullPage: true })
+    // Actual connection failures still explain reconnecting, without resending orders.
     await page.route('**/overview', route => route.abort('failed'))
     await refreshGame(page)
     await page.clock.runFor(1000)
-    await expect(page.locator('p[aria-live=off]').filter({ hasText: 'Connection interrupted — awaiting server confirmation.' })).toBeVisible()
+    const disconnected = 'Connection lost. Reconnecting… Your orders won’t be retried automatically.'
+    await expect(page.locator('p[aria-live=off]').filter({ hasText: disconnected })).toBeVisible()
     expect(await primedAlert.getAttribute('aria-live')).toBe('assertive')
-    expect(await primedAlert.textContent()).toBe('Connection interrupted — awaiting server confirmation.')
-    await diagnosticScreenshot(page, { path: `test-results/rate-limit-network-${width}x900.png`, fullPage: true })
+    expect(await primedAlert.textContent()).toBe(disconnected)
+    await diagnosticScreenshot(page, { path: `test-results/manual-rate-limit-network-${width}x900.png`, fullPage: true })
     if (width < 768) {
-    await page.getByTestId('command-orb').click()
-    await expect(page.getByRole('dialog')).toContainText('CONNECTION INTERRUPTED')
-    await diagnosticScreenshot(page, { path: `test-results/rate-limit-network-hud-${width}x900.png` })
-    await page.getByRole('button', { name: 'Close command HUD' }).click()
+      await page.getByTestId('command-orb').click()
+      await expect(page.getByRole('dialog')).toContainText('CONNECTION LOST')
+      await page.clock.resume()
+      await expect(page.getByRole('dialog')).toHaveCSS('opacity', '1')
+      await diagnosticScreenshot(page, { path: `test-results/manual-rate-limit-network-hud-${width}x900.png` })
+      await page.getByRole('button', { name: 'Close command HUD' }).click()
     }
     await page.unroute('**/overview')
     await refreshGame(page)
     await page.clock.runFor(1000)
-    await expect(page.getByText(/Connection interrupted/)).toHaveCount(0)
+    await expect(page.getByText(/Connection lost. Reconnecting/)).toHaveCount(0)
+  })
+}
+
+for (const width of [1280, 390]) {
+  test(`a lost delete response is checked but retried only by the player at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.clock.install({ time: new Date('2026-10-29T14:00:00Z') })
+    await page.clock.pauseAt(new Date('2026-10-29T14:00:00Z'))
+    const fixture = await reportsFixture(page)
+    const ids: string[] = []
+    await page.route('**/commands', async route => {
+      ids.push(route.request().postDataJSON().gameplay.command_id)
+      return route.fallback()
+    })
+    fixture.setMode('uncertain')
+    await page.getByRole('article').first().getByRole('button', { name: 'Delete report', exact: true }).click()
+    const retry = page.getByRole('button', { name: 'Retry order', exact: true })
+    await expect(retry).toBeVisible()
+    await page.clock.runFor(60000)
+    expect(ids).toHaveLength(1)
+    await expect(page.getByRole('article')).toHaveCount(1)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/manual-delete-unknown-${width}x900.png`, fullPage: true })
+    fixture.setMode('success')
+    await retry.click()
+    await expect.poll(() => fixture.headers[0].hidden).toBe(true)
+    expect(ids).toEqual([ids[0], ids[0]])
+    await expect(retry).toHaveCount(0)
   })
 }

@@ -977,15 +977,40 @@ export class Coordinator {
       return
     }
     if (!this.current(g, b)) return
-    await this.deliver(a, g)
+    if (!(await this.deliver(a, g, true))) return
     return commandId
   }
-  private async deliver(a: Attempt, g: number) {
-    // Another in-flight request can start a cooldown while this action is being
-    // persisted or its missing receipt is checked. Retain its ID for recovery.
-    if (this.platform.monotonicNowMs() < this.retryAt) {
+  private async forgetUnsent(a: Attempt, g: number) {
+    if (!this.current(g, a.envelope.binding)) return false
+    const key = attemptKey(a.envelope.binding, a.envelope.command_id)
+    const current = this.attempts.get(key)
+    // A receipt is stronger evidence than a conflicting transport response.
+    if (!current || current.receipt || terminal(current)) return false
+    try {
+      await this.storage.remove(a.envelope.binding, a.envelope.command_id)
+      if (!this.current(g, a.envelope.binding)) return false
+      if (this.attempts.get(key) !== current) {
+        const latest = this.attempts.get(key)
+        if (latest) await this.persist(latest)
+        return false
+      }
+      this.removeAttempt(key)
+      this.writes.delete(key)
+      return true
+    } catch {
+      // Retain the original ID if local cleanup fails. Background recovery only
+      // reads receipts, so even a restored record cannot silently resend it.
       await this.uncertain(a, g)
-      return
+      return false
+    }
+  }
+  private async deliver(a: Attempt, g: number, firstDelivery = false) {
+    // A concurrent request can start a cooldown while this order is being saved.
+    // A brand-new order has not reached the server and must not be queued.
+    if (this.platform.monotonicNowMs() < this.retryAt) {
+      if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+      await this.uncertain(a, g)
+      return true
     }
     try {
       await this.receive(
@@ -994,9 +1019,18 @@ export class Coordinator {
         await this.port.submit(structuredClone(a.envelope)),
       )
     } catch (e) {
-      await this.uncertain(a, g)
-      await this.problem(e, g, a.envelope.binding)
+      if (failure(e).status === 429) {
+        // Apply the cooldown before awaiting local storage, so concurrent clicks
+        // cannot send more orders while the rejected one is being cleared.
+        await this.problem(e, g, a.envelope.binding)
+        if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+        await this.uncertain(a, g)
+      } else {
+        await this.uncertain(a, g)
+        await this.problem(e, g, a.envelope.binding)
+      }
     }
+    return true
   }
   private async uncertain(a: Attempt, g: number) {
     if (!this.current(g, a.envelope.binding)) return
@@ -1055,7 +1089,11 @@ export class Coordinator {
       if (!this.refreshWork && !this.recoveryWork) await this.refresh()
     }
   }
-  async recover(command_id: string) {
+  /** Explicit player retry; receipt checks alone never authorize another send. */
+  retryOrder(command_id: string) {
+    return this.recover(command_id, true)
+  }
+  async recover(command_id: string, retry = false) {
     if (this.platform.monotonicNowMs() < this.retryAt) return
     const b = this.binding,
       g = this.generation
@@ -1071,6 +1109,9 @@ export class Coordinator {
       )
         return
       if (failure(e).status === 404) {
+        // A missing receipt is not proof an in-flight request cannot still arrive.
+        // Only the player can authorize another send, using the same durable ID.
+        if (!retry) return
         try {
           const request_id = this.platform.newId()
           const candidate = validate<import('./commands').BindingCandidate>(
@@ -1103,7 +1144,7 @@ export class Coordinator {
         )
           return
         if (!terminal(attempt) && attempt.status !== 'submitting')
-          await this.recover(attempt.envelope.command_id)
+          await this.recover(attempt.envelope.command_id, false)
       }
     })()
     this.recoveryWork = work

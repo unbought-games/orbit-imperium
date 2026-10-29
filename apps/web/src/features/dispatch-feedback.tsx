@@ -40,7 +40,7 @@ export function DispatchFeedback({
         ? 'Fleet sent. You can prepare another fleet.'
         : 'Fleet sent. Updating ships, resources and fleet activity…'
       : attempt.status === 'uncertain'
-        ? 'Launch outcome unknown. Resolve the saved order before sending again.'
+        ? 'We’re checking whether your fleet launched. It won’t be sent again unless you retry.'
         : attempt.status === 'submitting'
           ? 'Sending fleet order…'
           : attempt.status === 'pending'
@@ -75,9 +75,9 @@ export function DispatchFeedback({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void model.recover(attempt.envelope.command_id)}
+            onClick={() => void model.retryOrder(attempt.envelope.command_id)}
           >
-            Resolve fleet order
+            Retry fleet order
           </Button>
         )}
       </div>

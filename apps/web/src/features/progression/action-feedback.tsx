@@ -40,9 +40,9 @@ export function ProgressionActionFeedback({
         {latest.status === 'uncertain' && (
           <Button
             variant="secondary"
-            onClick={() => void model.recover(latest.envelope.command_id)}
+            onClick={() => void model.retryOrder(latest.envelope.command_id)}
           >
-            Resolve saved command
+            Retry order
           </Button>
         )}
       </div>

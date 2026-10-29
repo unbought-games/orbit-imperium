@@ -87,7 +87,7 @@ it('keeps rejection and uncertain delivery actionable without displaying history
   expect(rejected).toContain('Dismiss notice')
   expect(rejected).not.toContain('View action')
   const uncertain = await render([attempt('uncertain', 'unknown')])
-  expect(uncertain).toContain('Resolve saved command')
+  expect(uncertain).toContain('Retry order')
 })
 
 it('keeps local validation and persistence failures visible before a command is sent', async () => {
@@ -138,10 +138,12 @@ it.each(['rejected', 'uncertain'] as const)(
     )
     expect(html).toContain('This quote no longer matches the action.')
     expect(html).toContain(
-      status === 'rejected' ? 'Action rejected' : 'Response uncertain',
+      status === 'rejected'
+        ? 'Action rejected'
+        : 'We’re checking whether this order went through',
     )
     expect(html).toContain(
-      status === 'rejected' ? 'Dismiss notice' : 'Resolve saved command',
+      status === 'rejected' ? 'Dismiss notice' : 'Retry order',
     )
     expect(html).toContain('Dismiss message')
   },
@@ -170,11 +172,11 @@ it('resolves uncertain presence quietly without hiding player actions or actual 
   }
   expect(changedAnnouncements(new Map(), [presence]).message).toBe('')
   const quiet = await render([presence])
-  expect(quiet).not.toContain('Resolve saved command')
+  expect(quiet).not.toContain('Retry order')
   expect(quiet).not.toContain('Action needs attention')
   const mixed = await render([attempt('uncertain', 'upgrade'), presence])
   expect(mixed).toContain('Start Upgrade')
-  expect(mixed).toContain('Resolve saved command')
+  expect(mixed).toContain('Retry order')
   expect(mixed).not.toContain('Record Foreground Presence')
   const rejected = await render([{ ...presence, status: 'rejected' }])
   expect(rejected).toContain('Record Foreground Presence')
