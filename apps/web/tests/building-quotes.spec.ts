@@ -1018,7 +1018,7 @@ for (const width of [390, 1440]) {
       planet.levels.FusionReactor = 0
       planet.levels.CrystalMine = 13
       planet.amounts = { metal: '50000000000', crystal: '50000000000', deuterium: limited ? '0' : '10000000000' }
-      planet.energy = { supply: '100000000', demand: '134000000', utilization: '746268' }
+      planet.energy = { supply: '1840000000', demand: '1874000000', utilization: '981856' }
       const targetLevel = fusion ? 1 : demolition ? 12 : 14
       const constructions: S['Construction3'][] = fusion ? [] : [{
         id: id(20), body: planet.id, building, target_level: targetLevel,
@@ -1035,7 +1035,7 @@ for (const width of [390, 1440]) {
           settings: { metal_mine: 100, crystal_mine: 100, deuterium_synthesizer: 100, solar_plant: 100, fusion_reactor: limited ? 50 : 100, solar_satellite: 100 },
           editable: [], gross_per_hour: { metal: '1000000000', crystal: '2689000000', deuterium: '8000000' },
           fuel_deuterium_per_hour: '0', net_deuterium_per_hour: { sign: 'Nonnegative', magnitude: '8000000' },
-          energy_supply: '100000000', energy_demand: '134000000', utilization: '746268', fuel_utilization: '1000000',
+          energy_supply: '1840000000', energy_demand: '1874000000', utilization: '981856', fuel_utilization: '1000000',
         }],
       })
       const requests: string[] = []
@@ -1043,7 +1043,7 @@ for (const width of [390, 1440]) {
         const { context, request } = route.request().postDataJSON()
         requests.push(request.type)
         const current = {
-          energy_supply: '100000000', energy_demand: '134000000', utilization: '746268',
+          energy_supply: '1840000000', energy_demand: '1874000000', utilization: '981856',
           fusion_supply: '0', fuel_deuterium_per_hour: '0', fuel_utilization: '1000000',
           net_deuterium_per_hour: '8000000', metal_per_hour: '1000000000', crystal_per_hour: '2689000000',
         }
@@ -1061,8 +1061,9 @@ for (const width of [390, 1440]) {
           building_energy: { current_consumption: fusion ? '0' : '100000000', target_consumption: fusion ? '0' : demolition ? '70000000' : '183000000' },
           building_production: { current, target: {
             ...current,
-            energy_supply: fusion ? limited ? '108000000' : '132000000' : '100000000',
-            energy_demand: fusion ? '134000000' : demolition ? '104000000' : '217000000',
+            energy_supply: fusion ? limited ? '1848000000' : '1872000000' : '1840000000',
+            energy_demand: fusion ? '1874000000' : demolition ? '1844000000' : '1957000000',
+            utilization: fusion ? limited ? '986125' : '998932' : demolition ? '997830' : '940214',
             crystal_per_hour: fusion ? '2689000000' : demolition ? '2400000000' : '3045000000',
             fusion_supply: fusion ? limited ? '8000000' : '32000000' : '0',
             fuel_deuterium_per_hour: fusion ? limited ? '8000000' : '33000000' : '0',
@@ -1099,6 +1100,7 @@ for (const width of [390, 1440]) {
       await energy.click()
       const details = page.getByRole('dialog', { name: energyLabel, exact: true })
       await expect(details).toContainText('Current balance: -34')
+      await expect(details).toContainText(`Production efficiency: ${fusion ? limited ? '98' : '99' : demolition ? '99' : '94'}%`)
       await diagnosticScreenshot(page, { path: `test-results/${scenario}-energy-details-${width}x${height}.png`, fullPage: false })
       await page.keyboard.press('Escape')
       if (!fusion) {
