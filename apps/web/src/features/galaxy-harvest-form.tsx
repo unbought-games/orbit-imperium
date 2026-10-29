@@ -21,7 +21,7 @@ export function GalaxyHarvestForm({
   onRecover: () => void
 }) {
   const helpId = useId()
-  const disabled = harvest.busy || harvest.blockers.length > 0
+  const disabled = harvest.busy || harvest.paused || harvest.blockers.length > 0
   return (
     <>
       <div className={styles.debris} aria-label="Available debris">

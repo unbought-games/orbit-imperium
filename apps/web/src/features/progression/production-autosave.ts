@@ -94,6 +94,7 @@ export class ProductionAutosave {
   }
 
   retry = async () => {
+    if (this.model.store.getState().rateLimited) return
     // A rejection may mean another client changed the revision. Refresh first;
     // the next command merges only this user's edited fields into that snapshot.
     await this.model.refresh()
@@ -131,7 +132,7 @@ export class ProductionAutosave {
         this.store.setState({
           flight: null,
           error:
-            'Production changes were rejected. Your edits are retained. Retry to apply them to the latest settings.',
+            'Your production edits are retained. Retry to apply them to the latest settings.',
         })
         return
       }
@@ -189,7 +190,12 @@ export class ProductionAutosave {
       .then((id) => {
         if (this.store.getState().flight !== next) return
         if (id) this.store.setState({ flight: { ...next, id } })
-        else this.fail('')
+        else
+          this.fail(
+            this.model.store.getState().rateLimited
+              ? 'Your production changes weren’t saved. Retry when you’re ready.'
+              : '',
+          )
         this.schedule()
       })
       .catch(() => this.fail('Unable to save production changes.'))

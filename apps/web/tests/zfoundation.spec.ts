@@ -21,7 +21,7 @@ test('two bodies retain independent pending actions through keyboard switching a
  const saved=()=>page.evaluate(()=>Object.entries(sessionStorage).filter(([key])=>key.startsWith('orbit:attempts:v2:')).map(([,value])=>JSON.parse(value) as Attempt))
  await page.route('**/commands',async route=>{sent.push(route.request().postDataJSON().command_id);await route.fetch();await route.abort('failed')})
  await page.route('**/commands/*?epoch=*',route=>route.fulfill({status:503,contentType:'application/problem+json',body:JSON.stringify({type:'about:blank',status:503,code:'Unavailable'})}))
- await selectBody(page, source);await page.getByRole('button',{name:'Upgrade Crystal Mine',exact:true}).click();await page.getByRole('button',{name:'Confirm upgrade'}).click();await expect(attention).toContainText('Response uncertain. Your action is saved.');await expect.poll(async()=>(await saved()).filter(a=>a.status==='uncertain').length).toBe(1)
+ await selectBody(page, source);await page.getByRole('button',{name:'Upgrade Crystal Mine',exact:true}).click();await page.getByRole('button',{name:'Confirm upgrade'}).click();await expect(attention).toContainText('We’re checking whether this order went through.');await expect.poll(async()=>(await saved()).filter(a=>a.status==='uncertain').length).toBe(1)
  const selector = page.getByRole('combobox', { name: 'Selected body' })
  await selector.focus()
  await page.keyboard.press('Enter')

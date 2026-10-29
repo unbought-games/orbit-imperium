@@ -51,7 +51,7 @@ export function actionMessage(a: Attempt): string {
     : a.status === 'rejected'
       ? `Action rejected: ${a.receipt?.status === 'Rejected' ? label(a.receipt.code) : ''}`
       : a.status === 'uncertain'
-        ? 'Response uncertain. Your action is saved.'
+        ? 'We’re checking whether this order went through.'
         : a.status === 'pending'
           ? 'Order accepted; awaiting the game result.'
           : 'Submitting action.'

@@ -279,6 +279,7 @@ export function Galaxy({
                     position.body
                       ? {
                           send: () => void espionage.send(position.body!),
+                          paused: espionage.state.rateLimited,
                           busy:
                             espionage.sending === position.body.id ||
                             pendingProbe(
@@ -292,6 +293,10 @@ export function Galaxy({
                           error:
                             espionage.error?.target === position.body.id
                               ? espionage.error.message
+                              : null,
+                          notice:
+                            espionage.localError?.target === position.body.id
+                              ? espionage.localError.message
                               : null,
                         }
                       : undefined

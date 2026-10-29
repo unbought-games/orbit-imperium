@@ -197,7 +197,10 @@ describe('production autosave', () => {
     await settle()
     receipt('1', 'rejected', true)
     await settle()
-    expect(autosave.store.getState().error).toContain('rejected')
+    expect(model.store.getState().attempts.get('1')?.status).toBe('rejected')
+    expect(autosave.store.getState().error).toContain(
+      'Your production edits are retained',
+    )
     autosave.change('metal_mine', 40)
     snapshot({ crystal_mine: 60 }, '3')
     await settle()
@@ -430,6 +433,28 @@ describe('production autosave', () => {
     await autosave.retry()
     await settle()
     expect(sent).toHaveLength(1)
+  })
+
+  it('retains throttled edits without resending when the cooldown ends', async () => {
+    const { model, autosave, sent } = setup()
+    vi.mocked(model.send).mockImplementationOnce(async () => {
+      model.store.setState({ rateLimited: true })
+      return undefined
+    })
+    autosave.change('metal_mine', 50)
+    await settle()
+    expect(autosave.store.getState().error).toContain('weren’t saved')
+    expect(autosave.store.getState().edits).toEqual({ metal_mine: 50 })
+    await autosave.retry()
+    expect(model.refresh).not.toHaveBeenCalled()
+    model.store.setState({ rateLimited: false })
+    await settle()
+    expect(model.send).toHaveBeenCalledTimes(1)
+    expect(sent).toHaveLength(0)
+    await autosave.retry()
+    await settle()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({ settings: { metal_mine: 50 } })
   })
 
   it('does not carry queued edits into another account/binding', async () => {

@@ -639,12 +639,16 @@ test('production rejection retains edits and retry preserves unrelated server ch
   await expect(page.getByLabel('fusion reactor production')).toHaveCount(0)
   await moveProductionSlider(page, 'metal mine production', '50')
   const panel = page.getByRole('region', { name: 'Production controls' })
-  await expect(panel.getByRole('alert')).toContainText('rejected')
+  await expect(page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })).toContainText('Settings Changed')
+  await expect(page.getByTestId('game-error-banner').getByRole('group', { name: 'Production settings error' })).toContainText('Your production edits are retained')
+  await expect(panel.getByRole('alert')).toHaveCount(0)
   await expect(page.getByLabel('metal mine production')).toHaveValue('50')
   expect(sent).toHaveLength(0)
-  await diagnosticScreenshot(panel, {
-    path: 'test-results/production-autosave-rejected-1440.png',
-  })
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-production-error-${width}x900.png`, fullPage: true })
+  }
   await page.route('**/commands', async (route) => {
     const envelope = route.request().postDataJSON()
     sent.push(envelope)
@@ -663,7 +667,7 @@ test('production rejection retains edits and retry preserves unrelated server ch
       },
     })
   })
-  await panel.getByRole('button', { name: 'Retry production changes' }).click()
+  await page.getByTestId('game-error-banner').getByRole('button', { name: 'Retry production changes' }).click()
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toMatchObject({
     expected_settings_revision: '2',
@@ -1138,6 +1142,11 @@ for (const [pageName, building, title] of [
     const sent = new Map<string, components['schemas']['CommandEnvelopeV3']>()
     const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
     const deliveries: string[] = []
+    let receiptReads = 0
+    await page.route('**/commands/*?epoch=*', route => {
+      receiptReads++
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    })
     await page.route('**/commands', async (route) => {
       const envelope = route.request().postDataJSON()
       deliveries.push(envelope.command_id)
@@ -1188,8 +1197,16 @@ for (const [pageName, building, title] of [
     await confirmCancellation(page)
     await expect(cancel).toBeDisabled()
     await expect(pane).toContainText('Cancelling')
-    // The first response was lost; recovery must replay the original identity.
-    await expect.poll(() => deliveries.length).toBeGreaterThan(1)
+    // Losing the response may trigger receipt checks, but never another send.
+    const retry = page.getByRole('complementary', { name: 'Action needs attention' })
+      .getByRole('button', { name: 'Retry order', exact: true })
+    await expect(retry).toBeVisible()
+    await refreshGame(page)
+    await expect.poll(() => receiptReads).toBeGreaterThan(0)
+    expect(deliveries).toHaveLength(1)
+    // Only the player's retry can replay the original identity.
+    await retry.click()
+    await expect.poll(() => deliveries.length).toBe(2)
     expect(sent.size).toBe(1)
     expect([...sent.values()][0].command).toEqual({
       type: 'CancelConstruction',
@@ -1509,7 +1526,7 @@ for (const dismissFirst of ['message', 'saved action'] as const) {
       .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
       .click()
     await page.getByRole('button', { name: 'Confirm upgrade' }).click()
-    const saved = page.getByRole('group', { name: 'Saved action', exact: true })
+    const saved = page.getByRole('group', { name: 'Order status', exact: true })
     await expect(saved).toContainText('Action rejected')
     await page.getByRole('link', { name: /^Back to / }).click()
     await page
@@ -1925,5 +1942,43 @@ for (const width of [1440, 390]) {
     } finally {
       await context.close()
     }
+  })
+}
+
+for (const width of [1280, 390]) {
+  test(`production throttling has one cooldown message and waits for retry at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const now = new Date()
+    await page.clock.install({ time: now })
+    const { sent } = await setup(page)
+    let submissions = 0
+    let throttled = true
+    await page.route('**/commands', async route => {
+      submissions++
+      if (throttled) return route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
+      return route.fallback()
+    })
+    await openProductionSettings(page)
+    await page.clock.pauseAt(new Date(now.getTime() + 10000))
+    await moveProductionSlider(page, 'metal mine production', '50')
+    await page.clock.runFor(300)
+    const banner = page.getByTestId('game-error-banner')
+    await expect(banner).toContainText('Try again in 60 seconds.')
+    await expect(banner.getByRole('group', { name: 'Production settings error' })).toHaveCount(0)
+    await expect(page.getByText(/Unable to save production|Saving production changes/)).toHaveCount(0)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-production-cooldown-${width}x900.png`, fullPage: true })
+    await page.clock.runFor(61000)
+    await refreshGame(page)
+    await expect(banner).toContainText('Your production changes weren’t saved.')
+    await expect(page.getByLabel('metal mine production')).toHaveValue('50')
+    expect(submissions).toBe(1)
+    expect(sent).toHaveLength(0)
+    await diagnosticScreenshot(page, { path: `test-results/unified-production-retry-${width}x900.png`, fullPage: true })
+    throttled = false
+    await page.getByRole('button', { name: 'Retry production changes' }).click()
+    await expect.poll(() => submissions).toBe(2)
+    await expect.poll(() => sent.length).toBe(1)
   })
 }

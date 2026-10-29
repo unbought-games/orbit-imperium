@@ -1,3 +1,4 @@
+import { connectionStatus } from '../../client-model/connection-status'
 import type { components } from '../../contracts'
 import type { GameState } from '../../client-model/game-store'
 import {
@@ -44,7 +45,10 @@ export function lostSpyProbes(header: Header, state: GameState) {
   )
 }
 export function initialCaptionEvents(state: GameState): CaptionEvent[] {
-  if (state.stale) return [{ id: 'initial:disconnected', kind: 'disconnected' }]
+  const connection = connectionStatus(state)
+  if (connection?.kind === 'connection')
+    return [{ id: 'initial:disconnected', kind: 'disconnected' }]
+  if (connection) return []
   if (incomingThreats(state).length) return []
   return [
     {
@@ -58,10 +62,12 @@ export function captionEvents(
   after: GameState,
 ): CaptionEvent[] {
   const events: CaptionEvent[] = []
-  if (before.stale !== after.stale)
+  const wasDisconnected = connectionStatus(before)?.kind === 'connection'
+  const disconnected = connectionStatus(after)?.kind === 'connection'
+  if (wasDisconnected !== disconnected)
     events.push({
-      id: `connection:${after.stale}:${after.now}`,
-      kind: after.stale ? 'disconnected' : 'reconnected',
+      id: `connection:${disconnected}:${after.now}`,
+      kind: disconnected ? 'disconnected' : 'reconnected',
     })
   if (!hasUnreadIntelligence(before) && hasUnreadIntelligence(after))
     events.push({ id: 'explain:unread', kind: 'unread' })

@@ -129,17 +129,13 @@ export class Coordinator {
   private set accessLost(accessLost: GameState['accessLost']) {
     this.store.setState({ accessLost })
   }
-  get retryAfterMs() {
-    return this.store.getState().retryAfterMs
-  }
-  private set retryAfterMs(retryAfterMs: GameState['retryAfterMs']) {
-    this.store.setState({ retryAfterMs })
+  private get retryAt() {
+    return this.store.getState().retryAt
   }
   private delivery: DeliveryController | null = null
   private refreshWork: Promise<void> | null = null
   private recoveryWork: Promise<void> | null = null
   private pendingMinimum: string | undefined
-  private retryAt = 0
   private generation = 0
   private viewGeneration = 0
   private quoteGeneration = 0
@@ -185,7 +181,11 @@ export class Coordinator {
     this.delivery?.wake()
   }
   tick() {
-    this.store.setState({ now: this.platform.monotonicNowMs() })
+    const previous = this.store.getState()
+    const now = this.platform.monotonicNowMs()
+    this.store.setState({ now })
+    if (previous.now < previous.retryAt && now >= previous.retryAt)
+      this.delivery?.wake()
   }
   dismissMessage() {
     this.message = ''
@@ -237,6 +237,9 @@ export class Coordinator {
     this.pendingMinimum = undefined
     this.store.setState({
       ready: false,
+      retryAt: 0,
+      rateLimited: false,
+      connectionInterrupted: false,
       binding: null,
       view: null,
       settings: null,
@@ -413,11 +416,19 @@ export class Coordinator {
   private async problem(e: unknown, g: number, b: Binding) {
     if (!this.current(g, b)) return
     const f = failure(e)
-    this.retryAfterMs = Math.max(0, f.retryAfterMs ?? 0)
-    this.retryAt = Math.max(
-      this.retryAt,
-      this.platform.monotonicNowMs() + this.retryAfterMs,
-    )
+    const now = this.platform.monotonicNowMs()
+    const delay = Number.isFinite(f.retryAfterMs)
+      ? Math.max(0, f.retryAfterMs!)
+      : 0
+    this.store.setState({
+      now,
+      retryAt: Math.max(this.retryAt, now + delay),
+      ...(f.status === 429
+        ? { rateLimited: true }
+        : now >= this.retryAt
+          ? { rateLimited: false }
+          : {}),
+    })
     if (f.code === 'EpochChanged') {
       this.message =
         'Universe history changed. Previous unresolved actions are indeterminate; enter new actions after confirmation.'
@@ -430,7 +441,13 @@ export class Coordinator {
       this.invalidate()
       this.accessLost = true
       this.message = 'Universe membership is unavailable.'
-    } else this.stale = true
+    } else {
+      this.store.setState({
+        stale: true,
+        ...(f.status !== 429 ? { connectionInterrupted: true } : {}),
+      })
+      this.delivery?.pending()
+    }
   }
   private requestMinimum(minimum?: string) {
     if (
@@ -539,7 +556,11 @@ export class Coordinator {
       ) {
         this.pendingMinimum = undefined
       }
-      this.stale = false
+      this.store.setState({
+        stale: false,
+        connectionInterrupted: false,
+        ...(now >= this.retryAt ? { rateLimited: false } : {}),
+      })
       await this.reconcile()
     } catch (e) {
       if (q === this.viewGeneration) await this.problem(e, g, b)
@@ -880,8 +901,9 @@ export class Coordinator {
       this.message = 'Connect before confirming an action.'
       return
     }
-    this.message = ''
     this.tick()
+    if (this.platform.monotonicNowMs() < this.retryAt) return
+    this.message = ''
     const state = this.store.getState()
     if (pendingCommand(state, command)) return
     if (quote && (!state.view || !matchesQuote(command, quote, state.view))) {
@@ -966,10 +988,41 @@ export class Coordinator {
       return
     }
     if (!this.current(g, b)) return
-    await this.deliver(a, g)
+    if (!(await this.deliver(a, g, true))) return
     return commandId
   }
-  private async deliver(a: Attempt, g: number) {
+  private async forgetUnsent(a: Attempt, g: number) {
+    if (!this.current(g, a.envelope.binding)) return false
+    const key = attemptKey(a.envelope.binding, a.envelope.command_id)
+    const current = this.attempts.get(key)
+    // A receipt is stronger evidence than a conflicting transport response.
+    if (!current || current.receipt || terminal(current)) return false
+    try {
+      await this.storage.remove(a.envelope.binding, a.envelope.command_id)
+      if (!this.current(g, a.envelope.binding)) return false
+      if (this.attempts.get(key) !== current) {
+        const latest = this.attempts.get(key)
+        if (latest) await this.persist(latest)
+        return false
+      }
+      this.removeAttempt(key)
+      this.writes.delete(key)
+      return true
+    } catch {
+      // Retain the original ID if local cleanup fails. Background recovery only
+      // reads receipts, so even a restored record cannot silently resend it.
+      await this.uncertain(a, g)
+      return false
+    }
+  }
+  private async deliver(a: Attempt, g: number, firstDelivery = false) {
+    // A concurrent request can start a cooldown while this order is being saved.
+    // A brand-new order has not reached the server and must not be queued.
+    if (this.platform.monotonicNowMs() < this.retryAt) {
+      if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+      await this.uncertain(a, g)
+      return true
+    }
     try {
       await this.receive(
         a,
@@ -977,9 +1030,18 @@ export class Coordinator {
         await this.port.submit(structuredClone(a.envelope)),
       )
     } catch (e) {
-      await this.uncertain(a, g)
-      await this.problem(e, g, a.envelope.binding)
+      if (failure(e).status === 429) {
+        // Apply the cooldown before awaiting local storage, so concurrent clicks
+        // cannot send more orders while the rejected one is being cleared.
+        await this.problem(e, g, a.envelope.binding)
+        if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+        await this.uncertain(a, g)
+      } else {
+        await this.uncertain(a, g)
+        await this.problem(e, g, a.envelope.binding)
+      }
     }
+    return true
   }
   private async uncertain(a: Attempt, g: number) {
     if (!this.current(g, a.envelope.binding)) return
@@ -1038,7 +1100,11 @@ export class Coordinator {
       if (!this.refreshWork && !this.recoveryWork) await this.refresh()
     }
   }
-  async recover(command_id: string) {
+  /** Explicit player retry; receipt checks alone never authorize another send. */
+  retryOrder(command_id: string) {
+    return this.recover(command_id, true)
+  }
+  async recover(command_id: string, retry = false) {
     if (this.platform.monotonicNowMs() < this.retryAt) return
     const b = this.binding,
       g = this.generation
@@ -1054,6 +1120,9 @@ export class Coordinator {
       )
         return
       if (failure(e).status === 404) {
+        // A missing receipt is not proof an in-flight request cannot still arrive.
+        // Only the player can authorize another send, using the same durable ID.
+        if (!retry) return
         try {
           const request_id = this.platform.newId()
           const candidate = validate<import('./commands').BindingCandidate>(
@@ -1086,7 +1155,7 @@ export class Coordinator {
         )
           return
         if (!terminal(attempt) && attempt.status !== 'submitting')
-          await this.recover(attempt.envelope.command_id)
+          await this.recover(attempt.envelope.command_id, false)
       }
     })()
     this.recoveryWork = work
@@ -1131,7 +1200,6 @@ export class Coordinator {
   }
   async poll() {
     if (this.platform.monotonicNowMs() < this.retryAt) return
-    this.retryAfterMs = 0
     if (!this.ready) {
       await this.connect(this.account, this.universe)
       return

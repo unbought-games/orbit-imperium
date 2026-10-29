@@ -373,11 +373,6 @@
   display: grid;
   gap: 5px;
 }
-.inlineError {
-  margin: 3px 0 0;
-  color: var(--danger);
-  font-size: 0.8rem;
-}
 .srOnly {
   position: absolute;
   width: 1px;

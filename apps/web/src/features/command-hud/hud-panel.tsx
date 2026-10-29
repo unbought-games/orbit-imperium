@@ -1,3 +1,5 @@
+import { ErrorBannerSlot } from '../../ui/error-banner'
+import { connectionStatus } from '../../client-model/connection-status'
 import type { DispatchDraft } from '../missions'
 import { useLayoutEffect, useRef } from 'react'
 import { AnimatePresence, motion, useIsPresent } from 'motion/react'
@@ -32,6 +34,7 @@ export function HudPanel(props: HudPanelProps) {
   )
 }
 function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
+  const connection = connectionStatus(hud.state)
   const present = useIsPresent()
   const reducedMotion = useReducedMotion()
   const ref = useRef<HTMLDialogElement>(null)
@@ -116,14 +119,17 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
             ? 'Command uplink'
             : (content?.title ?? 'Intelligence')}
         </h2>
-        <div className={styles.signal}>
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-          {hud.state.stale ? 'CONNECTION INTERRUPTED' : 'SECURE CONNECTION'}
-        </div>
+        {!connection && (
+          <div className={styles.signal}>
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            SECURE CONNECTION
+          </div>
+        )}
+        <ErrorBannerSlot model={model} surface="dialog" />
         <div className={styles.panelContent}>
           {selected && (
             <HudInbox

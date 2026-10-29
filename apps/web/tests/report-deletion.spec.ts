@@ -259,17 +259,19 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
   await row.getByRole('button', { name: 'Delete report' }).click()
   await expect(row).toHaveCount(0)
   release()
-  await expect(row).toContainText('Action rejected: Not Found')
+  await expect(page.getByTestId('game-error-banner')).toContainText('Action rejected: Not Found')
+  await expect(row).not.toContainText('Action rejected')
   await expect(row.getByRole('button', { name: 'Delete report' })).toBeEnabled()
   expect(fixture.headers[0].hidden).toBe(false)
   fixture.setMode('uncertain')
   await row.getByRole('button', { name: 'Delete report' }).click()
-  await expect(row).toContainText('Response uncertain. Your action is saved.')
+  await expect(page.getByTestId('game-error-banner')).toContainText('We’re checking whether this order went through.')
+  await expect(row).not.toContainText('We’re checking')
   await expect(
     row.getByRole('button', { name: 'Delete report' }),
   ).toBeDisabled()
   await expect(
-    page.getByRole('button', { name: 'Resolve saved command', exact: true }),
+    page.getByRole('button', { name: 'Retry order', exact: true }),
   ).toBeVisible()
   expect(fixture.headers[0].hidden).toBe(false)
   expect(fixture.submitted()).toBe(2)
@@ -553,8 +555,21 @@ test('independent deletes are optimistic and each failure rolls back only its re
   await expect.poll(fixture.submitted).toBe(2)
   release()
   await expect(rows).toHaveCount(2)
-  await expect(rows.first()).toContainText('Action rejected')
-  await expect(rows.last()).toContainText('Action rejected')
+  const banner = page.getByTestId('game-error-banner')
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-older-collapsed-${width}x900.png`, fullPage: true })
+  }
+  await banner.getByText('1 more order needs attention').click()
+  await expect(banner.getByRole('group', { name: 'Order status' })).toHaveCount(2)
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-older-expanded-${width}x900.png`, fullPage: true })
+  }
+  await expect(rows.first()).not.toContainText('Action rejected')
+  await expect(rows.last()).not.toContainText('Action rejected')
 })
 
 test('a successful HTTP response confirms deletion before the game view refreshes', async ({
@@ -706,7 +721,7 @@ for (const width of [1440, 390]) {
       await expect.poll(() => fixture.submitted()).toBe(1)
       release()
       await expect(page.getByRole('article')).toHaveCount(2)
-      await expect(page.getByText(mode === 'rejected' ? /Action rejected/ : /Response uncertain/).first()).toBeVisible()
+      await expect(page.getByTestId('game-error-banner')).toContainText(mode === 'rejected' ? 'Action rejected' : 'We’re checking whether this order went through.')
       expect(fixture.headers.every(r => !r.hidden)).toBe(true)
       expect(fixture.submitted()).toBe(1)
       await diagnosticScreenshot(page, { path: `test-results/bulk-${mode}-${width}x900.png`, fullPage: true })
@@ -802,7 +817,8 @@ test.describe('report touch actions', () => {
         const submitted = fixture.submitted()
         await remove.tap({ position: { x, y } })
         await expect.poll(fixture.submitted).toBe(submitted + 1)
-        await expect(row).toContainText('Action rejected: Not Found')
+        await expect(page.getByTestId('game-error-banner')).toContainText('Action rejected: Not Found')
+        await expect(row.getByRole('alert')).toHaveCount(0)
         await expect(remove).toBeEnabled()
         const removeBox = (await remove.boundingBox())!
         const rowBox = (await row.boundingBox())!
@@ -872,3 +888,170 @@ test('HUD infinite paging waits for a pending report preference, then resumes', 
   await expect(panel.getByLabel('Intelligence list').getByRole('button',{name:/Espionage report/})).toBeVisible()
   await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toHaveCount(0)
 })
+
+
+for (const width of [1280, 390]) {
+  test(`bulk cleanup rate limit requires a player retry at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const now = new Date('2026-10-29T14:00:00Z')
+    await page.clock.install({ time: now })
+    await page.clock.pauseAt(now)
+    const fixture = await reportsFixture(page)
+    const primedAlert = (await page.locator('[aria-live=assertive]').elementHandle())!
+    const submitted: string[] = []
+    let throttled = true
+    await page.route('**/commands', async route => {
+      const envelope = route.request().postDataJSON().gameplay
+      if (envelope?.command.action.type !== 'SetReportsHidden') return route.fallback()
+      submitted.push(envelope.command_id)
+      if (throttled)
+        return route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
+      return route.fallback()
+    })
+    await page.getByRole('button', { name: 'Sort, filter & clean up' }).click()
+    await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+    await page.getByRole('button', { name: 'Delete selected (2)' }).click()
+    const banner = page.getByTestId('game-error-banner')
+    await expect(banner).toHaveCount(1)
+    // The cooldown message already explains this failure; do not repeat it.
+    await expect(page.getByText('Cleanup stopped.', { exact: false })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Connection details', exact: true })).toHaveCount(0)
+    await expect(page.locator('main').getByText('Cleanup stopped.', { exact: false })).toHaveCount(0)
+    await expect(page.getByText('Orders are coming in too fast. Try again in 60 seconds.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Connection lost.', { exact: false })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Retry order' })).toHaveCount(0)
+    expect(fixture.headers.map(r => r.hidden)).toEqual([false, false])
+    await expect(page.getByRole('button', { name: 'Delete selected (2)' })).toBeDisabled()
+    const liveCooldown = page.getByRole('status').filter({ hasText: 'Wait for the countdown, then try again.' })
+    await expect(liveCooldown).toHaveCount(1)
+    const announcement = await liveCooldown.textContent()
+    await page.clock.runFor(59000)
+    await expect(liveCooldown).toHaveText(announcement!)
+    await expect(banner.getByText(/Orders are coming in too fast. Try again in 1 second/)).toHaveAttribute('aria-live', 'off')
+    await expect(page.getByText('Try again in 1s', { exact: true })).toHaveCount(0)
+    expect(submitted).toHaveLength(1)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-reports-${width}x900.png`, fullPage: true })
+    if (width < 768) {
+      await page.getByTestId('command-orb').click()
+      await expect(page.getByRole('dialog').getByTestId('game-error-banner')).toContainText('Orders are coming in too fast.')
+      await expect(page.getByTestId('game-error-banner')).toHaveCount(1)
+      await expect(page.getByRole('dialog').getByText('TOO MANY ORDERS', { exact: true })).toHaveCount(0)
+      await expect(page.getByRole('dialog').getByText(/Orders are coming in too fast. Try again in 1 second/)).toHaveAttribute('aria-live', 'off')
+      await expect(page.getByRole('dialog').getByRole('status').filter({ hasText: 'Wait for the countdown, then try again.' })).toHaveText(announcement!)
+      await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-hud-${width}x900.png` })
+      await page.getByRole('button', { name: 'Close command HUD' }).click()
+    }
+    let releaseRefresh!: () => void
+    const gate = new Promise<void>(resolve => { releaseRefresh = resolve })
+    await page.route('**/overview', async route => { await gate; return route.fallback() })
+    throttled = false
+    await page.clock.runFor(1001)
+    await expect(page.locator('p[aria-live=off]').filter({ hasText: 'Cooldown over. Refreshing your empire…' })).toBeVisible()
+    await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-refresh-${width}x900.png`, fullPage: true })
+    releaseRefresh()
+    await page.unroute('**/overview')
+    await expect(page.getByText(/Cooldown over. Refreshing/)).toHaveCount(0)
+    await page.clock.runFor(60000)
+    expect(submitted).toHaveLength(1)
+    expect(fixture.headers.map(r => r.hidden)).toEqual([false, false])
+    await expect(page.getByRole('button', { name: 'Delete selected (2)' })).toBeEnabled()
+    await expect(page.getByText('Cooldown over. Delete the remaining selected reports when you’re ready.')).toBeVisible()
+    if (width < 768) {
+      const originalNotice = (await banner.getByRole('alert').elementHandle())!
+      const originalAnnouncement = (await page.getByTestId('order-announcement').elementHandle())!
+      const announcementBefore = await originalAnnouncement.textContent()
+      await page.getByTestId('command-orb').click()
+      await expect(page.getByTestId('game-error-banner')).toHaveCount(1)
+      await expect(page.getByRole('dialog').getByText('Cooldown over. Delete the remaining selected reports when you’re ready.')).toBeVisible()
+      expect(await originalNotice.evaluate(el => !!el.closest('dialog'))).toBe(true)
+      expect(await originalAnnouncement.evaluate(el => !!el.closest('dialog'))).toBe(true)
+      expect(await originalAnnouncement.textContent()).toBe(announcementBefore)
+      await diagnosticScreenshot(page, { path: 'test-results/unified-hud-cleanup-ready-390x900.png' })
+      await page.getByRole('button', { name: 'Close command HUD' }).click()
+      await page.clock.runFor(1000)
+      await expect(banner.getByRole('alert')).toBeVisible()
+      expect(await originalNotice.evaluate(el => !!el.closest('main'))).toBe(true)
+    }
+    await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-ready-${width}x900.png`, fullPage: true })
+    // Only another player click sends another delete request.
+    await page.getByRole('button', { name: 'Delete selected (2)' }).click()
+    await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
+    expect(submitted).toHaveLength(2)
+    expect(submitted[1]).not.toBe(submitted[0])
+    await expect(page.getByText(/Cleanup stopped|Cooldown over/)).toHaveCount(0)
+    await expect(banner.locator('[data-error-entry]')).toHaveCount(0)
+    await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-retried-${width}x900.png`, fullPage: true })
+    // Actual connection failures still explain reconnecting, without resending orders.
+    await page.route('**/overview', route => route.abort('failed'))
+    await refreshGame(page)
+    await page.clock.runFor(1000)
+    const disconnected = 'Connection lost. Reconnecting…'
+    await expect(page.locator('p[aria-live=off]').filter({ hasText: disconnected })).toBeVisible()
+    expect(await primedAlert.getAttribute('aria-live')).toBe('assertive')
+    expect(await primedAlert.textContent()).toBe(disconnected)
+    await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-network-${width}x900.png`, fullPage: true })
+    if (width < 768) {
+      await page.getByTestId('command-orb').click()
+      await expect(page.getByRole('dialog').getByTestId('game-error-banner')).toContainText('Connection lost. Reconnecting…')
+      await page.clock.resume()
+      await expect(page.getByRole('dialog')).toHaveCSS('opacity', '1')
+      await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-network-hud-${width}x900.png` })
+      await page.getByRole('button', { name: 'Close command HUD' }).click()
+    }
+    await page.unroute('**/overview')
+    await refreshGame(page)
+    await page.clock.runFor(1000)
+    await expect(page.getByText(/Connection lost. Reconnecting/)).toHaveCount(0)
+  })
+}
+
+for (const width of [1280, 390]) {
+  test(`a lost delete response is checked but retried only by the player at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.clock.install({ time: new Date('2026-10-29T14:00:00Z') })
+    await page.clock.pauseAt(new Date('2026-10-29T14:00:00Z'))
+    const fixture = await reportsFixture(page)
+    const ids: string[] = []
+    await page.route('**/commands', async route => {
+      ids.push(route.request().postDataJSON().gameplay.command_id)
+      return route.fallback()
+    })
+    fixture.setMode('uncertain')
+    await page.getByRole('article').first().getByRole('button', { name: 'Delete report', exact: true }).click()
+    const retry = page.getByRole('button', { name: 'Retry order', exact: true })
+    await expect(retry).toBeVisible()
+    await page.reload()
+    await expect(retry).toBeVisible()
+    await expect(page.getByTestId('order-announcement')).toBeEmpty()
+    if (width < 768) {
+      const originalAnnouncement = (await page.getByTestId('order-announcement').elementHandle())!
+      await page.getByTestId('command-orb').click()
+      await expect(page.getByRole('dialog').getByRole('button', { name: 'Retry order' })).toBeVisible()
+      await expect(page.getByTestId('game-error-banner')).toHaveCount(1)
+      expect(await originalAnnouncement.evaluate(el => !!el.closest('dialog'))).toBe(true)
+      await expect(page.getByTestId('order-announcement')).toBeEmpty()
+      await diagnosticScreenshot(page, { path: 'test-results/unified-hud-order-error-390x900.png' })
+      await page.getByRole('button', { name: 'Close command HUD' }).click()
+      await page.clock.runFor(1000)
+      expect(await originalAnnouncement.evaluate(el => !!el.closest('main'))).toBe(true)
+    }
+    await page.clock.runFor(60000)
+    expect(ids).toHaveLength(1)
+    await expect(page.getByRole('article')).toHaveCount(1)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-delete-unknown-${width}x900.png`, fullPage: true })
+    fixture.setMode('success')
+    if (width < 768) {
+      await page.getByTestId('command-orb').click()
+      await expect(page.getByRole('dialog').getByRole('button', { name: 'Retry order' })).toBeVisible()
+    }
+    await retry.click()
+    await expect.poll(() => fixture.headers[0].hidden).toBe(true)
+    expect(ids).toEqual([ids[0], ids[0]])
+    await expect(retry).toHaveCount(0)
+    if (width < 768) await page.getByRole('button', { name: 'Close command HUD' }).click()
+  })
+}

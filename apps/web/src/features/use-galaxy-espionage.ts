@@ -81,6 +81,7 @@ export function useGalaxyEspionage(model: Coordinator, origin: string) {
     state,
     sending,
     error: rejection ?? error,
+    localError: error,
     reason: probeAvailability(state, origin),
     send,
   }

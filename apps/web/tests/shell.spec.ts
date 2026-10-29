@@ -1351,7 +1351,7 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   )
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Connection interrupted' }),
+    page.locator('[aria-live=assertive]').filter({ hasText: 'Connection lost. Reconnecting' }),
   ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)
@@ -1821,8 +1821,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     sent++
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  // Receipt reads share the simulated outage. The default fixture's 404 would
-  // correctly trigger redelivery of the saved command during reconciliation.
+  // Receipt reads share the outage; only an explicit retry may send the order again.
   await page.route('**/commands/*?epoch=*', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
   )
@@ -1863,9 +1862,9 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     .click()
   await expect(
     page.getByRole('complementary', { name: 'Action needs attention' }),
-  ).toContainText('Response uncertain. Your action is saved.')
+  ).toContainText('We’re checking whether this order went through.')
   await expect(
-    page.getByRole('button', { name: 'Resolve saved command', exact: true }),
+    page.getByRole('button', { name: 'Retry order', exact: true }),
   ).toBeVisible()
   await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue('1')
   await expect(
@@ -1878,7 +1877,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     response.url().includes('/commands/') && response.request().method() === 'GET',
   )
   await recovery.getByRole('button', {
-    name: 'Resolve saved command',
+    name: 'Retry order',
     exact: true,
   }).click()
   expect((await receiptResponse).status()).toBe(503)
@@ -1922,7 +1921,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     await expect(page.getByRole('dialog', { name: 'Navigation' })).toBeVisible()
     await page.keyboard.press('Escape')
     const resolve = recovery.getByRole('button', {
-      name: 'Resolve saved command',
+      name: 'Retry order',
       exact: true,
     })
     await resolve.scrollIntoViewIfNeeded()

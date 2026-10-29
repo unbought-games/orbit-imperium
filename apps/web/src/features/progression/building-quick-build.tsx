@@ -110,11 +110,6 @@ export function BuildingQuickBuild({
           </div>
         }
       />
-      {feedback.problem && (
-        <p className={styles.problem} role="group" aria-label="Build problem">
-          {feedback.problem}
-        </p>
-      )}
     </div>
   )
 }

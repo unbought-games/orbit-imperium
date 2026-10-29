@@ -8,11 +8,11 @@ export function useReportCleanup(
   clearSelection: () => void,
 ) {
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
+  const [failure, setFailure] = useState<'cooldown' | 'other' | null>(null)
   async function remove(rows: Header[]) {
     if (submitting) return
     setSubmitting(true)
-    setError('')
+    setFailure(null)
     try {
       await deleteReportSelection(
         model,
@@ -20,12 +20,20 @@ export function useReportCleanup(
       )
       clearSelection()
     } catch {
-      setError(
-        'Cleanup stopped. Unconfirmed reports remain available; check action status and try again.',
-      )
+      setFailure(model.store.getState().rateLimited ? 'cooldown' : 'other')
     } finally {
       setSubmitting(false)
     }
   }
-  return { submitting, error, remove }
+  const state = model.store.getState()
+  const coolingDown = state.now < state.retryAt
+  const error =
+    failure === 'cooldown'
+      ? coolingDown || state.stale
+        ? ''
+        : 'Cooldown over. Delete the remaining selected reports when you’re ready.'
+      : failure === 'other'
+        ? 'Cleanup stopped. Check the remaining reports before trying again.'
+        : ''
+  return { submitting, error, remove, coolingDown }
 }

@@ -1,3 +1,4 @@
+import { ErrorBannerMessage } from '../ui/error-banner'
 import { useState } from 'react'
 import type { useReportCleanup } from './use-report-cleanup'
 import type { components } from '../contracts'
@@ -135,7 +136,7 @@ export function ReportTriageControls({
         </Button>
         <Button
           variant="secondary"
-          disabled={busy || !chosen.length}
+          disabled={busy || cleanup.coolingDown || !chosen.length}
           onClick={() => void remove(chosen)}
         >
           Delete selected ({chosen.length})
@@ -155,7 +156,12 @@ export function ReportTriageControls({
         </Field>
         <Button
           variant="secondary"
-          disabled={busy || !old.length || ageCutoff(hours, now) === null}
+          disabled={
+            busy ||
+            cleanup.coolingDown ||
+            !old.length ||
+            ageCutoff(hours, now) === null
+          }
           onClick={() => void remove(old)}
         >
           Delete older reports ({old.length})
@@ -165,7 +171,11 @@ export function ReportTriageControls({
         Age cleanup covers the entire inbox, regardless of filters. Starred
         reports are always protected.
       </p>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <ErrorBannerMessage>
+          <p role="alert">{error}</p>
+        </ErrorBannerMessage>
+      )}
       {submitting && <p role="status">Submitting cleanup…</p>}
     </div>
   )

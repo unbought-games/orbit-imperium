@@ -1102,7 +1102,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   expect(launches).toBe(1)
 })
 
-test('galaxy espionage explains quote failures inline without navigating or launching', async ({
+test('galaxy espionage explains quote failures in the banner without navigating or launching', async ({
   page,
 }) => {
   await setup(page)
@@ -1121,7 +1121,13 @@ test('galaxy espionage explains quote failures inline without navigating or laun
   await target
     .getByRole('button', { name: /^(Spy on|Probe requested for) / })
     .click()
-  await expect(target.getByRole('alert')).toContainText('not enough resources')
+  await expect(page.getByTestId('game-error-banner').getByRole('alert')).toContainText('not enough resources')
+  await expect(target.getByRole('alert')).toHaveCount(0)
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/unified-galaxy-error-${width}x900.png`, fullPage: true })
+  }
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(
     target.getByRole('button', { name: /^(Spy on|Probe requested for) / }),
@@ -1475,15 +1481,16 @@ for (const width of [390, 1280])
     const after = (await button.boundingBox())!
     expect([after.width, after.height]).toEqual([before.width, before.height])
     release()
-    await expect(rows(page).nth(1).getByRole('alert')).toContainText(
+    await expect(page.getByTestId('game-error-banner').getByRole('alert')).toContainText(
       'not enough resources',
     )
+    await expect(rows(page).nth(1).getByRole('alert')).toHaveCount(0)
     await expect(button).toBeEnabled()
     expect(launches).toBe(0)
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   })
 
-test('a rejected launch clears the optimistic check and reports the authoritative error inline', async ({
+test('a rejected launch clears the optimistic check and reports the authoritative error in the banner', async ({
   page,
 }) => {
   const now = 1793000000000
@@ -1539,9 +1546,10 @@ test('a rejected launch clears the optimistic check and reports the authoritativ
   await button.click()
   await expect(button).toHaveAttribute('data-feedback', 'true')
   release()
-  await expect(rows(page).nth(1).getByRole('alert')).toContainText(
+  await expect(page.getByTestId('game-error-banner').getByRole('alert')).toContainText(
     'not enough resources',
   )
+  await expect(rows(page).nth(1).getByRole('alert')).toHaveCount(0)
   await expect(button).toHaveAttribute('data-feedback', 'false')
   await expect(button).toBeEnabled()
 })
@@ -2012,3 +2020,49 @@ test('debris quick harvest follows capability eligibility and supports own and e
     await expect(trigger).toBeFocused()
   }
 })
+
+for (const mission of ['Espionage', 'Harvest'] as const) {
+  for (const width of [1280, 390]) {
+    test(`${mission} throttling shows only the cooldown explanation at ${width}px`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      const now = new Date('2026-10-29T14:00:00Z')
+      if (mission === 'Harvest') await setupHarvest(page)
+      else await setup(page)
+      await page.setViewportSize({ width, height: 900 })
+      await page.route('**/world', async route => {
+        const request = route.request().postDataJSON()
+        if (request.type !== 'FleetQuote') return route.fallback()
+        await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { ...harvestTerms(request.intent), speeds: [[mission === 'Harvest' ? 'Recycler' : 'EspionageProbe', '100000000']] } } })
+      })
+      let submissions = 0
+      await page.route('**/commands', async route => {
+        submissions++
+        await route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
+      })
+      if (mission === 'Harvest') {
+        const form = await openHarvest(page)
+        await page.clock.install({ time: now })
+        await page.clock.pauseAt(now)
+        await form.getByRole('button', { name: 'Send', exact: true }).click()
+        await expect.poll(() => submissions).toBe(1)
+        await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
+        await expect(form.getByRole('alert')).toHaveCount(0)
+        await expect(form).not.toContainText('Reconnect before')
+        await page.keyboard.press('Escape')
+      } else {
+        await page.clock.install({ time: now })
+        await page.clock.pauseAt(now)
+        await rows(page).nth(1).getByRole('button', { name: /^(Spy on|Probe requested for) / }).click()
+      }
+      const banner = page.getByTestId('game-error-banner')
+      await expect(banner).toContainText('Try again in 60 seconds.')
+      if (mission === 'Espionage') await expect(spy(page)).toHaveAttribute('data-feedback', 'false')
+      await expect(page.getByText(/probe could not be sent|harvest mission could not be sent/)).toHaveCount(0)
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/unified-${mission.toLowerCase()}-cooldown-${width}x900.png`, fullPage: true })
+      await page.clock.runFor(61000)
+      await expect(banner).not.toContainText('Try again in')
+      expect(submissions).toBe(1)
+    })
+  }
+}

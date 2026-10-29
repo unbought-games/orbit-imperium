@@ -34,11 +34,6 @@
   text-align: center;
   overflow-wrap: anywhere;
 }
-.problem {
-  margin: 4px 0 0;
-  color: var(--danger);
-  font-size: 0.75rem;
-}
 @media (prefers-reduced-motion: reduce) {
   .layer {
     transition: none !important;

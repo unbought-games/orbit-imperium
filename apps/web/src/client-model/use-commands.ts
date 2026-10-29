@@ -42,7 +42,7 @@ export function useCommands(runtime: AuthenticatedRuntime | null) {
       await model?.send(command, quote)
     },
     retry: async (id: string) => {
-      await model?.recover(id)
+      await model?.retryOrder(id)
     },
     quote: async (request: QuoteRequest) => {
       const result = await model?.quote(request)

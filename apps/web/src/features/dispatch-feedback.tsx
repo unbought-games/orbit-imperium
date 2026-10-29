@@ -1,14 +1,11 @@
-import { AlertTriangle, CheckCircle2, Clock3 } from 'lucide-react'
+import { CheckCircle2, Clock3 } from 'lucide-react'
 import type { Attempt } from '../client-model/commands'
 import type { Coordinator } from '../client-model/coordinator'
 import type { components } from '../contracts'
-import { actionMessage } from '../ui/action-announcements'
-import { Button } from '../ui/button'
 import { CoordinateLink } from './coordinate-link'
 import styles from './missions.module.css'
 
 export function DispatchFeedback({
-  model,
   attempt,
   destination,
   origin,
@@ -27,25 +24,17 @@ export function DispatchFeedback({
     command.action.intent.origin !== origin
   )
     return null
-  const warning =
-    attempt.status === 'uncertain' || attempt.status === 'rejected'
-  const Icon = warning
-    ? AlertTriangle
-    : attempt.status === 'committed'
-      ? CheckCircle2
-      : Clock3
+  if (attempt.status === 'uncertain' || attempt.status === 'rejected')
+    return null
+  const Icon = attempt.status === 'committed' ? CheckCircle2 : Clock3
   const message =
     attempt.status === 'committed'
       ? attempt.reconciled
         ? 'Fleet sent. You can prepare another fleet.'
         : 'Fleet sent. Updating ships, resources and fleet activity…'
-      : attempt.status === 'uncertain'
-        ? 'Launch outcome unknown. Resolve the saved order before sending again.'
-        : attempt.status === 'submitting'
-          ? 'Sending fleet order…'
-          : attempt.status === 'pending'
-            ? 'Order accepted. Waiting for launch confirmation…'
-            : actionMessage(attempt)
+      : attempt.status === 'submitting'
+        ? 'Sending fleet order…'
+        : 'Order accepted. Waiting for launch confirmation…'
   return (
     <div
       className={styles.dispatchFeedback}
@@ -71,15 +60,6 @@ export function DispatchFeedback({
           />
         </strong>
         <p>{message}</p>
-        {attempt.status === 'uncertain' && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void model.recover(attempt.envelope.command_id)}
-          >
-            Resolve fleet order
-          </Button>
-        )}
       </div>
     </div>
   )

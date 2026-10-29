@@ -26,10 +26,9 @@ export function usePlanetRename(
     if (saved) setDraft(null)
   }, [saved])
   const error = draft === null ? '' : planetNameError(draft)
-  const status = pending
-    ? actionMessage(pending)
-    : submitted?.status === 'rejected'
-      ? actionMessage(submitted)
+  const status =
+    pending && pending.status !== 'uncertain'
+      ? actionMessage(pending)
       : submitted?.status === 'committed' && submitted.reconciled
         ? 'Planet renamed.'
         : ''

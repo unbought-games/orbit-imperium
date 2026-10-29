@@ -276,13 +276,14 @@ it.each(['Production', 'Attack'] as const)(
 )
 
 it.each([false, true])(
-  'automatically recovers saved presence with the original envelope after an outage (reload=%s)',
+  'checks saved presence after an outage without automatically resending (reload=%s)',
   async (reload) => {
     vi.useFakeTimers()
     const { session, snapshot } = readyFixture(4)
     const storage = attemptStorage(memoryStorage())
     const sent: Envelope[] = []
     let available = false
+    let receiptConfirmed = false
     const port: GamePort = {
       currentBinding: async (_, request_id) => ({
         ...snapshot.candidate,
@@ -314,7 +315,17 @@ it.each([false, true])(
         }
       },
       receipt: async () => {
-        throw { status: available ? 404 : 503 }
+        if (!receiptConfirmed) throw { status: available ? 404 : 503 }
+        return {
+          protocol: 4,
+          binding: sent[0].binding,
+          command_id: sent[0].command_id,
+          status: 'Committed',
+          admitted_at: 1000,
+          executed_at: 1000,
+          result_ids: [],
+          minimum_viewer_revision: '0',
+        }
       },
     }
     const platform: ClientPlatform = {
@@ -345,12 +356,17 @@ it.each([false, true])(
       expect(await storage.load(snapshot.candidate.binding)).toHaveLength(1)
       available = true
       await vi.advanceTimersByTimeAsync(1000)
-      expect(sent).toEqual([envelope, envelope])
+      expect(sent).toEqual([envelope])
+      expect([...model.ledger.values()][0].status).toBe('uncertain')
+      // The original request can still be acknowledged after a missing receipt.
+      receiptConfirmed = true
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(sent).toEqual([envelope])
       expect(model.stale).toBe(false)
       expect(model.ledger.size).toBe(0)
       expect(await storage.load(snapshot.candidate.binding)).toEqual([])
       await vi.advanceTimersByTimeAsync(60000)
-      expect(sent).toHaveLength(2)
+      expect(sent).toHaveLength(1)
     } finally {
       stop()
       model.invalidate()

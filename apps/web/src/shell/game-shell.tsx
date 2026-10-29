@@ -1,3 +1,4 @@
+import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
 import { useStore } from 'zustand'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { FleetSlots } from '../features/fleet-slots'
@@ -29,17 +30,24 @@ import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { ResourceStrip } from '../ui/resource-strip'
-import { ActionStatus } from '../ui/action-status'
 import { bodyName, coordinates } from '../ui/format'
 import { BodySelector } from './body-selector'
 import { Navigation } from './navigation'
 import { buildPages, pageTitles } from './navigation-model'
-import { Popover } from '../ui/popover'
-import { ArrowLeft, WifiOff } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { usePinnedHeader } from './use-pinned-header'
 import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
 import { developmentActivity } from './navigation-activity'
 export function GameShell() {
+  const { model } = useGameSession()
+  return (
+    <ErrorBannerProvider model={model}>
+      <GameShellContent />
+    </ErrorBannerProvider>
+  )
+}
+
+function GameShellContent() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
   const occupiedSlots = useStore(model.store, occupiedFleetSlots)
@@ -179,21 +187,6 @@ export function GameShell() {
     : page === 'overview'
       ? `Empire — ${body ? bodyName(body) : 'Planet'} ${body ? coordinates(body) : ''}`
       : pageTitles[page]
-  const freshness = model.stale && (
-    <Popover
-      label="Connection"
-      className={styles.connection}
-      trigger={
-        <>
-          <WifiOff size={14} />
-          <span>Disconnected</span>
-        </>
-      }
-    >
-      <p>Connection interrupted — awaiting server confirmation.</p>
-      <p>Confirmed {new Date(view.as_of_ms).toLocaleString()}</p>
-    </Popover>
-  )
   return (
     <div
       className={styles['game-shell']}
@@ -322,14 +315,8 @@ export function GameShell() {
               </div>
             )}
           </Navigation>
-          <div className={styles.connectionSlot}>{freshness}</div>
         </div>
         <div className={styles.center}>
-          {model.stale && (
-            <p className={styles.stale} role="alert">
-              Connection interrupted — awaiting server confirmation.
-            </p>
-          )}
           <ContentColumn
             as="main"
             width={page === 'dispatch' ? 'focused' : 'full'}
@@ -337,6 +324,7 @@ export function GameShell() {
             tabIndex={-1}
             className={styles['work-area']}
           >
+            <ErrorBannerSlot model={model} />
             <div
               className={
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']
@@ -364,7 +352,6 @@ export function GameShell() {
                 />
               )}
             </div>
-            <ActionStatus model={model} selectedBody={body?.id} />
             {!available ? (
               <StatePanel title="Choose an available destination">
                 <Text>{route?.reason}</Text>

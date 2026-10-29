@@ -745,7 +745,7 @@ test('quick build stays disabled on inspection failure and keeps server rejectio
   await page.getByRole('link', { name: /^Back to / }).click()
   await page.getByRole('button', { name: 'Build Metal Mine level 2' }).click()
   await expect(
-    page.getByRole('group', { name: 'Build problem' }),
+    page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' }),
   ).toContainText(/resources/i)
   await expect(
     page.getByRole('button', { name: 'Build Metal Mine level 2' }),
@@ -945,7 +945,7 @@ for (const response of ['early', 'late', 'rejected'] as const) {
         release()
         await expect(control).toHaveAttribute('data-phase', 'hammer')
         await expect(
-          page.getByRole('group', { name: 'Build problem' }),
+          page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' }),
         ).toContainText(/resources/i)
         await expect(build).toBeEnabled()
       } else {

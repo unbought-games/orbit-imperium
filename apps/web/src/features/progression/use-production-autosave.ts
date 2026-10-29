@@ -20,11 +20,12 @@ export function useProductionAutosave(model: Coordinator, body: string) {
     change: autosave.changeDeferred,
     flush: autosave.flush,
     retry: autosave.retry,
-    error,
-    status: pending.some((attempt) => attempt.status === 'uncertain')
-      ? 'Waiting for confirmation. Your changes are retained.'
-      : flight || pending.length || Object.keys(edits).length
-        ? 'Saving production changes… Totals show confirmed settings.'
-        : 'All changes saved automatically.',
+    error: game.rateLimited ? null : error,
+    status:
+      error || pending.some((attempt) => attempt.status === 'uncertain')
+        ? ''
+        : flight || pending.length || Object.keys(edits).length
+          ? 'Saving production changes… Totals show confirmed settings.'
+          : 'All changes saved automatically.',
   }
 }
