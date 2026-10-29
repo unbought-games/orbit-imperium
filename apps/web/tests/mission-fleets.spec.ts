@@ -56,6 +56,7 @@ for (const width of [320, 390, 1280]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.setFixedTime(now)
     let revision = 1
     const missions: S['MissionView4'] = {
@@ -80,13 +81,13 @@ for (const width of [320, 390, 1280]) {
     await page.goto(path)
     const cards = page.getByRole('article', { name: / fleet$/ })
     await expect(cards.getByRole('heading')).toHaveText([
-      'Your transport · Returning',
-      'Your harvest · Outbound',
-      'Your attack · Outbound',
-      'Your deploy · Outbound',
+      'Transport Returning',
+      'Harvest Outbound',
+      'Attack Outbound',
+      'Deploy Outbound',
     ])
     const returning = cards.first()
-    await expect(returning).toContainText('Return in')
+    await expect(returning).toContainText('Home in')
     await expect(
       returning.getByRole('button', { name: 'Review recall' }),
     ).toHaveCount(0)
@@ -94,11 +95,26 @@ for (const width of [320, 390, 1280]) {
       name: 'Attack fleet',
       exact: true,
     })
+    const manifestToggle = attack.getByRole('button', {
+      name: 'Attack ship composition: 13 ships',
+      exact: true,
+    })
+    await expect(manifestToggle).toHaveAttribute('aria-expanded', 'false')
     await expect(
-      attack
-        .getByRole('list', { name: 'Ship composition' })
-        .getByRole('listitem'),
-    ).toHaveText(['Large Cargo 2', 'Cruiser 11'])
+      attack.getByRole('list', { name: 'Ship composition' }),
+    ).toBeHidden()
+    await expect(
+      attack.getByRole('img', {
+        name: 'Outbound: Hades [1:371:12] → Planet [1:15:7]',
+        exact: true,
+      }),
+    ).toBeVisible()
+    expect((await attack.boundingBox())!.height).toBeLessThan(240)
+    const marker = (await attack
+      .getByRole('img', { name: /^Outbound:/ })
+      .locator('.lucide-rocket')
+      .boundingBox())!
+    expect(Math.abs(marker.width - marker.height)).toBeLessThan(1)
     await expect(
       attack.getByRole('group', { name: 'Carried resources' }),
     ).toContainText('Cargo')
@@ -119,16 +135,34 @@ for (const width of [320, 390, 1280]) {
       .getByRole('link', { name: 'Mission details' })
       .boundingBox())!
     expect(Math.abs(recallBox.y - detailsBox.y)).toBeLessThan(48)
-    if (width < 768) {
-      const shipsBox = (await attack.getByRole('list').boundingBox())!
-      const arrivalBox = (await attack.locator('time').boundingBox())!
-      expect(shipsBox.y).toBeGreaterThan(arrivalBox.y + arrivalBox.height)
-      expect(shipsBox.width).toBeGreaterThan(width * 0.7)
-    }
     await page.evaluate(() => scrollTo(0, 0))
     await diagnosticScreenshot(page, {
       path: `test-results/active-fleets-list-${width}x900.png`,
     })
+    await manifestToggle.click()
+    await expect(manifestToggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(
+      attack
+        .getByRole('list', { name: 'Ship composition' })
+        .getByRole('listitem'),
+    ).toHaveText(['Large Cargo 2', 'Cruiser 11'])
+    await expect(attack.locator('time')).toHaveAttribute(
+      'datetime',
+      new Date(now + 1810000).toISOString(),
+    )
+    await expect(
+      attack.getByRole('link', { name: 'View destination [1:15:7] in galaxy' }),
+    ).toBeVisible()
+    await attack.evaluate((el) =>
+      window.scrollBy(0, el.getBoundingClientRect().top - 80),
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/active-fleets-manifest-${width}x900.png`,
+    })
+    await manifestToggle.click()
+    await expect(
+      attack.getByRole('list', { name: 'Ship composition' }),
+    ).toBeHidden()
     await attack.getByRole('button', { name: 'Review recall' }).click()
     const review = attack.getByRole('region', { name: 'Review recall' })
     await expect(review).toContainText('Estimated return if recalled now')
@@ -163,9 +197,17 @@ for (const width of [320, 390, 1280]) {
     revision++
     await refreshGame(page)
     await expect(cards.first().getByRole('heading')).toHaveText(
-      'Your attack · Returning',
+      'Attack Returning',
     )
     await expect(cards.first()).toContainText('Awaiting confirmation')
+    const address = cards.first().getByText('[1:371:12]', { exact: true })
+    expect(
+      await address.evaluate((el) => {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        return range.getClientRects().length
+      }),
+    ).toBe(1)
     await expect(
       cards.first().getByRole('button', { name: 'Review recall' }),
     ).toHaveCount(0)

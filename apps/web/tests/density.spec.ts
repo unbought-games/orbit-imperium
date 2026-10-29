@@ -79,7 +79,7 @@ for (const viewport of [
     await firstViewport(page, [
       recall,
       page.getByRole('link', { name: 'Dispatch Fleet' }),
-      page.getByText('Arrival in', { exact: true }),
+      page.getByText('Arrives in', { exact: true }),
     ])
     await diagnosticScreenshot(page, {
       path: `test-results/density-fleets-${viewport.width}.png`,
@@ -507,13 +507,13 @@ for (const width of [320, 390, 1440]) {
       'Incoming espionage · Hostile',
     )
     await expect(outbound.getByRole('heading')).toHaveText(
-      'Your attack · Outbound',
+      'Attack Outbound',
     )
     await expect(returning.getByRole('heading')).toHaveText(
-      'Your espionage · Returning',
+      'Espionage Returning',
     )
     await expect(outbound).toContainText('12m 34s')
-    await expect(returning).toContainText('Return in')
+    await expect(returning).toContainText('Home in')
     await expect(returning).toContainText('1h 1m 1s')
     await expect(returning).toContainText('←')
     await expect(attack).toContainText('From Commander Vega')
