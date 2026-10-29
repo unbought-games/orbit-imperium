@@ -261,7 +261,6 @@ export function GameShell() {
                 <div className={styles.masthead}>
                   {body ? (
                     <ResourceStrip
-                      key={`${body.id}:${location.pathname}`}
                       view={view}
                       body={body}
                       renderStorageWarning={(building, warning) =>

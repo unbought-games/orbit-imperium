@@ -1870,7 +1870,7 @@ for (const width of [1440, 390]) {
     try {
       const colony = { ...structuredClone(body), id: '00000000-0000-4000-8000-000000000006' }
       colony.amounts = { ...colony.capacity, crystal: '11000000000' }
-      await setup(page, false, false, colony)
+      const { sent } = await setup(page, false, false, colony)
       await selectBody(page, colony.id)
       await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resources$`))
       await expect(page.locator('main h1')).toBeFocused()
@@ -1902,6 +1902,13 @@ for (const width of [1440, 390]) {
         await expect(page.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeEnabled()
         if (resource === 'Metal') {
           await diagnosticScreenshot(page, { path: `test-results/storage-link-destination-${width}x900.png`, fullPage: true })
+          // Activating the warning on its own destination still dismisses it.
+          if (width === 390) await trigger.tap()
+          else await trigger.click()
+          await expect(dialog).toBeVisible()
+          if (width === 390) await link.tap()
+          else await link.click()
+          await expect(dialog).toHaveCount(0)
         }
       }
       await selectBody(page, body.id)
@@ -1909,6 +1916,7 @@ for (const width of [1440, 390]) {
       await page.getByRole('group', { name: 'Planet and resources', exact: true }).getByRole('button', { name: 'Metal details', exact: true }).click()
       await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
       await expect(page.getByRole('link', { name: /production suppressed/ })).toHaveCount(0)
+      expect(sent).toHaveLength(0)
     } finally {
       await context.close()
     }

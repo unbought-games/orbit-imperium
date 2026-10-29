@@ -106,7 +106,22 @@ export function Popover({
               ref={refs.setFloating}
               style={floatingStyles}
               className={styles.popover}
-              {...getFloatingProps({ 'aria-label': label })}
+              {...getFloatingProps({
+                'aria-label': label,
+                onClick: (event) => {
+                  if (
+                    event.button === 0 &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.shiftKey &&
+                    !event.altKey &&
+                    event.target instanceof Element &&
+                    event.target.closest('a[href]')
+                  ) {
+                    setOpen(false)
+                  }
+                },
+              })}
             >
               <strong className={styles.title}>{label}</strong>
               {children}
