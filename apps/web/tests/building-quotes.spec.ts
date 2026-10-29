@@ -39,7 +39,6 @@ async function buildingFixture(page: Page, active = false, activeBuilding: S['Bu
   )
   await shellFixture(page, {
     protocol: 4,
-    sampledAt: () => now,
     bodies: [planet],
     constructions,
     catalog: [
