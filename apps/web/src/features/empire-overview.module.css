@@ -136,7 +136,7 @@
   letter-spacing: normal;
   font-size: 0.625rem;
 }
-/* Opt this page-entry cue into motion despite the global immediate-state reset. */
+/* Opt this slow resource cue into motion despite the global immediate-state reset. */
 .wealthBreakdown::before {
   content: '';
   position: absolute;
@@ -144,7 +144,8 @@
   top: -8px;
   bottom: 12px;
   border-left: 1px solid var(--wealth-guide-rest);
-  animation: wealthGuideGlow 4s ease-out !important;
+  opacity: 0.65;
+  animation: wealthGuideGlow 12s ease-in-out infinite !important;
 }
 .wealthBreakdown::after {
   content: '';
@@ -163,7 +164,7 @@
   opacity: 0;
   filter: drop-shadow(0 0 3px var(--wealth-guide-color));
   pointer-events: none;
-  animation: wealthGuidePulse 1s ease-in-out !important;
+  animation: wealthGuidePulse 12s ease-in-out infinite !important;
 }
 .wealthBreakdown > div {
   position: relative;
@@ -180,7 +181,8 @@
   top: 50%;
   width: calc(var(--branch-inset) - 5px);
   border-top: 1px solid var(--wealth-guide-rest);
-  animation: wealthGuideGlow 4s ease-out !important;
+  opacity: 0.65;
+  animation: wealthGuideGlow 12s ease-in-out infinite !important;
 }
 @keyframes wealthGuidePulse {
   0% {
@@ -188,9 +190,10 @@
     opacity: 0;
   }
   15%,
-  85% {
-    opacity: 1;
+  55% {
+    opacity: 0.7;
   }
+  70%,
   100% {
     background-position: center calc(100% + 18px);
     opacity: 0;
@@ -198,14 +201,15 @@
 }
 @keyframes wealthGuideGlow {
   0%,
+  85%,
   100% {
     border-color: var(--wealth-guide-rest);
     filter: drop-shadow(0 0 0 transparent);
   }
-  25%,
-  60% {
+  35%,
+  50% {
     border-color: var(--wealth-guide-color);
-    filter: drop-shadow(0 0 4px var(--wealth-guide-color));
+    filter: drop-shadow(0 0 2px var(--wealth-guide-color));
   }
 }
 @media (prefers-reduced-motion: reduce) {

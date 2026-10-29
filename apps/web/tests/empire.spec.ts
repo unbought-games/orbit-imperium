@@ -697,7 +697,7 @@ for (const width of [390, 1440]) {
 }
 
 for (const width of [390, 1440]) {
-  test(`Empire wealth guide pulses once and fades at ${width}px`, async ({ page }) => {
+  test(`Empire wealth guide slowly repeats at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     // Pause at animation start so captures do not depend on page-load speed.
@@ -727,14 +727,15 @@ for (const width of [390, 1440]) {
         glow: getComputedStyle(element, '::before').filter,
       }))
     }
-    const early = await sample(200)
-    const late = await sample(800)
+    const resting = await sample(0)
+    const early = await sample(1200)
+    const late = await sample(4800)
     const percent = (position: string) => Number(position.match(/(-?[\d.]+)%/)![1])
     expect(percent(late.pulsePosition)).toBeGreaterThan(percent(early.pulsePosition))
     expect(Number(late.pulseOpacity)).toBeGreaterThan(0)
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-pulse-${width}x1000.png` })
-    const glowing = await sample(1600)
-    expect(glowing.pulseOpacity).toBe('0')
+    const glowing = await sample(5400)
+    expect(Number(glowing.pulseOpacity)).toBeGreaterThan(0)
     for (const group of await ledger.getByRole('group').all()) {
       const colors = await group.evaluate(element => {
         const guide = element.querySelector('dl')!
@@ -752,19 +753,34 @@ for (const width of [390, 1440]) {
       expect(colors.glow).toContain(colors.icon)
     }
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-glow-${width}x1000.png` })
-    const fading = await sample(3500)
+    const fading = await sample(8400)
     expect(fading.lineColor).not.toBe(glowing.lineColor)
-    const settled = await sample(4500)
+    const settled = await sample(10800)
     expect(settled.pulseOpacity).toBe('0')
     expect(settled.lineColor).not.toBe(glowing.lineColor)
-    expect(settled.glow).toBe('none')
+    expect(settled.glow).toBe(resting.glow)
     await diagnosticScreenshot(page, { path: `test-results/empire-wealth-settled-${width}x1000.png` })
     for (const row of await ledger.locator('dl > div').all()) {
       await expect(row).toHaveCSS('border-top-width', '0px')
     }
+    const repeated = await sample(16800)
+    expect(repeated).toEqual(late)
+  })
+
+  test(`Empire wealth guide stops for reduced motion at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await shellFixture(page, empireFixture())
+    const ledger = page.getByLabel('Empire resource totals')
+    const guide = ledger.locator('dl').first()
+    // Exercise real running animations, without the sampling test's manual pauses.
+    await expect.poll(() => ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBeGreaterThan(0)
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    expect(await ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
+    await expect.poll(() => ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
     expect(await guide.evaluate(element => getComputedStyle(element, '::after').opacity)).toBe('0')
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-reduced-motion-${width}x1000.png` })
+    await page.reload()
+    await expect(ledger).toBeVisible()
+    expect(await ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
   })
 }

@@ -2275,7 +2275,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         }
       })
       // Navigation stays motionless; the explicitly animated command HUD and
-      // wealth-guide entry cue are checked separately. The hostile-fleet signal has
+      // slow wealth-guide pulse are checked separately. The hostile-fleet signal has
       // its own coverage, so keep this fixture free of incoming threats.
       const purchases = await shellFixture(page, {
         protocol: 4,
