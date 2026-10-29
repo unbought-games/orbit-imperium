@@ -675,10 +675,12 @@ test('orb symbols overlap in a holographic dissolve, settle after rapid changes,
   await expect(symbols).toHaveCount(2)
   f.missions.incoming.push(incoming)
   await f.refresh()
-  await expect(orb.locator('[data-orb-symbol="attack"]')).toHaveCount(1)
-  await expect(symbols).toHaveCount(1)
-  await expect(symbols).toHaveAttribute('data-orb-symbol','attack')
-  await expect(symbols).toHaveCSS('opacity','1')
+  await expect(orb).toHaveAttribute('data-tone','red')
+  // Wait for the requested state, then sample its settled layers atomically.
+  // Separate count/attribute reads can straddle the start of a retargeted dissolve.
+  await expect.poll(()=>symbols.evaluateAll(nodes=>nodes.map(node=>({
+    kind:node.getAttribute('data-orb-symbol'),opacity:getComputedStyle(node).opacity,
+  })))).toEqual([{kind:'attack',opacity:'1'}])
   // Refreshing the same icon must not create a second layer or replay the entrance.
   await f.refresh()
   await expect(symbols).toHaveCount(1)
