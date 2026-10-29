@@ -150,6 +150,7 @@ export function MissileLaunchAction({
   return (
     <>
       <Button
+        data-missile-launch=""
         ref={opener}
         variant="ghost"
         size="icon"

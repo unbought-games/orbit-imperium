@@ -41,11 +41,17 @@
 .positionList {
   list-style: none;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) minmax(180px, 0.7fr) max-content;
+  grid-template-columns: 52px minmax(0, 1fr) minmax(180px, 0.7fr) var(
+      --galaxy-actions-width,
+      156px
+    );
   column-gap: 14px;
   row-gap: 0;
   margin: 0;
   padding: 0;
+}
+.positionList:has([data-missile-launch]) {
+  --galaxy-actions-width: 208px;
 }
 .positionList > li {
   display: grid;

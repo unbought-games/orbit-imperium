@@ -554,3 +554,41 @@ for (const width of [1440, 390])
     ).toContainText('Your interceptors remaining')
     await capture('impact-report')
   })
+
+test('missile action columns preserve exact row edges across tablet breakpoints', async ({
+  page,
+}) => {
+  await setup(page)
+  await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+  for (const width of [390, 600, 767, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    const rows = page
+      .getByRole('region', { name: 'Galaxy positions' })
+      .getByRole('article')
+    await expect(rows).toHaveCount(15)
+    const bounds = await rows.evaluateAll((elements) =>
+      elements.map((el) => ({
+        left: el.getBoundingClientRect().left,
+        right: el.getBoundingClientRect().right,
+        action: el
+          .querySelector('button[aria-label^="Actions for"]')!
+          .getBoundingClientRect().left,
+      })),
+    )
+    expect(new Set(bounds.map((b) => b.action)).size).toBe(1)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width)
+    if (width <= 767)
+      for (const b of bounds) {
+        expect(b.left).toBe(0)
+        expect(b.right).toBe(width)
+      }
+    await expect(
+      page.getByRole('button', {
+        name: 'Launch missiles at [1:371:3]',
+        exact: true,
+      }),
+    ).toBeVisible()
+  }
+})
