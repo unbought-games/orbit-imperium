@@ -695,3 +695,60 @@ for (const width of [390, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
+
+for (const width of [390, 1440]) {
+  test(`Empire wealth guide pulses once and fades at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    // Pause at animation start so captures do not depend on page-load speed.
+    await page.addInitScript(() => {
+      document.addEventListener('animationstart', event => {
+        if (!(event as AnimationEvent).animationName.includes('wealthGuide')) return
+        for (const animation of (event.target as Element).getAnimations({ subtree: true })) {
+          animation.pause()
+          animation.currentTime = 0
+        }
+      })
+    })
+    await shellFixture(page, empireFixture())
+    const ledger = page.getByLabel('Empire resource totals')
+    const guide = ledger.locator('dl').first()
+    const sample = async (time: number) => {
+      await ledger.evaluate((element, time) => {
+        for (const animation of element.getAnimations({ subtree: true })) {
+          animation.pause()
+          animation.currentTime = time
+        }
+      }, time)
+      return guide.evaluate(element => ({
+        pulsePosition: getComputedStyle(element, '::after').backgroundPositionY,
+        pulseOpacity: getComputedStyle(element, '::after').opacity,
+        lineColor: getComputedStyle(element, '::before').borderLeftColor,
+        glow: getComputedStyle(element, '::before').filter,
+      }))
+    }
+    const early = await sample(200)
+    const late = await sample(800)
+    const percent = (position: string) => Number(position.match(/(-?[\d.]+)%/)![1])
+    expect(percent(late.pulsePosition)).toBeGreaterThan(percent(early.pulsePosition))
+    expect(Number(late.pulseOpacity)).toBeGreaterThan(0)
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-pulse-${width}x1000.png` })
+    const glowing = await sample(1600)
+    expect(glowing.pulseOpacity).toBe('0')
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-glow-${width}x1000.png` })
+    const fading = await sample(3500)
+    expect(fading.lineColor).not.toBe(glowing.lineColor)
+    const settled = await sample(4500)
+    expect(settled.pulseOpacity).toBe('0')
+    expect(settled.lineColor).not.toBe(glowing.lineColor)
+    expect(settled.glow).toBe('none')
+    await diagnosticScreenshot(page, { path: `test-results/empire-wealth-settled-${width}x1000.png` })
+    for (const row of await ledger.locator('dl > div').all()) {
+      await expect(row).toHaveCSS('border-top-width', '0px')
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    expect(await ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
+    expect(await guide.evaluate(element => getComputedStyle(element, '::after').opacity)).toBe('0')
+    await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-reduced-motion-${width}x1000.png` })
+  })
+}

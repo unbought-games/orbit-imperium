@@ -131,6 +131,7 @@
   letter-spacing: normal;
   font-size: 0.625rem;
 }
+/* Opt this page-entry cue into motion despite the global immediate-state reset. */
 .wealthBreakdown::before {
   content: '';
   position: absolute;
@@ -138,6 +139,21 @@
   top: -8px;
   bottom: 12px;
   border-left: 1px solid var(--hud-border);
+  animation: wealthGuideGlow 4s ease-out !important;
+}
+.wealthBreakdown::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -8px;
+  bottom: 12px;
+  width: 2px;
+  background: linear-gradient(transparent, var(--ice), transparent) no-repeat;
+  background-size: 100% 18px;
+  opacity: 0;
+  filter: drop-shadow(0 0 3px var(--ice));
+  pointer-events: none;
+  animation: wealthGuidePulse 1s ease-in-out !important;
 }
 .wealthBreakdown > div {
   position: relative;
@@ -154,9 +170,40 @@
   top: 50%;
   width: calc(var(--branch-inset) - 5px);
   border-top: 1px solid var(--hud-border);
+  animation: wealthGuideGlow 4s ease-out !important;
 }
-.wealthBreakdown > div + div {
-  border-top: 1px solid var(--hud-border);
+@keyframes wealthGuidePulse {
+  0% {
+    background-position: center -18px;
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    background-position: center calc(100% + 18px);
+    opacity: 0;
+  }
+}
+@keyframes wealthGuideGlow {
+  0%,
+  100% {
+    border-color: var(--hud-border);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  25%,
+  60% {
+    border-color: var(--ice);
+    filter: drop-shadow(0 0 4px var(--ice));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wealthBreakdown::before,
+  .wealthBreakdown::after,
+  .wealthBreakdown > div::before {
+    animation: none !important;
+  }
 }
 .wealthBreakdown dt {
   display: flex;
