@@ -350,10 +350,6 @@
   grid-template-columns: 1fr;
   gap: 8px;
 }
-.cargoInput {
-  position: relative;
-  min-width: 0;
-}
 .cargoInput > label > svg {
   position: absolute;
   left: 8px;
@@ -365,14 +361,9 @@
 .cargoInputs input {
   height: 44px;
   min-width: 0;
-  padding: 6px 40px 6px 32px;
+  padding-block: 6px;
+  padding-inline-start: 32px;
   font-size: 1rem;
-}
-.maxCargo {
-  --button-min-size: 36px;
-  position: absolute;
-  right: 4px;
-  top: 4px;
 }
 @container (min-width: 520px) {
   .cargoInputs {

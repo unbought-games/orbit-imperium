@@ -13,7 +13,7 @@ import { RangeInput } from '../ui/form'
 import { DispatchShips } from './dispatch-ships'
 import { DispatchDestinationPreview } from './dispatch-destination-preview'
 import { CoordinateLink } from './coordinate-link'
-import { ArrowUp } from 'lucide-react'
+import { InputWithAction, FillButton } from '../ui/input-with-action'
 import { useAtomValue } from 'jotai'
 import { copiedLocationAtom } from './coordinate-memory'
 import { coordinateText, type LocationKind } from '../shell/location-address'
@@ -272,6 +272,10 @@ export function Dispatch({
             types={types}
             ships={ships}
             onNormalize={(id) => setShips({ ...ships, [id]: '0' })}
+            onAddAll={(allShips) => {
+              setShips(allShips)
+              clear()
+            }}
             onChange={(id, value) => {
               setShips({ ...ships, [id]: value })
               clear()
@@ -283,7 +287,7 @@ export function Dispatch({
             </div>
             <div className={styles.cargoInputs}>
               {resourceNames.map((resource, i) => (
-                <div className={styles.cargoInput} key={resource}>
+                <InputWithAction className={styles.cargoInput} key={resource}>
                   <Field title={resource[0].toUpperCase() + resource.slice(1)}>
                     <ResourceMark resource={resource} />
                     <NumberInput
@@ -302,19 +306,13 @@ export function Dispatch({
                       }}
                     />
                   </Field>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-small"
-                    className={styles.maxCargo}
+                  <FillButton
                     aria-label={`Max ${resource}`}
                     title={`Max ${resource}, reserving space for other cargo and fuel`}
                     disabled={busy || !coordinatesValid || !!targetProblem}
                     onClick={() => void maxCargo(resource)}
-                  >
-                    <ArrowUp size={18} aria-hidden="true" />
-                  </Button>
-                </div>
+                  />
+                </InputWithAction>
               ))}
               <Button
                 type="button"
