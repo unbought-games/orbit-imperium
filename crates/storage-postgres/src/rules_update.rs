@@ -44,7 +44,7 @@ impl RulesStore for PgStore {
                 actual_revision: current.revision,
             });
         }
-        let delta = validate_rules_update(&current.rules, next)?;
+        let plan = plan_rules_update(&current.rules, next)?;
         let at = ensure_fresh(&mut tx, universe).await.map_err(|e| match e {
             StoreError::Unavailable => RulesUpdateError::Busy,
             e => RulesUpdateError::Store(e),
@@ -58,7 +58,7 @@ impl RulesStore for PgStore {
                 epoch,
                 current: &current,
                 next,
-                delta: &delta,
+                plan: &plan,
                 at,
                 sequence,
             },
@@ -227,7 +227,7 @@ pub(crate) struct Boundary<'a> {
     pub epoch: Epoch,
     pub current: &'a ActiveRules,
     pub next: &'a Ruleset,
-    pub delta: &'a RulesCatalogDelta,
+    pub plan: &'a RulesUpdatePlan,
     pub at: Timestamp,
     pub sequence: i64,
 }
@@ -240,14 +240,26 @@ pub(crate) async fn publish(
         epoch,
         current,
         next,
-        delta,
+        plan,
         at,
         sequence,
     } = boundary;
-    let states = load_states(tx, universe, epoch, &current.rules).await?;
-    for mut state in states {
-        crate::facts::validate_rule_references(tx, &state).await?;
-        settle_and_initialize(tx, &mut state, &current.rules, next, delta, at).await?;
+    match plan.impact {
+        RulesUpdateImpact::Unchanged => {
+            return Ok(RulesApplyOutcome::AlreadyActive {
+                profile_hash: current.rules.hash.clone(),
+                revision: current.revision,
+            });
+        }
+        RulesUpdateImpact::RulesOnly => {}
+        RulesUpdateImpact::SettleAndInitialize => {
+            let states = load_states(tx, universe, epoch, &current.rules).await?;
+            for mut state in states {
+                crate::facts::validate_rule_references(tx, &state).await?;
+                settle_and_initialize(tx, &mut state, &current.rules, next, &plan.initialize, at)
+                    .await?;
+            }
+        }
     }
     sqlx::query("INSERT INTO rulesets(hash,id,profile) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
         .bind(&next.hash.0)

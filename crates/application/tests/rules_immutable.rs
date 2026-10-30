@@ -131,3 +131,56 @@ fn speed_only_diff_is_visible_and_apply_validates_range_and_legacy_profiles() {
         assert_eq!(writes.load(Ordering::SeqCst), 0);
     });
 }
+
+#[test]
+fn impact_preview_is_read_only_and_preserves_semantic_noops() {
+    futures::executor::block_on(async {
+        let historical: Ruleset = serde_json::from_str(include_str!(
+            "../../engine/tests/fixtures/persistence/deathstar-rules.json"
+        ))
+        .unwrap();
+        let expected_hash = historical.hash.clone();
+        let (service, mut document, writes) = service(historical);
+        let unchanged = service.diff(&document).await.unwrap();
+        assert_eq!(unchanged.impact, RulesUpdateImpact::Unchanged);
+        assert_eq!(unchanged.current_hash, expected_hash);
+        assert_eq!(unchanged.proposed_hash, expected_hash);
+        document
+            .artifact
+            .world
+            .as_mut()
+            .unwrap()
+            .combat
+            .ship_debris_bps = 4000;
+        let debris = service.diff(&document).await.unwrap();
+        assert_eq!(debris.impact, RulesUpdateImpact::RulesOnly);
+        assert_eq!(
+            serde_json::to_value(&debris).unwrap()["impact"],
+            "RulesOnly"
+        );
+        assert!(debris.initialize.add_buildings.is_empty());
+        assert!(debris.initialize.add_research.is_empty());
+        document.artifact.base_income[0] += 1;
+        assert_eq!(
+            service.diff(&document).await.unwrap().impact,
+            RulesUpdateImpact::SettleAndInitialize
+        );
+        document
+            .artifact
+            .world
+            .as_mut()
+            .unwrap()
+            .combat
+            .ship_debris_bps = 3000;
+        assert_eq!(
+            service.diff(&document).await.unwrap().impact,
+            RulesUpdateImpact::SettleAndInitialize
+        );
+        document.base_revision = 1;
+        assert!(matches!(
+            service.diff(&document).await,
+            Err(RulesUpdateError::Stale { .. })
+        ));
+        assert_eq!(writes.load(Ordering::SeqCst), 0);
+    });
+}

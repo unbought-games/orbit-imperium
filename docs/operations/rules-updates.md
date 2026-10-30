@@ -144,6 +144,32 @@ cp rules-before.json rules.json
 
 The document contains `universe`, `base_revision`, `artifact`, and `speed`. Edit `artifact` for the intended content, costs, production, or combat values, or `speed` for a universe speed change. Preserve `universe` and `base_revision`; they identify the universe and the configuration you started editing. Do not calculate or edit a rules hash.
 
+Diff and standard-upgrade previews include an `impact` alongside the existing
+`initialize` lists:
+
+- `Unchanged`: the interpreted rules are equivalent; applying them retains the
+  active identity and revision, including historical default/identifier variants.
+- `RulesOnly`: only `artifact.world.combat.ship_debris_bps` changes. Activation
+  publishes the rules without reading or rewriting planets, their production
+  checkpoints, inventories, queues, or fleet records.
+- `SettleAndInitialize`: every other change follows the existing production
+  settlement, state validation, and initialization path. Combining a debris edit
+  with another change also takes this path.
+
+Impact is derived again at execution from the actual current and proposed rules;
+it is not stored in the rules or trusted from the preview. Both paths retain the
+same ordered activation boundary, stale-revision checks, atomic publication,
+activation evidence, and viewer/world invalidations. Rules-only activation still
+notifies viewers, so its total work is not independent of player population.
+Production changes still settle elapsed time with the old rules before applying
+new rates. A debris-only change leaves the checkpoint untouched because its
+production rules are unchanged.
+
+This narrow optimization requires no data conversion or special backup/restore
+workflow. It does not change deployment compatibility, readiness, or the separate
+explicit integrity audit. Additional fields, including a future deuterium-debris
+toggle, must be explicitly classified and tested before using the rules-only path.
+
 Enabled content needs complete definitions and prerequisites. A binary recognizing a content name does not mean its specialized mechanics are implemented. The validator rejects unsupported content and invalid references. Disabling a catalog entry prevents new production/research of it; retain definitions needed by owned assets and pending work.
 
 This update command preserves topology, resource units, and protocol family. It does not perform destructive structural conversions or remove definitions still needed by the game. Specialized new features supply their initialization with their implementation.

@@ -7,6 +7,45 @@ pub struct RulesCatalogDelta {
     pub add_buildings: Vec<Building>,
     pub add_research: Vec<ResearchId>,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum RulesUpdateImpact {
+    Unchanged,
+    RulesOnly,
+    SettleAndInitialize,
+}
+
+#[derive(Clone, Debug)]
+pub struct RulesUpdatePlan {
+    pub impact: RulesUpdateImpact,
+    pub initialize: RulesCatalogDelta,
+}
+
+/// Classify validated runtime meaning, never the historical wire representation.
+/// Only explicitly permitted differences can skip gameplay-state preparation.
+pub fn plan_rules_update(current: &Ruleset, next: &Ruleset) -> Result<RulesUpdatePlan, RulesError> {
+    let initialize = validate_rules_update(current, next)?;
+    let impact = if current.equivalent(next) {
+        RulesUpdateImpact::Unchanged
+    } else {
+        let mut remainder = next.artifact.clone();
+        if let (Some(before), Some(after)) = (&current.artifact.world, &mut remainder.world) {
+            after.combat.ship_debris_bps = before.combat.ship_debris_bps;
+        }
+        // Compare the entire remainder: mixed edits and future fields fall back
+        // to settlement without maintaining a list of economic dependencies.
+        if current.artifact.world.is_some()
+            && next.artifact.world.is_some()
+            && current.speed == next.speed
+            && current.artifact == remainder
+        {
+            RulesUpdateImpact::RulesOnly
+        } else {
+            RulesUpdateImpact::SettleAndInitialize
+        }
+    };
+    Ok(RulesUpdatePlan { impact, initialize })
+}
+
 pub fn validate_rules_update(
     current: &Ruleset,
     next: &Ruleset,

@@ -9,6 +9,8 @@ mod fusion;
 mod gameplay;
 #[path = "rules_updates/hyperspace.rs"]
 mod hyperspace;
+#[path = "rules_updates/impact.rs"]
+mod impact;
 #[path = "rules_updates/plasma_turret.rs"]
 mod plasma_turret;
 #[path = "rules_updates/standard.rs"]
@@ -281,10 +283,17 @@ async fn concurrent_edits_have_one_winner_and_other_universe_is_unchanged() {
 }
 #[tokio::test]
 async fn activation_waits_for_admitted_and_claimed_work() {
+    activation_ordering(false).await;
+}
+async fn activation_ordering(debris_only: bool) {
     let (store, pool, u, b) = setup().await;
     let service = RulesService::new(store.clone());
     let mut doc = service.export(u).await.unwrap();
-    doc.artifact.base_income[0] = 40;
+    if debris_only {
+        doc.artifact.world.as_mut().unwrap().combat.ship_debris_bps = 4000;
+    } else {
+        doc.artifact.base_income[0] = 40;
+    }
     store
         .admit(
             Actor::Player(b.player),
@@ -328,8 +337,16 @@ async fn activation_waits_for_admitted_and_claimed_work() {
     store.prepare_scoped_runtime(u, 1).await.unwrap();
     store.activate_scoped_runtime(u).await.unwrap();
     let mut next = service.export(u).await.unwrap();
-    next.artifact.base_income[0] = 41;
-    next.speed = 3;
+    if debris_only {
+        next.artifact.world.as_mut().unwrap().combat.ship_debris_bps = 5000;
+        assert_eq!(
+            service.diff(&next).await.unwrap().impact,
+            RulesUpdateImpact::RulesOnly
+        );
+    } else {
+        next.artifact.base_income[0] = 41;
+        next.speed = 3;
+    }
     let game = GameService::new(store.clone());
     let presence = || CommandEnvelope {
         command_id: CommandId(Uuid::new_v4()),
