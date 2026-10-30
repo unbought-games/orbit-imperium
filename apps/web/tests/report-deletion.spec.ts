@@ -1072,6 +1072,7 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(page, {path: `test-results/reports-archived-${width}x1000.png`, fullPage: true})
     await rows.first().getByRole('button', {name: 'Move to inbox', exact: true}).click()
     await expect(rows).toHaveCount(0)
+    await expect(page.getByText('Reports you archive appear here. Use Move to inbox to restore them.', {exact: true})).toBeVisible()
     await diagnosticScreenshot(page, {path: `test-results/reports-archive-empty-${width}x1000.png`, fullPage: true})
     await page.getByRole('button', {name: 'Inbox', exact: true}).click()
     await page.getByRole('button', {name: 'Load more reports'}).click()
