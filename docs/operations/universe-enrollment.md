@@ -1,4 +1,36 @@
-# Universe enrollment timestamps
+# Universe enrollment
+
+## Automatic homeworld placement
+
+New signups, machine/bot enrollment and automatic `add-player` / `add-bot`
+scenario placement use `neighborhood_homeworld`. It targets approximately two
+players per system across the inhabited region, including gaps, using the
+existing Galaxy 1 homeworld coordinates. It does not relocate existing players.
+The target is not a two-player cap on individual systems.
+
+An empty Galaxy 1 starts in a seeded random free system. Subsequent arrivals
+prefer nearby, lightly populated systems within ten systems of an existing
+homeworld. The region grows with population; pre-existing wider regions never
+shrink. Local density and same-system crowding reduce placement weight, leaving
+irregular pockets and gaps. Colonies and unreleased occupied slots block eligible
+positions 4–12 without counting as additional players. When colonies fill the
+candidate neighborhood, placement falls back to the nearest free Galaxy 1 system.
+
+Galaxy 1 is currently a hard boundary. Once its eligible slots fill, automatic
+enrollment returns universe-full even if other galaxies have room. Saved geometry
+and configured admission ceilings are unchanged; they are not a guarantee of
+available Galaxy 1 slots. Explicit operator coordinate overrides remain explicit
+scenario choices, and colonization is unaffected.
+
+This applies to future admissions in existing `signup-v2` universes as well as
+new ones. Saved rules/profile identifiers and homeworld creation facts are not
+rewritten. The new allocator uses the `neighborhood-homeworld-v3` random-stream
+input label; `balanced_homeworld` remains available for historical simulation and
+tests. Legacy MVP bootstrap placement is unchanged. Roll admission-serving
+processes and operator tools to this version before adding a new bot batch.
+`make test-placement` covers both current placement and historical compatibility.
+
+## Enrollment timestamps
 
 Migration `0011_membership_joined_at.sql` adds the nullable `bigint`
 `universe_memberships.joined_at_ms`. It records the original server enrollment

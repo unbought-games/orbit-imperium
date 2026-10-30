@@ -80,7 +80,7 @@ pub(super) async fn add(
         .iter()
         .map(|m| m.homeworld.coordinates)
         .collect::<Vec<_>>();
-    let mut home = balanced_homeworld(
+    let mut home = neighborhood_homeworld(
         &secret,
         i.universe,
         i.epoch,

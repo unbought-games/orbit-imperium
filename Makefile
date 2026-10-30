@@ -36,6 +36,10 @@ _static:
 test-tooling:
 	node --test scripts/*.test.mjs scripts/fixtures/*.test.mjs
 
+.PHONY: test-placement
+test-placement:
+	cargo nextest run -p orbit-engine --test neighborhoods --test universe
+
 test-client:
 	npm test
 

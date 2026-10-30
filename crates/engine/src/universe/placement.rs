@@ -62,6 +62,8 @@ pub fn frontier_homeworld(
     Err(RulesError::Range)
 }
 
+/// Historical compact-prefix allocator, retained for reproducible simulations.
+/// New automatic admissions use [`neighborhood_homeworld`].
 /// Allocate one homeworld from authoritative prior homeworlds and unavailable slots.
 /// `unavailable` includes planets and any unreleased tombstones; moons do not block slots.
 /// Counts and masks are derived for this call, never persisted.

@@ -130,12 +130,48 @@ async fn empty_start_signup_concurrency_capacity_and_restart() {
     ));
     let counts: (i64,i64,i64,i64) = sqlx::query_as("SELECT (SELECT count(*) FROM accounts), (SELECT count(*) FROM players), (SELECT count(*) FROM bodies), (SELECT count(DISTINCT (galaxy,system,position)) FROM bodies)").fetch_one(&pool).await.unwrap();
     assert_eq!(counts, (10, 10, 10, 10));
+    // Online enrollment must use the current allocator with the persisted seed
+    // and ordinal, rather than the historical compact-prefix allocator.
+    let (secret, epoch): (Vec<u8>, Uuid) = sqlx::query_as(
+        "SELECT secret,epoch FROM mvp_bootstraps JOIN universes ON id=universe WHERE universe=$1",
+    )
+    .bind(u.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let profile = store
+        .load_rules(u)
+        .await
+        .unwrap()
+        .artifact
+        .universe
+        .unwrap();
+    let mut expected = vec![];
+    for ordinal in 0..10 {
+        expected.push(
+            orbit_engine::neighborhood_homeworld(
+                secret.as_slice().try_into().unwrap(),
+                u,
+                epoch.into(),
+                &profile,
+                ordinal,
+                &expected,
+                &expected,
+            )
+            .unwrap()
+            .coordinates,
+        );
+    }
+    let actual: Vec<(i32, i32, i32)> = sqlx::query_as(
+        "SELECT galaxy,system,position FROM bodies WHERE universe=$1 ORDER BY galaxy,system,position",
+    ).bind(u.0).fetch_all(&pool).await.unwrap();
+    expected.sort();
     assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT count(DISTINCT system) FROM bodies")
-            .fetch_one(&pool)
-            .await
-            .unwrap(),
-        3
+        actual,
+        expected
+            .iter()
+            .map(|c| (c.galaxy as i32, c.system as i32, c.position as i32))
+            .collect::<Vec<_>>()
     );
     let amounts: Vec<serde_json::Value> =
         sqlx::query_scalar("SELECT amounts FROM bodies WHERE owner<>$1")
@@ -394,3 +430,6 @@ async fn signup_http_origin_cookie_disabled_and_rate_limit() {
 
 #[path = "signup/universe_config.rs"]
 mod universe_config;
+
+#[path = "signup/neighborhoods.rs"]
+mod neighborhoods;

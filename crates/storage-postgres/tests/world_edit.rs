@@ -28,6 +28,83 @@ async fn world(store: &PgStore) -> UniverseId {
         .unwrap();
     u
 }
+
+#[tokio::test]
+async fn automatic_bot_batches_grow_existing_neighborhoods_without_rewriting_homes_or_rules() {
+    let (store, pool) = fresh().await;
+    let u = UniverseId(Uuid::new_v4());
+    store
+        .create_universe(&UniverseCreate {
+            universe: u,
+            immutable: UniverseImmutable {
+                galaxies: 5,
+                systems_per_galaxy: 100,
+                ..Default::default()
+            },
+            policy: UniversePolicy::default(),
+        })
+        .await
+        .unwrap();
+    let rules_before = store.load_rules(u).await.unwrap();
+    sqlx::query("UPDATE mvp_bootstraps SET secret=$2 WHERE universe=$1")
+        .bind(u.0)
+        .bind(&[7u8; 32][..])
+        .execute(&pool)
+        .await
+        .unwrap();
+    let original: Vec<_> = (0..20)
+        .map(|n| {
+            json!({
+                "op":"add-bot", "user":format!("original-{n}"),
+                "planet":format!("1:{}:{}", 40+n/5, 4+n%5),
+            })
+        })
+        .collect();
+    store
+        .apply_world_scenario(
+            u,
+            &document(json!(original)),
+            ScenarioMode::Patch,
+            Uuid::new_v4(),
+        )
+        .await
+        .unwrap();
+    let before: Vec<(Uuid, i32, i32, i32, i32)> = sqlx::query_as(
+        "SELECT id,galaxy,system,position,max_temperature FROM bodies WHERE universe=$1 ORDER BY id",
+    ).bind(u.0).fetch_all(&pool).await.unwrap();
+    let batch: Vec<_> = (0..40)
+        .map(|n| json!({"op":"add-bot", "user":format!("arrival-{n}")}))
+        .collect();
+    let operation = Uuid::new_v4();
+    let patch = document(json!(batch));
+    let result = store
+        .apply_world_scenario(u, &patch, ScenarioMode::Patch, operation)
+        .await
+        .unwrap();
+    assert_eq!(
+        result,
+        store
+            .apply_world_scenario(u, &patch, ScenarioMode::Patch, operation)
+            .await
+            .unwrap()
+    );
+    let after: Vec<(Uuid, i32, i32, i32, i32)> = sqlx::query_as(
+        "SELECT id,galaxy,system,position,max_temperature FROM bodies WHERE universe=$1 ORDER BY id",
+    ).bind(u.0).fetch_all(&pool).await.unwrap();
+    assert_eq!(after.len(), 60);
+    assert!(before.iter().all(|body| after.contains(body)));
+    assert!(after.iter().all(|body| body.1 == 1));
+    let span =
+        after.iter().map(|b| b.2).max().unwrap() - after.iter().map(|b| b.2).min().unwrap() + 1;
+    assert!((24..=30).contains(&span), "span {span}");
+    assert_eq!(store.load_rules(u).await.unwrap(), rules_before);
+    // Restart-style inspection validates the mixed historical and new creation facts.
+    let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    reopened.inspect_world(u, None, None).await.unwrap();
+}
+
 #[tokio::test]
 async fn rich_playground_is_playable_atomic_and_retryable() {
     let (store, pool) = fresh().await;
