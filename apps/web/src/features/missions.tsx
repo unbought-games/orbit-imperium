@@ -254,6 +254,7 @@ export function Dispatch({
             )}
           </fieldset>
           <DispatchShips
+            key={body.id}
             view={view}
             body={body}
             types={types}

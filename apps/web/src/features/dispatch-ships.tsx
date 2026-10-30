@@ -1,7 +1,13 @@
+import { useId, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { Text } from '../ui/typography'
 import type { components } from '../contracts'
 import { Button } from '../ui/button'
 import { InputWithAction, FillButton } from '../ui/input-with-action'
-import { availableDispatchShips } from '../client-model/ship-selection'
+import {
+  availableDispatchShips,
+  dispatchShipVisible,
+} from '../client-model/ship-selection'
 import { NumberInput } from '../ui/form'
 import { NumberValue } from '../ui/number-value'
 import { label } from '../ui/format'
@@ -26,6 +32,8 @@ export function DispatchShips({
   onNormalize: (id: string) => void
   onAddAll: (ships: Record<string, string>) => void
 }) {
+  const [showAll, setShowAll] = useState(false)
+  const rowsId = useId()
   const availableShips = availableDispatchShips(types, body.inventories)
   const empty = Object.values(availableShips).every(
     (count) => BigInt(count) === 0n,
@@ -35,6 +43,12 @@ export function DispatchShips({
       (entry) => entry.key.kind === 'Ship' && types.includes(entry.key.id),
     )
     .sort(compareShips)
+  const activeEntries = entries.filter((entry) =>
+    dispatchShipVisible(availableShips[entry.key.id], ships[entry.key.id]),
+  )
+  const hiddenCount = entries.length - activeEntries.length
+  const visibleEntries = showAll ? entries : activeEntries
+  const DisclosureIcon = showAll ? ChevronUp : ChevronDown
   return (
     <fieldset className={styles.selection}>
       <legend className={styles.srOnly}>Ships</legend>
@@ -54,71 +68,94 @@ export function DispatchShips({
           Add All
         </Button>
       </div>
-      <table className={styles.ships} aria-label="Ships to dispatch">
-        <thead>
-          <tr>
-            <th scope="col">Ship</th>
-            <th scope="col">Available</th>
-            <th scope="col">Send</th>
-          </tr>
-        </thead>
-        {shipGroups.map((group) => {
-          const rows = entries.filter((entry) => shipGroup(entry) === group)
-          return (
-            rows.length > 0 && (
-              <tbody key={group}>
-                <tr className={styles.group}>
-                  <th colSpan={3} scope="rowgroup" role="rowheader">
-                    {group}
-                  </th>
-                </tr>
-                {rows.map((entry) => {
-                  const id = entry.key.id
-                  const available = availableShips[id]
-                  return (
-                    <tr key={id}>
-                      <th scope="row">{label(id)}</th>
-                      <td>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="small"
-                          aria-label={`All ${label(id)}`}
-                          title={`Send all ${available} available ${label(id)}`}
-                          onClick={() => onChange(id, available)}
-                        >
-                          <NumberValue value={available} />
-                        </Button>
-                      </td>
-                      <td>
-                        <InputWithAction className={styles.shipAmount}>
-                          <NumberInput
-                            aria-label={`${label(id)} · ${available} available`}
-                            value={ships[id] ?? '0'}
-                            placeholder="0"
-                            onChange={(event) =>
-                              onChange(id, event.target.value)
-                            }
-                            onBlur={(event) => {
-                              if (!event.target.value.trim()) onNormalize(id)
-                            }}
-                          />
-                          <FillButton
-                            aria-label={`Max ${label(id)}`}
-                            title={`Add all ${available} available ${label(id)}`}
-                            disabled={BigInt(available) === 0n}
-                            onClick={() => onChange(id, available)}
-                          />
-                        </InputWithAction>
-                      </td>
+      {empty && <Text role="status">No ships available here.</Text>}
+      <div id={rowsId}>
+        {visibleEntries.length > 0 && (
+          <table className={styles.ships} aria-label="Ships to dispatch">
+            <thead>
+              <tr>
+                <th scope="col">Ship</th>
+                <th scope="col">Available</th>
+                <th scope="col">Send</th>
+              </tr>
+            </thead>
+            {shipGroups.map((group) => {
+              const rows = visibleEntries.filter(
+                (entry) => shipGroup(entry) === group,
+              )
+              return (
+                rows.length > 0 && (
+                  <tbody key={group}>
+                    <tr className={styles.group}>
+                      <th colSpan={3} scope="rowgroup" role="rowheader">
+                        {group}
+                      </th>
                     </tr>
-                  )
-                })}
-              </tbody>
-            )
-          )
-        })}
-      </table>
+                    {rows.map((entry) => {
+                      const id = entry.key.id
+                      const available = availableShips[id]
+                      return (
+                        <tr key={id}>
+                          <th scope="row">{label(id)}</th>
+                          <td>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="small"
+                              aria-label={`All ${label(id)}`}
+                              title={`Send all ${available} available ${label(id)}`}
+                              onClick={() => onChange(id, available)}
+                            >
+                              <NumberValue value={available} />
+                            </Button>
+                          </td>
+                          <td>
+                            <InputWithAction className={styles.shipAmount}>
+                              <NumberInput
+                                aria-label={`${label(id)} · ${available} available`}
+                                value={ships[id] ?? '0'}
+                                placeholder="0"
+                                onChange={(event) =>
+                                  onChange(id, event.target.value)
+                                }
+                                onBlur={(event) => {
+                                  if (!event.target.value.trim())
+                                    onNormalize(id)
+                                }}
+                              />
+                              <FillButton
+                                aria-label={`Max ${label(id)}`}
+                                title={`Add all ${available} available ${label(id)}`}
+                                disabled={BigInt(available) === 0n}
+                                onClick={() => onChange(id, available)}
+                              />
+                            </InputWithAction>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                )
+              )
+            })}
+          </table>
+        )}
+      </div>
+      {(showAll || hiddenCount > 0) && (
+        <Button
+          type="button"
+          variant="ghost"
+          className={styles.shipDisclosure}
+          aria-expanded={showAll}
+          aria-controls={rowsId}
+          onClick={() => setShowAll(!showAll)}
+        >
+          <DisclosureIcon size={16} aria-hidden="true" />
+          {showAll
+            ? 'Show available ships'
+            : `Show all ships (${hiddenCount} more)`}
+        </Button>
+      )}
     </fieldset>
   )
 }
