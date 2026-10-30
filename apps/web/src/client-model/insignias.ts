@@ -12,6 +12,18 @@ export const defaultInsignia: InsigniaRecipe = {
   foreground: '#cbb68d',
   background: '#152b40',
 }
+/** Editor selection is independent of whether an empire equips a design. */
+export function selectedInsigniaDesign(
+  snapshot: InsigniaState | undefined,
+  selectedId: string | null,
+) {
+  const library = snapshot?.library
+  return (
+    library?.designs.find((design) => design.id === selectedId) ??
+    library?.designs.find((design) => design.id === library.equipped) ??
+    library?.designs[0]
+  )
+}
 export function symbolAccess(
   snapshot: InsigniaState,
   symbol: string,

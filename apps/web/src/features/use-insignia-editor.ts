@@ -1,7 +1,11 @@
 import { useEffect, useState, useContext } from 'react'
 import { useStore } from 'zustand'
 import { InsigniaContext } from '../shell/insignia-context'
-import { defaultInsignia, symbolAccess } from '../client-model/insignias'
+import {
+  defaultInsignia,
+  selectedInsigniaDesign,
+  symbolAccess,
+} from '../client-model/insignias'
 import type { InsigniaDesign } from '../adapters/insignias'
 
 export function useInsigniaEditor() {
@@ -12,9 +16,7 @@ export function useInsigniaEditor() {
   const [draft, setDraft] = useState<InsigniaDesign | null>(null)
   useEffect(() => controller.start(), [controller])
   const snapshot = state.snapshot
-  const selected = selectedId ?? snapshot?.library.equipped
-  const design =
-    draft ?? snapshot?.library.designs.find((d) => d.id === selected)
+  const design = draft ?? selectedInsigniaDesign(snapshot, selectedId)
   const access = (symbol: string) =>
     snapshot ? symbolAccess(snapshot, symbol, state.now) : 'unavailable'
   const valid =

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
-import { InsigniaController, defaultInsignia, symbolAccess } from './insignias'
+import {
+  InsigniaController,
+  defaultInsignia,
+  selectedInsigniaDesign,
+  symbolAccess,
+} from './insignias'
 import type { InsigniaState } from '../adapters/insignias'
 const id = '00000000-0000-4000-8000-000000000001'
 const snapshot = (): InsigniaState => ({
@@ -27,6 +32,25 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('insignia eligibility', () => {
+  it('keeps saved designs accessible without equipment or after a selection disappears', () => {
+    const state = snapshot()
+    const first = { id, name: 'First', recipe: defaultInsignia, revision: 1 }
+    const second = {
+      ...first,
+      id: '00000000-0000-4000-8000-000000000002',
+      name: 'Second',
+    }
+    expect(selectedInsigniaDesign(undefined, null)).toBeUndefined()
+    expect(selectedInsigniaDesign(state, null)).toBeUndefined()
+    state.library.designs = [first, second]
+    expect(selectedInsigniaDesign(state, null)).toBe(first)
+    state.library.equipped = second.id
+    expect(selectedInsigniaDesign(state, null)).toBe(second)
+    expect(selectedInsigniaDesign(state, first.id)).toBe(first)
+    expect(selectedInsigniaDesign(state, 'deleted')).toBe(second)
+    state.library.equipped = null
+    expect(selectedInsigniaDesign(state, 'deleted')).toBe(first)
+  })
   it('expires membership evidence but preserves permanent and unrestricted access', () => {
     const state = snapshot()
     expect(symbolAccess(state, 'laurel', 99_999)).toBe('available')

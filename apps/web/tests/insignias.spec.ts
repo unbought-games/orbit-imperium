@@ -271,3 +271,56 @@ test('failed saves preserve the draft and the library can recover', async ({
   ).toContainText('Design saved and equipped.')
   expect(state.designs).toHaveLength(1)
 })
+
+for (const width of [1440, 390]) {
+  test(`saved collection remains visible without an equipped design at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { state } = await fixture(page)
+    await page.goto('/u/andromeda/settings')
+    const panel = page.getByRole('region', { name: 'Empire insignia' })
+    for (const name of ['First standard', 'Second standard']) {
+      await panel.getByRole('button', { name: 'New design' }).click()
+      await panel.getByLabel('Design name', { exact: true }).fill(name)
+      await panel.getByRole('button', { name: 'Save & equip' }).click()
+      await expect(
+        panel.getByLabel('Saved designs').locator('option:checked'),
+      ).toHaveText(`${name} · Equipped`)
+    }
+    await panel.getByRole('button', { name: 'Use default insignia' }).click()
+    await expect(
+      panel.getByRole('button', { name: 'Use default insignia' }),
+    ).toHaveCount(0)
+    await page.reload()
+    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
+      'First standard',
+    )
+    await expect(panel).not.toContainText('Your collection starts here')
+    expect(state.equipped).toBeNull()
+    await panel.evaluate((el) =>
+      window.scrollBy(0, el.getBoundingClientRect().top - 72),
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/insignia-library-default-${width}x1000.png`,
+    })
+    await panel
+      .getByLabel('Saved designs')
+      .selectOption({ label: 'Second standard' })
+    await panel
+      .getByRole('button', { name: 'Delete design', exact: true })
+      .click()
+    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
+      'First standard',
+    )
+    await expect(panel).not.toContainText('Your collection starts here')
+    expect(state.designs).toHaveLength(1)
+    expect(state.equipped).toBeNull()
+    await panel.evaluate((el) =>
+      window.scrollBy(0, el.getBoundingClientRect().top - 72),
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/insignia-library-after-delete-${width}x1000.png`,
+    })
+  })
+}

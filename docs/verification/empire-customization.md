@@ -127,3 +127,19 @@ This appended record is a documentation-only follow-up to the tested commit.
 The live runner removed its database and asset directory and stopped its browser
 and server. Disposable Compose project `orbit-insignia-pr` is cleaned up before
 publication; unrelated development projects are retained.
+
+## PR review repair: collections without equipment
+
+Validated review thread `PRRT_kwDOVRgPYs6yFIBd` against head `5fea6a6`. The editor
+incorrectly showed its empty-collection copy when saved designs existed without
+an equipped design. Selection now derives from the existing selected ID, then
+the equipped ID, then the first saved design. Missing/deleted IDs fall back
+without storing derived selection state or equipping anything automatically.
+
+Tested patch SHA-256 against `5fea6a6`: `3fdb440b6875a3c76f7c20de6fd9c856c3b026ecbeba54e7a0a1d5f38c5e5055` (the four changed TypeScript
+implementation/test files). Three focused unit tests, five browser tests (9.6 s),
+and a final two-case browser rerun (4.3 s) passed. The browser cases explicitly
+cover using the default, reloading, and deleting the selected design with another
+design retained. ESLint and the production build passed. Desktop/mobile captures
+were refreshed and inspected for these states and displayed in the originating
+chat before pushing. No backend, storage, eligibility, or gameplay changes.
