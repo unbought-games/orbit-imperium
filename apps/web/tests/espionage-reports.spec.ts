@@ -8,18 +8,17 @@ import { shellFixture, binding, body, id } from './fixtures/game'
 async function expectAlignedLevels(sections: Locator[]) {
   const grids = (await Promise.all(sections.map(section => section.locator('dl').all()))).flat()
   const firstRow = (await grids[0].locator('div').first().boundingBox())!
-  const firstValue = (await grids[0].locator('dd').first().boundingBox())!
   for (const grid of grids) {
     const rows = await grid.locator('div').all()
     const first = (await rows[0].boundingBox())!
     expect(first.x).toBeCloseTo(firstRow.x, 1)
     expect(first.width).toBeCloseTo(firstRow.width, 1)
-    const value = (await rows[0].locator('dd').boundingBox())!
-    expect(value.x + value.width).toBeCloseTo(firstValue.x + firstValue.width, 1)
     for (const row of rows) {
       const name = (await row.locator('dt').boundingBox())!
       const level = (await row.locator('dd').boundingBox())!
       expect(name.x + name.width).toBeLessThan(level.x)
+      if (await row.evaluate(el => !!el.closest('[data-paired-levels]')))
+        expect(level.x - name.x - name.width).toBeLessThanOrEqual(16)
       expect(Math.abs(level.y - name.y)).toBeLessThanOrEqual(3)
       expect(await row.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
     }
@@ -34,6 +33,7 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
     await shellFixture(page, {
       protocol: 4,
       extraCapabilities: ['Reports', 'Attack'],
+      missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'},
     })
     const header = {
       id: id(63),
@@ -107,9 +107,10 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
     await expect(buildings).toBeVisible()
     for (const width of [1440, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 })
+      if (variant === 'expanded') await diagnosticScreenshot(page, {path: `test-results/espionage-pairs-${width}x1000.png`, fullPage: true})
       const back = (await page.getByRole('link', { name: 'Back to reports' }).boundingBox())!
       const title = (await page.getByRole('heading', { name: 'Espionage', exact: true }).boundingBox())!
-      const remove = (await page.getByRole('button', { name: 'Delete report', exact: true }).boundingBox())!
+      const remove = (await page.getByRole('button', { name: 'Archive report', exact: true }).boundingBox())!
       const timestamp = (await page.getByRole('button', { name: 'Report time details' }).boundingBox())!
       expect(title.x).toBeGreaterThan(back.x + back.width)
       expect(title.y).toBeLessThan(back.y + back.height)

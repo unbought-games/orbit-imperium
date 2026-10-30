@@ -82,7 +82,7 @@ test('a revoked report has a clear unavailable state', async ({ page }) => {
   )
   await page.goto(`/reports/shared/${token}`)
   await expect(page.getByRole('alert')).toContainText(
-    'revoked the link or deleted the report',
+    'stopped sharing, or the report is no longer available',
   )
   await expect(
     page.getByRole('button', { name: 'Retry', exact: true }),
@@ -97,6 +97,7 @@ for (const width of [390, 1440])
   }) => {
     await page.setViewportSize({ width, height: 1000 })
     let active = false
+    let hidden = false
     let starred = false
     let revision = 1
     await shellFixture(page, {
@@ -120,7 +121,7 @@ for (const width of [390, 1440])
               kind: 'Espionage',
               observed_at: payload.observed_at,
               read: true,
-              hidden: false,
+              hidden,
               starred,
               shared: active,
             },
@@ -158,7 +159,7 @@ for (const width of [390, 1440])
             kind: 'Espionage',
             observed_at: payload.observed_at,
             read: true,
-            hidden: false,
+            hidden,
             starred,
             shared: active,
           },
@@ -168,9 +169,12 @@ for (const width of [390, 1440])
     const starCommands: boolean[] = []
     await page.route('**/commands', async (route) => {
       const envelope = route.request().postDataJSON().gameplay
-      expect(envelope.command.action.type).toBe('SetReportStarred')
-      starred = envelope.command.action.starred
-      starCommands.push(starred)
+      const action = envelope.command.action
+      expect(['SetReportStarred', 'SetReportHidden']).toContain(action.type)
+      if (action.type === 'SetReportStarred') {
+        starred = action.starred
+        starCommands.push(starred)
+      } else hidden = action.hidden
       revision++
       await route.fulfill({
         json: {
@@ -221,7 +225,7 @@ for (const width of [390, 1440])
       name: 'Unstar this shared report?', exact: true,
     })
     await expect(unstarDialog).toContainText(
-      'Deleting it also permanently removes its shared links.',
+      'Archiving keeps its shared link active.',
     )
     await diagnosticScreenshot(page, {
       path: `test-results/unstar-shared-${width}.png`,
@@ -242,6 +246,23 @@ for (const width of [390, 1440])
       page.getByRole('button', { name: 'Star report', exact: true }),
     ).toBeVisible()
     expect(starCommands).toEqual([false])
+    await page.getByRole('button', {name: 'Archive report', exact: true}).click()
+    await expect(page.getByRole('button', {name: 'Move to inbox', exact: true})).toBeEnabled()
+    await trigger.click()
+    await expect(page.getByRole('textbox', {name: 'Share link'})).toHaveValue(new RegExp(`/reports/shared/${token}$`))
+    await diagnosticScreenshot(page, {path: `test-results/archived-shared-${width}x1000.png`, fullPage: true})
+    await page.getByRole('button', {name: 'Stop sharing', exact: true}).click()
+    await expect(page.getByRole('button', {name: 'Create share link'})).toBeVisible()
+    await page.getByRole('button', {name: 'Close sharing'}).click()
+    await page.getByRole('button', {name: 'Move to inbox', exact: true}).click()
+    await trigger.click()
+    await expect(page.getByRole('button', {name: 'Create share link'})).toBeVisible()
+    await page.getByRole('button', {name: 'Create share link'}).click()
+    await page.getByRole('button', {name: 'Close sharing'}).click()
+    // Creating again stars the report; continue the existing stale-unstar case.
+    await page.getByRole('button', {name: 'Unstar report', exact: true}).click()
+    await unstarDialog.getByRole('button', {name: 'Unstar report', exact: true}).click()
+
     await page.getByRole('button', { name: 'Star report', exact: true }).click()
     await expect(
       page.getByRole('button', { name: 'Unstar report', exact: true }),
@@ -260,7 +281,7 @@ for (const width of [390, 1440])
     await unstarDialog
       .getByRole('button', { name: 'Unstar report', exact: true })
       .click()
-    expect(starCommands).toEqual([false, true])
+    expect(starCommands).toEqual([false, false, true])
     await page.getByRole('button', { name: 'Star report', exact: true }).click()
     await expect(
       page.getByRole('button', { name: 'Unstar report', exact: true }),
@@ -272,7 +293,7 @@ for (const width of [390, 1440])
     await expect(
       page.getByRole('button', { name: 'Create share link' }),
     ).toBeVisible()
-    expect(actions).toEqual(['Status', 'Create', 'Status', 'Revoke'])
+    expect(actions).toEqual(['Status', 'Create', 'Status', 'Revoke', 'Status', 'Create', 'Status', 'Revoke'])
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(trigger).toBeFocused()

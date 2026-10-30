@@ -944,7 +944,21 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                 credit(&mut c, s, id, cargo, i.at, r)?;
                                 let mut payloads = std::collections::BTreeMap::new();
                                 for owner in [Some(f.owner), target_owner].into_iter().flatten() {
-                                    payloads.insert(owner,json!({"kind":"Delivered","at":i.at,"sender":f.owner,"recipient":target_owner,"origin":f.origin_coordinates,"target":f.destination_coordinates,"cargo":wire_resources(cargo)}));
+                                    let mut payload = json!({"kind":"Delivered","at":i.at,"sender":f.owner,"recipient":target_owner,"origin":f.origin_coordinates,"target":f.destination_coordinates,"cargo":wire_resources(cargo)});
+                                    // Snapshot available names without making delivery depend on
+                                    // the origin still existing. Coordinates always remain useful.
+                                    for (key, body_id) in
+                                        [("origin_name", f.intent.origin), ("target_name", id)]
+                                    {
+                                        if let Some(name) = s
+                                            .bodies
+                                            .get(&body_id)
+                                            .and_then(|body| body.name.as_ref())
+                                        {
+                                            payload[key] = json!(name);
+                                        }
+                                    }
+                                    payloads.insert(owner, payload);
                                 }
                                 mission_report(&mut w, i, &f, "Delivered", payloads);
                                 f.cargo = Resources::default();

@@ -206,3 +206,19 @@ export function reportListIdentity(
     .filter(Boolean)
     .join(' · ')
 }
+
+/** Names belong to the observation, so renames never rewrite report history. */
+export function deliveryRoute(preview: Preview | undefined): string {
+  if (preview?.kind !== 'Delivered') return ''
+  const endpoint = (
+    name: string | undefined,
+    at: S['Coordinates'] | undefined,
+  ) =>
+    [
+      name?.trim(),
+      at ? coordinates({ coordinates: at }) : 'Location unavailable',
+    ]
+      .filter(Boolean)
+      .join(' ')
+  return `${endpoint(preview.origin_name, preview.origin)} → ${endpoint(preview.target_name, preview.target)}`
+}

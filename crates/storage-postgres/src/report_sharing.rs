@@ -48,9 +48,9 @@ impl PgStore {
             !matches!(action, ReportShareAction::Status),
         )
         .await?;
-        // Serialize creation/revocation with deletion for this recipient. Never use
+        // Serialize creation/revocation with archive commands for this recipient. Never use
         // another recipient's observation, even when both received this battle.
-        let row = sqlx::query("SELECT r.data->'payloads'->(p.recipient::text) AS payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3 AND NOT p.hidden FOR UPDATE OF p")
+        let row = sqlx::query("SELECT r.data->'payloads'->(p.recipient::text) AS payload FROM mission_reports r JOIN mission_report_recipients p ON p.report=r.id WHERE r.universe=$1 AND r.id=$2 AND p.recipient=$3 FOR UPDATE OF p")
             .bind(b.universe.0).bind(report.0).bind(b.player.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let payload: serde_json::Value = row.try_get("payload").map_err(db_error)?;
         if !shareable_report(&payload) {
@@ -140,7 +140,7 @@ impl PgStore {
         &self,
         token: uuid::Uuid,
     ) -> Result<SharedReport, StoreError> {
-        let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE s.token=$1 AND NOT p.hidden")
+        let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE s.token=$1")
             .bind(token).fetch_optional(self.read_pool()?).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let names = row
             .try_get::<sqlx::types::Json<PublicPlayerNames>, _>("names_at_publication")

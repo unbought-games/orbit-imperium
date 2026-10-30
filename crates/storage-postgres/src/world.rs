@@ -709,9 +709,6 @@ pub(crate) async fn save(
         sqlx::query("UPDATE mission_report_recipients AS recipient SET read=changes.read,hidden=changes.hidden,starred=changes.starred FROM UNNEST($1::uuid[],$2::uuid[],$3::boolean[],$4::boolean[],$5::boolean[]) AS changes(report,recipient,read,hidden,starred) WHERE recipient.report=changes.report AND recipient.recipient=changes.recipient")
             .bind(&reports).bind(&recipients).bind(&read).bind(&hidden).bind(&starred)
             .execute(&mut **tx).await.map_err(db_error)?;
-        sqlx::query("DELETE FROM mission_report_shares AS share USING UNNEST($1::uuid[],$2::uuid[],$3::boolean[]) AS changes(report,recipient,hidden) WHERE share.report=changes.report AND share.recipient=changes.recipient AND changes.hidden")
-            .bind(&reports).bind(&recipients).bind(&hidden)
-            .execute(&mut **tx).await.map_err(db_error)?;
     }
     sqlx::query("INSERT INTO world_evidence(universe,input,deltas,audits) VALUES($1,$2,$3,$4)")
         .bind(u.0)

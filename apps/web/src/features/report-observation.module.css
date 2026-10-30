@@ -187,3 +187,11 @@
   top: 50%;
   transform: translateY(-50%);
 }
+
+.paired .levels > div {
+  grid-template-columns: minmax(0, max-content) auto;
+  justify-content: start;
+}
+.paired .levels dd {
+  text-align: left;
+}

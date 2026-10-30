@@ -9,6 +9,7 @@ export type ReportSort =
   | 'total'
   | 'fleet'
   | 'defenses'
+export type ReportFolder = 'inbox' | 'archived'
 export type ReportFilter = 'all' | 'espionage' | 'starred' | 'unread'
 export function reportMetric(report: Header, sort: ReportSort): bigint | null {
   if (sort === 'newest' || sort === 'oldest') return BigInt(report.observed_at)
@@ -34,11 +35,12 @@ export function triageReports(
   ascending: boolean,
   filter: ReportFilter,
   knownOnly: boolean,
+  folder: ReportFolder = 'inbox',
 ) {
   return reports
     .filter(
       (report) =>
-        !report.hidden &&
+        report.hidden === (folder === 'archived') &&
         (filter !== 'espionage' || report.kind === 'Espionage') &&
         (filter !== 'starred' || report.starred) &&
         (filter !== 'unread' || !report.read) &&

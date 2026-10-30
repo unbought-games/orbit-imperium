@@ -3,7 +3,7 @@ import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
 import { ReportStarButton } from './report-star-button'
 import { ReportTriageControls, defaultTriage } from './report-triage-controls'
-import { triageReports } from './report-triage'
+import { triageReports, type ReportFolder } from './report-triage'
 import { ReportSimulation } from './combat-simulation'
 import { ReportShareControl } from './report-share-control'
 import { useProfileSource } from '../shell/player-profiles-context'
@@ -43,6 +43,8 @@ export function Reports({
   item: string | null
   onDraft: (draft: DispatchDraft) => void
 }) {
+  const [folder, setFolder] = useState<ReportFolder>('inbox')
+  const archived = folder === 'archived'
   const [triage, setTriage] = useState(false)
   const [options, setOptions] = useState(defaultTriage)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -57,14 +59,17 @@ export function Reports({
     changingVisibility,
     more,
     retry,
-  } = useReports(model, item, triage, cleanup.submitting)
+  } = useReports(model, item, triage || archived, cleanup.submitting, archived)
   const visible = triageReports(
     page?.items ?? [],
     options.sort,
     options.ascending,
     options.filter,
     options.knownOnly,
+    folder,
   )
+  const folderCount =
+    page?.items.filter((r) => r.hidden === archived).length ?? 0
   const complete =
     !!page && !page.has_more && !loading && !loadingMore && error === null
 
@@ -263,15 +268,39 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
+          <div
+            className={`${styles.controls} ${styles.folders}`}
+            role="group"
+            aria-label="Report folder"
+          >
+            {(['inbox', 'archived'] as const).map((next) => (
+              <Button
+                key={next}
+                variant="secondary"
+                aria-pressed={folder === next}
+                disabled={cleanup.submitting || changingVisibility}
+                onClick={() => {
+                  setFolder(next)
+                  setSelected(new Set())
+                }}
+              >
+                {next === 'inbox' ? 'Inbox' : 'Archived'}
+              </Button>
+            ))}
+          </div>
+          {archived && !complete && error === null && (
+            <Text role="status">Loading archived reports…</Text>
+          )}
           {triage && (
             <>
               {!complete && error === null && (
                 <Text role="status">
-                  Loading the complete inbox before sorting and cleanup…
+                  Loading report history before sorting and cleanup…
                 </Text>
               )}
               <ReportTriageControls
                 cleanup={cleanup}
+                archived={archived}
                 reports={page.items}
                 visible={visible}
                 options={options}
@@ -286,54 +315,58 @@ export function Reports({
               />
               {complete && (
                 <Text role="status">
-                  {visible.length} of {page.items.length} reports match.
+                  {visible.length} of {folderCount} reports match.
                 </Text>
               )}
             </>
           )}
-          {!visible.length && error === null && (!triage || complete) && (
-            <EmptyState
-              icon={FileText}
-              eyebrow="Mission archive"
-              title={
-                page.items.length
-                  ? 'No reports match these filters.'
-                  : 'No reports to show.'
-              }
-              description={
-                page.items.length
-                  ? 'Try a different report filter or include unknown observations.'
-                  : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
-              }
-              actions={
-                page.items.length ? (
-                  <Button
-                    onClick={() => {
-                      setOptions(defaultTriage)
-                      setSelected(new Set())
-                    }}
-                  >
-                    Clear filters
-                  </Button>
-                ) : (
-                  model.view &&
-                  resolveDestination(
-                    {
-                      universe: model.view.binding.universe,
-                      body: origin,
-                      page: 'galaxy',
-                    },
-                    model.view,
-                  ).available && (
-                    <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
-                      Explore the galaxy{' '}
-                      <ArrowRight size={16} aria-hidden="true" />
-                    </ButtonLink>
+          {!visible.length &&
+            error === null &&
+            (!(triage || archived) || complete) && (
+              <EmptyState
+                icon={FileText}
+                eyebrow={archived ? 'Archived' : 'Inbox'}
+                title={
+                  folderCount
+                    ? 'No reports match these filters.'
+                    : 'No reports to show.'
+                }
+                description={
+                  folderCount
+                    ? 'Try a different report filter or include unknown observations.'
+                    : archived
+                      ? 'Reports you archive appear here. Move them to inbox anytime.'
+                      : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
+                }
+                actions={
+                  folderCount ? (
+                    <Button
+                      onClick={() => {
+                        setOptions(defaultTriage)
+                        setSelected(new Set())
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  ) : (
+                    model.view &&
+                    resolveDestination(
+                      {
+                        universe: model.view.binding.universe,
+                        body: origin,
+                        page: 'galaxy',
+                      },
+                      model.view,
+                    ).available && (
+                      <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
+                        Explore the galaxy{' '}
+                        <ArrowRight size={16} aria-hidden="true" />
+                      </ButtonLink>
+                    )
                   )
-                )
-              }
-            />
-          )}
+                }
+              />
+            )}
           {visible.map((r) => (
             <ReportListRow
               key={r.id}
@@ -361,7 +394,7 @@ export function Reports({
               }
             />
           ))}
-          {page.has_more && !triage && (
+          {page.has_more && !triage && !archived && (
             <Button
               disabled={loading || loadingMore || changingVisibility}
               onClick={() => void more()}

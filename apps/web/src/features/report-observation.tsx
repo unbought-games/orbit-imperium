@@ -99,13 +99,19 @@ function Levels({
 function GroupedLevels({
   groups,
   emptyLabel,
+  paired = false,
 }: {
+  paired?: boolean
   groups: { title: string; rows: ObservedLevel[] }[]
   emptyLabel: string
 }) {
   return groups.length ? (
     groups.map(({ title, rows }) => (
-      <div key={title}>
+      <div
+        key={title}
+        className={paired ? styles.paired : undefined}
+        data-paired-levels={paired || undefined}
+      >
         <h4>{title}</h4>
         <Levels rows={rows} emptyLabel={emptyLabel} />
       </div>
@@ -345,6 +351,7 @@ function ReportObservationContent({
         <KnownSection title="Buildings" value={payload.buildings}>
           {(v) => (
             <GroupedLevels
+              paired
               groups={groupReportBuildings(record(v))}
               emptyLabel="No buildings"
             />
@@ -457,6 +464,9 @@ function ReportObservationContent({
           {kind === 'Delivered' || payload.origin_coordinates ? (
             <>
               {' · '}
+              {kind === 'Delivered' &&
+                typeof payload.origin_name === 'string' &&
+                `${payload.origin_name} `}
               <CoordinateLink
                 at={
                   kind === 'Delivered'
@@ -466,6 +476,9 @@ function ReportObservationContent({
                 label="origin"
               />
               {' → '}
+              {kind === 'Delivered' &&
+                typeof payload.target_name === 'string' &&
+                `${payload.target_name} `}
               <CoordinateLink
                 at={
                   kind === 'Delivered'

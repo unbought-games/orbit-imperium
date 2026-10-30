@@ -263,3 +263,16 @@
 .triage input[type='number'] {
   max-width: 240px;
 }
+
+.deliveryRoute {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+}
+
+.folders [aria-pressed='true'] {
+  background: #cbb68d25;
+  color: #efdfc4;
+  box-shadow: inset 0 -3px #cbb68d;
+}
