@@ -626,7 +626,7 @@ async fn signup_at_temperature_boundary_remains_playable_after_activation() {
         .find_map(|n| {
             let mut seed = [0u8; 32];
             seed[..4].copy_from_slice(&n.to_le_bytes());
-            (balanced_homeworld(&seed, u, epoch, &profile, 0, &[], &[])
+            (neighborhood_homeworld(&seed, u, epoch, &profile, 0, &[], &[])
                 .unwrap()
                 .max_temperature
                 == 110)

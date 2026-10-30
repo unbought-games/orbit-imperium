@@ -283,3 +283,5 @@ mod tests {
 
 mod placement;
 pub use placement::*;
+mod neighborhoods;
+pub use neighborhoods::neighborhood_homeworld;

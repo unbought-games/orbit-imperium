@@ -186,7 +186,7 @@ impl PgStore {
                         &occupied,
                     )
                 } else {
-                    balanced_homeworld(
+                    neighborhood_homeworld(
                         &secret,
                         u,
                         manifest.epoch,

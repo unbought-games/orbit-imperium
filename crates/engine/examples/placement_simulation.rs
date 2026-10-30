@@ -10,13 +10,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let profile = UniverseProfile::signup(args[0].parse()?, args[1].parse()?)?;
     let players: usize = args[2].parse()?;
     let seed: u8 = args[3].parse()?;
-    if players > profile.homeworld_capacity()? as usize {
-        return Err("population exceeds homeworld capacity".into());
+    if players > (profile.systems_per_galaxy * 9) as usize {
+        return Err("population exceeds Galaxy 1 homeworld capacity".into());
     }
     let mut homes = Vec::new();
     println!("player,galaxy,system,position");
     for ordinal in 0..players {
-        let world = balanced_homeworld(
+        let world = neighborhood_homeworld(
             &[seed; 32],
             uuid::Uuid::from_u128(1).into(),
             uuid::Uuid::from_u128(2).into(),
