@@ -499,7 +499,11 @@ function PlanetDossier({
         />
         <div>
           <span className={styles.kicker}>
-            {body.kind}
+            {view.protocol === 4 &&
+            body.kind === 'Planet' &&
+            body.id === view.homeworld_id
+              ? 'Homeworld'
+              : body.kind}
             {selected && <b>Command focus</b>}
           </span>
           {view.protocol === 4 && body.kind === 'Planet' ? (

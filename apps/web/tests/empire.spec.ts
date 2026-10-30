@@ -650,6 +650,29 @@ test('empty ship and defense sections describe their own unit category', async (
 
 
 for (const width of [390, 1440]) {
+  test(`empire labels only the saved homeworld at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const options = empireFixture()
+    // Put the homeworld after another planet to verify identity, not list order.
+    options.bodies[1].name = 'Nova Roma'
+    await shellFixture(page, { ...options, homeworldId: options.bodies[1].id })
+    const home = page.getByRole('article', { name: 'Nova Roma [1:380:8] dossier', exact: true })
+    const planet = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
+    const moon = page.getByRole('article', { name: 'Moon [1:371:4] dossier', exact: true })
+    await expect(home.locator('header').getByText('Homeworld', { exact: true })).toBeVisible()
+    await expect(planet.locator('header').getByText('Planet', { exact: true })).toBeVisible()
+    await expect(moon.locator('header span').filter({ hasText: /^Moon$/ })).toBeVisible()
+    await expect(page.getByText('Homeworld', { exact: true })).toHaveCount(1)
+    // Capture the normal server order, with the homeworld first.
+    options.bodies.unshift(...options.bodies.splice(1, 1))
+    await refreshGame(page)
+    await expect(page.getByRole('article').first()).toHaveAttribute('aria-label', 'Nova Roma [1:380:8] dossier')
+    await home.locator('header').scrollIntoViewIfNeeded()
+    await page.evaluate(() => scrollBy(0, -100))
+    await diagnosticScreenshot(page, { path: `test-results/empire-homeworld-label-${width}x1000.png` })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+
   test(`empire wealth and physical metadata at ${width}px`, async ({ page }) => {
     const now = new Date('2026-10-29T12:00:00Z')
     await page.clock.install({ time: now })
@@ -692,6 +715,9 @@ for (const width of [390, 1440]) {
     const home = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
     const colony = page.getByRole('article', { name: 'Planet [1:380:8] dossier', exact: true })
     const moon = page.getByRole('article', { name: 'Moon [1:371:4] dossier', exact: true })
+    // An unknown homeworld must not be inferred from the first planet.
+    await expect(home.locator('header').getByText('Planet', { exact: true })).toBeVisible()
+    await expect(page.getByText('Homeworld', { exact: true })).toHaveCount(0)
     await expect(home).toContainText('12800 km · -60 to -20 °C')
     await expect(colony).toContainText('15191 km · 24 to 64 °C')
     await expect(moon).not.toContainText('km')
