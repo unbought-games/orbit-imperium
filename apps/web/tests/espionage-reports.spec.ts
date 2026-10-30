@@ -9,16 +9,19 @@ async function expectAlignedLevels(sections: Locator[]) {
   const grids = (await Promise.all(sections.map(section => section.locator('dl').all()))).flat()
   const firstRow = (await grids[0].locator('div').first().boundingBox())!
   for (const grid of grids) {
-    const rows = await grid.locator('div').all()
+    const rows = await grid.locator(':scope > div').all()
     const first = (await rows[0].boundingBox())!
     expect(first.x).toBeCloseTo(firstRow.x, 1)
     expect(first.width).toBeCloseTo(firstRow.width, 1)
     for (const row of rows) {
       const name = (await row.locator('dt').boundingBox())!
       const level = (await row.locator('dd').boundingBox())!
-      expect(name.x + name.width).toBeLessThan(level.x)
-      expect(level.x - name.x - name.width).toBeLessThanOrEqual(16)
-      expect(Math.abs(level.y - name.y)).toBeLessThanOrEqual(3)
+      expect(level.x + level.width).toBeLessThan(name.x)
+      expect(name.x - level.x - level.width).toBeLessThanOrEqual(16)
+      expect(Math.abs(level.y + level.height / 2 - name.y - name.height / 2)).toBeLessThanOrEqual(1)
+      const hierarchy = await row.evaluate(el => ({name: parseFloat(getComputedStyle(el.querySelector('dt')!).fontSize), value: parseFloat(getComputedStyle(el.querySelector('dd strong')!).fontSize)}))
+      expect(hierarchy.value / hierarchy.name).toBeGreaterThanOrEqual(1.4)
+      await expect(row.locator('dt')).toHaveCSS('font-weight', '600')
       expect(await row.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
     }
   }
@@ -246,6 +249,11 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
             expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThanOrEqual(1)
           }
         }
+        const observed = resources.locator('[data-level-state="known"]').first()
+        const zero = resources.locator('[data-level-state="zero"]').first()
+        await expect(observed.locator('dd')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(zero.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(zero.locator('dd strong')).toHaveText('0')
         await expectAlignedLevels([buildings, research])
         const resourceBounds = await resources.boundingBox()
         const facilityBounds = await facilities.boundingBox()

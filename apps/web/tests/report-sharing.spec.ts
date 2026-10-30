@@ -402,8 +402,8 @@ for (const width of [1440, 390]) {
       await expect(page.getByText(name, {exact: true})).toHaveCount(0)
     for (const pair of await page.locator('dl > div').filter({has: page.locator('dt')}).all()) {
       const name = await pair.locator('dt').boundingBox(), level = await pair.locator('dd').boundingBox()
-      expect(level!.x - name!.x - name!.width).toBeGreaterThan(0)
-      expect(level!.x - name!.x - name!.width).toBeLessThanOrEqual(16)
+      expect(name!.x - level!.x - level!.width).toBeGreaterThan(0)
+      expect(name!.x - level!.x - level!.width).toBeLessThanOrEqual(16)
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await diagnosticScreenshot(page, {path: `test-results/shared-espionage-grouped-${width}x1000.png`, fullPage: true})

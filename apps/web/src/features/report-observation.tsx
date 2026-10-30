@@ -16,6 +16,7 @@ import type { ReactNode } from 'react'
 import { label } from '../ui/format'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
+import { reportLevel } from './report-level'
 import { groupReportBuildings } from './report-buildings'
 import { groupReportResearch } from './report-research'
 import type { ObservedLevel, ObservedLevelGroup } from './report-buildings'
@@ -85,12 +86,18 @@ function Levels({
 }) {
   return rows.length ? (
     <dl className={styles.levels}>
-      {rows.map(([name, level]) => (
-        <div key={name}>
-          <dt>{label(name)}</dt>
-          <dd>Level {text(level)}</dd>
-        </div>
-      ))}
+      {rows.map(([name, level]) => {
+        const observed = reportLevel(level)
+        return (
+          <div key={name} data-level-state={observed.state}>
+            <dt>{label(name)}</dt>
+            <dd>
+              <span className={styles.levelCaption}>Level</span>{' '}
+              <strong>{observed.value}</strong>
+            </dd>
+          </div>
+        )
+      })}
     </dl>
   ) : (
     <Text>{emptyLabel}</Text>
@@ -106,7 +113,7 @@ function GroupedLevels({
   return groups.length ? (
     groups.map(({ title, rows }) => (
       <div key={title}>
-        <h4>{title}</h4>
+        <h4 className={styles.levelGroupHeading}>{title}</h4>
         {rows.map((line) => (
           <Levels key={line[0][0]} rows={line} emptyLabel={emptyLabel} />
         ))}
