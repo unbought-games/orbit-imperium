@@ -202,7 +202,17 @@ test('espionage and combat observations use current public identities without ch
       },
     })
   })
-  await page.goto(`/u/andromeda/reports/${id(80)}?body=${body.id}`)
+  // Identity assertions start after their own response, rather than spending
+  // their assertion budget on a cold route load and legacy-URL redirect.
+  const reportProfiles = () => page.waitForResponse(response => {
+    if (!response.url().endsWith('/player-profiles') || response.status() !== 200) return false
+    const source = response.request().postDataJSON()?.source
+    return source?.type === 'Report' && source.report === id(80)
+  })
+  await Promise.all([
+    reportProfiles(),
+    page.goto(`/u/andromeda/reports/${id(80)}?body=${body.id}`),
+  ])
   const observation = page.getByRole('region', { name: 'Report observation' })
   await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
   await expect(
@@ -225,7 +235,7 @@ test('espionage and combat observations use current public identities without ch
       coordinates: { galaxy: 1, system: 1, position: 2 },
     },
   }
-  await page.reload()
+  await Promise.all([reportProfiles(), page.reload()])
   await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
   payload = {
     kind: 'Combat',
@@ -258,7 +268,7 @@ test('espionage and combat observations use current public identities without ch
     ],
     rounds: [],
   }
-  await page.reload()
+  await Promise.all([reportProfiles(), page.reload()])
   await expect(
     observation
       .getByRole('region', { name: 'Forces and losses' })
