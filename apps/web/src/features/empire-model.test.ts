@@ -358,12 +358,20 @@ it('counts legacy outbound and recalled cargo but excludes completed payloads', 
 it('shows physical metadata only when known, with current values ahead of colony fallback', () => {
   const planet = fixture().bodies[0]
   planet.fields = 163
-  expect(planetPhysicalFacts(planet)).toEqual([])
+  expect(planetPhysicalFacts(planet)).toEqual({
+    diameter: undefined,
+    temperature: undefined,
+  })
+  planet.max_temperature = 0
+  expect(planetPhysicalFacts(planet).temperature).toBe('0 °C maximum')
   planet.diameter_km = 12800
   planet.min_temperature = -40
   planet.max_temperature = 0
-  expect(planetPhysicalFacts(planet)).toEqual(['12800 km', '-40 to 0 °C'])
-  expect(planetPhysicalFacts({ ...planet, kind: 'Moon' })).toEqual([])
+  expect(planetPhysicalFacts(planet)).toEqual({
+    diameter: '12800 km',
+    temperature: '-40 to 0 °C',
+  })
+  expect(planetPhysicalFacts({ ...planet, kind: 'Moon' })).toEqual({})
   planet.colony = {
     diameter_km: 15191,
     min_temperature: 24,
@@ -371,11 +379,17 @@ it('shows physical metadata only when known, with current values ahead of colony
     created_at: 0,
     profile: 'oi-redesign-reconstructed-v1',
   }
-  expect(planetPhysicalFacts(planet)).toEqual(['12800 km', '-40 to 0 °C'])
+  expect(planetPhysicalFacts(planet)).toEqual({
+    diameter: '12800 km',
+    temperature: '-40 to 0 °C',
+  })
   delete planet.diameter_km
   delete planet.min_temperature
   delete planet.max_temperature
-  expect(planetPhysicalFacts(planet)).toEqual(['15191 km', '24 to 64 °C'])
+  expect(planetPhysicalFacts(planet)).toEqual({
+    diameter: '15191 km',
+    temperature: '24 to 64 °C',
+  })
 })
 
 it('merges missile attacks with fleets by arrival and preserves direction and body identity', () => {

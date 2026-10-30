@@ -1,6 +1,9 @@
 .topBar {
   display: contents;
 }
+.sidebar {
+  display: none;
+}
 .primary {
   grid-area: navigation;
   display: flex;
@@ -262,5 +265,144 @@
   .primary button {
     font-size: 1rem;
     padding-inline: 8px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .primary a,
+  .primary button {
+    font-size: 0.875rem;
+    padding-inline: 6px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .primary,
+  .secondary {
+    display: none;
+  }
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    left: max(0px, calc((100vw - var(--shell-max-width)) / 2));
+    width: var(--shell-sidebar-width);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    scroll-padding-block: 12px;
+    overscroll-behavior: contain;
+    background: var(--surface-navigation);
+    border-right: 1px solid var(--border-navigation);
+    padding: 20px 12px 12px;
+  }
+  .sidebar > * {
+    flex-shrink: 0;
+  }
+  .sidebarIdentity {
+    padding: 0 10px 16px;
+  }
+  .sidebarBrand {
+    font: 1.0625rem/1.2 var(--font-editorial);
+    letter-spacing: 2px;
+    --brand-mark-size: 30px;
+    --brand-gap: 12px;
+  }
+  .sidebarDestinations {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sidebarDestinations > a,
+  .sidebarDevelop a,
+  .sidebarAccount > a,
+  .sidebarDestinations button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    min-height: 36px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+  .sidebarDestinations a:hover,
+  .sidebarAccount > a:hover {
+    color: var(--champagne-light);
+    background: var(--surface-navigation-hover);
+  }
+  .sidebarDestinations a[aria-current='page'],
+  .sidebarAccount > a[aria-current='page'] {
+    color: var(--champagne-light);
+    background: var(--surface-navigation-selected);
+    box-shadow: inset 2px 0 var(--accent);
+  }
+  .sidebarDestinations > a > svg {
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+  }
+  .sidebarDevelop {
+    border-left: 1px solid var(--border-navigation);
+    margin: 0 0 6px 19px;
+    padding-left: 8px;
+  }
+  .sidebar .sidebarDevelop a,
+  .sidebar .sidebarDevelop button {
+    min-height: 28px;
+    padding: 4px 10px;
+    font-size: 0.8125rem;
+  }
+  .sidebarLabel {
+    margin: 16px 10px 4px;
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .sidebar .activityBadge {
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+  }
+  .sidebar .unreadBadge {
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+  }
+  .sidebar .unreadBadge svg {
+    width: 12px;
+    height: 12px;
+  }
+  .sidebarAccount {
+    margin-top: auto;
+    padding-top: 16px;
+  }
+  .sidebarPlayer {
+    border-top: 1px solid var(--border-navigation);
+    margin: 8px 6px 0;
+    padding-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+  .sidebarPlayer > button {
+    flex-shrink: 0;
+  }
+}
+
+@media (min-width: 1024px) and (pointer: coarse) {
+  .sidebarDestinations a,
+  .sidebarDestinations button,
+  .sidebar .sidebarDevelop a,
+  .sidebar .sidebarDevelop button,
+  .sidebarAccount > a,
+  .sidebarPlayer > button {
+    min-height: var(--control-size);
   }
 }

@@ -216,6 +216,8 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
         data-testid="command-orb"
         data-tone={appearance.tone}
         data-updated={caption?.category === 'updated' || undefined}
+        aria-haspopup="dialog"
+        aria-expanded={hud.selection !== null}
         aria-label={`${appearance.tone === 'red' ? 'Threat detected. ' : ''}${unreadCount ? `${unreadCount === 99 ? '99 or more' : unreadCount} unread items. ` : unread ? 'Unread intelligence. ' : ''}Open command HUD`}
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}

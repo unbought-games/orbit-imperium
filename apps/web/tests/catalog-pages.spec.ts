@@ -1,3 +1,4 @@
+import { navigate } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
@@ -414,13 +415,6 @@ test('facility tiles mark insufficient resources while remaining inspectable', a
   await expect(tile).not.toHaveAttribute('title', /Not enough resources/)
 })
 
-const navigate = async (page: Page, name: string) => {
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Navigation' })
-    .getByRole('link', { name, exact: true })
-    .click()
-}
 
 async function expectLegibleInspector(pane: Locator) {
   // Details appear in place immediately, with prices and blockers fully visible.
@@ -543,7 +537,10 @@ for (const width of [1440, 390, 320]) {
         await expect(queue).toBeVisible()
         // Every catalog starts with work; ship comparison follows the ship tiles.
         const queueBounds = (await queue.boundingBox())!
-        const tabs = (await page.getByRole('navigation', { name: 'Develop navigation' }).boundingBox())!
+        const navigation = width >= 1024
+          ? page.getByRole('group', { name: 'Planet and resources' })
+          : page.getByRole('navigation', { name: 'Develop navigation' })
+        const tabs = (await navigation.boundingBox())!
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeGreaterThanOrEqual(0)
         expect(queueBounds.y - (tabs.y + tabs.height)).toBeLessThanOrEqual(20)
       }
