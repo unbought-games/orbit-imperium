@@ -414,7 +414,7 @@ pub(super) fn report(
         let cargo = values(&e.resources)?.values().map(|n| n.to_string());
         match kind.to_ascii_lowercase().as_str() {
             "transport" | "delivered" | "transportdelivered" => {
-                serde_json::json!({"kind":"Delivered","origin":body.id,"target":body.id,"cargo":{"metal":cargo[0],"crystal":cargo[1],"deuterium":cargo[2]},"at":i.at})
+                serde_json::json!({"kind":"Delivered","sender":owner,"recipient":owner,"origin":body.coordinates,"target":body.coordinates,"cargo":{"metal":cargo[0],"crystal":cargo[1],"deuterium":cargo[2]},"at":i.at})
             }
             "espionage" | "spy" => {
                 serde_json::json!({"kind":"Espionage","target":{"body":body.id,"name":body.name,"coordinates":body.coordinates,"owner":owner,"kind":"Planet"},"observed_at":i.at,"resources":{"visibility":"Known","value":{"metal":cargo[0],"crystal":cargo[1],"deuterium":cargo[2]}},"fleet":{"visibility":"Unknown"},"defenses":{"visibility":"Unknown"},"buildings":{"visibility":"Unknown"},"research":{"visibility":"Unknown"},"activity":{"type":"None"},"counterespionage":{"probability_ppm":0,"detected":false}})

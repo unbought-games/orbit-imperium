@@ -1,3 +1,4 @@
+import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import type { components } from '../src/contracts'
@@ -93,13 +94,13 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
   await expect(
     cards.nth(3).getByRole('button', { name: /Supporter/ }),
   ).toHaveCount(0)
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
-  await expect(page.getByLabel('Username', { exact: true })).toContainText(
+  await openNavigation(page)
+  await expect(page.getByLabel('Username', { exact: true }).filter({ visible: true })).toContainText(
     'MyCommander',
   )
   await expect(
     page
-      .getByLabel('Username', { exact: true })
+      .getByLabel('Username', { exact: true }).filter({ visible: true })
       .getByRole('img', { name: /Supporter/ }),
   ).toBeVisible()
   await page.keyboard.press('Escape')

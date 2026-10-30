@@ -1,11 +1,8 @@
 import { expect, type Page } from '@playwright/test'
+import { menuDestination } from './navigation'
 
 export async function openProductionSettings(page: Page) {
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Navigation' })
-    .getByRole('link', { name: 'Resource settings', exact: true })
-    .click()
+  await (await menuDestination(page, 'Resource settings')).click()
   await expect(
     page.getByRole('region', { name: 'Production controls' }),
   ).toBeVisible()

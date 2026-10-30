@@ -1,3 +1,4 @@
+import { navigate, menuDestination } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
@@ -1482,11 +1483,7 @@ test('active construction stays visible without covering current work at enlarge
   await expect(
     page.getByRole('complementary', { name: 'Activity' }),
   ).toHaveCount(0)
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Navigation' })
-    .getByRole('link', { name: 'Resources', exact: true })
-    .click()
+  await navigate(page, 'Resources')
   await page
     .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
@@ -1741,13 +1738,12 @@ for (const width of [1440, 390, 320]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`Menu opens resource settings with history and reload support at ${width}px`, async ({ page }) => {
+  test(`resource settings navigation preserves history and reload support at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await setup(page)
     await page.getByRole('link', { name: 'Empire', exact: true }).click()
-    await page.getByRole('button', { name: 'Menu', exact: true }).click()
     const menu = page.getByRole('dialog', { name: 'Navigation' })
-    const settings = menu.getByRole('link', { name: 'Resource settings', exact: true })
+    const settings = await menuDestination(page, 'Resource settings')
     await expect(settings).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
     await settings.focus()
     await page.keyboard.press('Enter')
@@ -1755,7 +1751,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator('main h1')).toHaveText('Resource settings')
     await expect(page.locator('main h1')).toBeFocused()
     await expect(page.getByRole('link', { name: 'Develop', exact: true })).toHaveAttribute('aria-current', 'page')
-    await expect(page.getByRole('button', { name: 'Menu', exact: true })).not.toHaveAttribute('aria-current')
+    if (width < 1024) await expect(page.getByRole('button', { name: 'Menu', exact: true })).not.toHaveAttribute('aria-current')
     await expect(page.getByRole('navigation', { name: 'Develop navigation', exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true })).toHaveCount(0)
@@ -1793,6 +1789,8 @@ for (const protocol of [2, 3, 4] as const) {
       await expect(page.getByRole('region', { name: 'Resource buildings', exact: true }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
     }
     await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveCount(0)
+    await page.setViewportSize({ width: 390, height: 844 })
     await page.getByRole('button', { name: 'Menu', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Navigation' }).getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()
     await page.goto(`/u/andromeda/b/${body.id}/resource-settings`)
