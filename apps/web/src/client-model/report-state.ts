@@ -49,7 +49,7 @@ export function preferenceReports(
 }
 
 // A committed receipt is authoritative for every preference in the batch.
-// Its revision prevents older list/detail responses undoing successful deletion.
+// Its revision prevents older list/detail responses undoing successful archiving.
 export function acceptReportVisibility(
   headers: ReportHeaders,
   attempt: Attempt,
@@ -69,9 +69,6 @@ export function acceptReportVisibility(
           ? { starred: action.starred }
           : {
               hidden: action.hidden,
-              ...(action.hidden && previous.header.shared
-                ? { shared: false }
-                : {}),
             }),
     })
   }

@@ -60,5 +60,7 @@ export function groupReportResearch(value: Record<string, unknown>) {
         a < b ? -1 : a > b ? 1 : 0,
       ),
     },
-  ].filter((group) => group.rows.length > 0)
+  ]
+    .filter((group) => group.rows.length > 0)
+    .map((group) => ({ ...group, rows: [group.rows] }))
 }

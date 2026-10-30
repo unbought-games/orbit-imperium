@@ -238,6 +238,8 @@ fn historical_rules_transport_restart_keeps_cargo_fuel_deadlines_and_single_comp
 }
 fn transport_restart(r: Ruleset) {
     let (mut s, r, p, b, t) = fixture_with_rules(r);
+    s.bodies.get_mut(&b).unwrap().name = Some("Origin at delivery".into());
+    s.bodies.get_mut(&t).unwrap().name = Some("Destination at delivery".into());
     let intent = intent(&s, p, b, t);
     let value = value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap();
     let q = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
@@ -296,6 +298,32 @@ fn transport_restart(r: Ruleset) {
     assert_eq!(
         s.bodies[&t].checkpoint.amounts.metal,
         before.amounts.metal + 10 * SCALE
+    );
+    let delivered = s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .reports
+        .values()
+        .find(|report| report.kind == "Delivered")
+        .unwrap();
+    for payload in delivered.payloads.values() {
+        assert_eq!(payload["origin_name"], "Origin at delivery");
+        assert_eq!(payload["target_name"], "Destination at delivery");
+    }
+    s.bodies.get_mut(&b).unwrap().name = Some("Renamed later".into());
+    assert_eq!(
+        s.world
+            .as_ref()
+            .unwrap()
+            .records
+            .reports
+            .values()
+            .find(|report| report.kind == "Delivered")
+            .unwrap()
+            .payloads[&p]["origin_name"],
+        "Origin at delivery"
     );
     assert_eq!(c.events[0].at - event.at, q.duration_ms);
     let result = run(&mut s, &r, p, b, event.at, 102, Input::Event(event.event));

@@ -6895,6 +6895,10 @@ export interface components {
             origin: components["schemas"]["Coordinates"];
             target: components["schemas"]["Coordinates"];
             cargo: components["schemas"]["Resources"];
+            /** @description Planet name observed at delivery; absent on older reports. */
+            origin_name?: string;
+            /** @description Planet name observed at delivery; absent on older reports. */
+            target_name?: string;
         };
         MissionOutcomePayload4: {
             /** @enum {unknown} */
@@ -7295,6 +7299,10 @@ export interface components {
             origin?: components["schemas"]["Coordinates"];
             target?: components["schemas"]["Coordinates"];
             cargo?: components["schemas"]["Resources"];
+            /** @description Planet name observed at delivery; absent on older reports. */
+            origin_name?: string;
+            /** @description Planet name observed at delivery; absent on older reports. */
+            target_name?: string;
         } | {
             /** @enum {unknown} */
             kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed" | "Deployed";

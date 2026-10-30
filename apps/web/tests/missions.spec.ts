@@ -264,16 +264,16 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
   await expect
     .poll(async () => (await reportState())?.data.header.read)
     .toBe(true)
-  await page.getByRole('button', { name: 'Delete report', exact: true }).click()
+  await page.getByRole('button', { name: 'Archive report', exact: true }).click()
   await expect(
-    page.getByRole('button', { name: 'Restore report', exact: true }),
+    page.getByRole('button', { name: 'Move to inbox', exact: true }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Restore report', exact: true }).click()
+  await page.getByRole('button', { name: 'Move to inbox', exact: true }).click()
   await expect
     .poll(async () => (await reportState())?.data.header.hidden)
     .toBe(false)
   await expect(
-    page.getByRole('button', { name: 'Delete report', exact: true }),
+    page.getByRole('button', { name: 'Archive report', exact: true }),
   ).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/missions-report-mobile.png',

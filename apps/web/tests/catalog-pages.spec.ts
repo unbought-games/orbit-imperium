@@ -1539,7 +1539,7 @@ test(`Ion Technology shows readable field notes, prerequisite progress, costs an
   await notes.scrollIntoViewIfNeeded()
   await diagnosticScreenshot(page, { path: `test-results/ion-field-notes-${width}.png` })
   await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-  const dialog = page.getByRole('dialog')
+  const dialog = page.getByRole('dialog', { name: 'Technology — Ion Technology', exact: true })
   await expect(dialog).toContainText('Research Lab')
   await expect(dialog).toContainText('Energy Technology')
   await expect(dialog).toContainText('Laser Technology')

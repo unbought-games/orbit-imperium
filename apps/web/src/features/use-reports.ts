@@ -30,6 +30,7 @@ export function useReports(
   item: string | null,
   all = false,
   holdInbox = false,
+  includeHidden = false,
 ) {
   const headers = useStore(model.store, (s) => s.reportHeaders)
   const attempts = useStore(model.store, (s) => s.attempts)
@@ -44,7 +45,7 @@ export function useReports(
   )
   const [state, dispatch] = useReducer(reportsReducer, emptyReports)
   const [refresh, setRefresh] = useState(0)
-  const owner = useRef({ model, binding })
+  const owner = useRef({ model, binding, includeHidden })
   const active = useRef<ReportsRequest | null>(null)
   const sequence = useRef(0)
   // One read gesture per opened report, including across server refreshes.
@@ -79,7 +80,7 @@ export function useReports(
       const result =
         kind === 'detail' && item
           ? await model.reportDetail(item)
-          : await model.reportPage(cursor, false)
+          : await model.reportPage(cursor, includeHidden)
       if (!current()) return
       if (!result || ('header' in result && result.header.id !== item)) {
         active.current = null
@@ -112,8 +113,10 @@ export function useReports(
   useLayoutEffect(() => {
     active.current = null
     const rebound =
-      owner.current.model !== model || owner.current.binding !== binding
-    owner.current = { model, binding }
+      owner.current.model !== model ||
+      owner.current.binding !== binding ||
+      owner.current.includeHidden !== includeHidden
+    owner.current = { model, binding, includeHidden }
     dispatch(rebound ? { type: 'reset' } : { type: 'navigate', item })
     // A pending preference blocks pagination, not access to an uncached inbox
     // or detail (including recovery after an uncertain command).
@@ -130,7 +133,17 @@ export function useReports(
     // releases the hold and reloads the complete inbox once.
     // Cached pages are intentionally retained across view revisions/navigation.
     // Only request context changes trigger loading, not request completions.
-  }, [model, binding, item, scope, refresh, changingVisibility, all, holdInbox])
+  }, [
+    model,
+    binding,
+    item,
+    scope,
+    refresh,
+    changingVisibility,
+    all,
+    holdInbox,
+    includeHidden,
+  ])
 
   useLayoutEffect(() => {
     if (
@@ -171,7 +184,7 @@ export function useReports(
       ...state.page,
       items: state.page.items.flatMap((id) => {
         const header = projectedReportHeader(headers, attempts.values(), id)
-        return header && !header.hidden ? [header] : []
+        return header && (includeHidden || !header.hidden) ? [header] : []
       }),
     },
     detail:

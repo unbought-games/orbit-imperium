@@ -24,11 +24,11 @@ export function actionLabel(command: Command): string {
   if (command.type === 'World' && command.action.type === 'SetReportStarred')
     return command.action.starred ? 'Star report' : 'Unstar report'
   if (command.type === 'World' && command.action.type === 'SetReportsHidden')
-    return command.action.hidden ? 'Delete reports' : 'Restore reports'
+    return command.action.hidden ? 'Archive reports' : 'Move reports to inbox'
   if (command.type === 'StartManufacture')
     return `${command.quantity} × ${label(command.item.id)}`
   if (command.type === 'World' && command.action.type === 'SetReportHidden')
-    return command.action.hidden ? 'Delete report' : 'Restore report'
+    return command.action.hidden ? 'Archive report' : 'Move to inbox'
   return label(command.type === 'World' ? command.action.type : command.type)
 }
 export function actionMessage(a: Attempt): string {

@@ -32,7 +32,7 @@ async fn wait_for_lock(pool: &sqlx::PgPool, query: &str) {
     }).await.expect("operation should reach the held database lock");
 }
 #[tokio::test]
-async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_with_reports() {
+async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved_when_archived() {
     let url = std::env::var("TEST_DATABASE_URL").unwrap();
     let store = PgStore::connect(&url).await.unwrap();
     store.migrate().await.unwrap();
@@ -318,8 +318,8 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
     .execute(&pool)
     .await
     .unwrap();
-    // Stars protect the report and its shared link. Once unstarred, deletion
-    // revokes the link; restoring the report must not revive it.
+    // Stars protect against accidental archiving. Archiving/restoration preserve
+    // active links, and neither action resurrects a previously revoked token.
     for (action, rejected, link_present) in [
         (
             WorldAction::SetReportsHidden {
@@ -351,7 +351,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
                 hidden: true,
             },
             false,
-            false,
+            true,
         ),
         (
             WorldAction::SetReportsHidden {
@@ -359,7 +359,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
                 hidden: false,
             },
             false,
-            false,
+            true,
         ),
         (
             WorldAction::SetReportHidden {
@@ -367,7 +367,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
                 hidden: true,
             },
             false,
-            false,
+            true,
         ),
         (
             WorldAction::SetReportHidden {
@@ -375,7 +375,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
                 hidden: false,
             },
             false,
-            false,
+            true,
         ),
     ] {
         let command_id = CommandId(Uuid::new_v4());
@@ -448,7 +448,92 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_deleted_w
             ));
         }
         assert!(game.shared_report(other_token).await.is_ok());
+        assert!(matches!(
+            game.shared_report(token).await,
+            Err(ServiceError::NotFound)
+        ));
+        let status = game
+            .report_share(principal(a), id, request(a, ReportShareAction::Status))
+            .await
+            .unwrap();
+        assert_eq!(status.token, Some(new_token));
+        assert!(status.header.shared);
     }
+    // An old archived recipient without a share stays unshared. Browse every
+    // page, including archives, then revoke an active link while archived.
+    sqlx::query(
+        "UPDATE mission_report_recipients SET hidden=true WHERE report=ANY($1) AND recipient=$2",
+    )
+    .bind(vec![id.0, second.0])
+    .bind(a.player.0)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let mut query = ReportsQuery4 {
+        context: QueryContext {
+            binding: a,
+            request_id: Uuid::new_v4(),
+        },
+        cursor: None,
+        kind: None,
+        limit: 1,
+        include_hidden: true,
+    };
+    let mut archived = Vec::new();
+    loop {
+        let page = game
+            .reports4(principal(a), query.clone())
+            .await
+            .unwrap()
+            .facts
+            .data;
+        archived.extend(
+            page.items
+                .iter()
+                .filter(|header| header.hidden)
+                .map(|header| header.id),
+        );
+        if !page.has_more {
+            break;
+        }
+        query.cursor = page.next_cursor;
+    }
+    assert!(archived.contains(&id));
+    assert!(archived.contains(&second));
+    let never_shared = game
+        .report_share(principal(a), second, request(a, ReportShareAction::Status))
+        .await
+        .unwrap();
+    assert_eq!(never_shared.token, None);
+    game.report_share(principal(a), id, request(a, ReportShareAction::Revoke))
+        .await
+        .unwrap();
+    assert!(matches!(
+        game.shared_report(new_token).await,
+        Err(ServiceError::NotFound)
+    ));
+    sqlx::query(
+        "UPDATE mission_report_recipients SET hidden=false WHERE report=ANY($1) AND recipient=$2",
+    )
+    .bind(vec![id.0, second.0])
+    .bind(a.player.0)
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        game.report_share(principal(a), id, request(a, ReportShareAction::Status))
+            .await
+            .unwrap()
+            .token,
+        None
+    );
+    assert_eq!(
+        game.report_share(principal(a), second, request(a, ReportShareAction::Status))
+            .await
+            .unwrap()
+            .token,
+        None
+    );
     sqlx::query("DELETE FROM mission_report_recipients WHERE report=$1 AND recipient=$2")
         .bind(id.0)
         .bind(b.player.0)

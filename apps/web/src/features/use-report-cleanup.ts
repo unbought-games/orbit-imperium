@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
-import { deleteReportSelection } from './report-cleanup'
+import { changeReportSelection } from './report-cleanup'
 type Header = components['schemas']['ReportHeader4']
 export function useReportCleanup(
   model: Coordinator,
@@ -9,14 +9,15 @@ export function useReportCleanup(
 ) {
   const [submitting, setSubmitting] = useState(false)
   const [failure, setFailure] = useState<'cooldown' | 'other' | null>(null)
-  async function remove(rows: Header[]) {
+  async function remove(rows: Header[], hidden = true) {
     if (submitting) return
     setSubmitting(true)
     setFailure(null)
     try {
-      await deleteReportSelection(
+      await changeReportSelection(
         model,
         rows.map((row) => row.id),
+        hidden,
       )
       clearSelection()
     } catch {
@@ -31,7 +32,7 @@ export function useReportCleanup(
     failure === 'cooldown'
       ? coolingDown || state.stale
         ? ''
-        : 'Cooldown over. Delete the remaining selected reports when you’re ready.'
+        : 'Cooldown over. Retry the remaining selected reports when you’re ready.'
       : failure === 'other'
         ? 'Cleanup stopped. Check the remaining reports before trying again.'
         : ''

@@ -259,3 +259,14 @@ it('keeps a batch failure until all affected reports have later confirmed visibi
   ledger.set('retry', { ...bulkAttempt('committed'), reconciled: true })
   expect(supersededReportFailures(ledger).map(([id]) => id)).toEqual(['batch'])
 })
+
+it('single and bulk archive receipts preserve active sharing without reviving revoked links', () => {
+  for (const shared of [true, false]) {
+    const source = mergeReportHeaders(headers, [{ ...header, shared }], '1')
+    for (const command of [attempt('committed'), bulkAttempt('committed')]) {
+      expect(
+        acceptReportVisibility(source, command, receipt).get('report')?.header,
+      ).toMatchObject({ hidden: true, shared })
+    }
+  }
+})

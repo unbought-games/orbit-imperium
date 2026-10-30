@@ -13899,6 +13899,14 @@
           },
           "cargo": {
             "$ref": "#/components/schemas/Resources"
+          },
+          "origin_name": {
+            "type": "string",
+            "description": "Planet name observed at delivery; absent on older reports."
+          },
+          "target_name": {
+            "type": "string",
+            "description": "Planet name observed at delivery; absent on older reports."
           }
         },
         "required": [
@@ -15677,6 +15685,14 @@
               },
               "cargo": {
                 "$ref": "#/components/schemas/Resources"
+              },
+              "origin_name": {
+                "type": "string",
+                "description": "Planet name observed at delivery; absent on older reports."
+              },
+              "target_name": {
+                "type": "string",
+                "description": "Planet name observed at delivery; absent on older reports."
               }
             },
             "required": [
