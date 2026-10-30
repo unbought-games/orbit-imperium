@@ -189,7 +189,7 @@ for (const viewport of [
     await expect(back.locator('svg.lucide-arrow-left')).toBeVisible()
     const remove = page.getByRole('button', { name: 'Archive report' })
     await expect(remove).toHaveText('')
-    await expect(remove.locator('svg.lucide-trash-2')).toBeVisible()
+    await expect(remove.locator('svg.lucide-archive')).toBeVisible()
     const timestamp = page.getByRole('button', { name: 'Report time details' })
     await expect(timestamp).toHaveText('1 hour ago')
     await timestamp.click()
