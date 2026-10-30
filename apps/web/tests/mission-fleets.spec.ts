@@ -436,7 +436,14 @@ for (const screen of ['fleets', 'overview'] as const) {
         page.getByRole('article', { name: 'Attack fleet' }),
       ).not.toHaveAttribute('data-clickable')
       await page.goBack()
+      await expect(page).toHaveURL(path)
       await expect(row).toBeVisible()
+      // The shell restores heading focus and scroll in a paint callback after
+      // history navigation. Finish that callback before positioning the mouse.
+      await expect(page.locator('main h1')).toBeFocused()
+      await page.evaluate(() => new Promise<void>(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ))
       await row.evaluate((el) =>
         window.scrollBy(0, el.getBoundingClientRect().top - 80),
       )

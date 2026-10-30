@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import styles from './navigation.module.css'
 import { Button } from '../ui/button'
-import { BrandLogo, BrandWordmark } from '../ui/brand'
+import { Brand, BrandLogo, BrandWordmark } from '../ui/brand'
 import { Link } from '../ui/link'
 import {
   useEffect,
@@ -55,12 +55,19 @@ export function Navigation({
 }) {
   const universeName = useUniverseName()
   const dialog = useRef<HTMLDialogElement>(null)
+  const sidebar = useRef<HTMLElement>(null)
   const opener = useRef<HTMLElement | null>(null)
   const menuId = useId()
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 1024px)')
     const closeOnDesktop = () => {
       if (!desktop.matches || !dialog.current?.open) return
+      // The menu button disappears at this breakpoint. Restore focus to the
+      // equivalent visible navigation instead of its now-hidden opener.
+      opener.current =
+        sidebar.current?.querySelector(
+          '[data-analytics][aria-current="page"]',
+        ) ?? null
       dialog.current.close()
     }
     desktop.addEventListener('change', closeOnDesktop)
@@ -89,7 +96,11 @@ export function Navigation({
           <span className={styles.activityBadge} aria-hidden="true" />
         )}
         {p === 'reports' && hasUnreadReports && (
-          <span className={styles.unreadBadge} aria-label="Unread reports">
+          <span
+            className={styles.unreadBadge}
+            role="status"
+            aria-label="Unread reports"
+          >
             <Mail size={16} aria-hidden="true" />
           </span>
         )}
@@ -181,6 +192,55 @@ export function Navigation({
   )
   return (
     <>
+      <aside
+        ref={sidebar}
+        className={styles.sidebar}
+        aria-label="Game navigation"
+      >
+        <div className={styles.sidebarIdentity}>
+          <Brand
+            className={styles.sidebarBrand}
+            {...routeTarget(universeName, 'overview', body)}
+          />
+        </div>
+        <nav
+          className={styles.sidebarDestinations}
+          aria-label="Main navigation"
+          data-touch-control=""
+        >
+          {destination('overview', 'Empire', Orbit, true)}
+          {destination('resources', 'Develop', Blocks, true)}
+          <nav
+            className={styles.sidebarDevelop}
+            aria-label="Develop navigation"
+          >
+            {buildPages.map((p) => destination(p))}
+          </nav>
+          {destination('galaxy', 'Galaxy', Telescope, true)}
+          {destination('fleets', 'Fleets', Radar, true)}
+          {destination('reports', 'Reports', Mail)}
+          <h2 className={styles.sidebarLabel}>Community</h2>
+          {destination('alliance')}
+          {destination('messages')}
+          {destination('high-scores')}
+        </nav>
+        <div className={styles.sidebarAccount}>
+          {destination('settings')}
+          <div className={styles.sidebarPlayer}>
+            <span className={styles.username} aria-label="Username">
+              <PlayerName player={view.binding.player} fallback="Commander" />
+            </span>
+            <Button
+              variant="ghost"
+              size="icon-small"
+              aria-label="Sign out"
+              onClick={onLogout}
+            >
+              <LogOut size={17} aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      </aside>
       <div className={styles.topBar} data-sticky-navigation>
         {children(primaryNavigation)}
         {selected === 'Develop' && (

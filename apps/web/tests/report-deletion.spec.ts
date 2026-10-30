@@ -387,17 +387,21 @@ test('failed or abandoned report loads do not mark reports read', async ({ page 
 for (const fail of [false, true]) {
   test(`late load-more ${fail ? 'failure' : 'success'} cannot change a refreshed inbox`, async ({ page }) => {
     const fixture = await reportsFixture(page)
+    // Wait for the HUD to finish its initial pagination before holding the UI continuation.
+    await expect(page.getByTestId('unread-count')).toHaveText('1')
+    const initialRequests = fixture.pageRequests.length
     let release!: () => void
     fixture.holdMore(new Promise<void>(resolve => { release = resolve }), fail)
     await page.getByRole('button', { name: 'Load more reports' }).click()
-    await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null)).toEqual([id(72)])
+    await expect.poll(() => fixture.pageRequests.slice(initialRequests).filter(cursor => cursor !== null)).toEqual([id(72)])
     const requestCount = fixture.pageRequests.length
     // Refresh the first page while its old continuation is still in flight.
     fixture.headers[0].hidden = true
     fixture.bumpRevision()
-    await refreshGame(page)
+    // Reconnection adopts a new revision; the HUD and inbox each refresh once.
+    await page.evaluate(() => window.dispatchEvent(new Event('online')))
     const rows = page.locator('main article')
-    await expect.poll(() => fixture.pageRequests.slice(requestCount)).toEqual([null])
+    await expect.poll(() => fixture.pageRequests.slice(requestCount)).toEqual([null, null])
     await expect(rows).toHaveCount(1)
     await expect(rows.first().getByLabel('Unread', { exact: true })).toBeVisible()
     const response = page.waitForResponse(r => r.url().endsWith('/reports') && r.request().postDataJSON().cursor === id(72))
@@ -628,9 +632,8 @@ for (const width of [1280, 390]) {
     fixture.headers[0].preview = { kind: 'Espionage', resources: { visibility: 'Unknown' } }
     fixture.headers[1].preview = { kind: 'Espionage', resources: { visibility: 'Known', value: { metal: '1000000', crystal: '9000000', deuterium: '0' } } }
     fixture.headers[1].starred = true
-    // The mobile HUD independently hydrates the unread badge. Finish that
-    // background page before measuring the triage operation's own request.
-    if (width < 768) await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(1)
+    // Every viewport hydrates the HUD badge before triage requests its own continuation.
+    await expect(page.getByTestId('unread-count')).toHaveText('1')
     const beforeTriage = fixture.pageRequests.filter(cursor => cursor !== null).length
     let release!: () => void
     fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
@@ -700,8 +703,8 @@ for (const width of [1440, 390]) {
       await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
       await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
       expect(fixture.submitted()).toBe(1)
-      // Mobile mounts a HUD reader alongside the open inbox; each refreshes once.
-      await expect.poll(() => fixture.pageRequests.slice(before)).toEqual(width < 768 ? [null, null] : [null])
+      // Every viewport mounts a HUD reader alongside the open inbox; each refreshes once.
+      await expect.poll(() => fixture.pageRequests.slice(before)).toEqual([null, null])
     })
   }
 }

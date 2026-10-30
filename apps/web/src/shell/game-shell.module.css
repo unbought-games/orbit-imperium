@@ -1,6 +1,8 @@
 .game-shell {
+  --shell-max-width: 1800px;
+  --shell-sidebar-width: 224px;
   --shell-inline-gutter: clamp(18px, 2.5vw, 48px);
-  max-width: 1800px;
+  max-width: var(--shell-max-width);
   min-height: 100dvh;
   margin: auto;
   padding: 0 var(--shell-inline-gutter);
@@ -225,12 +227,27 @@
   }
 }
 
+/* Keep all four resource controls legible beside tablet navigation. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .brand {
+    min-width: var(--control-size);
+  }
+  .brand > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 /* A floating command orb must never make the last row's controls unreachable. */
 @media (max-width: 767px) {
-  .game-shell[data-mobile-hud] {
+  .game-shell[data-has-command-hud] {
     padding-bottom: calc(230px + env(safe-area-inset-bottom));
   }
-  .game-shell[data-mobile-hud]
+  .game-shell[data-has-command-hud]
     .work-area
     :where(button, a, input, select, textarea, [tabindex]) {
     scroll-margin-block-end: calc(230px + env(safe-area-inset-bottom));
@@ -240,4 +257,43 @@
 .headerSlots {
   margin-inline-start: auto;
   flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .game-shell[data-has-command-hud] {
+    padding-bottom: 160px;
+  }
+  .game-shell[data-has-command-hud]
+    .work-area
+    :where(button, a, input, select, textarea, [tabindex]) {
+    scroll-margin-block-end: 160px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .game-shell {
+    padding-left: calc(var(--shell-sidebar-width) + var(--shell-inline-gutter));
+  }
+  .header {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'world';
+    background: var(--surface-page);
+    /* The fixed navigation must use the viewport as its containing block. */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom-color: var(--border-navigation);
+  }
+  .identity {
+    display: none;
+  }
+  .worldBar {
+    grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+    grid-template-areas: 'context resources';
+    min-height: 82px;
+    gap: 24px;
+  }
+  .masthead {
+    justify-self: end;
+    width: min(100%, 620px);
+  }
 }

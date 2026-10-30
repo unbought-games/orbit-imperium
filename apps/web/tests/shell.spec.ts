@@ -1,7 +1,7 @@
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { navigate } from './fixtures/navigation'
+import { navigate, openNavigation } from './fixtures/navigation'
 import { confirmCancellation } from './fixtures/confirmation'
 import { test, expect } from './fixtures/test'
 import {
@@ -40,8 +40,8 @@ test('supporter claims color the shared account identity after sign-in and clear
   for (const next of [1, 2, 3]) {
     tier = next
     await page.reload()
-    await page.getByRole('button', { name: 'Menu', exact: true }).click()
-    const identity = page.getByLabel('Username', { exact: true })
+    const navigation = await openNavigation(page)
+    const identity = navigation.getByLabel('Username', { exact: true })
     await expect(
       identity.getByRole('img', {
         name: `Supporter · $${amounts[next - 1]} / month USD`,
@@ -53,10 +53,7 @@ test('supporter claims color the shared account identity after sign-in and clear
     )
     await expect(identity.locator('svg')).toHaveClass(/lucide-star/)
   }
-  await page
-    .getByRole('dialog')
-    .getByRole('link', { name: 'Settings', exact: true })
-    .click()
+  await navigate(page, 'Settings')
   await expect(
     page.getByText('Supporter · Thank you for supporting unbought games.'),
   ).toBeVisible()
@@ -469,15 +466,20 @@ for (const width of [768, 1440, 1920]) {
     await shellFixture(page)
     await page.getByRole('link', { name: 'Develop', exact: true }).click()
     const submenu = page.getByRole('navigation', { name: 'Develop navigation' })
-    const header = page.getByRole('banner').locator('..')
+    const header = page.getByRole('group', { name: 'Planet and resources' }).locator('../..')
     const content = (await page.locator('main#main').boundingBox())!
-    for (const divider of [header, submenu]) {
+    for (const divider of width < 1024 ? [header, submenu] : [header]) {
       const bounds = (await divider.boundingBox())!
       expect(bounds.x).toBeCloseTo(content.x, 1)
       expect(bounds.x + bounds.width).toBeCloseTo(content.x + content.width, 1)
     }
     await expect(header).toHaveCSS('border-bottom-width', '1px')
-    await expect(submenu).toHaveCSS('border-top-width', '1px')
+    if (width < 1024) await expect(submenu).toHaveCSS('border-top-width', '1px')
+    else {
+      await expect(submenu).toHaveCSS('border-left-width', '1px')
+      const bounds = (await submenu.boundingBox())!
+      expect(bounds.x + bounds.width).toBeLessThan(content.x)
+    }
     await diagnosticScreenshot(page, { path: `test-results/header-dividers-${width}.png` })
   })
 }
@@ -774,12 +776,11 @@ test('compact shell exposes resource details and switches bodies without purchas
     name: 'Main navigation',
     exact: true,
   })
-  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop'])
+  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop', 'Resources', 'Facilities', 'Research', 'Shipyard', 'Defense'])
   await expect(
     nav.getByRole('button', { name: 'Fleets', exact: true }),
   ).toBeDisabled()
-  await nav.getByRole('button', { name: 'Menu', exact: true }).click()
-  const menu = page.getByRole('dialog', { name: 'Navigation' })
+  const menu = page.getByRole('complementary', { name: 'Game navigation' })
   await expect(menu.getByRole('button', { name: 'Alliance', exact: true })).toBeDisabled()
   await expect(menu.getByRole('button', { name: 'Galaxy' })).toBeDisabled()
   await expect(
@@ -794,7 +795,7 @@ test('compact shell exposes resource details and switches bodies without purchas
   expect(purchases()).toBe(0)
 })
 
-test('desktop uses a persistent horizontal ledger and no permanent rails', async ({
+test('planet ledger retains its borders beside the desktop sidebar', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -814,9 +815,10 @@ test('desktop uses a persistent horizontal ledger and no permanent rails', async
     }
     const bounds = await bar.boundingBox()
     const content = await page.locator('main').boundingBox()
-    expect(bounds!.x).toBeGreaterThan(content!.x)
+    if (width < 1024) expect(bounds!.x).toBeGreaterThan(content!.x)
+    else expect(bounds!.x).toBeCloseTo(content!.x, 1)
     expect(bounds!.x + bounds!.width).toBeCloseTo(content!.x + content!.width, 1)
-    expect(bounds!.height).toBe(64)
+    expect(bounds!.height).toBe(width < 1024 ? 64 : 82)
     expect(
       (
         await bar.getByRole('button', { name: 'Metal details' }).innerText()
@@ -861,11 +863,10 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
     const brand = page.getByRole('link', {
       name: 'ORBIT IMPERIUM',
       exact: true,
-      includeHidden: true,
     })
     const universe = page.getByLabel('Current universe')
     if (width < 768) {
-      await expect(brand).toBeHidden()
+      await expect(brand).toHaveCount(0)
       await expect(universe).toBeHidden()
       const ledger = await page.getByLabel('Current resources').boundingBox()
       const content = await page.locator('main').boundingBox()
@@ -987,8 +988,9 @@ test('world shell omits the utility row and opens defense production from its su
     page.getByRole('button', { name: 'Planet information details' }),
   ).toHaveCount(0)
   await expect(
-    page.getByRole('link', { name: 'Reports', exact: true }),
+    page.locator('main').getByRole('link', { name: 'Reports', exact: true }),
   ).toHaveCount(0)
+  await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
   await expect(page.getByText('Rocket Launcher · 2 remaining')).toBeVisible()
   await expect(
     page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Open defenses' }),
@@ -1036,7 +1038,7 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
 })
 
 for (const width of [390, 1440]) {
-  test(`account username appears beside sign out only in the menu at ${width}px`, async ({
+  test(`account username appears beside sign out in navigation at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -1053,25 +1055,11 @@ for (const width of [390, 1440]) {
       { player: binding.player, username: 'eth' },
     ])
     await page.reload()
-    const username = page.getByLabel('Username', { exact: true })
+    const navigation = await openNavigation(page)
+    const username = navigation.getByLabel('Username', { exact: true })
     await expect(username).toHaveText('eth')
-    await expect(username).toBeHidden()
-    await expect(
-      page.getByRole('complementary', { name: 'Unbought account' }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('link', {
-        name: /Verify email|I’ve verified|Sign out everywhere/,
-        includeHidden: true,
-      }),
-    ).toHaveCount(0)
-    await page.getByRole('button', { name: 'Menu', exact: true }).click()
-    const drawer = page.getByRole('dialog', { name: 'Navigation' })
-    await expect(drawer.getByLabel('Username', { exact: true })).toBeVisible()
-    const signOut = drawer.getByRole('button', {
-      name: 'Sign out',
-      exact: true,
-    })
+    await expect(username).toBeVisible()
+    const signOut = navigation.getByRole('button', { name: 'Sign out', exact: true })
     await expect(signOut).toBeVisible()
     const nameBounds = await username.boundingBox()
     const buttonBounds = await signOut.boundingBox()
@@ -1094,11 +1082,8 @@ test('resizing an open mobile sidebar releases modal focus and scroll locking', 
   await expect(drawer).toBeVisible()
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(drawer).not.toBeVisible()
-  await menu.click()
-  await page
-    .getByRole('dialog', { name: 'Navigation' })
-    .getByRole('link', { name: 'Settings', exact: true })
-    .click()
+  await expect(page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name: 'Empire', exact: true })).toBeFocused()
+  await navigate(page, 'Settings')
   await expect(page.locator('main h1')).toBeFocused()
   await page.setViewportSize({ width: 390, height: 844 })
   await menu.click()
@@ -1261,11 +1246,7 @@ test('large world rosters scroll and retain funding context on player-wide route
     coordinates: { galaxy: 1, system: index + 1, position: 4 },
   }))
   const purchases = await shellFixture(page, { bodies })
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
-  await page
-    .getByRole('dialog', { name: 'Navigation' })
-    .getByRole('link', { name: 'Research', exact: true })
-    .click()
+  await navigate(page, 'Research')
   await expect(page.locator('main h1')).toHaveText('Research')
   await selectBody(page, id(28))
   await expect(page).toHaveURL(new RegExp(`/b/${id(28)}/research$`))
@@ -1902,7 +1883,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expect(bounds.noticeBottom).toBeLessThanOrEqual(bounds.introTop)
     for (const control of [
       page.getByRole('combobox', { name: 'Selected body' }),
-      page.getByRole('button', { name: 'Menu', exact: true }),
+      width >= 1024 ? page.getByRole('link', { name: 'Settings', exact: true }) : page.getByRole('button', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleets', exact: true }),
     ]) {
       await expect(control).toBeInViewport()
@@ -1917,9 +1898,8 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
         }),
       ).toBe(true)
     }
-    await page.getByRole('button', { name: 'Menu', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: 'Navigation' })).toBeVisible()
-    await page.keyboard.press('Escape')
+    await expect(await openNavigation(page)).toBeVisible()
+    if (width < 1024) await page.keyboard.press('Escape')
     const resolve = recovery.getByRole('button', {
       name: 'Retry order',
       exact: true,
@@ -2293,8 +2273,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       }
       await assertStill()
       for (const [name, heading] of [['Resources', 'Resources'], ['Fleets', 'Fleets'], ['Empire', 'Empire']]) {
-        await page.getByRole('button', { name: 'Menu', exact: true }).click()
-        const drawer = page.getByRole('dialog', { name: 'Navigation' })
+        const drawer = await openNavigation(page)
         await expect(drawer).toBeVisible()
         await assertStill()
         const link = drawer.getByRole('link', { name, exact: true })
@@ -2303,7 +2282,8 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         await link.click()
         await expect(page.locator('main h1')).toContainText(heading)
         await expect(page.locator('main h1')).toBeFocused()
-        await expect(drawer).not.toBeVisible()
+        if (width < 1024) await expect(drawer).not.toBeVisible()
+        else await expect(drawer).toBeVisible()
         await assertStill()
       }
       await assertStill()
@@ -2313,7 +2293,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 }
 
 
-for (const width of [320, 390, 768, 1024, 1440]) {
+for (const width of [320, 390, 768]) {
   for (const textScale of [1, 2]) {
     test(`unread reports light the menu and report link at ${width}px with ${textScale * 100}% text and reconcile`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
@@ -2382,8 +2362,8 @@ for (const width of [320, 390, 768, 1024, 1440]) {
   }
 }
 
-for (const width of [768, 1024, 1440, 1800]) {
-  test(`desktop header keeps name, planet, menu and resources in one pinned row at ${width}px`, async ({ page }) => {
+for (const width of [768]) {
+  test(`tablet header keeps name, planet, menu and resources in one pinned row at ${width}px`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width, height: 900 })
     await shellFixture(page, { protocol: 4 })
@@ -2436,8 +2416,8 @@ for (const width of [768, 1024, 1440, 1800]) {
   })
 }
 
-for (const width of [768, 1024, 1440, 1800]) {
-  test(`desktop brand stays aligned with a large world roster at ${width}px`, async ({ page }) => {
+for (const width of [768]) {
+  test(`tablet brand stays aligned with a large world roster at ${width}px`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width, height: 900 })
     const bodies = Array.from({ length: 9 }, (_, index) => ({

@@ -1,3 +1,4 @@
+import { navigate } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {foreground} from './fixtures/navigation'
@@ -38,7 +39,7 @@ test('two bodies retain independent pending actions through keyboard switching a
  await page.unrouteAll({behavior:'wait'});await expect.poll(async()=>(await saved()).filter(a=>sent.includes(a.envelope.command_id)&&a.status==='committed'&&a.reconciled).length).toBe(2);await expect(attention).toHaveCount(0);expect(sent).toHaveLength(2);expect(new Set(sent).size).toBe(2)
  await expect.poll(async()=>(await overview(page.request)).constructions.map((work:{body:string})=>work.body).sort()).toEqual([source,body].sort())
  await expect(page.getByText('Research actions: unavailable in this universe.')).toBeVisible();await expect(page.getByText('Manufacturing actions: unavailable in this universe.')).toBeVisible();await diagnosticScreenshot(page, {path:'target/foundation-mobile.png',fullPage:true})
- await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'Settings',exact:true}).click();await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible()
+ await navigate(page,'Settings');await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible()
  expect(new URL(page.url()).searchParams.get('body')).toBe(body);await page.reload();await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body)
  await selectBody(page, source);await expect(page).toHaveURL(new RegExp(`body=${source}`));await page.goBack();await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body)
  await page.goForward();await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', source)

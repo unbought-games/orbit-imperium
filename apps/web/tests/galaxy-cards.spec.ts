@@ -316,6 +316,7 @@ test('vacation and inactivity coexist; tooltips support hover, keyboard, tap and
   await inactive.hover()
   await expect(page.getByRole('tooltip')).toContainText('Inactive for 28 days')
   await page.keyboard.press('Escape')
+  await expect(page.getByRole('tooltip')).toHaveCount(0)
   await vacation.focus()
   await expect(page.getByRole('tooltip')).toContainText('Vacation mode')
   await page.keyboard.press('Escape')
@@ -592,7 +593,7 @@ test('shared columns align all debris and controls; mobile rows reach both edges
     await page.evaluate(() => window.scrollTo(0, 400))
     await expect
       .poll(async () => {
-        const tabs = (await (width < 768 ? nav : page.getByRole('banner').locator('..')).boundingBox())!,
+        const tabs = (await (width < 768 ? nav : page.getByRole('group', { name: 'Planet and resources' }).locator('../..')).boundingBox())!,
           bar = (await controls.boundingBox())!
         return Math.abs(bar.y - tabs.y - tabs.height - (width >= 768 ? 1 : 0))
       })
@@ -1749,7 +1750,7 @@ test('desktop Harvest opens an anchored popover, selects the quantity and preser
   await expect(popover).not.toBeVisible()
   await expect(actions(page, 2)).toBeFocused()
   await openHarvest(page)
-  await page.mouse.click(20, 150)
+  await page.mouse.click(page.viewportSize()!.width - 4, 150)
   await expect(popover).not.toBeVisible()
   await openHarvest(page)
   await popover.getByRole('button', { name: 'Customize', exact: true }).click()
@@ -1897,7 +1898,9 @@ for (const width of [320, 390, 768, 1440]) {
       },
     })
     const nav = page.getByRole('navigation', { name: 'Main navigation' })
-    await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop', 'Galaxy', 'Fleets'])
+    await expect(nav.getByRole('link')).toHaveText(width >= 1024
+      ? ['Empire', 'Develop', 'Resources', 'Facilities', 'Research', 'Shipyard', 'Defense', 'Galaxy', 'Fleets', 'Reports', 'Alliance', 'Messages', 'High Scores']
+      : ['Empire', 'Develop', 'Galaxy', 'Fleets'])
     const galaxy = nav.getByRole('link', { name: 'Galaxy', exact: true })
     const fleets = nav.getByRole('link', { name: 'Fleets', exact: true })
     await galaxy.click()
