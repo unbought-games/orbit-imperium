@@ -1989,10 +1989,12 @@ for (const width of [1280, 390]) {
 
 for (const width of [1440, 390]) test(`resource settings opens usable controls and saves changes at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 })
-  const economy = productionFixture(body)
+  const planet = structuredClone(body)
+  planet.levels.SolarPlant = 2
+  const economy = productionFixture(planet)
   let revision = 1
   const sent: components['schemas']['Command3'][] = []
-  await installGameFixture(page, { protocol: 4, production: [economy], viewerRevision: () => String(revision),
+  await installGameFixture(page, { protocol: 4, bodies: [planet], production: [economy], viewerRevision: () => String(revision),
     missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
   })
   await page.route('**/commands', async route => {
@@ -2002,6 +2004,10 @@ for (const width of [1440, 390]) test(`resource settings opens usable controls a
     expect(gameplay.command.expected_settings_revision).toBe(economy.settings_revision)
     sent.push(gameplay.command)
     economy.settings = gameplay.command.settings
+    // The next authoritative snapshot includes base income plus the 90% mine.
+    economy.gross_per_hour.metal = '59700000'
+    economy.energy_demand = '20900000'
+    planet.energy.demand = '20900000'
     economy.settings_revision = String(++revision)
     await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
   })
