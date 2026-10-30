@@ -1,3 +1,4 @@
+import { productionFixture } from '../src/test-support/production'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { expect, test, type Page } from './fixtures/test'
@@ -39,6 +40,8 @@ async function cancellationFixture(page: Page, lateOptions = false) {
   await shellFixture(page, {
     protocol: 4,
     bodies: [planet],
+    // Keep refund and one-micro-unit affordability assertions independent of income.
+    production: [{ ...productionFixture(planet), gross_per_hour: { metal: '0', crystal: '0', deuterium: '0' } }],
     constructions,
     catalog: [
       {

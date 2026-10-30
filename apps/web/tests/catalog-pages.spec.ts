@@ -1,3 +1,4 @@
+import { productionFixture } from '../src/test-support/production'
 import { navigate } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -154,6 +155,8 @@ async function installCatalogFixture(page: Page, blocked = false, unitCost?: S['
   const planet = structuredClone(body)
   await installGameFixture(page, {
     bodies: [planet],
+    // Isolate command affordability from passive income during exact-balance checks.
+    production: (options.bodies ?? [planet]).map(planet => ({ ...productionFixture(planet), gross_per_hour: { metal: '0', crystal: '0', deuterium: '0' } })),
     catalog,
     research: [
       { research: 'EnergyTechnology', level: 1 },
