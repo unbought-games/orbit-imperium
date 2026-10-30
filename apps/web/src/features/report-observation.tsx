@@ -18,7 +18,7 @@ import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
 import { groupReportBuildings } from './report-buildings'
 import { groupReportResearch } from './report-research'
-import type { ObservedLevel } from './report-buildings'
+import type { ObservedLevel, ObservedLevelGroup } from './report-buildings'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
   v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -99,21 +99,17 @@ function Levels({
 function GroupedLevels({
   groups,
   emptyLabel,
-  paired = false,
 }: {
-  paired?: boolean
-  groups: { title: string; rows: ObservedLevel[] }[]
+  groups: ObservedLevelGroup[]
   emptyLabel: string
 }) {
   return groups.length ? (
     groups.map(({ title, rows }) => (
-      <div
-        key={title}
-        className={paired ? styles.paired : undefined}
-        data-paired-levels={paired || undefined}
-      >
+      <div key={title}>
         <h4>{title}</h4>
-        <Levels rows={rows} emptyLabel={emptyLabel} />
+        {rows.map((line) => (
+          <Levels key={line[0][0]} rows={line} emptyLabel={emptyLabel} />
+        ))}
       </div>
     ))
   ) : (
@@ -351,8 +347,10 @@ function ReportObservationContent({
         <KnownSection title="Buildings" value={payload.buildings}>
           {(v) => (
             <GroupedLevels
-              paired
-              groups={groupReportBuildings(record(v))}
+              groups={groupReportBuildings(
+                record(v),
+                record(payload.target).kind,
+              )}
               emptyLabel="No buildings"
             />
           )}

@@ -349,3 +349,24 @@ it('labels historical harvest cargo honestly without inventing a collection amou
   expect(text).toContain('including cargo loaded before departure')
   expect(text).toContain('Carried resources10,7138,2382,608')
 })
+
+it('uses the recorded body kind to keep moon structures out of planet reports', () => {
+  const observation = {
+    kind: 'Espionage',
+    buildings: {
+      visibility: 'Known',
+      value: {
+        RoboticsFactory: 2,
+        LunarBase: 0,
+        SensorPhalanx: 0,
+        JumpGate: 0,
+      },
+    },
+  }
+  const planet = render({ ...observation, target: { kind: 'Planet' } })
+  expect(planet).toContain('Robotics FactoryLevel 2')
+  for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate']) {
+    expect(planet).not.toContain(name)
+    expect(render({ ...observation, target: { kind: 'Moon' } })).toContain(name)
+  }
+})

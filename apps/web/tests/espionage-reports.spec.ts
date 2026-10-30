@@ -17,8 +17,7 @@ async function expectAlignedLevels(sections: Locator[]) {
       const name = (await row.locator('dt').boundingBox())!
       const level = (await row.locator('dd').boundingBox())!
       expect(name.x + name.width).toBeLessThan(level.x)
-      if (await row.evaluate(el => !!el.closest('[data-paired-levels]')))
-        expect(level.x - name.x - name.width).toBeLessThanOrEqual(16)
+      expect(level.x - name.x - name.width).toBeLessThanOrEqual(16)
       expect(Math.abs(level.y - name.y)).toBeLessThanOrEqual(3)
       expect(await row.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
     }
@@ -107,7 +106,7 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
     await expect(buildings).toBeVisible()
     for (const width of [1440, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 })
-      if (variant === 'expanded') await diagnosticScreenshot(page, {path: `test-results/espionage-pairs-${width}x1000.png`, fullPage: true})
+
       const back = (await page.getByRole('link', { name: 'Back to reports' }).boundingBox())!
       const title = (await page.getByRole('heading', { name: 'Espionage', exact: true }).boundingBox())!
       const remove = (await page.getByRole('button', { name: 'Archive report', exact: true }).boundingBox())!
@@ -199,8 +198,8 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
           'Resource buildings',
           'Facility buildings',
         ])
-        const resources = buildings.locator('dl').nth(0)
-        const facilities = buildings.locator('dl').nth(1)
+        const resources = buildings.locator('div').filter({has: page.getByRole('heading', {name: 'Resource buildings', exact: true})}).first()
+        const facilities = buildings.locator('div').filter({has: page.getByRole('heading', {name: 'Facility buildings', exact: true})}).first()
         await expect(resources.locator('dt')).toHaveText([
           'Metal Mine',
           'Crystal Mine',
@@ -223,20 +222,30 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         ])
         await expect(facilities.locator('dt')).toHaveText([
           'Robotics Factory',
+          ...(variant === 'expanded' ? ['Nanite Factory'] : []),
           'Shipyard',
           'Research Lab',
-          ...(variant === 'expanded'
-            ? ['Nanite Factory', 'Lunar Base', 'Sensor Phalanx', 'Jump Gate']
-            : []),
         ])
         await expect(facilities.locator('dd')).toHaveText([
           'Level 0',
+          ...(variant === 'expanded' ? ['Level 1'] : []),
           'Level 0',
           'Level 2',
-          ...(variant === 'expanded'
-            ? ['Level 1', 'Level 0', 'Level 0', 'Level 0']
-            : []),
         ])
+        await expect(resources.locator('dl')).toHaveCount(3)
+        await expect(facilities.locator('dl')).toHaveCount(2)
+        await expect(resources.locator('dl').nth(0).locator('dt')).toHaveText(['Metal Mine', 'Crystal Mine', 'Deuterium Synthesizer'])
+        await expect(resources.locator('dl').nth(1).locator('dt')).toHaveText(['Solar Plant', ...(variant === 'expanded' ? ['Fusion Reactor'] : [])])
+        await expect(resources.locator('dl').nth(2).locator('dt')).toHaveText(['Metal Storage', 'Crystal Storage', 'Deuterium Tank'])
+        for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
+          await expect(buildings.getByText(name, {exact: true})).toHaveCount(0)
+        // Desktop rows must retain their semantic boundary even with empty slots.
+        if (width === 1440) {
+          for (const grid of [...await resources.locator('dl').all(), ...await facilities.locator('dl').all()]) {
+            const boxes = await grid.locator('dt').evaluateAll(nodes => nodes.map(el => el.getBoundingClientRect().y))
+            expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThanOrEqual(1)
+          }
+        }
         await expectAlignedLevels([buildings, research])
         const resourceBounds = await resources.boundingBox()
         const facilityBounds = await facilities.boundingBox()
@@ -250,6 +259,13 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         ),
       ).toBe(true)
       await page.evaluate(() => document.fonts.ready)
+      if (variant === 'expanded') {
+        for (const [name, section] of [['buildings', buildings], ['research', research]] as const) {
+          await section.evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 80))
+          await page.mouse.move(0, 0)
+          await diagnosticScreenshot(page, {path: `test-results/report-${name}-grouped-${width}x1000.png`})
+        }
+      }
       await diagnosticScreenshot(buildings, {
         path: `test-results/espionage-${variant}-${width}.png`,
       })

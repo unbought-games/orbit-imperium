@@ -15,9 +15,13 @@
   max-width: 68rem;
   margin: 0;
 }
+.levels + .levels {
+  margin-top: var(--space-2);
+}
 .levels > div {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, max-content) auto;
+  justify-content: start;
   align-items: baseline;
   gap: var(--space-3);
   padding-block: var(--space-2);
@@ -29,7 +33,7 @@
 .observation .levels dd {
   margin: 0;
   font-size: 1rem;
-  text-align: right;
+  text-align: left;
   white-space: nowrap;
 }
 .observation dt {
@@ -186,12 +190,4 @@
   inset-inline-end: 0;
   top: 50%;
   transform: translateY(-50%);
-}
-
-.paired .levels > div {
-  grid-template-columns: minmax(0, max-content) auto;
-  justify-content: start;
-}
-.paired .levels dd {
-  text-align: left;
 }

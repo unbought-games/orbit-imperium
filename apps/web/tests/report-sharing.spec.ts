@@ -386,3 +386,26 @@ test('included coordinates and names work without account navigation', async ({
     page.getByRole('menuitem', { name: 'View in Galaxy' }),
   ).toHaveCount(0)
 })
+
+for (const width of [1440, 390]) {
+  test(`public espionage keeps building rows and paired research without planet moon entries at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 1000})
+    await page.route(`**/api/v4/shared-reports/${token}`, route => route.fulfill({json: {
+      ...shared, payload: {...shared.payload,
+        buildings: {visibility: 'Known', value: {MetalMine: 7, CrystalMine: 6, DeuteriumSynthesizer: 4, SolarPlant: 13, FusionReactor: 0, MetalStorage: 2, CrystalStorage: 2, DeuteriumTank: 1, RoboticsFactory: 2, NaniteFactory: 1, Shipyard: 2, ResearchLab: 2, LunarBase: 0, SensorPhalanx: 0, JumpGate: 0}},
+        research: {visibility: 'Known', value: {WeaponsTechnology: 8, ShieldingTechnology: 7, ArmourTechnology: 6, EspionageTechnology: 5, CombustionDrive: 4, ImpulseDrive: 3, HyperspaceDrive: 2}},
+      }
+    }}))
+    await page.goto(`/reports/shared/${token}`)
+    await expect(page.getByRole('heading', {name: 'Research', exact: true})).toBeVisible()
+    for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
+      await expect(page.getByText(name, {exact: true})).toHaveCount(0)
+    for (const pair of await page.locator('dl > div').filter({has: page.locator('dt')}).all()) {
+      const name = await pair.locator('dt').boundingBox(), level = await pair.locator('dd').boundingBox()
+      expect(level!.x - name!.x - name!.width).toBeGreaterThan(0)
+      expect(level!.x - name!.x - name!.width).toBeLessThanOrEqual(16)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await diagnosticScreenshot(page, {path: `test-results/shared-espionage-grouped-${width}x1000.png`, fullPage: true})
+  })
+}
