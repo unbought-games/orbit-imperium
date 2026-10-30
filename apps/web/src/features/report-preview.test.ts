@@ -262,3 +262,24 @@ it('does not misrepresent historical cargo as a harvested amount', () => {
     }).facts,
   ).toEqual(['Harvested amount unavailable'])
 })
+
+it('labels both delivery endpoints from historical names, with coordinate fallbacks', async () => {
+  const { deliveryRoute } = await import('./report-preview')
+  const origin = { galaxy: 1, system: 2, position: 3 },
+    target = { galaxy: 2, system: 3, position: 4 }
+  expect(
+    deliveryRoute({
+      kind: 'Delivered',
+      origin,
+      target,
+      origin_name: 'Old name',
+      target_name: 'Colony',
+    }),
+  ).toBe('Old name [1:2:3] → Colony [2:3:4]')
+  expect(deliveryRoute({ kind: 'Delivered', origin, target })).toBe(
+    '[1:2:3] → [2:3:4]',
+  )
+  expect(deliveryRoute({ kind: 'Delivered', target })).toBe(
+    'Location unavailable → [2:3:4]',
+  )
+})

@@ -1,5 +1,5 @@
 import styles from './reports.module.css'
-import { Trash2, RotateCcw } from 'lucide-react'
+import { Archive, Inbox } from 'lucide-react'
 import type { Coordinator } from '../client-model/coordinator'
 import { Button } from '../ui/button'
 import { useStore } from 'zustand'
@@ -32,14 +32,14 @@ export function ReportVisibilityButton({
       <Button
         variant={compact ? 'ghost' : 'secondary'}
         size={compact ? 'icon' : undefined}
-        aria-label={hidden ? 'Restore report' : 'Delete report'}
+        aria-label={hidden ? 'Move to inbox' : 'Archive report'}
         disabled={disabled || visibility.disabled || (!hidden && !!starred)}
         title={
           starred && !hidden
-            ? 'Unstar this report before deleting it'
+            ? 'Unstar this report before archiving it'
             : hidden
-              ? 'Restore to your reports'
-              : 'Remove from your reports; you can restore it later'
+              ? 'Move to inbox'
+              : 'Move to Archived; you can move it back to Inbox'
         }
         onClick={() => {
           void visibility.change(!hidden)
@@ -47,14 +47,14 @@ export function ReportVisibilityButton({
       >
         {compact ? (
           hidden ? (
-            <RotateCcw size={16} aria-hidden="true" />
+            <Inbox size={16} aria-hidden="true" />
           ) : (
-            <Trash2 size={16} aria-hidden="true" />
+            <Archive size={16} aria-hidden="true" />
           )
         ) : hidden ? (
-          'Restore report'
+          'Move to inbox'
         ) : (
-          'Delete report'
+          'Archive report'
         )}
       </Button>
     </div>

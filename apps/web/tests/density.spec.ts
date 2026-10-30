@@ -187,9 +187,9 @@ for (const viewport of [
     const back = page.getByRole('link', { name: 'Back to reports' })
     await expect(back).toHaveText('')
     await expect(back.locator('svg.lucide-arrow-left')).toBeVisible()
-    const remove = page.getByRole('button', { name: 'Delete report' })
+    const remove = page.getByRole('button', { name: 'Archive report' })
     await expect(remove).toHaveText('')
-    await expect(remove.locator('svg.lucide-trash-2')).toBeVisible()
+    await expect(remove.locator('svg.lucide-archive')).toBeVisible()
     const timestamp = page.getByRole('button', { name: 'Report time details' })
     await expect(timestamp).toHaveText('1 hour ago')
     await timestamp.click()
@@ -226,7 +226,7 @@ for (const viewport of [
     await page.getByRole('link', { name: 'Back to reports' }).click()
     await firstViewport(page, [
       page.getByRole('link', { name: 'Combat', exact: true }),
-      page.getByRole('button', { name: 'Delete report' }),
+      page.getByRole('button', { name: 'Archive report' }),
     ])
   })
 

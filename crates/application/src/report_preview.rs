@@ -26,7 +26,7 @@ pub fn report_preview(payload: &Value) -> Value {
             "counterespionage",
         ],
         Some("SpyContact") => &["origin", "target", "detected"],
-        Some("Delivered") => &["origin", "target", "cargo"],
+        Some("Delivered") => &["origin", "target", "origin_name", "target_name", "cargo"],
         Some("Harvested") => &[
             "origin_coordinates",
             "destination_coordinates",
@@ -87,6 +87,15 @@ pub fn report_preview(payload: &Value) -> Value {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn delivered_preview_preserves_recorded_names_and_legacy_coordinates() {
+        let mut payload = json!({"kind":"Delivered","origin":{"galaxy":1,"system":1,"position":1},"target":{"galaxy":1,"system":2,"position":3}});
+        assert_eq!(report_preview(&payload), payload);
+        payload["origin_name"] = json!("Old homeworld name");
+        payload["target_name"] = json!("Trading colony");
+        assert_eq!(report_preview(&payload), payload);
+    }
 
     #[test]
     fn harvest_preview_preserves_recorded_delta_and_does_not_invent_historical_amounts() {

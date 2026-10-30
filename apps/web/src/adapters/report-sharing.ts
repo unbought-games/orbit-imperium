@@ -35,7 +35,7 @@ export async function readSharedReport(token: string, signal: AbortSignal) {
   )
   if (response.status === 404 || response.status === 400)
     throw new Error(
-      'This report is unavailable. Its owner may have revoked the link or deleted the report.',
+      'This report is unavailable. Its owner may have stopped sharing, or the report is no longer available.',
     )
   if (!response.ok)
     throw new Error('The report could not be loaded. Please try again.')

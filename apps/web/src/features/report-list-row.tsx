@@ -13,6 +13,7 @@ import { label, coordinates } from '../ui/format'
 import { exactTime } from './mission-presentation'
 import {
   reportPreview,
+  deliveryRoute,
   reportAge,
   reportListTitle,
   reportListIdentity,
@@ -56,7 +57,8 @@ export function ReportListRow({
     report.player_alliances,
     profiles,
   )
-  const title = [label(report.kind), outcome?.title, identity]
+  const route = deliveryRoute(report.preview)
+  const title = [label(report.kind), outcome?.title, identity, route]
     .filter(Boolean)
     .join(' · ')
   return (
@@ -73,7 +75,7 @@ export function ReportListRow({
                 type="checkbox"
                 aria-label={`Select ${title} report ${exactTime(report.observed_at)}`}
                 checked={selected}
-                disabled={disabled || report.starred}
+                disabled={disabled || (!report.hidden && report.starred)}
                 onChange={(e) => onSelect(e.target.checked)}
               />
             </label>
@@ -102,14 +104,15 @@ export function ReportListRow({
                 title="Unread"
               />
             )}
-            {report.hidden && <span>Deleted</span>}
+            {report.hidden && <span>Archived</span>}
+            {route && <span className={styles.deliveryRoute}>{route}</span>}
             {identity && (
               <span className={styles.identity} title={identity}>
                 {identity}
               </span>
             )}
           </Link>
-          {preview.coordinates && (
+          {preview.coordinates && !route && (
             <CoordinateLink
               at={preview.coordinates}
               origin={origin}

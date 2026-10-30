@@ -23,18 +23,19 @@ export async function reportsHarness() {
   const calls: Array<{
     item: string | null
     cursor: string | null
+    includeHidden: boolean
     resolve: (value: ReportsPage | ReportDetail | null) => void
     reject: (error: unknown) => void
   }> = []
   const sent: Command[] = []
-  const read = (item: string | null, cursor: string | null) =>
+  const read = (item: string | null, cursor: string | null, includeHidden = false) =>
     new Promise<ReportsPage | ReportDetail | null>((resolve, reject) => {
-      calls.push({ item, cursor, resolve, reject })
+      calls.push({ item, cursor, includeHidden, resolve, reject })
     })
   const model = {
     store,
-    reportPage: (cursor: string | null = null) =>
-      read(null, cursor) as Promise<ReportsPage | null>,
+    reportPage: (cursor: string | null = null, includeHidden = false) =>
+      read(null, cursor, includeHidden) as Promise<ReportsPage | null>,
     reportDetail: (item: string) =>
       read(item, null) as Promise<ReportDetail | null>,
     send: async (command: Command) => {
@@ -46,8 +47,8 @@ export async function reportsHarness() {
   document.body.append(container)
   const root = createRoot(container)
   let result!: ReturnType<typeof useReports>
-  function Probe({ item }: { item: string | null }) {
-    result = useReports(model, item)
+  function Probe({ item, includeHidden = false }: { item: string | null; includeHidden?: boolean }) {
+    result = useReports(model, item, false, false, includeHidden)
     return null
   }
   await act(async () => root.render(createElement(Probe, { item: null })))
@@ -61,6 +62,7 @@ export async function reportsHarness() {
       loading: result.loading,
       loadingMore: result.loadingMore,
     }),
+    folder: async (includeHidden: boolean) => act(async () => root.render(createElement(Probe, { item: null, includeHidden }))),
     navigate: async (item: string | null) =>
       act(async () => root.render(createElement(Probe, { item }))),
     more: async () =>

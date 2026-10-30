@@ -16,7 +16,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
     { id: id(71), kind: 'Espionage', observed_at: now - 134000, read: false, hidden: false, preview: { kind: 'Espionage', target: { body: id(80), owner: id(9), kind: 'Planet', name: 'Nova Roma', coordinates: { galaxy: 1, system: 1, position: 3 } }, resources: { visibility: 'Known', value: { metal: '125000000000', crystal: '80000000000', deuterium: '12000000000' } }, fleet: { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '3' }] }, defenses: { visibility: 'Unknown' } } },
     { id: id(72), kind: 'Combat', observed_at: now - 600000, read: true, hidden: false, preview: { kind: 'Combat', target_name: 'Luna', target_kind: 'Moon', target: { galaxy: 1, system: 2, position: 7 }, outcome: 'AttackerVictory', participants: [{ owner: binding.player, side: 'Attacker' }, { owner: id(9), side: 'Defender' }], loot: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
     { id: id(73), kind: 'Returned', observed_at: now - 900000, read: true, hidden: false, preview: { kind: 'Returned', origin_coordinates: { galaxy: 1, system: 1, position: 5 }, ships: [{ ship_type: 'LightFighter', count: '90' }, { ship_type: 'SmallCargo', count: '15' }], cargo: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
-    { id: id(74), kind: 'Delivered', observed_at: now - 1800000, read: true, hidden: false, preview: { kind: 'Delivered', target: { galaxy: 1, system: 1, position: 3 }, cargo: { metal: '1000000000', crystal: '2000000000', deuterium: '3000000000' } } },
+    { id: id(74), kind: 'Delivered', observed_at: now - 1800000, read: true, hidden: false, preview: { kind: 'Delivered', origin: { galaxy: 1, system: 2, position: 8 }, origin_name: 'Nova Roma Historical Homeworld', target_name: 'Very Long Destination Colony Name', target: { galaxy: 1, system: 1, position: 3 }, cargo: { metal: '1000000000', crystal: '2000000000', deuterium: '3000000000' } } },
   ]
   await page.route('**/api/**/reports', async route => {
     const { context } = route.request().postDataJSON()
@@ -42,6 +42,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await page.mouse.move(0, 0)
   const rows = page.locator('main article')
   await expect(rows).toHaveCount(5)
+  await expect(rows.last().getByRole('link', {name: 'Delivered · Nova Roma Historical Homeworld [1:2:8] → Very Long Destination Colony Name [1:1:3]', exact: true})).toBeVisible()
   await expect(rows.first()).toContainText('[1:1:5]')
   await expect(rows.first()).toContainText('1 Espionage Probe')
   await expect(rows.first()).toContainText('No cargo')
@@ -90,13 +91,14 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await expect(rows.nth(2).getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('40,000')
   await expect(rows.first().getByLabel('Unread', { exact: true })).toBeVisible()
   await expect(rows.nth(2).getByLabel('Unread', { exact: true })).toHaveCount(0)
-  const remove = rows.first().getByRole('button', { name: 'Delete report', exact: true })
+  const remove = rows.first().getByRole('button', { name: 'Archive report', exact: true })
   await expect(remove).toHaveText('')
   await expect(remove.locator('svg')).toBeVisible()
   await expect(rows.first().locator('time')).toHaveAttribute('title', /2026/)
   await expect(rows.first().getByRole('link', { name: 'Returned', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(70)}`)
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
+    expect(await rows.last().evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     const reportLink = rows.first().getByRole('link', { name: 'Returned', exact: true })
     await page.keyboard.press('Tab')
     await reportLink.focus()
@@ -224,3 +226,25 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await rows.nth(1).getByRole('link', { name: 'View [1:1:3] in galaxy', exact: true }).click()
   await expect(page).toHaveURL(/galaxy/)
 })
+
+for (const width of [1440, 390]) {
+  test(`delivered detail preserves recorded endpoint names at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 1000})
+    await shellFixture(page, {protocol: 4, extraCapabilities: ['Reports'], missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}})
+    await page.route('**/api/**/reports/**', async route => {
+      const context = route.request().postDataJSON()
+      await route.fulfill({json: {protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: {
+        header: {id: id(74), kind: 'Delivered', observed_at: Date.now()-60000, read: true, hidden: false},
+        payload: {kind: 'Delivered', at: Date.now()-60000, sender: binding.player, recipient: id(9), origin: {galaxy: 1, system: 2, position: 8}, target: {galaxy: 1, system: 1, position: 3}, origin_name: 'Nova Roma Historical Homeworld', target_name: 'Very Long Destination Colony Name', cargo: {metal: '1000000000', crystal: '2000000000', deuterium: '3000000000'}}
+      }}})
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/reports/${id(74)}`)
+    const observation = page.getByRole('region', {name: 'Report observation'})
+    await expect(observation).toContainText('Nova Roma Historical Homeworld')
+    await expect(observation).toContainText('Very Long Destination Colony Name')
+    await expect(observation).toContainText('[1:2:8]')
+    await expect(observation).toContainText('[1:1:3]')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await diagnosticScreenshot(page, {path: `test-results/delivered-detail-${width}x1000.png`, fullPage: true})
+  })
+}

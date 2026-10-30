@@ -92,3 +92,24 @@ describe('report triage', () => {
       expect(ageCutoff(hours, now)).toBeNull()
   })
 })
+
+it('browses old archives separately from the inbox without dropping starred reports', () => {
+  const rows = [
+    row('old', '1', { hidden: true, observed_at: 0 }),
+    row('star', '2', { hidden: true, starred: true }),
+    row('inbox', '3'),
+  ]
+  expect(
+    triageReports(rows, 'oldest', false, 'all', false, 'archived').map(
+      (r) => r.id,
+    ),
+  ).toEqual(['old', 'star'])
+  expect(
+    triageReports(rows, 'newest', false, 'starred', false, 'archived').map(
+      (r) => r.id,
+    ),
+  ).toEqual(['star'])
+  expect(
+    triageReports(rows, 'newest', false, 'all', false).map((r) => r.id),
+  ).toEqual(['inbox'])
+})
