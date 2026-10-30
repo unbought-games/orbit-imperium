@@ -149,7 +149,8 @@ Diff and standard-upgrade previews include an `impact` alongside the existing
 
 - `Unchanged`: the interpreted rules are equivalent; applying them retains the
   active identity and revision, including historical default/identifier variants.
-- `RulesOnly`: only `artifact.world.combat.ship_debris_bps` changes. Activation
+- `RulesOnly`: only `artifact.world.combat.ship_debris_bps` and/or
+  `artifact.world.combat.deuterium_in_debris` change. Activation
   publishes the rules without reading or rewriting planets, their production
   checkpoints, inventories, queues, or fleet records.
 - `SettleAndInitialize`: every other change follows the existing production
@@ -167,8 +168,9 @@ production rules are unchanged.
 
 This narrow optimization requires no data conversion or special backup/restore
 workflow. It does not change deployment compatibility, readiness, or the separate
-explicit integrity audit. Additional fields, including a future deuterium-debris
-toggle, must be explicitly classified and tested before using the rules-only path.
+explicit integrity audit. Additional fields must be explicitly classified and
+tested before using the rules-only path. See [Deuterium debris](deuterium-debris.md)
+for generation, collection, and rollout semantics.
 
 Enabled content needs complete definitions and prerequisites. A binary recognizing a content name does not mean its specialized mechanics are implemented. The validator rejects unsupported content and invalid references. Disabling a catalog entry prevents new production/research of it; retain definitions needed by owned assets and pending work.
 

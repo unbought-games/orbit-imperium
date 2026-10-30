@@ -236,3 +236,25 @@ it.each(['before', 'during'])(
     ).toEqual([])
   },
 )
+
+it('counts deuterium toward capacity and allows deuterium-only fields', () => {
+  expect(
+    harvestSuggestion('300000', '180000', '20000', '100', '60000'),
+  ).toEqual({ needed: '27', suggested: '27' })
+  const model = fixture()
+  const deuteriumOnly = {
+    ...position,
+    debris: {
+      ...position.debris,
+      metal: '0',
+      crystal: '0',
+      deuterium: '40001',
+    },
+  }
+  expect(galaxyHarvest(model.store.getState(), id(10), deuteriumOnly)).toEqual({
+    available: '5',
+    needed: '3',
+    suggested: '3',
+    blockers: [],
+  })
+})

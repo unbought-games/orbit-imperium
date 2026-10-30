@@ -93,7 +93,7 @@ async fn debris_activation_preserves_admitted_claimed_and_queued_ordering() {
 
 #[tokio::test]
 async fn debris_activation_never_accesses_gameplay_state_in_either_runtime() {
-    for scoped in [false, true] {
+    for (scoped, toggle) in [(false, false), (true, false), (false, true), (true, true)] {
         let (store, pool, u, binding) = setup().await;
         mode(&store, u, scoped).await;
         let (initial, _) = store.bound_world(binding).await.unwrap().facts;
@@ -134,7 +134,16 @@ async fn debris_activation_never_accesses_gameplay_state_in_either_runtime() {
             .universe;
         let other_rules = store.load_rules(other).await.unwrap();
         let mut doc = RulesService::new(store.clone()).export(u).await.unwrap();
-        set_debris(&mut doc, 5000);
+        if toggle {
+            doc.artifact
+                .world
+                .as_mut()
+                .unwrap()
+                .combat
+                .deuterium_in_debris = true;
+        } else {
+            set_debris(&mut doc, 5000);
+        }
         let cursor = store
             .read_updates(binding, None, 128)
             .await
@@ -220,6 +229,12 @@ async fn production_and_mixed_updates_keep_exact_old_and_new_accrual() {
                 doc.artifact.base_income[0] = 41;
             }
             set_debris(&mut doc, 5000);
+            doc.artifact
+                .world
+                .as_mut()
+                .unwrap()
+                .combat
+                .deuterium_in_debris = true;
             assert_eq!(
                 service.diff(&doc).await.unwrap().impact,
                 RulesUpdateImpact::SettleAndInitialize
@@ -300,4 +315,137 @@ async fn rules_only_publication_failure_is_atomic_and_retryable() {
             RulesApplyOutcome::AlreadyActive { revision: 1, .. }
         ));
     }
+}
+
+#[tokio::test]
+async fn deuterium_fields_and_historical_rules_survive_restart_and_toggle_changes() {
+    let (store, pool, u, binding) = setup().await;
+    let (initial, _) = store.bound_world(binding).await.unwrap().facts;
+    let coordinates = initial.state.bodies.values().next().unwrap().coordinates;
+    let field_id = OperationId(Uuid::new_v4());
+    let legacy = serde_json::json!({
+        "id": field_id, "coordinates": coordinates, "marker_present": true,
+        "metal": 0, "crystal": 400 * SCALE, "generation": 1,
+        "cleanup_at": 345600000, "revision": 0
+    });
+    sqlx::query("INSERT INTO debris_fields(universe,id,data) VALUES($1,$2,$3)")
+        .bind(u.0)
+        .bind(field_id.0)
+        .bind(&legacy)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    let (old, _) = reopened
+        .bound_world_query(
+            binding,
+            WorldQueryKind::Galaxy {
+                galaxy: coordinates.galaxy,
+                system: coordinates.system,
+            },
+        )
+        .await
+        .unwrap()
+        .facts;
+    assert_eq!(
+        old.state.world.as_ref().unwrap().records.debris[&field_id].deuterium,
+        0
+    );
+    let service = RulesService::new(reopened.clone());
+    let mut doc = service.export(u).await.unwrap();
+    doc.artifact
+        .world
+        .as_mut()
+        .unwrap()
+        .combat
+        .deuterium_in_debris = true;
+    service.apply(&doc).await.unwrap();
+    let mut field = old.state.world.as_ref().unwrap().records.debris[&field_id].clone();
+    field.crystal = 0;
+    field.deuterium = 500 * SCALE;
+    sqlx::query("UPDATE debris_fields SET data=$2 WHERE id=$1")
+        .bind(field_id.0)
+        .bind(sqlx::types::Json(&field))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut disabled = service.export(u).await.unwrap();
+    disabled
+        .artifact
+        .world
+        .as_mut()
+        .unwrap()
+        .combat
+        .deuterium_in_debris = false;
+    service.apply(&disabled).await.unwrap();
+    let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    let (after, _) = restarted
+        .bound_world_query(
+            binding,
+            WorldQueryKind::Galaxy {
+                galaxy: coordinates.galaxy,
+                system: coordinates.system,
+            },
+        )
+        .await
+        .unwrap()
+        .facts;
+    assert!(
+        !after
+            .rules
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .deuterium_in_debris
+    );
+    assert_eq!(
+        after.state.world.as_ref().unwrap().records.debris[&field_id],
+        field
+    );
+    assert_eq!(
+        resolve_destination(
+            &after.state,
+            DestinationSelection::DebrisAt { coordinates },
+            &after.rules
+        )
+        .unwrap(),
+        MissionDestination::Debris {
+            coordinates,
+            field_identity: field_id
+        }
+    );
+    let galaxy = galaxy_system(
+        &after.state,
+        binding.player,
+        coordinates.galaxy,
+        coordinates.system,
+        after.at,
+        &after.rules,
+    )
+    .unwrap();
+    assert_eq!(
+        galaxy
+            .positions
+            .iter()
+            .find(|p| p.coordinates == coordinates)
+            .unwrap()
+            .debris
+            .as_ref()
+            .unwrap()
+            .deuterium,
+        "500"
+    );
+    let persisted: serde_json::Value =
+        sqlx::query_scalar("SELECT data FROM debris_fields WHERE id=$1")
+            .bind(field_id.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(persisted, serde_json::to_value(&field).unwrap());
 }

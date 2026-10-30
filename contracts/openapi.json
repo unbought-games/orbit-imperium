@@ -12909,6 +12909,9 @@
           "metal": {
             "$ref": "#/components/schemas/Decimal"
           },
+          "deuterium": {
+            "$ref": "#/components/schemas/Decimal"
+          },
           "crystal": {
             "$ref": "#/components/schemas/Decimal"
           }

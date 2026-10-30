@@ -8,8 +8,12 @@ import styles from './galaxy.module.css'
 type Debris = components['schemas']['GalaxyPosition4']['debris']
 
 /** Whole resource units from the public galaxy projection, not micro-units. */
-export function debrisFieldSize(metal: string, crystal: string) {
-  const total = BigInt(metal) + BigInt(crystal)
+export function debrisFieldSize(
+  metal: string,
+  crystal: string,
+  deuterium = '0',
+) {
+  const total = BigInt(metal) + BigInt(crystal) + BigInt(deuterium)
   return total < 10_000n ? 'small' : total < 1_000_000n ? 'medium' : 'large'
 }
 
@@ -37,7 +41,7 @@ export function GalaxyDebris({
   target: string
   onHarvest?: (opener: HTMLButtonElement) => void
 }) {
-  const size = debrisFieldSize(debris.metal, debris.crystal)
+  const size = debrisFieldSize(debris.metal, debris.crystal, debris.deuterium)
   const contents = (
     <>
       <img
@@ -57,6 +61,9 @@ export function GalaxyDebris({
         <ResourceValue resource="crystal">
           <DebrisAmount value={debris.crystal} />
         </ResourceValue>
+        <ResourceValue resource="deuterium">
+          <DebrisAmount value={debris.deuterium ?? '0'} />
+        </ResourceValue>
       </span>
     </>
   )
@@ -65,7 +72,7 @@ export function GalaxyDebris({
       type="button"
       variant="ghost"
       className={`${styles.debris} ${styles.debrisTrigger}`}
-      aria-label={`Quick harvest debris at ${target}: Metal ${formatWholeNumber(debris.metal)}, Crystal ${formatWholeNumber(debris.crystal)}`}
+      aria-label={`Quick harvest debris at ${target}: Metal ${formatWholeNumber(debris.metal)}, Crystal ${formatWholeNumber(debris.crystal)}, Deuterium ${formatWholeNumber(debris.deuterium ?? '0')}`}
       aria-haspopup="dialog"
       title={`Quick harvest · ${size} debris field`}
       onClick={(event) => onHarvest(event.currentTarget)}

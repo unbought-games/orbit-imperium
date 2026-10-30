@@ -158,8 +158,10 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
         let references = debris_reference_count(field.id, w.records.fleets.values());
         if field.metal < 0
             || field.crystal < 0
+            || field.deuterium < 0
             || field.metal % SCALE != 0
             || field.crystal % SCALE != 0
+            || field.deuterium % SCALE != 0
             || (references > 0 && !field.marker_present)
         {
             return Err(InvariantError(

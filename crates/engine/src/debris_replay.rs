@@ -33,6 +33,14 @@ pub fn replay_legacy_debris_transition(
         // Historical fact hashes included the counter, even on no-op events.
         serialized["Applied"]["expected_facts_hash"] = json!(hash(facts));
         if let Some(world) = &changes.world {
+            // The original cleanup evidence predates deuterium debris.
+            if let Some(audits) = serialized["Applied"]["world"]["audits"].as_array_mut() {
+                for audit in audits {
+                    if audit["kind"] == "DebrisCleanupLoss" {
+                        audit.as_object_mut().unwrap().remove("deuterium");
+                    }
+                }
+            }
             // This journal format predates collection observations. Reproduce
             // its original payload for reports emitted by this transition;
             // never rewrite historical reports already present in the facts.

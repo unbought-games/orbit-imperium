@@ -30,6 +30,7 @@ pub fn plan_rules_update(current: &Ruleset, next: &Ruleset) -> Result<RulesUpdat
         let mut remainder = next.artifact.clone();
         if let (Some(before), Some(after)) = (&current.artifact.world, &mut remainder.world) {
             after.combat.ship_debris_bps = before.combat.ship_debris_bps;
+            after.combat.deuterium_in_debris = before.combat.deuterium_in_debris;
         }
         // Compare the entire remainder: mixed edits and future fields fall back
         // to settlement without maintaining a list of economic dependencies.

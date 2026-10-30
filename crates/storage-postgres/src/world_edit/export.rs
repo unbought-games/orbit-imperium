@@ -226,6 +226,7 @@ impl PgStore {
                 resources: BTreeMap::from([
                     ("metal".into(), field.metal / SCALE),
                     ("crystal".into(), field.crystal / SCALE),
+                    ("deuterium".into(), field.deuterium / SCALE),
                 ]),
                 ..Default::default()
             });

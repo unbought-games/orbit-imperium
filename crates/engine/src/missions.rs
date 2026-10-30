@@ -1000,18 +1000,23 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                     .checked_mul(20000 * SCALE)
                                     .ok_or(GameError::NumericRange)?;
                                 let free = (cap - sum(f.cargo)?).max(0).min(recycler) / SCALE;
-                                let (m, k) = harvest_allocation(
-                                    field.metal / SCALE,
-                                    field.crystal / SCALE,
+                                let [m, k, d] = harvest_allocation(
+                                    [
+                                        field.metal / SCALE,
+                                        field.crystal / SCALE,
+                                        field.deuterium / SCALE,
+                                    ],
                                     free,
                                 )?;
                                 field.metal -= m * SCALE;
                                 field.crystal -= k * SCALE;
+                                field.deuterium -= d * SCALE;
                                 field.revision = field
                                     .revision
                                     .checked_add(1)
                                     .ok_or(GameError::NumericRange)?;
-                                let harvested = Resources::from_values([m * SCALE, k * SCALE, 0]);
+                                let harvested =
+                                    Resources::from_values([m * SCALE, k * SCALE, d * SCALE]);
                                 f.cargo = resources(f.cargo, harvested, true)?;
                                 let mut payload = own_report_payload(i, &f, "Harvested");
                                 // Capture the collection at arrival: total cargo also includes
@@ -1077,12 +1082,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if f.cleanup_at != i.at {
                 return Err(invariant("cleanup deadline mismatch"));
             }
-            if i128::from(f.metal) + i128::from(f.crystal) < 300 * i128::from(SCALE)
+            if f.total() < 300 * i128::from(SCALE)
                 && debris_reference_count(*field, w.fleets.values()) == 0
             {
-                audits.push(json!({"kind":"DebrisCleanupLoss","field":f.id,"metal":f.metal.to_string(),"crystal":f.crystal.to_string()}));
+                audits.push(json!({"kind":"DebrisCleanupLoss","field":f.id,"metal":f.metal.to_string(),"crystal":f.crystal.to_string(),"deuterium":f.deuterium.to_string()}));
                 f.metal = 0;
                 f.crystal = 0;
+                f.deuterium = 0;
                 f.marker_present = false;
             } else {
                 f.cleanup_at = next_debris_cleanup(i.at)?;
