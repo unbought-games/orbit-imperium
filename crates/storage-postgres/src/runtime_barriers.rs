@@ -139,7 +139,9 @@ impl PgStore {
         {
             return Err(StoreError::CorruptData.into());
         }
-        let delta = validate_rules_update(&current.rules, &next)?;
+        // Recompute at execution against the actual current rules. The queued
+        // proposal carries no trusted preview classification.
+        let plan = plan_rules_update(&current.rules, &next)?;
         let epoch: Uuid = sqlx::query_scalar("SELECT epoch FROM universes WHERE id=$1")
             .bind(u.0)
             .fetch_one(&mut *tx)
@@ -152,7 +154,7 @@ impl PgStore {
                 epoch: Epoch(epoch),
                 current: &current,
                 next: &next,
-                delta: &delta,
+                plan: &plan,
                 at,
                 sequence,
             },

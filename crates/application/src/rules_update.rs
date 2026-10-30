@@ -30,6 +30,7 @@ pub struct RulesDiff {
     pub proposed_hash: Hash,
     pub changes: Vec<RuleChange>,
     pub initialize: RulesCatalogDelta,
+    pub impact: RulesUpdateImpact,
 }
 /// The proposal remains in memory; preview output shows its diff rather than a second rules file.
 #[derive(Debug, Serialize)]
@@ -140,7 +141,7 @@ impl<S: RulesStore> RulesService<S> {
                 actual_revision: current.revision,
             });
         }
-        let initialize = validate_rules_update(&current.rules, &next)?;
+        let plan = plan_rules_update(&current.rules, &next)?;
         let mut changes = vec![];
         difference(
             "/speed",
@@ -158,7 +159,8 @@ impl<S: RulesStore> RulesService<S> {
             current_hash: current.rules.hash.clone(),
             proposed_hash: next.hash.clone(),
             changes,
-            initialize,
+            initialize: plan.initialize,
+            impact: plan.impact,
         })
     }
     pub async fn apply(

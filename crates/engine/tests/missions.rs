@@ -1154,6 +1154,82 @@ fn clear_units(s: &mut GameState, t: BodyId) {
         .lots
         .retain(|l| l.location != AssetLocation::Body(t));
 }
+
+#[test]
+fn debris_only_activation_uses_arrival_rules_without_changing_accepted_terms() {
+    let (mut launched, old, p, b, t) = raid_fixture();
+    let mut request = intent(&launched, p, b, t);
+    request.mission = Mission::Attack;
+    let event = launch_raid(&mut launched, &old, p, b, request, 1000, 7000);
+    // Reinforcements after launch guarantee the same destroyed cargo ship in both cases.
+    clear_units(&mut launched, t);
+    set_units(
+        &mut launched,
+        &old,
+        t,
+        ManufacturedItem::Ship(ShipType::LightFighter),
+        100,
+    );
+    let fleet_id = *launched
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .keys()
+        .next()
+        .unwrap();
+    let accepted = launched.world.as_ref().unwrap().records.fleets[&fleet_id]
+        .terms
+        .clone();
+    for bps in [3000, 6000] {
+        let mut artifact = old.artifact.clone();
+        artifact.world.as_mut().unwrap().combat.ship_debris_bps = bps;
+        let active = Ruleset::from_artifact(artifact, old.speed).unwrap();
+        assert_eq!(
+            plan_rules_update(&old, &active).unwrap().impact,
+            if bps == 3000 {
+                RulesUpdateImpact::Unchanged
+            } else {
+                RulesUpdateImpact::RulesOnly
+            }
+        );
+        let mut state = launched.clone();
+        state.profile_hash = active.hash.clone();
+        let result = run(
+            &mut state,
+            &active,
+            p,
+            b,
+            event.at,
+            7001,
+            Input::Event(event.event.clone()),
+        );
+        apply(&mut state, result);
+        let records = &state.world.as_ref().unwrap().records;
+        let fleet = &records.fleets[&fleet_id];
+        assert_eq!(fleet.terms, accepted);
+        assert_eq!(fleet.leg, MissionLeg::Destroyed);
+        let debris = records.debris.values().next().unwrap();
+        assert_eq!(debris.metal, 2000 * i64::from(bps) / 10000 * SCALE);
+        assert_eq!(debris.crystal, debris.metal);
+        let before_retry = state.clone();
+        let result = run(
+            &mut state,
+            &active,
+            p,
+            b,
+            event.at,
+            7002,
+            Input::Event(event.event.clone()),
+        );
+        apply(&mut state, result);
+        assert_eq!(
+            state.world.as_ref().unwrap().records.debris,
+            before_retry.world.as_ref().unwrap().records.debris
+        );
+    }
+}
 #[test]
 fn probe_attack_empty_victory_has_zero_loot_and_qualifies_but_inactive_does_not() {
     for inactive in [false, true] {

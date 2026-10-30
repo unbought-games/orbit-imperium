@@ -258,3 +258,12 @@ test-persistence:
 .PHONY: test-persistence-db
 test-persistence-db:
 	sh scripts/test-db.sh rules_updates 'test(compatibility::) | test(legacy_rules_) | test(activation_waits_for_admitted_and_claimed_work)'
+
+.PHONY: test-rules-impact test-rules-impact-db
+test-rules-impact:
+	cargo nextest run -p orbit-engine --test rules_update_impact --test rules_updates
+	cargo nextest run -p orbit-engine --test missions -E 'test(debris_only_activation_)'
+	cargo nextest run -p orbit-application --test rules_immutable
+
+test-rules-impact-db:
+	sh scripts/test-db.sh rules_updates 'test(impact::)'
