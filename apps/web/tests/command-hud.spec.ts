@@ -7,6 +7,54 @@ type S = components['schemas']
 const output = 'test-results/live-hud'
 const baseTime = 1793120000000
 const emptyMissions = ():S['MissionView4'] => ({fleets:[],incoming:[],fleet_slots:'8',score_value_micro:'0'})
+
+for (const [width, height] of [[768, 600], [1024, 768], [1440, 900], [2560, 1100]]) {
+  test(`desktop orb anchors its panel, preserves details across resize and restores focus at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const f = await intelligenceFixture(page)
+    f.headers.push({ id: id(850), kind: 'Espionage', observed_at: baseTime, read: false, hidden: false })
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    const orb = page.getByTestId('command-orb')
+    await expect(orb).toHaveAttribute('data-tone', 'champagne')
+    await expect(orb).toHaveAttribute('aria-haspopup', 'dialog')
+    await expect(orb).toHaveAttribute('aria-expanded', 'false')
+    const bounds = (await orb.boundingBox())!
+    expect(bounds.width).toBe(92)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 28)
+    expect(bounds.x + bounds.width).toBeGreaterThan(width - 36)
+    expect(bounds.y + bounds.height).toBeLessThan(height - 28)
+    await orb.evaluate(el => el.setAttribute('data-instance', 'same-orb'))
+    await diagnosticScreenshot(page, { path: `${output}/desktop-orb-${width}x${height}.png` })
+    await orb.focus()
+    await page.keyboard.press('Enter')
+    const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
+    await expect(panel).toBeVisible()
+    await expect(panel.getByRole('heading', { name: 'Command uplink' })).toBeFocused()
+    await expect(orb).toHaveAttribute('aria-expanded', 'true')
+    const panelBox = (await panel.boundingBox())!
+    expect(panelBox.x + panelBox.width).toBe(width - 28)
+    expect(panelBox.y).toBeGreaterThanOrEqual(0)
+    expect(panelBox.y + panelBox.height).toBeLessThan(bounds.y)
+    await panel.getByRole('button', { name: /Espionage report/ }).click()
+    const detail = page.getByRole('dialog', { name: 'Espionage report', exact: true })
+    await expect(detail.getByRole('group', { name: 'Resource amounts' })).toBeVisible()
+    await diagnosticScreenshot(page, { path: `${output}/desktop-report-${width}x${height}.png` })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(detail).toBeVisible()
+    await expect(orb).toHaveAttribute('data-instance', 'same-orb')
+    expect(await page.evaluate(() => document.body.style.position)).toBe('fixed')
+    await page.setViewportSize({ width, height })
+    await expect(detail).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(detail).toHaveCount(0)
+    await expect(orb).toBeFocused()
+    await expect(orb).toHaveAttribute('aria-expanded', 'false')
+    expect(await page.evaluate(() => document.body.style.position)).toBe('')
+    await expect(orb).toHaveAttribute('data-tone', 'ice')
+  })
+}
+
 async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'][] = [body], destinations: S['Destination'][] = [], playerNames?: S['PublicPlayerNames4']) {
   let revision = 1
   const missions = emptyMissions()
@@ -116,7 +164,7 @@ test('live mobile HUD receives reports, messages and threats across navigation a
   expect(errors).toEqual([])
 })
 
-test('initial unread persists and mailbox failures remain recoverable; desktop has no HUD',async({page})=>{
+test('initial unread persists and mailbox failures remain recoverable; desktop retains the HUD',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'})
   const f=await intelligenceFixture(page)
   f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
@@ -134,7 +182,7 @@ test('initial unread persists and mailbox failures remain recoverable; desktop h
   await page.emulateMedia({reducedMotion:'reduce'})
   expect(await orb.evaluate(node=>getComputedStyle(node,'::before').animationName)).toBe('none')
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/desktop-1440x900.png`})
 })
 
@@ -232,7 +280,7 @@ test('orb boots from its center, types the complete label and clears it without 
   expect(await orb.boundingBox()).toEqual(before)
   await diagnosticScreenshot(page,{path:`${output}/startup-cleared-390x844.png`})
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/startup-desktop-1440x900.png`})
 })
 
@@ -288,8 +336,11 @@ test.describe('HUD touch scroll ownership', () => {
     await swipe(190,620,300)
     await expect.poll(()=>panel.evaluate(el=>el.scrollTop)).toBeGreaterThan(0)
     await diagnosticScreenshot(page,{path:`${output}/message-scrolled-390x844.png`})
-    // A mobile-to-desktop resize unmounts the HUD and must also release the lock.
+    // Resizing preserves the open detail and its scroll lock until dismissed.
     await page.setViewportSize({width:1440,height:900})
+    await expect(panel).toBeVisible()
+    await expect(panel).toContainText('Field update 30')
+    await page.keyboard.press('Escape')
     await expect(panel).toHaveCount(0)
     expect(await page.evaluate(()=>document.body.style.position)).toBe('')
     await diagnosticScreenshot(page,{path:`${output}/scroll-restored-desktop-1440x900.png`})
@@ -378,7 +429,7 @@ test('HUD details return to the list without closing, even after scrolling a rep
   await page.getByRole('button',{name:'Close command HUD'}).click()
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
   await page.setViewportSize({width:1440,height:900})
-  await expect(page.getByTestId('command-orb')).toHaveCount(0)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/back-list-desktop-1440x900.png`})
 })
 
@@ -458,7 +509,10 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   await panel.getByRole('status').filter({hasText:'You’re all caught up.'}).scrollIntoViewIfNeeded()
   await diagnosticScreenshot(page,{path:`${output}/infinite-end-390x844.png`})
   await page.setViewportSize({width:1440,height:900})
-  await expect(page.getByTestId('command-orb')).toHaveCount(0)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
+  await expect(panel).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
   await diagnosticScreenshot(page,{path:`${output}/infinite-desktop-1440x900.png`})
 })
@@ -537,7 +591,7 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await expect(orb).toHaveAttribute('data-tone','champagne')
   await diagnosticScreenshot(page,{path:`${output}/caption-expired-320x740.png`})
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/caption-desktop-1440x900.png`})
 })
 
@@ -617,7 +671,7 @@ test('every orb surface blends through the shared palette, including rapid retar
   expect(await orb.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(135, 242, 187)')
   expect(await orb.evaluate(el=>getComputedStyle(el.parentElement!).transitionProperty)).toBe('none')
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/orb-palette-desktop-1440x900.png`})
 })
 
@@ -699,7 +753,7 @@ test('orb symbols overlap in a holographic dissolve, settle after rapid changes,
   await expect(page.getByRole('dialog',{name:'Command uplink'})).toBeVisible()
   await page.getByRole('button',{name:'Close command HUD'}).click()
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-desktop-1440x900.png`})
 })
 
@@ -757,7 +811,7 @@ test('orb hover charges every layer, preserves its hit area and palette, and sup
   expect(await orb.evaluate(el=>getComputedStyle(el.parentElement!).transitionProperty)).toBe('none')
   await expect(page.getByTestId('orb-charge')).toHaveCSS('animation-name','none')
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/hover-desktop-1440x900.png`})
 })
 
@@ -855,7 +909,7 @@ test('spy contacts are regular unread notifications and only active attacks make
   await f.refresh()
   await expect(orb).toHaveAttribute('data-tone','champagne')
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/spy-unread-desktop-1440x900.png`})
 })
 
@@ -956,7 +1010,7 @@ test('fleet accordion shows empire-wide flight paths, live timing, massive manif
   await page.setViewportSize({width:1440,height:900})
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   await expect(page.locator('main h1')).toContainText('Empire —')
-  await expect(page.getByTestId('command-orb')).toHaveCount(0)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/fleets-desktop-1440x900.png`})
 })
 
@@ -1115,8 +1169,11 @@ test('orb popup animates out on close, Escape and backdrop dismissal before rele
   await orb.click()
   await expect(panel).toBeVisible()
   await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toHaveCount(0)
+  await expect(orb).toBeVisible()
+  await expect(panel).toBeVisible()
+  await page.keyboard.press('Escape')
   await expect(panel).toHaveCount(0)
+  await expect(orb).toBeFocused()
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
   await diagnosticScreenshot(page,{path:`${output}/popup-desktop-1440x900.png`})
 })
@@ -1223,6 +1280,6 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
   expect(bounds.x).toBeGreaterThanOrEqual(0)
   await diagnosticScreenshot(page,{path:`${output}/updated-320x740.png`})
   await page.setViewportSize({width:1440,height:900})
-  await expect(page.getByTestId('command-orb')).toHaveCount(0)
+  await expect(page.getByTestId('command-orb')).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/updated-desktop-1440x900.png`})
 })

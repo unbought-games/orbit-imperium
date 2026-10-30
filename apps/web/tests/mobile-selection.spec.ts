@@ -1,3 +1,4 @@
+import { openNavigation } from './fixtures/navigation'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { binding, body, id, shellFixture } from './fixtures/game'
@@ -174,7 +175,7 @@ for (const mode of modes) {
         mode.touch,
       )
       if (mode.width >= 1024)
-        await selectionIs(page.getByRole('banner'), mode.touch)
+        await selectionIs(page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true }), mode.touch)
       await selectionIs(
         page.getByRole('link', {
           name: 'Energy — resource settings',
@@ -233,7 +234,7 @@ for (const mode of modes) {
         page.getByRole('tooltip').getByText(/Used slots out of/),
         false,
       )
-      if (mode.width < 768) {
+      {
         const orb = page.getByRole('button', { name: /Open command HUD/ })
         if (mode.touch) await selectionIs(orb, true)
         await selectionIs(
@@ -403,26 +404,14 @@ for (const touch of [true, false]) {
         await page.getByRole('combobox', { name: 'Selected body' }).click()
         await capture(page, 'planet-selector')
         await page.keyboard.press('Escape')
-        await page.getByRole('button', { name: 'Menu', exact: true }).click()
+        await openNavigation(page)
         await capture(page, 'navigation-menu')
-        await page
-          .getByRole('button', { name: 'Close menu', exact: true })
-          .click()
-        if (touch) {
-          await page.getByRole('button', { name: /Open command HUD/ }).click()
-          await expect(
-            page.getByRole('dialog', { name: 'Command uplink', exact: true }),
-          ).toBeVisible()
-          await capture(page, 'command-hud')
-          await page
-            .getByRole('button', { name: 'Close command HUD', exact: true })
-            .click()
-        } else {
-          await expect(
-            page.getByRole('button', { name: /Open command HUD/ }),
-          ).toHaveCount(0)
-          await capture(page, 'command-hud')
-        }
+        const closeMenu = page.getByRole('button', { name: 'Close menu', exact: true })
+        if (await closeMenu.isVisible()) await closeMenu.click()
+        await page.getByRole('button', { name: /Open command HUD/ }).click()
+        await expect(page.getByRole('dialog', { name: 'Command uplink', exact: true })).toBeVisible()
+        await capture(page, 'command-hud')
+        await page.getByRole('button', { name: 'Close command HUD', exact: true }).click()
         for (const screen of [
           'resources',
           'facilities',

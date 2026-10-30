@@ -189,6 +189,30 @@ async fn rich_playground_is_playable_atomic_and_retryable() {
         .unwrap();
     let binding = initial.candidate.binding;
     let facts = store.bound_world(binding).await.unwrap();
+    // Generated delivery examples must be readable through the same contract
+    // as real deliveries. UUID origins previously broke the entire HUD inbox.
+    let reports: Vec<sqlx::types::Json<MissionReport>> = sqlx::query_scalar(
+        "SELECT data FROM mission_reports WHERE universe=$1 AND kind='Delivered'",
+    )
+    .bind(u.0)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let deliveries: Vec<_> = reports
+        .iter()
+        .flat_map(|report| report.payloads.values())
+        .collect();
+    assert!(!deliveries.is_empty());
+    for payload in deliveries {
+        for field in ["origin", "target"] {
+            serde_json::from_value::<Coordinates>(payload[field].clone()).unwrap();
+        }
+        for field in ["sender", "recipient"] {
+            serde_json::from_value::<PlayerId>(payload[field].clone()).unwrap();
+        }
+        assert_eq!(report_preview(payload)["origin"], payload["origin"]);
+        assert_eq!(report_preview(payload)["cargo"], payload["cargo"]);
+    }
     assert_eq!(
         facts
             .facts

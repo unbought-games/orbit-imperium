@@ -235,7 +235,10 @@ test('fixture browser failure diagnostics are downloadable without capturing suc
   const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
   const upload = browser.steps.find((step) => step.uses?.startsWith('actions/upload-artifact@'))
   assert.equal(upload.if, 'failure()')
-  assert.equal(upload.with.path, 'test-results/browser-ui/')
+  assert.deepEqual(upload.with.path.trim().split('\n'), [
+    'test-results/browser-ui/',
+    'test-results/browser-homepage/',
+  ])
   assert.equal(upload.with['retention-days'], 7)
   assert.equal(upload.with['if-no-files-found'], 'ignore')
   assert.equal(upload.with.name, 'browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}')

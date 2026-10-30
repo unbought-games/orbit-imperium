@@ -1,3 +1,4 @@
+import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { binding, body, shellFixture } from './fixtures/game'
@@ -93,22 +94,14 @@ for (const blocked of [
       await page.reload()
       await expect(page.locator('main h1')).toContainText('Empire —')
       await expect.poll(() => intercepted).toBeGreaterThan(0)
-      await page.getByRole('button', { name: 'Menu', exact: true }).click()
-      await page
-        .getByRole('dialog', { name: 'Navigation' })
-        .getByRole('link', { name: 'Resources', exact: true })
-        .click()
+      await navigate(page, 'Resources')
       await expect(page.locator('main h1')).toHaveText('Resources')
       const logout = page.waitForRequest(
         (request) =>
           new URL(request.url()).pathname === '/api/v1/session' &&
           request.method() === 'DELETE',
       )
-      await page.getByRole('button', { name: 'Menu', exact: true }).click()
-      await page
-        .getByRole('dialog', { name: 'Navigation' })
-        .getByRole('button', { name: 'Sign out' })
-        .click()
+      await signOut(page)
       await logout
       await expect(
         page.getByRole('button', { name: 'Sign in', exact: true }),

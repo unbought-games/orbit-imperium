@@ -16,6 +16,7 @@ struct StaticAssets {
     files: ServeDir,
     index: PathBuf,
     homepage: PathBuf,
+    homepage_closed: PathBuf,
     prepare: Prepare,
     origin: String,
 }
@@ -36,7 +37,8 @@ fn router_with(assets: String, origin: String, prepare: Prepare) -> Router {
     Router::new().fallback(serve).with_state(StaticAssets {
         files: ServeDir::new(&assets).append_index_html_on_directories(false),
         index: PathBuf::from(&assets).join("index.html"),
-        homepage: PathBuf::from(assets).join("homepage.html"),
+        homepage: PathBuf::from(&assets).join("homepage.html"),
+        homepage_closed: PathBuf::from(assets).join("homepage-closed.html"),
         prepare,
         origin,
     })
@@ -47,7 +49,9 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
     };
     let public_document = path.starts_with("/reports/shared/") || path.starts_with("/alliances/");
     let namespace = path.split('/').nth(1).unwrap_or_default();
-    if matches!(namespace, "api" | "health") || path == "/homepage.html" {
+    if matches!(namespace, "api" | "health")
+        || matches!(path.as_ref(), "/homepage.html" | "/homepage-closed.html")
+    {
         return StatusCode::NOT_FOUND.into_response();
     }
     if request.method() != Method::GET && request.method() != Method::HEAD {
@@ -113,7 +117,12 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
                 )
             {
                 // Older/custom asset builds retain the regular entry as a safe fallback.
-                match tokio::fs::read_to_string(&assets.homepage).await {
+                let homepage = if bootstrap.signup_enabled {
+                    &assets.homepage
+                } else {
+                    &assets.homepage_closed
+                };
+                match tokio::fs::read_to_string(homepage).await {
                     Ok(homepage) => template = homepage,
                     Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
                     Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
@@ -240,66 +249,87 @@ mod tests {
         let assets = Assets::new();
         std::fs::write(
             assets.0.join("homepage.html"),
-            format!("<title>Orbit Imperium</title>LIGHTWEIGHT{INDEX}"),
+            format!("<title>Orbit Imperium</title>LIGHTWEIGHT SIGNUP_LINK{INDEX}"),
         )
         .unwrap();
-        for result in [
-            BootstrapResult::Anonymous,
-            BootstrapResult::Unavailable {
-                code: BootstrapError::Unavailable,
-            },
-            BootstrapResult::Authenticated {
-                session: AuthenticatedSession {
-                    account: AccountId(uuid::Uuid::nil()),
-                    csrf: "csrf".into(),
-                    expires_at: 0,
-                    memberships: vec![],
+        std::fs::write(
+            assets.0.join("homepage-closed.html"),
+            format!("<title>Orbit Imperium</title>CLOSED{INDEX}"),
+        )
+        .unwrap();
+        for signup_enabled in [true, false] {
+            for result in [
+                BootstrapResult::Anonymous,
+                BootstrapResult::Unavailable {
+                    code: BootstrapError::Unavailable,
                 },
-                game: BootstrapGame::NoMembership,
-            },
-        ] {
-            let anonymous = matches!(result, BootstrapResult::Anonymous);
-            let app = router_with(
-                assets.0.to_string_lossy().into_owned(),
-                "https://community.example".into(),
-                Arc::new(move |_| {
-                    let result = result.clone();
-                    Box::pin(async {
-                        Bootstrap {
-                            version: 1,
-                            signup_enabled: true,
-                            result,
-                        }
-                    })
-                }),
-            );
-            for path in ["/", "/index.html", "/login", "/u/demo/overview"] {
-                let response = app
-                    .clone()
-                    .oneshot(Request::get(path).body(Body::empty()).unwrap())
-                    .await
-                    .unwrap();
-                assert_eq!(response.status(), StatusCode::OK);
-                let body = String::from_utf8(
-                    to_bytes(response.into_body(), 16384)
-                        .await
-                        .unwrap()
-                        .to_vec(),
-                )
-                .unwrap();
-                assert_eq!(
-                    body.contains("LIGHTWEIGHT"),
-                    anonymous && matches!(path, "/" | "/index.html"),
-                    "{path}"
+                BootstrapResult::Authenticated {
+                    session: AuthenticatedSession {
+                        account: AccountId(uuid::Uuid::nil()),
+                        csrf: "csrf".into(),
+                        expires_at: 0,
+                        memberships: vec![],
+                    },
+                    game: BootstrapGame::NoMembership,
+                },
+            ] {
+                let anonymous = matches!(result, BootstrapResult::Anonymous);
+                let app = router_with(
+                    assets.0.to_string_lossy().into_owned(),
+                    "https://community.example".into(),
+                    Arc::new(move |_| {
+                        let result = result.clone();
+                        Box::pin(async move {
+                            Bootstrap {
+                                version: 1,
+                                signup_enabled,
+                                result,
+                            }
+                        })
+                    }),
                 );
+                for path in ["/", "/index.html", "/login", "/u/demo/overview"] {
+                    let response = app
+                        .clone()
+                        .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                        .await
+                        .unwrap();
+                    assert_eq!(response.status(), StatusCode::OK);
+                    let body = String::from_utf8(
+                        to_bytes(response.into_body(), 16384)
+                            .await
+                            .unwrap()
+                            .to_vec(),
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        body.contains(if signup_enabled {
+                            "LIGHTWEIGHT"
+                        } else {
+                            "CLOSED"
+                        }),
+                        anonymous && matches!(path, "/" | "/index.html"),
+                        "{path}"
+                    );
+                    assert_eq!(
+                        body.contains("SIGNUP_LINK"),
+                        anonymous && signup_enabled && matches!(path, "/" | "/index.html")
+                    );
+                }
             }
         }
-        let response = assets
-            .router()
-            .oneshot(Request::get("/homepage.html").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        for path in [
+            "/homepage.html",
+            "/homepage-closed.html",
+            "/%68omepage-closed.html",
+        ] {
+            let response = assets
+                .router()
+                .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        }
     }
 
     #[tokio::test]
@@ -522,6 +552,8 @@ mod tests {
             "/favicon.ico",
             "/missing.json",
             "/homepage.html",
+            "/homepage-closed.html",
+            "/%68omepage-closed.html",
             "/nested/missing.js",
             "/missing.js/",
             "/missing%2Ejs",

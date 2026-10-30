@@ -1,3 +1,4 @@
+import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import type { components } from '../src/contracts'
@@ -93,13 +94,13 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
   await expect(
     cards.nth(3).getByRole('button', { name: /Supporter/ }),
   ).toHaveCount(0)
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
-  await expect(page.getByLabel('Username', { exact: true })).toContainText(
+  await openNavigation(page)
+  await expect(page.getByLabel('Username', { exact: true }).filter({ visible: true })).toContainText(
     'MyCommander',
   )
   await expect(
     page
-      .getByLabel('Username', { exact: true })
+      .getByLabel('Username', { exact: true }).filter({ visible: true })
       .getByRole('img', { name: /Supporter/ }),
   ).toBeVisible()
   await page.keyboard.press('Escape')
@@ -201,7 +202,17 @@ test('espionage and combat observations use current public identities without ch
       },
     })
   })
-  await page.goto(`/u/andromeda/reports/${id(80)}?body=${body.id}`)
+  // Identity assertions start after their own response, rather than spending
+  // their assertion budget on a cold route load and legacy-URL redirect.
+  const reportProfiles = () => page.waitForResponse(response => {
+    if (!response.url().endsWith('/player-profiles') || response.status() !== 200) return false
+    const source = response.request().postDataJSON()?.source
+    return source?.type === 'Report' && source.report === id(80)
+  })
+  await Promise.all([
+    reportProfiles(),
+    page.goto(`/u/andromeda/reports/${id(80)}?body=${body.id}`),
+  ])
   const observation = page.getByRole('region', { name: 'Report observation' })
   await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
   await expect(
@@ -224,7 +235,7 @@ test('espionage and combat observations use current public identities without ch
       coordinates: { galaxy: 1, system: 1, position: 2 },
     },
   }
-  await page.reload()
+  await Promise.all([reportProfiles(), page.reload()])
   await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
   payload = {
     kind: 'Combat',
@@ -257,7 +268,7 @@ test('espionage and combat observations use current public identities without ch
     ],
     rounds: [],
   }
-  await page.reload()
+  await Promise.all([reportProfiles(), page.reload()])
   await expect(
     observation
       .getByRole('region', { name: 'Forces and losses' })

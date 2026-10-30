@@ -1,5 +1,5 @@
 import type { DispatchDraft } from '../missions'
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from '@tanstack/react-router'
 import { useGameSession } from '../../shell/session-context'
@@ -9,24 +9,13 @@ import { CommandOrb, HudToast } from './hud-controls'
 import { HudPanel } from './hud-panel'
 import { noticeKey } from './model'
 import styles from './hud.module.css'
-const mobileQuery = '(max-width: 767px)'
-function subscribeMobile(onChange: () => void) {
-  const query = window.matchMedia(mobileQuery)
-  query.addEventListener('change', onChange)
-  return () => query.removeEventListener('change', onChange)
-}
 type HudProps = {
   body?: string
   onDraft: (draft: DispatchDraft) => void
 }
 export function CommandHud({ body, onDraft }: HudProps) {
   const { view } = useGameSession()
-  const mobile = useSyncExternalStore(
-    subscribeMobile,
-    () => window.matchMedia(mobileQuery).matches,
-    () => false,
-  )
-  return mobile && view.protocol === 4 ? (
+  return view.protocol === 4 ? (
     <LiveCommandHud
       key={bindingKey(view.binding)}
       body={body}

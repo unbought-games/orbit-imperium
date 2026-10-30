@@ -1284,17 +1284,17 @@
 }
 
 .climate {
-  padding: 12px 0;
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  padding: 0;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
 }
-.climate > summary {
-  cursor: pointer;
-  color: var(--text);
-}
-.climate p {
-  margin: 8px 0 0;
+
+@media (max-width: 1023px) {
+  .climate {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .fleetRows {
