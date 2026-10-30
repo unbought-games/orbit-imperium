@@ -95,7 +95,7 @@ fn independent_cost_time_and_storage_vectors() {
     );
     assert_eq!(t.duration(), 8000);
     // Synthetic fixed-speed formula fixtures; production MVP validation still requires S=10.
-    r.speed = 1;
+    r = synthetic_speed(&r, 1);
     assert_eq!(
         building_terms(&b, Building::MetalMine, BuildingAction::Upgrade, &r)
             .unwrap()
@@ -127,7 +127,7 @@ fn independent_cost_time_and_storage_vectors() {
     assert_eq!(storage_capacity(3, &r).unwrap(), 75000 * SCALE);
     assert_eq!(storage_capacity(33, &r).unwrap(), 6064564940000 * SCALE);
     assert_eq!(storage_capacity(34, &r), Err(GameError::NumericRange));
-    r.speed = 7;
+    r = synthetic_speed(&r, 7);
     b.levels.insert(Building::Shipyard, 3);
     let m = manufacture_terms(&b, ManufacturedItem::Ship(ShipType::EspionageProbe), 3, &r).unwrap();
     assert_eq!(m.duration(), 51000);
@@ -150,16 +150,27 @@ fn independent_cost_time_and_storage_vectors() {
 #[test]
 fn redesign_threshold_is_applied_after_speed_and_raw_floor() {
     let b = body();
-    let mut r = Ruleset::mvp_progression().unwrap();
+    let r = Ruleset::mvp_progression().unwrap();
+    let mut artifact = r.artifact.clone();
     // At S=10/R=0, raw seconds are floor(M*0.144): 99,100,101,0.
     for (metal, seconds) in [(689, 99), (695, 10), (702, 11), (1, 1)] {
-        r.artifact
+        artifact
             .buildings
             .get_mut(&Building::MetalMine)
             .unwrap()
             .base = [metal, 0, 0];
+        let r = Ruleset::from_artifact(artifact.clone(), r.speed).unwrap();
         let t = building_terms(&b, Building::MetalMine, BuildingAction::Upgrade, &r).unwrap();
         assert_eq!(t.duration(), seconds * 1000);
         assert_eq!(t.paid().metal, metal * SCALE);
     }
+}
+
+// Formula fixtures deliberately bypass only the universe's fixed-speed policy;
+// their persisted integrity must still be valid.
+fn synthetic_speed(rules: &Ruleset, speed: i32) -> Ruleset {
+    let mut wire = serde_json::to_value(rules).unwrap();
+    wire["speed"] = serde_json::json!(speed);
+    wire["hash"] = serde_json::json!(hash(&(&wire["artifact"], speed)));
+    serde_json::from_value(wire).unwrap()
 }

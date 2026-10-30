@@ -175,7 +175,7 @@ async fn missiles_manufacture_launch_intercept_restart_and_audit_in_both_runtime
             Command::World {
                 action: WorldAction::LaunchMissiles {
                     intent,
-                    expected_terms_hash: q.terms_hash,
+                    expected_terms_hash: q.terms_hash.clone(),
                 },
             },
         );

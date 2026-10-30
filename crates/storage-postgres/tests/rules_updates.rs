@@ -33,7 +33,7 @@ async fn custom_saved_catalog_survives_startup_and_initializes_signup() {
         .await
         .unwrap()
         .universe;
-    let mut a = store.load_rules(u).await.unwrap().artifact;
+    let mut a = store.load_rules(u).await.unwrap().artifact.clone();
     a.id = "custom-universe".into();
     a.base_income[0] = 45;
     a.progression.as_mut().unwrap().research.insert(
@@ -365,6 +365,21 @@ async fn activation_waits_for_admitted_and_claimed_work() {
         Err(RulesUpdateError::Pending { id }) => id,
         other => panic!("expected durable pending barrier: {other:?}"),
     };
+    // A retained queued proposal can use a different supported wire representation.
+    // Retrying the same interpreted edit must reuse its durable boundary and identity.
+    let saved: serde_json::Value =
+        sqlx::query_scalar("SELECT rules FROM runtime_barriers WHERE id=$1")
+            .bind(barrier)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let legacy = compatibility::legacy_wire(&saved);
+    sqlx::query("UPDATE runtime_barriers SET rules=$2 WHERE id=$1")
+        .bind(barrier)
+        .bind(legacy)
+        .execute(&pool)
+        .await
+        .unwrap();
     assert!(
         matches!(service.apply(&next).await, Err(RulesUpdateError::Pending { id }) if id == barrier)
     );
@@ -459,7 +474,10 @@ async fn failed_activation_rolls_back_all_state_and_can_be_retried() {
         service.export(u).await.unwrap().base_revision,
         before.base_revision
     );
-    assert_eq!(store.load_rules(u).await.unwrap().artifact, before.artifact);
+    assert_eq!(
+        store.load_rules(u).await.unwrap().artifact.clone(),
+        before.artifact.clone()
+    );
     let exists:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM research_levels WHERE owner=$1 AND research='LaserTechnology')").bind(b.player.0).fetch_one(&pool).await.unwrap();
     assert!(!exists);
     assert!(service.apply(&doc).await.is_ok());
@@ -467,7 +485,17 @@ async fn failed_activation_rolls_back_all_state_and_can_be_retried() {
 
 #[tokio::test]
 async fn pending_construction_completes_after_activation_with_original_payment() {
+    pending_construction(false).await;
+}
+#[tokio::test]
+async fn legacy_rules_pending_construction_survives_restart_and_completes_once() {
+    pending_construction(true).await;
+}
+async fn pending_construction(legacy: bool) {
     let (store, pool, u, b) = setup().await;
+    if legacy {
+        compatibility::install_legacy(&store, &pool, u).await;
+    }
     let game = GameService::new(store.clone());
     let (snapshot, _) = store.bound_world(b).await.unwrap().facts;
     let body = *snapshot.state.bodies.keys().next().unwrap();
@@ -528,7 +556,11 @@ async fn pending_construction_completes_after_activation_with_original_payment()
         .unwrap()
         .base[0] = 120;
     service.apply(&doc).await.unwrap();
-    store.set_test_time(before.0).await.unwrap();
+    let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    let game = GameService::new(reopened.clone());
+    reopened.set_test_time(before.0).await.unwrap();
     assert!(matches!(
         game.step(u, WorkerId(Uuid::new_v4())).await.unwrap(),
         StepOutcome::Committed { .. }
@@ -542,6 +574,10 @@ async fn pending_construction_completes_after_activation_with_original_payment()
     .unwrap();
     assert_eq!((after.0, after.1, after.2), before);
     assert_eq!(after.3, "Completed");
+    assert!(matches!(
+        game.step(u, WorkerId(Uuid::new_v4())).await.unwrap(),
+        StepOutcome::Idle
+    ));
     let active = store.load_rules(u).await.unwrap();
     let profiles:(String,String)=sqlx::query_as("SELECT input->>'profile_hash',facts->>'profile_hash' FROM transition_journal WHERE universe=$1 ORDER BY cursor DESC LIMIT 1").bind(u.0).fetch_one(&pool).await.unwrap();
     assert_ne!(profiles.0, active.hash.0);
@@ -582,7 +618,10 @@ async fn unsafe_numeric_proposals_do_not_change_rules_even_without_players() {
             Err(RulesUpdateError::Invalid { .. })
         ));
     }
-    assert_eq!(service.export(u).await.unwrap().artifact, before.artifact);
+    assert_eq!(
+        service.export(u).await.unwrap().artifact.clone(),
+        before.artifact.clone()
+    );
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM rules_activations WHERE universe=$1")
         .bind(u.0)
         .fetch_one(&pool)
@@ -620,6 +659,7 @@ async fn signup_at_temperature_boundary_remains_playable_after_activation() {
         .unwrap()
         .artifact
         .universe
+        .clone()
         .unwrap();
     // Select deterministic creation evidence for the hottest permitted homeworld.
     let seed = (0u32..10000)
@@ -781,7 +821,7 @@ async fn impulse_activation_initializes_existing_and_new_players_and_survives_re
     .unwrap();
     assert_eq!(count, 1);
     let mut destructive = service.export(universe).await.unwrap();
-    destructive.artifact = before.artifact;
+    destructive.artifact = before.artifact.clone();
     assert!(service.diff(&destructive).await.is_err());
 }
 
@@ -956,7 +996,7 @@ async fn astrophysics_activation_is_additive_idempotent_and_preserves_research_o
         assert!(actual_lots.contains(&lot));
     }
     let mut destructive = service.export(universe).await.unwrap();
-    destructive.artifact = before.artifact;
+    destructive.artifact = before.artifact.clone();
     assert!(service.diff(&destructive).await.is_err());
 }
 
@@ -1081,7 +1121,7 @@ async fn light_laser_activation_initializes_research_and_preserves_players_acros
     let (after, _) = store.bound_world(binding).await.unwrap().facts;
     assert_eq!(after.state.research[&binding.player].levels, expected);
     let mut destructive = service.export(universe).await.unwrap();
-    destructive.artifact = before.artifact;
+    destructive.artifact = before.artifact.clone();
     assert!(service.diff(&destructive).await.is_err());
 }
 
@@ -1202,7 +1242,7 @@ async fn ion_activation_preserves_players_and_initializes_new_signups() {
     let (after, _) = store.bound_world(binding).await.unwrap().facts;
     assert_eq!(after.state.research[&binding.player].levels, expected);
     let mut destructive = service.export(universe).await.unwrap();
-    destructive.artifact = before.artifact;
+    destructive.artifact = before.artifact.clone();
     assert!(service.diff(&destructive).await.is_err());
 }
 
@@ -1809,7 +1849,7 @@ async fn cruiser_activation_preserves_players_and_survives_restart_and_disable()
         saved.artifact.world.as_ref().unwrap().combat
     );
     let mut destructive = service.export(universe).await.unwrap();
-    destructive.artifact = before.artifact;
+    destructive.artifact = before.artifact.clone();
     assert!(service.diff(&destructive).await.is_err());
 }
 
@@ -2057,3 +2097,6 @@ mod hyperspace_drive;
 
 #[path = "rules_updates/destroyer.rs"]
 mod destroyer;
+
+#[path = "rules_updates/compatibility.rs"]
+mod compatibility;

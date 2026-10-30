@@ -132,7 +132,8 @@ pub struct MissileIntent {
     pub primary: Option<DefenseId>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MissileTerms {
+#[serde(deny_unknown_fields)]
+pub struct MissileTermsData {
     pub intent: MissileIntent,
     pub source_coordinates: Coordinates,
     pub target_coordinates: Coordinates,
@@ -146,6 +147,22 @@ pub struct MissileTerms {
     pub profile_hash: Hash,
     pub terms_hash: Hash,
 }
+pub type MissileTerms = Persisted<MissileTermsData>;
+impl crate::persisted::private::Sealed for MissileTermsData {}
+impl PersistedFormat for MissileTermsData {
+    fn verify_original(value: &serde_json::Value) -> Result<(), String> {
+        crate::persisted::verify_terms(value, "missile_terms")
+    }
+}
+impl MissileTermsData {
+    /// Finish a new quote or explicitly edited fixture; accepted terms expose no mutation.
+    pub fn seal(mut self) -> MissileTerms {
+        self.terms_hash = Hash(String::new());
+        self.terms_hash = hash(&serde_json::json!({"protocol":4,"missile_terms":self}));
+        Persisted::from_new(self)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MissileStatus {
     InFlight,
@@ -261,7 +278,7 @@ pub fn quote_missiles(
     let duration_ms =
         (numerator / i64::from(r.speed) + i64::from(numerator % i64::from(r.speed) != 0)).max(1);
     deadline(at, duration_ms)?;
-    let mut terms = MissileTerms {
+    let terms = MissileTermsData {
         intent: intent.clone(),
         source_coordinates: b.coordinates,
         target_coordinates: target.coordinates,
@@ -275,8 +292,7 @@ pub fn quote_missiles(
         profile_hash: r.hash.clone(),
         terms_hash: Hash(String::new()),
     };
-    terms.terms_hash = hash(&serde_json::json!({"protocol":4,"missile_terms":terms}));
-    Ok(terms)
+    Ok(terms.seal())
 }
 /// Pure pooled-power allocation. Surviving units never retain partial damage.
 pub fn missile_damage(

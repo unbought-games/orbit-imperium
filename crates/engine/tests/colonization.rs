@@ -142,7 +142,7 @@ fn every_position_uses_its_temperature_envelope_and_integer_diameter() {
 #[test]
 fn legacy_admission_matches_old_vectors_and_skips_colonized_homeworld_slots() {
     let rules = Ruleset::mvp_raids().unwrap();
-    let profile = rules.artifact.universe.unwrap();
+    let profile = rules.artifact.universe.clone().unwrap();
     let secret = [17; 32];
     let universe = UniverseId(Uuid::from_u128(1));
     let epoch = Epoch(Uuid::from_u128(2));

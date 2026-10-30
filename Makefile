@@ -248,3 +248,13 @@ test-location-previews:
 .PHONY: test-world-local
 test-world-local: _dev-binary _dev-dependencies
 	$(TIMEOUT) full-system node scripts/world-local-e2e.mjs
+
+# Deterministic persisted-wire compatibility, replay, and immutable API checks.
+.PHONY: test-persistence
+test-persistence:
+	cargo nextest run -p orbit-engine --test persistence --test missions --test replay --test debris --test progression_terms --test rules_updates
+	cargo test -p orbit-engine --doc
+
+.PHONY: test-persistence-db
+test-persistence-db:
+	sh scripts/test-db.sh rules_updates 'test(compatibility::) | test(legacy_rules_) | test(activation_waits_for_admitted_and_claimed_work)'

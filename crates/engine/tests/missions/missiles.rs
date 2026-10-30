@@ -92,7 +92,7 @@ fn launch(
         Input::Command(Command::World {
             action: WorldAction::LaunchMissiles {
                 intent,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -467,10 +467,10 @@ fn moon_parent_binding_shares_one_inventory_and_removed_moon_does_not_spend_it()
         .values_mut()
         .find(|f| f.id == OperationId(derived_id(InputId(Uuid::from_u128(1060)), "missile:0")))
         .unwrap();
-    flight.terms.intent.target.id = moon.id;
-    flight.terms.intent.target.expected_kind = BodyKind::Moon;
-    flight.terms.terms_hash = Hash(String::new());
-    flight.terms.terms_hash = hash(&serde_json::json!({"protocol":4,"missile_terms":flight.terms}));
+    let mut draft = (*flight.terms).clone();
+    draft.intent.target.id = moon.id;
+    draft.intent.target.expected_kind = BodyKind::Moon;
+    flight.terms = draft.seal();
     s.coverage.bodies.insert(moon.id);
     s.coverage.inventory_owners.insert((moon.id, moon.owner));
     s.coverage.manufacturing_bodies.insert(moon.id);
@@ -539,7 +539,7 @@ fn ordinary_raids_never_target_silo_inventory() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent: request,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -580,10 +580,10 @@ fn removed_moon_leaves_parent_interceptors_untouched() {
         .values_mut()
         .next()
         .unwrap();
-    f.terms.intent.target.id = moon;
-    f.terms.intent.target.expected_kind = BodyKind::Moon;
-    f.terms.terms_hash = Hash(String::new());
-    f.terms.terms_hash = hash(&serde_json::json!({"protocol":4,"missile_terms":f.terms}));
+    let mut draft = (*f.terms).clone();
+    draft.intent.target.id = moon;
+    draft.intent.target.expected_kind = BodyKind::Moon;
+    f.terms = draft.seal();
     let e = &c.events[0];
     let result = run(&mut s, &r, p, b, e.at, 1111, Input::Event(e.event.clone()));
     let impact = apply(&mut s, result);
@@ -640,4 +640,54 @@ fn exact_residual_power_carries_between_defense_types() {
         assert_eq!(losses[&DefenseId::PlasmaTurret], 1);
         assert_eq!(losses[&DefenseId::RocketLauncher], rockets);
     }
+}
+
+#[test]
+fn accepted_missile_wire_survives_restart_and_rejects_tampering() {
+    let (mut s, r, p, b, t) = ready();
+    let launch = launch(&mut s, &r, p, b, t, 4, 6000);
+    let saved = serde_json::to_value(&s).unwrap();
+    let id = s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .missiles
+        .keys()
+        .next()
+        .unwrap()
+        .to_string();
+    let original_terms = saved["world"]["records"]["missiles"][&id]["terms"].clone();
+    let mut tampered = saved.clone();
+    tampered["world"]["records"]["missiles"][&id]["terms"]["duration_ms"] = serde_json::json!(1);
+    assert!(serde_json::from_value::<GameState>(tampered).is_err());
+    s = serde_json::from_value(saved).unwrap();
+    validate_asset_lineage(&s).unwrap();
+    let event = &launch.events[0];
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        event.at,
+        6001,
+        Input::Event(event.event.clone()),
+    );
+    apply(&mut s, result);
+    let after = serde_json::to_value(&s).unwrap();
+    assert_eq!(
+        after["world"]["records"]["missiles"][&id]["terms"],
+        original_terms
+    );
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        event.at,
+        6002,
+        Input::Event(event.event.clone()),
+    );
+    let changes = apply(&mut s, result);
+    assert!(changes.inventories.is_empty());
 }

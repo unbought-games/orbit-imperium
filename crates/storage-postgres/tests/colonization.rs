@@ -268,7 +268,7 @@ async fn launch(
             command: CommandDto3::Progression(Command::World {
                 action: WorldAction::LaunchFleet {
                     intent,
-                    expected_terms_hash: q.terms_hash,
+                    expected_terms_hash: q.terms_hash.clone(),
                 },
             }),
         },

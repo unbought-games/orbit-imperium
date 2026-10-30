@@ -64,7 +64,7 @@ pub struct FleetIntent {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct FleetTerms {
+pub struct FleetTermsData {
     pub intent: FleetIntent,
     pub profile_hash: Hash,
     pub distance: i64,
@@ -80,6 +80,34 @@ pub struct FleetTerms {
     pub slot_limit: i64,
     pub terms_hash: Hash,
 }
+pub type FleetTerms = Persisted<FleetTermsData>;
+impl crate::persisted::private::Sealed for FleetTermsData {}
+impl PersistedFormat for FleetTermsData {
+    fn verify_original(value: &serde_json::Value) -> Result<(), String> {
+        crate::persisted::verify_terms(value, "terms")
+    }
+    fn validate_interpretation(&self) -> Result<(), String> {
+        let ships: std::collections::BTreeSet<_> =
+            self.intent.ships.iter().map(|s| s.ship_type).collect();
+        let speeds: std::collections::BTreeSet<_> = self.speeds.iter().map(|s| s.0).collect();
+        if ships.len() != self.intent.ships.len()
+            || speeds.len() != self.speeds.len()
+            || ships != speeds
+        {
+            return Err("duplicate or inconsistent fleet identifiers".into());
+        }
+        Ok(())
+    }
+}
+impl FleetTermsData {
+    /// Finish a new quote or explicitly edited fixture; accepted terms expose no mutation.
+    pub fn seal(mut self) -> FleetTerms {
+        self.terms_hash = Hash(String::new());
+        self.terms_hash = hash(&serde_json::json!({"protocol":4,"terms":self}));
+        Persisted::from_new(self)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MissionLeg {
     Outbound,
@@ -246,20 +274,14 @@ pub struct WorldRules {
     pub detector: String,
     pub rng: String,
     pub protection: String,
-    /// Omission retains the historical ratio and serialized rules hash.
-    #[serde(
-        default = "default_beginner_protection_multiplier",
-        skip_serializing_if = "is_default_beginner_protection_multiplier"
-    )]
+    /// Saved omission retains the historical ratio and identity through Ruleset.
+    #[serde(default = "default_beginner_protection_multiplier")]
     pub beginner_protection_multiplier: u32,
     pub debris_cleanup: String,
     pub moons: bool,
 }
 fn default_beginner_protection_multiplier() -> u32 {
     5
-}
-fn is_default_beginner_protection_multiplier(value: &u32) -> bool {
-    *value == default_beginner_protection_multiplier()
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {

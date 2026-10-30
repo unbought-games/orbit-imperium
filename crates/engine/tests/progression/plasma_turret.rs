@@ -5,7 +5,7 @@ fn plasma_turret_fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     let standard =
         standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), old.speed).unwrap();
     let item = ManufacturedItem::Defense(DefenseId::PlasmaTurret);
-    let mut artifact = old.artifact;
+    let mut artifact = old.artifact.clone();
     *artifact
         .catalog
         .iter_mut()

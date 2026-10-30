@@ -115,7 +115,7 @@ pub fn fleet_terms(
     target: Coordinates,
     research: &ResearchLevels,
     r: &Ruleset,
-) -> Result<FleetTerms, GameError> {
+) -> Result<FleetTermsData, GameError> {
     flight_terms(intent, origin, target, research, r, true)
 }
 fn flight_terms(
@@ -125,7 +125,7 @@ fn flight_terms(
     research: &ResearchLevels,
     r: &Ruleset,
     require_capacity: bool,
-) -> Result<FleetTerms, GameError> {
+) -> Result<FleetTermsData, GameError> {
     if !r.world() {
         return Err(GameError::UnavailableContent);
     }
@@ -196,7 +196,7 @@ fn flight_terms(
     {
         return Err(GameError::CargoCapacity);
     }
-    Ok(FleetTerms {
+    Ok(FleetTermsData {
         intent,
         profile_hash: r.hash.clone(),
         distance,
@@ -396,8 +396,7 @@ fn quote_inner(
     )?;
     resources(settle_production(s, b, at, r)?.amounts, cost, false)?;
     deadline(deadline(at, q.duration_ms)?, q.duration_ms)?;
-    q.terms_hash = hash(&json!({"protocol":4,"terms":q}));
-    Ok(q)
+    Ok(q.seal())
 }
 fn inventory(
     c: &mut ChangeSet,

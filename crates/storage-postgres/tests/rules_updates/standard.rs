@@ -302,7 +302,7 @@ async fn stale_proposal_and_custom_content_fail_without_activation() {
     ));
     let after = service.export(universe).await.unwrap();
     assert_eq!(before.base_revision, after.base_revision);
-    assert_eq!(before.artifact, after.artifact);
+    assert_eq!(before.artifact, after.artifact.clone());
     let pending: i64 =
         sqlx::query_scalar("SELECT count(*) FROM runtime_barriers WHERE universe=$1 AND NOT done")
             .bind(universe.0)

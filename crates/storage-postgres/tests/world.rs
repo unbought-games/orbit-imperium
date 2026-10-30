@@ -347,7 +347,7 @@ async fn report_pagination_and_privacy(fixture: &RuntimeFixture) -> (Binding, sq
             kind: "Harvested".into(),
             at: 1000,
             fleet: None,
-            rules_hash: Ruleset::mvp_fleets().unwrap().hash,
+            rules_hash: Ruleset::mvp_fleets().unwrap().hash.clone(),
             payloads: std::collections::BTreeMap::from([(
                 b.player,
                 serde_json::json!({"kind":"Harvested","captured":"immutable","cargo":{"metal":"123000000","crystal":"0","deuterium":"0"}}),
@@ -1123,7 +1123,7 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
             command: CommandDto3::Progression(Command::World {
                 action: WorldAction::LaunchFleet {
                     intent,
-                    expected_terms_hash: terms.terms_hash,
+                    expected_terms_hash: terms.terms_hash.clone(),
                 },
             }),
         },
@@ -1403,7 +1403,7 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
         cargo: Resources::default(),
         speed_percent: 100,
     };
-    let mut terms = FleetTerms {
+    let terms = FleetTermsData {
         intent: intent.clone(),
         profile_hash: snapshot.state.profile_hash.clone(),
         distance: 5,
@@ -1415,7 +1415,7 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
         slot_limit: 1,
         terms_hash: Hash(String::new()),
     };
-    terms.terms_hash = hash(&serde_json::json!({"protocol":4,"terms":terms}));
+    let terms = terms.seal();
     // Empty cargo/manifests isolate persistence from the separate asset-lot ledger.
     let mut fleet = MissionFleet {
         id: FleetId(Uuid::new_v4()),

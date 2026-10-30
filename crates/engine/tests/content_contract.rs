@@ -34,11 +34,26 @@ impl<'de> de::Deserializer<'de> for Vocabulary<'_> {
     }
 }
 
-fn assert_vocabulary<T: for<'de> Deserialize<'de>>(schema: &Value, name: &str) {
+fn assert_vocabulary<T: for<'de> Deserialize<'de> + serde::Serialize>(schema: &Value, name: &str) {
     let mut variants = Vec::new();
     assert!(T::deserialize(Vocabulary(&mut variants)).is_err());
     assert!(!variants.is_empty());
+    // Read aliases are compatibility inputs, not additional public identities.
+    // Canonicalize through actual serialization; every unique emitted ID must
+    // still be present in the shared contract, including disabled content.
+    let mut variants: Vec<String> = variants
+        .into_iter()
+        .map(|name| {
+            let value: T = serde_json::from_value(serde_json::json!(name)).unwrap();
+            serde_json::to_value(value)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_owned()
+        })
+        .collect();
     variants.sort_unstable();
+    variants.dedup();
     let mut declared: Vec<_> = schema["components"]["schemas"][name]["enum"]
         .as_array()
         .unwrap()

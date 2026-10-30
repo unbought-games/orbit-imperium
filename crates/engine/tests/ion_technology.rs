@@ -11,7 +11,7 @@ fn ion_fixture_is_an_additive_research_only_update() {
     assert_eq!(delta.add_research, vec![ResearchId::IonTechnology]);
     assert!(delta.add_buildings.is_empty());
     assert_eq!(previous.protocol(), next.protocol());
-    let mut expected = common::ion_rules(&previous).artifact;
+    let mut expected = common::ion_rules(&previous).artifact.clone();
     expected.id = next.artifact.id.clone();
     assert_eq!(expected, next.artifact);
     assert!(validate_rules_update(&next, &previous).is_err());

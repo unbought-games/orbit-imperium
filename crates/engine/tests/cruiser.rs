@@ -103,7 +103,7 @@ fn battle(target: ManufacturedItem, technology: [u32; 3]) -> BattleInput {
         encounter_id: InputId(Uuid::from_u128(3)),
         at: 0,
         target: BodyId(Uuid::from_u128(4)),
-        rules_hash: rules().hash,
+        rules_hash: rules().hash.clone(),
         participants: vec![
             BattleParticipant {
                 owner: PlayerId(Uuid::from_u128(1)),
@@ -135,7 +135,7 @@ fn random(seed: u8) -> RandomStream {
 
 #[test]
 fn cruiser_combat_derives_hull_and_research_bonuses() {
-    let mut combat = rules().artifact.world.unwrap().combat;
+    let mut combat = rules().artifact.world.clone().unwrap().combat;
     combat.max_rounds = 1;
     for (technology, hull, attack, shield, damage) in [
         ([0, 0, 0], "235000000", "40000000", "5000000", "35000000"),
@@ -164,7 +164,7 @@ fn cruiser_combat_derives_hull_and_research_bonuses() {
 
 #[test]
 fn cruiser_rapid_fire_applies_only_to_light_fighters_rockets_and_probes() {
-    let mut combat = rules().artifact.world.unwrap().combat;
+    let mut combat = rules().artifact.world.clone().unwrap().combat;
     combat.max_rounds = 1;
     for unit in &combat.units {
         let target = unit.item;
@@ -206,7 +206,7 @@ fn cruiser_rapid_fire_applies_only_to_light_fighters_rockets_and_probes() {
 
 #[test]
 fn cruiser_manufacturing_charges_deuterium_but_times_only_metal_and_crystal() {
-    let mut artifact = rules().artifact;
+    let mut artifact = rules().artifact.clone();
     artifact.universe = Some(UniverseProfile::signup(1, 5).unwrap());
     for (speed, seconds) in [(1, 6480), (5, 1296), (10, 648)] {
         let r = Ruleset::from_artifact(artifact.clone(), speed).unwrap();

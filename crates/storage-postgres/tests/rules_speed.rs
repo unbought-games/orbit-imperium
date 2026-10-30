@@ -85,7 +85,7 @@ async fn speed_cutover(scoped: bool) {
     ));
     let current = store.load_rules(u).await.unwrap();
     assert_eq!(current.speed, 3);
-    assert_eq!(current.artifact, before.artifact);
+    assert_eq!(current.artifact, before.artifact.clone());
     let checkpoint: (i64, serde_json::Value) =
         sqlx::query_as("SELECT checkpoint_at,amounts FROM bodies WHERE owner=$1")
             .bind(binding.player.0)

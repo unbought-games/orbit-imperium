@@ -101,18 +101,19 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
 #[test]
 fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts() {
     let mut old = retained(include_bytes!("../../../../rules/mvp-v1-slice-11.json"));
-    old.artifact.base_income[0] = 45;
-    old.artifact
+    let mut artifact = old.artifact.clone();
+    artifact.base_income[0] = 45;
+    artifact
         .buildings
         .get_mut(&Building::MetalMine)
         .unwrap()
         .base[0] = 90;
-    old.artifact
+    artifact
         .ships
         .get_mut(&ShipType::SmallCargo)
         .unwrap()
         .capacity = 6000;
-    old = Ruleset::from_artifact(old.artifact, old.speed).unwrap();
+    old = Ruleset::from_artifact(artifact, old.speed).unwrap();
     let next = upgrade_standard_rules(&old).unwrap();
     assert_eq!(next.artifact.base_income, old.artifact.base_income);
     for (key, definition) in &old.artifact.buildings {
@@ -148,7 +149,7 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
 #[test]
 fn intentionally_disabled_content_is_not_silently_reenabled() {
     let next = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
-    let mut artifact = next.artifact;
+    let mut artifact = next.artifact.clone();
     artifact
         .catalog
         .iter_mut()
@@ -166,7 +167,8 @@ fn intentionally_disabled_content_is_not_silently_reenabled() {
 fn disabled_base_prerequisites_fail_before_any_upgrade() {
     let mut artifact = Ruleset::signup_with_speed(UniverseProfile::signup(1, 100).unwrap(), 5)
         .unwrap()
-        .artifact;
+        .artifact
+        .clone();
     // Disable a base prerequisite and all its enabled dependents to keep the input valid.
     for entry in &mut artifact.catalog {
         if matches!(

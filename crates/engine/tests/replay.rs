@@ -188,19 +188,19 @@ fn historical_capacity_journals_preserve_recorded_outcomes_and_current_gameplay(
     for record in records {
         let facts: GameState = serde_json::from_value(record["facts"].clone()).unwrap();
         let input: OrderedInput = serde_json::from_value(record["input"].clone()).unwrap();
-        let mut rules = Ruleset::from_json(match input.protocol {
+        let artifact = match input.protocol {
             1 => include_bytes!("../../../rules/first-slice-v1.json").as_slice(),
             2 => include_bytes!("../../../rules/shared-foundation-r1.json").as_slice(),
             3 => include_bytes!("../../../rules/mvp-v1-slice-2.json").as_slice(),
             4 => include_bytes!("../../../rules/mvp-v1-slice-4.json").as_slice(),
             _ => panic!("unknown fixture protocol"),
-        })
-        .unwrap();
-        // Replay immutable pre-rename journals under their recorded catalog
-        // identity. Gameplay definitions are unchanged by the disabled ship rename;
-        // keep original paid terms and outcome assertions instead of rewriting them.
+        };
+        let artifact = std::str::from_utf8(artifact)
+            .unwrap()
+            .replace("Dreadnought", "Deathstar");
+        let rules = Ruleset::from_json(artifact.as_bytes()).unwrap();
         assert_eq!(facts.profile_hash, input.profile_hash);
-        rules.hash = input.profile_hash.clone();
+        assert_eq!(rules.hash, input.profile_hash);
         assert_eq!(serde_json::to_value(&facts).unwrap(), record["facts"]);
         // Recorded outcomes retain their original wire shape and facts-hash fence.
         let recorded: TransitionResult = serde_json::from_value(record["outcome"].clone()).unwrap();

@@ -128,6 +128,7 @@ pub enum ShipType {
     Battlecruiser,
     Bomber,
     Destroyer,
+    #[serde(alias = "Deathstar")]
     Dreadnought,
     ColonyShip,
     SolarSatellite,

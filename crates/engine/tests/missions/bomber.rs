@@ -597,7 +597,7 @@ fn hyperspace_switch_mixed_fuel_stale_quote_and_committed_return() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent: intent.clone(),
-                expected_terms_hash: before.terms_hash,
+                expected_terms_hash: before.terms_hash.clone(),
             },
         }),
     );

@@ -145,6 +145,7 @@ async fn empty_start_signup_concurrency_capacity_and_restart() {
         .unwrap()
         .artifact
         .universe
+        .clone()
         .unwrap();
     let mut expected = vec![];
     for ordinal in 0..10 {
