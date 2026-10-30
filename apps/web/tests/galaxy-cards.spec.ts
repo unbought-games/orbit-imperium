@@ -2042,6 +2042,8 @@ for (const mission of ['Espionage', 'Harvest'] as const) {
       if (mission === 'Harvest') {
         const form = await openHarvest(page)
         await page.clock.install({ time: now })
+        // Pin wall time before pausing across separate browser protocol calls.
+        await page.clock.setFixedTime(now)
         await page.clock.pauseAt(now)
         await form.getByRole('button', { name: 'Send', exact: true }).click()
         await expect.poll(() => submissions).toBe(1)
@@ -2051,6 +2053,8 @@ for (const mission of ['Espionage', 'Harvest'] as const) {
         await page.keyboard.press('Escape')
       } else {
         await page.clock.install({ time: now })
+        // Pin wall time before pausing across separate browser protocol calls.
+        await page.clock.setFixedTime(now)
         await page.clock.pauseAt(now)
         await rows(page).nth(1).getByRole('button', { name: /^(Spy on|Probe requested for) / }).click()
       }
