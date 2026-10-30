@@ -134,3 +134,7 @@ and ordinary game artwork are **CC BY-SA 4.0**. Names, logos, and third-party
 materials have separate terms; see [LICENSE](LICENSE) for the full scope.
 
 Built by [unbought games](https://unbought.games/) and contributors.
+
+Empire insignia collections support local files or S3-compatible asset storage.
+See [customization setup](docs/operations/empire-customization.md) for persistent
+volumes, horizontal hosting, and optional supporter access.

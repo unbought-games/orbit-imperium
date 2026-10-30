@@ -15,6 +15,7 @@ unbought-auth.workspace = true
 orbit-engine.workspace = true
 orbit-application.workspace = true
 orbit-storage-postgres.workspace = true
+orbit-storage-assets.workspace = true
 orbit-transport-http.workspace = true
 tokio.workspace = true
 axum.workspace = true

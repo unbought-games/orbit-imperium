@@ -2,7 +2,7 @@
 use crate::{config::ServeConfig, engine_executor::BoundedEngine, runtime};
 use orbit_application::StoreError;
 use orbit_storage_postgres::PgStore;
-use orbit_transport_http::{HttpConfig, router_with_profiles};
+use orbit_transport_http::{Customization, HttpConfig, router_with_customization};
 use std::{
     error::Error,
     future::Future,
@@ -21,6 +21,17 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
         .clone()
         .map(unbought_auth::RelyingParty::new)
         .transpose()?;
+    let customization = if let Some(config) = &serve.asset_store {
+        let assets = config.connect().await?;
+        let customization = Customization {
+            assets,
+            policy: serve.cosmetic_policy,
+        };
+        customization.publish().await?;
+        Some(customization)
+    } else {
+        None
+    };
     let metrics = Arc::new(crate::metrics::RuntimeMetrics::new());
     let store = store.with_observer(metrics.clone());
     let started = Instant::now();
@@ -106,12 +117,13 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
                     orbit_transport_http::serve(
                         listener,
                         {
-                            let router = router_with_profiles(
+                            let router = router_with_customization(
                                 store,
                                 config,
                                 drain_rx.clone(),
                                 oidc,
                                 serve.profiles,
+                                customization.expect("API asset store prepared"),
                             );
                             #[cfg(feature = "test-support")]
                             let router = if let Some(lab) = lab_router {

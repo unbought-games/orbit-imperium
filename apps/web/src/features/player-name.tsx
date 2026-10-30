@@ -1,3 +1,4 @@
+import { EmpireInsignia } from './empire-insignia'
 import { MessagePlayerLink } from './social/message-player-link'
 import { createContext, useContext } from 'react'
 import { usePlayerDisplay } from '../shell/player-profiles-context'
@@ -20,6 +21,7 @@ export function PlayerName({
   linkAlliance = true,
   badgeTooltip = false,
   messageAction = false,
+  showInsignia = false,
 }: {
   player: string
   fallback?: string
@@ -27,6 +29,7 @@ export function PlayerName({
   alliance?: AllianceIdentity | null
   linkAlliance?: boolean
   badgeTooltip?: boolean
+  showInsignia?: boolean
   messageAction?: boolean
 }) {
   const profile = usePlayerDisplay(player)
@@ -40,6 +43,9 @@ export function PlayerName({
         : profile?.alliance
   return (
     <>
+      {showInsignia && profile?.insignia && (
+        <EmpireInsignia appearance={profile.insignia} />
+      )}
       <SupporterIdentity
         name={profile?.username ?? fallback ?? playerLabel(player, names)}
         tier={profile?.supporter_tier}

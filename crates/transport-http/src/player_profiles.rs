@@ -9,6 +9,10 @@ use unbought_auth::{ProfileError, ProfileSnapshot, PublicProfile, PublicProfileC
 
 #[derive(Clone, Serialize)]
 pub struct PlayerDisplay {
+    #[serde(skip)]
+    access_known: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    insignia: Option<super::insignias::InsigniaAppearance>,
     pub(super) kind: PlayerKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     alliance: Option<AllianceIdentity>,
@@ -18,6 +22,15 @@ pub struct PlayerDisplay {
     pub(super) supporter_tier: Option<u8>,
     observed_at: i64,
     expires_at: i64,
+}
+impl PlayerDisplay {
+    pub(super) fn evidence(&self) -> SupporterEvidence {
+        SupporterEvidence {
+            known: self.access_known,
+            active: self.supporter_tier.is_some(),
+            expires_at: self.expires_at,
+        }
+    }
 }
 #[derive(Serialize)]
 struct PlayerProfiles {
@@ -194,6 +207,8 @@ impl AccountProfiles {
                 };
                 let profile = source.and_then(|entry| entry.profile.as_ref());
                 PlayerDisplay {
+                    access_known: source.is_some(),
+                    insignia: None,
                     kind: identity.kind,
                     alliance: None,
                     player: identity.player,
@@ -251,6 +266,8 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         identities
             .into_iter()
             .map(|i| PlayerDisplay {
+                access_known: false,
+                insignia: None,
                 kind: i.kind,
                 alliance: None,
                 player: i.player,
@@ -261,7 +278,33 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             })
             .collect()
     };
+    let include_insignia = h.get("x-orbit-insignia").is_some_and(|value| value == "1");
+    let equipped = if include_insignia && s.customization.is_some() {
+        s.updates
+            .equipped_insignias(universe, players.iter().map(|p| p.player).collect())
+            .await
+            .map_err(ServiceError::from)?
+    } else {
+        Default::default()
+    };
     for player in &mut players {
+        if let Some(c) = &s.customization
+            && include_insignia
+        {
+            let recipe = equipped
+                .get(&player.player)
+                .map(|(recipe, grants)| {
+                    effective_insignia(
+                        recipe,
+                        c.policy,
+                        grants,
+                        player.evidence(),
+                        unbought_auth::now(),
+                    )
+                })
+                .unwrap_or_default();
+            player.insignia = Some(super::insignias::appearance(recipe));
+        }
         player.alliance = alliances.remove(&player.player);
     }
     Ok(bound_api::no_store_json(PlayerProfiles {

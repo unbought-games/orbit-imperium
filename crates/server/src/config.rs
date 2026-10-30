@@ -38,6 +38,35 @@ mod universe_config_tests {
     use super::*;
 
     #[test]
+    fn cosmetics_are_local_by_default_and_supporter_access_is_explicit() {
+        let parse = |access: Option<&str>| {
+            ServeConfig::parse(|k| match k {
+                "ORBIT_ALLOW_INSECURE_HTTP" => Some("1".into()),
+                "ORBIT_COSMETIC_ACCESS" => access.map(str::to_owned),
+                _ => None,
+            })
+        };
+        let local = parse(None).unwrap();
+        assert_eq!(
+            local.cosmetic_policy,
+            orbit_application::CosmeticPolicy::Unrestricted
+        );
+        assert!(matches!(
+            local.asset_store,
+            Some(orbit_storage_assets::AssetConfig::Files { .. })
+        ));
+        assert!(parse(Some("supporter")).is_err());
+        assert!(parse(Some("unknown")).is_err());
+        let worker = ServeConfig::parse(|k| match k {
+            "ORBIT_ROLE" => Some("worker".into()),
+            "ORBIT_COSMETIC_ACCESS" | "ORBIT_ASSET_STORE" => Some("ignored".into()),
+            _ => None,
+        })
+        .unwrap();
+        assert!(worker.asset_store.is_none());
+    }
+
+    #[test]
     fn profile_credentials_are_optional_scoped_to_oidc_and_unused_on_workers() {
         assert!(
             ServeConfig::parse(|k| (k == "ORBIT_ALLOW_INSECURE_HTTP").then(|| "1".into()))
@@ -143,6 +172,8 @@ impl RuntimeRole {
     }
 }
 pub struct ServeConfig {
+    pub asset_store: Option<orbit_storage_assets::AssetConfig>,
+    pub cosmetic_policy: orbit_application::CosmeticPolicy,
     pub profiles: Option<orbit_transport_http::AccountProfiles>,
     pub oidc: Option<unbought_auth::Configuration>,
     pub role: RuntimeRole,
@@ -334,7 +365,31 @@ impl ServeConfig {
         } else {
             None
         };
+        let cosmetic_policy = if api {
+            match get("ORBIT_COSMETIC_ACCESS")
+                .as_deref()
+                .unwrap_or("unrestricted")
+            {
+                "unrestricted" => orbit_application::CosmeticPolicy::Unrestricted,
+                "supporter" if profiles.is_some() => orbit_application::CosmeticPolicy::Supporter,
+                "supporter" => {
+                    return Err(
+                        "Supporter cosmetic access requires Accounts profile configuration".into(),
+                    );
+                }
+                _ => return Err("ORBIT_COSMETIC_ACCESS must be unrestricted or supporter".into()),
+            }
+        } else {
+            orbit_application::CosmeticPolicy::Unrestricted
+        };
+        let asset_store = if api {
+            Some(orbit_storage_assets::AssetConfig::parse(get)?)
+        } else {
+            None
+        };
         Ok(Self {
+            asset_store,
+            cosmetic_policy,
             profiles,
             oidc,
             role,

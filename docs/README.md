@@ -30,3 +30,8 @@ Orbit Imperium is a browser-based space strategy game with an authoritative Rust
 - [Historical debris upgrade](runbooks/debris-reference-upgrade.md): legacy replay compatibility; the current release uses the fresh-database cutover.
 
 Routine checks and explicitly requested acceptance suites are separate. Follow the test commands and limits in the [development guide](development.md#testing) and Makefile. Deployment templates and example commands do not establish that hosting is provisioned or that production capacity has been verified.
+
+## Empire customization
+
+- [ADR 001: Empire customization](architecture/adr-001-empire-customization.md)
+- [Insignia storage and access operations](operations/empire-customization.md)
