@@ -76,7 +76,8 @@ pub fn upgrade_standard_rules(current: &Ruleset) -> Result<Ruleset, StandardRule
             return Err(StandardRulesError::Prerequisite(format!("{key:?}")));
         }
     }
-    let baseline = serde_json::to_value(Ruleset::mvp_raids()?.artifact).expect("rules serialize");
+    let baseline =
+        serde_json::to_value(Ruleset::mvp_raids()?.artifact.clone()).expect("rules serialize");
     let mut next = serde_json::to_value(&current.artifact).expect("rules serialize");
     let mut conflicts = Vec::new();
     for patch in content::patches() {

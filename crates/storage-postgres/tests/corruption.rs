@@ -189,7 +189,25 @@ async fn newer_rules_or_ordered_formats_do_not_poison_the_shared_universe() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    sqlx::query("UPDATE rulesets SET profile=jsonb_set(profile,'{artifact,future_mechanic}', 'true') WHERE hash=$1").bind(&hash).execute(&pool).await.unwrap();
+    // Unknown semantics with a valid original digest are an unsupported release;
+    // modifying content under an unchanged digest is corruption instead.
+    let mut future = saved.clone();
+    future["artifact"]["future_mechanic"] = serde_json::json!(true);
+    let future_hash = orbit_engine::hash(&(&future["artifact"], &future["speed"]));
+    future["hash"] = serde_json::json!(future_hash);
+    sqlx::query("INSERT INTO rulesets(hash,id,profile) VALUES($1,$2,$3)")
+        .bind(&future_hash.0)
+        .bind(future["artifact"]["id"].as_str().unwrap())
+        .bind(&future)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE universes SET profile_hash=$2 WHERE id=$1")
+        .bind(u.0)
+        .bind(&future_hash.0)
+        .execute(&pool)
+        .await
+        .unwrap();
     let readiness = store.ready().await;
     let claim = store.claim_next(u, Uuid::new_v4().into()).await;
     let state: (Option<String>, Option<Uuid>, i64) =
@@ -198,9 +216,9 @@ async fn newer_rules_or_ordered_formats_do_not_poison_the_shared_universe() {
             .fetch_one(&pool)
             .await
             .unwrap();
-    sqlx::query("UPDATE rulesets SET profile=$2 WHERE hash=$1")
+    sqlx::query("UPDATE universes SET profile_hash=$2 WHERE id=$1")
+        .bind(u.0)
         .bind(hash)
-        .bind(saved)
         .execute(&pool)
         .await
         .unwrap();
@@ -245,8 +263,8 @@ async fn newer_policy_identifiers_refuse_locally_but_invalid_numbers_still_block
     for path in paths {
         let mut saved = serde_json::to_value(&original).unwrap();
         *saved.pointer_mut(path).unwrap() = serde_json::json!("future-policy-v99");
-        let mut rules: Ruleset = serde_json::from_value(saved).unwrap();
-        rules.hash = hash(&(&rules.artifact, rules.speed));
+        saved["hash"] = serde_json::json!(hash(&(&saved["artifact"], &saved["speed"])));
+        let rules: Ruleset = serde_json::from_value(saved).unwrap();
         sqlx::query("INSERT INTO rulesets(hash,id,profile) VALUES($1,$2,$3)")
             .bind(&rules.hash.0)
             .bind(&rules.artifact.id)
@@ -274,9 +292,10 @@ async fn newer_policy_identifiers_refuse_locally_but_invalid_numbers_still_block
         .unwrap();
         assert_eq!(state, (None, None, 0), "{path} must not globally block");
     }
-    let mut invalid = original.clone();
-    invalid.artifact.world.as_mut().unwrap().combat.max_rounds = 0;
-    invalid.hash = hash(&(&invalid.artifact, invalid.speed));
+    let mut saved = serde_json::to_value(&original).unwrap();
+    saved["artifact"]["world"]["combat"]["max_rounds"] = serde_json::json!(0);
+    saved["hash"] = serde_json::json!(hash(&(&saved["artifact"], &saved["speed"])));
+    let invalid: Ruleset = serde_json::from_value(saved).unwrap();
     sqlx::query("INSERT INTO rulesets(hash,id,profile) VALUES($1,$2,$3)")
         .bind(&invalid.hash.0)
         .bind(&invalid.artifact.id)

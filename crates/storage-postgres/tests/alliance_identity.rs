@@ -170,7 +170,7 @@ async fn delayed_espionage_preserves_event_affiliation_through_rename_disband_an
             command: CommandDto3::Progression(Command::World {
                 action: WorldAction::LaunchFleet {
                     intent,
-                    expected_terms_hash: terms.terms_hash,
+                    expected_terms_hash: terms.terms_hash.clone(),
                 },
             }),
         },

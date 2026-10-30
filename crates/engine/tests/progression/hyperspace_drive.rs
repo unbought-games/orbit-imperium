@@ -2,7 +2,7 @@ use super::*;
 
 pub(super) fn hyperspace_drive_fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     let (mut s, old, p, b) = super::hyperspace::hyperspace_fixture();
-    let mut artifact = old.artifact;
+    let mut artifact = old.artifact.clone();
     let content: serde_json::Value = serde_json::from_slice(include_bytes!(
         "../../../../rules/content/hyperspace-drive.json"
     ))

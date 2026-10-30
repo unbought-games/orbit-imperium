@@ -3,8 +3,10 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 mod common;
 fn fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
+    fixture_with_rules(Ruleset::mvp_fleets().unwrap())
+}
+fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     let (mut s, _, p, b) = common::fixture();
-    let r = Ruleset::mvp_fleets().unwrap();
     s.profile_hash = r.hash.clone();
     let mut second = s.bodies[&b].clone();
     second.id = BodyId(Uuid::from_u128(20));
@@ -225,7 +227,17 @@ fn apply(s: &mut GameState, result: TransitionResult) -> ChangeSet {
 }
 #[test]
 fn transport_slot_conservation_and_original_duration_return() {
-    let (mut s, r, p, b, t) = fixture();
+    transport_restart(Ruleset::mvp_fleets().unwrap());
+}
+#[test]
+fn historical_rules_transport_restart_keeps_cargo_fuel_deadlines_and_single_completion() {
+    let r: Ruleset =
+        serde_json::from_str(include_str!("fixtures/persistence/deathstar-rules.json")).unwrap();
+    r.validate().unwrap();
+    transport_restart(r);
+}
+fn transport_restart(r: Ruleset) {
+    let (mut s, r, p, b, t) = fixture_with_rules(r);
     let intent = intent(&s, p, b, t);
     let value = value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap();
     let q = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
@@ -239,11 +251,27 @@ fn transport_slot_conservation_and_original_duration_return() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent: intent.clone(),
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
     let c = apply(&mut s, result);
+    let saved = serde_json::to_value(&s).unwrap();
+    s = serde_json::from_value(saved.clone()).unwrap();
+    assert_eq!(serde_json::to_value(&s).unwrap(), saved);
+    let accepted = &s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .values()
+        .next()
+        .unwrap()
+        .terms;
+    assert_eq!(accepted, &q);
+    assert_eq!(accepted.profile_hash, r.hash);
+
     validate_asset_lineage(&s).unwrap();
     assert_eq!(
         value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap(),
@@ -308,7 +336,7 @@ fn zero_elapsed_recall_is_inline_and_never_refunds_fuel() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -438,7 +466,7 @@ fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() 
             Input::Command(Command::World {
                 action: WorldAction::LaunchFleet {
                     intent,
-                    expected_terms_hash: q.terms_hash,
+                    expected_terms_hash: q.terms_hash.clone(),
                 },
             }),
         );
@@ -538,7 +566,7 @@ fn harvest_reference_survives_return_and_cleanup_records_loss() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -752,7 +780,7 @@ fn unrepresentable_return_blocks_instead_of_consuming_the_obligation() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -932,7 +960,7 @@ fn launch_raid(
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -1780,7 +1808,7 @@ fn refreshed_actor_presence_rejects_new_attack_without_debit_but_not_committed_c
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -1850,7 +1878,7 @@ fn competing_attacks_cannot_double_spend_last_ship_resources_or_slot() {
             Input::Command(Command::World {
                 action: WorldAction::LaunchFleet {
                     intent,
-                    expected_terms_hash: q.terms_hash,
+                    expected_terms_hash: q.terms_hash.clone(),
                 },
             }),
         );
@@ -1931,7 +1959,8 @@ fn equal_millisecond_research_manufacture_and_contact_use_supplied_durable_order
                             intent: intent.clone(),
                             expected_terms_hash: quote_fleet(&s, p, &intent, at, &r)
                                 .unwrap()
-                                .terms_hash,
+                                .terms_hash
+                                .clone(),
                         },
                     },
                 ),
@@ -2356,7 +2385,7 @@ fn impulse_switch_mixed_fuel_stale_quote_and_committed_return() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent: intent.clone(),
-                expected_terms_hash: before.terms_hash,
+                expected_terms_hash: before.terms_hash.clone(),
             },
         }),
     );
@@ -2608,7 +2637,7 @@ fn universe_protection_multiplier_controls_galaxy_quotes_and_launches() {
                         lot.unit_value_micro *= 10;
                     }
                 }
-                let mut artifact = rules.artifact;
+                let mut artifact = rules.artifact.clone();
                 artifact
                     .world
                     .as_mut()
@@ -2642,7 +2671,7 @@ fn universe_protection_multiplier_controls_galaxy_quotes_and_launches() {
                     assert_eq!(quote, Err(GameError::BeginnerProtected));
                     Hash("unusable-quote".into())
                 } else {
-                    quote.unwrap().terms_hash
+                    quote.unwrap().terms_hash.clone()
                 };
                 let result = run(
                     &mut s,
@@ -2883,7 +2912,7 @@ mod solar_satellite;
 fn large_shield_dome_raid_reports_destruction_and_recovery_without_defense_debris() {
     for recover in [0, 1] {
         let (mut s, old, p, b, target) = raid_fixture();
-        let mut artifact = common::large_shield_dome_rules(&old).artifact;
+        let mut artifact = common::large_shield_dome_rules(&old).artifact.clone();
         artifact
             .world
             .as_mut()
@@ -3009,7 +3038,7 @@ fn flight_estimate_retains_fuel_without_resources_and_cannot_authorize_launch() 
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent: request.clone(),
-                expected_terms_hash: legal.terms_hash,
+                expected_terms_hash: legal.terms_hash.clone(),
             },
         }),
     );

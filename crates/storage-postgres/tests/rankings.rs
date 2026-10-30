@@ -235,7 +235,7 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
         location: orbit_engine::AssetLocation::Player,
         quantity: 2,
         unit_value_micro: 3_000_000_000,
-        rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash,
+        rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash.clone(),
         source_operation: orbit_engine::OperationId(Uuid::new_v4()),
         acquired_at: 2000,
         acquired_sequence: 1,
@@ -453,7 +453,7 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
             } else {
                 1_900_000_000
             },
-            rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash,
+            rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash.clone(),
             source_operation: orbit_engine::OperationId(Uuid::new_v4()),
             acquired_at: 1000,
             acquired_sequence: 1,

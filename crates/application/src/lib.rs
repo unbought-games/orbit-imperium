@@ -164,3 +164,11 @@ pub use social::*;
 
 mod world_edit;
 pub use world_edit::*;
+
+#[cfg(test)]
+fn test_rules(draft: &orbit_engine::RulesData) -> orbit_engine::Ruleset {
+    // Some projection tests deliberately use semantically incomplete artifacts.
+    let mut wire = serde_json::to_value(draft).unwrap();
+    wire["hash"] = serde_json::json!(orbit_engine::hash(&(&wire["artifact"], &wire["speed"])));
+    serde_json::from_value(wire).unwrap()
+}

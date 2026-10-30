@@ -315,7 +315,14 @@ pub(crate) async fn persist_changes(
             .iter()
             .find(|v| v.body == ships.body && v.owner == ships.owner && v.item == ships.item);
         if let Some(previous) = previous {
-            let n=sqlx::query("UPDATE inventories SET count=$4,revision=$5 WHERE body=$1 AND owner=$2 AND item=$3 AND revision=$6").bind(ships.body.0).bind(ships.owner.0).bind(sqlx::types::Json(ships.item)).bind(ships.count).bind(ships.revision).bind(previous.revision).execute(&mut **tx).await.map_err(db_error)?;
+            // Read aliases share one logical inventory identity. Keep the saved key,
+            // and retain the revision and exactly-one-row checks (including collisions).
+            let legacy = (ships.item == ManufacturedItem::Ship(ShipType::Dreadnought))
+                .then(|| serde_json::json!({"kind":"Ship","id":"Deathstar"}));
+            let n = sqlx::query("UPDATE inventories SET count=$4,revision=$5 WHERE body=$1 AND owner=$2 AND (item=$3 OR item=$7) AND revision=$6")
+                .bind(ships.body.0).bind(ships.owner.0).bind(sqlx::types::Json(ships.item))
+                .bind(ships.count).bind(ships.revision).bind(previous.revision).bind(legacy)
+                .execute(&mut **tx).await.map_err(db_error)?;
             if n.rows_affected() != 1 {
                 return Err(StoreError::Conflict);
             }

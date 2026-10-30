@@ -36,7 +36,7 @@ fn custom_catalog_can_add_generic_ship_and_research() {
     let r = parse(&expanded()).expect("valid additive configuration");
     assert_eq!(r.artifact.ships[&ShipType::LargeCargo].capacity, 25000);
     assert_eq!(
-        r.artifact.progression.unwrap().research[&ResearchId::LaserTechnology].base,
+        r.artifact.progression.as_ref().unwrap().research[&ResearchId::LaserTechnology].base,
         [200, 100, 0]
     );
 }
@@ -81,18 +81,17 @@ fn update_rejects_structural_conversion_and_removing_retained_definitions() {
     let old = parse(&expanded()).unwrap();
     let next = Ruleset::mvp_raids().unwrap();
     assert!(validate_rules_update(&old, &next).is_err());
-    let mut next = old.clone();
-    next.artifact
-        .catalog
+    let mut next = old.artifact.clone();
+    next.catalog
         .iter_mut()
         .find(|e| e.key == CatalogKey::Ship(ShipType::LargeCargo))
         .unwrap()
         .enabled = false;
-    let next = Ruleset::from_artifact(next.artifact, 10).unwrap();
+    let next = Ruleset::from_artifact(next, 10).unwrap();
     assert!(validate_rules_update(&old, &next).is_ok());
-    let mut invalid = old.clone();
-    invalid.hash = Hash("tampered".into());
-    assert!(validate_rules_update(&old, &invalid).is_err());
+    let mut invalid = serde_json::to_value(&old).unwrap();
+    invalid["hash"] = json!("tampered");
+    assert!(serde_json::from_value::<Ruleset>(invalid).is_err());
 }
 
 #[test]
@@ -140,7 +139,7 @@ fn impulse_content_requires_complete_propulsion_and_keeps_retained_hashes() {
         validate_rules_update(&old, &next).unwrap().add_research,
         vec![ResearchId::ImpulseDrive]
     );
-    assert_eq!(serde_json::to_value(&old.artifact).unwrap(), baseline());
+    assert_eq!(serde_json::to_value(&old).unwrap()["artifact"], baseline());
     let mut invalid = next.artifact.clone();
     invalid
         .ships
@@ -180,10 +179,16 @@ fn beginner_protection_multiplier_defaults_preserve_historical_artifacts() {
             .beginner_protection_multiplier,
         5
     );
-    assert_eq!(serde_json::to_value(&old.artifact).unwrap(), legacy);
+    assert_eq!(serde_json::to_value(&old).unwrap()["artifact"], legacy);
     let mut explicit_default = legacy.clone();
     explicit_default["world"]["beginner_protection_multiplier"] = json!(5);
-    assert_eq!(parse(&explicit_default).unwrap(), old);
+    let normalized = parse(&explicit_default).unwrap();
+    assert!(normalized.equivalent(&old));
+    assert_ne!(normalized.hash, old.hash);
+    assert_eq!(
+        serde_json::to_value(&normalized).unwrap()["artifact"],
+        explicit_default
+    );
 
     for multiplier in [1, 3, 10, u32::MAX] {
         let mut custom = legacy.clone();

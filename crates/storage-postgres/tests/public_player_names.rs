@@ -117,7 +117,7 @@ async fn visible_names_are_batched_scoped_current_and_separate_from_report_histo
         kind: "Combat".into(),
         at: 1000,
         fleet: None,
-        rules_hash: Ruleset::mvp_fleets().unwrap().hash,
+        rules_hash: Ruleset::mvp_fleets().unwrap().hash.clone(),
         payloads: BTreeMap::from([
             (b.player, visible.clone()),
             (

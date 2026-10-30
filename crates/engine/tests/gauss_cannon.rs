@@ -11,7 +11,7 @@ fn gauss_cannon_fixture_is_additive_and_needs_no_level_initialization() {
     assert!(delta.add_research.is_empty());
     assert!(delta.add_buildings.is_empty());
     assert_eq!(old.protocol(), next.protocol());
-    let mut expected = common::gauss_cannon_rules(&old).artifact;
+    let mut expected = common::gauss_cannon_rules(&old).artifact.clone();
     expected.id = next.artifact.id.clone();
     assert_eq!(next.artifact, expected);
     assert!(validate_rules_update(&next, &old).is_err());

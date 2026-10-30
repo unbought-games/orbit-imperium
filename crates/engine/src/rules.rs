@@ -53,10 +53,12 @@ pub struct RulesArtifact {
     pub temperature: [i64; 4],
     pub construction_divisor: i64,
     pub buildings: BTreeMap<Building, BuildingRule>,
+    #[serde(deserialize_with = "crate::persisted::unique_map")]
     pub ships: BTreeMap<ShipType, ShipRule>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Ruleset {
+#[serde(deny_unknown_fields)]
+pub struct RulesData {
     pub artifact: RulesArtifact,
     pub speed: i32,
     pub hash: Hash,
@@ -73,6 +75,18 @@ pub enum RulesError {
     Range,
     #[error("rules hash mismatch")]
     HashMismatch,
+}
+pub type Ruleset = Persisted<RulesData>;
+impl crate::persisted::private::Sealed for RulesData {}
+impl PersistedFormat for RulesData {
+    fn verify_original(value: &serde_json::Value) -> Result<(), String> {
+        let expected: Hash =
+            serde_json::from_value(value["hash"].clone()).map_err(|e| e.to_string())?;
+        if hash(&(&value["artifact"], &value["speed"])) != expected {
+            return Err(RulesError::HashMismatch.to_string());
+        }
+        Ok(())
+    }
 }
 impl Ruleset {
     pub fn colonization(&self) -> bool {
@@ -101,7 +115,7 @@ impl Ruleset {
         if profile.id != "signup-v2" {
             return Err(RulesError::InvalidReference);
         }
-        let mut artifact = Self::mvp_raids()?.artifact;
+        let mut artifact = Self::mvp_raids()?.artifact.clone();
         artifact.universe = Some(profile);
         Self::from_artifact(artifact, speed)
     }
@@ -129,10 +143,20 @@ impl Ruleset {
         Self::from_json(include_bytes!("../../../rules/mvp-v1-slice-2.json"))
     }
     pub fn from_json(bytes: &[u8]) -> Result<Self, RulesError> {
-        let artifact: RulesArtifact =
+        let artifact: serde_json::Value =
             serde_json::from_slice(bytes).map_err(|_| RulesError::Malformed)?;
-        let speed = if artifact.universe.is_some() { 10 } else { 1 };
-        Self::from_artifact(artifact, speed)
+        let speed = if artifact.get("universe").is_some_and(|v| !v.is_null()) {
+            10
+        } else {
+            1
+        };
+        let identity = hash(&(&artifact, speed));
+        let rules: Self = serde_json::from_value(
+            serde_json::json!({"artifact":artifact,"speed":speed,"hash":identity}),
+        )
+        .map_err(|_| RulesError::Malformed)?;
+        rules.validate()?;
+        Ok(rules)
     }
     pub fn from_artifact(artifact: RulesArtifact, speed: i32) -> Result<Self, RulesError> {
         if artifact.id.trim().is_empty()
@@ -357,11 +381,11 @@ impl Ruleset {
             return Err(RulesError::InvalidReference);
         }
         let hash = hash(&(&artifact, speed));
-        Ok(Self {
+        Ok(Self::from_new(RulesData {
             artifact,
             speed,
             hash,
-        })
+        }))
     }
     pub fn building_keys(&self) -> BTreeSet<Building> {
         self.artifact.buildings.keys().copied().collect()
@@ -372,7 +396,7 @@ impl Ruleset {
             |p| p.research.keys().copied().collect(),
         )
     }
-    pub fn with_speed(mut self, speed: i32) -> Result<Self, RulesError> {
+    pub fn with_speed(self, speed: i32) -> Result<Self, RulesError> {
         if !(1..=100).contains(&speed)
             || (self
                 .artifact
@@ -383,21 +407,19 @@ impl Ruleset {
         {
             return Err(RulesError::Range);
         }
-        self.speed = speed;
-        self.hash = hash(&(&self.artifact, speed));
-        Ok(self)
+        if self.speed == speed {
+            return Ok(self);
+        }
+        Self::from_artifact(self.artifact.clone(), speed)
     }
     pub fn mvp() -> Result<Self, RulesError> {
         Self::from_json(include_bytes!("../../../rules/mvp-v1-slice-1.json"))?.with_speed(10)
     }
+    pub fn equivalent(&self, other: &Self) -> bool {
+        self.speed == other.speed && self.artifact == other.artifact
+    }
     pub fn validate(&self) -> Result<(), RulesError> {
-        let rebuilt = Self::from_json(
-            &serde_json::to_vec(&self.artifact).map_err(|_| RulesError::Malformed)?,
-        )?
-        .with_speed(self.speed)?;
-        if rebuilt.hash != self.hash {
-            return Err(RulesError::HashMismatch);
-        }
-        Ok(())
+        // Integrity is verified before interpretation by Persisted's decoder.
+        Self::from_artifact(self.artifact.clone(), self.speed).map(|_| ())
     }
 }

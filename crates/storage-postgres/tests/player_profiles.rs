@@ -261,7 +261,7 @@ async fn public_profiles_are_view_scoped_private_and_independent_of_other_player
         kind: "SpyContact".into(),
         at: 1000,
         fleet: None,
-        rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash,
+        rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash.clone(),
         payloads: std::collections::BTreeMap::from([
             (
                 binding.player,
