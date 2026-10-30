@@ -191,7 +191,7 @@ function GameShellContent() {
     <div
       className={styles['game-shell']}
       ref={pinned.shell}
-      data-mobile-hud={view.protocol === 4 || undefined}
+      data-has-command-hud={view.protocol === 4 || undefined}
     >
       <div className={styles['shell-columns']}>
         <div className={styles.header} ref={pinned.header}>

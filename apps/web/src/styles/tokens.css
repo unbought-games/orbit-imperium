@@ -22,6 +22,10 @@
   --surface-selected: #273b4e;
   --surface-glow: var(--navy-light);
   --surface-backdrop: #060e1bcc;
+  --surface-navigation: #0b1d28;
+  --surface-navigation-hover: #142b37;
+  --surface-navigation-selected: #172f3c;
+  --border-navigation: #29404d;
   --border: #3e5059;
   --border-control: #6e849b;
   --border-accent: var(--champagne-shadow);

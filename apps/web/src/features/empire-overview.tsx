@@ -35,6 +35,7 @@ import { resolveDestination, type Page } from '../shell/routes'
 import { Link } from '../ui/link'
 import { ResourceNumber, ResourceQuantity } from '../ui/number-value'
 import { ResourceMark } from '../ui/resource-mark'
+import { InfoTooltip } from '../ui/info-tooltip'
 import { bodyName, coordinates, label } from '../ui/format'
 import { currentResourceRates } from '../ui/resource-rates'
 import { BodyIllustration } from './body-illustration'
@@ -47,7 +48,6 @@ import {
   empireTotals,
   planetPhysicalFacts,
   storagePercent,
-  planetMaxTemperature,
   type EmpireFlight,
 } from './empire-model'
 import styles from './empire-overview.module.css'
@@ -370,9 +370,16 @@ function FleetBoard({
   )
 }
 
-function PlanetClimate({ view, body }: { view: BoundView; body: Body }) {
+function PlanetClimate({
+  view,
+  body,
+  temperature,
+}: {
+  view: BoundView
+  body: Body
+  temperature?: string
+}) {
   if (body.kind !== 'Planet') return null
-  const temperature = planetMaxTemperature(body)
   const satellite =
     view.protocol !== 2
       ? view.progression.production.find(
@@ -380,28 +387,37 @@ function PlanetClimate({ view, body }: { view: BoundView; body: Body }) {
         )?.solar_satellite
       : undefined
   return (
-    <details className={styles.climate}>
-      <summary>
-        Maximum temperature:{' '}
-        {temperature === undefined ? 'Unavailable' : `${temperature} °C`}
-      </summary>
-      <p>
-        Maximum temperature affects deuterium production and solar satellite
-        energy output.
-      </p>
-      {satellite && (
-        <p>
-          Each solar satellite produces{' '}
-          <ResourceQuantity resource="energy" value={satellite.unit_energy} />{' '}
-          at 100% production.
-        </p>
-      )}
-      {temperature === undefined && (
-        <p>
-          This server has not supplied temperature metadata for this planet.
-        </p>
-      )}
-    </details>
+    <InfoTooltip
+      className={styles.climate}
+      label={temperature ?? 'Temperature unavailable'}
+      description={
+        <>
+          Maximum temperature affects deuterium production and solar satellite
+          energy output.
+          {satellite && (
+            <>
+              <br />
+              <br />
+              Each solar satellite produces{' '}
+              <ResourceQuantity
+                resource="energy"
+                value={satellite.unit_energy}
+              />{' '}
+              at 100% production.
+            </>
+          )}
+          {temperature === undefined && (
+            <>
+              <br />
+              <br />
+              This server has not supplied temperature metadata for this planet.
+            </>
+          )}
+        </>
+      }
+    >
+      {temperature ?? 'Temperature unavailable'}
+    </InfoTooltip>
   )
 }
 
@@ -500,9 +516,14 @@ function PlanetDossier({
             {body.fields_used}/{body.fields} fields · {body.fields_reserved}{' '}
             reserved
           </span>
-          {physicalFacts.length > 0 && (
+          {body.kind === 'Planet' && (
             <span className={styles.bodyFacts}>
-              {physicalFacts.join(' · ')}
+              {physicalFacts.diameter && `${physicalFacts.diameter} · `}
+              <PlanetClimate
+                view={view}
+                body={body}
+                temperature={physicalFacts.temperature}
+              />
             </span>
           )}
         </div>
@@ -518,7 +539,6 @@ function PlanetDossier({
           </span>
         </Destination>
       </header>
-      <PlanetClimate view={view} body={body} />
       <dl className={styles.resources} aria-label="Planet resources">
         {resourceNames.map((name) => (
           <div

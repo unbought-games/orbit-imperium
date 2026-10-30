@@ -1,3 +1,4 @@
+import { openNavigation } from './fixtures/navigation'
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { installGameFixture, binding, id, body } from './fixtures/game'
@@ -119,14 +120,14 @@ test('browser navigation away from player details leaves the destination usable'
   await installGameFixture(page, { protocol: 4 })
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }] } }))
   await page.goto(`/u/andromeda/overview?body=${body.id}`)
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
+  await openNavigation(page)
   await page.getByRole('link', { name: 'High Scores', exact: true }).click()
   await page.getByRole('table').getByRole('button', { name: 'Selected Commander' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.goBack()
   await expect(page.getByRole('heading', { name: 'Empire', exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
+  await openNavigation(page)
   await expect(page.getByRole('link', { name: 'High Scores', exact: true })).toBeVisible()
 })
 

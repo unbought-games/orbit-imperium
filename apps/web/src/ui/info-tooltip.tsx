@@ -12,7 +12,7 @@ export function InfoTooltip({
   className,
 }: {
   label: string
-  description?: string
+  description?: ReactNode
   children: ReactNode
   className?: string
 }) {
