@@ -335,7 +335,7 @@ export function Reports({
                   folderCount
                     ? 'Try a different report filter or include unknown observations.'
                     : archived
-                      ? 'Reports you archive appear here. Move them to inbox anytime.'
+                      ? 'Reports you archive appear here. Use Move to inbox to restore them.'
                       : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
                 }
                 actions={

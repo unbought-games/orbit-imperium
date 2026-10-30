@@ -39,7 +39,7 @@ export function ReportVisibilityButton({
             ? 'Unstar this report before archiving it'
             : hidden
               ? 'Move to inbox'
-              : 'Archive report; move it to inbox anytime'
+              : 'Move to Archived; you can move it back to Inbox'
         }
         onClick={() => {
           void visibility.change(!hidden)
