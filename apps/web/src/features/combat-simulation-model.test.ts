@@ -9,6 +9,7 @@ import {
   simulationFields,
   simulationInputs,
   unsupportedReportUnits,
+  unknownAssumptions,
   type Espionage,
 } from './combat-simulation-model'
 import type { components } from '../contracts'
@@ -335,4 +336,34 @@ it('keeps large resource averages exact and handles absent samples', () => {
     maximum: 90071992547409932n,
   })
   expect(sampledAmounts([])).toBeNull()
+})
+
+it('starts standalone defenders unknown and only submits explicit assumptions without observed intel', () => {
+  const fields = simulationFields(undefined, catalog, [
+    { research: 'WeaponsTechnology', level: 4 },
+  ])
+  expect(
+    fields.filter((f) => f.side === 'defender').every((f) => f.value === null),
+  ).toBe(true)
+  expect(fields.some((f) => f.source === 'Report')).toBe(false)
+  expect(simulationInputs(fields, attacking).inputs).toBeNull()
+  const edits = {
+    ...attacking,
+    'defender:WeaponsTechnology': '7',
+    'defender:Ship:LightFighter': '2',
+  }
+  const assumptions = unknownAssumptions(fields, edits)
+  expect(assumptions).not.toHaveProperty('defender:WeaponsTechnology')
+  expect(simulationInputs(fields, { ...edits, ...assumptions }).inputs).toEqual(
+    {
+      attacker: {
+        technology: [4, 0, 0],
+        units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 10 }],
+      },
+      defender: {
+        technology: [7, 0, 0],
+        units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }],
+      },
+    },
+  )
 })

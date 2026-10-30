@@ -1,3 +1,4 @@
+import { productionFixture } from '../src/test-support/production'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, body, binding, refreshGame } from './fixtures/game'
 import { captureCatalog } from './fixtures/catalog-capture'
@@ -67,6 +68,8 @@ async function fixture(page: Page, scenario: (typeof cases)[number]) {
   }))
   const options = {
     bodies: [planet],
+    // Isolate exact affordability boundaries from passive income.
+    production: [{ ...productionFixture(planet), gross_per_hour: { metal: '0', crystal: '0', deuterium: '0' } }],
     catalog,
     research,
     sampledAt: now,

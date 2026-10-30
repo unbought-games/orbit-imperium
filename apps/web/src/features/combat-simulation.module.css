@@ -60,9 +60,16 @@
   font-size: 0.75rem;
 }
 .outcomes {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  margin: 20px 0 28px;
+}
+.outcomes p {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 .outcomes strong {
   display: block;
@@ -80,6 +87,10 @@
 @media (max-width: 620px) {
   .sides {
     grid-template-columns: 1fr;
+  }
+  .outcomes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 }
 

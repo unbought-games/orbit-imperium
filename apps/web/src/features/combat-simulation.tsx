@@ -64,46 +64,7 @@ function SimulationDialog({
   report: Espionage
   onClose: () => void
 }) {
-  const view = useStore(model.store, (s) => s.view)
-  const binding = useStore(model.store, (s) => s.binding)
-  // Changing identity or rules remounts the draft, so no previous-account results survive.
-  return (
-    <SimulationForm
-      key={JSON.stringify([binding, view?.profile_hash])}
-      model={model}
-      report={report}
-      onClose={onClose}
-    />
-  )
-}
-function SimulationForm({
-  model,
-  report,
-  onClose,
-}: {
-  model: Coordinator
-  report: Espionage
-  onClose: () => void
-}) {
   const dialog = useRef<HTMLDialogElement>(null)
-  const view = useStore(model.store, (s) => s.view)
-  const now = useStore(model.store, currentServerTime)
-  const { body } = useGameScreen()
-  const stale = useStore(model.store, (s) => s.stale)
-  const fields = simulationFields(
-    report,
-    view?.catalog ?? [],
-    view?.research ?? [],
-    body?.inventories,
-  )
-  const scope = JSON.stringify([report, view?.research, view?.profile_hash])
-  const { edits, result, error, running, edit, run } = useCombatSimulation(
-    model,
-    scope,
-  )
-  const assumptions = unknownAssumptions(fields, edits)
-  const prepared = simulationInputs(fields, edits, report.resources)
-  const unsupported = unsupportedReportUnits(report, fields)
   useEffect(() => {
     const element = dialog.current!
     element.showModal()
@@ -122,7 +83,62 @@ function SimulationForm({
           Close
         </Button>
       </header>
-      <div className={styles.content}>
+      <SimulationSession model={model} report={report} onClose={onClose} />
+    </dialog>,
+    document.body,
+  )
+}
+
+export function CombatSimulator() {
+  const { model } = useGameScreen()
+  return <SimulationSession model={model} />
+}
+
+function SimulationSession(props: {
+  model: Coordinator
+  report?: Espionage
+  onClose?: () => void
+}) {
+  const view = useStore(props.model.store, (s) => s.view)
+  const binding = useStore(props.model.store, (s) => s.binding)
+  // Changing identity or rules remounts the draft, so no previous-account results survive.
+  return (
+    <SimulationForm
+      key={JSON.stringify([binding, view?.profile_hash])}
+      {...props}
+    />
+  )
+}
+function SimulationForm({
+  model,
+  report,
+  onClose,
+}: {
+  model: Coordinator
+  report?: Espionage
+  onClose?: () => void
+}) {
+  const view = useStore(model.store, (s) => s.view)
+  const now = useStore(model.store, currentServerTime)
+  const { body } = useGameScreen()
+  const stale = useStore(model.store, (s) => s.stale)
+  const fields = simulationFields(
+    report,
+    view?.catalog ?? [],
+    view?.research ?? [],
+    body?.inventories,
+  )
+  const scope = JSON.stringify([report, view?.research, view?.profile_hash])
+  const { edits, result, error, running, edit, run } = useCombatSimulation(
+    model,
+    scope,
+  )
+  const assumptions = unknownAssumptions(fields, edits)
+  const prepared = simulationInputs(fields, edits, report?.resources)
+  const unsupported = report ? unsupportedReportUnits(report, fields) : []
+  return (
+    <div className={styles.content}>
+      {report ? (
         <p>
           Defender at [{report.target.coordinates.galaxy}:
           {report.target.coordinates.system}:
@@ -132,63 +148,167 @@ function SimulationForm({
           </time>{' '}
           ({reportAge(report.observed_at, now)}).
         </p>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (prepared.inputs && !unsupported.length)
-              void run(prepared.inputs)
-          }}
+      ) : (
+        <p>
+          No report imported. Enter defender assumptions or explicitly assume
+          zero.
+        </p>
+      )}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (prepared.inputs && !unsupported.length) void run(prepared.inputs)
+        }}
+      >
+        <div className={styles.sides}>
+          {(['attacker', 'defender'] as const).map((side) => (
+            <fieldset key={side} disabled={running}>
+              <legend>{sideNames[side]}</legend>
+              {side === 'attacker' && (
+                <p>
+                  {body
+                    ? `Stationed on ${bodyName(body)} ${coordinates(body)}${stale ? ' · last known inventory (reconnecting)' : ''}.`
+                    : 'Select a planet to see stationed ship availability.'}
+                </p>
+              )}
+              {side === 'defender' && Object.keys(assumptions).length > 0 && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => edit(assumptions)}
+                >
+                  Assume all unknown values are zero
+                </Button>
+              )}
+              <SimulationFields
+                fields={fields.filter((f) => f.side === side)}
+                edits={edits}
+                edit={edit}
+              />
+            </fieldset>
+          ))}
+        </div>
+        {unsupported.length > 0 && (
+          <p role="alert">
+            This report contains units unsupported by the current combat rules.
+            It cannot be simulated without dropping observed forces.
+          </p>
+        )}
+        {prepared.error && <p role="status">{prepared.error}</p>}
+        {error && <p role="alert">{error}</p>}
+        <Button
+          type="submit"
+          disabled={!prepared.inputs || running || !!unsupported.length}
         >
-          <div className={styles.sides}>
-            {(['attacker', 'defender'] as const).map((side) => (
-              <fieldset key={side} disabled={running}>
-                <legend>{sideNames[side]}</legend>
-                {side === 'attacker' && (
-                  <p>
-                    {body
-                      ? `Stationed on ${bodyName(body)} ${coordinates(body)}${stale ? ' · last known inventory (reconnecting)' : ''}.`
-                      : 'Select a planet to see stationed ship availability.'}{' '}
-                    Availability is a reference; hypothetical quantities are
-                    allowed.
-                  </p>
-                )}
-                {side === 'defender' && Object.keys(assumptions).length > 0 && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => edit(assumptions)}
-                  >
-                    Assume all unknown values are zero
-                  </Button>
-                )}
-                <SimulationFields
-                  fields={fields.filter((f) => f.side === side)}
-                  edits={edits}
-                  edit={edit}
-                />
-              </fieldset>
+          {running ? 'Simulating…' : 'Run 10 battles'}
+        </Button>
+      </form>
+      {result && (
+        <section aria-label="Simulation results" aria-live="polite">
+          <h3>Sample results · attacker perspective</h3>
+          <div className={styles.outcomes}>
+            {simulationSummary(result).map((row) => (
+              <p
+                key={row.outcome}
+                className={
+                  row.outcome === 'AttackerVictory'
+                    ? styles.win
+                    : row.outcome === 'DefenderVictory'
+                      ? styles.loss
+                      : undefined
+                }
+              >
+                <strong>
+                  {row.count} / {result.samples.length}
+                </strong>{' '}
+                {row.outcome === 'AttackerVictory'
+                  ? 'Victory'
+                  : row.outcome === 'DefenderVictory'
+                    ? 'Defeat'
+                    : label(row.outcome)}
+              </p>
             ))}
           </div>
+          {(['attacker', 'defender'] as const).map((side) => (
+            <div key={side}>
+              <h4>
+                {side === 'attacker'
+                  ? 'Attacker · average losses and survivors'
+                  : 'Defender · average survivors before repairs'}
+              </h4>
+              <dl className={styles.survivors}>
+                {fields
+                  .filter(
+                    (f) =>
+                      f.side === side &&
+                      f.item &&
+                      Number(edits[f.key] ?? f.value) > 0,
+                  )
+                  .map((f) => (
+                    <div key={f.key}>
+                      <dt>{label(f.label)}</dt>
+                      <dd>
+                        {side === 'attacker' && (
+                          <strong>
+                            {attackerLosses(result, {
+                              item: f.item!,
+                              count: Number(edits[f.key] ?? f.value),
+                            }).toLocaleString(undefined, {
+                              maximumFractionDigits: 1,
+                            })}{' '}
+                            lost ·{' '}
+                          </strong>
+                        )}
+                        {averageSurvivors(result, side, f.item!).toLocaleString(
+                          undefined,
+                          {
+                            maximumFractionDigits: 1,
+                          },
+                        )}
+                        {side === 'attacker' ? ' surviving' : ''}
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          ))}
+          <SimulationPlanning result={result} />
+        </section>
+      )}
+      <details className={styles.help}>
+        <summary>Simulation assumptions</summary>
+        <p>
+          Ten randomized battles using this universe’s current combat rules.
+          Limit: 2,000 units combined; technology 0–100. Missiles, defense
+          repairs and debris recovery are excluded. Outcomes are samples, not
+          guarantees.
+        </p>
+        <p>
+          Availability is a reference; hypothetical quantities are allowed.
+          Unknown is not zero. Player edits are assumptions.
+        </p>
+        {report && (
           <p>
-            Ten randomized battles using this universe’s current combat rules.
-            Limit: 2,000 units combined; technology 0–100. Missiles, defense
-            repairs and debris recovery are excluded.
+            This is a historical snapshot. Resources, fleets, defenses and
+            research may have changed; the target is never refreshed.
           </p>
-          {unsupported.length > 0 && (
-            <p role="alert">
-              This report contains units unsupported by the current combat
-              rules. It cannot be simulated without dropping observed forces.
-            </p>
-          )}
-          {prepared.error && <p role="status">{prepared.error}</p>}
-          {error && <p role="alert">{error}</p>}
-          <Button
-            type="submit"
-            disabled={!prepared.inputs || running || !!unsupported.length}
-          >
-            {running ? 'Simulating…' : 'Run 10 battles'}
-          </Button>
-        </form>
+        )}
+        <p>
+          Loot assumes empty cargo on arrival, before fuel costs. Only victories
+          with surviving cargo capacity can loot. Each battle uses the
+          universe’s loot rules and report-observed resources; no production or
+          spending is forecast. Averages are rounded down to whole resource
+          units.
+        </p>
+        {report && (
+          <p>
+            Prepare attack opens an editable Dispatch draft. Flight estimates
+            use your current research and stationed ships. Dispatch checks the
+            target, protection, fuel and fleet slots before launch.
+          </p>
+        )}
+      </details>
+      {report && onClose && (
         <SimulationFlight
           model={model}
           report={report}
@@ -196,90 +316,7 @@ function SimulationForm({
           edits={edits}
           onClose={onClose}
         />
-        {result && (
-          <section aria-label="Simulation results" aria-live="polite">
-            <h3>Sample results · attacker perspective</h3>
-            <p>A sample of possible outcomes, not a prediction or guarantee.</p>
-            <div className={styles.outcomes}>
-              {simulationSummary(result).map((row) => (
-                <p
-                  key={row.outcome}
-                  className={
-                    row.outcome === 'AttackerVictory'
-                      ? styles.win
-                      : row.outcome === 'DefenderVictory'
-                        ? styles.loss
-                        : undefined
-                  }
-                >
-                  <strong>
-                    {row.count} / {result.samples.length}
-                  </strong>{' '}
-                  {row.outcome === 'AttackerVictory'
-                    ? 'Victory · attacker wins'
-                    : row.outcome === 'DefenderVictory'
-                      ? 'Defeat · defender wins'
-                      : label(row.outcome)}
-                </p>
-              ))}
-            </div>
-            {(['attacker', 'defender'] as const).map((side) => (
-              <div key={side}>
-                <h4>
-                  {side === 'attacker'
-                    ? 'Attacker · average losses and survivors'
-                    : 'Defender · average survivors before repairs'}
-                </h4>
-                <dl className={styles.survivors}>
-                  {fields
-                    .filter(
-                      (f) =>
-                        f.side === side &&
-                        f.item &&
-                        Number(edits[f.key] ?? f.value) > 0,
-                    )
-                    .map((f) => (
-                      <div key={f.key}>
-                        <dt>{label(f.label)}</dt>
-                        <dd>
-                          {side === 'attacker' && (
-                            <strong>
-                              {attackerLosses(result, {
-                                item: f.item!,
-                                count: Number(edits[f.key] ?? f.value),
-                              }).toLocaleString(undefined, {
-                                maximumFractionDigits: 1,
-                              })}{' '}
-                              lost ·{' '}
-                            </strong>
-                          )}
-                          {averageSurvivors(
-                            result,
-                            side,
-                            f.item!,
-                          ).toLocaleString(undefined, {
-                            maximumFractionDigits: 1,
-                          })}
-                          {side === 'attacker' ? ' surviving' : ''}
-                        </dd>
-                      </div>
-                    ))}
-                </dl>
-              </div>
-            ))}
-            <SimulationPlanning result={result} />
-          </section>
-        )}
-        <details className={styles.help}>
-          <summary>About report snapshots and assumptions</summary>
-          <p>
-            This is a historical snapshot. Resources, fleets, defenses and
-            research may have changed. Unknown is not zero. Player edits are
-            assumptions; the target is never refreshed.
-          </p>
-        </details>
-      </div>
-    </dialog>,
-    document.body,
+      )}
+    </div>
   )
 }

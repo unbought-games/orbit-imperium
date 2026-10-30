@@ -114,6 +114,12 @@ export function routeTarget(
         params: planetParams(),
         search: {},
       })
+    case 'combat-simulator':
+      return linkOptions({
+        to: '/u/$universe/combat-simulator',
+        params,
+        search,
+      })
     case 'messages':
       return linkOptions({ to: '/u/$universe/messages', params, search })
     case 'alliance':

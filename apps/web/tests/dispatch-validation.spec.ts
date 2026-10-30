@@ -1,7 +1,7 @@
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
-import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
+import { shellFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
 import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
@@ -21,7 +21,7 @@ test('destination focus glow is desktop only', async ({ page }) => {
   }
 })
 
-async function setup(page: Page) {
+async function setup(page: Page, options: { beforeNavigation?: () => Promise<void>; omitPlayerNames?: boolean } = {}) {
   const colony = {
     ...structuredClone(body),
     id: id(6),
@@ -51,7 +51,7 @@ async function setup(page: Page) {
     homeworldId: body.id,
     bodies,
     missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '5' },
-    playerNames: { [binding.player]: 'Commander' },
+    playerNames: options.omitPlayerNames ? undefined : { [binding.player]: 'Commander' },
     research: [{ research: 'Astrophysics', level: 8 }],
     extraCapabilities: capabilities,
     catalog: [
@@ -209,6 +209,8 @@ async function setup(page: Page) {
       },
     })
   })
+  await playerProfilesFixture(page, () => [{ player: binding.player, username: 'Commander' }])
+  await options.beforeNavigation?.()
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   // Cold route compilation can share the host with other fixture workers.
   await expect(page.locator('main h1')).toHaveText('Dispatch', { timeout: 30000 })
@@ -411,6 +413,8 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
     })
     .click()
   await expect(ship).toHaveValue('0')
+  await expect(page.getByLabel('Light Fighter · 0 available')).toHaveCount(0)
+  await page.getByRole('button', { name: /^Show all ships/ }).click()
   await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue('0')
   for (const field of cargo) await expect(field).toHaveValue('0')
   await expect(page.getByRole('region', { name: 'Flight timing' }).locator('p')).toHaveText(
@@ -849,6 +853,7 @@ test('cleared ship and cargo amounts display zero and submit as zero even before
   const cargoFields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
     page.getByRole('textbox', { name, exact: true }),
   )
+  await page.getByRole('button', { name: /^Show all ships/ }).click()
   const unusedShip = page.getByLabel('Light Fighter · 0 available')
   for (const field of [...cargoFields, unusedShip]) {
     await field.fill('')
@@ -1771,7 +1776,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 1000 })
     const state = await setup(page)
     const table = page.getByRole('table', { name: 'Ships to dispatch' })
-    await expect(table.getByRole('row').filter({ has: page.locator('input') }).locator('th')).toHaveText(['Light Fighter', 'Espionage Probe', 'Small Cargo', 'Recycler', 'Colony Ship'])
+    await expect(table.getByRole('row').filter({ has: page.locator('input') }).locator('th')).toHaveText(['Espionage Probe', 'Small Cargo', 'Recycler', 'Colony Ship'])
     await expect(page.getByRole('group', { name: 'Mission', exact: true }).locator('label')).toHaveText(['Transport', 'Deploy', 'Attack', 'Harvest', 'Espionage', 'Colonize'])
     await page.getByRole('button', { name: 'All Small Cargo', exact: true }).click()
     await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('2')
@@ -1930,7 +1935,7 @@ for (const width of [320, 390, 1440]) {
     await expect(origin).toContainText('Aster Haven')
     await expect(origin).toContainText('Commander')
     await expect(origin.getByRole('link', { name: /origin/ })).toBeVisible()
-    await expect(page.getByRole('table', { name: 'Ships to dispatch' }).locator('tr').filter({ has: page.locator('th[scope="rowgroup"]') })).toHaveText(['War', 'Peace'])
+    await expect(page.getByRole('table', { name: 'Ships to dispatch' }).locator('tr').filter({ has: page.locator('th[scope="rowgroup"]') })).toHaveText(['Civil'])
     await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
     await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
     await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 40s')
@@ -2076,7 +2081,7 @@ for (const width of [320, 390, 1440]) {
     const smallCargo = page.getByLabel('Small Cargo · 2 available')
     await expect(addAll).toHaveText('Add All')
     await expect(addAll).toHaveAttribute('data-button-variant', 'secondary')
-    await expect(fleet.getByRole('button', { name: 'Max Light Fighter', exact: true })).toBeDisabled()
+    await expect(fleet.getByRole('button', { name: 'Max Light Fighter', exact: true })).toHaveCount(0)
     await smallCargo.fill('')
     const fillCargo = fleet.getByRole('button', { name: 'Max Small Cargo', exact: true })
     await fillCargo.focus()
@@ -2154,6 +2159,9 @@ test('Add All reads current inventory and disables on an empty origin', async ({
   await expect(addAll).toBeDisabled()
   const fleet = page.getByRole('group', { name: 'Ships', exact: true })
   for (const fill of await fleet.getByRole('button', { name: /^Max / }).all()) await expect(fill).toBeDisabled()
+  await expect(fleet).toContainText('No ships available here.')
+  await expect(page.getByRole('table', { name: 'Ships to dispatch' })).toHaveCount(0)
+  await fleet.getByRole('button', { name: /^Show all ships/ }).click()
   await expect(page.getByLabel('Small Cargo · 0 available')).toHaveValue('0')
   expect(body.inventories.find(stack => stack.item.id === 'SmallCargo')!.count).toBe(originalCargo)
 })
@@ -2202,3 +2210,172 @@ for (const width of [390, 1440]) {
     }
   })
 }
+
+for (const width of [390, 1440]) {
+  test(`zero-padded Dispatch counts use canonical review and launch values at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const state = await setup(page)
+    const ships = page.getByLabel('Small Cargo · 2 available')
+    await ships.fill('01')
+    await page.getByLabel('Recycler · 1 available').fill('000')
+    await page.getByLabel('Metal', { exact: true }).fill('00042')
+    await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 40s')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-padded-counts-${width}x1000.png`, fullPage: width >= 768 })
+    if (width < 768) {
+      await ships.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-padded-ships-${width}x1000.png` })
+    }
+    const quoted = page.waitForRequest(request => request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')
+    await review(page).click()
+    const intent = (await quoted).postDataJSON().intent
+    expect(intent.ships).toEqual([{ owner: binding.player, ship_type: 'SmallCargo', count: '1' }])
+    expect(intent.cargo).toEqual({ metal: '42000000', crystal: '0', deuterium: '0' })
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
+    expect(state.launches).toBe(0)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-canonical-review-${width}x1000.png`, fullPage: width >= 768 })
+    const launched = page.waitForRequest(request => request.url().endsWith('/commands'))
+    await page.getByRole('button', { name: /^Transport to / }).click()
+    expect((await launched).postDataJSON().gameplay.command.action.intent).toEqual(intent)
+    await expect(page.getByRole('complementary', { name: 'Action needs attention' })).toContainText('Fleet not sent: Beginner protection prevents')
+    expect(state.launches).toBe(1)
+  })
+
+  test(`Dispatch origin follows authoritative self identity through loading refresh and navigation at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    let username = 'Captain Vega'
+    try {
+      await setup(page, { beforeNavigation: async () => {
+        await playerProfilesFixture(page, () => [{ player: binding.player, username }])
+        await page.route('**/player-profiles', async route => { await gate; await route.fallback() })
+      } })
+      const origin = page.getByRole('group', { name: 'Origin', exact: true })
+      // The bound-view map says Commander; self identity is still unresolved.
+      await expect(origin).toContainText('Planet · You')
+      await expect(origin).not.toContainText(binding.player.slice(0, 8))
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-identity-loading-${width}x1000.png`, fullPage: width >= 768 })
+      release()
+      await expect(origin).toContainText('Planet · Captain Vega')
+      username = 'Captain Nova'
+      await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+      await expect(origin).toContainText('Planet · Captain Nova')
+      await page.getByRole('link', { name: 'Empire', exact: true }).click()
+      await page.goBack()
+      await expect(origin).toContainText('Planet · Captain Nova')
+      await page.reload()
+      await expect(origin).toContainText('Planet · Captain Nova')
+      await expect(origin).not.toContainText('Commander')
+      await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-authoritative-identity-${width}x1000.png`, fullPage: width >= 768 })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    } finally { release() }
+  })
+}
+
+test('zero-padded oversized ship counts retain server range rejection', async ({ page }) => {
+  const state = await setup(page)
+  state.quoteError = 'NumericRange'
+  await page.getByLabel('Small Cargo · 2 available').fill('0018446744073709551616')
+  const quoted = page.waitForRequest(request => request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')
+  await review(page).click()
+  expect((await quoted).postDataJSON().intent.ships[0].count).toBe('18446744073709551616')
+  await expect(page.getByRole('alert')).toContainText('One of the entered amounts is too large')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+})
+
+test('Dispatch keeps You in origin and review when self profiles and view names are unavailable', async ({ page }) => {
+  const state = await setup(page, { omitPlayerNames: true, beforeNavigation: async () => {
+    await playerProfilesFixture(page, () => null)
+  } })
+  await expect(page.getByRole('group', { name: 'Origin', exact: true })).toContainText('Planet · You')
+  await review(page).click()
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  await expect(quote.getByText('You', { exact: true })).toBeVisible()
+  await expect(quote).not.toContainText(`Player ${binding.player.slice(0, 8)}`)
+  expect(state.launches).toBe(0)
+})
+
+
+for (const width of [390, 1440]) {
+  test(`Dispatch shows available ships with a reversible all-rows disclosure at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const state = await setup(page)
+    const fleet = page.getByRole('group', { name: 'Ships', exact: true })
+    const table = fleet.getByRole('table', { name: 'Ships to dispatch' })
+    const toggle = fleet.getByRole('button', { name: 'Show all ships (1 more)', exact: true })
+    await expect(table.getByRole('rowheader')).toHaveText(['Civil', 'Espionage Probe', 'Small Cargo', 'Recycler', 'Colony Ship'])
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await fleet.scrollIntoViewIfNeeded()
+    await fleet.evaluate(element => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 80))
+    await diagnosticScreenshot(fleet, { path: `test-results/dispatch-available-ships-${width}x1000.png` })
+    await toggle.focus()
+    await toggle.press('Enter')
+    const collapse = fleet.getByRole('button', { name: 'Show available ships', exact: true })
+    await expect(collapse).toHaveAttribute('aria-expanded', 'true')
+    await expect(collapse).toBeFocused()
+    await expect(table.getByRole('rowheader')).toHaveText(['Military', 'Light Fighter', 'Civil', 'Espionage Probe', 'Small Cargo', 'Recycler', 'Colony Ship'])
+    await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue('0')
+    await expect(fleet.getByRole('button', { name: 'Max Light Fighter', exact: true })).toBeDisabled()
+    await fleet.evaluate(element => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 80))
+    await diagnosticScreenshot(fleet, { path: `test-results/dispatch-all-ships-${width}x1000.png` })
+    await collapse.press('Space')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(toggle).toBeFocused()
+    await expect(table.getByRole('rowheader', { name: 'Military', exact: true })).toHaveCount(0)
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+    // New inventory appears without expanding; removing it hides the unused row.
+    state.bodies[0].inventories.push({ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' })
+    state.advanceRevision()
+    await refreshGame(page)
+    await expect(page.getByLabel('Light Fighter · 3 available')).toBeVisible()
+    await expect(toggle).toHaveCount(0)
+    expect(state.quotes).toBe(0)
+    expect(state.launches).toBe(0)
+    // Expansion is local to the selected origin; the colony has no ships.
+    state.bodies[1].inventories = []
+    state.advanceRevision()
+    await refreshGame(page)
+    await selectBody(page, id(6))
+    const emptyShips = page.getByRole('group', { name: 'Ships', exact: true })
+    await expect(emptyShips.getByRole('table')).toHaveCount(0)
+    await expect(emptyShips.getByRole('status')).toHaveText('No ships available here.')
+    await expect(emptyShips.getByRole('button', { name: 'Add all ships' })).toBeDisabled()
+    await emptyShips.scrollIntoViewIfNeeded()
+    await emptyShips.evaluate(element => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 80))
+    await diagnosticScreenshot(emptyShips, { path: `test-results/dispatch-empty-ships-${width}x1000.png` })
+    await emptyShips.getByRole('button', { name: /^Show all ships/ }).click()
+    await expect(emptyShips.getByRole('table')).toBeVisible()
+    await emptyShips.evaluate(element => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 80))
+    await diagnosticScreenshot(emptyShips, { path: `test-results/dispatch-empty-expanded-ships-${width}x1000.png` })
+    await selectBody(page, body.id)
+    await expect(page.getByRole('button', { name: 'Show available ships', exact: true })).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
+test('Dispatch retains unavailable edited rows until corrected without hiding a launch selection', async ({ page }) => {
+  const state = await setup(page)
+  const cargo = state.bodies[0].inventories.find(stack => stack.item.id === 'SmallCargo')!
+  cargo.count = '0'
+  state.advanceRevision()
+  await refreshGame(page)
+  const selected = page.getByLabel('Small Cargo · 0 available')
+  await expect(selected).toHaveValue('1')
+  await selected.fill('invalid')
+  await expect(selected).toBeVisible()
+  await review(page).click()
+  await expect(page.getByRole('alert')).toContainText('Enter whole nonnegative')
+  expect(state.quotes).toBe(0)
+  await selected.fill('000')
+  await expect(selected).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show all ships (2 more)' }).click()
+  await expect(selected).toHaveValue('000')
+  await page.getByRole('button', { name: 'Show available ships' }).click()
+  await expect(selected).toHaveCount(0)
+  expect(state.launches).toBe(0)
+})

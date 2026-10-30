@@ -52,18 +52,12 @@ export function EconomyScreen() {
 export function ResourceSettingsScreen() {
   const { view, body, model } = useGameScreen()
   if (!body || view.protocol === 2) return null
-  const planet = view.bodies.find((candidate) => candidate.id === body.id)
-  if (
-    !planet ||
-    !view.progression.production.some((entry) => entry.body === planet.id)
-  )
-    return null
   return (
     <Production
-      key={`${bindingKey(view.binding)}:${planet.id}`}
+      key={`${bindingKey(view.binding)}:${body.id}`}
       coordinator={model}
       view={view}
-      body={planet}
+      body={body}
     />
   )
 }

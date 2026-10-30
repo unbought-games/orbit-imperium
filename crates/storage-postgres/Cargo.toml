@@ -22,6 +22,7 @@ sqlx.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+orbit-storage-assets.workspace = true
 axum.workspace = true
 tokio.workspace = true
 orbit-transport-http.workspace = true
@@ -135,4 +136,8 @@ required-features = ["test-support"]
 
 [[test]]
 name = "world_edit"
+required-features = ["test-support"]
+
+[[test]]
+name = "insignias"
 required-features = ["test-support"]

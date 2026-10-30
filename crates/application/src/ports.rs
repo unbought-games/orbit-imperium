@@ -1,5 +1,28 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn insignia_library(
+        &self,
+        _binding: Binding,
+    ) -> impl std::future::Future<Output = Result<InsigniaLibrary, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+    fn change_insignia(
+        &self,
+        _binding: Binding,
+        _action: InsigniaAction,
+        _policy: CosmeticPolicy,
+        _evidence: SupporterEvidence,
+    ) -> impl std::future::Future<Output = Result<(), ServiceError>> + Send {
+        async { Err(ServiceError::Unavailable) }
+    }
+    fn equipped_insignias(
+        &self,
+        _universe: UniverseId,
+        _players: Vec<PlayerId>,
+    ) -> impl std::future::Future<Output = Result<EquippedInsignias, StoreError>> + Send {
+        async { Ok(Default::default()) }
+    }
+
     fn authenticate_machine(
         &self,
         _digest: &str,

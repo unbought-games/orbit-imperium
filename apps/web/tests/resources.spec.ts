@@ -1,3 +1,4 @@
+import { productionFixture } from '../src/test-support/production'
 import { navigate, menuDestination } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -1782,20 +1783,25 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
 })
 
 for (const protocol of [2, 3, 4] as const) {
-  test(`resource settings is unavailable without production data on protocol ${protocol}`, async ({ page }) => {
+  test(`resource settings navigation opens production controls for supported protocols on protocol ${protocol}`, async ({ page }) => {
     await shellFixture(page, { protocol })
     if (protocol !== 2) {
       await page.goto(`/u/andromeda/b/${body.id}/resources`)
       await expect(page.getByRole('region', { name: 'Resource buildings', exact: true }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
-    }
-    await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Energy — resource settings' })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
+    } else await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
     await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveCount(0)
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByRole('button', { name: 'Menu', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: 'Navigation' }).getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()
+    const menu = page.getByRole('dialog', { name: 'Navigation' })
+    if (protocol === 2) await expect(menu.getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()
+    else await expect(menu.getByRole('link', { name: 'Resource settings', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
     await page.goto(`/u/andromeda/b/${body.id}/resource-settings`)
-    await expect(page.locator('main h1')).toHaveText('Destination unavailable')
-    await expect(page.getByRole('region', { name: 'Production controls' })).toHaveCount(0)
+    await expect(page.locator('main h1')).toHaveText(protocol === 2 ? 'Destination unavailable' : 'Resource settings')
+    if (protocol !== 2) {
+      await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
+      await expect(page.getByRole('slider', { name: 'metal mine production', exact: true })).toHaveValue('100')
+    } else await expect(page.getByRole('region', { name: 'Production controls' })).toHaveCount(0)
   })
 }
 
@@ -1980,3 +1986,56 @@ for (const width of [1280, 390]) {
     await expect.poll(() => sent.length).toBe(1)
   })
 }
+
+for (const width of [1440, 390]) test(`resource settings opens usable controls and saves changes at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const planet = structuredClone(body)
+  planet.levels.SolarPlant = 2
+  const economy = productionFixture(planet)
+  let revision = 1
+  const sent: components['schemas']['Command3'][] = []
+  await installGameFixture(page, { protocol: 4, bodies: [planet], production: [economy], viewerRevision: () => String(revision),
+    missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+  })
+  await page.route('**/commands', async route => {
+    const { gameplay } = route.request().postDataJSON()
+    expect(gameplay.command.type).toBe('SetProduction')
+    expect(gameplay.command.body).toBe(body.id)
+    expect(gameplay.command.expected_settings_revision).toBe(economy.settings_revision)
+    sent.push(gameplay.command)
+    economy.settings = gameplay.command.settings
+    // The next authoritative snapshot includes base income plus the 90% mine.
+    economy.gross_per_hour.metal = '59700000'
+    economy.energy_demand = '20900000'
+    planet.energy.demand = '20900000'
+    economy.settings_revision = String(++revision)
+    await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const entry = await menuDestination(page, 'Resource settings')
+  await expect(entry).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
+  await expect(entry).toBeEnabled()
+  if (width === 390) {
+    const menu = page.getByRole('dialog', { name: 'Navigation', exact: true })
+    const empire = menu.getByRole('link', { name: 'Empire', exact: true })
+    expect((await entry.boundingBox())!.x).toBe((await empire.boundingBox())!.x)
+    expect(await entry.evaluate(el => getComputedStyle(el).justifyContent)).not.toBe('center')
+  }
+  await diagnosticScreenshot(page, { path: `test-results/resource-settings-entry-${width}.png` })
+  await entry.click()
+  await expect(page.locator('main h1')).toHaveText('Resource settings')
+  const controls = page.getByRole('region', { name: 'Production controls' })
+  await expect(controls).toBeVisible()
+  await expect(controls.getByRole('slider')).toHaveCount(4)
+  const metal = page.getByRole('slider', { name: 'metal mine production', exact: true })
+  await expect(metal).toHaveValue('100')
+  await metal.focus()
+  await metal.press('ArrowLeft')
+  await expect.poll(() => sent.length).toBe(1)
+  expect(sent[0]).toMatchObject({ type: 'SetProduction', body: body.id, settings: { metal_mine: 90 } })
+  await expect(controls.getByRole('status')).toHaveText('All changes saved automatically.')
+  await page.reload()
+  await expect(metal).toHaveValue('90')
+  await page.mouse.move(0, 0)
+  await diagnosticScreenshot(page, { path: `test-results/resource-settings-saved-${width}.png`, fullPage: true })
+})

@@ -5,9 +5,10 @@ export type CoordinateField = 'galaxy' | 'system' | 'position'
 
 export function dispatchQuantity(value: string | undefined): string {
   if (value === undefined || value.trim() === '') return '0'
-  if (!/^(0|[1-9][0-9]*)$/.test(value))
+  if (!/^[0-9]+$/.test(value))
     throw Error('Enter whole nonnegative cargo and ship counts.')
-  return value
+  // Normalize strings without rounding counts beyond Number.MAX_SAFE_INTEGER.
+  return value.replace(/^0+(?=\d)/, '')
 }
 
 export function parsePastedCoordinates(

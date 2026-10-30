@@ -1,0 +1,17 @@
+[package]
+name = "orbit-storage-assets"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+orbit-application.workspace = true
+object_store = { version = "=0.14.2", features = ["aws"] }
+tokio.workspace = true
+
+[dev-dependencies]
+uuid = { workspace = true, features = ["v4"] }
+axum.workspace = true
+

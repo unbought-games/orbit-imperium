@@ -14,3 +14,5 @@ docs/news/history.json
 
 # Derived from index.html during the multi-entry frontend build.
 /apps/web/homepage.html
+
+/data/assets/

@@ -1,3 +1,4 @@
+import { InsigniaEditor } from './insignia-editor'
 import { useGameScreen } from '../shell/screen-context'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
@@ -15,6 +16,7 @@ export function SettingsScreen() {
     <Section className={styles.screen}>
       <TaskHeader title="Settings" />
       <BetaNotice />
+      <InsigniaEditor />
       <Section aria-label="Help and conduct reports">
         <Heading level={2}>Help & conduct reports</Heading>
         <Text>

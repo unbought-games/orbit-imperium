@@ -16,20 +16,39 @@ it.each([undefined, '', ' ', '\t\n', '0'])(
     expect(dispatchQuantity(value)).toBe('0')
   },
 )
+it.each([
+  ['01', '1'],
+  ['000', '0'],
+  ['00042', '42'],
+  ['009007199254740993', '9007199254740993'],
+  ['0018446744073709551616', '18446744073709551616'],
+])('canonicalizes digit-only quantity %s exactly', (value, expected) => {
+  expect(dispatchQuantity(value)).toBe(expected)
+})
 it.each(['1', '9007199254740993'])(
   'preserves exact dispatch quantity %s',
   (value) => {
     expect(dispatchQuantity(value)).toBe(value)
   },
 )
-it.each(['-1', '1.5', '1e2', 'no', '01'])(
-  'still rejects invalid dispatch quantity %s',
-  (value) => {
-    expect(() => dispatchQuantity(value)).toThrow(
-      'Enter whole nonnegative cargo and ship counts.',
-    )
-  },
-)
+it.each([
+  '-1',
+  '-01',
+  '+1',
+  '+01',
+  '1.5',
+  '01.5',
+  '1e2',
+  '01e2',
+  'no',
+  ' 01',
+  '01 ',
+  '0x10',
+])('still rejects invalid dispatch quantity %s', (value) => {
+  expect(() => dispatchQuantity(value)).toThrow(
+    'Enter whole nonnegative cargo and ship counts.',
+  )
+})
 
 it.each([
   '1:372:10',

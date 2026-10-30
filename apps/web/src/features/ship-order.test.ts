@@ -25,7 +25,7 @@ it('groups ships and sorts by total point cost, including colony ships and stati
     'Recycler',
     'ColonyShip',
   ])
-  expect(shipGroup(ships.at(-1)!)).toBe('Peace')
+  expect(shipGroup(ships.at(-1)!)).toBe('Civil')
   expect(
     compareShips(
       entry('Cruiser', ['9007199254740993']),

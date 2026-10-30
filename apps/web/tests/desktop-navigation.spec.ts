@@ -132,23 +132,30 @@ test('tablet brand keeps a full touch target without overlapping resource contro
     expect(bounds.width).toBeGreaterThanOrEqual(44)
     expect(bounds.height).toBeGreaterThanOrEqual(44)
     const resources = page.getByLabel('Current resources')
-    const boxes = await resources.getByRole('button').evaluateAll(nodes => nodes.map(node => {
+    const controls = resources.getByRole('button').or(resources.getByRole('link'))
+    const boxes = await controls.evaluateAll(nodes => nodes.map(node => {
       const rect = node.getBoundingClientRect()
       return { left: rect.left, right: rect.right }
     }))
     expect(boxes).toHaveLength(4)
     for (let i = 1; i < boxes.length; i++) expect(boxes[i].left).toBeGreaterThanOrEqual(boxes[i - 1].right)
-    for (const button of await resources.getByRole('button').all()) {
-      expect(await button.evaluate(el => {
+    for (const control of await controls.all()) {
+      expect(await control.evaluate(el => {
         const box = el.getBoundingClientRect()
         return [...el.querySelectorAll('svg, strong')].every(child => {
           const bounds = child.getBoundingClientRect()
           return bounds.left >= box.left && bounds.right <= box.right
         })
       })).toBe(true)
+    }
+    await expect(resources.getByRole('button')).toHaveCount(3)
+    for (const button of await resources.getByRole('button').all()) {
       await button.tap()
       await expect(page.getByRole('dialog')).toBeVisible()
       await page.keyboard.press('Escape')
     }
+    await resources.getByRole('link', { name: 'Energy — resource settings', exact: true }).tap()
+    await expect(page.locator('main h1')).toHaveText('Resource settings')
+    await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
   } finally { await context.close() }
 })

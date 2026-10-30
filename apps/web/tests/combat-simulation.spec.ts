@@ -1,3 +1,4 @@
+import { menuDestination } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, refreshGame, binding, body, id } from './fixtures/game'
@@ -76,6 +77,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   }
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toBeVisible()
   const results = dialog.getByRole('region', { name: 'Simulation results' })
+  expect(await results.evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('[aria-label="Attack planning"]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true)
   await expect(results).toContainText('Light Fighter2 lost · 8 surviving')
   await expect(results).toContainText('Bomber2 lost · 0 surviving')
   await expect(results).toContainText('Surviving cargo capacity: 400 average')
@@ -90,8 +92,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/simulation-results-${hidden}-${width}.png`, fullPage: false })
   }
-  await expect(results.getByText('Victory · attacker wins')).toHaveCSS('color', 'rgb(145, 201, 172)')
-  await expect(results.getByText('Defeat · defender wins')).toHaveCSS('color', 'rgb(227, 152, 133)')
+  await expect(results.getByText('Victory', { exact: false })).toHaveCSS('color', 'rgb(145, 201, 172)')
+  await expect(results.getByText('Defeat', { exact: false })).toHaveCSS('color', 'rgb(227, 152, 133)')
   expect(submitted.inputs.defender.units).toEqual(hidden ? [] : [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 12 }, { item: { kind: 'Defense', id: 'HeavyLaser' }, count: 7 }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: 1 }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: 3 }])
   expect(submitted.inputs.attacker.units).toEqual([{ item: { kind: 'Ship', id: 'Bomber' }, count: 2 }, { item: { kind: 'Ship', id: 'LightFighter' }, count: 10 }])
   expect(Object.keys(submitted).sort()).toEqual(['context', 'inputs'])
@@ -211,5 +213,67 @@ test('prepares an editable observed-moon attack with authoritative, race-safe fl
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('All fleet slots are occupied')
   expect(quotes.at(-1).ships).toEqual([{ owner: binding.player, ship_type: 'LightFighter', count: '2' }])
+  expect(launches).toBe(0)
+})
+
+for (const width of [1440, 390]) test(`opens standalone simulation without reports at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
+  await installGameFixture(page, { protocol: 4, catalog,
+    missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+    bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }],
+  })
+  let reportRequests = 0
+  let launches = 0
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.includes('/reports/')) reportRequests++
+    if (request.url().endsWith('/commands')) launches++
+  })
+  let submitted: any
+  await page.route('**/combat-simulation', async route => {
+    submitted = route.request().postDataJSON()
+    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true,
+      samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1,
+        surviving_cargo_capacity: '400000000', estimated_loot: null,
+        attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }], defender: [] })) } })
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const entry = await menuDestination(page, 'Combat Simulator')
+  await expect(entry).toBeVisible()
+  await diagnosticScreenshot(page, { path: `test-results/simulation-menu-${width}.png` })
+  await entry.click()
+  await expect(page.getByRole('heading', { name: 'Combat Simulator', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/combat-simulator/)
+  await expect(page.getByText('No report imported.', { exact: false })).toBeVisible()
+  await expect(page.getByLabel('Defender Weapons Technology', { exact: true })).toHaveValue('')
+  await expect(page.getByLabel('Defender Light Fighter', { exact: true })).toHaveValue('')
+  await diagnosticScreenshot(page, { path: `test-results/simulation-standalone-unknown-${width}.png`, fullPage: width === 1440 })
+  if (width === 390) {
+    await page.getByRole('group', { name: 'Defender', exact: true }).scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/simulation-standalone-defender-${width}.png` })
+  }
+  await page.getByLabel('Attacker Light Fighter', { exact: true }).fill('10')
+  await expect(page.getByRole('button', { name: 'Run 10 battles' })).toBeDisabled()
+  await page.getByLabel('Defender Light Fighter', { exact: true }).fill('2')
+  await page.getByLabel('Defender Weapons Technology', { exact: true }).fill('7')
+  await page.getByRole('button', { name: 'Assume all unknown values are zero' }).click()
+  await expect(page.getByLabel('Defender Light Fighter', { exact: true })).toHaveValue('2')
+  await page.getByRole('button', { name: 'Run 10 battles' }).click()
+  const results = page.getByRole('region', { name: 'Simulation results' })
+  await expect(results).toContainText('resources were not observed')
+  expect(submitted.inputs.defender).toEqual({ technology: [7, 0, 0], units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }] })
+  expect(submitted.inputs.observed_resources).toBeUndefined()
+  await expect(page.getByRole('button', { name: 'Prepare attack' })).toHaveCount(0)
+  await results.scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, { path: `test-results/simulation-standalone-results-${width}.png` })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.getByText('Simulation assumptions', { exact: true }).click()
+  await expect(page.getByText('Ten randomized battles', { exact: false })).toBeVisible()
+  await page.getByText('Simulation assumptions', { exact: true }).scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, { path: `test-results/simulation-standalone-help-${width}.png` })
+  await page.getByLabel('Attacker Light Fighter', { exact: true }).fill('11')
+  await expect(results).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByLabel('Defender Light Fighter', { exact: true })).toHaveValue('')
+  expect(reportRequests).toBe(0)
   expect(launches).toBe(0)
 })

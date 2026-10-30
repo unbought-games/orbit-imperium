@@ -2,6 +2,7 @@ import { expect, it } from 'vitest'
 import schema from '../../../../contracts/openapi.json'
 import observation from '../../../../contracts/fixtures/espionage-expanded.json'
 import { bootstrapFixture, id } from '../test-support/bootstrap'
+import { productionFixture } from '../test-support/production'
 import { ContractDataError, validate } from './schema'
 
 const schemas = schema.components.schemas
@@ -79,6 +80,10 @@ it.each([3, 4] as const)(
         level: 0,
       })),
     }
+    if (view.protocol !== 2)
+      view.progression.production = view.bodies.map((body) =>
+        productionFixture({ ...body, kind: 'Planet' }),
+      )
     expect(validate('GameView', view)).toEqual(view)
     const bootstrap = {
       ...payload,

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/engine", "crates/application", "crates/storage-postgres", "crates/transport-http", "crates/server"]
+members = ["crates/engine", "crates/application", "crates/storage-postgres", "crates/transport-http", "crates/server", "crates/storage-assets"]
 resolver = "3"
 
 # Keep source locations in test backtraces without full workspace type/variable
@@ -32,6 +32,7 @@ orbit-engine = { path = "crates/engine" }
 orbit-application = { path = "crates/application" }
 orbit-storage-postgres = { path = "crates/storage-postgres" }
 orbit-transport-http = { path = "crates/transport-http" }
+orbit-storage-assets = { path = "crates/storage-assets" }
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = "=1.0.145"
 uuid = { version = "=1.18.1", features = ["serde"] }

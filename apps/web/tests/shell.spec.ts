@@ -266,7 +266,9 @@ test('mobile resource stock uses icons and compact balances with capacity detail
       ['Deuterium', '1T'],
       ['Energy', '26'],
     ]) {
-      const resource = ledger.getByRole('button', { name: `${name} details` })
+      const resource = name === 'Energy'
+        ? ledger.getByRole('link', { name: 'Energy — resource settings' })
+        : ledger.getByRole('button', { name: `${name} details` })
       await expect(resource.locator('svg')).toBeVisible()
       expect((await resource.innerText()).trim()).toBe(amount)
       expect(
@@ -301,7 +303,7 @@ test('mobile resource stock uses icons and compact balances with capacity detail
       .evaluate((element) => getComputedStyle(element).color),
   ).not.toBe(
     await ledger
-      .getByRole('button', { name: 'Energy details' })
+      .getByRole('link', { name: 'Energy — resource settings' })
       .locator('strong')
       .evaluate((element) => getComputedStyle(element).color),
   )
@@ -556,7 +558,9 @@ test('small phone resource row fits large stocks and negative energy without sta
     ['Deuterium', '99M'],
     ['Energy', '-999B'],
   ]) {
-    const resource = ledger.getByRole('button', { name: `${name} details` })
+    const resource = name === 'Energy'
+        ? ledger.getByRole('link', { name: 'Energy — resource settings' })
+        : ledger.getByRole('button', { name: `${name} details` })
     expect((await resource.innerText()).trim()).toBe(amount)
     expect(
       await resource.evaluate(
@@ -920,7 +924,7 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
   await expect(page.locator('main h1')).toBeFocused()
 })
 
-test('touch details show whole resources and remain usable with enlarged text', async ({
+test('touch energy navigation and resource details remain usable with enlarged text', async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -929,10 +933,13 @@ test('touch details show whole resources and remain usable with enlarged text', 
   })
   const page = await context.newPage()
   await shellFixture(page)
-  await page.getByRole('button', { name: 'Energy details' }).tap()
-  await expect(page.getByRole('dialog', { name: 'Energy' })).toContainText('26')
+  const energy = page.getByRole('link', { name: 'Energy — resource settings' })
+  await energy.focus()
+  await expect(page.getByRole('tooltip', { name: 'Energy' })).toContainText('26')
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog', { name: 'Energy' })).toHaveCount(0)
+  await expect(page.getByRole('tooltip', { name: 'Energy' })).toHaveCount(0)
+  await energy.tap()
+  await expect(page.locator('main h1')).toHaveText('Resource settings')
   await page.addStyleTag({
     content:
       'html { font-size: 200% !important; } * { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; }',
