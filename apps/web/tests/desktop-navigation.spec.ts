@@ -156,6 +156,6 @@ test('tablet brand keeps a full touch target without overlapping resource contro
     }
     await resources.getByRole('link', { name: 'Energy — resource settings', exact: true }).tap()
     await expect(page.locator('main h1')).toHaveText('Resource settings')
-    await expect(page.getByRole('heading', { name: 'Production data unavailable' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
   } finally { await context.close() }
 })

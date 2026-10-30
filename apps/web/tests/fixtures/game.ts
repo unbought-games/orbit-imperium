@@ -1,3 +1,4 @@
+import { productionFixture } from '../../src/test-support/production'
 import { universeSlug } from '../../src/client-model/universe-name'
 import { expect, type Page } from '@playwright/test'
 import type { components } from '../../src/contracts'
@@ -175,6 +176,17 @@ export async function installGameFixture(
       ...options.dimensions,
     }
 
+    const bodies: components['schemas']['BodyV3'][] = options.bodies ?? [
+          body,
+          {
+            ...body,
+            id: id(6),
+            kind: 'Moon',
+            coordinates: { galaxy: 1, system: 371, position: 13 },
+            amounts: { ...resources, metal: '2000000000' },
+          },
+        ]
+
     const view = {
       ...common,
       viewer_revision: options.viewerRevision?.() ?? '1',
@@ -189,18 +201,7 @@ export async function installGameFixture(
       as_of_ms: sampledAt,
       speed: 1,
       ...(protocol === 4 && options.homeworldId ? { homeworld_id: options.homeworldId } : {}),
-      bodies: (
-        options.bodies ?? [
-          body,
-          {
-            ...body,
-            id: id(6),
-            kind: 'Moon',
-            coordinates: { galaxy: 1, system: 371, position: 13 },
-            amounts: { ...resources, metal: '2000000000' },
-          },
-        ]
-      ).map((b) =>
+      bodies: bodies.map((b) =>
         protocol === 2
           ? {
               ...b,
@@ -268,7 +269,7 @@ export async function installGameFixture(
       ...(protocol !== 2
         ? {
             progression: {
-              production: options.production ?? [],
+              production: bodies.map(b => options.production?.find(entry => entry.body === b.id) ?? productionFixture(b)),
               research_operation: options.researchOperation ?? null,
               manufacturing: options.manufacturing ?? [],
               limits: { max_active_manufacturing_entries: 256 },

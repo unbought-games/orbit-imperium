@@ -14,7 +14,6 @@ import { Progression } from './progression'
 import { Production } from './progression/production'
 import { Operations } from './operations'
 import { Section } from '../ui/section'
-import { StatePanel } from '../ui/state-panel'
 import { Heading, Text } from '../ui/typography'
 import { label } from '../ui/format'
 
@@ -53,23 +52,12 @@ export function EconomyScreen() {
 export function ResourceSettingsScreen() {
   const { view, body, model } = useGameScreen()
   if (!body || view.protocol === 2) return null
-  const planet = view.bodies.find((candidate) => candidate.id === body.id)
-  if (!planet) return null
-  if (!view.progression.production.some((entry) => entry.body === planet.id))
-    return (
-      <StatePanel title="Production data unavailable">
-        <p role="status">
-          No production data is available for this planet. Settings will appear
-          when the game provides them.
-        </p>
-      </StatePanel>
-    )
   return (
     <Production
-      key={`${bindingKey(view.binding)}:${planet.id}`}
+      key={`${bindingKey(view.binding)}:${body.id}`}
       coordinator={model}
       view={view}
-      body={planet}
+      body={body}
     />
   )
 }
