@@ -107,7 +107,7 @@ impl<S: RulesStore> RulesService<S> {
         let mut document = self.export(universe).await?;
         let current = proposed(&document)?;
         let next = upgrade_standard_rules(&current)?;
-        document.artifact = next.artifact;
+        document.artifact = next.artifact.clone();
         let diff = self.diff(&document).await?;
         Ok(RulesUpgradePlan {
             release: STANDARD_RULES_RELEASE,
@@ -120,7 +120,7 @@ impl<S: RulesStore> RulesService<S> {
         Ok(RulesDocument {
             universe,
             base_revision: current.revision,
-            artifact: current.rules.artifact,
+            artifact: current.rules.artifact.clone(),
             speed: current.rules.speed,
         })
     }
@@ -128,7 +128,12 @@ impl<S: RulesStore> RulesService<S> {
         validate_document(document)?;
         let current = self.store.current_rules(document.universe).await?;
         validate_rules_document_immutable(&current.rules, document)?;
-        let next = proposed(document)?;
+        let proposed = proposed(document)?;
+        let next = if current.rules.equivalent(&proposed) {
+            current.rules.clone()
+        } else {
+            proposed
+        };
         if current.rules.hash != next.hash && current.revision != document.base_revision {
             return Err(RulesUpdateError::Stale {
                 expected_revision: document.base_revision,
@@ -150,8 +155,8 @@ impl<S: RulesStore> RulesService<S> {
             &mut changes,
         );
         Ok(RulesDiff {
-            current_hash: current.rules.hash,
-            proposed_hash: next.hash,
+            current_hash: current.rules.hash.clone(),
+            proposed_hash: next.hash.clone(),
             changes,
             initialize,
         })
@@ -163,7 +168,12 @@ impl<S: RulesStore> RulesService<S> {
         validate_document(document)?;
         let current = self.store.current_rules(document.universe).await?;
         validate_rules_document_immutable(&current.rules, document)?;
-        let next = proposed(document)?;
+        let proposed = proposed(document)?;
+        let next = if current.rules.equivalent(&proposed) {
+            current.rules.clone()
+        } else {
+            proposed
+        };
         self.store
             .apply_rules(document.universe, document.base_revision, &next)
             .await

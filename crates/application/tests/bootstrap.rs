@@ -110,7 +110,7 @@ impl GameStore for Memory {
         let mut f = self.facts.clone();
         f.epoch = binding.epoch;
         if self.mismatch && count.1.is_multiple_of(2) {
-            f.rules.hash = Hash("b".repeat(64));
+            f.rules = f.rules.with_speed(9).unwrap();
         }
         Ok(ReadSnapshot {
             facts: f,
@@ -149,6 +149,7 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
     };
     let world = GameState {
         world: Some(WorldFacts {
+            homeworlds: Default::default(),
             planet_slots: vec![],
             records: WorldRecords::default(),
             secret: [0; 32],

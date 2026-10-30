@@ -390,6 +390,7 @@ impl PgStore {
                 WorldQueryKind::FleetQuote { .. }
                     | WorldQueryKind::FleetEstimate { .. }
                     | WorldQueryKind::MissileQuote { .. }
+                    | WorldQueryKind::AbandonmentQuote { .. }
             )
         {
             return Ok(None);
@@ -465,7 +466,8 @@ impl PgStore {
             }
             WorldQueryKind::FleetQuote { .. }
             | WorldQueryKind::FleetEstimate { .. }
-            | WorldQueryKind::MissileQuote { .. } => {
+            | WorldQueryKind::MissileQuote { .. }
+            | WorldQueryKind::AbandonmentQuote { .. } => {
                 unreachable!()
             }
         };
@@ -547,7 +549,7 @@ pub(crate) async fn participation_body(
         Command::StartResearch{host,..}=>Ok(Some(*host)),
         Command::World{action:WorldAction::LaunchMissiles{intent,..}}=>Ok(Some(intent.origin)),
         Command::World{action:WorldAction::ScrapMissiles{body,..}}=>Ok(Some(*body)),
-        Command::World{action:WorldAction::RenamePlanet{body,..}}=>Ok(Some(*body)),
+        Command::World{action:WorldAction::RenamePlanet{body,..} | WorldAction::AbandonPlanet{body,..}}=>Ok(Some(*body)),
         Command::World{action:WorldAction::LaunchFleet{intent,..}}=>Ok(Some(intent.origin)),
         Command::CancelConstruction{operation}=>sqlx::query_scalar::<_,uuid::Uuid>("SELECT body FROM constructions WHERE universe=$1 AND id=$2 AND owner=$3").bind(b.universe.0).bind(operation.0).bind(b.player.0).fetch_optional(&mut **tx).await.map(|id|id.map(BodyId)).map_err(db_error),
         Command::CancelResearch{operation}=>sqlx::query_scalar::<_,uuid::Uuid>("SELECT body FROM research_operations WHERE universe=$1 AND id=$2 AND owner=$3").bind(b.universe.0).bind(operation.0).bind(b.player.0).fetch_optional(&mut **tx).await.map(|id|id.map(BodyId)).map_err(db_error),
@@ -576,6 +578,7 @@ pub(crate) async fn unmetered_world_query(
         return Ok(());
     }
     match q {
+        WorldQueryKind::AbandonmentQuote { .. } => Ok(()),
         WorldQueryKind::MissileQuote { intent } => {
             require_destination_observation(
                 tx,

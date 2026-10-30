@@ -148,7 +148,7 @@ fn launch(
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent,
-                expected_terms_hash: q.terms_hash,
+                expected_terms_hash: q.terms_hash.clone(),
             },
         }),
     );
@@ -682,4 +682,410 @@ fn occupied_and_out_of_bounds_manual_targets_fail_without_resource_changes() {
         coordinates.galaxy = u32::MAX;
     }
     assert_eq!(quote_fleet(&s, p, &intent, 0, &r), Err(GameError::NotFound));
+}
+
+fn abandonment_fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId, i64) {
+    let (mut s, r, p, home, _) = setup();
+    s.world.as_mut().unwrap().homeworlds.insert(p, home);
+    let f = launch(&mut s, &r, p, home, colony(p, home, 8, 1), 1000, 9001);
+    let c = arrive(&mut s, &r, &f, 9002);
+    (s, r, p, home, c.bodies[0].id, f.due_at + 1)
+}
+fn abandon_input(id: BodyId, q: &AbandonmentQuote) -> Input {
+    Input::Command(Command::World {
+        action: WorldAction::AbandonPlanet {
+            body: id,
+            expected_terms_hash: q.terms_hash.clone(),
+        },
+    })
+}
+#[test]
+fn colony_abandonment_is_permanent_replayable_and_slot_releases_at_strict_utc_boundary() {
+    for at in [0, 1, 10 * 3_600_000, 86_399_999] {
+        assert_eq!(abandonment_release(at).unwrap(), 2 * 86_400_000);
+    }
+    let (mut s, r, p, home, id, at) = abandonment_fixture();
+    let before_midnight = quote_abandonment(&s, p, id, 86_400_000 - 1, &r).unwrap();
+    let after_midnight = quote_abandonment(&s, p, id, 86_400_000, &r).unwrap();
+    assert_ne!(before_midnight.terms_hash, after_midnight.terms_hash);
+    let research = s.research.clone();
+    let q = quote_abandonment(&s, p, id, at, &r).unwrap();
+    assert!(q.blockers.is_empty());
+    assert_eq!(
+        q.losses[0].resources,
+        settle_production(&s, &s.bodies[&id], at, &r)
+            .unwrap()
+            .amounts
+    );
+    let mut replay = s.clone();
+    let result = run(&mut s, &r, p, id, at, 9003, abandon_input(id, &q));
+    let c = apply(&mut s, result);
+    let result = run(&mut replay, &r, p, id, at, 9003, abandon_input(id, &q));
+    assert_eq!(apply(&mut replay, result), c);
+    assert_eq!(s, replay);
+    assert!(!s.bodies.contains_key(&id));
+    assert!(s.bodies.contains_key(&home));
+    assert_eq!(s.research, research);
+    assert_eq!(owned_planet_count(&s, p).unwrap(), 1);
+    let tombstone = s.world.as_ref().unwrap().records.abandonments[&id].clone();
+    assert_eq!(
+        planet_slot(&s, tombstone.coordinates).unwrap().occupant,
+        Some(id)
+    );
+    assert!(matches!(
+        resolve_destination(
+            &s,
+            DestinationSelection::EmptyPositionAt {
+                coordinates: tombstone.coordinates
+            },
+            &r
+        ),
+        Err(GameError::PositionOccupied)
+    ));
+    assert!(matches!(
+        quote_abandonment(&s, p, id, at, &r),
+        Err(GameError::NotOwned)
+    ));
+    assert!(
+        s.world
+            .as_ref()
+            .unwrap()
+            .records
+            .reports
+            .values()
+            .any(|x| x.kind == "PlanetAbandoned")
+    );
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        home,
+        q.release_at,
+        9004,
+        Input::Event(c.events[0].event.clone()),
+    );
+    apply(&mut s, result);
+    assert_eq!(
+        planet_slot(&s, tombstone.coordinates).unwrap().occupant,
+        None
+    );
+    assert!(
+        resolve_destination(
+            &s,
+            DestinationSelection::EmptyPositionAt {
+                coordinates: tombstone.coordinates
+            },
+            &r
+        )
+        .is_ok()
+    );
+    let replacement = BodyId(Uuid::from_u128(99999));
+    s.world
+        .as_mut()
+        .unwrap()
+        .planet_slots
+        .iter_mut()
+        .find(|slot| slot.coordinates == tombstone.coordinates)
+        .unwrap()
+        .occupant = Some(replacement);
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        home,
+        q.release_at,
+        9005,
+        Input::Event(c.events[0].event.clone()),
+    );
+    apply(&mut s, result);
+    assert_eq!(
+        planet_slot(&s, tombstone.coordinates).unwrap().occupant,
+        Some(replacement)
+    );
+    validate_asset_lineage(&s).unwrap();
+}
+#[test]
+fn abandonment_rejects_homeworld_foreign_body_changed_losses_and_dependent_flights() {
+    let (mut s, r, p, home, id, at) = abandonment_fixture();
+    let q = quote_abandonment(&s, p, home, at, &r).unwrap();
+    assert!(q.blockers.iter().any(|b| b.contains("homeworld")));
+    assert!(matches!(
+        run(&mut s, &r, p, home, at, 9100, abandon_input(home, &q)),
+        TransitionResult::Rejected(GameError::AbandonmentBlocked)
+    ));
+    let foreign = s.bodies.values().find(|b| b.owner != p).unwrap().id;
+    assert!(matches!(
+        quote_abandonment(&s, p, foreign, at, &r),
+        Err(GameError::NotOwned)
+    ));
+    let q = quote_abandonment(&s, p, id, at, &r).unwrap();
+    s.bodies.get_mut(&id).unwrap().name = Some("Changed".into());
+    assert!(matches!(
+        run(&mut s, &r, p, id, at, 9101, abandon_input(id, &q)),
+        TransitionResult::Rejected(GameError::QuoteChanged)
+    ));
+    // Move a stationed cargo ship and its valuation to the colony fixture.
+    let item = ManufacturedItem::Ship(ShipType::SmallCargo);
+    s.inventories
+        .iter_mut()
+        .find(|x| x.body == home && x.item == item)
+        .unwrap()
+        .body = id;
+    for lot in &mut s.world.as_mut().unwrap().records.lots {
+        if lot.location == AssetLocation::Body(home)
+            && lot.item == CatalogKey::Ship(ShipType::SmallCargo)
+        {
+            lot.location = AssetLocation::Body(id);
+        }
+    }
+    s.bodies.get_mut(&id).unwrap().checkpoint.amounts.deuterium = 1000 * SCALE;
+    let intent = super::intent(&s, p, id, home);
+    let fleet = launch(&mut s, &r, p, id, intent, at, 9102);
+    let q = quote_abandonment(&s, p, id, at, &r).unwrap();
+    assert!(q.blockers.iter().any(|b| b.contains("fleet")));
+    assert!(matches!(
+        run(&mut s, &r, p, id, at, 9103, abandon_input(id, &q)),
+        TransitionResult::Rejected(GameError::AbandonmentBlocked)
+    ));
+    assert_eq!(s.world.as_ref().unwrap().records.fleets[&fleet.id], fleet);
+}
+#[test]
+fn foreign_inbound_transport_survives_abandonment_and_returns_without_delivering() {
+    let (mut s, r, p, _, id, at) = abandonment_fixture();
+    let foreign = s.bodies.values().find(|b| b.owner != p).unwrap().clone();
+    let intent = super::intent(&s, foreign.owner, foreign.id, id);
+    let fleet = launch(&mut s, &r, foreign.owner, foreign.id, intent, at, 9200);
+    let q = quote_abandonment(&s, p, id, at, &r).unwrap();
+    assert!(q.blockers.is_empty());
+    let result = run(&mut s, &r, p, id, at, 9201, abandon_input(id, &q));
+    apply(&mut s, result);
+    arrive(&mut s, &r, &fleet, 9202);
+    let returning = &s.world.as_ref().unwrap().records.fleets[&fleet.id];
+    assert_eq!(returning.leg, MissionLeg::Returning);
+    assert_eq!(returning.cargo, fleet.cargo);
+    assert_eq!(returning.ships, fleet.ships);
+    assert_eq!(returning.due_at, fleet.due_at + fleet.terms.duration_ms);
+}
+
+#[test]
+fn abandonment_research_guard_includes_irn_contributors_and_last_planet() {
+    let (mut s, r, p, home, id, at) = abandonment_fixture();
+    let operation = OperationId(Uuid::from_u128(9300));
+    let mut research = ResearchOperation {
+        id: operation,
+        owner: p,
+        host: home,
+        research: ResearchId::EnergyTechnology,
+        source_level: 0,
+        target_level: 1,
+        labs: vec![LabContribution {
+            body: id,
+            completed_level: 3,
+        }],
+        commitment: Commitment {
+            profile_hash: r.hash.clone(),
+            terms_hash: Hash("research".into()),
+            paid: Resources::all(0),
+            started_at: at,
+            due_at: at + 1000,
+        },
+        status: ResearchStatus::Active,
+        generation: 0,
+        revision: 0,
+    };
+    s.research_operations.insert(operation, research.clone());
+    assert!(
+        quote_abandonment(&s, p, id, at, &r)
+            .unwrap()
+            .blockers
+            .iter()
+            .any(|b| b.contains("research"))
+    );
+    research.labs.clear();
+    research.host = id;
+    s.research_operations.insert(operation, research.clone());
+    assert!(
+        quote_abandonment(&s, p, id, at, &r)
+            .unwrap()
+            .blockers
+            .iter()
+            .any(|b| b.contains("research"))
+    );
+    research.status = ResearchStatus::Completed;
+    s.research_operations.insert(operation, research);
+    assert!(
+        quote_abandonment(&s, p, id, at, &r)
+            .unwrap()
+            .blockers
+            .is_empty()
+    );
+    s.bodies.remove(&home);
+    assert!(
+        quote_abandonment(&s, p, id, at, &r)
+            .unwrap()
+            .blockers
+            .iter()
+            .any(|b| b.contains("last planet"))
+    );
+}
+#[test]
+fn abandonment_destroys_stationed_assets_and_moon_terminalizes_queues_and_preserves_debris() {
+    let (mut s, r, p, home, id, at) = abandonment_fixture();
+    let moon_id = BodyId(Uuid::from_u128(9400));
+    let mut moon = s.bodies[&id].clone();
+    moon.id = moon_id;
+    moon.kind = BodyKind::Moon;
+    s.bodies.insert(moon_id, moon);
+    s.production_settings.insert(
+        moon_id,
+        ProductionSettingsRecord {
+            body: moon_id,
+            settings: ProductionSettings::default(),
+            revision: 0,
+        },
+    );
+    s.coverage.bodies.insert(moon_id);
+    s.coverage.production_bodies.insert(moon_id);
+    s.coverage.construction_bodies.insert(moon_id);
+    s.coverage.manufacturing_bodies.insert(moon_id);
+    s.coverage.inventory_owners.insert((moon_id, p));
+    s.collection_revisions
+        .insert(format!("production:{moon_id}"), 0);
+    for x in &mut s.inventories {
+        if x.body == home {
+            x.body = moon_id;
+        }
+    }
+    for x in &mut s.world.as_mut().unwrap().records.lots {
+        if x.location == AssetLocation::Body(home) {
+            x.location = AssetLocation::Body(moon_id);
+        }
+    }
+    let op = OperationId(Uuid::from_u128(9401));
+    s.manufacturing_batches.insert(
+        op,
+        ManufacturingBatch {
+            id: op,
+            owner: p,
+            body: id,
+            item: ManufacturedItem::Defense(DefenseId::RocketLauncher),
+            quantity: 4,
+            completed_prefix: 0,
+            commitment: BatchCommitment {
+                profile_hash: r.hash.clone(),
+                terms_hash: Hash("yard".into()),
+                paid: Resources::from_values([8000 * SCALE, 0, 0]),
+                unit_cost: Resources::from_values([2000 * SCALE, 0, 0]),
+                accepted_at: at,
+                facility_levels: Default::default(),
+            },
+            predecessor: None,
+            queue_sequence: 1,
+            first_start_at: at,
+            final_due_at: at + 4000,
+            unit_duration_ms: 1000,
+            next_due_at: at + 1000,
+            status: ManufacturingStatus::Active,
+            generation: 0,
+            revision: 0,
+        },
+    );
+    s.coverage.manufacturing_operation_ids.insert(op);
+    let request = QuoteRequest::Upgrade {
+        body: id,
+        building: Building::MetalMine,
+    };
+    let q = quote(&s, Actor::Player(p), &request, at, &r).unwrap();
+    let construction_id = OperationId(derived_id(InputId(Uuid::from_u128(9402)), "construction:0"));
+    s.coverage.operations.insert(construction_id);
+    s.coverage.research_operation_ids.insert(construction_id);
+    s.coverage
+        .manufacturing_operation_ids
+        .insert(construction_id);
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        id,
+        at,
+        9402,
+        Input::Command(Command::StartUpgrade {
+            body: id,
+            building: Building::MetalMine,
+            expected_terms_hash: q.terms_hash,
+        }),
+    );
+    let build = apply(&mut s, result);
+    let prior_score = value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap();
+    let field = OperationId(Uuid::from_u128(9490));
+    s.world.as_mut().unwrap().records.debris.insert(
+        field,
+        DebrisField {
+            id: field,
+            coordinates: s.bodies[&id].coordinates,
+            marker_present: true,
+            metal: 500 * SCALE,
+            crystal: 200 * SCALE,
+            generation: 0,
+            cleanup_at: next_debris_cleanup(at).unwrap(),
+            revision: 0,
+        },
+    );
+    let debris = s.world.as_ref().unwrap().records.debris.clone();
+    let resources = s.bodies[&home].checkpoint.clone();
+    let q = quote_abandonment(&s, p, id, at, &r).unwrap();
+    assert_eq!(q.losses.len(), 2);
+    assert!(q.losses.iter().any(|l| !l.inventory.is_empty()));
+    let result = run(&mut s, &r, p, id, at, 9403, abandon_input(id, &q));
+    let c = apply(&mut s, result);
+    assert!(!s.bodies.contains_key(&moon_id));
+    assert!(s.inventories.is_empty() || s.inventories.iter().all(|x| x.owner != p));
+    assert_eq!(
+        s.manufacturing_batches[&op].status,
+        ManufacturingStatus::BodyAbandoned
+    );
+    assert_eq!(
+        s.constructions[&construction_id].status,
+        ConstructionStatus::BodyAbandoned
+    );
+    assert_eq!(s.bodies[&home].checkpoint, resources);
+    assert_eq!(s.world.as_ref().unwrap().records.debris, debris);
+    let after_score = value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap();
+    assert!(after_score < prior_score);
+    assert_eq!(
+        c.world
+            .as_ref()
+            .unwrap()
+            .score_deltas
+            .iter()
+            .map(|d| d.delta)
+            .sum::<i64>(),
+        after_score - prior_score
+    );
+    for event in [
+        build.events[0].clone(),
+        NewEvent {
+            id: InputId(Uuid::from_u128(9404)),
+            at: at + 1000,
+            event: ScheduledEvent::ManufacturingDue {
+                operation: op,
+                generation: 0,
+                expected_prefix: 0,
+            },
+        },
+    ] {
+        let result = run(
+            &mut s,
+            &r,
+            p,
+            home,
+            event.at,
+            9405,
+            Input::Event(event.event),
+        );
+        let c = apply(&mut s, result);
+        assert!(c.bodies.is_empty());
+        assert!(c.inventories.is_empty());
+    }
+    validate_asset_lineage(&s).unwrap();
 }

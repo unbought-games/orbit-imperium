@@ -3,7 +3,7 @@ use orbit_engine::*;
 mod common;
 fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     let (mut s, _, p, b) = common::fixture();
-    let mut a = Ruleset::mvp_progression().unwrap().artifact;
+    let mut a = Ruleset::mvp_progression().unwrap().artifact.clone();
     let content: serde_json::Value =
         serde_json::from_slice(include_bytes!("../../../rules/content/fusion-reactor.json"))
             .unwrap();

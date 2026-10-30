@@ -36,9 +36,9 @@ impl PgStore {
             return Err(StoreError::Conflict.into());
         }
         let current = active(&mut tx, u).await?;
-        if current.rules.hash == next.hash {
+        if current.rules.equivalent(next) {
             return Ok(RulesApplyOutcome::AlreadyActive {
-                profile_hash: next.hash.clone(),
+                profile_hash: current.rules.hash.clone(),
                 revision: current.revision,
             });
         }
@@ -53,7 +53,7 @@ impl PgStore {
             .bind(u.0).fetch_optional(&mut *tx).await.map_err(db_error)?;
         let id = if let Some(pending) = pending {
             let rules: Ruleset = decode_supported(pending.try_get("rules").map_err(db_error)?)?;
-            if rules != *next
+            if !rules.equivalent(next)
                 || pending
                     .try_get::<i64, _>("expected_revision")
                     .map_err(db_error)?

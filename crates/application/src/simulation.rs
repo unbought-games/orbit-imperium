@@ -242,7 +242,7 @@ impl SimulationJob {
         Ok(SimulationResponse {
             binding: self.context.binding,
             request_id: self.context.request_id,
-            profile_hash: self.rules.hash,
+            profile_hash: self.rules.hash.clone(),
             samples,
             loot_rules_enabled: world.raiding.is_some(),
         })
@@ -297,6 +297,7 @@ mod tests {
         .unwrap()
         .artifact
         .world
+        .clone()
         .unwrap()
         .combat;
         let mut q = inputs();
@@ -319,13 +320,15 @@ mod tests {
             item: ManufacturedItem::Defense(DefenseId::RocketLauncher),
             count: 1,
         }];
-        let mut rules = Ruleset::mvp_raids().unwrap();
+        let rules = Ruleset::mvp_raids().unwrap();
+        let mut artifact = rules.artifact.clone();
         // A supported custom artifact with no damaging shots must draw, regardless
         // of random targets. Hardcoding the standard unit stats would fail this.
-        for unit in &mut rules.artifact.world.as_mut().unwrap().combat.units {
+        for unit in &mut artifact.world.as_mut().unwrap().combat.units {
             unit.attack_hundredths = 0;
         }
-        rules.hash = Hash("custom".into());
+        let rules = Ruleset::from_artifact(artifact, rules.speed).unwrap();
+        let expected_hash = rules.hash.clone();
         let job = SimulationJob {
             context: QueryContext {
                 binding: Binding {
@@ -340,7 +343,7 @@ mod tests {
             inputs,
         };
         let result = job.run([9; 32]).unwrap();
-        assert_eq!(result.profile_hash, Hash("custom".into()));
+        assert_eq!(result.profile_hash, expected_hash);
         for sample in result.samples {
             assert_eq!(sample.outcome, orbit_engine::BattleOutcome::Draw);
             assert_eq!(sample.rounds, 6);
@@ -390,7 +393,7 @@ mod tests {
     }
     #[test]
     fn planning_uses_custom_cargo_and_exact_five_pass_whole_unit_loot() {
-        let mut rules = Ruleset::mvp_raids().unwrap();
+        let mut rules = (*Ruleset::mvp_raids().unwrap()).clone();
         rules
             .artifact
             .ships
@@ -406,7 +409,7 @@ mod tests {
             &inputs().attacker.units,
             orbit_engine::BattleOutcome::AttackerVictory,
             Some(stock),
-            &rules,
+            &crate::test_rules(&rules),
         )
         .unwrap();
         assert_eq!(capacity, "35000000");
@@ -427,7 +430,7 @@ mod tests {
             &survivors,
             orbit_engine::BattleOutcome::AttackerVictory,
             Some(stock),
-            &rules,
+            &crate::test_rules(&rules),
         )
         .unwrap();
         assert_eq!(capacity, "7000000");
@@ -445,13 +448,13 @@ mod tests {
     #[test]
     fn non_wins_and_zero_capacity_never_loot() {
         use orbit_engine::BattleOutcome::*;
-        let mut rules = Ruleset::mvp_raids().unwrap();
+        let mut rules = (*Ruleset::mvp_raids().unwrap()).clone();
         for outcome in [DefenderVictory, Draw, MutualDestruction] {
             let (_, loot) = planning_sample(
                 &inputs().attacker.units,
                 outcome,
                 Some(Resources::all(i64::MAX)),
-                &rules,
+                &crate::test_rules(&rules),
             )
             .unwrap();
             let loot = loot.unwrap();
@@ -475,7 +478,7 @@ mod tests {
                 &survivors,
                 AttackerVictory,
                 Some(Resources::all(i64::MAX)),
-                &rules,
+                &crate::test_rules(&rules),
             )
             .unwrap();
             assert_eq!(capacity, "0");
@@ -493,14 +496,14 @@ mod tests {
 
     #[test]
     fn unknown_stock_and_disabled_raiding_are_unavailable_not_zero() {
-        let mut rules = Ruleset::mvp_raids().unwrap();
+        let mut rules = (*Ruleset::mvp_raids().unwrap()).clone();
         let units = inputs().attacker.units;
         assert!(
             planning_sample(
                 &units,
                 orbit_engine::BattleOutcome::AttackerVictory,
                 None,
-                &rules
+                &crate::test_rules(&rules)
             )
             .unwrap()
             .1
@@ -512,7 +515,7 @@ mod tests {
                 &units,
                 orbit_engine::BattleOutcome::AttackerVictory,
                 Some(Resources::all(10_000_000)),
-                &rules
+                &crate::test_rules(&rules)
             )
             .unwrap()
             .1

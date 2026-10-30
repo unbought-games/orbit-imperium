@@ -9,11 +9,13 @@ export type Artwork = Readonly<{
   height: number
 }>
 
-export type BodyArtIdentity = Readonly<{
-  id: string
-  kind: 'Planet' | 'Moon'
-  coordinates: Readonly<{ position: number }>
-}>
+export type BodyArtIdentity =
+  | Readonly<{ kind: 'AbandonedPlanet' }>
+  | Readonly<{
+      id: string
+      kind: 'Planet' | 'Moon'
+      coordinates: Readonly<{ position: number }>
+    }>
 
 const root = '/art/atlas'
 const bodySizes = [96, 320, 640, 1200] as const
@@ -51,6 +53,8 @@ function moonVariant(id: string): number {
 
 /** Pure derivation; do not persist this result in the game store. */
 export function resolveBodyArt(body: BodyArtIdentity): Artwork {
+  if (body.kind === 'AbandonedPlanet')
+    return artwork('planet-abandoned', bodySizes)
   return body.kind === 'Moon'
     ? artwork(`moon-0${moonVariant(body.id)}`, bodySizes)
     : resolvePlanetArt(body.coordinates.position)

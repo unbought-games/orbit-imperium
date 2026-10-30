@@ -113,6 +113,7 @@ pub(crate) async fn load(
             ScheduledEvent::MissileImpact { .. }
             | ScheduledEvent::FleetLegDue { .. }
             | ScheduledEvent::DebrisCleanupDue { .. }
+            | ScheduledEvent::AbandonedSlotDue { .. }
             | ScheduledEvent::ResearchDue { .. }
             | ScheduledEvent::ManufacturingDue { .. },
         ) => return Err(StoreError::Conflict),

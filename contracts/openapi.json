@@ -11582,6 +11582,27 @@
               "count"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "AbandonPlanet"
+              },
+              "body": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "expected_terms_hash": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "expected_terms_hash"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -11722,7 +11743,8 @@
           "PositionOccupied",
           "InsufficientMissiles",
           "OutOfRange",
-          "SiloBusy"
+          "SiloBusy",
+          "AbandonmentBlocked"
         ]
       },
       "BoundReceipt4": {
@@ -12712,6 +12734,11 @@
                 "type": "null"
               }
             ]
+          },
+          "abandoned_until": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -12842,6 +12869,23 @@
               "intent"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "AbandonmentQuote"
+              },
+              "body": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "body"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12952,6 +12996,27 @@
               "context"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/QueryContext"
+              },
+              "type": {
+                "const": "AbandonmentQuote"
+              },
+              "body": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "context",
+              "type",
+              "body"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12997,6 +13062,9 @@
               },
               {
                 "$ref": "#/components/schemas/FleetEstimate4"
+              },
+              {
+                "$ref": "#/components/schemas/AbandonmentQuote4"
               }
             ]
           },
@@ -14135,6 +14203,9 @@
           },
           {
             "$ref": "#/components/schemas/MissileImpactPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/PlanetAbandonedPayload4"
           }
         ]
       },
@@ -15636,6 +15707,28 @@
             },
             "required": [
               "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "PlanetAbandoned"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "release_at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "coordinates",
+              "release_at"
             ],
             "additionalProperties": false
           }
@@ -18792,6 +18885,212 @@
           "capacity",
           "maximum_payload",
           "estimate"
+        ],
+        "additionalProperties": false
+      },
+      "AbandonedWork4": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "item": {
+            "type": "string"
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "paid": {
+            "$ref": "#/components/schemas/Resources"
+          }
+        },
+        "required": [
+          "id",
+          "item",
+          "quantity",
+          "paid"
+        ],
+        "additionalProperties": false
+      },
+      "AbandonmentLoss4": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "Planet",
+              "Moon"
+            ]
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/Resources"
+          },
+          "buildings": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "$ref": "#/components/schemas/ItemKey3"
+                },
+                "count": {
+                  "$ref": "#/components/schemas/Decimal"
+                }
+              },
+              "required": [
+                "item",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "construction": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AbandonedWork4"
+            }
+          },
+          "manufacturing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AbandonedWork4"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "coordinates",
+          "resources",
+          "buildings",
+          "inventory",
+          "construction",
+          "manufacturing"
+        ],
+        "additionalProperties": false
+      },
+      "AbandonmentQuote4": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terms_hash": {
+            "type": "string"
+          },
+          "release_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "losses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AbandonmentLoss4"
+            }
+          }
+        },
+        "required": [
+          "body",
+          "terms_hash",
+          "release_at",
+          "blockers",
+          "losses"
+        ],
+        "additionalProperties": false
+      },
+      "Abandonment4": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "removed_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "release_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "released": {
+            "type": "boolean"
+          },
+          "input": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "losses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AbandonmentLoss4"
+            }
+          }
+        },
+        "required": [
+          "body",
+          "owner",
+          "coordinates",
+          "removed_at",
+          "release_at",
+          "released",
+          "input",
+          "losses"
+        ],
+        "additionalProperties": false
+      },
+      "PlanetAbandonedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "PlanetAbandoned"
+          },
+          "abandonment": {
+            "$ref": "#/components/schemas/Abandonment4"
+          }
+        },
+        "required": [
+          "kind",
+          "abandonment"
         ],
         "additionalProperties": false
       }

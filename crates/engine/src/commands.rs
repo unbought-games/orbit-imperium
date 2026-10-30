@@ -100,6 +100,11 @@ pub struct Quote {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum ScheduledEvent {
+    AbandonedSlotDue {
+        body: BodyId,
+        coordinates: Coordinates,
+        owner: PlayerId,
+    },
     MissileImpact {
         flight: OperationId,
         generation: i64,

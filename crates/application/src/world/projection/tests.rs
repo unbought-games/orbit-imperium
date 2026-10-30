@@ -37,7 +37,7 @@ fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> Mission
             system: 2,
             position: 4,
         },
-        terms: FleetTerms {
+        terms: FleetTermsData {
             intent,
             profile_hash: Hash("historical-profile".into()),
             distance: 1000,
@@ -48,7 +48,8 @@ fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> Mission
             maximum_payload: 9877,
             slot_limit: 1,
             terms_hash: Hash("paid-terms".into()),
-        },
+        }
+        .seal(),
         authorization: MissionAuthorization {
             actor: owner,
             target_owner: Some(target),
@@ -301,6 +302,7 @@ fn snapshot() -> ViewerSnapshot {
     coverage.fleet_owners.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            homeworlds: Default::default(),
             planet_slots: vec![],
             records: WorldRecords::default(),
             secret: [0; 32],

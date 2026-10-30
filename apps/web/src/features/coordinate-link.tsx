@@ -34,7 +34,12 @@ export function CoordinateLink({
   origin?: string
   className?: string
   target?: LocationKind
-  known?: { owner?: string; empty?: boolean; debris?: boolean }
+  known?: {
+    owner?: string
+    empty?: boolean
+    abandoned?: boolean
+    debris?: boolean
+  }
 }) {
   const trigger = useRef<HTMLButtonElement>(null)
   const handingOff = useRef(false)

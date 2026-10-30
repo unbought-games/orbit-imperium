@@ -46,7 +46,7 @@ export async function sendGalaxyProbe(
   const latest = model.store.getState()
   if (!current() || !latest.binding || !sameBinding(binding, latest.binding))
     return
-  if (!terms || !('terms_hash' in terms))
+  if (!terms || !('terms_hash' in terms) || !('intent' in terms))
     throw Error(
       'Unable to confirm the probe departure. Try again after reconnecting.',
     )

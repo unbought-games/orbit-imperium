@@ -14,7 +14,7 @@ fn combined_slice_preserves_heavy_fighters_when_adding_lasers() {
             .add_research,
         vec![ResearchId::LaserTechnology]
     );
-    let mut expected = common::light_laser_rules(&previous).artifact;
+    let mut expected = common::light_laser_rules(&previous).artifact.clone();
     expected.id = next.artifact.id.clone();
     assert_eq!(next.artifact, expected);
 }

@@ -32,9 +32,9 @@ impl RulesStore for PgStore {
         }
         crate::runtime_barriers::enrollment_gate(&mut tx, universe).await?;
         let current = active(&mut tx, universe).await?;
-        if current.rules.hash == next.hash {
+        if current.rules.equivalent(next) {
             return Ok(RulesApplyOutcome::AlreadyActive {
-                profile_hash: next.hash.clone(),
+                profile_hash: current.rules.hash.clone(),
                 revision: current.revision,
             });
         }

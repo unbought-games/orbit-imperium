@@ -58,7 +58,8 @@ test('Make prepares every database suite before bounded parallel execution', asy
   }), error => error.code !== 0)
 })
 
-test('database runner encodes passwords, selects a serial suite and cleans up on failure', async (t) => {
+for (const filter of [null, 'test(compatibility::) | test(legacy_rules_)'])
+test(`database runner encodes passwords, selects a serial suite and cleans up on failure (${filter ?? 'all'})`, async (t) => {
   const directory = temporaryDirectory(t)
   const log = join(directory, 'docker.log')
   executable(
@@ -72,7 +73,7 @@ test('database runner encodes passwords, selects a serial suite and cleans up on
   const password = 'local@password:/?#%'
   let output
   await assert.rejects(
-    exec('sh', ['scripts/test-db.sh', 'signup'], {
+    exec('sh', ['scripts/test-db.sh', 'signup', ...(filter ? [filter] : [])], {
       cwd: root,
       signal: t.signal,
       env: {
@@ -97,6 +98,7 @@ test('database runner encodes passwords, selects a serial suite and cleans up on
     '--test',
     'signup',
     '--test-threads=1',
+    ...(filter ? ['-E', filter] : []),
   ])
   const url = new URL(output.url)
   assert.equal(decodeURIComponent(url.password), password)

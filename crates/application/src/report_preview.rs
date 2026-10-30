@@ -3,6 +3,9 @@ use serde_json::{Map, Value};
 /// A compact projection of the recipient's immutable observation, never live world facts.
 /// The caller must select the authorized recipient's payload before projecting it.
 pub fn report_preview(payload: &Value) -> Value {
+    if payload["kind"] == "PlanetAbandoned" {
+        return serde_json::json!({"kind":"PlanetAbandoned", "coordinates":payload["abandonment"]["coordinates"], "release_at":payload["abandonment"]["release_at"]});
+    }
     let fields: &[&str] = match payload["kind"].as_str() {
         Some("MissileImpact") => &[
             "attacker",
@@ -188,28 +191,32 @@ mod investment_tests {
     use serde_json::json;
     #[test]
     fn investment_uses_active_costs_and_preserves_unknown_and_known_empty() {
-        let mut rules = Ruleset::mvp_fleets().unwrap();
+        let mut rules = (*Ruleset::mvp_fleets().unwrap()).clone();
         let item = rules.artifact.progression.as_ref().unwrap().unit_costs[0].item;
         rules.artifact.progression.as_mut().unwrap().unit_costs[0].cost = Resources::all(7);
         let payload = json!({"kind":"Espionage","fleet":{"visibility":"Known","value":[{"item":item,"count":"9007199254740993"}]},"defenses":{"visibility":"Known","value":[]}});
         assert_eq!(
-            report_investment(&payload, "fleet", &rules),
+            report_investment(&payload, "fleet", &crate::test_rules(&rules)),
             Some((9007199254740993i128 * 21 * 1_000_000).to_string())
         );
         assert_eq!(
-            report_investment(&payload, "defenses", &rules),
+            report_investment(&payload, "defenses", &crate::test_rules(&rules)),
             Some("0".into())
         );
         assert_eq!(
             report_investment(
                 &json!({"kind":"Espionage","fleet":{"visibility":"Unknown"}}),
                 "fleet",
-                &rules
+                &crate::test_rules(&rules)
             ),
             None
         );
         assert_eq!(
-            report_investment(&json!({"kind":"Combat"}), "fleet", &rules),
+            report_investment(
+                &json!({"kind":"Combat"}),
+                "fleet",
+                &crate::test_rules(&rules)
+            ),
             None
         );
     }

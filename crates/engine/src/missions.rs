@@ -115,7 +115,7 @@ pub fn fleet_terms(
     target: Coordinates,
     research: &ResearchLevels,
     r: &Ruleset,
-) -> Result<FleetTerms, GameError> {
+) -> Result<FleetTermsData, GameError> {
     flight_terms(intent, origin, target, research, r, true)
 }
 fn flight_terms(
@@ -125,7 +125,7 @@ fn flight_terms(
     research: &ResearchLevels,
     r: &Ruleset,
     require_capacity: bool,
-) -> Result<FleetTerms, GameError> {
+) -> Result<FleetTermsData, GameError> {
     if !r.world() {
         return Err(GameError::UnavailableContent);
     }
@@ -196,7 +196,7 @@ fn flight_terms(
     {
         return Err(GameError::CargoCapacity);
     }
-    Ok(FleetTerms {
+    Ok(FleetTermsData {
         intent,
         profile_hash: r.hash.clone(),
         distance,
@@ -396,8 +396,7 @@ fn quote_inner(
     )?;
     resources(settle_production(s, b, at, r)?.amounts, cost, false)?;
     deadline(deadline(at, q.duration_ms)?, q.duration_ms)?;
-    q.terms_hash = hash(&json!({"protocol":4,"terms":q}));
-    Ok(q)
+    Ok(q.seal())
 }
 fn inventory(
     c: &mut ChangeSet,
@@ -624,7 +623,8 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     action: WorldAction::LaunchMissiles { intent, .. },
                 } => Some(intent.origin),
                 Command::World {
-                    action: WorldAction::RenamePlanet { body, .. },
+                    action:
+                        WorldAction::RenamePlanet { body, .. } | WorldAction::AbandonPlanet { body, .. },
                 } => Some(*body),
                 Command::World {
                     action: WorldAction::LaunchFleet { intent, .. },
@@ -672,6 +672,24 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action:
+                WorldAction::AbandonPlanet {
+                    body,
+                    expected_terms_hash,
+                },
+        }) => {
+            crate::abandonment::abandon(s, i, r, *body, expected_terms_hash, &mut c, &mut w)?;
+        }
+        Input::Event(ScheduledEvent::AbandonedSlotDue { body, .. }) => {
+            if let Some(t) = w.abandonments.get_mut(body)
+                && t.release_at == i.at
+                && !t.released
+            {
+                t.released = true;
+                c.affected_viewers.insert(t.owner);
+            }
+        }
         Input::Command(Command::World {
             action: WorldAction::LaunchMissiles { .. } | WorldAction::ScrapMissiles { .. },
         })

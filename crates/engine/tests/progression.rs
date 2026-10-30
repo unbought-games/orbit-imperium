@@ -1434,7 +1434,7 @@ fn impulse_prerequisites_costs_duration_and_unbounded_progression() {
         .unwrap()
         .levels
         .insert(Building::ResearchLab, 6);
-    let r = Ruleset::from_artifact(r.artifact, 10).unwrap();
+    let r = Ruleset::from_artifact(r.artifact.clone(), 10).unwrap();
     assert_eq!(
         research_terms(&s.bodies[&b], &s.research[&p], ResearchId::ImpulseDrive, &r)
             .unwrap()

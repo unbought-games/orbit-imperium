@@ -345,7 +345,7 @@ mod tests {
     }
     #[test]
     fn custom_drive_and_combat_bonuses_match_engine_calculations() {
-        let mut r = rules();
+        let mut r = (*rules()).clone();
         let ship = r.artifact.ships.get_mut(&ShipType::SmallCargo).unwrap();
         ship.drive_coefficient = [3, 20];
         ship.impulse_drive.as_mut().unwrap().minimum_level = 8;
@@ -362,7 +362,10 @@ mod tests {
             ship_propulsion(ship, &research).unwrap().0,
             ship.base_speed * 130 / 100
         );
-        let combustion = data(&r, CatalogKey::Research(ResearchId::CombustionDrive));
+        let combustion = data(
+            &crate::test_rules(&r),
+            CatalogKey::Research(ResearchId::CombustionDrive),
+        );
         let bonus = combustion
             .bonuses
             .iter()
@@ -370,7 +373,10 @@ mod tests {
             .unwrap();
         assert_eq!(bonus.fraction, ["3", "20"]);
         assert!(bonus.condition.as_ref().unwrap().contains("level 8"));
-        let impulse = data(&r, CatalogKey::Research(ResearchId::ImpulseDrive));
+        let impulse = data(
+            &crate::test_rules(&r),
+            CatalogKey::Research(ResearchId::ImpulseDrive),
+        );
         let bonus = impulse
             .bonuses
             .iter()
@@ -388,13 +394,16 @@ mod tests {
             ResearchId::ArmourTechnology,
         ] {
             assert_eq!(
-                data(&r, CatalogKey::Research(tech)).bonuses[0].fraction,
+                data(&crate::test_rules(&r), CatalogKey::Research(tech)).bonuses[0].fraction,
                 ["1", "5"]
             );
         }
-        let defense = data(&r, CatalogKey::Defense(DefenseId::RocketLauncher))
-            .combat
-            .unwrap();
+        let defense = data(
+            &crate::test_rules(&r),
+            CatalogKey::Defense(DefenseId::RocketLauncher),
+        )
+        .combat
+        .unwrap();
         let combat = &r.artifact.world.as_ref().unwrap().combat;
         let unit = combat
             .units
@@ -415,7 +424,7 @@ mod tests {
     }
     #[test]
     fn building_values_follow_active_economy_and_storage_rules() {
-        let mut r = rules();
+        let mut r = (*rules()).clone();
         r.speed = 7;
         r.artifact.production[0] = 42;
         r.artifact.growth = [6, 5];
@@ -425,7 +434,10 @@ mod tests {
             .get_mut(&Building::MetalMine)
             .unwrap()
             .growth = [7, 4];
-        let mine = data(&r, CatalogKey::Building(Building::MetalMine));
+        let mine = data(
+            &crate::test_rules(&r),
+            CatalogKey::Building(Building::MetalMine),
+        );
         assert!(
             mine.facts
                 .iter()
@@ -438,11 +450,17 @@ mod tests {
                 .any(|f| f.value.contains("(7 / 4)^(target level"))
         );
         r.artifact.progression.as_mut().unwrap().storage_capacities[2] = 54321;
-        let capacities = data(&r, CatalogKey::Building(Building::MetalStorage))
-            .storage_capacities
-            .unwrap();
+        let capacities = data(
+            &crate::test_rules(&r),
+            CatalogKey::Building(Building::MetalStorage),
+        )
+        .storage_capacities
+        .unwrap();
         assert_eq!(capacities[2], "54321");
-        assert_eq!(storage_capacity(2, &r).unwrap(), 54321 * SCALE);
+        assert_eq!(
+            storage_capacity(2, &crate::test_rules(&r)).unwrap(),
+            54321 * SCALE
+        );
         assert_eq!(
             capacities.len(),
             r.artifact
@@ -455,9 +473,12 @@ mod tests {
     }
     #[test]
     fn missing_and_disabled_data_never_invents_effects() {
-        let mut r = rules();
+        let mut r = (*rules()).clone();
         r.artifact.world = None;
-        let defense = data(&r, CatalogKey::Defense(DefenseId::RocketLauncher));
+        let defense = data(
+            &crate::test_rules(&r),
+            CatalogKey::Defense(DefenseId::RocketLauncher),
+        );
         assert!(defense.combat.is_none());
         assert!(
             !defense
@@ -465,10 +486,13 @@ mod tests {
                 .iter()
                 .any(|f| f.label == "Recovery after combat")
         );
-        let combat = data(&r, CatalogKey::Research(ResearchId::WeaponsTechnology));
+        let combat = data(
+            &crate::test_rules(&r),
+            CatalogKey::Research(ResearchId::WeaponsTechnology),
+        );
         assert!(combat.bonuses.is_empty());
         for tech in [ResearchId::LaserTechnology, ResearchId::IonTechnology] {
-            let projected = data(&r, CatalogKey::Research(tech));
+            let projected = data(&crate::test_rules(&r), CatalogKey::Research(tech));
             assert!(projected.bonuses.is_empty());
             assert!(
                 projected
@@ -485,10 +509,13 @@ mod tests {
             .unwrap();
         entry.enabled = false;
         assert!(
-            !data(&r, CatalogKey::Research(ResearchId::ImpulseDrive))
-                .bonuses
-                .iter()
-                .any(|b| b.subject == Some(CatalogKey::Ship(ShipType::SmallCargo)))
+            !data(
+                &crate::test_rules(&r),
+                CatalogKey::Research(ResearchId::ImpulseDrive)
+            )
+            .bonuses
+            .iter()
+            .any(|b| b.subject == Some(CatalogKey::Ship(ShipType::SmallCargo)))
         );
     }
     #[test]

@@ -71,7 +71,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
         kind: "Combat".into(),
         at: 1000,
         fleet: None,
-        rules_hash: Ruleset::mvp_fleets().unwrap().hash,
+        rules_hash: Ruleset::mvp_fleets().unwrap().hash.clone(),
         payloads: std::collections::BTreeMap::from([(a.player, limited), (b.player, full)]),
     };
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
@@ -302,7 +302,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
         kind: "Combat".into(),
         at: 1000,
         fleet: None,
-        rules_hash: Ruleset::mvp_fleets().unwrap().hash,
+        rules_hash: Ruleset::mvp_fleets().unwrap().hash.clone(),
         payloads: std::collections::BTreeMap::from([(
             a.player,
             json!({"kind":"ContactLost","at":1000,"target":{"galaxy":1,"system":1,"position":2},"own_lost_ships":[],"own_cargo_loss":{"metal":"0","crystal":"0","deuterium":"0"}}),

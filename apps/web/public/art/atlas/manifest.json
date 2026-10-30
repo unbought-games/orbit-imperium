@@ -1992,6 +1992,58 @@
       ]
     },
     {
+      "key": "planet-abandoned",
+      "master": "masters/planet-abandoned.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered sphere on transparent alpha; shared by every abandoned planet. Delivery adds the standard 6% transparent inset.",
+      "sourceFragment": "abandoned-sources.json",
+      "sha256": "11f0f4336e3ac90bf1b6d5d27d9322cc38537e13921081ee29e98fa10fa590c0",
+      "effectiveSourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "alpha": true,
+      "variants": [
+        {
+          "path": "planet-abandoned-96.webp",
+          "width": 96,
+          "height": 96,
+          "bytes": 4626,
+          "alpha": true
+        },
+        {
+          "path": "planet-abandoned-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 27324,
+          "alpha": true
+        },
+        {
+          "path": "planet-abandoned-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 99536,
+          "alpha": true
+        },
+        {
+          "path": "planet-abandoned-1200.webp",
+          "width": 1200,
+          "height": 1200,
+          "bytes": 341784,
+          "alpha": true
+        }
+      ]
+    },
+    {
       "key": "objects/combustion-drive",
       "catalogId": "CombustionDrive",
       "master": "masters/research/combustion-drive.png",

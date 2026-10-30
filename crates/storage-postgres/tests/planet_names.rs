@@ -188,7 +188,7 @@ async fn planet_names_survive_restart_publish_to_other_players_and_retry_once() 
         location: AssetLocation::Body(origin),
         quantity: 1,
         unit_value_micro: 4000 * SCALE,
-        rules_hash: Ruleset::mvp_fleets().unwrap().hash,
+        rules_hash: Ruleset::mvp_fleets().unwrap().hash.clone(),
         source_operation: lot_id,
         acquired_at: 1000,
         acquired_sequence: 1,
@@ -252,7 +252,7 @@ async fn planet_names_survive_restart_publish_to_other_players_and_retry_once() 
     launch.gameplay.command = CommandDto3::Progression(Command::World {
         action: WorldAction::LaunchFleet {
             intent: intent.clone(),
-            expected_terms_hash: terms.terms_hash,
+            expected_terms_hash: terms.terms_hash.clone(),
         },
     });
     restored

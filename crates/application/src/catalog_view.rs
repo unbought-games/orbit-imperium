@@ -202,8 +202,9 @@ mod tests {
     }
     #[test]
     fn bomber_projects_optional_hyperspace_profile_from_active_rules() {
-        let mut rules = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap();
-        let upgrade = ship(&rules, ShipType::Bomber)
+        let mut rules =
+            (*standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap()).clone();
+        let upgrade = ship(&crate::test_rules(&rules), ShipType::Bomber)
             .propulsion
             .unwrap()
             .hyperspace_upgrade
@@ -218,7 +219,8 @@ mod tests {
             .get_mut(&ShipType::Bomber)
             .unwrap()
             .hyperspace_drive = None;
-        let legacy = serde_json::to_value(ship(&rules, ShipType::Bomber)).unwrap();
+        let legacy =
+            serde_json::to_value(ship(&crate::test_rules(&rules), ShipType::Bomber)).unwrap();
         assert!(legacy["propulsion"].get("hyperspace_upgrade").is_none());
     }
     #[test]
@@ -312,7 +314,8 @@ mod tests {
     }
     #[test]
     fn reflects_custom_rules_and_upgrade_profiles() {
-        let mut rules = Ruleset::signup(UniverseProfile::signup(1, 100).unwrap()).unwrap();
+        let mut rules =
+            (*Ruleset::signup(UniverseProfile::signup(1, 100).unwrap()).unwrap()).clone();
         let rule = rules.artifact.ships.get_mut(&ShipType::SmallCargo).unwrap();
         rule.capacity = 7654;
         rule.base_speed = 4321;
@@ -331,7 +334,7 @@ mod tests {
             .unwrap();
         unit.attack_hundredths = 1234;
         unit.shield_hundredths = 5678;
-        let stats = ship(&rules, ShipType::SmallCargo);
+        let stats = ship(&crate::test_rules(&rules), ShipType::SmallCargo);
         let propulsion = stats.propulsion.unwrap();
         assert_eq!(
             (
@@ -363,7 +366,8 @@ mod tests {
     #[test]
     fn comparison_metadata_matches_active_engine_rules() {
         let mut rules =
-            Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-11.json")).unwrap();
+            (*Ruleset::from_json(include_bytes!("../../../rules/mvp-v1-slice-11.json")).unwrap())
+                .clone();
         rules
             .artifact
             .ships
@@ -377,7 +381,7 @@ mod tests {
             .unwrap()
             .combat
             .technology_bonus = [1, 5];
-        let stats = ship(&rules, ShipType::SmallCargo);
+        let stats = ship(&crate::test_rules(&rules), ShipType::SmallCargo);
         assert_eq!(stats.cost.unwrap(), ["2000", "2000", "0"]);
         let p = stats.propulsion.unwrap();
         assert_eq!(p.drive_coefficient.unwrap(), ["3", "20"]);
@@ -387,20 +391,24 @@ mod tests {
         );
         assert_eq!(stats.combat.unwrap().technology_bonus.unwrap(), ["1", "5"]);
         rules.artifact.progression = None;
-        assert!(ship(&rules, ShipType::SmallCargo).cost.is_none());
+        assert!(
+            ship(&crate::test_rules(&rules), ShipType::SmallCargo)
+                .cost
+                .is_none()
+        );
     }
     #[test]
     fn historical_rules_preserve_missing_data_and_legacy_drive() {
-        let mut rules = Ruleset::mvp_fleets().unwrap();
+        let mut rules = (*Ruleset::mvp_fleets().unwrap()).clone();
         rules.artifact.world = None;
         let rule = rules.artifact.ships.get_mut(&ShipType::SmallCargo).unwrap();
         rule.drive = None;
         rule.impulse_drive = None;
-        let stats = ship(&rules, ShipType::SmallCargo);
+        let stats = ship(&crate::test_rules(&rules), ShipType::SmallCargo);
         assert!(stats.combat.is_none());
         assert_eq!(stats.propulsion.unwrap().drive, ResearchId::CombustionDrive);
         assert!(
-            catalog_view(&rules)
+            catalog_view(&crate::test_rules(&rules))
                 .unwrap()
                 .iter()
                 .filter(|e| !matches!(e.entry.key, CatalogKey::Ship(_)))

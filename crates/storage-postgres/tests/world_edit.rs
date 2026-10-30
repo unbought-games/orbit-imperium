@@ -698,7 +698,7 @@ async fn ordinary_demolition_survives_scenario_export_replace_and_completion() {
         command: CommandDto3::Progression(Command::StartDemolition {
             body,
             building: Building::MetalMine,
-            expected_terms_hash: q.terms_hash,
+            expected_terms_hash: q.terms_hash.clone(),
         }),
     };
     let presence = CommandEnvelopeV4 {

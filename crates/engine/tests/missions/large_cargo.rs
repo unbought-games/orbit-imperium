@@ -427,7 +427,7 @@ fn mixed_large_cargo_fleet_reserves_fuel_and_uses_the_slowest_ship() {
         Input::Command(Command::World {
             action: WorldAction::LaunchFleet {
                 intent: request,
-                expected_terms_hash: quote.terms_hash,
+                expected_terms_hash: quote.terms_hash.clone(),
             },
         }),
     );

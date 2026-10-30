@@ -817,7 +817,7 @@ async fn shared_report_bot_kinds_follow_redacted_ids_and_identity_option() {
         kind: "Combat".into(),
         at: 1000,
         fleet: None,
-        rules_hash: store.load_rules(u).await.unwrap().hash,
+        rules_hash: store.load_rules(u).await.unwrap().hash.clone(),
         payloads: std::collections::BTreeMap::from([(b.player, payload)]),
     };
     sqlx::query("INSERT INTO mission_reports(universe,id,event,kind,at_ms,data) VALUES($1,$2,$3,'Combat',1000,$4)").bind(u.0).bind(id.0).bind(event.0).bind(sqlx::types::Json(report)).execute(&pool).await.unwrap();

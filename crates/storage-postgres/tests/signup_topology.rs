@@ -44,6 +44,7 @@ async fn configured_round_admits_100_players_and_retains_topology_on_restart() {
         .unwrap()
         .artifact
         .universe
+        .clone()
         .unwrap();
     let mut expected_homes = vec![];
     for ordinal in 0..100 {

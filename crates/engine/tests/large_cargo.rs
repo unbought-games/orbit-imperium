@@ -94,7 +94,7 @@ fn battle(target: ShipType, technology: [u32; 3]) -> BattleInput {
         encounter_id: InputId(Uuid::from_u128(3)),
         at: 0,
         target: BodyId(Uuid::from_u128(4)),
-        rules_hash: rules().hash,
+        rules_hash: rules().hash.clone(),
         participants: vec![
             BattleParticipant {
                 owner: PlayerId(Uuid::from_u128(1)),
@@ -126,7 +126,7 @@ fn random(seed: u8) -> RandomStream {
 
 #[test]
 fn large_cargo_combat_derives_hull_and_research_bonuses() {
-    let mut combat = rules().artifact.world.unwrap().combat;
+    let mut combat = rules().artifact.world.clone().unwrap().combat;
     combat.max_rounds = 1;
     for (technology, hull, attack, shield, remaining_shield) in [
         ([0, 0, 0], "120000000", "500000", "500000", "2000000"),
@@ -155,7 +155,7 @@ fn large_cargo_combat_derives_hull_and_research_bonuses() {
 
 #[test]
 fn large_cargo_rapid_fire_applies_to_probes_only() {
-    let mut combat = rules().artifact.world.unwrap().combat;
+    let mut combat = rules().artifact.world.clone().unwrap().combat;
     combat.max_rounds = 1;
     for (target, factor) in [
         (ShipType::SmallCargo, 1),

@@ -190,7 +190,7 @@ mod tests {
         let doc = RulesDocument {
             universe: UniverseId(Uuid::new_v4()),
             base_revision: 0,
-            artifact: r.artifact,
+            artifact: r.artifact.clone(),
             speed: 10,
         };
         std::fs::write(&path, serde_json::to_vec(&doc).unwrap()).unwrap();
@@ -221,7 +221,7 @@ mod tests {
         let doc = RulesDocument {
             universe: UniverseId(Uuid::new_v4()),
             base_revision: 0,
-            artifact: r.artifact,
+            artifact: r.artifact.clone(),
             speed: 10,
         };
         let start = tokio::time::Instant::now();

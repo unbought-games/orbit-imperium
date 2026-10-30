@@ -152,7 +152,7 @@ pub fn impulse_rules(rules: &Ruleset) -> Ruleset {
 
 #[allow(dead_code)]
 pub fn astrophysics_rules(rules: &Ruleset) -> Ruleset {
-    let mut artifact = impulse_rules(rules).artifact;
+    let mut artifact = impulse_rules(rules).artifact.clone();
     let content: serde_json::Value = serde_json::from_slice(include_bytes!(
         "../../../../rules/content/astrophysics.json"
     ))

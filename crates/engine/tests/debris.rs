@@ -52,12 +52,10 @@ fn snapshot(index: usize) -> (GameState, OrderedInput) {
 }
 
 fn historical_rules() -> Ruleset {
-    let mut rules = Ruleset::mvp_fleets().unwrap();
-    // These immutable replay fixtures predate the disabled ship's catalog rename.
-    // Their gameplay definitions are unchanged; replay with the recorded identity
-    // so the original paid terms, fact hashes and outcome assertions stay intact.
-    // This fixture-only identity is never used to load or write live rules.
-    rules.hash = historical_case(0).1.profile_hash;
+    let artifact =
+        include_str!("../../../rules/mvp-v1-slice-4.json").replace("Dreadnought", "Deathstar");
+    let rules = Ruleset::from_json(artifact.as_bytes()).unwrap();
+    assert_eq!(rules.hash, historical_case(0).1.profile_hash);
     for index in 1..5 {
         assert_eq!(historical_case(index).1.profile_hash, rules.hash);
     }

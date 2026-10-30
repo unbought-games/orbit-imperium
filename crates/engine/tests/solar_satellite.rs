@@ -208,6 +208,13 @@ fn satellite_attackers_are_rejected_without_consuming_randomness() {
         }],
     };
     let cursor = random.cursor();
-    assert!(resolve_battle(&input, &r.artifact.world.unwrap().combat, &mut random).is_err());
+    assert!(
+        resolve_battle(
+            &input,
+            &r.artifact.world.as_ref().unwrap().combat,
+            &mut random
+        )
+        .is_err()
+    );
     assert_eq!(random.cursor(), cursor);
 }
