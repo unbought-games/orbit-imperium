@@ -150,10 +150,10 @@ export function DispatchShips({
           aria-controls={rowsId}
           onClick={() => setShowAll(!showAll)}
         >
-          <DisclosureIcon size={16} aria-hidden="true" />
           {showAll
             ? 'Show available ships'
             : `Show all ships (${hiddenCount} more)`}
+          <DisclosureIcon size={16} aria-hidden="true" />
         </Button>
       )}
     </fieldset>
