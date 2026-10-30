@@ -13,7 +13,7 @@ export const navigationGroups: { title: string; pages: Page[] }[] = [
   { title: 'Develop', pages: buildPages },
   {
     title: 'Fleet & intelligence',
-    pages: ['galaxy', ...fleetPages, 'reports'],
+    pages: ['galaxy', ...fleetPages, 'reports', 'combat-simulator'],
   },
   { title: 'Community', pages: ['high-scores', 'alliance', 'messages'] },
   { title: 'Account', pages: ['settings'] },
@@ -30,6 +30,7 @@ export const pageTitles: Record<Page, string> = {
   dispatch: 'Dispatch',
   galaxy: 'Galaxy',
   reports: 'Reports',
+  'combat-simulator': 'Combat Simulator',
   settings: 'Settings',
   'high-scores': 'High Scores',
   alliance: 'Alliance',

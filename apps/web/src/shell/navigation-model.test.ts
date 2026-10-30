@@ -29,7 +29,7 @@ it('keeps Dispatch under Fleets and Galaxy independently accessible', () => {
   expect(
     navigationGroups.find((group) => group.title === 'Fleet & intelligence')
       ?.pages,
-  ).toEqual(['galaxy', 'fleets', 'dispatch', 'reports'])
+  ).toEqual(['galaxy', 'fleets', 'dispatch', 'reports', 'combat-simulator'])
   expect(
     navigationGroups.find((group) => group.title === 'Empire')?.pages,
   ).toEqual(['overview', 'resource-settings'])
@@ -50,6 +50,7 @@ it('places every real destination exactly once in the grouped menu', () => {
       'dispatch',
       'galaxy',
       'reports',
+      'combat-simulator',
       'settings',
       'high-scores',
       'alliance',

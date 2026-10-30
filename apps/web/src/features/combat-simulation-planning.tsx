@@ -21,21 +21,12 @@ export function SimulationPlanning({ result }: { result: SimulationResponse }) {
           samples).
         </p>
       )}
-      <p>
-        Assumes empty cargo on arrival. Launch fuel is paid up front; surviving
-        arrival capacity has no fuel deduction. This is gross loot before fuel
-        costs. See Attack planning for flight estimates and Dispatch for launch
-        review.
-      </p>
       {summary.loot && summary.total ? (
         <>
           <p>
             Estimated loot: <strong>{amount(summary.total.average)}</strong>{' '}
             average ({amount(summary.total.minimum)}–
-            {amount(summary.total.maximum)} across samples). Calculated per
-            battle using the universe’s cargo and loot rules and the
-            report-observed resources. Defeat, draws and mutual destruction
-            contribute zero loot. No capacity means no loot.
+            {amount(summary.total.maximum)} across samples).
           </p>
           <dl className={styles.survivors}>
             {summary.loot.map((row) => (
@@ -55,9 +46,8 @@ export function SimulationPlanning({ result }: { result: SimulationResponse }) {
             ))}
           </dl>
           <p>
-            Resources may have changed since the observation above. No
-            production or spending is forecast. These are sample estimates, not
-            guaranteed loot; averages are rounded down to whole resource units.
+            Based on observed resources; current stock may differ. Gross loot
+            before fuel costs.
           </p>
         </>
       ) : (

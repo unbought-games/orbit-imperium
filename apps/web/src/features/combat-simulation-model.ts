@@ -20,7 +20,7 @@ export const combatTechnologies = [
   'ArmourTechnology',
 ] as const
 export function simulationFields(
-  report: Espionage,
+  report: Espionage | undefined,
   catalog: S['CatalogEntry3'][],
   research: { research: string; level: number }[],
   inventories?: S['BodyV3']['inventories'],
@@ -39,18 +39,22 @@ export function simulationFields(
       value:
         side === 'attacker'
           ? String(research.find((r) => r.research === id)?.level ?? 0)
-          : report.research.visibility === 'Known' &&
+          : report?.research.visibility === 'Known' &&
               report.research.value[id] !== undefined
             ? String(report.research.value[id])
             : null,
       source:
-        side === 'attacker' ? ('Your research' as const) : ('Report' as const),
+        side === 'attacker'
+          ? ('Your research' as const)
+          : report
+            ? ('Report' as const)
+            : ('Plan' as const),
     })),
     ...units
       .filter((e) => side === 'defender' || (e.key.kind === 'Ship' && e.mobile))
       .map((e) => {
         const observation =
-          e.key.kind === 'Ship' ? report.fleet : report.defenses
+          e.key.kind === 'Ship' ? report?.fleet : report?.defenses
         const item = e.key as S['ItemKey3']
         return {
           key: `${side}:${item.kind}:${item.id}`,
@@ -66,12 +70,17 @@ export function simulationFields(
           value:
             side === 'attacker'
               ? '0'
-              : observation.visibility === 'Known'
+              : observation?.visibility === 'Known'
                 ? (observation.value.find(
                     (u) => u.item.kind === item.kind && u.item.id === item.id,
                   )?.count ?? '0')
                 : null,
-          source: side === 'attacker' ? ('Plan' as const) : ('Report' as const),
+          source:
+            side === 'attacker'
+              ? ('Plan' as const)
+              : report
+                ? ('Report' as const)
+                : ('Plan' as const),
         }
       }),
   ])

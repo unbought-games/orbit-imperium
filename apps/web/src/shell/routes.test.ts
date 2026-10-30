@@ -203,3 +203,16 @@ it('allows only currently visible outgoing missile mission details', () => {
     resolveDestination(destination, { ...world, missiles: [] }).available,
   ).toBe(false)
 })
+
+it('opens the simulator for protocol-4 players without reports, capabilities or a planet', () => {
+  const destination = { universe: 'u', page: 'combat-simulator' as const }
+  expect(
+    resolveDestination(destination, {
+      ...view,
+      protocol: 4,
+      bodies: [],
+      capabilities: [],
+    } as unknown as BoundView),
+  ).toMatchObject({ page: 'combat-simulator', available: true, body: null })
+  expect(resolveDestination(destination, view).available).toBe(false)
+})
