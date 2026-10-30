@@ -167,7 +167,7 @@ export function empireTotals(
 
 /** Older servers may only expose colony metadata; never infer diameter from fields. */
 export function planetPhysicalFacts(body: BoundView['bodies'][number]) {
-  if (body.kind !== 'Planet') return []
+  if (body.kind !== 'Planet') return {}
   const colony = 'colony' in body ? body.colony : undefined
   const diameter =
     ('diameter_km' in body ? body.diameter_km : undefined) ??
@@ -176,12 +176,15 @@ export function planetPhysicalFacts(body: BoundView['bodies'][number]) {
     ('min_temperature' in body ? body.min_temperature : undefined) ??
     colony?.min_temperature
   const maximum = planetMaxTemperature(body)
-  return [
-    ...(diameter === undefined ? [] : [`${diameter} km`]),
-    ...(minimum === undefined || maximum === undefined
-      ? []
-      : [`${minimum} to ${maximum} °C`]),
-  ]
+  return {
+    diameter: diameter === undefined ? undefined : `${diameter} km`,
+    temperature:
+      maximum === undefined
+        ? undefined
+        : minimum === undefined
+          ? `${maximum} °C maximum`
+          : `${minimum} to ${maximum} °C`,
+  }
 }
 
 export function storagePercent(amount: string, capacity: string) {

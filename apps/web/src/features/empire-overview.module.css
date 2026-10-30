@@ -1284,17 +1284,10 @@
 }
 
 .climate {
-  padding: 12px 0;
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-.climate > summary {
-  cursor: pointer;
-  color: var(--text);
-}
-.climate p {
-  margin: 8px 0 0;
+  padding: 0;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
 }
 
 .fleetRows {
