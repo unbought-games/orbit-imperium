@@ -1290,6 +1290,13 @@
   text-underline-offset: 3px;
 }
 
+@media (max-width: 1023px) {
+  .climate {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 .fleetRows {
   display: flex;
   flex-direction: column;

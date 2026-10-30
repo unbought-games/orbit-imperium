@@ -704,6 +704,9 @@ for (const width of [390, 1440]) {
     const temperature = home.getByRole('button', { name: '-60 to -20 °C', exact: true })
     await expect(home.getByText(/Maximum temperature:/)).toHaveCount(0)
     await expect(temperature).toHaveCSS('text-decoration-style', 'dotted')
+    const target = (await temperature.boundingBox())!
+    expect(target.width).toBeGreaterThanOrEqual(width < 1024 ? 44 : 24)
+    expect(target.height).toBeGreaterThanOrEqual(width < 1024 ? 44 : 24)
     await expect(page.getByRole('tooltip')).toHaveCount(0)
     if (width === 1440) {
       await temperature.hover()
