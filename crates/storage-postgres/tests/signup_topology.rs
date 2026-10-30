@@ -31,6 +31,42 @@ async fn configured_round_admits_100_players_and_retains_topology_on_restart() {
         .ensure_signup_universe(Some(u), options, Some(100))
         .await
         .unwrap();
+    let (secret, epoch): (Vec<u8>, Uuid) = sqlx::query_as(
+        "SELECT secret,epoch FROM mvp_bootstraps JOIN universes ON id=universe WHERE universe=$1",
+    )
+    .bind(u.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let profile = store
+        .load_rules(u)
+        .await
+        .unwrap()
+        .artifact
+        .universe
+        .unwrap();
+    let mut expected_homes = vec![];
+    for ordinal in 0..100 {
+        expected_homes.push(
+            neighborhood_homeworld(
+                secret.as_slice().try_into().unwrap(),
+                u,
+                epoch.into(),
+                &profile,
+                ordinal,
+                &expected_homes,
+                &expected_homes,
+            )
+            .unwrap()
+            .coordinates,
+        );
+    }
+    let mut expected_counts = std::collections::BTreeMap::new();
+    for home in &expected_homes {
+        *expected_counts
+            .entry((home.galaxy, home.system))
+            .or_insert(0i64) += 1;
+    }
     let password_hash = hash_password("p").unwrap();
     let first = store
         .register(registration(policy, &password_hash))
@@ -53,10 +89,14 @@ async fn configured_round_admits_100_players_and_retains_topology_on_restart() {
     ));
     let counts: Vec<i64> = sqlx::query_scalar("SELECT count(*) FROM bodies WHERE universe=$1 GROUP BY galaxy,system ORDER BY galaxy,system")
         .bind(u.0).fetch_all(&pool).await.unwrap();
-    assert_eq!(counts.len(), 23);
+    // Neighborhood occupancy is seeded, not the legacy fixed 23-system prefix.
+    // Verify the exact expected distribution, not just relaxed count bounds.
+    assert_eq!(
+        counts,
+        expected_counts.values().copied().collect::<Vec<_>>()
+    );
     assert_eq!(counts.iter().sum::<i64>(), 100);
-    assert!(counts.iter().all(|&n| n <= 5));
-    assert_eq!(23 * 9 - counts.iter().sum::<i64>(), 107);
+    assert!(counts.iter().all(|&n| n <= 9));
     let before: Vec<(Uuid, i32, i32, i32)> = sqlx::query_as(
         "SELECT id,galaxy,system,position FROM bodies WHERE universe=$1 ORDER BY id",
     )
@@ -64,6 +104,28 @@ async fn configured_round_admits_100_players_and_retains_topology_on_restart() {
     .fetch_all(&pool)
     .await
     .unwrap();
+    let actual: std::collections::BTreeSet<_> = before
+        .iter()
+        .map(|b| Coordinates {
+            galaxy: b.1 as u32,
+            system: b.2 as u32,
+            position: b.3 as u32,
+        })
+        .collect();
+    assert_eq!(actual.len(), 100);
+    assert_eq!(actual, expected_homes.into_iter().collect());
+    assert!(
+        actual
+            .iter()
+            .all(|c| c.galaxy == 1 && (4..=12).contains(&c.position))
+    );
+    let span = actual.iter().map(|c| c.system).max().unwrap()
+        - actual.iter().map(|c| c.system).min().unwrap()
+        + 1;
+    assert!(
+        span <= 50,
+        "100 players have a 50-system neighborhood budget"
+    );
     let reopened = PgStore::connect(&url).await.unwrap();
     let retained = reopened
         .ensure_signup_universe(Some(u), Default::default(), None)
