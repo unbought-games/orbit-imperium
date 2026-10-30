@@ -1,3 +1,5 @@
+mod insignias;
+pub use insignias::Customization;
 mod alliances;
 mod bootstrap;
 mod bootstrap_html;
@@ -62,6 +64,7 @@ impl HttpConfig {
     }
 }
 struct HttpState<S> {
+    customization: Option<Customization>,
     profiles: Option<AccountProfiles>,
     oidc: Option<unbought_auth::RelyingParty>,
     game: GameService<S>,
@@ -110,7 +113,7 @@ fn build_router<S>(
 where
     S: GameStore + IdentityStore + UpdateStore + Clone + Send + Sync + 'static,
 {
-    build_router_with_profiles(store, config, drain, oidc, None)
+    build_router_with_profiles(store, config, drain, oidc, None, None)
 }
 pub fn router_with_profiles<S>(
     store: S,
@@ -122,7 +125,27 @@ pub fn router_with_profiles<S>(
 where
     S: GameStore + IdentityStore + UpdateStore + Clone + Send + Sync + 'static,
 {
-    build_router_with_profiles(store, config, Some(drain), oidc, profiles)
+    build_router_with_profiles(store, config, Some(drain), oidc, profiles, None)
+}
+pub fn router_with_customization<S>(
+    store: S,
+    config: HttpConfig,
+    drain: tokio::sync::watch::Receiver<bool>,
+    oidc: Option<unbought_auth::RelyingParty>,
+    profiles: Option<AccountProfiles>,
+    customization: Customization,
+) -> Router
+where
+    S: GameStore + IdentityStore + UpdateStore + Clone + Send + Sync + 'static,
+{
+    build_router_with_profiles(
+        store,
+        config,
+        Some(drain),
+        oidc,
+        profiles,
+        Some(customization),
+    )
 }
 fn build_router_with_profiles<S>(
     store: S,
@@ -130,6 +153,7 @@ fn build_router_with_profiles<S>(
     drain: Option<tokio::sync::watch::Receiver<bool>>,
     oidc: Option<unbought_auth::RelyingParty>,
     profiles: Option<AccountProfiles>,
+    customization: Option<Customization>,
 ) -> Router
 where
     S: GameStore + IdentityStore + UpdateStore + Clone + Send + Sync + 'static,
@@ -139,6 +163,7 @@ where
         .clone()
         .unwrap_or_else(|| Arc::new(NoopRuntimeObserver));
     let state = Arc::new(HttpState {
+        customization,
         profiles,
         oidc,
         game: GameService::new(store.clone()),
@@ -152,6 +177,14 @@ where
         password_work: Arc::new(Semaphore::new(2)),
     });
     Router::new()
+        .route(
+            "/api/v1/universes/{id}/insignias",
+            post(insignias::handle::<S>),
+        )
+        .route(
+            "/api/media/insignias/{symbol}/{version}",
+            get(insignias::media::<S>),
+        )
         .route(
             "/u/{universe}/location/{coordinates}",
             get(location_preview::page::<S>),

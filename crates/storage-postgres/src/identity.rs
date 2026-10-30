@@ -29,6 +29,26 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn insignia_library(&self, b: Binding) -> Result<InsigniaLibrary, StoreError> {
+        self.read_insignia_library(b).await
+    }
+    async fn change_insignia(
+        &self,
+        b: Binding,
+        a: InsigniaAction,
+        p: CosmeticPolicy,
+        e: SupporterEvidence,
+    ) -> Result<(), ServiceError> {
+        self.write_insignia(b, a, p, e).await
+    }
+    async fn equipped_insignias(
+        &self,
+        u: UniverseId,
+        p: Vec<PlayerId>,
+    ) -> Result<EquippedInsignias, StoreError> {
+        self.read_equipped_insignias(u, p).await
+    }
+
     async fn authenticate_machine(
         &self,
         digest: &str,

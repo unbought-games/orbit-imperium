@@ -258,3 +258,15 @@ test-persistence:
 .PHONY: test-persistence-db
 test-persistence-db:
 	sh scripts/test-db.sh rules_updates 'test(compatibility::) | test(legacy_rules_) | test(activation_waits_for_admitted_and_claimed_work)'
+.PHONY: test-insignias
+test-insignias:
+	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(insignia)'
+	cargo nextest run -p orbit-storage-assets --lib
+	npm test -- insignias
+	npm run test:ui -- insignias.spec.ts
+
+# Explicit-only real-server insignia acceptance; use an isolated Compose database.
+.PHONY: test-insignias-live
+test-insignias-live: _dev-binary
+	npm run build
+	$(TIMEOUT) full-system node scripts/insignias-live.mjs

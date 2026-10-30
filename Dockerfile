@@ -33,8 +33,9 @@ COPY --from=rust /build/target/release/orbit /usr/local/bin/orbit
 COPY --from=web /build/apps/web/dist /app/web
 COPY --from=web /build/LICENSE /app/web/LICENSE.txt
 COPY --from=rust /tmp/rust-notices.txt /app/web/rust-notices.txt
+RUN mkdir -p /data/assets && chown orbit:orbit /data/assets
 USER orbit
-ENV ORBIT_BIND=0.0.0.0:8080 ORBIT_ASSETS=/app/web
+ENV ORBIT_BIND=0.0.0.0:8080 ORBIT_ASSETS=/app/web ORBIT_ASSET_DIRECTORY=/data/assets
 EXPOSE 8080
 ENTRYPOINT ["orbit"]
 CMD ["serve"]

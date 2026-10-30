@@ -82,7 +82,7 @@ Keep workers running while the universe is active: due events must resolve witho
 
 Stopping an app process does not implicitly pause game time or reset the database. If retained state is resumed, serve committed snapshots immediately while workers process overdue work in canonical order. Starting a new test run can instead explicitly recreate and seed a disposable universe. A deliberate test pause, if later needed, must be an explicit test-clock feature; do not infer it from process downtime or carry it into competitive play.
 
-Store durable data in PostgreSQL, not the application container's ephemeral filesystem. Self-managed PostgreSQL requires persistent storage and a backup/restore procedure. A persistent volume alone does not provide database replication. Stop/start and database deletion are separate operations; back up retained player progress before deliberately removing database storage.
+Store game and customization records in PostgreSQL, not the application container's ephemeral filesystem. Insignia assets use a separate persistent volume on a single host or S3-compatible storage across multiple hosts; see [customization storage](../operations/empire-customization.md). Self-managed PostgreSQL requires persistent storage and a backup/restore procedure. A persistent volume alone does not provide database replication. Stop/start and database deletion are separate operations; back up retained player progress before deliberately removing database storage.
 
 ## Development schema and rules changes
 

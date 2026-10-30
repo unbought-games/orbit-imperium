@@ -10,12 +10,14 @@ const { packages } = JSON.parse(
 const allowed = {
   'orbit-engine': [],
   'orbit-application': ['orbit-engine'],
+  'orbit-storage-assets': ['orbit-application'],
   'orbit-storage-postgres': ['orbit-engine', 'orbit-application'],
   'orbit-transport-http': ['orbit-application'],
   'orbit-server': [
     'orbit-engine',
     'orbit-application',
     'orbit-storage-postgres',
+    'orbit-storage-assets',
     'orbit-transport-http',
   ],
 }
@@ -55,4 +57,4 @@ for (const file of globSync('apps/web/src/**/*.{ts,tsx}')) {
   if (!file.split('/').includes('adapters'))
     assert.ok(!readFileSync(file, 'utf8').includes('fetch('), file)
 }
-console.log('Five-crate and browser transport boundaries passed.')
+console.log('Workspace and browser transport boundaries passed.')

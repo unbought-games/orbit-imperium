@@ -2,6 +2,7 @@ mod alliance_identity;
 mod alliances;
 mod bots;
 mod colonization;
+mod insignias;
 mod rankings;
 mod report_sharing;
 mod social;
