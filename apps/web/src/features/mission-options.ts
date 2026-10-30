@@ -20,7 +20,7 @@ export const missionOptions = {
   },
   Colonize: {
     icon: Globe2,
-    description: 'Establish a colony on an empty planet slot.',
+    description: 'Use a Colony Ship to settle an empty planet slot.',
   },
 }
 export type DispatchMission = keyof typeof missionOptions

@@ -146,19 +146,6 @@ export function Dispatch({
               </LocationSummary>
             </div>
           </TaskHeader>
-          {mission === 'Colonize' && (
-            <Text role="status">
-              Planets: {colony.count} / {colony.capacity}.{' '}
-              {colony.reason ?? colony.warning} Requires at least one Colony
-              Ship.
-            </Text>
-          )}
-          {mission === 'Deploy' && (
-            <Text>
-              Deployment transfers ships and cargo permanently to another owned
-              planet or moon and credits half the paid fuel, rounded down.
-            </Text>
-          )}
           {draft?.observedAt !== undefined && (
             <Text>
               Prepared from an observation at{' '}
