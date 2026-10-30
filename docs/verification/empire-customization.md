@@ -1,5 +1,7 @@
 # Empire customization verification — 2026-10-30
 
+The initial record below predates publication. Rebased PR validation is recorded at the end.
+
 ## Tested source
 
 - Base commit: `c98fedfd4296be237735bab2c04c13741f5ac8d6` plus the current uncommitted customization changes.
@@ -99,3 +101,29 @@ Production deployment still needs its dedicated private S3 bucket/runtime IAM
 configuration and the settings in the operator guide. No live AWS validation or
 production rollout was requested or claimed. Player uploads, generation,
 payment fulfillment, and historical report artwork remain outside this slice.
+
+## PR rebase validation — 2026-10-30
+
+Tested implementation commit `4f0138f35a4b02cbad9258303df23b412f42680c` rebased onto fetched main `7b9bbbe6f7d27824fcffb1129c79d31f0d962164`.
+Preserved main's persistence targets, colony-abandonment contracts, and desktop
+navigation tests. Regenerated TypeScript contracts from the combined OpenAPI
+schema. Renumbered the unpublished insignia migration to `0026_insignias.sql`
+to follow main's `0025_colony_abandonment.sql`. No released migration was edited.
+
+- `make check`: passed; 1,155 client tests, 559 server tests (27.361 s),
+  42 bridge tests (1.005 s), 7 storage unit tests (0.013 s), tooling, Clippy,
+  formatting, lint, contract/boundary checks, and production build.
+- Isolated PostgreSQL: insignias (2.803 s), public profiles (2.426 s), and
+  all 16 migration checks (12.432 s) passed.
+- Browser integration: insignia, public-profile, and desktop-navigation suites
+  passed (13 tests, 21.6 s). Captures refreshed for main's sidebar.
+- Real-server/browser restart acceptance passed: preparation 25.063 s,
+  browser 4.590 s, restart 1.435 s,
+  cleanup 0.122 s; total 31.210 s.
+- Inspected refreshed Settings and Galaxy captures at 1440×1000 and 390×1000,
+  including the controlled access states. No product/UI fix was needed.
+
+This appended record is a documentation-only follow-up to the tested commit.
+The live runner removed its database and asset directory and stopped its browser
+and server. Disposable Compose project `orbit-insignia-pr` is cleaned up before
+publication; unrelated development projects are retained.
