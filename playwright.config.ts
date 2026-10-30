@@ -13,7 +13,9 @@ export default defineConfig({
   timeout: process.env.ORBIT_UI_E2E ? 0 : 600_000,
   outputDir: process.env.ORBIT_TEST_OUTPUT_DIR ?? 'test-results/browser',
   testDir: 'apps/web/tests',
-  testMatch: process.env.ORBIT_UI_E2E
+  testMatch: process.env.ORBIT_HOMEPAGE_E2E
+    ? 'homepage-built.spec.ts'
+    : process.env.ORBIT_UI_E2E
     ? uiFiles
     : process.env.ORBIT_CORE_E2E
       ? coreFiles
@@ -42,6 +44,7 @@ export default defineConfig({
                 ...(process.env.ORBIT_UI_E2E
                   ? []
                   : ['**/bootstrap-ui.spec.ts']),
+                ...(process.env.ORBIT_HOMEPAGE_E2E ? [] : ['**/homepage-built.spec.ts']),
                 '**/signup.spec.ts',
                 '**/raiding.spec.ts',
                 '**/missions.spec.ts',
