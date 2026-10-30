@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-10-30",
+  "tool": "OpenAI built-in image_gen",
+  "provenance": "Original AI-generated shared abandoned-planet artwork for Orbit Imperium.",
+  "assets": [
+    {
+      "key": "planet-abandoned",
+      "master": "masters/planet-abandoned.png",
+      "sizes": [
+        96,
+        320,
+        640,
+        1200
+      ],
+      "crop": "Complete centered sphere on transparent alpha; shared by every abandoned planet. Delivery adds the standard 6% transparent inset."
+    }
+  ],
+  "prompt": "Use case: stylized-concept. Asset type: one reusable astronomical-atlas planet illustration for the dark navy galaxy map of the space strategy game Orbit Imperium, legible as a 40px thumbnail and as a larger image. Primary request: an abandoned planet, a desolate intact rocky world with dusty ash-gray continents, muted rust-brown scars, dry basins and faint traces of long-abandoned settlements. Style: premium realistic planetary render, finely textured but strong simple spherical silhouette. Composition: one complete centered sphere, square canvas, small transparent margin, no rings or surrounding objects. Lighting: upper-right cool neutral key light, readable stone-gray lit hemisphere, deep navy lower-left shadows, restrained pale rim. Mood: silent, deserted, exhausted; no active lights, no fiery explosion. Background: genuinely transparent alpha outside the sphere. No text, labels, UI, logos, stars, moons, ships, or watermarks."
+}

@@ -62,7 +62,7 @@ pub(super) async fn add(
         .as_ref()
         .ok_or("world has no topology")?;
     let occupied: Vec<(i32, i32, i32)> = sqlx::query_as(
-        "SELECT galaxy,system,position FROM bodies WHERE universe=$1 AND kind='Planet'",
+        "SELECT galaxy,system,position FROM bodies WHERE universe=$1 AND kind='Planet' UNION SELECT (data->'coordinates'->>'galaxy')::integer,(data->'coordinates'->>'system')::integer,(data->'coordinates'->>'position')::integer FROM planet_abandonments WHERE universe=$1 AND NOT (data->>'released')::boolean",
     )
     .bind(i.universe.0)
     .fetch_all(&mut **tx)

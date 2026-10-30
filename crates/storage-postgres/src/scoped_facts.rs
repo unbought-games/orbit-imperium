@@ -125,6 +125,7 @@ pub(crate) async fn select_query(
     let mut selected = Selection::default();
     selected.owners.insert(b.player);
     match query {
+        WorldQueryKind::AbandonmentQuote { .. } => {}
         WorldQueryKind::Galaxy { galaxy, system } => {
             let dimensions = rules
                 .artifact

@@ -846,8 +846,10 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 return Err(invariant("uncovered construction"));
             }
             let original = s.constructions.get(operation).ok_or(GameError::NotFound)?;
-            let b = owned(s, original.body, i, r)?;
             let cancel = matches!(i.payload, Input::Command(_));
+            if cancel {
+                owned(s, original.body, i, r)?;
+            }
             if let Input::Event(ScheduledEvent::ConstructionDue { generation, .. }) = i.payload
                 && (generation != original.generation
                     || original.status != ConstructionStatus::Active)
@@ -857,6 +859,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if original.status != ConstructionStatus::Active {
                 return Err(GameError::OperationNotActive.into());
             }
+            let b = owned(s, original.body, i, r)?;
             if (cancel && i.at >= original.due_at) || (!cancel && i.at != original.due_at) {
                 return Err(invariant("construction ordering mismatch"));
             }
@@ -971,8 +974,10 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 .research_operations
                 .get(operation)
                 .ok_or(GameError::NotFound)?;
-            let b = owned(s, original.host, i, r)?;
             let cancel = matches!(i.payload, Input::Command(_));
+            if cancel {
+                owned(s, original.host, i, r)?;
+            }
             if let Input::Event(ScheduledEvent::ResearchDue { generation, .. }) = i.payload
                 && (generation != original.generation || original.status != ResearchStatus::Active)
             {
@@ -981,6 +986,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if original.status != ResearchStatus::Active {
                 return Err(GameError::OperationNotActive.into());
             }
+            let b = owned(s, original.host, i, r)?;
             if (cancel && i.at >= original.commitment.due_at)
                 || (!cancel && i.at != original.commitment.due_at)
             {
@@ -1112,13 +1118,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 .manufacturing_batches
                 .get(operation)
                 .ok_or_else(|| invariant("missing paid batch"))?;
-            let b = owned(s, original.body, i, r)?;
             if original.status != ManufacturingStatus::Active
                 || original.generation != *generation
                 || original.completed_prefix != *expected_prefix
             {
                 return Ok(c);
             }
+            let b = owned(s, original.body, i, r)?;
             if i.at != original.next_due_at
                 || s.manufacturing_batches.values().any(|x| {
                     x.body == b.id

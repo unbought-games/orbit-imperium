@@ -694,3 +694,212 @@ async fn activated_legacy_world_audits_colonies_and_admits_without_reusing_their
     );
     store.audit_universe(universe).await.unwrap();
 }
+
+async fn submit_local(
+    store: &PgStore,
+    b: Binding,
+    body: BodyId,
+    command: Command,
+) -> ForegroundAction {
+    let id = CommandId(Uuid::new_v4());
+    let pair = ForegroundAction {
+        presence: CommandEnvelopeV4 {
+            protocol: 4,
+            binding: b,
+            command_id: CommandId(Uuid::new_v4()),
+            command: CommandDto3::Progression(Command::World {
+                action: WorldAction::RecordForegroundPresence {
+                    body: Some(body),
+                    cause: PresenceCause::GameplayGesture,
+                    paired_command_id: Some(id),
+                },
+            }),
+        },
+        gameplay: CommandEnvelopeV4 {
+            protocol: 4,
+            binding: b,
+            command_id: id,
+            command: CommandDto3::Progression(command),
+        },
+    };
+    store.bound_admit4(pair.clone()).await.unwrap();
+    let game = GameService::new(store.clone());
+    for _ in 0..2 {
+        game.step_scoped(b.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
+            .await
+            .unwrap();
+    }
+    let receipt = store.bound_receipt(b, id).await.unwrap();
+    assert!(
+        matches!(receipt.status, ReceiptStatus::Committed { .. }),
+        "{receipt:?}"
+    );
+    pair
+}
+#[tokio::test]
+async fn colony_abandonment_persists_losses_cancels_work_and_releases_slot_after_restart() {
+    let (store, pool, b, other) = setup().await;
+    let home = equip(&store, &pool, b).await;
+    let coords = empty(&store, b).await;
+    let fleet = launch(&store, b, home, coords, 1).await;
+    store.set_test_time(fleet.due_at).await.unwrap();
+    let (claim, _, result) = due(&store, b.universe).await;
+    let id = if let TransitionResult::Applied(c) = &result {
+        c.bodies[0].id
+    } else {
+        panic!()
+    };
+    store.commit_scoped(&claim, result).await.unwrap();
+    let (facts, _) = store.bound_world(b).await.unwrap().facts;
+    let q = quote(
+        &facts.state,
+        Actor::Player(b.player),
+        &QuoteRequest::Upgrade {
+            body: id,
+            building: Building::MetalMine,
+        },
+        facts.at,
+        &facts.rules,
+    )
+    .unwrap();
+    submit_local(
+        &store,
+        b,
+        id,
+        Command::StartUpgrade {
+            body: id,
+            building: Building::MetalMine,
+            expected_terms_hash: q.terms_hash,
+        },
+    )
+    .await;
+    let (facts, _) = store.bound_world(b).await.unwrap().facts;
+    let before_home = facts.state.bodies[&home].checkpoint.clone();
+    let research = facts.state.research[&b.player].clone();
+    let q = quote_abandonment(&facts.state, b.player, id, facts.at, &facts.rules).unwrap();
+    assert!(q.blockers.is_empty());
+    assert_eq!(q.losses[0].construction.len(), 1);
+    let pair = submit_local(
+        &store,
+        b,
+        id,
+        Command::World {
+            action: WorldAction::AbandonPlanet {
+                body: id,
+                expected_terms_hash: q.terms_hash,
+            },
+        },
+    )
+    .await;
+    assert!(matches!(
+        store.bound_admit4(pair).await.unwrap().status,
+        ReceiptStatus::Committed { .. }
+    ));
+    let url = std::env::var("TEST_DATABASE_URL").unwrap();
+    let reopened = PgStore::connect(&url).await.unwrap();
+    let (after, _) = reopened.bound_world(b).await.unwrap().facts;
+    assert!(!after.state.bodies.contains_key(&id));
+    assert_eq!(after.state.bodies[&home].checkpoint, before_home);
+    assert_eq!(after.state.research[&b.player], research);
+    let t = &after.state.world.as_ref().unwrap().records.abandonments[&id];
+    assert!(!t.released);
+    assert_eq!(t.release_at, q.release_at);
+    let statuses: Vec<String> =
+        sqlx::query_scalar("SELECT status FROM constructions WHERE body=$1")
+            .bind(id.0)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(statuses, vec!["BodyAbandoned"]);
+    let report: serde_json::Value = sqlx::query_scalar(
+        "SELECT data FROM mission_reports WHERE universe=$1 AND kind='PlanetAbandoned'",
+    )
+    .bind(b.universe.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        report["payloads"][b.player.to_string()]["abandonment"]["body"],
+        id.to_string()
+    );
+    let (galaxy, _) = reopened
+        .bound_world_query(
+            other,
+            WorldQueryKind::Galaxy {
+                galaxy: coords.galaxy,
+                system: coords.system,
+            },
+        )
+        .await
+        .unwrap()
+        .facts;
+    let system = galaxy_system(
+        &galaxy.state,
+        other.player,
+        coords.galaxy,
+        coords.system,
+        galaxy.at,
+        &galaxy.rules,
+    )
+    .unwrap();
+    let position = system
+        .positions
+        .iter()
+        .find(|x| x.coordinates == coords)
+        .unwrap();
+    assert!(position.body.is_none());
+    assert_eq!(position.abandoned_until, Some(q.release_at));
+    assert_eq!(
+        resolve_destination(
+            &galaxy.state,
+            DestinationSelection::EmptyPositionAt {
+                coordinates: coords
+            },
+            &galaxy.rules
+        ),
+        Err(GameError::PositionOccupied)
+    );
+    // Operator-created players must also respect the temporary occupied slot.
+    let patch: WorldScenario = serde_json::from_value(serde_json::json!({"version":1,"edits":[{"op":"add-bot","user":"abandoned-slot-probe","planet":format!("{}:{}:{}",coords.galaxy,coords.system,coords.position)}]})).unwrap();
+    let error = reopened
+        .apply_world_scenario(b.universe, &patch, ScenarioMode::Patch, Uuid::new_v4())
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("occupied"), "{error}");
+    reopened.set_test_time(q.release_at).await.unwrap();
+    let (claim, _, result) = due(&reopened, b.universe).await;
+    assert!(
+        matches!(claim.input.payload,Input::Event(ScheduledEvent::AbandonedSlotDue{body,..}) if body==id)
+    );
+    reopened.commit_scoped(&claim, result).await.unwrap();
+    let (released, _) = reopened
+        .bound_world_query(
+            b,
+            WorldQueryKind::ResolveDestination {
+                selection: DestinationSelection::EmptyPositionAt {
+                    coordinates: coords,
+                },
+            },
+        )
+        .await
+        .unwrap()
+        .facts;
+    assert!(
+        resolve_destination(
+            &released.state,
+            DestinationSelection::EmptyPositionAt {
+                coordinates: coords
+            },
+            &released.rules
+        )
+        .is_ok()
+    );
+    // A fresh colony at the released coordinates gets a new identity.
+    let replacement = launch(&reopened, b, home, coords, 1).await;
+    reopened.set_test_time(replacement.due_at).await.unwrap();
+    let (claim, _, result) = due(&reopened, b.universe).await;
+    if let TransitionResult::Applied(c) = &result {
+        assert_ne!(c.bodies[0].id, id);
+    }
+    reopened.commit_scoped(&claim, result).await.unwrap();
+}

@@ -470,9 +470,31 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
             });
         }
     }
+    let abandonments: Vec<Abandonment> = sqlx::query_scalar("SELECT data FROM planet_abandonments WHERE universe=$1 AND ($2 OR data->>'owner'=ANY($3) OR data->'coordinates'=ANY($4)) ORDER BY id")
+        .bind(u.0).bind(selected.all).bind(&owner_strings).bind(&coordinate_values)
+        .fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?;
+    for slot in &mut planet_slots {
+        if let Some(t) = abandonments
+            .iter()
+            .find(|t| t.coordinates == slot.coordinates && !t.released)
+        {
+            if slot.occupant.is_some() {
+                return Err(StoreError::CorruptData);
+            }
+            slot.occupant = Some(t.body);
+        }
+    }
+    let mut homeworlds = BTreeMap::new();
+    for owner in &owners {
+        if let Some((id, _)) = crate::bootstrap::viewer_homeworld(tx, u, PlayerId(*owner)).await? {
+            homeworlds.insert(PlayerId(*owner), id);
+        }
+    }
     s.world = Some(WorldFacts {
+        homeworlds,
         planet_slots,
         records: WorldRecords {
+            abandonments: abandonments.into_iter().map(|t| (t.body, t)).collect(),
             missiles: missiles.into_iter().map(|f| (f.id, f)).collect(),
             colonies: colonies.into_iter().map(|c| (c.body, c)).collect(),
             policies: policies.into_iter().map(|x| (x.player, x)).collect(),
@@ -575,6 +597,54 @@ pub(crate) async fn save(
 ) -> Result<(), StoreError> {
     let old = &s.world.as_ref().ok_or(StoreError::CorruptData)?.records;
     let u = i.universe;
+    for (id, t) in &c.records.abandonments {
+        if old.abandonments.get(id) == Some(t) {
+            continue;
+        }
+        if !old.abandonments.contains_key(id) {
+            for loss in &t.losses {
+                // Jobs were terminalized by the engine. Preserve their history,
+                // and explicitly remove resident assets inside this transaction.
+                for table in [
+                    "inventories",
+                    "building_levels",
+                    "production_settings",
+                    "legacy_body_capacities",
+                ] {
+                    sqlx::query(&format!("DELETE FROM {table} WHERE body=$1"))
+                        .bind(loss.id.0)
+                        .execute(&mut **tx)
+                        .await
+                        .map_err(db_error)?;
+                }
+                sqlx::query("DELETE FROM body_activity WHERE id=$1")
+                    .bind(loss.id.0)
+                    .execute(&mut **tx)
+                    .await
+                    .map_err(db_error)?;
+                sqlx::query("DELETE FROM colony_genesis WHERE id=$1")
+                    .bind(loss.id.0)
+                    .execute(&mut **tx)
+                    .await
+                    .map_err(db_error)?;
+                let count =
+                    sqlx::query("DELETE FROM bodies WHERE universe=$1 AND id=$2 AND owner=$3")
+                        .bind(u.0)
+                        .bind(loss.id.0)
+                        .bind(t.owner.0)
+                        .execute(&mut **tx)
+                        .await
+                        .map_err(db_error)?;
+                if count.rows_affected() != 1 {
+                    return Err(StoreError::Conflict);
+                }
+            }
+            sqlx::query("UPDATE collection_heads SET revision=revision+1 WHERE universe=$1 AND kind='owned-bodies' AND key=$2").bind(u.0).bind(t.owner.0).execute(&mut **tx).await.map_err(db_error)?;
+        }
+        put(tx, u, "planet_abandonments", id.0, t).await?;
+        sqlx::query("INSERT INTO planet_slot_revisions VALUES($1,$2,$3,$4,2) ON CONFLICT(universe,galaxy,system,position) DO UPDATE SET revision=planet_slot_revisions.revision+1")
+            .bind(u.0).bind(t.coordinates.galaxy as i32).bind(t.coordinates.system as i32).bind(t.coordinates.position as i32).execute(&mut **tx).await.map_err(db_error)?;
+    }
     for (id, genesis) in &c.records.colonies {
         if !old.colonies.contains_key(id) {
             sqlx::query("INSERT INTO colony_genesis(universe,id,data) VALUES($1,$2,$3)")

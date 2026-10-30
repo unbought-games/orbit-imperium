@@ -6,7 +6,12 @@ export function coordinateMissions(
   view: BoundView,
   at: Coordinates,
   kind: LocationKind,
-  known?: { owner?: string; empty?: boolean; debris?: boolean },
+  known?: {
+    owner?: string
+    empty?: boolean
+    abandoned?: boolean
+    debris?: boolean
+  },
 ) {
   if (view.protocol !== 4) return []
   const own = view.bodies.find(
@@ -18,13 +23,15 @@ export function coordinateMissions(
   )
   const owner = own ? view.binding.player : known?.owner
   const missions: LocationMission[] =
-    kind === 'debris'
-      ? ['Harvest']
-      : owner === view.binding.player
-        ? ['Transport', 'Deploy']
-        : known?.empty && kind === 'planet'
-          ? ['Colonize']
-          : ['Attack', 'Espionage', 'Transport']
+    known?.abandoned && kind !== 'debris'
+      ? []
+      : kind === 'debris'
+        ? ['Harvest']
+        : owner === view.binding.player
+          ? ['Transport', 'Deploy']
+          : known?.empty && kind === 'planet'
+            ? ['Colonize']
+            : ['Attack', 'Espionage', 'Transport']
   if (known?.debris && kind !== 'debris') missions.push('Harvest')
   return missions.filter((m) =>
     view.capabilities.some((c) => c.capability === m && c.enabled),

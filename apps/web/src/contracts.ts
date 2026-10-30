@@ -6200,6 +6200,12 @@ export interface components {
             body: string;
             item: components["schemas"]["MissileId"];
             count: components["schemas"]["PositiveDecimal"];
+        } | {
+            /** @constant */
+            type: "AbandonPlanet";
+            /** Format: uuid */
+            body: string;
+            expected_terms_hash: string;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -6228,7 +6234,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -6463,6 +6469,7 @@ export interface components {
             coordinates: components["schemas"]["Coordinates"];
             body: components["schemas"]["PublicBody4"] | null;
             debris: components["schemas"]["PublicDebris4"] | null;
+            abandoned_until?: number;
         };
         GalaxySystem4: {
             galaxy: number;
@@ -6492,6 +6499,11 @@ export interface components {
             /** @constant */
             type: "FleetEstimate";
             intent: components["schemas"]["FleetIntent4"];
+        } | {
+            /** @constant */
+            type: "AbandonmentQuote";
+            /** Format: uuid */
+            body: string;
         };
         WorldQuery4: {
             /** @constant */
@@ -6519,6 +6531,12 @@ export interface components {
             type: "FleetEstimate";
             intent: components["schemas"]["FleetIntent4"];
             context: components["schemas"]["QueryContext"];
+        } | {
+            context: components["schemas"]["QueryContext"];
+            /** @constant */
+            type: "AbandonmentQuote";
+            /** Format: uuid */
+            body: string;
         };
         BoundWorld4: {
             /** @constant */
@@ -6529,7 +6547,7 @@ export interface components {
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;
-            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"];
+            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"] | components["schemas"]["AbandonmentQuote4"];
             progress?: components["schemas"]["SnapshotProgress"];
         };
         ReportHeader4: {
@@ -6784,7 +6802,7 @@ export interface components {
             own_lost_ships: components["schemas"]["PublicShip4"][];
             own_cargo_loss: components["schemas"]["Resources"];
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -7150,6 +7168,11 @@ export interface components {
             destroyed?: {
                 [key: string]: components["schemas"]["Decimal"];
             };
+        } | {
+            /** @constant */
+            kind: "PlanetAbandoned";
+            coordinates: components["schemas"]["Coordinates"];
+            release_at: number;
         };
         RankingPlayer: {
             /** Format: uuid */
@@ -7881,6 +7904,57 @@ export interface components {
             maximum_payload: components["schemas"]["Decimal"];
             /** @constant */
             estimate: true;
+        };
+        AbandonedWork4: {
+            /** Format: uuid */
+            id: string;
+            item: string;
+            quantity: components["schemas"]["Decimal"];
+            paid: components["schemas"]["Resources"];
+        };
+        AbandonmentLoss4: {
+            /** Format: uuid */
+            id: string;
+            name: string | null;
+            /** @enum {unknown} */
+            kind: "Planet" | "Moon";
+            coordinates: components["schemas"]["Coordinates"];
+            resources: components["schemas"]["Resources"];
+            buildings: {
+                [key: string]: number;
+            };
+            inventory: {
+                item: components["schemas"]["ItemKey3"];
+                count: components["schemas"]["Decimal"];
+            }[];
+            construction: components["schemas"]["AbandonedWork4"][];
+            manufacturing: components["schemas"]["AbandonedWork4"][];
+        };
+        AbandonmentQuote4: {
+            /** Format: uuid */
+            body: string;
+            terms_hash: string;
+            release_at: number;
+            blockers: string[];
+            losses: components["schemas"]["AbandonmentLoss4"][];
+        };
+        Abandonment4: {
+            /** Format: uuid */
+            body: string;
+            /** Format: uuid */
+            owner: string;
+            coordinates: components["schemas"]["Coordinates"];
+            removed_at: number;
+            release_at: number;
+            released: boolean;
+            /** Format: uuid */
+            input: string;
+            losses: components["schemas"]["AbandonmentLoss4"][];
+        };
+        PlanetAbandonedPayload4: {
+            /** @constant */
+            kind: "PlanetAbandoned";
+            abandonment: components["schemas"]["Abandonment4"];
         };
     };
     responses: never;

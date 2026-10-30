@@ -138,6 +138,7 @@ pub struct WorldQuery {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldQueryKind {
+    AbandonmentQuote { body: BodyId },
     MissileQuote { intent: MissileIntent },
     Galaxy { galaxy: u32, system: u32 },
     ResolveDestination { selection: DestinationSelection },
@@ -274,6 +275,10 @@ impl<S: GameStore> GameService<S> {
             ),
             WorldQueryKind::FleetEstimate { intent } => serde_json::to_value(
                 estimate_fleet(&facts.state, p.player, &intent, &facts.rules)
+                    .map_err(ServiceError::GameRejected)?,
+            ),
+            WorldQueryKind::AbandonmentQuote { body } => serde_json::to_value(
+                quote_abandonment(&facts.state, p.player, body, facts.at, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
             ),
             WorldQueryKind::MissileQuote { intent } => serde_json::to_value(

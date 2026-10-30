@@ -122,6 +122,10 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    AbandonPlanet {
+        body: BodyId,
+        expected_terms_hash: Hash,
+    },
     LaunchMissiles {
         intent: MissileIntent,
         expected_terms_hash: Hash,
@@ -203,6 +207,8 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub abandonments: BTreeMap<BodyId, Abandonment>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub missiles: BTreeMap<OperationId, MissileFlight>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub colonies: BTreeMap<BodyId, ColonyGenesis>,
@@ -217,6 +223,8 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub homeworlds: BTreeMap<PlayerId, BodyId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub planet_slots: Vec<PlanetSlot>,
     pub records: WorldRecords,

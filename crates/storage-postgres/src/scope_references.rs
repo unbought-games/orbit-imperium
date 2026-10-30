@@ -111,6 +111,11 @@ pub(crate) async fn load(
     let mut field = None;
     match input {
         Input::Command(Command::World {
+            action: WorldAction::AbandonPlanet { body, .. },
+        }) => {
+            bodies.insert(body.0);
+        }
+        Input::Command(Command::World {
             action: WorldAction::LaunchMissiles { intent, .. },
         }) => {
             bodies.extend([intent.origin.0, intent.target.id.0]);
