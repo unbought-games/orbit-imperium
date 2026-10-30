@@ -1,3 +1,4 @@
+import { productionFixture } from '../src/test-support/production'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test, type Page } from './fixtures/test'
@@ -338,8 +339,9 @@ for (const width of [320, 390, 1440]) {
     await page
       .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
       .click()
-    await expect(current).toContainText('22 / h')
-    await expect(target).toContainText('48 / h')
+    // Planet totals include the 15/h base production in the complete snapshot.
+    await expect(current).toContainText('37 / h')
+    await expect(target).toContainText('63 / h')
     const teardown = pane.getByRole('button', { name: 'Demolish Crystal Mine' })
     expect((await teardown.boundingBox())!.y).toBeGreaterThanOrEqual(
       (await target
@@ -398,6 +400,8 @@ async function quickBuildFixture(page: Page) {
   let queries = 0
   await installGameFixture(page, {
     bodies: planets,
+    // Balance changes in these tests are explicit, including one-micro-unit shortages.
+    production: planets.map(planet => ({ ...productionFixture(planet), gross_per_hour: { metal: '0', crystal: '0', deuterium: '0' } })),
     constructions,
     viewerRevision: () => String(revision),
     sampledAt: now,

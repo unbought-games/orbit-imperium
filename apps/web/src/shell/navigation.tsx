@@ -5,6 +5,7 @@ import {
   Blocks,
   Radar,
   Telescope,
+  Swords,
   Menu,
   Mail,
   X,
@@ -219,6 +220,7 @@ export function Navigation({
           {destination('galaxy', 'Galaxy', Telescope, true)}
           {destination('fleets', 'Fleets', Radar, true)}
           {destination('reports', 'Reports', Mail)}
+          {destination('combat-simulator', 'Combat Simulator', Swords)}
           <h2 className={styles.sidebarLabel}>Community</h2>
           {destination('alliance')}
           {destination('messages')}

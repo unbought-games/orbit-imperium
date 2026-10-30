@@ -13,6 +13,7 @@ export type Page =
   | 'fleets'
   | 'dispatch'
   | 'reports'
+  | 'combat-simulator'
   | 'galaxy'
   | 'high-scores'
   | 'alliance'
@@ -77,6 +78,8 @@ export function resolveDestination(
     return unavailable(
       'Planet unavailable. This address does not identify a planet you can access.',
     )
+  if (page === 'combat-simulator' && view.protocol !== 4)
+    return unavailable('Combat Simulator is unavailable in this universe.')
   if (page === 'alliance' && view.protocol !== 4)
     return unavailable('Alliances are unavailable in this universe.')
   if (page === 'messages' && view.protocol !== 4)
@@ -85,11 +88,7 @@ export function resolveDestination(
     return unavailable('High Scores are unavailable in this universe.')
   if (page === 'facilities' && view.protocol === 2)
     return unavailable('This destination requires supported facilities.')
-  if (
-    page === 'resource-settings' &&
-    (view.protocol === 2 ||
-      !view.progression.production.some((entry) => entry.body === body))
-  )
+  if (page === 'resource-settings' && view.protocol === 2)
     return unavailable('Resource settings are unavailable for this planet.')
   const capability =
     page === 'galaxy'
@@ -131,6 +130,7 @@ export function resolveDestination(
   if (
     !body &&
     page !== 'settings' &&
+    page !== 'combat-simulator' &&
     page !== 'high-scores' &&
     page !== 'alliance' &&
     page !== 'messages'

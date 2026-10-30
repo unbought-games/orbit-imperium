@@ -30,9 +30,8 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await metalDetails.click()
   const metalTooltip = page.getByRole('dialog', { name: 'Metal', exact: true })
   const metalIcons = metalTooltip.locator('svg[data-resource="metal"]')
-  // This report fixture has balances and capacity, but no production data.
-  await expect(metalTooltip).toContainText('Flow unavailable')
-  await expect(metalIcons).toHaveCount(2)
+  await expect(metalTooltip).toContainText('Production +63 / hour')
+  await expect(metalIcons).toHaveCount(3)
   for (const icon of await metalIcons.all()) {
     await expect(icon).toHaveCSS('color', 'rgb(203, 182, 141)')
   }

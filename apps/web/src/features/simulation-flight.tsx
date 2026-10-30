@@ -69,7 +69,7 @@ export function SimulationFlight({
       <p>
         Origin:{' '}
         {body ? `${bodyName(body)} ${coordinates(body)}` : 'No planet selected'}
-        . Flight estimates use your current research and stationed ships.
+        .
       </p>
       <label>
         Flight speed{' '}
@@ -107,10 +107,6 @@ export function SimulationFlight({
       >
         Prepare attack
       </Button>
-      <p>
-        Opens an editable Dispatch draft. Review checks the target, protection,
-        fuel and fleet slots before you can launch.
-      </p>
     </section>
   )
 }

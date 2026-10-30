@@ -1899,7 +1899,7 @@ for (const width of [320, 390, 768, 1440]) {
     })
     const nav = page.getByRole('navigation', { name: 'Main navigation' })
     await expect(nav.getByRole('link')).toHaveText(width >= 1024
-      ? ['Empire', 'Develop', 'Resources', 'Facilities', 'Research', 'Shipyard', 'Defense', 'Galaxy', 'Fleets', 'Reports', 'Alliance', 'Messages', 'High Scores']
+      ? ['Empire', 'Develop', 'Resources', 'Facilities', 'Research', 'Shipyard', 'Defense', 'Galaxy', 'Fleets', 'Reports', 'Combat Simulator', 'Alliance', 'Messages', 'High Scores']
       : ['Empire', 'Develop', 'Galaxy', 'Fleets'])
     const galaxy = nav.getByRole('link', { name: 'Galaxy', exact: true })
     const fleets = nav.getByRole('link', { name: 'Fleets', exact: true })

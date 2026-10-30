@@ -1,4 +1,11 @@
-# Espionage report combat simulation
+# Combat simulation
+
+**Combat Simulator** is available from Fleet & intelligence navigation for every
+protocol-4 player, including players with no espionage reports. This standalone
+setup uses the same editable form and simulation endpoint. Defender forces and
+technology start unknown; only explicit player assumptions become inputs. No
+target, observation time or resource intel is fabricated. It has no attack draft
+without an observed target.
 
 An explicit **Simulate combat** action opens an editable draft from the player's
 report-visible espionage snapshot. Forces and combat technology retain their
@@ -39,6 +46,12 @@ not profit or a guarantee. Resource values retain exact micro-unit arithmetic an
 are displayed with canonical resource icons, rounded down to whole units. Scope
 changes or input edits invalidate results. Large actual fleets can be explored only by explicitly editing the scenario, not by quietly
 scaling down a report.
+
+Results precede report-based attack planning, with Prepare attack as the final
+action. Outcome counts are separated into responsive cards; detailed simulation,
+loot and Dispatch assumptions are available in optional help. Report time/age,
+unknown-resource status, stale inventory and server eligibility errors remain
+visible where relevant. Authoritative Dispatch review remains required.
 
 ## Community simulator investigation
 

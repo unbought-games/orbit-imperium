@@ -2,6 +2,7 @@ import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { binding, body, shellFixture } from './fixtures/game'
+import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 import { createServer } from 'node:http'
 
@@ -204,6 +205,7 @@ test('login and signup preserve the requested game destination', async ({
   )
     throw Error('fixture')
   payload.result.game.snapshot.view.bodies = [body]
+  if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
   await page.route('**/api/v1/session?bootstrap=true', (route) =>
     route.fulfill({ json: payload }),
   )
@@ -493,6 +495,7 @@ for (const signup of [false, true]) {
       throw Error('fixture')
     const snapshot = payload.result.game.snapshot
     snapshot.view.bodies = [body]
+    if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
     let signedIn = false,
       logins = 0,
       bootstrapReads = 0
@@ -592,6 +595,7 @@ test('a populated HTML payload renders without a bootstrap request', async ({
   )
     throw Error('fixture')
   payload.result.game.snapshot.view.bodies = [body]
+  if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() !== 'document') return route.fallback()
     const response = await route.fetch()
@@ -635,6 +639,7 @@ for (const restoreDuringSubmit of [false, true]) {
       throw Error('fixture')
     const snapshot = payload.result.game.snapshot
     snapshot.view.bodies = [body]
+    if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
     let release!: () => void
     const pending = new Promise<void>((resolve) => {
       release = resolve
@@ -1074,6 +1079,7 @@ test('mobile startup automatically recovers from a transient restart without sig
   if (payload.result.status !== 'authenticated' || payload.result.game.status !== 'ready') throw Error('fixture')
   const snapshot = payload.result.game.snapshot
   snapshot.view.bodies = [body]
+  if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
   const preparing = structuredClone(payload)
   if (preparing.result.status !== 'authenticated') throw Error('fixture')
   preparing.result.game = { status: 'unavailable', code: 'Unavailable' }

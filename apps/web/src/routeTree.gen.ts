@@ -17,6 +17,7 @@ import { Route as UUniverseRouteImport } from './routes/u.$universe'
 import { Route as UUniverseIndexRouteImport } from './routes/u.$universe.index'
 import { Route as UUniverseSplatRouteImport } from './routes/u.$universe.$'
 import { Route as UUniverseAllianceRouteImport } from './routes/u.$universe.alliance'
+import { Route as UUniverseCombatSimulatorRouteImport } from './routes/u.$universe.combat-simulator'
 import { Route as UUniverseDispatchRouteImport } from './routes/u.$universe.dispatch'
 import { Route as UUniverseFleetsRouteImport } from './routes/u.$universe.fleets'
 import { Route as UUniverseGalaxyRouteImport } from './routes/u.$universe.galaxy'
@@ -92,6 +93,12 @@ const UUniverseAllianceRoute = UUniverseAllianceRouteImport.update({
   path: '/alliance',
   getParentRoute: () => UUniverseRoute,
 } as any)
+const UUniverseCombatSimulatorRoute =
+  UUniverseCombatSimulatorRouteImport.update({
+    id: '/combat-simulator',
+    path: '/combat-simulator',
+    getParentRoute: () => UUniverseRoute,
+  } as any)
 const UUniverseDispatchRoute = UUniverseDispatchRouteImport.update({
   id: '/dispatch',
   path: '/dispatch',
@@ -283,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
+  '/u/$universe/combat-simulator': typeof UUniverseCombatSimulatorRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
@@ -326,6 +334,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
+  '/u/$universe/combat-simulator': typeof UUniverseCombatSimulatorRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
   '/u/$universe/high-scores': typeof UUniverseHighScoresRoute
@@ -367,6 +376,7 @@ export interface FileRoutesById {
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
+  '/u/$universe/combat-simulator': typeof UUniverseCombatSimulatorRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/u/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
+    | '/u/$universe/combat-simulator'
     | '/u/$universe/dispatch'
     | '/u/$universe/fleets'
     | '/u/$universe/galaxy'
@@ -456,6 +467,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
+    | '/u/$universe/combat-simulator'
     | '/u/$universe/dispatch'
     | '/u/$universe/galaxy'
     | '/u/$universe/high-scores'
@@ -496,6 +508,7 @@ export interface FileRouteTypes {
     | '/u/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
+    | '/u/$universe/combat-simulator'
     | '/u/$universe/dispatch'
     | '/u/$universe/fleets'
     | '/u/$universe/galaxy'
@@ -597,6 +610,13 @@ declare module '@tanstack/react-router' {
       path: '/alliance'
       fullPath: '/u/$universe/alliance'
       preLoaderRoute: typeof UUniverseAllianceRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/combat-simulator': {
+      id: '/u/$universe/combat-simulator'
+      path: '/combat-simulator'
+      fullPath: '/u/$universe/combat-simulator'
+      preLoaderRoute: typeof UUniverseCombatSimulatorRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/dispatch': {
@@ -967,6 +987,7 @@ const UUniverseBBodyShipyardRouteWithChildren =
 interface UUniverseRouteChildren {
   UUniverseSplatRoute: typeof UUniverseSplatRoute
   UUniverseAllianceRoute: typeof UUniverseAllianceRoute
+  UUniverseCombatSimulatorRoute: typeof UUniverseCombatSimulatorRoute
   UUniverseDispatchRoute: typeof UUniverseDispatchRoute
   UUniverseFleetsRoute: typeof UUniverseFleetsRouteWithChildren
   UUniverseGalaxyRoute: typeof UUniverseGalaxyRoute
@@ -994,6 +1015,7 @@ interface UUniverseRouteChildren {
 const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseSplatRoute: UUniverseSplatRoute,
   UUniverseAllianceRoute: UUniverseAllianceRoute,
+  UUniverseCombatSimulatorRoute: UUniverseCombatSimulatorRoute,
   UUniverseDispatchRoute: UUniverseDispatchRoute,
   UUniverseFleetsRoute: UUniverseFleetsRouteWithChildren,
   UUniverseGalaxyRoute: UUniverseGalaxyRoute,
