@@ -1,5 +1,5 @@
 import { BodyIllustration } from './body-illustration'
-import { playerLabel } from './player-label'
+import { PlayerName } from './player-name'
 import {
   LocationSummary,
   LocationSummaryMedia,
@@ -133,7 +133,7 @@ export function Dispatch({
                   </LocationSummaryTitle>
                   <LocationSummaryDescription>
                     {body.kind} ·{' '}
-                    {playerLabel(view.binding.player, view.player_names)}
+                    <PlayerName player={view.binding.player} fallback="You" />
                   </LocationSummaryDescription>
                   <LocationSummaryCoordinates>
                     <CoordinateLink

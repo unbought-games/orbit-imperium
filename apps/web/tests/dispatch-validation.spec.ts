@@ -1,7 +1,7 @@
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
-import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
+import { shellFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
 import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
@@ -21,7 +21,7 @@ test('destination focus glow is desktop only', async ({ page }) => {
   }
 })
 
-async function setup(page: Page) {
+async function setup(page: Page, options: { beforeNavigation?: () => Promise<void>; omitPlayerNames?: boolean } = {}) {
   const colony = {
     ...structuredClone(body),
     id: id(6),
@@ -51,7 +51,7 @@ async function setup(page: Page) {
     homeworldId: body.id,
     bodies,
     missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '5' },
-    playerNames: { [binding.player]: 'Commander' },
+    playerNames: options.omitPlayerNames ? undefined : { [binding.player]: 'Commander' },
     research: [{ research: 'Astrophysics', level: 8 }],
     extraCapabilities: capabilities,
     catalog: [
@@ -209,6 +209,8 @@ async function setup(page: Page) {
       },
     })
   })
+  await playerProfilesFixture(page, () => [{ player: binding.player, username: 'Commander' }])
+  await options.beforeNavigation?.()
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
   // Cold route compilation can share the host with other fixture workers.
   await expect(page.locator('main h1')).toHaveText('Dispatch', { timeout: 30000 })
@@ -2202,3 +2204,92 @@ for (const width of [390, 1440]) {
     }
   })
 }
+
+for (const width of [390, 1440]) {
+  test(`zero-padded Dispatch counts use canonical review and launch values at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const state = await setup(page)
+    const ships = page.getByLabel('Small Cargo · 2 available')
+    await ships.fill('01')
+    await page.getByLabel('Recycler · 1 available').fill('000')
+    await page.getByLabel('Metal', { exact: true }).fill('00042')
+    await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 40s')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-padded-counts-${width}x1000.png`, fullPage: width >= 768 })
+    if (width < 768) {
+      await ships.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-padded-ships-${width}x1000.png` })
+    }
+    const quoted = page.waitForRequest(request => request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')
+    await review(page).click()
+    const intent = (await quoted).postDataJSON().intent
+    expect(intent.ships).toEqual([{ owner: binding.player, ship_type: 'SmallCargo', count: '1' }])
+    expect(intent.cargo).toEqual({ metal: '42000000', crystal: '0', deuterium: '0' })
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
+    expect(state.launches).toBe(0)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-canonical-review-${width}x1000.png`, fullPage: width >= 768 })
+    const launched = page.waitForRequest(request => request.url().endsWith('/commands'))
+    await page.getByRole('button', { name: /^Transport to / }).click()
+    expect((await launched).postDataJSON().gameplay.command.intent).toEqual(intent)
+    await expect(dispatchResult(page)).toContainText('Beginner protection')
+    expect(state.launches).toBe(1)
+  })
+
+  test(`Dispatch origin follows authoritative self identity through loading refresh and navigation at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    let username = 'Captain Vega'
+    try {
+      await setup(page, { beforeNavigation: async () => {
+        await playerProfilesFixture(page, () => [{ player: binding.player, username }])
+        await page.route('**/player-profiles', async route => { await gate; await route.fallback() })
+      } })
+      const origin = page.getByRole('group', { name: 'Origin', exact: true })
+      // The bound-view map says Commander; self identity is still unresolved.
+      await expect(origin).toContainText('Planet · You')
+      await expect(origin).not.toContainText(binding.player.slice(0, 8))
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-identity-loading-${width}x1000.png`, fullPage: width >= 768 })
+      release()
+      await expect(origin).toContainText('Planet · Captain Vega')
+      username = 'Captain Nova'
+      await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+      await expect(origin).toContainText('Planet · Captain Nova')
+      await page.getByRole('link', { name: 'Empire', exact: true }).click()
+      await page.goBack()
+      await expect(origin).toContainText('Planet · Captain Nova')
+      await page.reload()
+      await expect(origin).toContainText('Planet · Captain Nova')
+      await expect(origin).not.toContainText('Commander')
+      await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-authoritative-identity-${width}x1000.png`, fullPage: width >= 768 })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    } finally { release() }
+  })
+}
+
+test('zero-padded oversized ship counts retain server range rejection', async ({ page }) => {
+  const state = await setup(page)
+  state.quoteError = 'NumericRange'
+  await page.getByLabel('Small Cargo · 2 available').fill('0018446744073709551616')
+  const quoted = page.waitForRequest(request => request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')
+  await review(page).click()
+  expect((await quoted).postDataJSON().intent.ships[0].count).toBe('18446744073709551616')
+  await expect(page.getByRole('alert')).toContainText('One of the entered amounts is too large')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.launches).toBe(0)
+})
+
+test('Dispatch keeps You in origin and review when self profiles and view names are unavailable', async ({ page }) => {
+  const state = await setup(page, { omitPlayerNames: true, beforeNavigation: async () => {
+    await playerProfilesFixture(page, () => null)
+  } })
+  await expect(page.getByRole('group', { name: 'Origin', exact: true })).toContainText('Planet · You')
+  await review(page).click()
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  await expect(quote.getByText('You', { exact: true })).toBeVisible()
+  await expect(quote).not.toContainText(`Player ${binding.player.slice(0, 8)}`)
+  expect(state.launches).toBe(0)
+})
