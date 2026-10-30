@@ -49,6 +49,9 @@ pub fn command_scopes(
     let mut scopes = BTreeSet::from([ScopeKey::Player(actor)]);
     match command {
         Command::World {
+            action: WorldAction::AbandonPlanet { body, .. },
+        } => location(*body, refs, &mut scopes),
+        Command::World {
             action: WorldAction::LaunchMissiles { intent, .. },
         } => {
             location(intent.origin, refs, &mut scopes);
@@ -108,6 +111,12 @@ pub fn event_scopes(
     refs: &ScopeReferences,
 ) -> Result<BTreeSet<ScopeKey>, InvariantError> {
     let scopes = match event {
+        ScheduledEvent::AbandonedSlotDue {
+            coordinates, owner, ..
+        } => Some(BTreeSet::from([
+            ScopeKey::Player(*owner),
+            ScopeKey::Location(*coordinates),
+        ])),
         ScheduledEvent::MissileImpact { flight, .. } => {
             refs.missiles.get(flight).map(|(a, b, c, d)| {
                 BTreeSet::from([

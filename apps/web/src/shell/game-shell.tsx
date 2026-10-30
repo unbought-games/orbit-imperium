@@ -84,6 +84,31 @@ function GameShellContent() {
   )
   const body = view.bodies.find((b) => b.id === route.body)
   const { page, available } = route
+  const requestedBody = params.body ?? search.body
+  const abandonment = useStore(model.store, (state) =>
+    [...state.attempts.values()].some((attempt) => {
+      const command = attempt.envelope.command
+      return (
+        attempt.status === 'committed' &&
+        command.type === 'World' &&
+        command.action.type === 'AbandonPlanet' &&
+        command.action.body === requestedBody
+      )
+    }),
+  )
+  useEffect(() => {
+    if (
+      abandonment &&
+      requestedBody &&
+      !view.bodies.some((b) => b.id === requestedBody)
+    ) {
+      const home = view.protocol === 4 ? view.homeworld_id : undefined
+      void navigate({
+        ...routeTarget(universeName, 'overview', home ?? view.bodies[0]?.id),
+        replace: true,
+      })
+    }
+  }, [abandonment, requestedBody, view, navigate, universeName])
   const heading = useRef<HTMLHeadingElement>(null)
   const previousPathname = useRef(location.pathname)
   // Default context is recorded once; later view changes must not silently select another planet.

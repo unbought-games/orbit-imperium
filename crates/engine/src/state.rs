@@ -45,6 +45,7 @@ pub struct PublicDestination {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstructionStatus {
+    BodyAbandoned,
     Active,
     Completed,
     Cancelled,
@@ -186,12 +187,43 @@ impl ChangeSet {
         {
             return Err(InvariantError("stale transition facts".into()));
         }
+        let previous_abandonments = state
+            .world
+            .as_ref()
+            .map(|w| w.records.abandonments.clone())
+            .unwrap_or_default();
         if let Some(w) = &self.world {
             state
                 .world
                 .as_mut()
                 .ok_or_else(|| InvariantError("missing R3 state".into()))?
                 .records = w.records.clone();
+        }
+        if let Some(w) = &self.world {
+            for abandoned in w.records.abandonments.values() {
+                if let Some(slot) = state.world.as_mut().and_then(|w| {
+                    w.planet_slots
+                        .iter_mut()
+                        .find(|slot| slot.coordinates == abandoned.coordinates)
+                }) {
+                    if previous_abandonments.get(&abandoned.body) != Some(abandoned) {
+                        slot.revision = slot
+                            .revision
+                            .checked_add(1)
+                            .ok_or_else(|| InvariantError("slot revision exhausted".into()))?;
+                    }
+                    if !abandoned.released {
+                        slot.occupant = Some(abandoned.body);
+                    } else if slot.occupant == Some(abandoned.body) {
+                        slot.occupant = None;
+                    }
+                }
+                for body in &abandoned.losses {
+                    state.bodies.remove(&body.id);
+                    state.inventories.retain(|x| x.body != body.id);
+                    state.production_settings.remove(&body.id);
+                }
+            }
         }
         for x in &self.production_settings {
             state.production_settings.insert(x.body, x.clone());

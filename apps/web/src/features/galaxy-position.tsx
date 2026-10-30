@@ -90,7 +90,7 @@ export function GalaxyPosition({
     <article
       className={classes(
         styles.positionCard,
-        !body && !debris && styles.empty,
+        !body && !position.abandoned_until && !debris && styles.empty,
         protectedTarget && styles.protected,
         allied && styles.allied,
       )}
@@ -99,6 +99,12 @@ export function GalaxyPosition({
         {body ? (
           <BodyIllustration
             body={{ ...body, coordinates }}
+            className={styles.planet}
+            sizes="40px"
+          />
+        ) : position.abandoned_until ? (
+          <BodyIllustration
+            body={{ kind: 'AbandonedPlanet' }}
             className={styles.planet}
             sizes="40px"
           />
@@ -112,13 +118,20 @@ export function GalaxyPosition({
             <strong>
               {body
                 ? (body.name ?? (owned ? 'Your planet' : body.kind))
-                : 'Empty position'}
+                : position.abandoned_until
+                  ? 'Abandoned planet'
+                  : 'Empty position'}
             </strong>
             <CoordinateLink
               compact
               at={coordinates}
               target={body?.kind === 'Moon' ? 'moon' : 'planet'}
-              known={{ owner: body?.owner, empty: !body, debris: !!debris }}
+              known={{
+                owner: body?.owner,
+                empty: !body && !position.abandoned_until,
+                abandoned: !!position.abandoned_until,
+                debris: !!debris,
+              }}
               onHarvest={(opener) => onDraft(coordinates, 'Harvest', opener)}
               className={styles.coordinates}
             />

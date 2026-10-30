@@ -166,7 +166,7 @@ impl PgStore {
                     .map(|m| m.homeworld.coordinates)
                     .collect();
                 let slots: Vec<(i32, i32, i32)> = sqlx::query_as(
-                "SELECT galaxy,system,position FROM bodies WHERE universe=$1 AND kind='Planet' ORDER BY galaxy,system,position"
+                "SELECT galaxy,system,position FROM bodies WHERE universe=$1 AND kind='Planet' UNION SELECT (data->'coordinates'->>'galaxy')::integer,(data->'coordinates'->>'system')::integer,(data->'coordinates'->>'position')::integer FROM planet_abandonments WHERE universe=$1 AND NOT (data->>'released')::boolean ORDER BY galaxy,system,position"
             ).bind(u.0).fetch_all(&mut *tx).await.map_err(db_error)?;
                 let occupied: Vec<_> = slots
                     .into_iter()
@@ -240,7 +240,7 @@ impl PgStore {
             }
             // A claim may have committed after placement was sampled but before its
             // location ordering lock was acquired. Never insert into that stale slot.
-            let occupied: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE universe=$1 AND kind='Planet' AND galaxy=$2 AND system=$3 AND position=$4)")
+            let occupied: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE universe=$1 AND kind='Planet' AND galaxy=$2 AND system=$3 AND position=$4) OR EXISTS(SELECT 1 FROM planet_abandonments WHERE universe=$1 AND NOT (data->>'released')::boolean AND (data->'coordinates'->>'galaxy')::integer=$2 AND (data->'coordinates'->>'system')::integer=$3 AND (data->'coordinates'->>'position')::integer=$4)")
             .bind(u.0).bind(member.homeworld.coordinates.galaxy as i32).bind(member.homeworld.coordinates.system as i32).bind(member.homeworld.coordinates.position as i32)
             .fetch_one(&mut *tx).await.map_err(db_error)?;
             if occupied {

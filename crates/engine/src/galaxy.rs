@@ -5,6 +5,8 @@ pub struct GalaxyPosition {
     pub coordinates: Coordinates,
     pub body: Option<PublicBody>,
     pub debris: Option<PublicDebris>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub abandoned_until: Option<Timestamp>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicBody {
@@ -185,6 +187,12 @@ pub fn galaxy_system(
             coordinates,
             body,
             debris,
+            abandoned_until: w
+                .records
+                .abandonments
+                .values()
+                .find(|t| t.coordinates == coordinates && !t.released)
+                .map(|t| t.release_at),
         });
     }
     Ok(GalaxySystem {

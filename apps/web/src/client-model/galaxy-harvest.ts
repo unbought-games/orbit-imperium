@@ -129,7 +129,7 @@ export async function sendGalaxyHarvest(
   const latest = model.store.getState()
   if (!current() || !latest.binding || !sameBinding(binding, latest.binding))
     return
-  if (!terms || !('terms_hash' in terms))
+  if (!terms || !('terms_hash' in terms) || !('intent' in terms))
     throw Error(
       'Unable to confirm this harvest mission. Try again after reconnecting.',
     )

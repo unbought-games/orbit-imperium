@@ -1,3 +1,5 @@
+import { AbandonmentLosses } from './abandonment-losses'
+import type { components } from '../contracts'
 import { HistoricalAlliances, type PlayerAlliances } from './player-alliance'
 import { BodyIllustration } from './body-illustration'
 import { BodyIdentity } from './body-identity'
@@ -182,6 +184,28 @@ function ReportObservationContent({
   shared = false,
 }: ObservationProps) {
   const kind = payload.kind
+  if (kind === 'PlanetAbandoned') {
+    const abandonment =
+      payload.abandonment as components['schemas']['Abandonment4']
+    return (
+      <Panel as="section" aria-label="Planet abandonment report">
+        <Heading level={3}>Planet abandoned</Heading>
+        <Text>
+          All listed assets were permanently lost without refund. Completed
+          research survives.
+        </Text>
+        <AbandonmentLosses losses={abandonment.losses} />
+        <Text>
+          Position available again:{' '}
+          {new Date(abandonment.release_at).toLocaleString()} ·{' '}
+          {new Date(abandonment.release_at)
+            .toISOString()
+            .replace('T', ' ')
+            .replace('.000Z', ' UTC')}
+        </Text>
+      </Panel>
+    )
+  }
   if (kind === 'MissileImpact')
     return (
       <Panel

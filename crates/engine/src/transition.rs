@@ -120,6 +120,7 @@ fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fa
             ScheduledEvent::MissileImpact { .. }
             | ScheduledEvent::FleetLegDue { .. }
             | ScheduledEvent::DebrisCleanupDue { .. }
+            | ScheduledEvent::AbandonedSlotDue { .. }
             | ScheduledEvent::ResearchDue { .. }
             | ScheduledEvent::ManufacturingDue { .. },
         ) => return Err(invariant("progression event under legacy profile")),

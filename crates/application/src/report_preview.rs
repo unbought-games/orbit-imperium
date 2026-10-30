@@ -3,6 +3,9 @@ use serde_json::{Map, Value};
 /// A compact projection of the recipient's immutable observation, never live world facts.
 /// The caller must select the authorized recipient's payload before projecting it.
 pub fn report_preview(payload: &Value) -> Value {
+    if payload["kind"] == "PlanetAbandoned" {
+        return serde_json::json!({"kind":"PlanetAbandoned", "coordinates":payload["abandonment"]["coordinates"], "release_at":payload["abandonment"]["release_at"]});
+    }
     let fields: &[&str] = match payload["kind"].as_str() {
         Some("MissileImpact") => &[
             "attacker",

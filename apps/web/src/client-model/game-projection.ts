@@ -69,7 +69,11 @@ export function commandBody(command: Command, view: BoundView | null) {
     return command.action.intent.origin
   if (command.type === 'World' && command.action.type === 'ScrapMissiles')
     return command.action.body
-  if (command.type === 'World' && command.action.type === 'RenamePlanet')
+  if (
+    command.type === 'World' &&
+    (command.action.type === 'RenamePlanet' ||
+      command.action.type === 'AbandonPlanet')
+  )
     return command.action.body
   if ('body' in command) return command.body
   if ('host' in command) return command.host

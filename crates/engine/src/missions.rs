@@ -624,7 +624,8 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     action: WorldAction::LaunchMissiles { intent, .. },
                 } => Some(intent.origin),
                 Command::World {
-                    action: WorldAction::RenamePlanet { body, .. },
+                    action:
+                        WorldAction::RenamePlanet { body, .. } | WorldAction::AbandonPlanet { body, .. },
                 } => Some(*body),
                 Command::World {
                     action: WorldAction::LaunchFleet { intent, .. },
@@ -672,6 +673,24 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action:
+                WorldAction::AbandonPlanet {
+                    body,
+                    expected_terms_hash,
+                },
+        }) => {
+            crate::abandonment::abandon(s, i, r, *body, expected_terms_hash, &mut c, &mut w)?;
+        }
+        Input::Event(ScheduledEvent::AbandonedSlotDue { body, .. }) => {
+            if let Some(t) = w.abandonments.get_mut(body)
+                && t.release_at == i.at
+                && !t.released
+            {
+                t.released = true;
+                c.affected_viewers.insert(t.owner);
+            }
+        }
         Input::Command(Command::World {
             action: WorldAction::LaunchMissiles { .. } | WorldAction::ScrapMissiles { .. },
         })

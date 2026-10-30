@@ -132,6 +132,10 @@ export function reportPreview(
       if (preview.detected !== undefined)
         facts.push(preview.detected ? 'Detected' : 'Undetected')
       break
+    case 'PlanetAbandoned':
+      at = preview.coordinates
+      facts.push('Colony and local assets permanently removed')
+      break
     case 'Colonized':
     case 'ColonizationFailed':
       at = preview.destination_coordinates

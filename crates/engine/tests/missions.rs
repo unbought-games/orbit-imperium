@@ -135,6 +135,7 @@ fn fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
         }
     }
     s.world = Some(WorldFacts {
+        homeworlds: Default::default(),
         planet_slots: vec![],
         records: w,
         secret: [7; 32],

@@ -33,3 +33,16 @@ it('derives missions from ownership, occupancy, target kind and enabled capabili
     coordinateMissions({ ...view, capabilities: [] }, at, 'planet'),
   ).toEqual([])
 })
+
+it('abandoned positions offer only debris harvesting until the server releases the slot', () => {
+  const empty = { ...at, position: 4 }
+  expect(
+    coordinateMissions(view, empty, 'planet', { abandoned: true }),
+  ).toEqual([])
+  expect(
+    coordinateMissions(view, empty, 'planet', {
+      abandoned: true,
+      debris: true,
+    }),
+  ).toEqual(['Harvest'])
+})

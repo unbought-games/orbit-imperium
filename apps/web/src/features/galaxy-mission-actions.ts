@@ -67,7 +67,8 @@ export function galaxyMissionActions({
       })
     }
   }
-  if (!body && colony.enabled) actions.push({ mission: 'Colonize' })
+  if (!body && !position.abandoned_until && colony.enabled)
+    actions.push({ mission: 'Colonize' })
   // A debris field remains a target even at the selected origin's coordinates.
   if (debris && missions.harvest) actions.push({ mission: 'Harvest' })
   return actions

@@ -8,6 +8,7 @@ import { FleetCargo } from './fleet-cargo'
 import { MissionFleetCard } from './mission-fleet-card'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
+import { PlanetActions } from './planet-actions'
 import { PlanetRename } from './planet-rename'
 import type { Coordinator } from '../client-model/coordinator'
 import { PlayerName } from './player-name'
@@ -517,6 +518,9 @@ function PlanetDossier({
             Manage {bodyName(body)} {coordinates(body)}
           </span>
         </Destination>
+        {view.protocol === 4 && body.kind === 'Planet' && (
+          <PlanetActions model={model} body={body} />
+        )}
       </header>
       <PlanetClimate view={view} body={body} />
       <dl className={styles.resources} aria-label="Planet resources">
