@@ -530,8 +530,14 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
         await page.evaluate(() => window.scrollTo(0, 0))
         await diagnosticScreenshot(page, { path: `test-results/unified-fleet-error-${width}x900.png`, fullPage: true })
       }
-      await page.route('**/commands/*?epoch=*', (route) =>
-        route.fulfill({
+      // Background receipt polling may arrive before Playwright clicks Retry.
+      // Hold recovery until the click so polling cannot remove its own target.
+      let releaseRecovery!: () => void
+      const recovery = new Promise<void>((resolve) => { releaseRecovery = resolve })
+      const polling = page.waitForRequest('**/commands/*?epoch=*')
+      await page.route('**/commands/*?epoch=*', async (route) => {
+        await recovery
+        await route.fulfill({
           json: {
             protocol: 4,
             binding,
@@ -542,11 +548,16 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
             result_ids: [id(80)],
             minimum_viewer_revision: '1',
           },
-        }),
-      )
-      await feedback
-        .getByRole('button', { name: 'Retry order' })
-        .click()
+        })
+      })
+      try {
+        await polling
+        await feedback
+          .getByRole('button', { name: 'Retry order' })
+          .click()
+      } finally {
+        releaseRecovery()
+      }
       await expect(dispatchResult(page)).toContainText('Fleet sent.')
       await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(
         '0',
