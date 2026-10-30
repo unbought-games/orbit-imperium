@@ -1,3 +1,4 @@
+import { menuDestination } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, refreshGame, binding, body, id } from './fixtures/game'
@@ -236,8 +237,7 @@ for (const width of [1440, 390]) test(`opens standalone simulation without repor
         attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }], defender: [] })) } })
   })
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
-  const entry = page.getByRole('link', { name: 'Combat Simulator', exact: true })
+  const entry = await menuDestination(page, 'Combat Simulator')
   await expect(entry).toBeVisible()
   await diagnosticScreenshot(page, { path: `test-results/simulation-menu-${width}.png` })
   await entry.click()

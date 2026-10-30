@@ -1980,3 +1980,37 @@ for (const width of [1280, 390]) {
     await expect.poll(() => sent.length).toBe(1)
   })
 }
+
+for (const width of [1440, 390]) test(`resource settings remains a link without production data at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const records: components['schemas']['ProductionDto'][] = []
+  let revision = 1
+  await installGameFixture(page, { protocol: 4, production: records, viewerRevision: () => String(revision),
+    missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  const entry = await menuDestination(page, 'Resource settings')
+  await expect(entry).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
+  await expect(entry).toBeEnabled()
+  if (width === 390) {
+    const menu = page.getByRole('dialog', { name: 'Navigation', exact: true })
+    const empire = menu.getByRole('link', { name: 'Empire', exact: true })
+    expect((await entry.boundingBox())!.x).toBe((await empire.boundingBox())!.x)
+    expect(await entry.evaluate(el => getComputedStyle(el).justifyContent)).not.toBe('center')
+  }
+  await diagnosticScreenshot(page, { path: `test-results/resource-settings-entry-${width}.png` })
+  await entry.click()
+  await expect(page.locator('main h1')).toHaveText('Resource settings')
+  await expect(page.getByRole('heading', { name: 'Production data unavailable' })).toBeVisible()
+  await expect(page.getByRole('slider')).toHaveCount(0)
+  await diagnosticScreenshot(page, { path: `test-results/resource-settings-missing-${width}.png` })
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Production data unavailable' })).toBeVisible()
+  records.push(production())
+  revision++
+  await refreshGame(page)
+  await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
+  await expect(page.getByRole('slider', { name: 'metal mine production', exact: true })).toHaveValue('100')
+  await expect(page.getByRole('heading', { name: 'Production data unavailable' })).toHaveCount(0)
+  await diagnosticScreenshot(page, { path: `test-results/resource-settings-ready-${width}.png` })
+})

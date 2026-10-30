@@ -88,11 +88,7 @@ export function resolveDestination(
     return unavailable('High Scores are unavailable in this universe.')
   if (page === 'facilities' && view.protocol === 2)
     return unavailable('This destination requires supported facilities.')
-  if (
-    page === 'resource-settings' &&
-    (view.protocol === 2 ||
-      !view.progression.production.some((entry) => entry.body === body))
-  )
+  if (page === 'resource-settings' && view.protocol === 2)
     return unavailable('Resource settings are unavailable for this planet.')
   const capability =
     page === 'galaxy'

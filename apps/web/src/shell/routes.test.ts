@@ -133,7 +133,7 @@ it('enables real fleet routes only for the world profile and keeps report detail
   ).toBe(false)
 })
 
-it('requires production data for the selected planet to open resource settings', () => {
+it('keeps resource settings accessible without production data but requires a supported, accessible planet', () => {
   const productionView = {
     ...view,
     progression: { production: [{ body: 'a' }] },
@@ -148,7 +148,10 @@ it('requires production data for the selected planet to open resource settings',
     page: 'resource-settings',
     body: 'a',
   })
-  for (const body of [undefined, 'b', 'foreign'])
+  expect(
+    resolveDestination({ ...destination, body: 'b' }, productionView).available,
+  ).toBe(true)
+  for (const body of [undefined, 'foreign'])
     expect(
       resolveDestination({ ...destination, body }, productionView).available,
     ).toBe(false)
@@ -157,7 +160,7 @@ it('requires production data for the selected planet to open resource settings',
       ...productionView,
       progression: { ...productionView.progression, production: [] },
     }).available,
-  ).toBe(false)
+  ).toBe(true)
   expect(
     resolveDestination(destination, {
       ...productionView,
