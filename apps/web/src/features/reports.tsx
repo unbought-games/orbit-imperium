@@ -78,7 +78,9 @@ export function Reports({
   const combat = detail?.payload.kind === 'Combat' ? detail.payload : null
   const harvestAction =
     combat &&
-    (BigInt(combat.debris.metal) > 0n || BigInt(combat.debris.crystal) > 0n) ? (
+    (BigInt(combat.debris.metal) > 0n ||
+      BigInt(combat.debris.crystal) > 0n ||
+      BigInt(combat.debris.deuterium) > 0n) ? (
       <Button
         onClick={() =>
           onDraft({

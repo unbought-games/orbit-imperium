@@ -116,3 +116,85 @@ fn equivalent_historical_wire_is_unchanged_and_invalid_edits_still_fail() {
     let other = standard_signup_rules(UniverseProfile::signup(2, 5).unwrap(), 5).unwrap();
     assert!(plan_rules_update(&before, &other).is_err());
 }
+
+#[test]
+fn deuterium_toggle_and_percentage_are_rules_only_but_mixed_economy_edits_settle() {
+    let original = standard();
+    assert!(
+        !original
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .deuterium_in_debris
+    );
+    for percentage in [3000, 6000] {
+        let mut artifact = original.artifact.clone();
+        artifact.world.as_mut().unwrap().combat.deuterium_in_debris = true;
+        artifact.world.as_mut().unwrap().combat.ship_debris_bps = percentage;
+        let enabled = Ruleset::from_artifact(artifact.clone(), original.speed).unwrap();
+        assert_eq!(
+            plan_rules_update(&original, &enabled).unwrap().impact,
+            RulesUpdateImpact::RulesOnly
+        );
+        assert_eq!(
+            plan_rules_update(&enabled, &original).unwrap().impact,
+            RulesUpdateImpact::RulesOnly
+        );
+        let upgraded = upgrade_standard_rules(&enabled).unwrap();
+        assert!(
+            upgraded
+                .artifact
+                .world
+                .as_ref()
+                .unwrap()
+                .combat
+                .deuterium_in_debris
+        );
+        assert_eq!(
+            upgraded
+                .artifact
+                .world
+                .as_ref()
+                .unwrap()
+                .combat
+                .ship_debris_bps,
+            percentage
+        );
+        artifact.base_income[0] += 1;
+        let mixed = Ruleset::from_artifact(artifact, original.speed).unwrap();
+        assert_eq!(
+            plan_rules_update(&original, &mixed).unwrap().impact,
+            RulesUpdateImpact::SettleAndInitialize
+        );
+    }
+}
+
+#[test]
+fn historical_rules_without_deuterium_keep_identity_and_default_off() {
+    let original: Ruleset =
+        serde_json::from_str(include_str!("fixtures/persistence/deathstar-rules.json")).unwrap();
+    let before = serde_json::to_value(&original).unwrap();
+    assert!(
+        before["artifact"]["world"]["combat"]
+            .get("deuterium_in_debris")
+            .is_none()
+    );
+    assert!(
+        !original
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .deuterium_in_debris
+    );
+    original.validate().unwrap();
+    let normalized = Ruleset::from_artifact(original.artifact.clone(), original.speed).unwrap();
+    assert_eq!(
+        plan_rules_update(&original, &normalized).unwrap().impact,
+        RulesUpdateImpact::Unchanged
+    );
+    assert_eq!(serde_json::to_value(&original).unwrap(), before);
+}

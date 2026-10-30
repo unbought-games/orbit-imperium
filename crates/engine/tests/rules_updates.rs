@@ -197,6 +197,9 @@ fn beginner_protection_multiplier_defaults_preserve_historical_artifacts() {
         assert_ne!(old.hash, next.hash);
         assert!(validate_rules_update(&old, &next).is_ok());
         assert!(validate_rules_update(&next, &old).is_ok());
+        // Saved representation stays exact; the runtime view includes new defaults.
+        assert_eq!(serde_json::to_value(&next).unwrap()["artifact"], custom);
+        custom["world"]["combat"]["deuterium_in_debris"] = json!(false);
         assert_eq!(serde_json::to_value(&next.artifact).unwrap(), custom);
     }
     for value in [

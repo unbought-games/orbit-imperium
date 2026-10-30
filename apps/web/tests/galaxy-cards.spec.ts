@@ -1948,7 +1948,7 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const trigger = rows(page).nth(1).getByRole('button', {
-      name: 'Quick harvest debris at [1:371:2]: Metal 40,000, Crystal 1', exact: true,
+      name: 'Quick harvest debris at [1:371:2]: Metal 40,000, Crystal 1, Deuterium 0', exact: true,
     })
     const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
     const requests: string[] = []
@@ -2072,4 +2072,44 @@ for (const mission of ['Espionage', 'Harvest'] as const) {
       expect(submissions).toBe(1)
     })
   }
+}
+
+for (const width of [1440, 390]) {
+  test(`deuterium debris and quick harvest at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page, null, {
+      catalog: recyclerCatalog,
+      bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'Recycler' }, count: '30' }] }],
+      missions: { fleets: [], incoming: [], fleet_slots: '3', score_value_micro: '0' },
+    }, {
+      2: { debris: { field_identity: id(42), metal: '300000', crystal: '180000', deuterium: '60000' } },
+      4: { debris: { field_identity: id(43), metal: '0', crystal: '0', deuterium: '40001' } },
+    })
+    const mixed = rows(page).nth(1).getByRole('button', { name: /^Quick harvest debris/ })
+    const only = rows(page).nth(3).getByRole('button', { name: /^Quick harvest debris/ })
+    await expect(mixed).toHaveAccessibleName(/Deuterium 60,000/)
+    await expect(only).toHaveAccessibleName(/Metal 0, Crystal 0, Deuterium 40,001/)
+    await expect(mixed.getByRole('img', { name: 'Deuterium', exact: true })).toHaveAttribute('data-resource', 'deuterium')
+    await page.evaluate(() => document.fonts.ready)
+    await diagnosticScreenshot(page, { path: `test-results/deuterium-galaxy-${width}x1000.png`, fullPage: false })
+    for (const [trigger, needed] of [[mixed, '27'], [only, '3']] as const) {
+      await trigger.click()
+      const form = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
+      await expect(form).toBeVisible()
+      if (width === 390) {
+        const panel = form.getByRole('region', { name: 'Harvest mission sheet', exact: true })
+        await expect.poll(async () => (await panel.boundingBox())?.y).toBeCloseTo(522, 0)
+      } else {
+        await expect(form.locator(':scope > div').first()).toHaveCSS('opacity', '1')
+      }
+      await expect(form.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue(needed)
+      await expect(form).toContainText(`${needed} needed to collect all debris`)
+      await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+      await expect(form.getByRole('img', { name: 'Deuterium', exact: true })).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+      await diagnosticScreenshot(page, { path: `test-results/deuterium-harvest-${needed === '27' ? 'mixed' : 'only'}-${width}x1000.png`, fullPage: false })
+      await page.keyboard.press('Escape')
+      await expect(form).not.toBeVisible()
+    }
+  })
 }

@@ -21,7 +21,7 @@ Direct database world management. Uses DATABASE_URL; normal production builds su
   finish|clear queues G:S:P [--user USER]
   message USER --from USER --text TEXT
   report USER [--kind transport|espionage|combat] [RESOURCE=VALUE...]
-  debris G:S:P metal=VALUE crystal=VALUE
+  debris G:S:P metal=VALUE crystal=VALUE deuterium=VALUE
   scenario apply FILE                  Apply an atomic JSON edit batch
   scenario load NAME_OR_FILE [--replace] Create or explicitly replace a world
   scenario save NAME_OR_FILE            Export an editable recipe (no credentials)

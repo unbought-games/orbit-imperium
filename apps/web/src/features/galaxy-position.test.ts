@@ -39,3 +39,22 @@ it.each([
     expect(debrisFieldSize(metal, crystal)).toBe(size)
   },
 )
+
+it('renders and sizes deuterium-only fields with the canonical accessible mark', () => {
+  const markup = renderToStaticMarkup(
+    createElement(GalaxyDebris, {
+      debris: {
+        field_identity: 'field',
+        metal: '0',
+        crystal: '0',
+        deuterium: '1000000',
+      },
+      target: '[1:371:2]',
+      onHarvest: () => {},
+    }),
+  )
+  expect(markup).toContain('Deuterium 1,000,000')
+  expect(markup).toContain('color:var(--resource-deuterium)')
+  expect(markup).toContain('debris-large.webp')
+  expect(debrisFieldSize('100', '100', '9800')).toBe('medium')
+})

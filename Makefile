@@ -280,3 +280,13 @@ test-insignias:
 test-insignias-live: _dev-binary
 	npm run build
 	$(TIMEOUT) full-system node scripts/insignias-live.mjs
+
+.PHONY: test-deuterium-debris test-deuterium-debris-db
+test-deuterium-debris:
+	cargo nextest run -p orbit-engine --test debris --test missions --test rules_update_impact --test persistence --lib
+	npm test -- galaxy-harvest galaxy-position
+	npm run test:ui -- galaxy-cards.spec.ts combat-reports.spec.ts harvest-reports.spec.ts catalog-pages.spec.ts --grep 'deuterium|harvest reports'
+
+test-deuterium-debris-db:
+	sh scripts/test-db.sh rules_updates 'test(impact::) | test(compatibility::)'
+	sh scripts/test-db.sh world_edit 'test(editable_export_round_trips_planets_valuation_and_activity)'

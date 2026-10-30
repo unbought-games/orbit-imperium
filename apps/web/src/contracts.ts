@@ -6654,6 +6654,7 @@ export interface components {
             /** Format: uuid */
             field_identity: string;
             metal: components["schemas"]["Decimal"];
+            deuterium?: components["schemas"]["Decimal"];
             crystal: components["schemas"]["Decimal"];
         };
         GalaxyPosition4: {

@@ -2571,3 +2571,20 @@ for (const width of [320, 390, 1440]) {
     }
   })
 }
+
+for (const width of [1440, 390]) {
+  test(`deuterium recycler description at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page, false, undefined, { catalog: [{
+      key: { kind: 'Ship', id: 'Recycler' }, enabled: true, mobile: true,
+      body_kinds: ['Planet'], requirements: [],
+    }] })
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard/recycler`)
+    await expect(page.getByText('Collects resources from debris fields, including deuterium where available.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Build', exact: true })).toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    await expect(page.getByRole('heading', { name: 'Recycler', exact: true })).toBeInViewport()
+    await diagnosticScreenshot(page, { path: `test-results/deuterium-recycler-${width}x1000.png`, fullPage: true })
+  })
+}

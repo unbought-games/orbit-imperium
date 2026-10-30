@@ -51,7 +51,8 @@ const content: Record<string, string> = {
     'An impulse-powered siege ship with rapid fire against Rocket Launchers, Light Lasers, Heavy Lasers, Ion Cannons, Espionage Probes and Solar Satellites. Cargo capacity is shared by resources and mission fuel. Uses Impulse Drive until the Hyperspace Drive level 8 upgrade in the standard rules; see technical statistics for this universe’s propulsion profiles.',
   Destroyer:
     'A heavy combat ship powered by Hyperspace Drive, with rapid fire against Light Lasers, Battlecruisers, Espionage Probes and Solar Satellites. Requires Shipyard 9, Hyperspace Drive 6 and Hyperspace Technology 5 in the standard rules. Cargo capacity is shared by resources and mission fuel.',
-  Recycler: 'Collects metal and crystal from debris fields.',
+  Recycler:
+    'Collects resources from debris fields, including deuterium where available.',
   EspionageProbe:
     'Gathers intelligence about another planet on an espionage mission.',
   RocketLauncher:

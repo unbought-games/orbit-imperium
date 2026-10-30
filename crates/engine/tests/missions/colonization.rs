@@ -1026,6 +1026,7 @@ fn abandonment_destroys_stationed_assets_and_moon_terminalizes_queues_and_preser
             marker_present: true,
             metal: 500 * SCALE,
             crystal: 200 * SCALE,
+            deuterium: 0,
             generation: 0,
             cleanup_at: next_debris_cleanup(at).unwrap(),
             revision: 0,
