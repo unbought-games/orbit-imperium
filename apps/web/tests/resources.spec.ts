@@ -1782,19 +1782,22 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
 })
 
 for (const protocol of [2, 3, 4] as const) {
-  test(`resource settings is unavailable without production data on protocol ${protocol}`, async ({ page }) => {
+  test(`resource settings navigation follows protocol support without requiring production data on protocol ${protocol}`, async ({ page }) => {
     await shellFixture(page, { protocol })
     if (protocol !== 2) {
       await page.goto(`/u/andromeda/b/${body.id}/resources`)
       await expect(page.getByRole('region', { name: 'Resource buildings', exact: true }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
-    }
-    await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Energy — resource settings' })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
+    } else await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
     await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveCount(0)
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByRole('button', { name: 'Menu', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: 'Navigation' }).getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()
+    const menu = page.getByRole('dialog', { name: 'Navigation' })
+    if (protocol === 2) await expect(menu.getByRole('button', { name: 'Resource settings', exact: true })).toBeDisabled()
+    else await expect(menu.getByRole('link', { name: 'Resource settings', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
     await page.goto(`/u/andromeda/b/${body.id}/resource-settings`)
-    await expect(page.locator('main h1')).toHaveText('Destination unavailable')
+    await expect(page.locator('main h1')).toHaveText(protocol === 2 ? 'Destination unavailable' : 'Resource settings')
+    if (protocol !== 2) await expect(page.getByRole('heading', { name: 'Production data unavailable' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Production controls' })).toHaveCount(0)
   })
 }
