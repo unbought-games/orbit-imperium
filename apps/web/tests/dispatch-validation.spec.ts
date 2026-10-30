@@ -2231,8 +2231,8 @@ for (const width of [390, 1440]) {
     await diagnosticScreenshot(page, { path: `test-results/dispatch-canonical-review-${width}x1000.png`, fullPage: width >= 768 })
     const launched = page.waitForRequest(request => request.url().endsWith('/commands'))
     await page.getByRole('button', { name: /^Transport to / }).click()
-    expect((await launched).postDataJSON().gameplay.command.intent).toEqual(intent)
-    await expect(dispatchResult(page)).toContainText('Beginner protection')
+    expect((await launched).postDataJSON().gameplay.command.action.intent).toEqual(intent)
+    await expect(page.getByRole('complementary', { name: 'Action needs attention' })).toContainText('Fleet not sent: Beginner protection prevents')
     expect(state.launches).toBe(1)
   })
 
