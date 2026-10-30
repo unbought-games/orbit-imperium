@@ -80,7 +80,14 @@ pub(super) async fn add(
         .iter()
         .map(|m| m.homeworld.coordinates)
         .collect::<Vec<_>>();
-    let mut home = neighborhood_homeworld(
+    // Explicit operator coordinates retain their historical creation path and
+    // must not inherit automatic placement's Galaxy 1 capacity restriction.
+    let allocate = if e.planet.is_some() || e.from.is_some() {
+        balanced_homeworld
+    } else {
+        neighborhood_homeworld
+    };
+    let mut home = allocate(
         &secret,
         i.universe,
         i.epoch,
