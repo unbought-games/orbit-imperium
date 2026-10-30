@@ -60,7 +60,7 @@ it('renders only observed building levels under catalog group headings', () => {
     },
   })
   expect(text).toContain(
-    'BuildingsResource buildingsMetal MineLevel UnknownFacility buildingsResearch LabLevel 2Other buildingsLegacy BuildingLevel 0',
+    'BuildingsResource buildingsObserved levelMinesMetal MineLevel UnknownFacility buildingsObserved levelInfrastructureResearch LabLevel 2Other buildingsObserved levelLegacy BuildingLevel 0',
   )
   expect(text).not.toContain('Crystal Mine')
 })
@@ -99,7 +99,7 @@ it('renders observed research in report groups without inventing missing levels'
     },
   })
   expect(text).toContain(
-    'ResearchCombat and espionageWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchCombustion DriveLevel 3Basic researchEnergy TechnologyLevel UnknownAdvanced researchComputer TechnologyLevel 2Other researchFuture ResearchLevel 1',
+    'ResearchCombat and espionageObserved levelWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchObserved levelCombustion DriveLevel 3Basic researchObserved levelEnergy TechnologyLevel UnknownAdvanced researchObserved levelComputer TechnologyLevel 2Other researchObserved levelFuture ResearchLevel 1',
   )
   expect(text).not.toContain('Shielding Technology')
 })

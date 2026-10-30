@@ -16,12 +16,22 @@ async function expectAlignedLevels(sections: Locator[]) {
     for (const row of rows) {
       const name = (await row.locator('dt').boundingBox())!
       const level = (await row.locator('dd').boundingBox())!
-      expect(level.x + level.width).toBeLessThan(name.x)
-      expect(name.x - level.x - level.width).toBeLessThanOrEqual(16)
-      expect(Math.abs(level.y + level.height / 2 - name.y - name.height / 2)).toBeLessThanOrEqual(1)
+      const art = (await row.locator('img').boundingBox())!
+      expect(art.x + art.width).toBeLessThan(name.x)
+      expect(name.x - art.x - art.width).toBeLessThanOrEqual(16)
+      const stacked = level.y >= name.y + name.height
+      if (stacked) {
+        expect(level.x).toBeCloseTo(name.x, 1)
+        expect(level.y - name.y - name.height).toBeLessThanOrEqual(4)
+      } else {
+        expect(level.x).toBeGreaterThan(name.x)
+        expect(Math.abs(level.y + level.height / 2 - name.y - name.height / 2)).toBeLessThanOrEqual(1)
+      }
       const hierarchy = await row.evaluate(el => ({name: parseFloat(getComputedStyle(el.querySelector('dt')!).fontSize), value: parseFloat(getComputedStyle(el.querySelector('dd strong')!).fontSize)}))
-      expect(hierarchy.value / hierarchy.name).toBeGreaterThanOrEqual(1.4)
-      await expect(row.locator('dt')).toHaveCSS('font-weight', '600')
+      if (await row.getAttribute('data-level-state') !== 'unknown')
+        expect(hierarchy.value / hierarchy.name).toBeGreaterThanOrEqual(1.4)
+      await expect(row.locator('dt')).toHaveCSS('font-weight', '500')
+      await expect.poll(() => row.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
       expect(await row.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
     }
   }
@@ -251,7 +261,9 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         }
         const observed = resources.locator('[data-level-state="known"]').first()
         const zero = resources.locator('[data-level-state="zero"]').first()
-        await expect(observed.locator('dd')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(observed.locator('dd')).toHaveCSS('color', 'rgb(203, 182, 141)')
+        await expect(observed.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(zero.locator('dd')).toHaveCSS('color', 'rgb(182, 198, 214)')
         await expect(zero.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
         await expect(zero.locator('dd strong')).toHaveText('0')
         await expectAlignedLevels([buildings, research])

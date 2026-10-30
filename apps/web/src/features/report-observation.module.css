@@ -1,4 +1,5 @@
 .observation {
+  container-type: inline-size;
   overflow-wrap: anywhere;
 }
 .grid {
@@ -9,86 +10,135 @@
 }
 .levels {
   display: grid;
-  /* Keep empty tracks so small groups align with the larger groups above. */
+  /* Keep empty tracks so power and facility pairs align with the mine row. */
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  gap: var(--space-1) var(--space-3);
+  gap: var(--space-2);
   max-width: 68rem;
   margin: 0;
 }
-.levels + .levels {
-  margin-top: var(--space-2);
+.levelRow + .levelRow {
+  margin-top: var(--space-3);
 }
 .levels > div {
+  position: relative;
   display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
   align-items: center;
-  gap: var(--space-3);
+  gap: 3px 10px;
   min-width: 0;
-  padding: 6px var(--space-2);
+  min-height: 70px;
+  padding: var(--space-2);
   background: var(--surface);
-  border-bottom: 1px solid var(--border-navigation);
+  border: 1px solid var(--border-navigation);
 }
 .observation .levels dt {
   grid-column: 2;
   grid-row: 1;
+  align-self: end;
   min-width: 0;
   color: var(--text);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
 }
+.levels .levelArt {
+  position: absolute;
+  left: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+}
 .observation .levels dd {
-  grid-column: 1;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 2.5rem;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  min-width: 0;
   margin: 0;
-  padding: 3px 2px;
-  background: var(--champagne);
-  border: 1px solid var(--champagne);
-  border-radius: 3px;
-  color: var(--text-on-accent);
-  line-height: 1;
-  text-align: center;
+  color: var(--champagne);
+  line-height: 1.15;
 }
 .levelCaption {
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .levels dd strong {
-  margin-top: 2px;
-  max-width: 100%;
-  font-size: 1.25rem;
-  font-weight: 750;
+  font-size: 1.375rem;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .observation .levels [data-level-state='zero'] dd {
-  background: transparent;
-  border-color: var(--border-control);
   color: var(--text-muted);
 }
+.levels [data-level-state='zero'] dd strong {
+  font-weight: 400;
+}
+.levels [data-level-state='zero'] .levelArt {
+  filter: saturate(0.35);
+  opacity: 0.65;
+}
 .observation .levels [data-level-state='unknown'] dd {
-  background: transparent;
-  border: 1px dashed var(--border-control);
   color: var(--ice);
 }
 .levels [data-level-state='unknown'] dd strong {
-  font-size: 0.625rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+.levelGroupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  max-width: 68rem;
+  margin: var(--space-5) 0 var(--space-3);
 }
 .observation .levelGroupHeading {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+}
+.levelGroupHeader > span {
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.levelRowHeading {
+  margin: 0 0 var(--space-2);
   color: var(--ice);
   font-size: 0.6875rem;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin: var(--space-4) 0 var(--space-2);
+}
+@container (max-width: 700px) {
+  .levels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .levels > div {
+    grid-template-columns: 44px minmax(0, 1fr) fit-content(35%);
+    grid-template-rows: auto;
+    min-height: 62px;
+    gap: var(--space-3);
+  }
+  .observation .levels dt {
+    align-self: center;
+  }
+  .observation .levels dd {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    text-align: right;
+  }
 }
 .observation dt {
   font-weight: 600;

@@ -19,7 +19,12 @@ import { label } from '../ui/format'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
 import { reportLevel } from './report-level'
-import { groupReportBuildings } from './report-buildings'
+import { reportLevelArt } from './report-level-art'
+import { CatalogImage } from '../ui/image-catalog'
+import {
+  groupReportBuildings,
+  reportBuildingRowTitle,
+} from './report-buildings'
 import { groupReportResearch } from './report-research'
 import type { ObservedLevel, ObservedLevelGroup } from './report-buildings'
 type RecordValue = Record<string, unknown>
@@ -90,9 +95,20 @@ function Levels({
     <dl className={styles.levels}>
       {rows.map(([name, level]) => {
         const observed = reportLevel(level)
+        const art = reportLevelArt(name)
         return (
           <div key={name} data-level-state={observed.state}>
-            <dt>{label(name)}</dt>
+            <dt>
+              {art && (
+                <CatalogImage
+                  art={art}
+                  className={styles.levelArt}
+                  sizes="44px"
+                  loading="lazy"
+                />
+              )}
+              <span>{label(name)}</span>
+            </dt>
             <dd>
               <span className={styles.levelCaption}>Level</span>{' '}
               <strong>{observed.value}</strong>
@@ -108,16 +124,28 @@ function Levels({
 function GroupedLevels({
   groups,
   emptyLabel,
+  buildings = false,
 }: {
   groups: ObservedLevelGroup[]
   emptyLabel: string
+  buildings?: boolean
 }) {
   return groups.length ? (
     groups.map(({ title, rows }) => (
       <div key={title}>
-        <h4 className={styles.levelGroupHeading}>{title}</h4>
+        <div className={styles.levelGroupHeader}>
+          <h4 className={styles.levelGroupHeading}>{title}</h4>
+          <span>Observed level</span>
+        </div>
         {rows.map((line) => (
-          <Levels key={line[0][0]} rows={line} emptyLabel={emptyLabel} />
+          <div key={line[0][0]} className={styles.levelRow}>
+            {buildings && reportBuildingRowTitle(line) && (
+              <h5 className={styles.levelRowHeading}>
+                {reportBuildingRowTitle(line)}
+              </h5>
+            )}
+            <Levels rows={line} emptyLabel={emptyLabel} />
+          </div>
         ))}
       </div>
     ))
@@ -378,6 +406,7 @@ function ReportObservationContent({
         <KnownSection title="Buildings" value={payload.buildings}>
           {(v) => (
             <GroupedLevels
+              buildings
               groups={groupReportBuildings(
                 record(v),
                 record(payload.target).kind,

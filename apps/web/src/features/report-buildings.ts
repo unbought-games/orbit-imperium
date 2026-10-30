@@ -5,6 +5,18 @@ export type ObservedLevelGroup = { title: string; rows: ObservedLevel[][] }
 
 const moonBuildings = ['LunarBase', 'SensorPhalanx', 'JumpGate'] as const
 
+export function reportBuildingRowTitle(rows: ObservedLevel[]) {
+  const name = rows[0]?.[0]
+  if (!name) return undefined
+  if (['MetalMine', 'CrystalMine', 'DeuteriumSynthesizer'].includes(name))
+    return 'Mines'
+  if (['SolarPlant', 'FusionReactor'].includes(name)) return 'Power'
+  if (['MetalStorage', 'CrystalStorage', 'DeuteriumTank'].includes(name))
+    return 'Storage'
+  if (['RoboticsFactory', 'NaniteFactory'].includes(name)) return 'Production'
+  if (['Shipyard', 'ResearchLab'].includes(name)) return 'Infrastructure'
+}
+
 // Use the observed body kind, never the current world's availability. Historical
 // payloads can contain generic zero-level entries for inapplicable buildings.
 export function groupReportBuildings(
