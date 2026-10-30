@@ -143,6 +143,9 @@ jobs:
             | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Verify prerendered homepage production assets
+        if: matrix.shard == 1
+        run: make test-homepage-built
       - name: Run fixture browser tests
         env:
           UI_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
@@ -152,7 +155,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
-          path: test-results/browser-ui/
+          path: |
+            test-results/browser-ui/
+            test-results/browser-homepage/
           if-no-files-found: ignore
           retention-days: 7
       - name: Verify lockfiles remain unchanged

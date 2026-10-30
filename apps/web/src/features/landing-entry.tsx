@@ -1,20 +1,15 @@
-import { createRoot } from 'react-dom/client'
-import { HomeLanding } from './home-landing'
+import { createRoot, hydrateRoot } from 'react-dom/client'
+import { Landing } from './landing'
 import { useHomeMetadata } from './home-metadata'
-import { SkipLink } from '../ui/skip-link'
 
-function Landing({ signupEnabled }: { signupEnabled: boolean }) {
+function BrowserLanding({ signupEnabled }: { signupEnabled: boolean }) {
   useHomeMetadata()
-  return (
-    <>
-      <SkipLink />
-      <HomeLanding signupEnabled={signupEnabled} />
-    </>
-  )
+  return <Landing signupEnabled={signupEnabled} />
 }
 
 export function startLanding(signupEnabled: boolean) {
-  createRoot(document.getElementById('root')!).render(
-    <Landing signupEnabled={signupEnabled} />,
-  )
+  const root = document.getElementById('root')!
+  const page = <BrowserLanding signupEnabled={signupEnabled} />
+  if (root.hasChildNodes()) hydrateRoot(root, page)
+  else createRoot(root).render(page)
 }
