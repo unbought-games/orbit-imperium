@@ -100,10 +100,7 @@ export function DispatchReview({
             known={{ owner: view.binding.player }}
           />
           <span>
-            <PlayerName
-              player={view.binding.player}
-              names={view.player_names}
-            />
+            <PlayerName player={view.binding.player} fallback="You" />
           </span>
         </div>
         <ArrowRight aria-label="to" role="img" className={styles.reviewArrow} />
