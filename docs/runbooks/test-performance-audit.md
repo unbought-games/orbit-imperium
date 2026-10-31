@@ -137,6 +137,11 @@ three regressions passed five repetitions each (20 tests, 17.4s), with refreshed
 and inspected desktop/mobile captures. The new pushed revision must pass PR and
 merge-group checks before merging.
 
+The owner then requested clearing the queue and landing CI optimization first.
+Removed the queued dispatch/navigation feature changes from this PR's tree,
+while retaining the combined HUD fix and all three regressions. PR #259 remains
+open with its feature changes intact; it is not being merged through this PR.
+
 ## October 24 audit
 
 Audited October 24, 2026, against checkout

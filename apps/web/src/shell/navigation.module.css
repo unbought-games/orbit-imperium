@@ -155,6 +155,38 @@
     align-self: start;
     margin-inline: calc(-1 * var(--shell-inline-gutter));
   }
+  .primary {
+    position: fixed;
+    z-index: 20;
+    inset: auto 0 0;
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
+    background: #071620f5;
+    border-top: 1px solid var(--border-accent);
+    gap: 0;
+    justify-content: space-around;
+    backdrop-filter: blur(12px);
+  }
+  .primary a,
+  .primary button {
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8125rem;
+    min-height: 60px;
+    padding: 4px;
+  }
+  .primary svg {
+    display: block;
+  }
+  .primary > a > svg,
+  .primary > button > svg {
+    width: 24px;
+    height: 24px;
+  }
+  .primary a[aria-current='page']::after {
+    bottom: 0;
+    inset-inline: 25%;
+  }
   .dialog {
     padding: 20px;
     max-height: calc(100dvh - 32px);
@@ -376,51 +408,5 @@
   .sidebarPlayer > button,
   .sidebarPlayer .username > button {
     min-height: var(--control-size);
-  }
-}
-
-/* Bottom navigation remains available until the sidebar takes over. */
-@media (max-width: 1023px) {
-  .primary {
-    position: fixed;
-    z-index: 20;
-    inset: auto 0 0;
-    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
-    background: #071620f5;
-    border-top: 1px solid var(--border-accent);
-    gap: 0;
-    justify-content: space-around;
-    backdrop-filter: blur(12px);
-  }
-  .primary a,
-  .primary button {
-    flex: 1;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 0.8125rem;
-    min-height: 60px;
-    padding: 4px;
-  }
-  .primary svg {
-    display: block;
-  }
-  .primary > a > svg,
-  .primary > button > svg {
-    width: 24px;
-    height: 24px;
-  }
-  .primary a[aria-current='page']::after {
-    bottom: 0;
-    inset-inline: 25%;
-  }
-  .primary span {
-    max-width: 100%;
-    overflow-wrap: anywhere;
-    text-align: center;
-  }
-  .menuAlert {
-    position: absolute;
-    top: 0;
-    right: max(0px, calc(50% - 34px));
   }
 }

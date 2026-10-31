@@ -20,9 +20,3 @@
   align-items: center;
   gap: 4px 12px;
 }
-
-.summary[data-layout='stacked'] {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-1);
-}

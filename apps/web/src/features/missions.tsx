@@ -21,12 +21,7 @@ import { useUniverseName } from '../shell/session-context'
 import { DispatchReview } from './dispatch-review'
 import { useDispatch } from './use-dispatch'
 import { canSubmitQuote } from '../client-model/game-projection'
-import { Button, ButtonLink } from '../ui/button'
-import { ArrowLeft } from 'lucide-react'
-import { useStore } from 'zustand'
-import { occupiedFleetSlots } from '../client-model/game-projection'
-import { FleetSlots } from './fleet-slots'
-import { routeTarget } from '../shell/route-target'
+import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
 import { resourceNames } from '../client-model/resources'
@@ -34,7 +29,7 @@ import { MissionSelector } from './mission-selector'
 import { Field } from '../ui/form'
 import { Form } from '../ui/form'
 import { Section } from '../ui/section'
-import { Heading, Text } from '../ui/typography'
+import { Text } from '../ui/typography'
 import styles from './missions.module.css'
 import { TaskHeader } from '../ui/task-header'
 import { DispatchTiming } from './dispatch-timing'
@@ -72,7 +67,6 @@ export function Dispatch({
   draft: DispatchDraft | null
 }) {
   const universeName = useUniverseName()
-  const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const recentlyCopied = useAtomValue(copiedLocationAtom)
   const {
     coordinateProblems,
@@ -120,38 +114,6 @@ export function Dispatch({
   } = useDispatch({ model, view, body, draft })
   return (
     <Section className={styles.screen}>
-      <header className={styles.dispatchHeader} aria-label="Dispatch header">
-        <div className={styles.dispatchTitle}>
-          {quote ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon-small"
-              aria-label="Back to edit mission"
-              title="Back to edit mission"
-              onClick={() => setQuote(null)}
-            >
-              <ArrowLeft size={18} aria-hidden="true" />
-            </Button>
-          ) : (
-            <ButtonLink
-              variant="secondary"
-              size="icon-small"
-              aria-label="Back to fleets"
-              title="Back to fleets"
-              {...routeTarget(universeName, 'fleets', body.id)}
-            >
-              <ArrowLeft size={18} aria-hidden="true" />
-            </ButtonLink>
-          )}
-          <Heading level={2} className={styles.dispatchHeading}>
-            Dispatch
-          </Heading>
-        </div>
-        <div className={styles.dispatchHeaderActions}>
-          <FleetSlots used={occupiedSlots} total={view.missions.fleet_slots} />
-        </div>
-      </header>
       {!quote && (
         <>
           <TaskHeader>
@@ -419,6 +381,7 @@ export function Dispatch({
             (colony.count >= colony.capacity ? colony.warning : undefined)
           }
           panelRef={quoteRef}
+          onEdit={() => setQuote(null)}
           onSend={() => void send()}
           disabled={
             !command || !canSubmitQuote(model.store.getState(), command, quote)

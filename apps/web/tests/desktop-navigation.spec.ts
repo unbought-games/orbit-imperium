@@ -187,37 +187,3 @@ test('mobile navigation keeps the player dossier inside the modal top layer', as
   await page.keyboard.press('Escape')
   await expect(menu).toBeHidden()
 })
-
-for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
-  test(`navigation always uses a bottom bar or sidebar at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await shellFixture(page, {
-      protocol: 4,
-      missions: { fleets: [], incoming: [], fleet_slots: '8', score_value_micro: '0' },
-    })
-    const navigation = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-    await expect(navigation).toHaveCount(1)
-    if (width < 1024) {
-      await expect(navigation).toHaveCSS('position', 'fixed')
-      const bounds = (await navigation.boundingBox())!
-      expect(bounds.y + bounds.height).toBeCloseTo(900, 0)
-      expect(bounds.x).toBe(0)
-      expect(bounds.width).toBe(width)
-      const hud = page.getByRole('button', { name: 'Open command HUD', exact: true })
-      const hudBounds = (await hud.boundingBox())!
-      expect(hudBounds.y + hudBounds.height).toBeLessThanOrEqual(bounds.y)
-      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-      expect((await navigation.boundingBox())!.y).toBeCloseTo(bounds.y, 0)
-      await page.evaluate(() => window.scrollTo(0, 0))
-      if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await expect(page.getByTestId('orb-caption')).toHaveCount(0, { timeout: 10000 })
-      await diagnosticScreenshot(page, { path: `test-results/navigation-bottom-${width}x900.png`, fullPage: false })
-      await navigation.getByRole('button', { name: 'Menu', exact: true }).click()
-      await expect(page.getByRole('dialog', { name: 'Navigation', exact: true })).toBeVisible()
-    } else {
-      const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
-      await expect(sidebar).toBeVisible()
-      await expect(sidebar).toHaveCSS('position', 'fixed')
-    }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  })
-}

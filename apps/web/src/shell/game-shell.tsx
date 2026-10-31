@@ -1,6 +1,8 @@
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
 import { useStore } from 'zustand'
 import { hasUnreadReports } from '../client-model/report-state'
+import { occupiedFleetSlots } from '../client-model/game-projection'
+import { FleetSlots } from '../features/fleet-slots'
 import { ContentColumn } from '../ui/content-column'
 import { CommandHud } from '../features/command-hud/command-hud'
 import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
@@ -49,6 +51,7 @@ export function GameShell() {
 function GameShellContent() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
+  const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const unreadReports = useStore(model.store, hasUnreadReports)
   const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
@@ -204,7 +207,6 @@ function GameShellContent() {
       buildPages.includes(page) ||
       page === 'galaxy' ||
       page === 'fleets' ||
-      (page === 'dispatch' && view.protocol === 4) ||
       page === 'settings' ||
       (view.protocol === 4 && page === 'reports'))
   const title = !available
@@ -357,7 +359,7 @@ function GameShellContent() {
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']
               }
             >
-              {page === 'dispatch' && view.protocol !== 4 && (
+              {page === 'dispatch' && (
                 <ButtonLink
                   variant="secondary"
                   size="icon-small"
@@ -371,6 +373,13 @@ function GameShellContent() {
               <Heading level={1} tabIndex={-1} ref={heading}>
                 {title}
               </Heading>
+              {page === 'dispatch' && view.protocol === 4 && (
+                <FleetSlots
+                  className={styles.headerSlots}
+                  used={occupiedSlots}
+                  total={view.missions.fleet_slots}
+                />
+              )}
             </div>
             {!available ? (
               <StatePanel title="Choose an available destination">
