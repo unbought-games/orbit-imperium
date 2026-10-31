@@ -119,6 +119,24 @@ the ancestor fallback restored native scrolling. All 15 repeated pagination
 cases passed afterward (15.7s), and desktop/mobile captures were refreshed and
 inspected again.
 
+### Merge-queue integration
+
+The verified PR head `f9ae18524d3d66df8d9b36674019a4eb41af9920` passed
+[full CI in 8m50s](https://github.com/unbought-games/orbit-imperium/actions/runs/41213275927),
+including queueing/setup and all 923 fixture-browser cases. Automated review
+passed and the actionable observer-cleanup thread was resolved.
+
+Queue integration with PR #259 exposed overlapping repairs to the same HUD
+pagination hook and tests. Integrating its queued revision
+`7e41993e1ff7638a446179b842909db62bda9d8f` retains its explicitly captured next
+limit and latest-render visibility check, together with this PR's disconnected
+observer guard. This combination closes both delivery windows with the existing
+passive effect; the earlier layout-effect implementation is no longer needed.
+Both sets of regressions are retained. The original pagination case and all
+three regressions passed five repetitions each (20 tests, 17.4s), with refreshed
+and inspected desktop/mobile captures. The new pushed revision must pass PR and
+merge-group checks before merging.
+
 ## October 24 audit
 
 Audited October 24, 2026, against checkout

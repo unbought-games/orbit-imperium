@@ -621,7 +621,7 @@ for (const width of [390, 1440]) {
       window as unknown as { notifyHudIntersection: () => void }
     ).notifyHudIntersection)
     // Also deliver at the DOM-commit boundary, before a passive-effect cleanup
-    // is guaranteed to run. Layout cleanup must have retired this observer.
+    // is guaranteed to run. The latest visibility guard must reject it.
     await page.evaluate(notify => {
       const inbox = document.querySelector('[aria-label="Intelligence list"]')!.parentElement!
       const watcher = new MutationObserver(() => {
@@ -653,6 +653,43 @@ for (const width of [390, 1440]) {
     await expect(panel.getByRole('status').filter({ hasText: 'You’re all caught up.' })).toBeVisible()
   })
 }
+
+test('stale HUD intersection callbacks cannot consume a later pagination batch', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.addInitScript(() => {
+    const host = window as typeof window & { replayStaleHudIntersection?: () => void }
+    const NativeObserver = window.IntersectionObserver
+    window.IntersectionObserver = class extends NativeObserver {
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        super(callback, options)
+        if (options?.root instanceof HTMLDialogElement && !host.replayStaleHudIntersection) {
+          host.replayStaleHudIntersection = () => callback([{ isIntersecting: true } as IntersectionObserverEntry], this)
+        }
+      }
+    }
+  })
+  const f = await intelligenceFixture(page)
+  f.headers.push(...Array.from({ length: 130 }, (_, i) => ({ id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false })))
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await expect(page.getByTestId('unread-count')).toHaveText('99')
+  await page.getByTestId('command-orb').click()
+  const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
+  const entries = panel.getByLabel('Intelligence list').getByRole('button')
+  await expect(entries).toHaveCount(20)
+  await expect.poll(() => page.evaluate(() => typeof (window as typeof window & { replayStaleHudIntersection?: () => void }).replayStaleHudIntersection)).toBe('function')
+  for (const count of [40, 60]) {
+    // Click without scrolling the sentinel into view, then deliver the callback
+    // queued by the first observer after a newer batch has already committed.
+    await panel.getByRole('button', { name: 'Load more intelligence', exact: true }).evaluate(button => (button as HTMLButtonElement).click())
+    await expect(entries).toHaveCount(count)
+    await page.evaluate(async () => {
+      (window as typeof window & { replayStaleHudIntersection?: () => void }).replayStaleHudIntersection!()
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    })
+    await expect(entries).toHaveCount(count)
+  }
+})
 
 test('captions explain once, joke only on confirmed new losses, and keep humor separate from regular feedback', async ({page}) => {
   await page.setViewportSize({width:390,height:844})

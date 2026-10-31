@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { reportLoad } from '../../client-model/report-engine'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { GameState } from '../../client-model/game-store'
@@ -41,36 +35,36 @@ export function useHudInbox(
   ]
   const more = limit < targets.length || !!state.reportInbox?.has_more
   const buffered = limit < targets.length
-  const loadMore = useCallback(async () => {
-    if (!visible || loading) return
+  const loadTo = async (nextLimit: number) => {
+    if (!visible || loading || nextLimit <= limit) return
     if (buffered) {
-      setLimit((value) => Math.max(value, limit + batchSize))
+      setLimit((value) => Math.max(value, nextLimit))
       return
     }
     // A shared request can complete before its observer sees the new limit.
     // Repeated requests from this render all express the same next-page intent.
     try {
       await model.reports.refreshInbox(true)
-      setLimit((value) => Math.max(value, limit + batchSize))
+      setLimit((value) => Math.max(value, nextLimit))
     } catch {
       /* Shared request state supplies retry in both surfaces. */
     }
-  }, [visible, loading, buffered, model, limit])
-  // Retire the previous observer during commit, before queued browser callbacks
-  // can see a hidden inbox or a newer render's page intent.
-  useLayoutEffect(() => {
+  }
+  const loadMore = () => loadTo(limit + batchSize)
+  const latestLoad = useRef(loadTo)
+  latestLoad.current = loadTo
+  useEffect(() => {
     const element = sentinel.current
-    // Child layout effects run before the enclosing dialog's ref attaches on
-    // mount. Its DOM ancestor is already available at that point.
-    const root = scrollRoot.current ?? element?.closest('dialog')
+    const root = scrollRoot.current
     if (!visible || !more || loading || failed || !element || !root) return
+    // A callback queued before this observer disconnects still belongs to this
+    // batch; it must not consume whichever batch a later render is showing.
+    const nextLimit = limit + batchSize
     let active = true
     const observer = new IntersectionObserver(
       (entries) => {
         if (active && entries.some((entry) => entry.isIntersecting))
-          // Keep the observing render's page intent even if delivery races a
-          // new render before this effect's cleanup has run.
-          void loadMore()
+          void latestLoad.current(nextLimit)
       },
       { root, rootMargin: '0px 0px 100px 0px' },
     )
@@ -85,9 +79,10 @@ export function useHudInbox(
     more,
     loading,
     failed,
-    loadMore,
+    limit,
     targets.length,
     state.reportInbox?.next_cursor,
+    buffered,
     scrollRoot,
   ])
   return {
