@@ -52,7 +52,7 @@ were removed with `docker compose down -v`.
 
 ## Private publication and infrastructure
 
-The owner-authorized private hosted-content repository was created, checked as
+The owner-authorized private content repository was created, checked as
 PRIVATE, and pushed. Its five tests, deterministic build and GitHub CI passed.
 The exact legacy hosted SVG and pinned manifest were published into the existing
 private S3 bucket and read back byte-for-byte. The infrastructure helper verified
@@ -69,7 +69,7 @@ check because a Fly login is unavailable. No Terraform apply was needed/performe
 Production Orbit readiness remained HTTP 204 after publication/configuration.
 The running old binary was not restarted. The new content-loading behavior starts
 with a future controlled release of this application code. Private deployment
-pins, source history and exact publication evidence are recorded in hosted-content
+pins, source history and exact publication evidence are recorded in the private content repository
 and the infrastructure handoff, outside the public application repository.
 
 ## Failures encountered and resolved

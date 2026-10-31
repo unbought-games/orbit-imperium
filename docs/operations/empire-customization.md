@@ -180,7 +180,7 @@ uninstalled IDs are not served even if they remain in the bucket. During rolling
 updates, keep installed IDs needed by both versions; old immutable revisions of
 installed symbols remain readable. For new catalog IDs, refresh old browser apps.
 
-Unbought's private hosted-content repository owns its source catalog and publisher;
+Unbought's private content repository owns its source catalog and publisher;
 the infrastructure repository owns its bucket, credentials and pinned runtime
 configuration. Publication does not restart or release Orbit. Publish verified
 content before activating its pin in a controlled application release. An old
