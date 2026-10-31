@@ -222,6 +222,21 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
   assert.notEqual(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'failure' }), 0)
 })
 
+test('database groups reuse trusted native dependencies and isolate Compose cleanup', () => {
+  const { native, database } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
+  const cache = job => job.steps.find(step => step.uses?.startsWith('Swatinem/rust-cache@')).with
+  assert.equal(cache(native)['shared-key'], 'check-native')
+  assert.equal(cache(database)['shared-key'], cache(native)['shared-key'])
+  assert.equal(cache(native)['save-if'], "${{ github.ref == 'refs/heads/main' }}")
+  assert.equal(cache(database)['save-if'], false)
+  assert.equal(database.strategy['fail-fast'], false)
+  assert.equal(database.env.COMPOSE_PROJECT_NAME, 'orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}')
+  assert.equal(database.env.ORBIT_DB_PUBLISHED_PORT, '0')
+  const cleanup = database.steps.find(step => step.name === 'Remove disposable database and test files')
+  assert.equal(cleanup.if, 'always()')
+  assert.match(cleanup.run, /docker compose down --volumes --remove-orphans/)
+})
+
 test('browser shards run independently and Make forwards their native Playwright selector', () => {
   const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
   assert.equal(browser.strategy['fail-fast'], false)

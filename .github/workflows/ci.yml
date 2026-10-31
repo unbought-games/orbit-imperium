@@ -78,7 +78,8 @@ jobs:
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
         with:
-          key: check
+          # Reuse the existing main dependency cache across native and DB jobs.
+          shared-key: check-native
           cache-bin: false
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install pinned nextest
@@ -115,7 +116,8 @@ jobs:
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
         with:
-          key: check
+          # Reuse the existing main dependency cache across native and DB jobs.
+          shared-key: check-native
           cache-bin: false
           save-if: false
       - name: Install pinned nextest
