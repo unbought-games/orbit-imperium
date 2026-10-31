@@ -241,7 +241,7 @@
 }
 
 /* A floating command orb must never make the last row's controls unreachable. */
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .game-shell[data-has-command-hud] {
     padding-bottom: calc(230px + env(safe-area-inset-bottom));
   }
@@ -252,11 +252,6 @@
   }
 }
 
-.headerSlots {
-  margin-inline-start: auto;
-  flex-shrink: 0;
-}
-
 /* Give the desktop orb its own space beside the scrolling content. */
 @media (min-width: 1440px) {
   .game-shell[data-has-command-hud] {
@@ -264,7 +259,7 @@
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .game-shell[data-has-command-hud] {
     padding-bottom: 160px;
   }
@@ -300,5 +295,20 @@
   .masthead {
     justify-self: end;
     width: min(100%, 620px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .game-shell {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+  .header {
+    /* A filtered ancestor would trap the fixed bottom navigation. */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .worldBar {
+    grid-template-columns: minmax(0, 144px) minmax(0, 1fr);
+    grid-template-areas: 'context resources';
   }
 }
