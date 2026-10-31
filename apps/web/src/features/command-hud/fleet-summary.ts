@@ -194,23 +194,31 @@ export function ownFleetTone(mission: S['Mission4']) {
 }
 
 /** Incoming snapshots expose arrival and intelligence, never departure time or progress. */
+export function incomingFleetSummary(
+  view: S['BoundView4'],
+  fleet: S['IncomingMission4'],
+): FleetSummaryRow {
+  const origin = endpoint(view, fleet.origin_body, fleet.origin, 'Unknown')
+  return {
+    key: incomingKey(fleet),
+    origin: fleet.target,
+    mission: fleet.mission,
+    leg: 'Incoming',
+    ships: fleet.ships.visibility === 'Exact' ? fleet.ships.ships : [],
+    home: endpoint(view, fleet.target, undefined, 'Planet'),
+    target:
+      origin.kind === 'Unknown'
+        ? { ...origin, name: 'Unknown origin' }
+        : origin,
+    dueAt: fleet.arrival_at,
+    duration: null,
+  }
+}
+
 export function enemyAttackRows(state: GameState) {
   const view = state.view
   if (view?.protocol !== 4) return []
   return incomingAttacks(state)
-    .map((fleet) => {
-      const row: FleetSummaryRow = {
-        key: incomingKey(fleet),
-        origin: fleet.target,
-        mission: fleet.mission,
-        leg: 'Incoming',
-        ships: fleet.ships.visibility === 'Exact' ? fleet.ships.ships : [],
-        home: endpoint(view, fleet.target, undefined, 'Planet'),
-        target: endpoint(view, fleet.origin_body, fleet.origin, 'Unknown'),
-        dueAt: fleet.arrival_at,
-        duration: null,
-      }
-      return { fleet, row }
-    })
+    .map((fleet) => ({ fleet, row: incomingFleetSummary(view, fleet) }))
     .sort((a, b) => a.fleet.arrival_at - b.fleet.arrival_at)
 }

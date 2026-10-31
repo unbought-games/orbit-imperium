@@ -320,7 +320,7 @@ it('keeps enemy attacks separate, arrival-ordered and honest about hidden ships 
     duration: null,
     ships: [{ ship_type: 'Cruiser', count: '12' }],
     home: { name: 'Home' },
-    target: { name: 'Unavailable', address: '[1:2:3]', kind: 'Unknown' },
+    target: { name: 'Unknown origin', address: '[1:2:3]', kind: 'Unknown' },
   })
   expect(entries[1].row.ships).toEqual([])
   expect(fleetFlight(entries[1].row, 1000)).toMatchObject({
@@ -363,7 +363,7 @@ it('never infers enemy origin identity or planet/moon art from a shared coordina
   for (const candidates of [[planet, moon], [moon, planet], [planet], [moon]]) {
     state.view.destinations = candidates
     expect(enemyAttackRows(state)[0].row.target).toEqual({
-      name: 'Unavailable',
+      name: 'Unknown origin',
       address: '[1:2:3]',
       kind: 'Unknown',
     })
@@ -405,7 +405,7 @@ it.each(['Planet', 'Moon'] as const)(
       (body) => body.kind !== kind,
     )
     expect(enemyAttackRows(state)[0].row.target).toMatchObject({
-      name: 'Unavailable',
+      name: 'Unknown origin',
       address: '[1:2:3]',
       kind: 'Unknown',
     })
