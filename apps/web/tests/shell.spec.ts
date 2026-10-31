@@ -129,9 +129,11 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
       'href',
       `/u/andromeda/b/${body.id}/${building === 'ResearchLab' ? 'facilities' : 'resources'}`,
     )
+    const empireResearch = page.getByRole('region', { name: 'Empire research', exact: true })
+    await expect(empireResearch.getByRole('button', { name: 'Cancel research', exact: true })).toHaveCount(0)
     await expect(
-      page.getByRole('link', { name: 'Open research' }),
-    ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/research`)
+      empireResearch.getByRole('link', { name: building ? /Energy Technology/ : 'Open research' }),
+    ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/research${building ? '/energy-technology' : ''}`)
     await page.getByRole('link', { name: 'Develop', exact: true }).click()
     const nav = page.getByRole('navigation', { name: 'Develop navigation' })
     for (const destination of ['Resources', 'Facilities'] as const) {
@@ -653,7 +655,7 @@ for (const [kind, elapsed] of [
   ['research', 0],
   ['research', 60_000],
 ] as const) {
-  test(`overview cancels active ${kind} after ${elapsed}ms and prevents duplicate cancellation`, async ({
+  test(`${kind === 'research' ? 'research page' : 'overview'} cancels active ${kind} after ${elapsed}ms and prevents duplicate cancellation`, async ({
     page,
   }) => {
     const serverNow = Date.now()
@@ -717,6 +719,8 @@ for (const [kind, elapsed] of [
         },
       })
     })
+    if (kind === 'research')
+      await page.goto(`/u/andromeda/b/${body.id}/research`)
     const scope = kind === 'construction' ? page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }) : page
     const summary = scope.getByRole('region', {
       name: kind === 'construction' ? 'Buildings' : 'Research',
@@ -726,6 +730,7 @@ for (const [kind, elapsed] of [
       name: `Cancel ${kind}`,
       exact: true,
     })
+    await expect(cancel).toBeVisible()
     await cancel.click()
     if (elapsed >= 30_000) {
       await expect(page.getByRole('dialog')).toContainText('1 minute of work will be lost.')

@@ -751,7 +751,7 @@ export function EmpireOverview({
       </div>
       <section className={styles.research} aria-label="Empire research">
         <div className={styles.researchLabel}>
-          <span className={styles.eyebrow}>Shared across your empire</span>
+          <span className={styles.eyebrow}>Empire-wide research</span>
           <h3>Research directive</h3>
         </div>
         <WorkSummaries
@@ -759,7 +759,7 @@ export function EmpireOverview({
           body={researchHost ?? body}
           currentPage="overview"
           only="research"
-          layout="compact"
+          layout="directive"
         />
       </section>
       <div className={styles.sectionHeading}>
