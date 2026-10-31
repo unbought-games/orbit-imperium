@@ -15,7 +15,6 @@ async function inspectIdentity(page: Page, screen: string, name: string) {
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     const trigger = page.getByRole('button', { name: `${name} profile details` }).first()
-    await trigger.scrollIntoViewIfNeeded()
     await trigger.click()
     const popup = page.getByRole('dialog', { name: `${name} profile` })
     await expect(popup).toBeVisible()
@@ -173,7 +172,7 @@ test('incoming fleets and overview arrivals identify the same supporter', async 
   await expect(arrivals.getByText('Visitor', { exact: true })).toBeVisible()
   await expect(arrivals.getByRole('img', { name: /Supporter/ })).toBeVisible()
   await inspectIdentity(page, 'empire', 'Visitor')
-  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   const incoming = page.getByRole('region', { name: 'Incoming fleets' })
   await expect(incoming.getByText('Visitor', { exact: true })).toBeVisible()
   await expect(incoming.getByRole('img', { name: /Supporter/ })).toBeVisible()
@@ -220,8 +219,7 @@ test('espionage and combat observations use current public identities without ch
       },
     })
   })
-  // Identity assertions start after their own response, rather than spending
-  // their assertion budget on a cold route load and legacy-URL redirect.
+  // Start identity assertions after their own profile response, not a cold route load.
   const reportProfiles = () => page.waitForResponse(response => {
     if (!response.url().endsWith('/player-profiles') || response.status() !== 200) return false
     const source = response.request().postDataJSON()?.source
@@ -229,7 +227,7 @@ test('espionage and combat observations use current public identities without ch
   })
   await Promise.all([
     reportProfiles(),
-    page.goto(`/u/andromeda/reports/${id(80)}?body=${body.id}`),
+    page.goto(`/u/andromeda/b/${body.id}/reports/${id(80)}`),
   ])
   const observation = page.getByRole('region', { name: 'Report observation' })
   await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
