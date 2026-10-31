@@ -138,23 +138,25 @@ export function MissionFleets({
               description="Detected arrivals will appear here."
             />
           )}
-          {incoming.map((movement) =>
-            movement.kind === 'missile' ? (
-              <MissileFlight
-                key={movement.key}
-                flight={movement.flight}
-                view={view}
-                now={now}
-              />
-            ) : (
-              <IncomingFleet
-                key={movement.key}
-                fleet={movement.flight}
-                view={view}
-                now={now}
-              />
-            ),
-          )}
+          <div className={fleetStyles.list}>
+            {incoming.map((movement) =>
+              movement.kind === 'missile' ? (
+                <MissileFlight
+                  key={movement.key}
+                  flight={movement.flight}
+                  view={view}
+                  now={now}
+                />
+              ) : (
+                <IncomingFleet
+                  key={movement.key}
+                  fleet={movement.flight}
+                  view={view}
+                  now={now}
+                />
+              ),
+            )}
+          </div>
         </section>
       )}
       {!item && <FleetInventory model={model} origin={origin} />}

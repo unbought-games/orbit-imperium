@@ -5,6 +5,8 @@ import {
 } from '../client-model/game-projection'
 import { MissileFlight } from './missile-flight'
 import { FleetCargo } from './fleet-cargo'
+import { IncomingFleet } from './incoming-fleet'
+import { incomingKey } from './command-hud/model'
 import { MissionFleetCard } from './mission-fleet-card'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
@@ -109,6 +111,15 @@ function FlightList({
     fullRows && view.protocol === 4
       ? new Map(view.missions.fleets.map((fleet) => [fleet.id, fleet]))
       : null
+  const incomingFleets =
+    fullRows && view.protocol === 4
+      ? new Map(
+          view.missions.incoming.map((fleet, index) => [
+            `incoming:${index}`,
+            fleet,
+          ]),
+        )
+      : null
   const ownMissiles =
     fullRows && view.protocol === 4
       ? new Map(
@@ -133,6 +144,19 @@ function FlightList({
               detail={false}
               origin={body}
               linkEnabled={available}
+            />
+          )
+        }
+        const incoming =
+          flight.kind === 'fleet' ? incomingFleets?.get(flight.key) : undefined
+        if (fullRows && view.protocol === 4 && incoming) {
+          return (
+            <IncomingFleet
+              key={incomingKey(incoming)}
+              as="li"
+              fleet={incoming}
+              view={view}
+              now={now}
             />
           )
         }
