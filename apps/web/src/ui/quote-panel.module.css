@@ -1,7 +1,8 @@
 .panel {
   margin-bottom: var(--space-6);
 }
-.panel ul {
+/* Styled lists own their spacing; only prose lists need an indent. */
+.panel ul:not([class]) {
   padding-left: var(--space-6);
 }
 .action {

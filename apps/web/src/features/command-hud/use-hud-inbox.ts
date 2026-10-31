@@ -35,30 +35,35 @@ export function useHudInbox(
   ]
   const more = limit < targets.length || !!state.reportInbox?.has_more
   const buffered = limit < targets.length
-  const loadMore = async () => {
-    if (loading) return
+  const loadTo = async (nextLimit: number) => {
+    if (!visible || loading || nextLimit <= limit) return
     if (buffered) {
-      setLimit((value) => Math.max(value, limit + batchSize))
+      setLimit((value) => Math.max(value, nextLimit))
       return
     }
     // A shared request can complete before its observer sees the new limit.
     // Repeated requests from this render all express the same next-page intent.
     try {
       await model.reports.refreshInbox(true)
-      setLimit((value) => Math.max(value, limit + batchSize))
+      setLimit((value) => Math.max(value, nextLimit))
     } catch {
       /* Shared request state supplies retry in both surfaces. */
     }
   }
-  const latestLoad = useRef(loadMore)
-  latestLoad.current = loadMore
+  const loadMore = () => loadTo(limit + batchSize)
+  const latestLoad = useRef(loadTo)
+  latestLoad.current = loadTo
   useEffect(() => {
     const element = sentinel.current
     const root = scrollRoot.current
     if (!visible || !more || loading || failed || !element || !root) return
+    // A callback queued before this observer disconnects still belongs to this
+    // batch; it must not consume whichever batch a later render is showing.
+    const nextLimit = limit + batchSize
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) latestLoad.current()
+        if (entries.some((entry) => entry.isIntersecting))
+          void latestLoad.current(nextLimit)
       },
       { root, rootMargin: '0px 0px 100px 0px' },
     )
