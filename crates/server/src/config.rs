@@ -55,15 +55,34 @@ mod universe_config_tests {
             local.asset_store,
             Some(orbit_storage_assets::AssetConfig::Files { .. })
         ));
+        assert!(local.cosmetic_catalog.is_none());
+        assert!(
+            ServeConfig::parse(|k| match k {
+                "ORBIT_ALLOW_INSECURE_HTTP" => Some("1".into()),
+                "ORBIT_COSMETIC_CATALOG" => Some("../catalog.json".into()),
+                _ => None,
+            })
+            .is_err()
+        );
+        let configured = ServeConfig::parse(|k| match k {
+            "ORBIT_ALLOW_INSECURE_HTTP" => Some("1".into()),
+            "ORBIT_COSMETIC_CATALOG" => Some(format!("insignias/catalogs/{}.json", "a".repeat(64))),
+            _ => None,
+        })
+        .unwrap();
+        assert!(configured.cosmetic_catalog.is_some());
         assert!(parse(Some("supporter")).is_err());
         assert!(parse(Some("unknown")).is_err());
         let worker = ServeConfig::parse(|k| match k {
             "ORBIT_ROLE" => Some("worker".into()),
-            "ORBIT_COSMETIC_ACCESS" | "ORBIT_ASSET_STORE" => Some("ignored".into()),
+            "ORBIT_COSMETIC_ACCESS" | "ORBIT_ASSET_STORE" | "ORBIT_COSMETIC_CATALOG" => {
+                Some("ignored".into())
+            }
             _ => None,
         })
         .unwrap();
         assert!(worker.asset_store.is_none());
+        assert!(worker.cosmetic_catalog.is_none());
     }
 
     #[test]
@@ -173,6 +192,7 @@ impl RuntimeRole {
 }
 pub struct ServeConfig {
     pub asset_store: Option<orbit_storage_assets::AssetConfig>,
+    pub cosmetic_catalog: Option<String>,
     pub cosmetic_policy: orbit_application::CosmeticPolicy,
     pub profiles: Option<orbit_transport_http::AccountProfiles>,
     pub oidc: Option<unbought_auth::Configuration>,
@@ -382,6 +402,17 @@ impl ServeConfig {
         } else {
             orbit_application::CosmeticPolicy::Unrestricted
         };
+        let cosmetic_catalog = if api {
+            get("ORBIT_COSMETIC_CATALOG")
+        } else {
+            None
+        };
+        if cosmetic_catalog
+            .as_deref()
+            .is_some_and(|key| orbit_application::catalog_hash(key).is_none())
+        {
+            return Err("ORBIT_COSMETIC_CATALOG must be insignias/catalogs/<sha256>.json".into());
+        }
         let asset_store = if api {
             Some(orbit_storage_assets::AssetConfig::parse(get)?)
         } else {
@@ -389,6 +420,7 @@ impl ServeConfig {
         };
         Ok(Self {
             asset_store,
+            cosmetic_catalog,
             cosmetic_policy,
             profiles,
             oidc,

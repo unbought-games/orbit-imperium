@@ -30,7 +30,7 @@ export function symbolAccess(
   now: number,
 ) {
   const item = snapshot.catalog.find((item) => item.id === symbol)
-  if (!item) return 'supporter_required'
+  if (!item) return 'not_installed'
   if (
     !item.supporter ||
     snapshot.policy === 'unrestricted' ||

@@ -72,7 +72,7 @@ prefix. The adapter does not need bucket listing or deletion for this slice.
 Browsers access Orbit's media route, so no public bucket policy or S3 CORS rule
 is required. This code change does not create AWS resources or deploy production.
 
-API startup writes the four supplied originals at their content-addressed keys
+API startup writes the three bundled free originals at their content-addressed keys
 and reads them back to verify delivery. Repeated publication writes identical
 bytes. This avoids depending on S3 bucket-list permission to identify an absent
 object; [S3 can return 403 for missing keys without it](https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html). Grant publication permissions before rollout. An asset
@@ -85,13 +85,14 @@ bucket access to the application/backup operators.
 
 `unrestricted` exposes every supplied symbol without checking supporter status
 for cosmetic access. It does not mark players as supporters. `supporter` exposes
-Wayfinder, Starwing, and Ascendant freely, and Laureate to supporters at tiers
-1–3 or holders of a permanent Laureate grant.
+the installed free items to everyone and installed supporter items to supporters
+at tiers 1–3 or holders of permanent grants. Unrestricted only unlocks installed
+items; it does not fetch or reveal official content.
 
 Permanent grants are Orbit-owned records in `insignia_grants` keyed by local
 account UUID and stable catalog symbol ID. A future verified purchase can write
 one grant using `ON CONFLICT DO NOTHING`. For an intentional operator grant,
-use parameterized SQL with the **verified local account ID**, symbol `laurel`,
+use parameterized SQL with the **verified local account ID**, the installed symbol ID,
 and an audit reason. This is not a browser API and never uses a display name as
 identity. Granting a symbol unlocks all its color combinations, not one saved
 composition. Grant rows survive membership expiry and deleting a saved design.
@@ -119,7 +120,7 @@ After deploying/configuring a server:
 1. Confirm API startup published the catalog without storage errors.
 2. Create, recolor, save, and equip a design in Settings; reload and verify it.
 3. Check Galaxy from another account; allow up to a minute for profile refresh.
-4. Verify a free account cannot save/equip Laureate in supporter mode, while an
+4. Verify a free account cannot save/equip an installed supporter item, while an
    eligible supporter can. Verify expired membership preserves the saved design.
 5. Verify a permanent grant remains usable without supporter evidence.
 6. Restart the API and verify the collection and asset delivery persist.
@@ -134,3 +135,54 @@ and IAM permissions during an explicitly requested deployment.
 server and disposable PostgreSQL database. It covers save/equip, Galaxy identity,
 asset delivery, desktop/mobile captures, and an API restart; its script removes
 its database and asset directory. It requires an isolated running Compose database.
+
+## Separately installed catalogs
+
+See [ADR 002](../architecture/adr-002-hosted-cosmetic-content.md). Community builds
+include only three free originals. Place additional trusted originals in the
+configured asset directory/bucket; never put proprietary content in the public
+source or image build context. A version-1 manifest contains only additional items:
+
+```json
+{"version":1,"insignias":[{"id":"my-circle","name":"My circle","supporter":false,"sha256":"<64 lowercase hex SHA-256 of the SVG bytes>"}]}
+```
+
+Upload each SVG to `insignias/v1/<id>/<svg-sha256>.svg`. Hash the exact UTF-8 JSON
+bytes (including any newline), then store the manifest at
+`insignias/catalogs/<manifest-sha256>.json`. Set:
+
+```sh
+ORBIT_COSMETIC_CATALOG=insignias/catalogs/<manifest-sha256>.json
+```
+
+The same paths work beneath `ORBIT_ASSET_DIRECTORY` for filesystem hosting.
+Unset this variable for a free-only server; no external service is contacted.
+Choose your own catalog access policy. No Unbought assets, credentials, branding
+rights or automatic official catalog downloads are supplied by this mechanism.
+
+IDs are 1–64 lowercase letters/digits/hyphens; names are 1–64 characters without
+controls. A manifest cannot override bundled IDs. Up to 256 extra items and
+256 KiB of JSON are supported. SVGs are at most 64 KiB and accept static SVG
+geometry (paths, shapes and groups), not scripts, events, stylesheets, external
+references or uploaded player content. Use literal fills/strokes; the browser
+renders the original as a monochrome mask with the player's chosen colors.
+
+API startup verifies every manifest and original hash before readiness. A
+configured-but-missing catalog fails startup; an omitted catalog deliberately
+starts free-only. Missing selections and permanent grants stay saved and display
+a free fallback. Reinstalling matching IDs restores their appearance. Workers
+ignore the manifest. Installations sharing several API hosts must share a store
+and deploy the same catalog key. Keep previous manifests and originals for rollback.
+
+External artwork is delivered only to authenticated game clients, without a
+supporter requirement for viewing. It is not publicly cacheable. Objects for
+uninstalled IDs are not served even if they remain in the bucket. During rolling
+updates, keep installed IDs needed by both versions; old immutable revisions of
+installed symbols remain readable. For new catalog IDs, refresh old browser apps.
+
+Unbought's private hosted-content repository owns its source catalog and publisher;
+the infrastructure repository owns its bucket, credentials and pinned runtime
+configuration. Publication does not restart or release Orbit. Publish verified
+content before activating its pin in a controlled application release. An old
+binary ignores the new setting and can be used for application rollback without
+deleting assets or changing database selections.

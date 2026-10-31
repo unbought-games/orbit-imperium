@@ -36,10 +36,11 @@ impl IdentityStore for PgStore {
         &self,
         b: Binding,
         a: InsigniaAction,
+        catalog: &InsigniaCatalog,
         p: CosmeticPolicy,
         e: SupporterEvidence,
     ) -> Result<(), ServiceError> {
-        self.write_insignia(b, a, p, e).await
+        self.write_insignia(b, a, catalog, p, e).await
     }
     async fn equipped_insignias(
         &self,

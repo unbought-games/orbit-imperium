@@ -13,10 +13,10 @@ const snapshot = (): InsigniaState => ({
   library: { designs: [], equipped: null, permanent_symbols: [] },
   catalog: [
     {
-      id: 'laurel',
-      name: 'Laureate',
+      id: 'test-star',
+      name: 'Test star',
       supporter: true,
-      asset_url: `/api/media/insignias/laurel/${'a'.repeat(64)}.svg`,
+      asset_url: `/api/media/insignias/test-star/${'a'.repeat(64)}.svg`,
       access: 'available',
     },
   ],
@@ -53,13 +53,20 @@ describe('insignia eligibility', () => {
   })
   it('expires membership evidence but preserves permanent and unrestricted access', () => {
     const state = snapshot()
-    expect(symbolAccess(state, 'laurel', 99_999)).toBe('available')
-    expect(symbolAccess(state, 'laurel', 100_000)).toBe('unavailable')
-    state.library.permanent_symbols = ['laurel']
-    expect(symbolAccess(state, 'laurel', 100_001)).toBe('available')
+    expect(symbolAccess(state, 'test-star', 99_999)).toBe('available')
+    expect(symbolAccess(state, 'test-star', 100_000)).toBe('unavailable')
+    state.library.permanent_symbols = ['test-star']
+    expect(symbolAccess(state, 'test-star', 100_001)).toBe('available')
     state.library.permanent_symbols = []
     state.policy = 'unrestricted'
-    expect(symbolAccess(state, 'laurel', 100_001)).toBe('available')
+    expect(symbolAccess(state, 'test-star', 100_001)).toBe('available')
+  })
+  it('does not unlock uninstalled items through unrestricted policy or permanent grants', () => {
+    const state = snapshot()
+    state.catalog = []
+    state.policy = 'unrestricted'
+    state.library.permanent_symbols = ['test-star']
+    expect(symbolAccess(state, 'test-star', 99_999)).toBe('not_installed')
   })
   it('ignores late responses after the editor closes and refreshes profiles after a save', async () => {
     vi.useFakeTimers()

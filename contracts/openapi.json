@@ -19323,12 +19323,7 @@
           },
           "symbol": {
             "type": "string",
-            "enum": [
-              "compass",
-              "wings",
-              "spire",
-              "laurel"
-            ]
+            "pattern": "^[a-z0-9-]{1,64}$"
           },
           "foreground": {
             "type": "string",
@@ -19383,7 +19378,7 @@
           },
           "asset_url": {
             "type": "string",
-            "pattern": "^/api/media/insignias/(compass|wings|spire|laurel)/[0-9a-f]{64}\\.svg$"
+            "pattern": "^/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg$"
           }
         },
         "required": [
@@ -19396,7 +19391,8 @@
         "enum": [
           "available",
           "supporter_required",
-          "unavailable"
+          "unavailable",
+          "not_installed"
         ]
       },
       "InsigniaLibrary": {
@@ -19445,7 +19441,7 @@
           },
           "asset_url": {
             "type": "string",
-            "pattern": "^/api/media/insignias/(compass|wings|spire|laurel)/[0-9a-f]{64}\\.svg$"
+            "pattern": "^/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg$"
           },
           "access": {
             "$ref": "#/components/schemas/InsigniaAccess"

@@ -10,6 +10,7 @@ pub trait IdentityStore: Send + Sync {
         &self,
         _binding: Binding,
         _action: InsigniaAction,
+        _catalog: &InsigniaCatalog,
         _policy: CosmeticPolicy,
         _evidence: SupporterEvidence,
     ) -> impl std::future::Future<Output = Result<(), ServiceError>> + Send {

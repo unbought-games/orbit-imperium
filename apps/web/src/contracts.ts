@@ -8160,8 +8160,7 @@ export interface components {
         InsigniaRecipe: {
             /** @enum {integer} */
             version: 1;
-            /** @enum {string} */
-            symbol: "compass" | "wings" | "spire" | "laurel";
+            symbol: string;
             foreground: string;
             background: string;
         };
@@ -8177,7 +8176,7 @@ export interface components {
             asset_url: string;
         };
         /** @enum {string} */
-        InsigniaAccess: "available" | "supporter_required" | "unavailable";
+        InsigniaAccess: "available" | "supporter_required" | "unavailable" | "not_installed";
         InsigniaLibrary: {
             designs: components["schemas"]["InsigniaDesign"][];
             /** Format: uuid */

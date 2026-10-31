@@ -30,13 +30,13 @@ async function fixture(page: Page) {
       fleet_slots: '1',
     },
   })
-  const catalog = ['compass', 'wings', 'spire', 'laurel'].map((id, index) => {
+  const catalog = ['compass', 'wings', 'spire', 'test-star'].map((id, index) => {
     const bytes = readFileSync(
-      `crates/transport-http/assets/insignias/${id}.svg`,
+      id === 'test-star' ? 'crates/storage-postgres/tests/fixtures/cosmetics/test-star.svg' : `crates/application/assets/insignias/${id}.svg`,
     )
     return {
       id,
-      name: ['Wayfinder', 'Starwing', 'Ascendant', 'Laureate'][index],
+      name: ['Wayfinder', 'Starwing', 'Ascendant', 'Test star'][index],
       supporter: index === 3,
       asset_url: `/api/media/insignias/${id}/${createHash('sha256').update(bytes).digest('hex')}.svg`,
       bytes,
@@ -50,14 +50,14 @@ async function fixture(page: Page) {
     designs: [] as Design[],
     equipped: null as string | null,
     supporter: false,
+    installed: true,
     unknown: false,
     permanent: false,
     fail: false,
   }
   const available = (symbol: string) =>
-    symbol !== 'laurel' ||
-    state.permanent ||
-    (state.supporter && !state.unknown)
+    symbol !== 'test-star' ||
+    (state.installed && (state.permanent || (state.supporter && !state.unknown)))
   const appearance = () => {
     const selected = state.designs.find((d) => d.id === state.equipped)?.recipe
     if (!selected) return null
@@ -98,10 +98,10 @@ async function fixture(page: Page) {
         library: {
           designs: state.designs,
           equipped: state.equipped,
-          permanent_symbols: state.permanent ? ['laurel'] : [],
+          permanent_symbols: state.permanent ? ['test-star'] : [],
         },
         policy: 'supporter',
-        catalog: catalog.map(({ bytes: _bytes, ...item }) => ({
+        catalog: catalog.filter((item) => state.installed || item.id !== 'test-star').map(({ bytes: _bytes, ...item }) => ({
           ...item,
           access: available(item.id)
             ? 'available'
@@ -140,7 +140,7 @@ for (const width of [1440, 390]) {
     await panel.getByRole('button', { name: 'Starwing', exact: true }).click()
     await expect(
       panel.getByRole('button', {
-        name: 'Laureate · Supporter access required',
+        name: 'Test star · Supporter access required',
       }),
     ).toBeDisabled()
     await panel.getByLabel('Symbol color', { exact: true }).fill('#f2ca74')
@@ -162,7 +162,7 @@ for (const width of [1440, 390]) {
     expect(state.designs[0].recipe.foreground).toBe('#f2ca74')
     state.supporter = true
     await page.reload()
-    await panel.getByRole('button', { name: 'Laureate', exact: true }).click()
+    await panel.getByRole('button', { name: 'Test star', exact: true }).click()
     await panel.getByRole('button', { name: 'Save & equip' }).click()
     await expect(panel.getByRole('status')).toHaveText(
       'Design saved and equipped.',
@@ -197,7 +197,7 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(page, {
       path: `test-results/insignia-permanent-${width}x1000.png`,
     })
-    expect(appearance()?.recipe.symbol).toBe('laurel')
+    expect(appearance()?.recipe.symbol).toBe('test-star')
     await page.route('**/world', (route) => {
       const q = route.request().postDataJSON()
       return route.fulfill({
@@ -469,5 +469,41 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`community catalog and preserved missing selection at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { state } = await fixture(page)
+    state.installed = false
+    state.permanent = true
+    await page.goto('/u/andromeda/settings')
+    const panel = page.getByRole('region', { name: 'Empire insignia' })
+    await panel.getByRole('button', { name: 'New design' }).click()
+    await expect(panel.getByRole('button', { name: 'Test star', exact: true })).toHaveCount(0)
+    await expect(panel.getByRole('button', { name: 'Wayfinder', exact: true })).toBeVisible()
+    await expect(panel).not.toContainText('Supporters can use additional symbols')
+    await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 72))
+    await diagnosticScreenshot(page, { path: `test-results/catalog-community-${width}x1000.png` })
+    const id = '00000000-0000-4000-8000-000000000031'
+    state.designs = [{ id, name: 'Preserved design', recipe: { ...fallback, symbol: 'test-star' }, revision: 1 }]
+    state.equipped = id
+    await page.reload()
+    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue('Preserved design')
+    await expect(panel).toContainText('This symbol is not installed on this server.')
+    await expect(panel.getByRole('button', { name: 'Equip design', exact: true })).toBeDisabled()
+    await expect(panel.getByRole('button', { name: 'Delete design', exact: true })).toBeEnabled()
+    await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 72))
+    await diagnosticScreenshot(page, { path: `test-results/catalog-missing-${width}x1000.png` })
+    if (width === 390) {
+      await panel.getByRole('button', { name: 'Equip design', exact: true }).scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/catalog-missing-controls-${width}x1000.png` })
+    }
+    await panel.getByRole('button', { name: 'Wayfinder', exact: true }).click()
+    await expect(panel.getByRole('button', { name: 'Save & equip' })).toBeEnabled()
+    await panel.getByRole('button', { name: 'Save & equip' }).click()
+    await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
+    expect(state.designs[0].recipe.symbol).toBe('compass')
   })
 }

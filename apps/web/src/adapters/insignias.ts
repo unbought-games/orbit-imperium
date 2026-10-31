@@ -22,7 +22,11 @@ export function insigniasApi(
         method: 'POST',
         cache: 'no-store',
         credentials: 'same-origin',
-        headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': csrf,
+          'x-orbit-catalog': '1',
+        },
         signal: AbortSignal.any([signal, AbortSignal.timeout(12_000)]),
         body: JSON.stringify({ context: { binding, request_id }, action }),
       },

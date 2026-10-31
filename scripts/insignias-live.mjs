@@ -2,8 +2,8 @@
 // Use the disposable Compose project configured for the existing database test runner.
 import assert from 'node:assert/strict'
 import { execFileSync, spawn } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { randomUUID, createHash } from 'node:crypto'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
@@ -17,6 +17,15 @@ const lease = await reserveTestPort()
 const base = `http://localhost:${lease.port}`
 const compose = (...args) => execFileSync('docker', ['compose', ...args], { stdio: 'pipe' })
 const env = { ...process.env, DATABASE_URL: `postgres://orbit:${encodeURIComponent(process.env.ORBIT_DB_PASSWORD || 'orbit')}@127.0.0.1:${process.env.ORBIT_TEST_DB_PORT ?? '55432'}/${db}`, ORBIT_AUTH_MODE: 'local', ORBIT_COSMETIC_ACCESS: 'unrestricted', ORBIT_ASSET_STORE: 'files', ORBIT_ASSET_DIRECTORY: directory, ORBIT_BIND: `127.0.0.1:${lease.port}`, ORBIT_ORIGIN: base, ORBIT_ALLOW_INSECURE_HTTP: '1', ORBIT_ASSETS: 'apps/web/dist' }
+const svg = readFileSync('crates/storage-postgres/tests/fixtures/cosmetics/test-star.svg')
+const hash = createHash('sha256').update(svg).digest('hex')
+const manifest = Buffer.from(JSON.stringify({ version: 1, insignias: [{ id: 'test-star', name: 'Test star', supporter: true, sha256: hash }] }))
+const manifestHash = createHash('sha256').update(manifest).digest('hex')
+mkdirSync(join(directory, 'insignias/v1/test-star'), { recursive: true })
+mkdirSync(join(directory, 'insignias/catalogs'), { recursive: true })
+writeFileSync(join(directory, `insignias/v1/test-star/${hash}.svg`), svg)
+writeFileSync(join(directory, `insignias/catalogs/${manifestHash}.json`), manifest)
+env.ORBIT_COSMETIC_CATALOG = `insignias/catalogs/${manifestHash}.json`
 delete env.ORBIT_ACCOUNTS_PROFILE_CREDENTIAL
 delete env.ORBIT_ACCOUNTS_API_URL
 let server, browser
@@ -62,13 +71,13 @@ try {
   const panel = page.getByRole('region', { name: 'Empire insignia' })
   await panel.getByRole('button', { name: 'New design' }).click()
   await panel.getByLabel('Design name', { exact: true }).fill('Aurelian standard')
-  await panel.getByRole('button', { name: 'Laureate', exact: true }).click()
+  await panel.getByRole('button', { name: 'Test star', exact: true }).click()
   await panel.getByLabel('Symbol color', { exact: true }).fill('#f2ca74')
   await panel.getByLabel('Background color', { exact: true }).fill('#743c4c')
   await panel.getByRole('button', { name: 'Save & equip' }).click()
   await panel.getByRole('status').filter({ hasText: 'Design saved and equipped.' }).waitFor()
   const rows = compose('exec', '-T', 'db', 'psql', '-U', 'orbit', '-d', db, '-Atc', "SELECT name||':'||(recipe->>'symbol') FROM insignia_designs").toString().trim()
-  assert.equal(rows, 'Aurelian standard:laurel')
+  assert.equal(rows, 'Aurelian standard:test-star')
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto(`${base}/u/${slug}/settings`)
@@ -94,7 +103,7 @@ try {
   await page.goto(`${base}/u/${slug}/settings`)
   const state = await (await loaded).json()
   assert.equal(state.library.designs[0].name, 'Aurelian standard')
-  assert.equal(state.appearance.recipe.symbol, 'laurel')
+  assert.equal(state.appearance.recipe.symbol, 'test-star')
   const asset = await page.request.get(`${base}${state.appearance.asset_url}`)
   assert.equal(asset.status(), 200)
   assert.match(await asset.text(), /^<svg/)
