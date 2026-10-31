@@ -67,7 +67,6 @@ export function Reports({
   const now = useStore(model.store, currentServerTime)
   const {
     page,
-    pageIsCurrent,
     detail,
     error,
     loading,
@@ -89,6 +88,10 @@ export function Reports({
     page?.items.filter((r) => r.hidden === archived).length ?? 0
   const complete =
     !!page && !page.has_more && !loading && !loadingMore && error === null
+  const loadingList =
+    (loading || loadingMore) &&
+    (!page || page.has_more) &&
+    (allReports || !visible.length)
 
   useProfileSource(
     detail && detail.header.id === item
@@ -309,15 +312,11 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
-          {archived && !complete && error === null && (
-            <Text role="status">Loading archived reports…</Text>
+          {loadingList && error === null && (
+            <Text role="status">
+              {archived ? 'Loading archived reports…' : 'Loading reports…'}
+            </Text>
           )}
-          {!archived &&
-            !complete &&
-            error === null &&
-            (allReports || (!pageIsCurrent && loading && !visible.length)) && (
-              <Text role="status">Loading reports…</Text>
-            )}
           {filtered && (
             <div
               className={controlStyles.filters}
@@ -372,55 +371,52 @@ export function Reports({
             </ErrorBannerMessage>
           )}
           {cleanup.submitting && <Text role="status">Archiving reports…</Text>}
-          {!visible.length &&
-            pageIsCurrent &&
-            error === null &&
-            (!allReports || !page.has_more) && (
-              <EmptyState
-                className={styles.emptyReports}
-                icon={FileText}
-                eyebrow={archived ? 'Archived' : 'Inbox'}
-                title={
-                  folderCount
-                    ? 'No reports match these filters.'
-                    : 'No reports to show.'
-                }
-                description={
-                  folderCount
-                    ? 'Try a different filter.'
-                    : archived
-                      ? 'Reports you archive appear here. Use Move to inbox to restore them.'
-                      : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
-                }
-                actions={
-                  folderCount ? (
-                    <Button
-                      onClick={() => {
-                        setOptions(defaultReportOptions)
-                        setSelected(new Set())
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  ) : (
-                    model.view &&
-                    resolveDestination(
-                      {
-                        universe: model.view.binding.universe,
-                        body: origin,
-                        page: 'galaxy',
-                      },
-                      model.view,
-                    ).available && (
-                      <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
-                        Explore the galaxy{' '}
-                        <ArrowRight size={16} aria-hidden="true" />
-                      </ButtonLink>
-                    )
+          {!visible.length && error === null && !page.has_more && (
+            <EmptyState
+              className={styles.emptyReports}
+              icon={FileText}
+              eyebrow={archived ? 'Archived' : 'Inbox'}
+              title={
+                folderCount
+                  ? 'No reports match these filters.'
+                  : 'No reports to show.'
+              }
+              description={
+                folderCount
+                  ? 'Try a different filter.'
+                  : archived
+                    ? 'Reports you archive appear here. Use Move to inbox to restore them.'
+                    : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
+              }
+              actions={
+                folderCount ? (
+                  <Button
+                    onClick={() => {
+                      setOptions(defaultReportOptions)
+                      setSelected(new Set())
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                ) : (
+                  model.view &&
+                  resolveDestination(
+                    {
+                      universe: model.view.binding.universe,
+                      body: origin,
+                      page: 'galaxy',
+                    },
+                    model.view,
+                  ).available && (
+                    <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
+                      Explore the galaxy{' '}
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </ButtonLink>
                   )
-                }
-              />
-            )}
+                )
+              }
+            />
+          )}
           {visible.map((r) => (
             <ReportListRow
               key={r.id}
@@ -448,7 +444,7 @@ export function Reports({
               }
             />
           ))}
-          {page.has_more && !allReports && (
+          {page.has_more && page.next_cursor && !allReports && (
             <Button
               disabled={loading || loadingMore || changingVisibility}
               onClick={() => void more()}
