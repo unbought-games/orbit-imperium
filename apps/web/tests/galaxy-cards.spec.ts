@@ -2113,3 +2113,35 @@ for (const width of [1440, 390]) {
     }
   })
 }
+
+
+test('desktop Harvest keeps its Actions anchor when the planet changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  let revision = 1
+  const positions = { 2: { body: targetBody() } }
+  await setup(page, null, {
+    viewerRevision: () => String(revision),
+    catalog: recyclerCatalog,
+    bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'Recycler' }, count: '5' }] }],
+    missions: { fleets: [], incoming: [], fleet_slots: '3', score_value_micro: '0' },
+  }, positions)
+  const trigger = await actions(page, 2).elementHandle()
+  const popover = await openHarvest(page)
+  const input = popover.getByRole('textbox', { name: 'Recyclers', exact: true })
+  await input.fill('2')
+  positions[2].body = targetBody({ id: id(92), owner: id(93), name: 'Replacement planet' })
+  revision++
+  await refreshGame(page)
+  await expect(rows(page).nth(1)).toContainText('Replacement planet')
+  expect(await trigger!.evaluate(el => el.isConnected)).toBe(true)
+  await expect(popover).toBeVisible()
+  await expect(input).toHaveValue('2')
+  const anchor = (await actions(page, 2).boundingBox())!
+  const box = (await popover.boundingBox())!
+  expect(box.x + box.width).toBeCloseTo(anchor.x + anchor.width, 0)
+  expect(box.y).toBeCloseTo(anchor.y + anchor.height + 8, 0)
+  await page.keyboard.press('Escape')
+  await expect(popover).not.toBeVisible()
+  await expect(actions(page, 2)).toBeFocused()
+})

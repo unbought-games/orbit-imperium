@@ -113,3 +113,46 @@ it('browses old archives separately from the inbox without dropping starred repo
     triageReports(rows, 'newest', false, 'all', false).map((r) => r.id),
   ).toEqual(['inbox'])
 })
+
+it('combines report type and status within the active folder', () => {
+  const rows = [
+    row('spy-unread'),
+    row('spy-read', undefined, { read: true }),
+    row('return-unread', undefined, { kind: 'Returned' }),
+    row('spy-archived', undefined, { hidden: true }),
+    row('spy-starred', undefined, { read: true, starred: true }),
+  ]
+  expect(
+    triageReports(
+      rows,
+      'newest',
+      false,
+      'unread',
+      false,
+      'inbox',
+      'Espionage',
+    ).map((report) => report.id),
+  ).toEqual(['spy-unread'])
+  expect(
+    triageReports(
+      rows,
+      'newest',
+      false,
+      'starred',
+      false,
+      'inbox',
+      'Espionage',
+    ).map((report) => report.id),
+  ).toEqual(['spy-starred'])
+  expect(
+    triageReports(
+      rows,
+      'newest',
+      false,
+      'all',
+      false,
+      'archived',
+      'Espionage',
+    ).map((report) => report.id),
+  ).toEqual(['spy-archived'])
+})

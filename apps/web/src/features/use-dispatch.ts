@@ -176,7 +176,7 @@ export function useDispatch({
   useEffect(() => {
     if (quote) {
       quoteRef.current?.focus({ preventScroll: true })
-      quoteRef.current?.scrollIntoView({ block: 'start' })
+      quoteRef.current?.parentElement?.scrollIntoView({ block: 'start' })
     } else if (wasReviewing.current) {
       reviewButtonRef.current?.focus()
     }

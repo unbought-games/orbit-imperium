@@ -18,6 +18,7 @@ import type { ReactNode } from 'react'
 import { label } from '../ui/format'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
+import { reportKindLabel } from './report-preview'
 import { reportLevel } from './report-level'
 import { reportLevelArt } from './report-level-art'
 import { CatalogImage } from '../ui/image-catalog'
@@ -510,7 +511,7 @@ function ReportObservationContent({
         }
       >
         <Text>
-          {label(text(kind))}
+          {reportKindLabel(text(kind))}
           {kind === 'Delivered' || payload.origin_coordinates ? (
             <>
               {' · '}

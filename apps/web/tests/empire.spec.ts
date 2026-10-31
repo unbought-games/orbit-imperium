@@ -206,6 +206,84 @@ function empireFixture(now = Date.now()) {
   }
 }
 
+for (const width of [1440, 390]) {
+  test(`research directive opens its host planet and technology from the whole card at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const now = Date.parse('2026-10-24T12:00:00Z')
+    await page.clock.install({ time: now })
+    await page.clock.pauseAt(now)
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    let revision = '1'
+    const fixture = empireFixture(now)
+    const options = {
+      ...fixture,
+      sampledAt: now,
+      catalog: [{ key: { kind: 'Research' as const, id: 'ImpulseDrive' as const }, enabled: true, mobile: false, body_kinds: ['Planet' as const], requirements: [] }],
+      viewerRevision: () => revision,
+      researchOperation: {
+        ...fixture.researchOperation,
+        host: id(6),
+        research: 'ImpulseDrive',
+        started_at: now - 3 * 3_600_000,
+        due_at: now + 5 * 3_600_000,
+      } as S['ResearchOperationDto'] | null,
+    }
+    await shellFixture(page, options)
+    const card = page.getByRole('region', { name: 'Empire research', exact: true })
+    const research = card.getByRole('link', { name: /Impulse Drive/ })
+    await expect(research).toHaveAttribute('href', `/u/andromeda/b/${id(6)}/research/impulse-drive`)
+    await expect(research).toHaveAccessibleDescription('Host Planet [1:380:8]')
+    await expect(research).toContainText('Level 5')
+    await expect(research).toContainText('5 hours remaining')
+    await expect(research.locator('img')).toHaveAttribute('src', '/art/atlas/objects/impulse-drive-96.webp')
+    await expect.poll(() => research.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true)
+    await expect(card.getByRole('progressbar')).toHaveAttribute('value', '37.5')
+    // Inspect intermediate and smallest supported widths.
+    for (const viewport of [320, 768, 1024, width]) {
+      await page.setViewportSize({ width: viewport, height: 1000 })
+      if (viewport >= 768) {
+        const label = card.getByText('Empire-wide research', { exact: true })
+        await expect(label).toBeVisible()
+        expect(await label.evaluate(el => el.getBoundingClientRect().height <= parseFloat(getComputedStyle(el).lineHeight) + 1), `research label wraps at ${viewport}px`).toBe(true)
+      }
+      expect(await card.evaluate(el => el.scrollWidth <= el.clientWidth), `card overflow at ${viewport}px`).toBe(true)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `page overflow at ${viewport}px`).toBe(true)
+      await diagnosticScreenshot(card, { path: `test-results/research-responsive-${width}-${viewport}x1000.png` })
+    }
+    await card.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/empire-research-active-${width}x1000.png` })
+    await diagnosticScreenshot(card, { path: `test-results/research-active-${width}x1000.png` })
+    await expect(card.getByRole('button')).toHaveCount(0)
+    await expect(card.getByRole('link')).toHaveCount(1)
+    // Clicking the heading and outer padding follows the same native link as the artwork.
+    await card.click({ position: { x: 8, y: 8 } })
+    const detailPath = `/u/andromeda/b/${id(6)}/research/impulse-drive`
+    await expect(page).toHaveURL(new RegExp(`${detailPath}$`))
+    await expect(page.getByRole('region', { name: 'Active research', exact: true })).toContainText('Impulse Drive level 5')
+    await expect(page.getByRole('button', { name: 'Cancel research', exact: true })).toBeVisible()
+    await page.goBack()
+    await research.focus()
+    await expect(research).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(new RegExp(`${detailPath}$`))
+    await page.goBack()
+    await card.click({ position: { x: (await card.boundingBox())!.width - 8, y: (await card.boundingBox())!.height - 8 } })
+    await expect(page).toHaveURL(new RegExp(`${detailPath}$`))
+    await page.goBack()
+    options.researchOperation = null
+    revision = '2'
+    // Load a fresh authoritative idle snapshot after the navigation checks.
+    await page.reload()
+    await expect(card).toContainText('No research in progress.')
+    await expect(card.getByRole('progressbar')).toHaveCount(0)
+    await expect(card.getByRole('button')).toHaveCount(0)
+    await card.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(card, { path: `test-results/research-idle-${width}x1000.png` })
+    await card.click({ position: { x: 8, y: 8 } })
+    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/research$`))
+  })
+}
+
 test('empire shows every body, its own work and resources, and directional fleet traffic', async ({
   page,
 }) => {

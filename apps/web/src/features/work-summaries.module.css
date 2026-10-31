@@ -4,6 +4,7 @@
   gap: 9px;
   margin-block: 10px;
 }
+
 .summary {
   border: 4px solid #060e16;
   box-shadow:
@@ -439,4 +440,116 @@
 .workTiming {
   color: var(--link);
   font-size: 0.75rem;
+}
+
+/* The empire's shared research directive uses the catalog's technology art. */
+.directive.editorial .summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  padding: 0;
+  border: 0;
+}
+.directive .summary h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.researchWork {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+/* One native link covers the enclosing empire card, including its heading. */
+.directive a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.researchWork img {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px #a4dbef18);
+}
+.researchCopy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+}
+.researchTitle {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.researchTitle strong {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ice-light);
+  overflow-wrap: anywhere;
+}
+.researchWork:hover .researchTitle strong {
+  color: var(--champagne-light);
+}
+.researchLevel {
+  color: var(--accent);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+.researchTiming {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.researchTiming svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.directive .researchCopy progress {
+  width: 100%;
+  height: 3px;
+  margin: 0;
+}
+.directive.editorial .actions {
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  color: var(--ice);
+}
+.directive .summary-content {
+  flex-direction: row;
+  text-align: left;
+}
+.directive .summary-content p {
+  font:
+    0.8125rem/1.5 system-ui,
+    sans-serif;
+  color: var(--text-muted);
+}
+@media (max-width: 767px) {
+  .directive.editorial .summary {
+    gap: 12px;
+  }
+  .researchWork {
+    gap: 12px;
+  }
+  .researchWork img {
+    width: 72px;
+    height: 72px;
+  }
+  .researchTitle strong {
+    font-size: 0.9375rem;
+  }
 }
