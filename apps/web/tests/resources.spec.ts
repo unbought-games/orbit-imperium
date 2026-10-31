@@ -934,7 +934,10 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   const activate = async (control: ReturnType<Page['getByRole']>) => {
     await expect(control).toBeVisible()
     await expect(control).toBeEnabled()
-    await control.click()
+    // The following UI assertions verify navigation. Do not wait for a
+    // navigation's load event while this test deliberately holds an upgrade
+    // response until after navigating back into its details.
+    await control.click({ noWaitAfter: true })
   }
   const constructions: components['schemas']['Construction3'][] = []
   const planet = structuredClone(body)
