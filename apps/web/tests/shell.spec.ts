@@ -124,10 +124,10 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
       exact: true,
     })
     await expect(
-      buildings.getByRole('link', { name: 'Open buildings' }),
+      buildings.getByRole('link', { name: 'Resources' }),
     ).toHaveAttribute(
       'href',
-      `/u/andromeda/b/${body.id}/${building === 'ResearchLab' ? 'facilities' : 'resources'}`,
+      `/u/andromeda/b/${body.id}/resources`,
     )
     const empireResearch = page.getByRole('region', { name: 'Empire research', exact: true })
     await expect(empireResearch.getByRole('button', { name: 'Cancel research', exact: true })).toHaveCount(0)
@@ -747,8 +747,8 @@ for (const [kind, elapsed] of [
     await expect(summary).not.toContainText(`No ${kind} in progress.`)
     if (kind === 'construction')
       await expect(
-        summary.getByRole('link', { name: 'Open buildings' }),
-      ).toHaveAttribute('href', /\/facilities$/)
+        summary.getByRole('link', { name: 'Resources' }),
+      ).toHaveAttribute('href', /\/resources$/)
     expect([...sent.values()]).toEqual([
       {
         type: kind === 'construction' ? 'CancelConstruction' : 'CancelResearch',
@@ -1005,9 +1005,9 @@ test('world shell omits the utility row and opens defense production from its su
   await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
   await expect(page.getByText('Rocket Launcher · 2 remaining')).toBeVisible()
   await expect(
-    page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Open defenses' }),
+    page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Defense', exact: true }),
   ).toHaveAttribute('href', /\/defense$/)
-  await page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Open defenses' }).click()
+  await page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Defense', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Defense')
 })
 

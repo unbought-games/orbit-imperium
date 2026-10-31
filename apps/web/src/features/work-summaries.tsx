@@ -99,6 +99,7 @@ export function WorkSummaries({
       category: 'buildings',
       title: 'Buildings',
       page:
+        currentPage !== 'overview' &&
         construction &&
         ['RoboticsFactory', 'ResearchLab', 'Shipyard'].includes(
           construction.building,
@@ -355,13 +356,20 @@ export function WorkSummaries({
                         data-touch-control=""
                         {...routeTarget(universeName, page as Page, body.id)}
                       >
-                        Open{' '}
-                        {category === 'manufacturing'
-                          ? 'shipyard'
-                          : category === 'buildings' &&
-                              ['resources', 'facilities'].includes(currentPage)
-                            ? page
-                            : title.toLowerCase()}{' '}
+                        {currentPage === 'overview' && category !== 'research'
+                          ? category === 'buildings'
+                            ? 'Resources'
+                            : 'Shipyard'
+                          : `Open ${
+                              category === 'manufacturing'
+                                ? 'shipyard'
+                                : category === 'buildings' &&
+                                    ['resources', 'facilities'].includes(
+                                      currentPage,
+                                    )
+                                  ? page
+                                  : title.toLowerCase()
+                            }`}{' '}
                         <ArrowRight size={12} aria-hidden="true" />
                       </Link>
                     ) : (
@@ -400,7 +408,9 @@ export function WorkSummaries({
                         data-touch-control=""
                         {...routeTarget(universeName, 'defense', body.id)}
                       >
-                        Open defenses{' '}
+                        {currentPage === 'overview'
+                          ? 'Defense'
+                          : 'Open defenses'}{' '}
                         <ArrowRight size={12} aria-hidden="true" />
                       </Link>
                     )}

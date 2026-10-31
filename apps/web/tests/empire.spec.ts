@@ -344,7 +344,7 @@ test('empire shows every body, its own work and resources, and directional fleet
   expect(purchases()).toBe(0)
 })
 
-test('each empire card places Facilities below Open buildings', async ({ page }) => {
+test('each empire card centers idle construction beside Resources and Facilities', async ({ page }) => {
   const options = empireFixture()
   await shellFixture(page, options)
   for (const width of [320, 390, 1280]) {
@@ -353,17 +353,68 @@ test('each empire card places Facilities below Open buildings', async ({ page })
       const { galaxy, system, position } = body.coordinates
       const card = page.getByRole('article', { name: `${body.kind} [${galaxy}:${system}:${position}] dossier`, exact: true })
       const buildings = card.getByRole('region', { name: 'Buildings', exact: true })
-      const open = buildings.getByRole('link', { name: 'Open buildings', exact: true })
+      const open = buildings.getByRole('link', { name: 'Resources', exact: true })
+      await expect(open).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resources`)
       const facilities = buildings.getByRole('link', { name: 'Facilities', exact: true })
       await expect(facilities).toHaveAttribute('href', `/u/andromeda/b/${body.id}/facilities`)
       await expect(card.getByRole('link', { name: 'Facilities', exact: true })).toHaveCount(1)
       const openBox = (await open.boundingBox())!
       const facilitiesBox = (await facilities.boundingBox())!
       expect(facilitiesBox.y).toBeGreaterThanOrEqual(openBox.y + openBox.height)
+      const idle = buildings.getByText('No construction in progress.', { exact: true })
+      if (await idle.count()) {
+        const idleBox = (await idle.boundingBox())!
+        const actionsCenter = (openBox.y + facilitiesBox.y + facilitiesBox.height) / 2
+        expect(Math.abs(idleBox.y + idleBox.height / 2 - actionsCenter)).toBeLessThan(1)
+      }
+      if (width !== 320 && (body === options.bodies[0] || await idle.count())) {
+        await diagnosticScreenshot(buildings, {
+          path: `test-results/buildings-${await idle.count() ? 'idle' : 'active'}-${width}x900.png`,
+        })
+      }
     }
   }
   await page.getByRole('article').first().getByRole('link', { name: 'Facilities', exact: true }).click()
   await expect(page).toHaveURL(`/u/andromeda/b/${options.bodies[0].id}/facilities`)
+})
+
+test('shipyard summary centers production beside Shipyard and Defense', async ({ page }) => {
+  const options = empireFixture()
+  await shellFixture(page, options)
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const body of [options.bodies[0], options.bodies[2]]) {
+      const { galaxy, system, position } = body.coordinates
+      const card = page.getByRole('article', { name: `${body.kind} [${galaxy}:${system}:${position}] dossier`, exact: true })
+      const summary = card.getByRole('region', { name: 'Shipyard & defense', exact: true })
+      const shipyard = summary.getByRole('link', { name: 'Shipyard', exact: true })
+      const defense = summary.getByRole('link', { name: 'Defense', exact: true })
+      await expect(shipyard).toHaveAttribute('href', `/u/andromeda/b/${body.id}/shipyard`)
+      await expect(defense).toHaveAttribute('href', `/u/andromeda/b/${body.id}/defense`)
+      const active = body === options.bodies[0]
+      const content = active
+        ? summary.getByRole('list', { name: 'Manufacturing queue' })
+        : summary.getByText('No ships or defenses in production.', { exact: true })
+      const contentBox = (await content.boundingBox())!
+      const shipyardBox = (await shipyard.boundingBox())!
+      const defenseBox = (await defense.boundingBox())!
+      expect(defenseBox.y).toBeGreaterThanOrEqual(shipyardBox.y + shipyardBox.height)
+      expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(shipyardBox.x)
+      const actionsCenter = (shipyardBox.y + defenseBox.y + defenseBox.height) / 2
+      expect(Math.abs(contentBox.y + contentBox.height / 2 - actionsCenter)).toBeLessThan(1)
+      if (width !== 320) {
+        await diagnosticScreenshot(summary, {
+          path: `test-results/shipyard-${active ? 'active' : 'idle'}-${width}x900.png`,
+        })
+      }
+    }
+  }
+  const summary = page.getByRole('article').first().getByRole('region', { name: 'Shipyard & defense', exact: true })
+  await summary.getByRole('link', { name: 'Shipyard', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Shipyard')
+  await page.goBack()
+  await summary.getByRole('link', { name: 'Defense', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Defense')
 })
 
 test('desktop and phone command views keep all information readable without horizontal scrolling', async ({
