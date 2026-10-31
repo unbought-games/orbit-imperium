@@ -206,11 +206,7 @@ export function enemyAttackRows(state: GameState) {
         leg: 'Incoming',
         ships: fleet.ships.visibility === 'Exact' ? fleet.ships.ships : [],
         home: endpoint(view, fleet.target, undefined, 'Planet'),
-        target: {
-          name: 'Unknown origin',
-          address: coordinates({ coordinates: fleet.origin }),
-          kind: 'Unknown',
-        },
+        target: endpoint(view, fleet.origin_body, fleet.origin, 'Unknown'),
         dueAt: fleet.arrival_at,
         duration: null,
       }
