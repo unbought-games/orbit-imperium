@@ -161,8 +161,9 @@ test('fixture browsers start independently of native compilation and stay routin
   assert.equal(jobs.browser.needs, 'scope')
   assert.equal(jobs.browser.if, "needs.scope.outputs.ui == 'true'")
   assert.ok(jobs.native.steps.some((step) => step.run === 'make check'))
-  const database = jobs.native.steps.find((step) => step.run === 'make test-db')
-  assert.equal(database.if, "needs.scope.outputs.database == 'true'")
+  assert.equal(jobs.database.needs, 'scope')
+  assert.equal(jobs.database.if, "needs.scope.outputs.database == 'true'")
+  assert.ok(jobs.database.steps.some((step) => step.run === 'make test-db-${{ matrix.group }}'))
   assert.ok(jobs.browser.steps.some((step) => step.run === 'make test-ui'))
   assert.ok(
     !jobs.browser.steps.some((step) => /cargo|rustup/.test(step.run ?? '')),
@@ -182,18 +183,22 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
     .jobs
   assert.equal(check.name, 'Build, lint and unit tests')
   assert.equal(check.if, 'always()')
-  assert.deepEqual(check.needs, ['scope', 'native', 'browser'])
+  assert.deepEqual(check.needs, ['scope', 'native', 'database', 'browser'])
   assert.equal(check.steps.length, 1)
   const gate = check.steps[0]
   assert.deepEqual(gate.env, {
     SCOPE_RESULT: '${{ needs.scope.result }}',
     NATIVE_RESULT: '${{ needs.native.result }}',
+    DATABASE_SELECTED: '${{ needs.scope.outputs.database }}',
+    DATABASE_RESULT: '${{ needs.database.result }}',
     UI_SELECTED: '${{ needs.scope.outputs.ui }}',
     BROWSER_RESULT: '${{ needs.browser.result }}',
   })
   const success = {
     SCOPE_RESULT: 'success',
     NATIVE_RESULT: 'success',
+    DATABASE_SELECTED: 'true',
+    DATABASE_RESULT: 'success',
     UI_SELECTED: 'true',
     BROWSER_RESULT: 'success',
   }
@@ -203,11 +208,15 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
     }).status
   assert.equal(run({}), 0)
   assert.equal(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'skipped' }), 0)
-  for (const key of ['SCOPE_RESULT', 'NATIVE_RESULT', 'BROWSER_RESULT']) {
+  for (const key of ['SCOPE_RESULT', 'NATIVE_RESULT', 'DATABASE_RESULT', 'BROWSER_RESULT']) {
     for (const result of ['failure', 'cancelled', 'skipped']) {
       assert.notEqual(run({ [key]: result }), 0, `${key}=${result}`)
     }
   }
+  assert.equal(run({ DATABASE_SELECTED: 'false', DATABASE_RESULT: 'skipped' }), 0)
+  for (const result of ['success', 'failure', 'cancelled'])
+    assert.notEqual(run({ DATABASE_SELECTED: 'false', DATABASE_RESULT: result }), 0)
+  assert.notEqual(run({ DATABASE_SELECTED: '' }), 0)
   assert.notEqual(run({ UI_SELECTED: '' }), 0)
   assert.notEqual(run({ UI_SELECTED: 'false' }), 0)
   assert.notEqual(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'failure' }), 0)
@@ -216,12 +225,12 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
 test('browser shards run independently and Make forwards their native Playwright selector', () => {
   const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
   assert.equal(browser.strategy['fail-fast'], false)
-  assert.equal(browser.strategy['max-parallel'], 3)
-  assert.deepEqual(browser.strategy.matrix.shard, [1, 2, 3])
+  assert.equal(browser.strategy['max-parallel'], 8)
+  assert.deepEqual(browser.strategy.matrix.shard, [1, 2, 3, 4, 5, 6, 7, 8])
   const run = browser.steps.find((step) => step.run === 'make test-ui')
   assert.equal(run.env.UI_SHARD, '${{ matrix.shard }}/${{ strategy.job-total }}')
   const root = new URL('../', import.meta.url)
-  for (const shard of ['', '1/3', '2/3', '3/3']) {
+  for (const shard of ['', ...browser.strategy.matrix.shard.map(shard => `${shard}/8`)]) {
     const dryRun = spawnSync('make', ['--no-print-directory', '-n', 'test-ui', `UI_SHARD=${shard}`], {
       cwd: root,
       encoding: 'utf8',
