@@ -1,3 +1,4 @@
+import { debrisResourceKinds } from './debris-resources'
 import { formatWholeNumber } from '../ui/whole-number'
 import { formatCompactResource } from '../ui/compact-resource'
 import { ResourceValue } from '../ui/resource-value'
@@ -42,6 +43,7 @@ export function GalaxyDebris({
   onHarvest?: (opener: HTMLButtonElement) => void
 }) {
   const size = debrisFieldSize(debris.metal, debris.crystal, debris.deuterium)
+  const resources = debrisResourceKinds(debris.deuterium)
   const contents = (
     <>
       <img
@@ -55,15 +57,11 @@ export function GalaxyDebris({
       />
       <span className={styles.debrisAmounts}>
         <span className={styles.srOnly}>Debris field</span>
-        <ResourceValue resource="metal">
-          <DebrisAmount value={debris.metal} />
-        </ResourceValue>
-        <ResourceValue resource="crystal">
-          <DebrisAmount value={debris.crystal} />
-        </ResourceValue>
-        <ResourceValue resource="deuterium">
-          <DebrisAmount value={debris.deuterium ?? '0'} />
-        </ResourceValue>
+        {resources.map((resource) => (
+          <ResourceValue key={resource} resource={resource}>
+            <DebrisAmount value={debris[resource] ?? '0'} />
+          </ResourceValue>
+        ))}
       </span>
     </>
   )
@@ -72,7 +70,7 @@ export function GalaxyDebris({
       type="button"
       variant="ghost"
       className={`${styles.debris} ${styles.debrisTrigger}`}
-      aria-label={`Quick harvest debris at ${target}: Metal ${formatWholeNumber(debris.metal)}, Crystal ${formatWholeNumber(debris.crystal)}, Deuterium ${formatWholeNumber(debris.deuterium ?? '0')}`}
+      aria-label={`Quick harvest debris at ${target}: ${resources.map((resource) => `${resource[0].toUpperCase() + resource.slice(1)} ${formatWholeNumber(debris[resource] ?? '0')}`).join(', ')}`}
       aria-haspopup="dialog"
       title={`Quick harvest · ${size} debris field`}
       onClick={(event) => onHarvest(event.currentTarget)}

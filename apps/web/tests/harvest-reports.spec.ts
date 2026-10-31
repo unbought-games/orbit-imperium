@@ -42,6 +42,7 @@ test('harvest reports distinguish new collections, zero collections and historic
     await expect(rows.first().getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('713')
     await expect(rows.first().getByRole('img', { name: 'deuterium', exact: true }).locator('..')).toContainText('608')
     await expect(rows.nth(1).getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('0')
+    await expect(rows.nth(1).getByRole('img', { name: 'deuterium', exact: true })).toHaveCount(0)
     await expect(rows.nth(2)).toContainText('Harvested amount unavailable')
     for (const amount of ['10,713', '8,238', '2,608']) await expect(page.locator('main')).not.toContainText(amount)
     await diagnosticScreenshot(page, { path: `test-results/harvest-list-${width}.png`, fullPage: true })
@@ -58,9 +59,10 @@ test('harvest reports distinguish new collections, zero collections and historic
         await expect(report).not.toContainText('Carried resources')
         await expect(report).not.toContainText('2,608')
         await expect(report.getByRole('img', { name: 'Metal', exact: true }).locator('..')).toContainText(state === 'zero' ? '0' : '713')
-        await expect(report.getByRole('img', { name: 'Deuterium', exact: true }).locator('..')).toContainText(state === 'zero' ? '0' : '608')
+        if (state === 'zero') await expect(report.getByRole('img', { name: 'Deuterium', exact: true })).toHaveCount(0)
+        else await expect(report.getByRole('img', { name: 'Deuterium', exact: true }).locator('..')).toContainText('608')
       }
-      for (const name of ['metal', 'crystal', 'deuterium']) {
+      for (const name of state === 'zero' ? ['metal', 'crystal'] : ['metal', 'crystal', 'deuterium']) {
         const symbol = report.getByRole('img', { name: name[0].toUpperCase() + name.slice(1), exact: true })
         await expect(symbol).toBeVisible()
         const canonicalColor = await symbol.evaluate(el => {

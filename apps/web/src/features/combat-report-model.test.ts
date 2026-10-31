@@ -163,3 +163,28 @@ it('only displays nonzero loot for the victorious attacker', () => {
     ).resources.some((group) => group.key === 'loot'),
   ).toBe(false)
 })
+
+it.each(['0', '1', '60000000000', 'invalid'])(
+  'only hides zero deuterium in debris, preserving loot and unknown observations (%s)',
+  (deuterium) => {
+    const resources = { metal: '1000000', crystal: '0', deuterium }
+    const model = combatReportModel(
+      { ...payload, debris: resources, loot: resources },
+      'attacker',
+    )
+    expect(
+      model.resources
+        .find((group) => group.key === 'debris')
+        ?.values.map((value) => value.resource),
+    ).toEqual(
+      deuterium === '0'
+        ? ['metal', 'crystal']
+        : ['metal', 'crystal', 'deuterium'],
+    )
+    expect(
+      model.resources
+        .find((group) => group.key === 'loot')
+        ?.values.map((value) => value.resource),
+    ).toEqual(['metal', 'crystal', 'deuterium'])
+  },
+)

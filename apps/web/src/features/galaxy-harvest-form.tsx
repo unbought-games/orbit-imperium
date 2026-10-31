@@ -1,3 +1,4 @@
+import { debrisResourceKinds } from './debris-resources'
 import { useId, type RefObject } from 'react'
 import type { HarvestPosition } from '../client-model/galaxy-harvest'
 import { Button } from '../ui/button'
@@ -25,15 +26,11 @@ export function GalaxyHarvestForm({
   return (
     <>
       <div className={styles.debris} aria-label="Available debris">
-        <ResourceValue resource="metal">
-          {formatWholeNumber(position.debris?.metal ?? '0')}
-        </ResourceValue>
-        <ResourceValue resource="crystal">
-          {formatWholeNumber(position.debris?.crystal ?? '0')}
-        </ResourceValue>
-        <ResourceValue resource="deuterium">
-          {formatWholeNumber(position.debris?.deuterium ?? '0')}
-        </ResourceValue>
+        {debrisResourceKinds(position.debris?.deuterium).map((resource) => (
+          <ResourceValue key={resource} resource={resource}>
+            {formatWholeNumber(position.debris?.[resource] ?? '0')}
+          </ResourceValue>
+        ))}
       </div>
       <form
         onSubmit={(event) => {

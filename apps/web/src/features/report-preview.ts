@@ -10,7 +10,9 @@ import { reportFleetSummary } from './report-fleet-summary'
 
 type S = components['schemas']
 type Preview = S['ReportPreview4']
-export type ReportFact = string | { resources: S['Resources']; label?: string }
+export type ReportFact =
+  | string
+  | { resources: S['Resources']; label?: string; debris?: boolean }
 const totalUnits = (
   observation: Extract<Preview, { kind: 'Espionage' }>['fleet'],
 ) =>
@@ -82,7 +84,7 @@ export function reportPreview(
       if (preview.ships) facts.push(reportFleetSummary(preview.ships))
       facts.push(
         preview.harvested
-          ? { resources: preview.harvested, label: 'Harvested' }
+          ? { resources: preview.harvested, label: 'Harvested', debris: true }
           : 'Harvested amount unavailable',
       )
       break
@@ -104,7 +106,7 @@ export function reportPreview(
         preview.debris &&
         Object.values(preview.debris).some((n) => BigInt(n) > 0n)
       )
-        facts.push({ resources: preview.debris, label: 'Debris' })
+        facts.push({ resources: preview.debris, label: 'Debris', debris: true })
       break
     case 'ContactLost':
       at = preview.target

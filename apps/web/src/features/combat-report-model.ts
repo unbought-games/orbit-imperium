@@ -1,3 +1,4 @@
+import { debrisResourceKinds, resourceKinds } from './debris-resources'
 import { playerLabel, type PlayerNames } from './player-label'
 import { label } from '../ui/format'
 
@@ -181,7 +182,10 @@ export function combatReportModel(
     .map(({ key, title }) => ({
       key,
       title,
-      values: (['metal', 'crystal', 'deuterium'] as const).map((resource) => ({
+      values: (key === 'debris'
+        ? debrisResourceKinds(record(payload[key]).deuterium)
+        : resourceKinds
+      ).map((resource) => ({
         resource,
         value: combatInteger(record(payload[key])[resource]),
       })),
