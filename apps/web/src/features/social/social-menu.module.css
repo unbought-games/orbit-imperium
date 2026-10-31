@@ -1,0 +1,42 @@
+.positioner {
+  z-index: 100;
+}
+.menu {
+  min-width: 190px;
+  max-width: calc(100vw - 24px);
+  padding: 5px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px #0008;
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.menuItem[data-highlighted] {
+  background: var(--surface-selected);
+  outline: none;
+}
+.indicator {
+  width: 16px;
+  height: 16px;
+}
+
+.separator {
+  height: 1px;
+  margin: 5px;
+  background: var(--border);
+}
+.menuItem[data-disabled] {
+  color: var(--text-disabled);
+  opacity: 0.6;
+  cursor: default;
+}

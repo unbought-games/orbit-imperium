@@ -20,6 +20,17 @@
   --flight: #ecd39f;
   background: linear-gradient(110deg, #ecd39f05, transparent 65%);
 }
+.card[data-flight-tone='enemy'] {
+  --flight: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  background: linear-gradient(110deg, #ffb4a40a, transparent 65%);
+}
+.sender {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
 .heading {
   display: flex;
   flex-wrap: wrap;

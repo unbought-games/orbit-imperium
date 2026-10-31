@@ -5,18 +5,28 @@ run on GitHub-hosted `ubuntu-24.04` VMs. Each job gets a disposable host, includ
 Docker and Chromium's Linux dependencies. Explicit suites remain opt-in with
 generous preparation and execution guards.
 
-Routine fixture-browser tests run in three Playwright shards on separate VMs,
-in parallel with the native build/lint/unit and database job, after a short
-changed-path selection job. This gives browser feedback without waiting for
-Rust compilation or sharing its CPU
-load. Make limits database execution to four isolated binaries at a time;
+Routine fixture-browser tests run in eight Playwright shards on separate VMs,
+in parallel with native build/lint/unit checks and three PostgreSQL groups,
+after a short changed-path selection job. The two measured longest database
+binaries, `rules_updates` and `world_edit`, each get a group; the `rest` group
+includes every other binary automatically. Each group compiles only its selected
+binaries. Run them locally with `make test-db-rules`, `make test-db-world`, or
+`make test-db-rest`; `make test-db` still runs everything.
+
+Make limits database execution to four isolated binaries at a time;
 `make test-db DB_JOBS=2` can lower that bound on smaller hosts. Tests within each
 binary remain serial, and each binary retains its own disposable database.
+Compose project names include the matrix group. The Rust jobs restore the same
+trusted-main dependency cache (`shared-key: check-native`, retaining the old
+native job's cache namespace); only native checks on main write it.
+
 The existing `Build, lint and unit tests` check is an always-run aggregate gate:
 scope selection and native checks must succeed, and every selected browser shard
-must pass. Shards finish independently even if another fails. An intentionally
-unselected browser job may be skipped; failures, cancellations, and unexpected
-skips cannot pass the gate.
+and database group must pass. Matrix jobs finish independently even if another
+fails. An intentionally unselected integration job may be skipped; failures,
+cancellations, and unexpected skips cannot pass the gate. Tooling tests verify
+that both matrices cover the complete test inventory exactly once, including
+new database binaries.
 
 Routine and continuous image-publication jobs have no custom job or step timeout.
 Routine Node, Vitest, Nextest and fixture Playwright execution has no per-test or
@@ -24,7 +34,7 @@ suite deadline. GitHub-hosted jobs retain the platform's six-hour cap. Functiona
 network timeouts and assertions about timeout behavior remain unchanged.
 Each browser shard uses at most three workers, bounded by available CPUs.
 Playwright's `fullyParallel` mode partitions individual tests across shards.
-`make test-ui` still runs the whole suite locally; use `make test-ui UI_SHARD=2/3`
+`make test-ui` still runs the whole suite locally; use `make test-ui UI_SHARD=2/8`
 to reproduce one CI shard. No test selection or assertion changes with sharding.
 Responsive catalog checks keep routes mounted across viewport changes to avoid redundant
 application startup while retaining every viewport and control assertion.

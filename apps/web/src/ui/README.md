@@ -1,213 +1,120 @@
-# UI components and styles
-
-Use shared React components for styled elements and compose them into feature components. Plain, unstyled HTML wrappers are fine; a new component should own a visual pattern or behavior.
-
-- `style.css` is only for document defaults, resets, global focus/scroll/selection behavior, and the no-animation policy. Shared design values live in `styles/tokens.css`.
-- Keep component styles in an adjacent `*.module.css` file. Import the module in its owner, and keep responsive rules there too. Do not use global feature classes or `:global` escape hatches.
-- Reuse `Button`, `ButtonLink`, `Link`, form controls, `Panel`, `Section`, typography, and the catalog/quote components before adding a new visual pattern.
-- Choose explicit variants (`<Button variant="secondary">`, `<Panel tone="accent">`). Never infer an action's visual meaning from its position among siblings.
-- Shared primitives use low-specificity `:where(...)` selectors. A consumer's local `className` can set layout without depending on stylesheet import order. Component-local descendant selectors are appropriate for markup owned by that component; avoid reaching into another feature's implementation.
-- Use tokens for shared colors, spacing, type sizes, radii, and touch targets. Keep one-off illustration and layout measurements local. CSS media/container query thresholds remain literal because custom properties cannot be used in those conditions.
-- Components preserve native HTML props, refs, events, and semantics. Buttons retain native form submission behavior; use `type="button"` for non-submit controls inside forms. `Link`, `ButtonLink`, and `Brand` are typed TanStack links: use `to`/`params`/`search` (usually spread from `routeTarget`) for internal navigation. `Button` performs an action.
-- Use `Heading`'s `level` to preserve document hierarchy, `Field` to wrap a labeled control, and `VisuallyHidden` for accessible announcements. Never replace semantic elements with clickable `div`s.
-- Browser tests select roles, labels, and accessible names, not generated CSS Module classes.
-
-Buttons use independent `variant` (`primary`, `secondary`, `destructive`, `ghost`) and `size` (`default`, `small`, `large`, `icon`, `icon-small`) props. Primary is champagne metal; secondary is dark steel; destructive marks consequential removal. Ghost is for embedded tabs, navigation, and resource triggers. Ghost buttons share muted gray text, rounded corners, hover/focus backgrounds, pressed feedback, selected/expanded states, and disabled treatment. Feature styles may arrange controls and style their contents (such as resource colors), but must not repaint the button or override its interaction states. Command buttons use shared Button variants; quick build uses ghost. Feature styles own layout rather than repainting button interaction states. Use `ButtonLink` for routed buttons, `ButtonLinkAnchor` for native links, and `buttonClasses` when existing semantic markup needs the same appearance. Padding is independently configurable with `padding="default" | "compact" | "none"`: compact uses 2px and none uses 0px. Ghost buttons default to 4px padding and a 24px minimum target, including icon buttons; coordinate tools use compact padding for tight inline alignment. Other variants retain their 44px minimum targets. Icon controls require an accessible name. `icon-small` uses a 36px decorative face inside a 44px tap target for compact detail headings. Adding a variant means extending the typed union and its CSS tokens, not copying a button into a feature.
-
-Decorative pseudo-elements provide clipped corners and beveled edges without clipping the focus outline or tap area. Presses immediately depress the face and move the control one pixel; reduced-motion removes the movement while preserving the depressed face. Native disabled buttons cannot activate or show press feedback. Preserve native form and link semantics.
-
-A feature can compose existing components without needing its own stylesheet. Add local CSS when that feature has layout or appearance of its own. Extract a new shared component when a real pattern repeats; do not add a general layout framework for hypothetical future screens.
-
-## Empty collections
-
-Use `EmptyState` for empty lists and collections: a decorative Lucide icon, a clear heading, a short explanation of what will appear, and an optional real next action. The default `page` variant provides a spacious focal point; `compact` fits dashboard sections and search results. Set `headingLevel` to match the surrounding hierarchy. Actions use shared buttons/links and must respect destination availability and the selected planet. Search results can offer a Clear search action.
-
-Only render an empty collection after a successful response. Loading, failures, missing details, locked content, idle work queues, and known-zero intelligence have different meanings; retain their specific feedback. Use `StatePanel` for application connection/session states. Do not replace factual zero values inside reports with a decorative empty collection.
-
-## Routes
-
-Add screen routes in `src/routes`; TanStack generates `routeTree.gen.ts` (do not edit it). Run `npm run routes` after adding or renaming files; dev and production builds also generate the tree. Route modules declare their page metadata and screen component. Keep the confirmed session/coordinator in the root App and common chrome in GameShell; screens render through its Outlet.
-
-`resolveDestination` checks planet ownership, protocol capabilities and item visibility against each confirmed view. It does not parse URLs. Preserve those checks when extending routes. Build catalogs, research, fleets, galaxy, and dispatch use `/u/$universe/b/$body/...`. Catalog items add a stable kebab-case item segment. Research levels remain universe-wide; the path identifies the host/funding body. Legacy query-context URLs redirect to the canonical planet path. Reports and account settings retain their existing routes. Never silently replace an explicit inaccessible planet.
-
-Use native browser links for external destinations and same-page non-navigation helpers. Preserve route title/focus behavior, keyboard menu restoration, and direct-link login. Tests must cover browser-history navigation and actual server refreshes, since Vite's development fallback alone cannot prove production hosting works.
-
-## Mobile text selection
-
-On touch devices with a coarse primary pointer and no hover, native buttons,
-selects, disclosure summaries, and ARIA action/menu controls suppress text
-selection and iOS long-press callouts. Shared linked controls, game navigation
-chrome, catalog cards, and decorative game art opt in with `data-touch-control`.
-Use that attribute for new control surfaces, rather than disabling selection on
-entire screens or all links. Content remains selectable by default: descriptions,
-reports, messages,
-help, errors, identities, and ordinary coordinate links. Inputs, textareas, and
-editable elements explicitly retain selection and native copy/paste menus;
-`data-touch-selectable` does the same for copyable content nested in chrome.
-Keep explanatory popup/dialog bodies outside an opted-in control container.
-The policy lives in `style.css` and applies in mobile browsers and installed apps;
-viewport width alone never disables desktop selection.
-Do not target `nav` generically: ranking ranges, alliance counts, and public
-policy/support links retain native selection and link callouts.
-
-## Editorial game shell
-
-At 1024px and wider, a fixed, independently scrolling sidebar exposes Empire, Develop with its five nested build destinations, Galaxy, Fleets, Reports, Community and Settings. The compact sidebar carries no universe label. Resource settings remains available through the energy ledger and the resources page, not the sidebar. The planet selector and resource ledger occupy the sticky content header. Below 1024px the horizontal navigation and grouped modal Menu remain; at phone sizes the five anchors form the safe-area-aware thumb dock. Capability-unavailable entries stay disabled, navigation retains the selected body and page headings receive focus after navigation.
-
-The command orb is available on every protocol-4 viewport. On desktop/tablet it sits at bottom right with a 92px orb and a right-aligned command dialog above it. Phones retain the 74px orb above the thumb dock. Resizing preserves the inbox, selected detail and unread state; the dialog continues to own scroll and focus until dismissed. Content has sufficient bottom clearance to keep its last controls reachable. Reduced-motion preferences apply at every size.
-
-On phones, a compact planet box shares one row with the resource ledger. `BodySelector` uses the shared Base UI `RichSelect`: each option shows artwork, a name (falling back to the body kind), coordinates, and a selected checkmark. The trigger truncates long text; popup labels wrap and the roster scrolls within the viewport. There is no search field. Starting/legacy planets without colony genesis come first, followed by colonies ordered by `colony.created_at`; equal or unknown creation times retain server order. Moons follow the owned planet at matching coordinates. Ordering is derived without changing game state. The select preserves route/funding context and provides keyboard navigation, typeahead, Escape, outside dismissal, and focus restoration.
-
-Use `Popover` for read-only details that should work on hover, keyboard focus, or tap. It uses Floating UI for viewport-aware positioning, dismissal, and focus handling. Exact resource amounts, storage, and production stay in the popover while the strip shows whole stock quantities. On every screen, the strip shows material icons and compact balances using K, M, B, and T with no suffix spacing. Balances below ten units of a suffix retain one decimal; larger balances use whole units, always floored. Full storage and energy shortfalls color the balance; names, capacity, production, and warning explanations remain available in the tap details. Keep full values in action/quote flows.
-
-`ResourceMark` owns canonical resource colors for every icon in the game. Use it for all material and energy symbols; callers supply size and accessible labels, never their own color rules. Do not substitute M/C/D abbreviations or standalone resource glyphs. Use `ResourceQuantity` for an individual micro-unit amount (including unknown observations), `ResourceSummary` for cargo/resource triples, and `ResourceValue` for custom formatted amounts or resource input labels. These pair the canonical icon with full accessible names and tooltips. `ResourceNumber` only formats a number; use it directly only inside an already identified resource component or for aggregate cargo capacity/score values that do not represent one material.
-
-Use `ResourceAmount` for resource icons with amounts and contextual details. Its `stock` variant shows a material silhouette and compact amount; names, capacity, production and warning explanations belong in the shared hover/focus/tap popover. Over-capacity balances remain amber and energy shortages red. `ResourceStrip` supplies the live stock details. Its header energy icon and amount link to the selected planet’s resource settings, retaining details on hover or focus; touch opens the page with the full energy breakdown. Production sliders use native range input in 10% steps, show exact percentages, and debounce edits through the existing planet-scoped autosave queue; `ResourceCosts` keeps exact quoted costs, current availability, and live shortfalls in its decision table. Keep calculations derived from the current view rather than copied into local state.
-
-The planet selector and resource strip share one outer row: 82px minimum height beside the desktop sidebar and 64px on tablets. That outer row owns both full-width horizontal borders; neither child draws a separate border. On phones the compact planet/resource row sticks to the viewport top with a subtly translucent full-width background, light backdrop blur, a thin gold bottom border and safe-area padding. Content scrolls underneath it; resource popovers and the navigation dialog remain above it. The row stays in normal flow before scrolling, including enlarged text.
-
-The shared live view derives balances and pending work from the confirmed snapshot, elapsed time, and submitted command inputs. While an optimistic action awaits its receipt, a higher-revision snapshot is held back if it could already contain that action. Pending indicators therefore describe estimated work against the last confirmed snapshot; they do not assert server completion. Existing receipt polling resolves the ambiguity before the next snapshot is adopted, preventing both temporary payment rollbacks and duplicate deductions.
-
-Unavailable implemented destinations are native disabled buttons; the protocol-4 Alliance destination is available without a selected planet; future Messages is omitted from active navigation. Do not add purchase, lifeform, population, or premium-currency controls. Artwork and generation prompts live in `public/art`.
-
-The isolated shell browser tests intercept only the HTTP boundary and validate real route, popover, and responsive behavior. With the dev server running, use `ORBIT_TEST_BASE_URL=http://127.0.0.1:5173 npx playwright test shell.spec.ts`. They do not replace the database-backed progression and mission journeys.
-
-Overview composes real selected-body arrivals, ordered work, exact stationed inventory, and a noninteractive world illustration. `WorkSummaries layout="editorial"` preserves queue order, cancellation and uncertain statuses while using aligned rows. Research names its actual host. Progress is estimated only from available timestamps; construction has no invented progress percentage. Deadline expiry continues to await server confirmation. Construction status and cancellation belong in work summaries and building details; do not add a duplicate status panel to the shared shell.
-
-UI changes are immediate by default: do not add animations, CSS transitions, smooth scrolling, or View Transitions. The explicitly requested quick-build control is an exception: crossfade its hammer, acknowledgment check, pending indicator, and countdown over 180ms; disable that fade for reduced motion. Navigation keeps the shell and resource ledger mounted. Keep focus management and live game clock updates independent of visual effects.
-
-## Image catalogs
-
-Use `CatalogStage` for dedicated item detail pages and optional catalog controls. An item route renders only its inspector; catalog cards and shared work summaries belong on the parent catalog route. Back restores that catalog and focuses the selected card. Do not mount catalog tiles below details or issue their cost queries from an item page. Do not add expandable colony or scene overviews. It provides focus entry only; Escape never navigates away from item pages. The URL is the sole source of selected item state. Catalog tiles and Back controls are real links, with local edit state scoped to each item and planet. Preserve asynchronous request fencing and focus restoration to the tile. Closed detail panels are unmounted (or hidden and inert when retained by a legacy caller).
-
-Compose `CatalogSection`, `ImageCatalog`, `ImageTile`, and `CatalogImage` for compact image catalogs. Catalog tiles are clickable cards, not action buttons: keep their artwork and captions left aligned and do not apply `Button` or `buttonClasses` to the card. Building rows include a hammer-only ghost button visually inside the far right of the full-row inspection link, using separate sibling controls for valid semantics. Build submits an eligible server quote without navigation; the row opens full details. There is no info button. A submitted quick build fades immediately to a green acknowledgment check for three seconds, then to the confirmed countdown. While the server is still confirming, show a pending indicator and keep competing build actions disabled. The check acknowledges the gesture optimistically; server state remains authoritative. Rejections replace the check with the hammer and a compact failure message; uncertain results expose recovery. Never mount the durable success banner in quick-build rows. Research and manufacturing remain detail-page actions. `CatalogArt` supports a regular image or a local sprite atlas with explicit row/column and cell proportions; atlas crops preserve their source aspect ratio in any container. Tile levels come from confirmed state; missing content is disabled. `ResourceCosts` displays exact quoted costs and marks resource shortfalls. `WorkSummaries` is shared by Overview and Resources.
-
-Building grids pass `ImageTile` progress derived by `buildingProgress` from the existing game store. While a building is active, its caption shows `Level N → Level N+1` beneath the title, with the new level bold, and its right-side action area shows the countdown. The confirmed level stays authoritative until the server completes the work. Submitted work appears as confirming, uncertain or cancelling work stays explicit, and an elapsed timer waits for server confirmation rather than changing the level locally.
-
-Resource and facility building grids use `ProgressionTile` to inspect server upgrade costs before selection. Affordability is derived from those terms and current balances, so amber diagonal bands clear as resources accrue and return after spending. Tiles remain inspectable; unavailable or still-loading quotes never imply a resource shortage, and active construction keeps its progress overlay. Balance-only changes do not refetch the terms.
-
-Tile cost queries are keyed by session binding, rules profile, building, body, and source level. Queue and field-reservation changes must not clear these cost inputs or flicker affordability. Detail pages and building quick-build controls use the broader progression context for current eligibility and command terms; cost-only results are never used to authorize an action. Quick-build eligibility requests pause during active construction and refresh after confirmed completion or cancellation.
-
-Catalog rows retain 100px artwork and roomy labels on desktop (768px and wider). Mobile rows use 52px artwork and compact, left-aligned labels, with at least a 44px touch target. Active building targets sit beneath the title, and their countdown replaces the hammer on the far right; progress never covers the artwork. Rows retain stable cost inputs for affordability and separately inspect full eligibility for quick-build commands. Building rows include a subtle hammer-only ghost Build button inside the far right of the row. The separate row link opens details; the Build button submits without navigating and stays disabled whenever eligibility is unavailable. Disabled actions expose their reason through a tooltip and accessible description; full requirements remain on the detail page. Long names, counts and unavailable reasons may grow a row instead of being clipped.
-
-Open an active building's details to see its countdown, refund, and cancellation action. Active work uses confirmed operations or submitted intents directly and does not depend on a fresh upgrade quote. Cancellation is disabled until an operation ID is confirmed and while another command is pending. Active research exposes cancellation in its own details. The global Current work disclosure has been removed.
-
-Submitting a building upgrade, demolition, or research keeps its details pane open. It switches immediately to work derived from the submitted quote, then follows confirmation or rejection from the game store. Focus moves to the work heading without scrolling. Players dismiss the pane themselves; manufacturing also stays open while submitting and after confirmation.
-
-Resources keeps upgrades/demolition behind server inspection and an explicit action; eligible upgrades may start from the catalog hammer button or the detail page. Selecting a different building or closing details invalidates pending inspections. Resource settings is a planet-specific screen in the Menu. Production drafts and autosave live in the game store and survive navigation; changing bodies selects that body’s settings. Production totals are server-confirmed aggregates, not per-building estimates or unsaved previews. Save retains the existing revision-conflict acknowledgment and command-recovery behavior.
-
-Run the HTTP-fixture browser checks with the dev server running: `ORBIT_TEST_BASE_URL=http://127.0.0.1:5173 npx playwright test resources.spec.ts shell.spec.ts`.
-
-## Technology catalogs and Galaxy
-
-`TechnologyPage` composes the same catalog stage and image tiles for Facilities, Research, Shipyard, and Defense. Groups come from typed server catalog keys; disabled catalog entries remain disabled, while unmet prerequisites dim tiles without blocking inspection. Tile levels and stationed counts always use confirmed state. Counts remain decimal strings, including values larger than JavaScript's safe integer range.
-
-`TechnologyDetails` derives manufacturing totals locally from per-unit terms. Quantity edits never fetch new terms. Build validates the exact order with the server, checks it against the displayed terms, and submits while keeping details open. Changed selections or quantities invalidate pending validation. Shipyard and defense use one ordered queue, including pending orders. `BuildingDetails` is shared with Resources. The reusable `TechnologyDialog` shows recursive catalog prerequisites, direct applications, and descriptions in a native modal with focus restoration, Escape dismissal, and keyboard tabs. Ship details and Techinfo share base technical statistics projected from the active server rules. Combat values use the combat engine’s exact precision, propulsion upgrades are labeled separately, and older snapshots explicitly report missing statistics.
-
-Galaxy uses planet cards in normal page flow, with no nested scroll container or mobile table overflow. Player identity and activity sit below the planet; debris stays beside it. Each actionable card uses a native disclosure to reveal Transport, Attack, Espionage, and debris Harvest actions, preserving eligibility and preparing dispatch with the selected destination and mission. Navigation is bounded by universe settings; only the current system observation supplies actions. Current public usernames are supplied for visible players in a batch; missing names fall back to short player identifiers. Current alliance tags come from the shared public player-profile observation and link to the public recruitment page.
-
-Run `ORBIT_TEST_BASE_URL=http://127.0.0.1:5173 npx playwright test catalog-pages.spec.ts galaxy-cards.spec.ts resources.spec.ts shell.spec.ts` for isolated browser coverage. `make test-progression` and `make test-missions` exercise real database-backed flows using disposable universes.
-
-## Item decision pages and playground
-
-Compose item pages with `DetailLayout`, `DetailSection`, `DetailStat`, and `DetailRow`. Keep the reading order consistent: current level/inventory, next level/order, benefits and timing, costs, blockers, and one primary action. On phones, this decision comes before the illustration; on desktop, large artwork and overlaid field notes sit beside it. Building pages show missing prerequisites in the action blockers and reserve the footer for teardown. Research and order pages keep their supporting requirements and spending ledgers in the footer.
-
-Editable quantities must keep their controls and summary rows mounted while a draft is blank, invalid, or waiting for a quote. Derive placeholders from current source data; never retain a previous order as if it described the new draft. Keep changing validation, request errors, and affordability feedback below the quantity/action row so editing cannot move the focused field. Local input errors do not offer a network Retry action. Manufacturing uses `ManufacturingOrderSummary` for this stable layout; flight timing also retains its metric rows while estimates are unavailable.
-
-Keep decision metrics in one semantic data list: aligned labels/values, subtle row separators, and costs inside the same list. Compact costs use colored resource marks and exact amounts; retain accessible resource names and tap/focus balance popovers. Merge resource shortfalls and the availability estimate into one amber summary inside the cost row, with forecast assumptions in its popover. Do not repeat resource shortages in the action-blocker box; retain all other blockers. Show reduced production efficiency as an amber percentage beside the energy balance. Make energy values clickable: put calculations, saved-setting assumptions, and power recommendations in their shared popover. Keep actual action blockers visible. Avoid repeating readiness or energy qualifications around the primary action.
-
-Link missing prerequisite names directly to their item details in the selected universe/body. Research levels that satisfy a dependency show “Required for” with item links; this means one prerequisite is met, not that the dependent item is buildable. Playground item links navigate within the same isolated fixture and its back control returns to the previous item.
-
-For unbuilt buildings, begin the decision panel with “First Build” directly below the page heading. Show the first level's benefit, power needs, time, cost, blockers, and a named build action. Omit empty-building placeholders, zero-level stats and stockpile forecasts. Keep existing-building upgrades unchanged.
-
-`detail-insights.ts` derives storage-fill and resource-affordability times from authoritative net production and live balances, using exact integer arithmetic. Energy/output estimates use saved production settings and the quote's nominal benefit/consumption deltas. Label estimates, account for throttling and full storage, and do not invent missing benefit data. Energy recommendations use enabled catalog entries for the selected body. Blocker timers identify the actual affected work; overdue work awaits server completion.
-
-Use `ActiveWorkDetails` for construction and research in progress: a short target heading, time remaining, nonzero refund icons, and a secondary cancellation button. Put scheduled finish and refund policy in popovers. A passed deadline means “Checking completion…” until a confirmed game view arrives; never advance real game levels from a client timer. The sandbox's in-memory server completes its own construction/research work and publishes the result. Cancellation always reviews the target and exact refund before sending.
-
-Use `ConfirmationButton` for construction/research cancellation everywhere and final demolition approval. Include the operation, level, refund or payment, and timing in the review. Default focus to the non-destructive choice; preserve Escape and opener focus. Key confirmations by operation/terms identity and recheck live eligibility on confirmation. A click to open the dialog must never send a command.
-
-In Vite development, `/detail-playground` compares thirteen scenarios, including a new planet with every building at level zero, in actual 1280×900 and 390×844 iframe viewports. It renders the real detail components with an isolated in-memory Coordinator/GamePort, no backend requests or persisted accounts. Filter by category/viewport and reset to iterate. The entry is guarded by `import.meta.env.DEV` and is excluded from production bundles. Its fixtures are design examples, not another game-rules implementation.
-
-Use the shared `formatDuration` formatter for elapsed spans, forecasts, quoted durations and countdowns. It shows at most two adjacent units: seconds for short minute spans, minutes for short hour spans, hours for short day spans, then a single rounded larger unit. This is presentation only; server timestamps and monotonic deadline arithmetic retain their precision.
-
-## High Scores
-
-High Scores is a universe-level protocol-4 screen in Menu → Community. It reads one committed snapshot on entry and explicit refresh; search, 50-row pages and Around me derive from that observation and preserve global tied ranks. The current user's sampled rank can differ from their live overview score. Player details are read-only identity, rank, points and scoring guidance. Player rows include current alliance tags. The Players/Alliances switch ranks alliances by exact total member value, showing member counts, average points, and daily movement without exposing a roster. Bios remain omitted.
-
-Use existing public names and supporter identities, with bounded profile requests for visible players. Keep the sampled time visible, retain the previous result on refresh failure, and isolate transient ranking failures from gameplay connection state. The native detail dialog restores focus on close and Escape. Browser fixtures cover mobile widths, long names, large scores, navigation, errors and empty states.
-
-### Coordinates
-
-Use `CoordinateLink` for independent location text. It owns bracketed formatting, Galaxy navigation, explicit clipboard feedback, and Base UI actions. Pass the target kind for moon/debris destinations; recorded addresses remain useful after deletion. Do not nest it inside links, buttons or planet selectors. Public links use `/u/{universe}/location/{galaxy}:{system}:{position}`; optional `target` and `mission` parameters preserve intent without carrying another player's departure planet. A mission link only opens dispatch.
-
-`CoordinateInput` is one text field with colon/Space navigation and ordinary Tab behavior. Preserve raw edits, derive numeric fields and validation, and accept location links only from this server and universe. Recently copied locations are session-scoped UI history and are applied only by an explicit action. Dispatch addresses live in the URL; historical report evidence lives in that navigation entry's state.
-
-Location previews use the fixed server template in `location_card.rs`, original atlas artwork, and bundled OFL font. Anonymous metadata includes only public names, supporter styling, universe and coordinates; gameplay still requires membership. The PNG response may be cached for five minutes; third-party chat caches can retain older cards. Invalid addresses return 404, missing occupants get a location card, and missing moons never fall back to planets. Preview rendering is limited to two concurrent tasks and returns 503 with Retry-After when busy.
-
-Catalog details and Technology → Techinfo share a native, closed-by-default **Technical data** disclosure. Building scaling, research bonuses and defense combat statistics come from the read-only active-rules catalog projection; missing older-server fields remain explicitly unavailable. Prerequisites and level thresholds derive from catalog requirements. Combat values are base values; research shows additive per-level and completed-level bonuses. Storage uses server-supplied capacity tables without extrapolation.
-
-## Alliances
-
-Community → Alliance opens a universe-level screen for discovery, membership, the noticeboard, roster, applications, custom roles, settings, and audit. Permissions control visible actions and server projections; coarse member activity is separate from roster access and leader-only by default. Public `/alliances/{universe}/{alliance}` pages bypass session bootstrap and expose only recruitment text and summary/ranking data. Existing universe members can follow the in-game entry link; new-account enrollment routing is deferred.
-
-The screen-scoped Zustand controller retains server responses and command identities. Edited form values are local drafts, preserved through transient failure/refresh and cleared when membership or authority is lost. Unknown command outcomes retry the identical command; success refreshes authoritative state and affected public identities. Markdown renders with HTML/images disabled and a safe link allowlist. Board pages are revision-bound, hold 20 notices, and derive pin/management actions from permissions.
-
-Shared player identity renders alliance tags throughout live game screens. Historical report contexts override current affiliations using captured event-time facts, including an explicitly empty map for old reports. Shared reports hide affiliation when player identity is redacted.
-
-## Mobile action sheets
-
-Use `ActionSheet` as the default mobile pattern for new contextual actions and short forms. Desktop callers may retain dialogs, popovers, or inline controls; do not migrate a whole flow just to share its presentation. The primitive itself works at desktop widths too, capped at 640px. All styling defaults to Orbit tokens, shared buttons, and editorial headings.
-
-`open` / `onOpenChange` are controlled by the caller. Keep the component mounted through closure so the exit spring completes before releasing modality and restoring opener focus. Form drafts stay with the caller; game data stays in the authoritative store. `children` accepts ordinary content or a render function with `{ snapTo, close }`. Opening a sheet never submits gameplay.
-
-```tsx
-const [open, setOpen] = useState(false)
-
-<Button onClick={() => setOpen(true)}>Planet actions</Button>
-<ActionSheet
-  open={open}
-  onOpenChange={setOpen}
-  title="Planet actions"
-  description="Aster · [1:50:8]"
-  snapPoints={[12.5, 50, 80, 100]}
-  initialSnap={50}
->
-  {({ close }) => <Button onClick={close}>Done</Button>}
-</ActionSheet>
-```
-
-Stops are percentages of the available height after reserving 44px at the top, not percentages of the whole screen. Defaults are `[12.5, 50, 100]`, opening at 50. Stops are validated, sorted and deduplicated; custom maxima also govern keyboard and form expansion. `mode="free"` retains arbitrary release heights within the configured bounds. `spring` is `silky` (default), `snappy`, or `soft`. `flickToDismiss`, `dim`, and `depth` default to true.
-
-For the recessed-page effect, wrap the page in `ActionSheetSurface`, pass its ref as `backgroundRef`, and put the sheet alongside it. The surface is a viewport-sized scroll container; opt into that scroll ownership deliberately rather than transforming arbitrary tall content or searching for application DOM. It scales about its bottom edge, leaving its bottom flush and its top inset 12px. The Full stop exposes another 32px of that page. The native modal is portaled to the document and stays outside the transformed surface. Closing/unmounting restores styles, document scroll, and focus. Ordinary sheets without a surface still dim and block the background.
-
-The dedicated 48px handle owns dragging. Content retains native scrolling, selection, links, and controls. Arrow keys select adjacent stops (10% increments in freeform); Home/End select configured endpoints. Escape, backdrop taps, and the visible close button dismiss. Gentle flicks move toward the next stop from the gesture's origin, without skipping a just-crossed notch. Flick dismissal requires at least 1500px/s **and** 36px of downward travel; dragging below 7% also dismisses. No fake haptics/audio.
-
-The controller tracks the Visual Viewport for browser chrome, rotation and software keyboards. Focused fields expand to the configured maximum and scroll into view after settling. Only the inner content scrolls; the modal wrapper uses `overflow: clip`. A 64px paint extension covers upward overshoot at the bottom. Motion values drive position, dimming, and visible content height without React renders per animation frame. Reduced motion removes spring movement and background scaling. This is a specific exception to the otherwise immediate UI-state policy, not permission for general animated controls.
-
-Behavior and thresholds preserve the final **Prototype Mobile Action Sheets** chat (`01a1733c-ef28-7082-a540-538340e5e2ca`) and its Sheet Lab source, including all three follow-up corrections. The implementation is split into a typed component, lifecycle hook, pure gesture/geometry helpers, DOM effects, and CSS Modules.
-
-Open `/action-sheet-playground` in Vite to test snap/freeform modes, alternate stops, springs, depth/dimming, form controls, and scrolling in an isolated Orbit preview. It makes no game API requests and is excluded from production bundles. Unit coverage runs with `npm test -- action-sheet-physics`; browser coverage runs with `npm run test:ui -- action-sheet.spec.ts`. Simulated viewport events verify keyboard geometry, but actual iPhone Safari keyboard and touch feel still require on-device inspection.
-
-Galaxy’s Harvest actions (row menu and coordinate menu) use one `GalaxyHarvestAction` controller and `GalaxyHarvestForm`. Below 768px, they open a 50% action sheet; desktop uses a 340px `ActionPopover` anchored to the menu trigger. The compact form suggests `ceil((metal + crystal + deuterium) / recycler capacity)`, capped by currently available recyclers. Galaxy debris and catalog capacity are whole units; harvesting also respects the engine’s 20,000-unit collection cap per Recycler. Suggestions, inventory and fleet slots derive from the live Zustand projection, including unresolved departures. Only a user's quantity edit is stored locally. Empty inventories and occupied slots disable the form with explicit explanations. Customize preserves the origin, debris coordinates and Harvest mission in regular dispatch on both layouts. Resizing between layouts retains the quantity draft and command state.
-
-Send requests a fresh server quote for recyclers alone at 100% speed with no cargo, rechecks availability/binding/context, and submits through the ordinary durable command path. Dismissing or navigating away before quoting finishes cancels that launch. Pending/uncertain departures cannot be sent again from the same sheet; uncertainty offers recovery of the saved command. Success closes the sheet, while rejections remain actionable. Menu integrations pass `returnFocusRef` so sheets return focus to the persistent trigger rather than a removed menu item. UI opening keys use a local counter, which also works over LAN HTTP.
-
-`ActionPopover` is for explicit desktop action forms; read-only hover details continue to use `Popover`. Floating UI positions, flips and constrains the panel to the viewport without moving the page or dimming it. Motion provides a short fade and 4px movement, removed under reduced motion. The quantity receives focus with its suggested value selected; disabled forms focus the close control. Escape/outside press dismiss, and keyboard closure restores the originating trigger. Menu popups explicitly yield focus when handing off to either presentation. The selected debris identity and coordinates are kept together so refreshed rows cannot retarget a form.
-
-## Mobile command HUD
-
-The mobile protocol-4 shell mounts `features/command-hud` outside the scrolling game layout. It uses the coordinator's command ledger, submitted quotes, report headers, paginated mailbox observations, and incoming missions. Fleet capacity comes from `occupiedFleetSlots`; arrival times come from confirmed fleet snapshots, never the browser's wall clock or guessed launch times. Only committed gameplay commands acknowledge success. Restored successes and initial unread hydration do not replay toasts.
-
-The user explicitly requested an animated orb and swipe-dismissable notifications. This HUD is an exception to the no-animation rule: orb startup, a shared 700ms orb palette transition, terminal typing, orbit, pulse, toast lifetime, dialog entrance/exit, and swipe feedback respect reduced motion. All captions type in, linger for 3 seconds, and fade away without shifting the orb. Routine cards do not automatically produce captions; the orb color, icon, and unread badge retain persistent meaning. HUD dialogs freeze the document with the shared iOS-compatible scroll lock, contain overscroll, and retain their content and modal scroll lock through the 400ms exit, then restore focus and the original page position on close or unmount. The panel opens over 600ms. The backdrop fades with the panel; reduced motion closes immediately. Navigation and other screens retain their existing motion policy. Swiping clears a notification ID only; it never marks intelligence read or clears a hostile fleet. Incoming alerts remain red until authoritative removal; unread Spy Contact reports remain red until read. Reports reuse `ReportObservation` and mark read after loading; messages and circulars acknowledge reads only after their displayed content loads, with retry on failure.
-
-While the mobile game is visible and connected, the HUD refreshes intelligence on viewer revision changes, foreground focus, and every 15 seconds. Mailbox reads traverse all conversation and circular pages. Account/epoch changes fence late results, and acknowledged reads fence older mailbox responses. Background failures preserve the last confirmed facts and expose retry inside the uplink. Desktop does not mount or poll the HUD.
-
-The HUD unread badge derives its count from canonical unread reports, unblocked conversations, and circulars, capped at 99. Background report paging hydrates enough headers to reach that cap. The open HUD list independently reveals batches of 20 items with an intersection observer rooted in the dialog, fetching further report pages as needed beyond the badge cap. Loading and retry states preserve loaded rows; a keyboard-accessible load-more button remains available. Back navigation retains the expanded list and its scroll position.
-
-`caption-events.ts` maps confirmed transitions to stable event IDs; `caption-engine.ts` owns the copy registry and session-local presentation history. Explanatory captions bypass humor limits; unread-color education appears once per session. Optional personality has a 25% chance after 7.5 seconds without newer events, a global 90-second cooldown starting when displayed, and no immediate repeat within a pool. Any newer event discards a pending joke; regular updates interrupt active jokes. Active incoming threats/disconnection suppress new humor. Historical hydration and pagination do not replay event jokes. Probe-loss humor requires a confirmed lost espionage combat outcome for the attacking viewer, or a restricted probe-only loss paired with a detected espionage observation at the same time/coordinates. Detection alone never qualifies. Add copy/policy in the registry and source mappings in the adapter; leave card/orb feedback independent.
-
-The orb dock interpolates three registered numeric CSS color channels together. Its core gradient, shimmer, rings, pseudo-element glows, icon tint, badges, caption and fleet counter all inherit the interpolated palette; nested tone attributes cannot snap individual parts to the destination color. Interrupted transitions continue from the current blend. Reduced motion disables the palette transition alongside the other HUD motion.
-
-Orb symbols use an overlapping 450ms Motion dissolve: outgoing symbols contract to 82%, blur by 3px and fade out while incoming symbols expand, sharpen and fade in. All layers remain centered and inherit the live palette. Initial mounting uses only the orb entrance; repeated identical symbols do not replay. Reduced motion renders a single immediate symbol. Decorative outgoing layers are hidden from assistive technology and cannot capture pointer events.
-
-Orb hover/focus charges a shared 350ms CSS interaction channel: the core brightens and lifts, the rings separate, a segmented outer halo emerges, and the aura, badge and fleet counter intensify. Pointer hover is limited to fine pointers with real hover support. A separate 120ms press channel compresses the core/rings for mouse and touch without moving the button’s hit area. Keyboard focus receives the same charging treatment. Reduced motion keeps static glow feedback and removes scale/translation and animation.
+# Orbit Imperium UI design
+
+Use this guide for design decisions. Open the linked components only when you
+need implementation details. Keep feature specifications and historical notes
+out of this guide.
+
+## Consistency
+
+Aim for consistency within a view and between views. Before making design
+choices, look up similar existing views and follow their established patterns
+for layout, controls, terminology, and interaction. Resist introducing new
+patterns unless the user provides guidance to do so.
+
+## Visual identity
+
+- Dark navy surfaces, champagne metal for primary actions, ice blue for links
+  and secondary accents. Reserve red, amber, and green for meaningful states.
+- Editorial serif headings with restrained sans-serif body text. Establish
+  hierarchy through size, weight, spacing, and alignment before adding decoration.
+- Controls use the game's clipped corners, beveled faces, and pressed feedback.
+  Keep decorative clipping separate from focus outlines and hit areas.
+- Use 16px icons for standard actions and inline symbols, consistently across
+  desktop and mobile. Compact actions use the shared 24px ghost button with 4px
+  padding per side. Do not introduce screen-specific size overrides; navigation
+  and decorative illustrations may use larger icons when their role warrants it.
+- Use the shared palette and spacing. Glows should have a clear focal point,
+  fade smoothly, and remain secondary to readable content.
+
+## Information and layout
+
+- Make the player's next decision obvious. Group related controls and give each
+  decision one clear primary action.
+- Lists are for recognition and comparison. Keep previews brief; put full
+  manifests, calculations, and explanations in details or contextual disclosures.
+- Align repeated rows and values. Use separators deliberately; avoid decorative
+  panels, borders, or repeated labels that add noise.
+- Put decision information before artwork on phones. Adapt grouping and spacing
+  to available width without horizontal overflow or obscured final controls.
+- Use canonical resource icons and colors beside amounts. Keep full names
+  accessible; never substitute M/C/D. Compact summaries may abbreviate quantities,
+  while spending decisions retain exact values.
+
+## Interaction and state
+
+- Keep the shell, controls, focus, and user edits stable as data loads or filters
+  change. Update the affected content without blanking or remounting the screen.
+- Distinguish loading, empty, error, disabled, and pending states. Show an empty
+  collection only after a successful response; preserve useful content on retry.
+- Empty states need a quiet focal point, a clear message, and a useful next action
+  when one exists. Their decoration should not compete with the surrounding page.
+- Make the clickable area and hover feedback agree. Keep nested actions independent
+  from row navigation, and provide equivalent keyboard and touch behavior.
+- Preserve visible focus, readable contrast, accessible names, usable touch targets,
+  and selectable content. Destructive actions need explicit review and safe focus.
+- Preserve immediate UI updates by default. When motion is requested, use it to
+  explain a change of state; keep it interruptible and respect reduced motion.
+  Do not animate layout in a way that moves a focused control or blocks interaction.
+
+## Reusable components and composition
+
+When contexts differ slightly, keep the shared behavior and visual pattern in
+one component and compose the differing parts at the call site. Use explicit
+variants for appearance and children or named slots for content. Avoid copying a
+component or accumulating flags tied to individual screens.
+
+Follow [Base UI's composition guide](https://base-ui.com/react/handbook/composition)
+when a behavior needs a custom control or underlying element:
+
+- Use the `render` prop to compose a Base UI part with an existing shared control.
+  For example, inside a `Menu.Root`:
+
+  ```tsx
+  <Menu.Trigger render={<Button variant="ghost" type="button" />}>
+    Actions
+  </Menu.Trigger>
+  ```
+
+- Custom controls must pass the ref and all received DOM props to the underlying
+  element, preserving handlers, accessibility attributes, and native semantics.
+- Compose compatible behaviors through nested `render` props on one element;
+  do not nest interactive elements such as buttons inside buttons.
+- Element composition merges classes, styles, handlers, and refs. Render-element
+  values win conflicting styles and ordinary attributes; its handlers run first.
+  Configure behavioral props such as `disabled` on each part that needs them.
+- Use a render function when content depends on the part's state, and spread its
+  supplied props onto the returned element. Preserve refs when merging manually:
+  `mergeProps` alone retains only the last ref.
+- Change the underlying element only when its semantics fit the context; retain
+  heading hierarchy, keyboard behavior, and accessible names.
+
+For our own reusable APIs, expose composition where a real context needs it.
+Keep game logic in hooks and pure functions, and test composed focus, activation,
+and disabled behavior when changing those interactions.
+
+## Visual review
+
+Inspect the actual rendered screen before and after a visual change. Exercise the
+interaction, including relevant loading and empty states; a static screenshot can
+miss a broken transition. Check desktop and mobile, long content, clipping,
+alignment, and focus. Passing tests or reading computed CSS is not visual review.
+Follow the screenshot and delivery requirements in [AGENTS.md](../../../../AGENTS.md).
+
+## Component references
+
+Reuse the existing owner of a visual pattern. Extend its explicit API when needed
+rather than reaching into another component's private markup or repainting its
+interaction states from a feature stylesheet. Read only the relevant source and
+its adjacent CSS module.
+
+| Need                           | Source                                                                                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Palette, spacing, typography   | [Tokens](../styles/tokens.css), [typography](typography.tsx)                                                                                                  |
+| Actions and navigation         | [Button](button.tsx), [Link](link.tsx), [confirmation](confirmation-button.tsx)                                                                               |
+| Segmented selection and forms  | [SegmentedControl](segmented-control.tsx), [form controls](form.tsx), [RichSelect](rich-select.tsx)                                                           |
+| Structure and game chrome      | [Panel](panel.tsx), [Section](section.tsx), [GameShell](../shell/game-shell.tsx)                                                                              |
+| Empty or connection states     | [EmptyState](empty-state.tsx), [StatePanel](state-panel.tsx)                                                                                                  |
+| Resources and coordinates      | [ResourceMark](resource-mark.tsx), [resource amounts](resource-amount.tsx), [quantities](number-value.tsx), [CoordinateLink](../features/coordinate-link.tsx) |
+| Contextual details and actions | [Popover](popover.tsx), [ActionPopover](action-popover.tsx), [ActionSheet](action-sheet.tsx)                                                                  |
+| Catalogs and decision pages    | [ImageCatalog](image-catalog.tsx), [CatalogStage](catalog-stage.tsx), [DetailLayout](../features/progression/detail-layout.tsx)                               |
+| Reduced motion                 | [Preference hook](use-reduced-motion.ts)                                                                                                                      |

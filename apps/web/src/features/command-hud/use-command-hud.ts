@@ -1,5 +1,8 @@
+import {
+  reportLoad,
+  reportRequestScope,
+} from '../../client-model/report-engine'
 import { useOrbCaption } from './use-orb-caption'
-import { readHudReports } from './read-hud-reports'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../../client-model/coordinator'
@@ -19,7 +22,7 @@ export function useCommandHud(model: Coordinator) {
   const [notices, setNotices] = useState<HudNotice[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
   const [selection, select] = useState<HudTarget | 'inbox' | null>(null)
-  const [inboxError, setInboxError] = useState('')
+  const [mailboxError, setMailboxError] = useState('')
   const refresh = useRef<() => void>(() => {})
   useEffect(() => {
     let before = model.store.getState()
@@ -58,18 +61,12 @@ export function useCommandHud(model: Coordinator) {
       }
       busy = true
       const results = await Promise.allSettled([
-        readHudReports((cursor) =>
-          active ? model.reportPage(cursor) : Promise.resolve(null),
-        ),
+        model.refreshReportInbox(),
         model.refreshMailbox(),
       ])
       if (active)
-        setInboxError(
-          results.some(
-            (r) =>
-              r.status === 'rejected' ||
-              (r.status === 'fulfilled' && r.value === null),
-          )
+        setMailboxError(
+          results[1].status === 'rejected'
             ? 'Some intelligence is unavailable. Try again.'
             : '',
         )
@@ -81,10 +78,10 @@ export function useCommandHud(model: Coordinator) {
     }
     refresh.current = () => void load()
     void load()
-    let revision = model.view?.viewer_revision
+    let scope = reportRequestScope(model.store.getState())
     const stop = model.subscribe((next) => {
-      if (next.view?.viewer_revision !== revision) {
-        revision = next.view?.viewer_revision
+      if (reportRequestScope(next) !== scope) {
+        scope = reportRequestScope(next)
         void load()
       }
     })
@@ -108,7 +105,11 @@ export function useCommandHud(model: Coordinator) {
     toasts: recent.filter((n) => !dismissed.includes(noticeKey(n))),
     selection,
     select,
-    inboxError,
+    inboxError:
+      mailboxError ||
+      (reportLoad(state).kind !== 'more' && reportLoad(state).error
+        ? 'Some intelligence is unavailable. Try again.'
+        : ''),
     retry: () => refresh.current(),
     dismiss: (target: HudTarget) =>
       setDismissed((old) => [...old.slice(-30), noticeKey(target)]),

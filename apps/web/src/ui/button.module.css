@@ -80,6 +80,13 @@
   padding: var(--button-padding, 8px 12px);
   font-size: var(--font-size-sm);
 }
+:where(.compact) {
+  --button-min-size: 34px;
+  --button-padding: 4px 10px;
+  --button-cut: 6px;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.02em;
+}
 :where(.large) {
   min-height: 52px;
   padding: var(--button-padding, 12px 22px);

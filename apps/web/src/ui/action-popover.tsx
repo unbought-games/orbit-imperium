@@ -113,7 +113,7 @@ export function ActionPopover({
                 aria-label="Dismiss popover"
                 onClick={() => onOpenChange(false)}
               >
-                <X size={18} aria-hidden="true" />
+                <X size={16} aria-hidden="true" />
               </Button>
             </header>
             {children}

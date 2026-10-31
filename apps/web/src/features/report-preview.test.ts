@@ -1,7 +1,32 @@
 import { expect, it } from 'vitest'
 import { reportPreview, reportAge, reportListIdentity } from './report-preview'
 
-it('shows the return location, exact ship manifest and whether cargo came home', () => {
+it('shows abandoned planet coordinates without explanatory subtext', () => {
+  const at = { galaxy: 1, system: 33, position: 4 }
+  expect(
+    reportPreview({
+      kind: 'PlanetAbandoned',
+      coordinates: at,
+      release_at: 1000,
+    }),
+  ).toEqual({ location: '[1:33:4]', coordinates: at, facts: [] })
+})
+
+it.each(['Occupied', 'PositionLocked', 'ColonyCapacity'] as const)(
+  'keeps colonization failure reason %s out of the list glance',
+  (reason) => {
+    const at = { galaxy: 1, system: 18, position: 9 }
+    expect(
+      reportPreview({
+        kind: 'ColonizationFailed',
+        destination_coordinates: at,
+        reason,
+      }),
+    ).toEqual({ location: '[1:18:9]', coordinates: at, facts: [] })
+  },
+)
+
+it('shows the return location, single ship type and whether cargo came home', () => {
   expect(
     reportPreview({
       kind: 'Returned',
@@ -282,4 +307,23 @@ it('labels both delivery endpoints from historical names, with coordinate fallba
   expect(deliveryRoute({ kind: 'Delivered', target })).toBe(
     'Location unavailable → [2:3:4]',
   )
+})
+
+it('uses a compact fleet glance for mission reports and contact losses', () => {
+  const ships = [
+    { ship_type: 'LightFighter' as const, count: '25000000' },
+    { ship_type: 'Cruiser' as const, count: '535000' },
+  ]
+  for (const kind of [
+    'Returned',
+    'Recalled',
+    'Deployed',
+    'MissionFailed',
+    'Harvested',
+  ] as const) {
+    expect(reportPreview({ kind, ships }).facts[0]).toBe('25.5M ships')
+  }
+  expect(
+    reportPreview({ kind: 'ContactLost', own_lost_ships: ships }).facts,
+  ).toEqual(['Lost: 25.5M ships'])
 })

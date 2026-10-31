@@ -130,3 +130,84 @@ export function supersededReportFailures(
     )
   })
 }
+
+export function pendingReportPreferences(attempts: Iterable<Attempt>) {
+  return [...attempts].filter((attempt) => {
+    const action = reportPreference(attempt.envelope.command)
+    return (
+      action &&
+      action.type !== 'MarkReportRead' &&
+      attempt.status !== 'rejected' &&
+      attempt.status !== 'committed'
+    )
+  })
+}
+
+export function projectedReportInbox(
+  state: import('./game-store').GameState,
+  includeHidden = false,
+) {
+  return (
+    state.reportInbox && {
+      ...state.reportInbox,
+      items: state.reportInbox.items.flatMap((id) => {
+        const header = projectedReportHeader(
+          state.reportHeaders,
+          state.attempts.values(),
+          id,
+        )
+        return header && (includeHidden || !header.hidden) ? [header] : []
+      }),
+    }
+  )
+}
+
+export function projectedReportDetail(
+  state: import('./game-store').GameState,
+  id: string,
+) {
+  const detail = state.reportDetails.get(id)
+  const header = projectedReportHeader(
+    state.reportHeaders,
+    state.attempts.values(),
+    id,
+  )
+  return detail && header ? { ...detail, header } : null
+}
+
+/** A report preference receipt can be newer than the next general game view. */
+export function reportRevision(state: import('./game-store').GameState) {
+  let revision = BigInt(state.view?.viewer_revision ?? '0')
+  for (const attempt of state.attempts.values()) {
+    if (
+      reportPreference(attempt.envelope.command) &&
+      attempt.receipt?.status === 'Committed'
+    ) {
+      const confirmed = BigInt(attempt.receipt.minimum_viewer_revision)
+      if (confirmed > revision) revision = confirmed
+    }
+  }
+  return revision.toString()
+}
+
+export function hasUnreadReports(state: import('./game-store').GameState) {
+  return (
+    !!projectedReportInbox(state)?.items.some((header) => !header.read) ||
+    ((!state.reportInbox || state.reportInbox.has_more) &&
+      state.view?.protocol === 4 &&
+      state.view.has_unread_reports === true)
+  )
+}
+
+export function pendingReportVisibility(
+  attempts: Iterable<Attempt>,
+  report?: string,
+) {
+  return pendingReportPreferences(attempts).find(
+    (attempt) =>
+      report === undefined ||
+      preferenceReports(reportPreference(attempt.envelope.command)!).includes(
+        report,
+      ),
+  )
+}

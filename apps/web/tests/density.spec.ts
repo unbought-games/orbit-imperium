@@ -400,9 +400,8 @@ for (const width of [390, 1280]) {
       await expect(tabs.getByRole('link', { name: route === 'dispatch' ? 'Fleets' : title, exact: true })).toHaveAttribute('aria-current', 'page')
       await expect(page.locator('main h1')).toHaveText(title)
       await expect(page.locator('main h1')).toBeFocused()
-      if (route !== 'dispatch')
-        await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
-      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(0)
+      await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
+      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(route === 'dispatch' ? 1 : 0)
       if (route === 'fleets') {
         await expect(page.getByRole('link', { name: 'Dispatch Fleet' })).toBeVisible()
         await expect(page.getByRole('button', { name: /^Fleet slots:/ })).toBeVisible()
@@ -501,10 +500,10 @@ for (const width of [320, 390, 1440]) {
       exact: true,
     })
     await expect(attack.getByRole('heading')).toHaveText(
-      'Incoming attack · Hostile',
+      'Attack Incoming · Hostile',
     )
     await expect(spy.getByRole('heading')).toHaveText(
-      'Incoming espionage · Hostile',
+      'Espionage Incoming · Hostile',
     )
     await expect(outbound.getByRole('heading')).toHaveText(
       'Attack Outbound',
@@ -517,7 +516,10 @@ for (const width of [320, 390, 1440]) {
     await expect(returning).toContainText('1h 1m 1s')
     await expect(returning).toContainText('←')
     await expect(attack).toContainText('From Commander Vega')
-    await expect(attack).toContainText('[1:24:6] → Home [1:371:12]')
+    for (const card of [attack, spy, transport, deploy, attacks.last()]) {
+      await card.getByRole('button', { name: /^Incoming .* ship composition:/ }).click()
+    }
+    await expect(attack).toContainText('[1:24:6]→Home [1:371:12]')
     await expect(
       attack.getByRole('link', {
         name: 'View origin [1:24:6] in galaxy',
@@ -530,7 +532,7 @@ for (const width of [320, 390, 1440]) {
         exact: true,
       }),
     ).toBeVisible()
-    await expect(attacks.last()).toContainText('[1:24:6] → Unrevealed location')
+    await expect(attacks.last()).toContainText('[1:24:6]→Unrevealed location')
     await expect(
       attacks.last().getByRole('link', { name: /View destination/ }),
     ).toHaveCount(0)
@@ -556,7 +558,7 @@ for (const width of [320, 390, 1440]) {
     }, danger)
     for (const hostile of [attack, spy]) {
       await expect(hostile.getByRole('heading')).toHaveCSS('color', color)
-      await expect(hostile.locator('strong')).toHaveCSS('color', color)
+      await expect(hostile.getByRole('timer').locator('strong')).toHaveCSS('color', color)
     }
     for (const friendly of [transport, deploy, outbound, returning]) {
       await expect(friendly).not.toContainText('Hostile')
@@ -586,7 +588,7 @@ for (const width of [320, 390, 1440]) {
     await page.clock.fastForward(453000)
     await expect(attack).toContainText('Awaiting confirmation')
     await expect(attack.getByRole('heading')).toHaveText(
-      'Incoming attack · Hostile',
+      'Attack Incoming · Hostile',
     )
     await expect(attack.getByRole('heading')).toHaveCSS('color', color)
     await page.unroute('**/api/**/overview')
@@ -596,14 +598,14 @@ for (const width of [320, 390, 1440]) {
     const spyFlight = board
       .getByRole('listitem')
       .filter({
-        has: page.getByRole('link', { name: 'View Espionage incoming fleet' }),
+        has: page.getByRole('heading', { name: 'Incoming espionage · Hostile' }),
       })
     const ownFlight = board
       .getByRole('listitem')
       .filter({
         has: page.getByRole('link', { name: 'View Attack outbound fleet' }),
       })
-    await expect(spyFlight.locator('svg').first()).toHaveCSS('color', color)
+    await expect(spyFlight.getByRole('heading')).toHaveCSS('color', color)
     await expect(ownFlight.locator('svg').first()).not.toHaveCSS('color', color)
   })
 }
