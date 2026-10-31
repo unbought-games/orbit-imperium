@@ -36,11 +36,13 @@ export function triageReports(
   filter: ReportFilter,
   knownOnly: boolean,
   folder: ReportFolder = 'inbox',
+  kind = 'all',
 ) {
   return reports
     .filter(
       (report) =>
         report.hidden === (folder === 'archived') &&
+        (kind === 'all' || report.kind === kind) &&
         (filter !== 'espionage' || report.kind === 'Espionage') &&
         (filter !== 'starred' || report.starred) &&
         (filter !== 'unread' || !report.read) &&

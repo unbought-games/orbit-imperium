@@ -5,6 +5,8 @@ import {
 } from '../client-model/game-projection'
 import { MissileFlight } from './missile-flight'
 import { FleetCargo } from './fleet-cargo'
+import { IncomingFleet } from './incoming-fleet'
+import { incomingKey } from './command-hud/model'
 import { MissionFleetCard } from './mission-fleet-card'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
@@ -109,6 +111,15 @@ function FlightList({
     fullRows && view.protocol === 4
       ? new Map(view.missions.fleets.map((fleet) => [fleet.id, fleet]))
       : null
+  const incomingFleets =
+    fullRows && view.protocol === 4
+      ? new Map(
+          view.missions.incoming.map((fleet, index) => [
+            `incoming:${index}`,
+            fleet,
+          ]),
+        )
+      : null
   const ownMissiles =
     fullRows && view.protocol === 4
       ? new Map(
@@ -133,6 +144,19 @@ function FlightList({
               detail={false}
               origin={body}
               linkEnabled={available}
+            />
+          )
+        }
+        const incoming =
+          flight.kind === 'fleet' ? incomingFleets?.get(flight.key) : undefined
+        if (fullRows && view.protocol === 4 && incoming) {
+          return (
+            <IncomingFleet
+              key={incomingKey(incoming)}
+              as="li"
+              fleet={incoming}
+              view={view}
+              now={now}
             />
           )
         }
@@ -753,7 +777,7 @@ export function EmpireOverview({
       </div>
       <section className={styles.research} aria-label="Empire research">
         <div className={styles.researchLabel}>
-          <span className={styles.eyebrow}>Shared across your empire</span>
+          <span className={styles.eyebrow}>Empire-wide research</span>
           <h3>Research directive</h3>
         </div>
         <WorkSummaries
@@ -761,7 +785,7 @@ export function EmpireOverview({
           body={researchHost ?? body}
           currentPage="overview"
           only="research"
-          layout="compact"
+          layout="directive"
         />
       </section>
       <div className={styles.sectionHeading}>

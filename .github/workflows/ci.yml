@@ -56,14 +56,11 @@ jobs:
           echo "ui=$ui" >> "$GITHUB_OUTPUT"
 
   native:
-    name: Build, lint, unit and PostgreSQL tests
+    name: Build, lint and unit checks
     needs: scope
     # PR code must run on a fresh GitHub-hosted VM, never a persistent host.
     runs-on: ubuntu-24.04
     # No custom execution deadline; GitHub retains its six-hour platform cap.
-    env:
-      COMPOSE_PROJECT_NAME: orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}
-      ORBIT_DB_PUBLISHED_PORT: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,7 +78,8 @@ jobs:
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
         with:
-          key: check
+          # Reuse the existing main dependency cache across native and DB jobs.
+          shared-key: check-native
           cache-bin: false
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install pinned nextest
@@ -90,18 +88,52 @@ jobs:
           tool: cargo-nextest@0.9.114
       - name: Run checks
         run: make check
+      - name: Verify lockfiles remain unchanged
+        if: always()
+        run: git diff --exit-code -- Cargo.lock package-lock.json
+
+  database:
+    name: PostgreSQL tests (${{ matrix.group }})
+    needs: scope
+    if: needs.scope.outputs.database == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [rules, world, rest]
+    env:
+      COMPOSE_PROJECT_NAME: orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
+      ORBIT_DB_PUBLISHED_PORT: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
+        with:
+          # Reuse the existing main dependency cache across native and DB jobs.
+          shared-key: check-native
+          cache-bin: false
+          save-if: false
+      - name: Install pinned nextest
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2
+        with:
+          tool: cargo-nextest@0.9.114
       - name: Start disposable PostgreSQL
-        if: needs.scope.outputs.database == 'true'
         run: |
           make db-up
           address=$(docker compose port db 5432)
           echo "ORBIT_TEST_DB_PORT=${address##*:}" >> "$GITHUB_ENV"
       # Make runs isolated database binaries with its bounded parallelism.
       - name: Run PostgreSQL integration tests
-        if: needs.scope.outputs.database == 'true'
-        run: make test-db
+        run: make test-db-${{ matrix.group }}
       - name: Remove disposable database and test files
-        if: always() && needs.scope.outputs.database == 'true'
+        if: always()
         run: |
           bash -e <<'CLEANUP'
           docker compose down --volumes --remove-orphans
@@ -118,9 +150,9 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 8
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -165,9 +197,9 @@ jobs:
         run: git diff --exit-code -- Cargo.lock package-lock.json
 
   check:
-    # Preserve the required-check name while covering both independent jobs.
+    # Preserve the required-check name while covering all independent jobs.
     name: Build, lint and unit tests
-    needs: [scope, native, browser]
+    needs: [scope, native, database, browser]
     if: always()
     runs-on: ubuntu-24.04
     steps:
@@ -175,11 +207,17 @@ jobs:
         env:
           SCOPE_RESULT: ${{ needs.scope.result }}
           NATIVE_RESULT: ${{ needs.native.result }}
+          DATABASE_SELECTED: ${{ needs.scope.outputs.database }}
+          DATABASE_RESULT: ${{ needs.database.result }}
           UI_SELECTED: ${{ needs.scope.outputs.ui }}
           BROWSER_RESULT: ${{ needs.browser.result }}
         run: |
           test "$SCOPE_RESULT" = success
           test "$NATIVE_RESULT" = success
+          case "$DATABASE_SELECTED:$DATABASE_RESULT" in
+            true:success|false:skipped) ;;
+            *) exit 1 ;;
+          esac
           case "$UI_SELECTED:$BROWSER_RESULT" in
             true:success|false:skipped) ;;
             *) exit 1 ;;

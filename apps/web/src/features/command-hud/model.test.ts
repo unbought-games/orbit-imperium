@@ -113,6 +113,7 @@ describe('live HUD sources', () => {
     const first = {
       ...before,
       reportInbox: {
+        revision: '1',
         items: ['report'],
         has_more: false,
         next_cursor: null,
@@ -154,6 +155,13 @@ describe('live HUD sources', () => {
       hidden: false,
     }
     state.reportHeaders.set(header.id, { header, revision: '1' })
+    state.reportInbox = {
+      revision: '1',
+      items: [header.id],
+      has_more: false,
+      next_cursor: null,
+      as_of_ms: 1,
+    }
     expect(orbAppearance(state, [])).toEqual({
       tone: 'champagne',
       icon: 'message',
@@ -213,6 +221,13 @@ describe('live HUD sources', () => {
       },
       revision: '1',
     })
+    state.reportInbox = {
+      revision: '1',
+      items: ['contact'],
+      has_more: false,
+      next_cursor: null,
+      as_of_ms: 1,
+    }
     state.view.missions.incoming = [probe]
     expect(orbAppearance(state, [])).toEqual({
       tone: 'champagne',
@@ -290,6 +305,13 @@ it('derives a capped unread badge from visible unread intelligence only', () => 
         hidden: false,
       },
     })
+  state.reportInbox = {
+    revision: '1',
+    items: [...state.reportHeaders.keys()],
+    has_more: false,
+    next_cursor: null,
+    as_of_ms: 1,
+  }
   expect(unreadBadgeCount(state)).toBe(99)
   for (const [id, entry] of state.reportHeaders)
     state.reportHeaders.set(id, {
@@ -297,4 +319,29 @@ it('derives a capped unread badge from visible unread intelligence only', () => 
       header: { ...entry.header, read: Number(id) > 1, hidden: id === '0' },
     })
   expect(unreadBadgeCount(state)).toBe(1)
+})
+
+it('ignores cached unread reports outside current inbox membership, including stale server alerts', () => {
+  const state = fixture()
+  state.view.has_unread_reports = true
+  state.reportHeaders.set('deleted-elsewhere', {
+    revision: '1',
+    header: {
+      id: 'deleted-elsewhere',
+      kind: 'Espionage',
+      observed_at: 1,
+      read: false,
+      hidden: false,
+    },
+  })
+  state.reportInbox = {
+    revision: '2',
+    items: [],
+    has_more: false,
+    next_cursor: null,
+    as_of_ms: 2,
+  }
+  expect(unreadBadgeCount(state)).toBe(0)
+  expect(hasUnreadIntelligence(state)).toBe(false)
+  expect(orbAppearance(state, []).tone).toBe('ice')
 })

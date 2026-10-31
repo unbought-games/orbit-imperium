@@ -19,7 +19,13 @@ function fixture() {
     view,
     binding: view.binding,
     ready: true,
-    reportInbox: { items: [], has_more: false, next_cursor: null, as_of_ms: 1 },
+    reportInbox: {
+      revision: '1',
+      items: [],
+      has_more: false,
+      next_cursor: null,
+      as_of_ms: 1,
+    },
   }
 }
 const header = (id: string, preview: Header['preview']): Header => ({

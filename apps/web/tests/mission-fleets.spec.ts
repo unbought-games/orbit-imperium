@@ -507,3 +507,204 @@ test.describe('fleet row touch feedback', () => {
     })
   }
 })
+
+for (const screen of ['fleets', 'overview'] as const) {
+  for (const width of [390, 1280]) {
+    test(`${screen} incoming fleet shares the flight card and discloses intelligence at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.clock.install({ time: now })
+      await page.clock.setFixedTime(now)
+      await page.clock.pauseAt(now)
+      await installGameFixture(page, {
+        protocol: 4,
+        sampledAt: now,
+        playerNames: { [id(90)]: 'Commander Vega' },
+        bodies: [{ ...body, name: 'Hades' }],
+        missions: {
+          fleets: [fleet(31, 'Attack', 600000)],
+          incoming: [
+            {
+              sender: id(90),
+              origin: { galaxy: 1, system: 15, position: 7 },
+              target: body.id,
+              mission: 'Attack',
+              arrival_at: now + 360000,
+              ships: {
+                visibility: 'Exact',
+                total: '30',
+                ships: [{ ship_type: 'Cruiser', count: '30' }],
+              },
+            },
+          ],
+          fleet_slots: '8',
+          score_value_micro: '0',
+        },
+      })
+      const path = `/u/andromeda/b/${body.id}/${screen}`
+      await page.goto(path)
+      const incoming = page.getByRole(
+        screen === 'fleets' ? 'article' : 'listitem',
+        { name: 'Incoming attack fleet', exact: true },
+      )
+      const own = page.getByRole(screen === 'fleets' ? 'article' : 'listitem', {
+        name: 'Attack fleet',
+        exact: true,
+      })
+      const toggle = incoming.getByRole('button', {
+        name: 'Incoming Attack ship composition: 30 ships',
+      })
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(
+        incoming.getByRole('list', { name: 'Ship composition' }),
+      ).toBeHidden()
+      await expect(incoming.getByRole('timer')).toContainText('6m 0s')
+      await expect(
+        incoming.getByRole('img', {
+          name: 'Incoming direction (position unknown): Hades [1:371:12] ← Unknown origin [1:15:7]',
+          exact: true,
+        }),
+      ).toBeVisible()
+      await expect(incoming).toHaveAttribute('data-flight-tone', 'enemy')
+      await expect(
+        incoming.getByRole('button', { name: 'Review recall' }),
+      ).toHaveCount(0)
+      await expect(
+        incoming.getByRole('group', { name: 'Carried resources' }),
+      ).toHaveCount(0)
+      for (const property of [
+        'padding',
+        'border-radius',
+        'font-size',
+      ] as const) {
+        await expect(incoming).toHaveCSS(
+          property,
+          await own.evaluate(
+            (el, key) => getComputedStyle(el).getPropertyValue(key),
+            property,
+          ),
+        )
+      }
+      await incoming.evaluate((el) =>
+        window.scrollBy(0, el.getBoundingClientRect().top - 100),
+      )
+      await diagnosticScreenshot(page, {
+        path: `test-results/${screen}-incoming-collapsed-${width}x900.png`,
+      })
+      await toggle.focus()
+      await page.keyboard.press('Enter')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(
+        incoming
+          .getByRole('list', { name: 'Ship composition' })
+          .getByRole('listitem'),
+      ).toHaveText(['Cruiser 30'])
+      await expect(incoming.locator('time')).toHaveAttribute(
+        'datetime',
+        new Date(now + 360000).toISOString(),
+      )
+      await expect(
+        incoming.getByRole('link', {
+          name: 'View destination [1:371:12] in galaxy',
+        }),
+      ).toBeVisible()
+      await expect(page).toHaveURL(path)
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await diagnosticScreenshot(page, {
+        path: `test-results/${screen}-incoming-expanded-${width}x900.png`,
+      })
+      await toggle.click()
+      await expect(
+        incoming.getByRole('list', { name: 'Ship composition' }),
+      ).toBeHidden()
+      if (screen === 'overview') {
+        await page
+          .getByLabel('Recent game events')
+          .getByRole('button', { name: /Hostile fleet inbound/ })
+          .click()
+        const dialog = page.getByRole('dialog')
+        await expect(
+          dialog.getByRole('article', { name: 'Incoming attack fleet' }),
+        ).toBeVisible()
+        await dialog
+          .getByRole('button', {
+            name: 'Incoming Attack ship composition: 30 ships',
+          })
+          .click()
+        await expect(
+          dialog.getByRole('list', { name: 'Ship composition' }),
+        ).toBeVisible()
+        await diagnosticScreenshot(page, {
+          path: `test-results/hud-incoming-expanded-${width}x900.png`,
+        })
+        await page.getByRole('button', { name: 'Close command HUD' }).click()
+      }
+    })
+  }
+}
+
+for (const screen of ['fleets', 'overview'] as const) {
+  test(`${screen} incoming disclosure state stays with its fleet across snapshot changes`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.clock.setFixedTime(now)
+    let revision = 1
+    const original: S['IncomingMission4'] = {
+      sender: id(90),
+      origin: { galaxy: 1, system: 15, position: 7 },
+      target: body.id,
+      mission: 'Attack',
+      arrival_at: now + 360000,
+      ships: {
+        visibility: 'Exact',
+        total: '30',
+        ships: [{ ship_type: 'Cruiser', count: '30' }],
+      },
+    }
+    const missions: S['MissionView4'] = {
+      fleets: [],
+      incoming: [original],
+      fleet_slots: '8',
+      score_value_micro: '0',
+    }
+    await installGameFixture(page, {
+      protocol: 4,
+      sampledAt: now,
+      missions,
+      viewerRevision: () => String(revision),
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/${screen}`)
+    const toggle = page.getByRole('button', {
+      name: 'Incoming Attack ship composition: 30 ships',
+      exact: true,
+    })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    missions.incoming.unshift({
+      ...original,
+      origin: { ...original.origin, position: 8 },
+      arrival_at: now + 180000,
+      ships: { visibility: 'Total', total: '10' },
+    })
+    revision++
+    await refreshGame(page)
+    const inserted = page.getByRole('button', {
+      name: 'Incoming Attack ship composition: 10 ships',
+      exact: true,
+    })
+    await expect(inserted).toHaveAttribute('aria-expanded', 'false')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    missions.incoming.shift()
+    revision++
+    await refreshGame(page)
+    await expect(inserted).toHaveCount(0)
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  })
+}

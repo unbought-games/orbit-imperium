@@ -1,4 +1,12 @@
-import { conversationUnread } from '../../client-model/social'
+import { ArrowLeft, MessageCircle, RefreshCw } from 'lucide-react'
+import {
+  CategoryNavigation,
+  type MessageCategory as Tab,
+} from './category-navigation'
+import { TaskHeader } from '../../ui/task-header'
+import { EmptyState } from '../../ui/empty-state'
+import { ConversationList } from './conversation-list'
+import { ThreadActions } from './thread-actions'
 import { MessageHistory } from './history'
 import { universeSlug } from '../../client-model/universe-name'
 import { useEffect, useRef, useState } from 'react'
@@ -16,16 +24,9 @@ import { PlayerName } from '../player-name'
 import { Markdown } from '../alliances/shared'
 import { ContactActions } from './contact-actions'
 import { Composer } from './composer'
+import { useMessageDrafts } from './use-message-drafts'
 import { useSocial } from './use-social'
 import styles from './social.module.css'
-const tabs = [
-  'Conversations',
-  'Circulars',
-  'Friends',
-  'Requests',
-  'Blocks',
-] as const
-type Tab = (typeof tabs)[number]
 function tabQuery(tab: Tab): SocialQuery {
   return tab === 'Conversations' || tab === 'Circulars'
     ? { type: tab, cursor: null, limit: 30 }
@@ -73,6 +74,7 @@ function Workspace() {
   useEffect(() => {
     void controller.list(tabQuery(tab))
   }, [controller, tab])
+  const drafts = useMessageDrafts(state.completed)
   const alliance = state.alliance
   const busy = state.busy || !!state.pending
   const run = controller.run.bind(controller)
@@ -99,74 +101,94 @@ function Workspace() {
     if (next === 'Circulars') void controller.loadAlliance()
   }
   return (
-    <section className={styles.workspace} aria-label="Messages and friends">
-      <h2>Conversations and contacts</h2>
-      <div className={styles.tabs} role="group" aria-label="Message categories">
-        {tabs.map((t) => (
+    <section
+      className={styles.workspace}
+      data-thread={!!search.player}
+      aria-label="Messages and friends"
+    >
+      <div className={styles.topBar}>
+        <TaskHeader>
+          <div className={styles.headerHeading}>
+            <h2>Messages</h2>
+            <CategoryNavigation value={tab} onChange={changeTab} />
+          </div>
           <Button
-            key={t}
-            variant={t === tab ? 'primary' : 'secondary'}
-            aria-pressed={t === tab}
-            onClick={() => changeTab(t)}
+            variant="ghost"
+            size="icon"
+            className={styles.refresh}
+            aria-label="Refresh"
+            title="Refresh messages"
+            disabled={state.loading}
+            onClick={() => {
+              void controller.list(tabQuery(tab))
+              if (search.player) void controller.history('newer')
+            }}
           >
-            {t}
+            <RefreshCw size={16} aria-hidden="true" />
           </Button>
-        ))}
+        </TaskHeader>
       </div>
-      {state.error && <p role="alert">{state.error}</p>}
+      {state.error && (
+        <div>
+          <p role="alert">{state.error}</p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void controller.list(tabQuery(tab))
+              if (search.player) void controller.history('newer')
+            }}
+          >
+            Retry messages
+          </Button>
+        </div>
+      )}
       {state.pending && !state.busy && (
         <Button onClick={() => void controller.retry()}>
           Retry pending action
         </Button>
       )}
-      <div className={styles.actions}>
-        <Button
-          variant="secondary"
-          disabled={state.loading}
-          onClick={() => {
-            void controller.list(tabQuery(tab))
-            if (search.player) void controller.history('newer')
-          }}
-        >
-          Refresh
-        </Button>
-      </div>
       <div className={tab === 'Conversations' ? styles.layout : undefined}>
         <div
           className={`${styles.list} ${search.player && tab === 'Conversations' ? styles.selectedList : ''}`}
           aria-label={tab}
         >
-          {state.loading && <p role="status">Loading…</p>}
-          {state.list?.conversations.map((c) => (
-            <article key={c.contact.player} className={styles.card}>
-              <PlayerName
-                player={c.contact.player}
-                fallback={c.contact.username}
-              />
-              <Button
-                variant="ghost"
-                aria-label={`Open conversation with ${c.contact.username}${conversationUnread(c, state.readPositions) ? ' · Unread' : ''}`}
-                onClick={() => select(c.contact.player)}
-              >
-                Open conversation
-                {conversationUnread(c, state.readPositions) && (
-                  <strong> · Unread</strong>
-                )}
-              </Button>
-              <p className={styles.preview}>{c.latest.body}</p>
-              <small>{new Date(c.latest.sent_at).toLocaleString()}</small>
-            </article>
-          ))}
+          {state.loading && tab !== 'Conversations' && (
+            <p role="status">Loading…</p>
+          )}
+          {tab === 'Conversations' && (
+            <ConversationList
+              list={state.list}
+              positions={state.readPositions}
+              self={self}
+              selected={search.player}
+              loading={state.loading}
+              select={select}
+              more={() => void controller.moreList()}
+              friends={() => changeTab('Friends')}
+            />
+          )}
           {state.list?.contacts.map((c) => (
             <article key={c.player} className={styles.card}>
-              <PlayerName player={c.player} fallback={c.username} />
-              <Button
-                variant="ghost"
-                aria-label={`Message ${c.username}`}
-                onClick={() => select(c.player)}
-              >
-                Message
-              </Button>
+              <div className={styles.contactHeader}>
+                <PlayerName player={c.player} fallback={c.username} />
+                <div className={styles.actions}>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    aria-label={`Message ${c.username}`}
+                    onClick={() => select(c.player)}
+                  >
+                    <MessageCircle size={16} aria-hidden="true" />
+                    Message
+                  </Button>
+                  <ContactActions
+                    contact={c}
+                    self={self}
+                    run={run}
+                    busy={busy}
+                  />
+                </div>
+              </div>
               {c.request && !c.accepted && (
                 <p>
                   {c.requested_by === self
@@ -174,7 +196,6 @@ function Workspace() {
                     : 'Wants to be your friend'}
                 </p>
               )}
-              <ContactActions contact={c} self={self} run={run} busy={busy} />
             </article>
           ))}
           {state.list?.circulars.map((c) => (
@@ -218,7 +239,8 @@ function Workspace() {
               </div>
             </article>
           ))}
-          {!state.loading &&
+          {tab !== 'Conversations' &&
+            !state.loading &&
             state.list &&
             ![
               state.list.conversations,
@@ -226,12 +248,12 @@ function Workspace() {
               state.list.circulars,
             ].some((a) => a.length) && (
               <p>
-                {tab === 'Conversations'
-                  ? 'No conversations yet. Message a player from Galaxy, their profile, or a report.'
-                  : `No ${tab.toLowerCase()} yet.`}
+                {`No ${tab.toLowerCase()} yet.`}
+                {tab === 'Friends' &&
+                  ' Open a player profile in Galaxy to message them or add a friend.'}
               </p>
             )}
-          {state.list?.next_cursor && (
+          {tab !== 'Conversations' && state.list?.next_cursor && (
             <Button
               variant="secondary"
               disabled={state.loading}
@@ -251,15 +273,20 @@ function Workspace() {
                   kind="Circular"
                   run={run}
                   busy={busy}
-                  completed={state.completed}
+                  body={drafts.get(alliance.summary.id)}
+                  setBody={(body) => drafts.set(alliance.summary.id, body)}
                 />
               </>
             )}
         </div>
         {tab === 'Conversations' && (
-          <section className={styles.conversation} aria-label="Conversation">
-            {search.player && (
-              <Button variant="secondary" onClick={() => select()}>
+          <section
+            className={`${styles.conversation} ${!search.player ? styles.unselectedThread : ''}`}
+            aria-label="Conversation"
+          >
+            {search.player && !history?.contact && (
+              <Button variant="ghost" onClick={() => select()}>
+                <ArrowLeft size={16} aria-hidden="true" />
                 Back to conversations
               </Button>
             )}
@@ -268,68 +295,106 @@ function Workspace() {
             )}
             {history?.contact && (
               <>
-                <h2>
-                  <PlayerName
-                    player={history.contact.player}
-                    fallback={history.contact.username}
-                  />
-                </h2>
-                <ContactActions
-                  contact={history.contact}
-                  self={self}
-                  run={run}
-                  busy={busy}
-                />
-                {history.next_cursor && (
+                <header className={styles.threadHeader}>
                   <Button
-                    variant="secondary"
-                    disabled={state.loadingHistory}
-                    onClick={() => void controller.history('older')}
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Back to conversations"
+                    title="Back to conversations"
+                    onClick={() => select()}
                   >
-                    Load older messages
+                    <ArrowLeft size={16} aria-hidden="true" />
                   </Button>
-                )}
+                  <div className={styles.threadIdentity}>
+                    <h2>
+                      <PlayerName
+                        player={history.contact.player}
+                        fallback={history.contact.username}
+                      />
+                    </h2>
+                    <span>
+                      {history.contact.blocked
+                        ? 'Blocked player'
+                        : history.contact.accepted
+                          ? 'Friend · Direct message'
+                          : 'Direct message'}
+                    </span>
+                  </div>
+                  <ThreadActions
+                    key={history.contact.player}
+                    contact={history.contact}
+                    self={self}
+                    run={run}
+                    busy={busy}
+                    hide={
+                      history.messages.length
+                        ? async () => {
+                            if (
+                              await run({
+                                type: 'Hide',
+                                player: history.contact!.player,
+                                message: history.messages.at(-1)!.id,
+                              })
+                            )
+                              select()
+                          }
+                        : undefined
+                    }
+                  />
+                </header>
+                <div className={styles.historyToolbar}>
+                  {history.next_cursor && (
+                    <Button
+                      variant="ghost"
+                      disabled={state.loadingHistory}
+                      onClick={() => void controller.history('older')}
+                    >
+                      Load older messages
+                    </Button>
+                  )}
+                </div>
                 <MessageHistory
                   key={`history:${history.contact.player}`}
                   messages={history.messages}
                   self={self}
                   name={history.contact.username}
                 />
-                {!history.messages.length && <p>Start your conversation.</p>}
                 {history.contact.blocked ? (
-                  <p>This player is blocked. Unblock them to send messages.</p>
+                  <p className={styles.blocked}>
+                    This player is blocked. Unblock them to send messages.
+                  </p>
                 ) : (
                   <Composer
                     key={`composer:${history.contact.player}`}
                     target={history.contact.player}
+                    name={history.contact.username}
                     kind="Send"
                     run={run}
                     busy={busy}
-                    completed={state.completed}
+                    body={drafts.get(history.contact.player)}
+                    setBody={(body) =>
+                      drafts.set(history.contact!.player, body)
+                    }
                   />
-                )}
-                {!!history.messages.length && (
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={async () => {
-                      if (
-                        await run({
-                          type: 'Hide',
-                          player: history.contact!.player,
-                          message: history.messages.at(-1)!.id,
-                        })
-                      )
-                        select()
-                    }}
-                  >
-                    Hide conversation
-                  </Button>
                 )}
               </>
             )}
             {!search.player && (
-              <p>Select a conversation to read or send messages.</p>
+              <div className={styles.threadEmpty}>
+                <EmptyState
+                  icon={MessageCircle}
+                  title="Your conversations"
+                  description="Select a player to pick up where you left off, or start a conversation with a friend."
+                  actions={
+                    <Button
+                      variant="secondary"
+                      onClick={() => changeTab('Friends')}
+                    >
+                      Find a friend
+                    </Button>
+                  }
+                />
+              </div>
             )}
           </section>
         )}

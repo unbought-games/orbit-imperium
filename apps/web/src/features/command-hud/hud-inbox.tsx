@@ -83,7 +83,7 @@ export function HudInbox({
           </p>
           <Button onClick={inbox.retry}>Retry loading</Button>
         </div>
-      ) : inbox.loading ? (
+      ) : inbox.loading || (!hud.state.reportInbox && !hud.inboxError) ? (
         <p role="status" className={styles.noticeText}>
           Loading intelligence…
         </p>
@@ -91,7 +91,7 @@ export function HudInbox({
         <div ref={inbox.sentinel}>
           <Button onClick={inbox.loadMore}>Load more intelligence</Button>
         </div>
-      ) : (
+      ) : hud.inboxError || hud.state.mailbox === null ? null : (
         <p role="status" className={styles.noticeText}>
           {inbox.targets.length
             ? 'You’re all caught up.'

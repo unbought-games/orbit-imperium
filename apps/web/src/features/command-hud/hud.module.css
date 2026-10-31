@@ -1271,3 +1271,13 @@
     backdrop-filter: blur(2px);
   }
 }
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hudLayer {
+    bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  .dialog {
+    bottom: calc(220px + env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 252px - env(safe-area-inset-bottom));
+  }
+}

@@ -1,5 +1,6 @@
 import { Crosshair, Ellipsis, Recycle, Rocket, Truck } from 'lucide-react'
-import { useRef } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { MissileLaunchPresentation } from './missile-launch-action'
 import { Menu } from '@base-ui/react/menu'
 import { Button } from '../ui/button'
 import type { components } from '../contracts'
@@ -19,89 +20,125 @@ export function GalaxyActionMenu({
   coordinates,
   actions,
   colonyNote,
+  missileAction,
+  missileIdentity,
   onDraft,
 }: {
   target: string
   coordinates: components['schemas']['Coordinates']
   actions: ReturnType<typeof galaxyMissionActions>
   colonyNote?: string | null
+  missileIdentity: string
+  missileAction?: (presentation: MissileLaunchPresentation) => ReactNode
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
     opener?: HTMLElement | null,
   ) => void
 }) {
+  const [missileSelection, setMissileSelection] = useState<string | null>(null)
+  const availableMissileIdentity = missileAction ? missileIdentity : null
+  // Invalidate only the launch selection; Harvest still needs this row's trigger.
+  useEffect(() => {
+    setMissileSelection((selection) =>
+      selection === availableMissileIdentity ? selection : null,
+    )
+  }, [availableMissileIdentity])
   const trigger = useRef<HTMLButtonElement>(null)
   const handingOff = useRef(false)
-  const enabled = actions.some((action) => !action.reason)
+  const enabled = !!missileAction || actions.some((action) => !action.reason)
   return (
-    <Menu.Root
-      onOpenChange={(open) => {
-        if (open) handingOff.current = false
-      }}
-    >
-      <Menu.Trigger
-        ref={trigger}
-        render={<Button variant="ghost" className={styles.actionTrigger} />}
-        aria-label={`Actions for ${target}`}
-        disabled={!enabled}
-        title={
-          enabled
-            ? `Actions for ${target}`
-            : 'No applicable actions for this position'
-        }
+    <>
+      <Menu.Root
+        onOpenChange={(open) => {
+          if (open) handingOff.current = false
+        }}
       >
-        <span className={styles.actionText}>Actions</span>
-        <Ellipsis className={styles.actionIcon} size={18} aria-hidden="true" />
-      </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Positioner
-          sideOffset={4}
-          align="end"
-          className={styles.menuPositioner}
+        <Menu.Trigger
+          ref={trigger}
+          render={<Button variant="ghost" className={styles.actionTrigger} />}
+          aria-label={`Actions for ${target}`}
+          disabled={!enabled}
+          title={
+            enabled
+              ? `Actions for ${target}`
+              : 'No applicable actions for this position'
+          }
         >
-          <Menu.Popup
-            finalFocus={() => !handingOff.current}
-            className={styles.actionMenu}
-            aria-label={`Missions to ${target}`}
+          <span className={styles.actionText}>Actions</span>
+          <Ellipsis
+            className={styles.actionIcon}
+            size={18}
+            aria-hidden="true"
+          />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Positioner
+            sideOffset={4}
+            align="end"
+            className={styles.menuPositioner}
           >
-            {actions.map((action) => {
-              const Icon = icons[action.mission]
-              return (
+            <Menu.Popup
+              finalFocus={() => !handingOff.current}
+              className={styles.actionMenu}
+              aria-label={`Missions to ${target}`}
+            >
+              {actions.map((action) => {
+                const Icon = icons[action.mission]
+                return (
+                  <Menu.Item
+                    key={action.mission}
+                    className={styles.menuItem}
+                    disabled={!!action.reason}
+                    title={action.reason}
+                    onClick={() => {
+                      handingOff.current = action.mission === 'Harvest'
+                      onDraft(coordinates, action.mission, trigger.current)
+                    }}
+                  >
+                    <Icon size={15} aria-hidden="true" />
+                    {action.mission}
+                  </Menu.Item>
+                )
+              })}
+              {missileAction && (
                 <Menu.Item
-                  key={action.mission}
                   className={styles.menuItem}
-                  disabled={!!action.reason}
-                  title={action.reason}
                   onClick={() => {
-                    handingOff.current = action.mission === 'Harvest'
-                    onDraft(coordinates, action.mission, trigger.current)
+                    handingOff.current = true
+                    setMissileSelection(missileIdentity)
                   }}
                 >
-                  <Icon size={15} aria-hidden="true" />
-                  {action.mission}
+                  <Rocket size={15} aria-hidden="true" />
+                  Launch missiles
                 </Menu.Item>
-              )
-            })}
-            {[
-              ...new Set(
-                actions.flatMap((action) =>
-                  action.reason ? [action.reason] : [],
+              )}
+              {[
+                ...new Set(
+                  actions.flatMap((action) =>
+                    action.reason ? [action.reason] : [],
+                  ),
                 ),
-              ),
-            ].map((reason) => (
-              <p key={reason} className={styles.menuNote}>
-                {reason}
-              </p>
-            ))}
-            {actions.some((action) => action.mission === 'Colonize') && (
-              <p className={styles.menuNote}>
-                {colonyNote} Requires at least one Colony Ship.
-              </p>
-            )}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+              ].map((reason) => (
+                <p key={reason} className={styles.menuNote}>
+                  {reason}
+                </p>
+              ))}
+              {actions.some((action) => action.mission === 'Colonize') && (
+                <p className={styles.menuNote}>
+                  {colonyNote} Requires at least one Colony Ship.
+                </p>
+              )}
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+      {missileAction?.({
+        open: missileSelection === missileIdentity,
+        onOpenChange: (open) =>
+          setMissileSelection(open ? missileIdentity : null),
+        opener: trigger,
+      })}
+    </>
   )
 }

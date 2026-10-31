@@ -129,9 +129,11 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
       'href',
       `/u/andromeda/b/${body.id}/${building === 'ResearchLab' ? 'facilities' : 'resources'}`,
     )
+    const empireResearch = page.getByRole('region', { name: 'Empire research', exact: true })
+    await expect(empireResearch.getByRole('button', { name: 'Cancel research', exact: true })).toHaveCount(0)
     await expect(
-      page.getByRole('link', { name: 'Open research' }),
-    ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/research`)
+      empireResearch.getByRole('link', { name: building ? /Energy Technology/ : 'Open research' }),
+    ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/research${building ? '/energy-technology' : ''}`)
     await page.getByRole('link', { name: 'Develop', exact: true }).click()
     const nav = page.getByRole('navigation', { name: 'Develop navigation' })
     for (const destination of ['Resources', 'Facilities'] as const) {
@@ -653,7 +655,7 @@ for (const [kind, elapsed] of [
   ['research', 0],
   ['research', 60_000],
 ] as const) {
-  test(`overview cancels active ${kind} after ${elapsed}ms and prevents duplicate cancellation`, async ({
+  test(`${kind === 'research' ? 'research page' : 'overview'} cancels active ${kind} after ${elapsed}ms and prevents duplicate cancellation`, async ({
     page,
   }) => {
     const serverNow = Date.now()
@@ -717,6 +719,8 @@ for (const [kind, elapsed] of [
         },
       })
     })
+    if (kind === 'research')
+      await page.goto(`/u/andromeda/b/${body.id}/research`)
     const scope = kind === 'construction' ? page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }) : page
     const summary = scope.getByRole('region', {
       name: kind === 'construction' ? 'Buildings' : 'Research',
@@ -726,6 +730,7 @@ for (const [kind, elapsed] of [
       name: `Cancel ${kind}`,
       exact: true,
     })
+    await expect(cancel).toBeVisible()
     await cancel.click()
     if (elapsed >= 30_000) {
       await expect(page.getByRole('dialog')).toContainText('1 minute of work will be lost.')
@@ -1584,7 +1589,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
         protocol: 4,
         binding,
         request_id: context.request_id,
-        viewer_revision: '1',
+        viewer_revision: String(reportRevision),
         sampled_at: Date.now(),
         as_of_ms: Date.now(),
         data: detail
@@ -1823,7 +1828,10 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('Unknown planet')
-  await expect(quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
+  await quote.getByRole('button', { name: 'Location actions for [1:1:3]', exact: true }).click()
+  await page.clock.runFor(100)
+  await expect(page.getByRole('menuitem', { name: 'View in Galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
+  await page.keyboard.press('Escape')
   await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
   await expect(quote).toContainText('fuel')
   expect(quoteRequests).toBe(1)
@@ -1838,7 +1846,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     path: 'test-results/dispatch-review-phone.png',
     fullPage: true,
   })
-  await quote.getByRole('button', { name: 'Edit mission', exact: true }).click()
+  await page.getByRole('button', { name: 'Back to edit mission', exact: true }).click()
   await expect(
     page.getByRole('button', { name: 'Review fleet', exact: true }),
   ).toBeFocused()
@@ -2370,7 +2378,7 @@ for (const width of [320, 390, 768]) {
 }
 
 for (const width of [768]) {
-  test(`tablet header keeps name, planet, menu and resources in one pinned row at ${width}px`, async ({ page }) => {
+  test(`tablet header pins identity and resources above the bottom navigation at ${width}px`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width, height: 900 })
     await shellFixture(page, { protocol: 4 })
@@ -2381,13 +2389,16 @@ for (const width of [768]) {
     const header = brand.locator('../..')
     await expect(page.getByLabel('Current universe')).toBeHidden()
     const assertRow = async () => {
-      const boxes = await Promise.all([brand, planet, primary, resources].map(locator => locator.boundingBox()))
+      const boxes = await Promise.all([brand, planet, resources].map(locator => locator.boundingBox()))
       for (let i = 1; i < boxes.length; i++) {
         expect(boxes[i]!.x).toBeGreaterThanOrEqual(boxes[i - 1]!.x + boxes[i - 1]!.width)
         expect(Math.abs(boxes[i]!.y + boxes[i]!.height / 2 - boxes[0]!.y - boxes[0]!.height / 2)).toBeLessThan(2)
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       expect((await header.boundingBox())!.y).toBe(0)
+      await expect(primary).toHaveCSS('position', 'fixed')
+      const navigation = (await primary.boundingBox())!
+      expect(navigation.y + navigation.height).toBe(900)
     }
     await assertRow()
     await expect(page.getByRole('navigation', { name: /^(Develop|Fleet) navigation$/ })).toHaveCount(0)
@@ -2403,7 +2414,7 @@ for (const width of [768]) {
         continue
       }
       await expect(secondary).toBeVisible()
-      const row = (await primary.boundingBox())!
+      const row = (await page.getByRole('group', { name: 'Planet and resources' }).boundingBox())!
       expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
       for (const scroll of [0, 300, 100000]) {
         await page.evaluate(y => window.scrollTo(0, y), scroll)
@@ -2441,11 +2452,14 @@ for (const width of [768]) {
     await expect(search).toHaveCount(0)
     const assertAlignment = async () => {
       const brandBox = (await brand.boundingBox())!
-      for (const locator of [planet, primary, resources]) {
+      for (const locator of [planet, resources]) {
         const box = (await locator.boundingBox())!
         expect(Math.abs(box.y + box.height / 2 - brandBox.y - brandBox.height / 2)).toBeLessThan(2)
       }
       expect((await brand.locator('../..').boundingBox())!.y).toBe(0)
+      await expect(primary).toHaveCSS('position', 'fixed')
+      const navigation = (await primary.boundingBox())!
+      expect(navigation.y + navigation.height).toBe(900)
     }
     await assertAlignment()
     await primary.getByRole('link', { name: 'Develop', exact: true }).click()
@@ -2454,7 +2468,7 @@ for (const width of [768]) {
     for (const scroll of [0, 300, 100000]) {
       await page.evaluate(y => window.scrollTo(0, y), scroll)
       await assertAlignment()
-      const row = (await primary.boundingBox())!
+      const row = (await page.getByRole('group', { name: 'Planet and resources' }).boundingBox())!
       expect((await secondary.boundingBox())!.y).toBeGreaterThanOrEqual(row.y + row.height)
     }
     await selectBody(page, bodies[8].id)

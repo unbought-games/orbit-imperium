@@ -17,6 +17,7 @@ import { catalogPage } from '../shell/catalog-routes'
 import { researchProgress } from '../client-model/research-progress'
 import { elapsedProgress } from './overview-progress'
 import { WorkCancellationButton } from './work-cancellation-button'
+import { ResearchSummaryContent } from './research-summary-content'
 import { ResourceSummary } from '../ui/number-value'
 import {
   manufacturingQueue,
@@ -35,7 +36,7 @@ export function WorkSummaries({
   currentPage: Page
   includeResearch?: boolean
   only?: 'buildings' | 'research' | 'manufacturing'
-  layout?: 'cards' | 'editorial' | 'compact'
+  layout?: 'cards' | 'editorial' | 'compact' | 'directive'
 }) {
   const universeName = useUniverseName()
   const countdown = useCountdown(
@@ -134,7 +135,7 @@ export function WorkSummaries({
   ]
   return (
     <div
-      className={`${styles.summaries} ${layout !== 'cards' ? styles.editorial : ''} ${layout === 'compact' ? styles.compact : ''}`}
+      className={`${styles.summaries} ${layout !== 'cards' ? styles.editorial : ''} ${layout === 'compact' ? styles.compact : ''} ${layout === 'directive' ? styles.directive : ''}`}
     >
       {summaries
         .filter(
@@ -201,7 +202,20 @@ export function WorkSummaries({
                 aria-label={title}
               >
                 <Heading level={2}>{title}</Heading>
-                {category === 'manufacturing' && queue.length > 0 ? (
+                {layout === 'directive' &&
+                category === 'research' &&
+                research &&
+                target ? (
+                  <ResearchSummaryContent
+                    research={research.research}
+                    targetLevel={research.target_level}
+                    target={target}
+                    host={host}
+                    work={researchWork}
+                    countdown={countdown(research.due_at)}
+                    percent={researchPercent}
+                  />
+                ) : category === 'manufacturing' && queue.length > 0 ? (
                   <ol className={styles.queue} aria-label="Manufacturing queue">
                     {queue.map((batch) => (
                       <li key={batch.id}>
@@ -296,7 +310,7 @@ export function WorkSummaries({
                   </div>
                 )}
                 <div className={styles.actions}>
-                  {work && session && cancelType && (
+                  {layout !== 'directive' && work && session && cancelType && (
                     <WorkCancellationButton
                       model={session.model}
                       operationId={work.operationId}
@@ -334,7 +348,9 @@ export function WorkSummaries({
                     </WorkCancellationButton>
                   )}
                   {showLink &&
-                    (enabled ? (
+                    (layout === 'directive' && research && target ? (
+                      <ArrowRight size={18} aria-hidden="true" />
+                    ) : enabled ? (
                       <Link
                         data-touch-control=""
                         {...routeTarget(universeName, page as Page, body.id)}

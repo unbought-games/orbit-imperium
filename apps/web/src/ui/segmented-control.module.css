@@ -1,0 +1,136 @@
+.control {
+  --segment-shape: polygon(
+    6px 0,
+    100% 0,
+    100% calc(100% - 6px),
+    calc(100% - 6px) 100%,
+    0 100%,
+    0 6px
+  );
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 3px;
+  filter: drop-shadow(0 2px 3px #0004);
+}
+/* Clip the plates, leaving keyboard focus and the button hit areas intact. */
+.control::before,
+.control::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  clip-path: var(--segment-shape);
+}
+.control::before {
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(135deg, var(--ice-shadow), var(--border) 70%);
+}
+.control::after {
+  inset: 1px;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    var(--surface-raised),
+    var(--surface-page)
+  );
+  box-shadow: inset 0 1px #a4dbef14;
+}
+.segment {
+  position: relative;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 150ms ease;
+}
+.selection {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  clip-path: var(--segment-shape);
+  background: linear-gradient(135deg, var(--ice), var(--ice-shadow));
+  filter: drop-shadow(0 0 4px #a4dbef30);
+}
+.selection::before {
+  content: '';
+  position: absolute;
+  inset: 1px 1px 2px;
+  clip-path: var(--segment-shape);
+  background: linear-gradient(160deg, #345269, var(--surface-input));
+  box-shadow: inset 0 1px #e4faff25;
+}
+.selection::after {
+  content: '';
+  position: absolute;
+  inset: auto 8px 1px;
+  height: 1px;
+  background: var(--champagne);
+  box-shadow: 0 0 6px var(--champagne);
+}
+.sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    var(--ice-light),
+    transparent 80%
+  );
+}
+.label {
+  position: relative;
+  z-index: 1;
+}
+.segment[aria-pressed='true'] {
+  color: var(--champagne-light);
+  text-shadow: 0 0 12px #f4ead230;
+}
+.segment:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 4px;
+  z-index: 2;
+}
+.control[data-disabled] {
+  opacity: 0.5;
+}
+.segment:disabled {
+  cursor: not-allowed;
+}
+@media (hover: hover) {
+  .segment:hover:not(:disabled) {
+    color: var(--ice-light);
+    text-shadow: 0 0 10px #a4dbef50;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  .control {
+    border: 1px solid ButtonText;
+    filter: none;
+  }
+  .control::before,
+  .control::after,
+  .selection {
+    display: none;
+  }
+  .segment[aria-pressed='true'] {
+    background: Highlight;
+    color: HighlightText;
+  }
+}

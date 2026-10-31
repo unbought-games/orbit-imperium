@@ -158,6 +158,11 @@ test('dispatch blocks a known locked colony position and enables an eligible pos
 })
 
 test('authoritative colony quote rejection explains the position research requirement', async ({ page }) => {
+  // Keep the advisory preview debounce separate from the explicit quote request.
+  // A slow runner can otherwise start a new estimate while assertions are running.
+  const now = Date.now()
+  await page.clock.install({ time: now - 60_000 })
+  await page.clock.pauseAt(now)
   const source = { ...body, inventories: [{ item: { kind: 'Ship' as const, id: 'ColonyShip' as const }, count: '1' }] }
   // The client snapshot allows the position, but the server still owns eligibility.
   await setup(page, [source], 4)
@@ -176,10 +181,13 @@ test('authoritative colony quote rejection explains the position research requir
     }
   })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await expect(page.getByRole('radio', { checked: true })).toBeVisible()
+  await page.clock.runFor(250)
   await expect.poll(() => requests).toEqual(['Galaxy'])
   await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
   await setDestination(page, { position: '3' })
   // The unified control refreshes its system preview for the new mission.
+  await page.clock.runFor(250)
   await expect.poll(() => requests).toEqual(['Galaxy', 'Galaxy'])
   await page.getByRole('textbox', { name: 'Colony Ship · 1 available' }).fill('1')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
@@ -187,4 +195,17 @@ test('authoritative colony quote rejection explains the position research requir
   await expect(page.getByRole('alert')).not.toContainText('connection')
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   expect(requests).toEqual(['Galaxy', 'Galaxy', 'ResolveDestination', 'FleetQuote'])
+  // The rejected review resumes advisory estimates; their failure must not
+  // replace the authoritative error or open a launch confirmation.
+  await page.clock.runFor(250)
+  await expect.poll(() => requests).toEqual([
+    'Galaxy', 'Galaxy', 'ResolveDestination', 'FleetQuote',
+    'ResolveDestination', 'FleetEstimate',
+  ])
+  await expect(page.getByText(
+    'Your empire does not meet the requirements for this mission. Check your research and review again.',
+    { exact: true },
+  )).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('Astrophysics level 4 is required for this position.')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
 })
