@@ -1,7 +1,6 @@
 import styles from './social.module.css'
 import { universeSlug } from '../../client-model/universe-name'
 import { useContext } from 'react'
-import { MessageSquare } from 'lucide-react'
 import { SessionContext } from '../../shell/session-context'
 import { Link } from '../../ui/link'
 export function MessagePlayerLink({
@@ -28,15 +27,7 @@ export function MessagePlayerLink({
       title={`Message ${name}`}
       aria-label={`Message ${name}`}
     >
-      <MessageSquare
-        size={14}
-        aria-hidden="true"
-        style={{
-          display: 'inline',
-          verticalAlign: 'middle',
-          marginInlineStart: 4,
-        }}
-      />
+      Send message
     </Link>
   )
 }

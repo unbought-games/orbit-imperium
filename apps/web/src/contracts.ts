@@ -8199,7 +8199,7 @@ export interface components {
             catalog: components["schemas"]["InsigniaSymbol"][];
             /** @enum {string} */
             policy: "unrestricted" | "supporter";
-            appearance: components["schemas"]["InsigniaAppearance"];
+            appearance: components["schemas"]["InsigniaAppearance"] | null;
             expires_at: number;
         };
         InsigniaAction: {

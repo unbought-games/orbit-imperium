@@ -31,7 +31,8 @@ export function useInsigniaEditor() {
     ...state,
     snapshot,
     currentAppearance:
-      snapshot &&
+      snapshot?.library.equipped &&
+      snapshot.appearance &&
       (access(snapshot.appearance.recipe.symbol) === 'available'
         ? snapshot.appearance
         : {

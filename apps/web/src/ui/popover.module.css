@@ -27,3 +27,7 @@
 .popover strong {
   font-variant-numeric: tabular-nums;
 }
+/* Portals inside a native dialog share its containing block and clipping. */
+:global(dialog) .popover {
+  max-width: calc(100% - 24px);
+}

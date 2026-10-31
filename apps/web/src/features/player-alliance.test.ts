@@ -46,7 +46,7 @@ function profiles() {
   controller.store.getInitialState = controller.store.getState
   return controller
 }
-it('shows current affiliations with public links on ordinary player labels', () => {
+it('groups current affiliation into one profile trigger without nested links', () => {
   const html = renderToStaticMarkup(
     h(
       PlayerProfilesContext.Provider,
@@ -56,7 +56,8 @@ it('shows current affiliations with public links on ordinary player labels', () 
   )
   expect(html).toContain('Commander')
   expect(html).toContain('[NEW]')
-  expect(html).toContain(`/alliances/${alliance.universe}/${alliance.id}`)
+  expect(html).toContain('aria-label="Commander profile details"')
+  expect(html).not.toContain('<a')
 })
 it('a historical report overrides current affiliation and an old report never guesses it', () => {
   const render = (known: boolean) =>
@@ -90,7 +91,16 @@ it('an explicit no-alliance observation overrides stale current profiles and but
   )
   expect(html).not.toContain('[NEW]')
   const button = renderToStaticMarkup(
-    h('button', null, h(PlayerName, { player, alliance, linkAlliance: false })),
+    h(
+      'button',
+      null,
+      h(PlayerName, {
+        player,
+        alliance,
+        linkAlliance: false,
+        interactive: false,
+      }),
+    ),
   )
   expect(button).toContain('[NEW]')
   expect(button).not.toContain('<a ')

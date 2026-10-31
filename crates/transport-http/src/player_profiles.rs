@@ -291,19 +291,16 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         if let Some(c) = &s.customization
             && include_insignia
         {
-            let recipe = equipped
-                .get(&player.player)
-                .map(|(recipe, grants)| {
-                    effective_insignia(
-                        recipe,
-                        c.policy,
-                        grants,
-                        player.evidence(),
-                        unbought_auth::now(),
-                    )
-                })
-                .unwrap_or_default();
-            player.insignia = Some(super::insignias::appearance(recipe));
+            let recipe = equipped.get(&player.player).map(|(recipe, grants)| {
+                effective_insignia(
+                    recipe,
+                    c.policy,
+                    grants,
+                    player.evidence(),
+                    unbought_auth::now(),
+                )
+            });
+            player.insignia = recipe.map(super::insignias::appearance);
         }
         player.alliance = alliances.remove(&player.player);
     }

@@ -14,7 +14,9 @@ export function InsigniaEditor() {
       <div className={styles.heading}>
         <div>
           <Heading level={2}>Empire insignia</Heading>
-          <Text>A symbol to call your own. Carry it into the galaxy.</Text>
+          <Text>
+            Fly your own symbol, or explore without one. Insignias are optional.
+          </Text>
         </div>
         {editor.currentAppearance && (
           <EmpireInsignia
@@ -45,6 +47,7 @@ export function InsigniaEditor() {
         </Text>
       ) : (
         <>
+          {!snapshot.library.equipped && <Text>No insignia equipped.</Text>}
           <div className={styles.library}>
             <label>
               Saved designs
@@ -284,7 +287,7 @@ export function InsigniaEditor() {
                 disabled={editor.busy}
                 onClick={() => void editor.reset()}
               >
-                Use default insignia
+                Remove insignia
               </Button>
             )}
           </div>

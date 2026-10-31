@@ -287,11 +287,12 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding-inline-end: 26px;
 }
-.targetName [data-message-player] {
-  position: absolute;
-  inset-inline-end: 0;
-  top: 50%;
-  transform: translateY(-50%);
+/* Keep the inline identity on the compact target's existing text baseline. */
+.targetInfo .targetName > button {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  min-height: 0;
 }

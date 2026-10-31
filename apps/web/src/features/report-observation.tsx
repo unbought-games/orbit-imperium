@@ -374,11 +374,7 @@ function ReportObservationContent({
               )}
               <div className={styles.targetInfo}>
                 <span className={styles.targetName}>
-                  <PlayerName
-                    messageAction
-                    player={text(target.owner)}
-                    names={playerNames}
-                  />
+                  <PlayerName player={text(target.owner)} names={playerNames} />
                 </span>
                 <span className={styles.targetDetails}>
                   <BodyIdentity
@@ -444,12 +440,8 @@ function ReportObservationContent({
         className={styles.observation}
       >
         <Text>
-          <PlayerName
-            messageAction
-            player={text(payload.sender)}
-            names={playerNames}
-          />{' '}
-          made espionage contact from{' '}
+          <PlayerName player={text(payload.sender)} names={playerNames} /> made
+          espionage contact from{' '}
           <CoordinateLink at={payload.origin} label="origin" /> at{' '}
           <CoordinateLink at={payload.target} label="target" />.
         </Text>
