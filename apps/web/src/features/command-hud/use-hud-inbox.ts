@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { reportLoad } from '../../client-model/report-engine'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { GameState } from '../../client-model/game-store'
@@ -35,7 +35,7 @@ export function useHudInbox(
   ]
   const more = limit < targets.length || !!state.reportInbox?.has_more
   const buffered = limit < targets.length
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
     if (!visible || loading) return
     if (buffered) {
       setLimit((value) => Math.max(value, limit + batchSize))
@@ -49,9 +49,7 @@ export function useHudInbox(
     } catch {
       /* Shared request state supplies retry in both surfaces. */
     }
-  }
-  const latestLoad = useRef(loadMore)
-  latestLoad.current = loadMore
+  }, [visible, loading, buffered, model, limit])
   useEffect(() => {
     const element = sentinel.current
     const root = scrollRoot.current
@@ -60,7 +58,9 @@ export function useHudInbox(
     const observer = new IntersectionObserver(
       (entries) => {
         if (active && entries.some((entry) => entry.isIntersecting))
-          latestLoad.current()
+          // Keep the observing render's page intent even if delivery races a
+          // new render before this effect's cleanup has run.
+          void loadMore()
       },
       { root, rootMargin: '0px 0px 100px 0px' },
     )
@@ -75,10 +75,9 @@ export function useHudInbox(
     more,
     loading,
     failed,
-    limit,
+    loadMore,
     targets.length,
     state.reportInbox?.next_cursor,
-    buffered,
     scrollRoot,
   ])
   return {

@@ -102,6 +102,14 @@ production build passed locally after the repair. Browser runners stopped and
 released their ports. The latest PR checks verify the pushed repair; their
 results are the authoritative readiness evidence.
 
+Run `41211753555` exposed a second delivery window during retry completion:
+100 rows advanced to 130 instead of 120. The observer's latest-callback ref
+could pick up a new render's limit before the old effect cleaned up. Bind the
+observer to a memoized callback for its original page intent, retaining the
+inactive-observer guard. The original case and both controlled regressions then
+passed five repetitions each (15 tests, 16.3s), with current desktop/mobile
+captures refreshed. No pagination assertions were weakened.
+
 ## October 24 audit
 
 Audited October 24, 2026, against checkout
