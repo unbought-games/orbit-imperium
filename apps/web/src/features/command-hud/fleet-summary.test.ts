@@ -369,3 +369,45 @@ it('never infers enemy origin identity or planet/moon art from a shared coordina
     })
   }
 })
+
+it.each(['Planet', 'Moon'] as const)(
+  'resolves incoming %s origins by body ID even when both bodies share coordinates',
+  (kind) => {
+    const state = fixture()
+    const origin = { galaxy: 1, system: 2, position: 3 }
+    state.view.destinations = (['Planet', 'Moon'] as const).map((bodyKind) => ({
+      id: `enemy-${bodyKind}`,
+      kind: bodyKind,
+      name: `Enemy ${bodyKind}`,
+      coordinates: origin,
+    }))
+    state.view.missions.incoming = [
+      {
+        sender: 'enemy',
+        origin,
+        origin_body: `enemy-${kind}`,
+        target: 'home',
+        mission: 'Attack',
+        arrival_at: 5000,
+        ships: { visibility: 'Unknown' },
+      },
+    ]
+    expect(enemyAttackRows(state)[0].row.target).toEqual({
+      name: `Enemy ${kind}`,
+      address: '[1:2:3]',
+      kind,
+      art: { id: `enemy-${kind}`, kind, coordinates: origin },
+    })
+    state.view.destinations.find((body) => body.kind === kind)!.name =
+      'Renamed origin'
+    expect(enemyAttackRows(state)[0].row.target.name).toBe('Renamed origin')
+    state.view.destinations = state.view.destinations.filter(
+      (body) => body.kind !== kind,
+    )
+    expect(enemyAttackRows(state)[0].row.target).toMatchObject({
+      name: 'Unknown origin',
+      address: '[1:2:3]',
+      kind: 'Unknown',
+    })
+  },
+)

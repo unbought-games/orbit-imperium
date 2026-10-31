@@ -151,6 +151,7 @@ fn incoming_mission(
     Ok(Some(IncomingMission {
         sender: fleet.owner,
         origin: fleet.origin_coordinates,
+        origin_body: Some(fleet.intent.origin),
         target: id,
         mission: fleet.intent.mission,
         arrival_at: fleet.due_at,

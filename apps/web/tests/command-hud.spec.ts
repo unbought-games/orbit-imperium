@@ -1247,7 +1247,9 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await page.emulateMedia({reducedMotion:'reduce'})
     await page.clock.install({time:baseTime})
     await page.clock.pauseAt(baseTime)
-    const f=await intelligenceFixture(page)
+    const origin:S['Destination']={id:id(98),kind:'Planet',name:'Arcanis Prime',coordinates:{galaxy:1,system:372,position:3}}
+    const moon:S['Destination']={...origin,id:id(97),kind:'Moon',name:'Arcanis Moon'}
+    const f=await intelligenceFixture(page,true,[body],[moon,origin])
     await page.goto(`/u/andromeda/b/${body.id}/overview`)
     await page.getByTestId('command-orb').click()
     const panel=page.getByRole('dialog',{name:'Command uplink'})
@@ -1256,7 +1258,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await expect(enemies).toHaveCount(0)
     await expect(panel.getByRole('button',{name:/^Fleets/})).toBeVisible()
 
-    const incoming:S['IncomingMission4']={sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Transport',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}}
+    const incoming:S['IncomingMission4']={sender:id(99),origin:origin.coordinates,origin_body:origin.id,target:body.id,mission:'Transport',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}}
     f.missions.incoming.push(incoming)
     await f.refresh();await page.clock.runFor(1)
     await expect(enemies).toHaveCount(0)
@@ -1267,6 +1269,9 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await expect(enemies).toBeVisible()
     await expect(enemies.getByRole('button',{name:'Enemy attacks 1',exact:true})).toHaveAttribute('aria-expanded','true')
     await expect(enemies.getByRole('article')).toHaveCount(1)
+    await expect(enemies).toContainText('Arcanis Prime')
+    await expect(enemies).not.toContainText('Arcanis Moon')
+    await expect(enemies).not.toContainText('Unknown origin')
     await diagnosticScreenshot(page,{path:`${output}/incoming-enemy-attack-${width}x${height}.png`})
 
     f.missions.incoming.pop()

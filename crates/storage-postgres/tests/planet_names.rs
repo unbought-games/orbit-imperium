@@ -278,6 +278,29 @@ async fn planet_names_survive_restart_publish_to_other_players_and_retry_once() 
             .as_deref(),
         Some("世界 🪐")
     );
+    let origin_name = pair(other, origin, "Arcanis Prime");
+    restored
+        .world_submit(principal(other), origin_name.clone())
+        .await
+        .unwrap();
+    assert!(matches!(
+        settle(&restored, other, &origin_name).await.status,
+        ReceiptStatus::Committed { .. }
+    ));
+    let incoming_view = restored.world_view(principal(b), context(b)).await.unwrap();
+    assert_eq!(incoming_view.missions.incoming[0].origin_body, Some(origin));
+    assert_eq!(
+        incoming_view
+            .progression
+            .destinations
+            .iter()
+            .find(|d| d.id == origin)
+            .unwrap()
+            .name
+            .as_deref(),
+        Some("Arcanis Prime"),
+        "incoming origins include current public labels without an outgoing fleet"
+    );
     // No cooldown: another command at the same controlled time succeeds.
     let again = pair(b, body.id, &"🪐".repeat(40));
     restored

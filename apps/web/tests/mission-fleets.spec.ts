@@ -518,17 +518,25 @@ for (const screen of ['fleets', 'overview'] as const) {
       await page.clock.install({ time: now })
       await page.clock.setFixedTime(now)
       await page.clock.pauseAt(now)
+      const origin: S['Destination'] = {
+        id: id(91),
+        kind: 'Planet',
+        name: 'Arcanis Prime',
+        coordinates: { galaxy: 1, system: 15, position: 7 },
+      }
       await installGameFixture(page, {
         protocol: 4,
         sampledAt: now,
         playerNames: { [id(90)]: 'Commander Vega' },
         bodies: [{ ...body, name: 'Hades' }],
+        destinations: [origin],
         missions: {
           fleets: [fleet(31, 'Attack', 600000)],
           incoming: [
             {
               sender: id(90),
-              origin: { galaxy: 1, system: 15, position: 7 },
+              origin: origin.coordinates,
+              origin_body: origin.id,
               target: body.id,
               mission: 'Attack',
               arrival_at: now + 360000,
@@ -563,7 +571,7 @@ for (const screen of ['fleets', 'overview'] as const) {
       await expect(incoming.getByRole('timer')).toContainText('6m 0s')
       await expect(
         incoming.getByRole('img', {
-          name: 'Incoming direction (position unknown): Hades [1:371:12] ← Unknown origin [1:15:7]',
+          name: 'Incoming direction (position unknown): Hades [1:371:12] ← Arcanis Prime [1:15:7]',
           exact: true,
         }),
       ).toBeVisible()

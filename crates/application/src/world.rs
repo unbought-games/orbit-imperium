@@ -103,6 +103,8 @@ pub struct MissileFlightView {
 pub struct IncomingMission {
     pub sender: PlayerId,
     pub origin: Coordinates,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin_body: Option<BodyId>,
     pub target: BodyId,
     pub mission: Mission,
     pub arrival_at: i64,
@@ -325,6 +327,14 @@ impl<S: GameStore> GameService<S> {
                 MissionDestination::Body { id, .. } => Some(id),
                 _ => None,
             })
+            .chain(
+                projected
+                    .facts
+                    .missions
+                    .incoming
+                    .iter()
+                    .filter_map(|fleet| fleet.origin_body),
+            )
             .filter(|id| {
                 !projected
                     .facts

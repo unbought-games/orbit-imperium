@@ -12517,6 +12517,11 @@
           "origin": {
             "$ref": "#/components/schemas/Coordinates"
           },
+          "origin_body": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Origin body identity; public name and kind are supplied in destinations. Optional for older snapshots."
+          },
           "target": {
             "type": "string",
             "format": "uuid"
