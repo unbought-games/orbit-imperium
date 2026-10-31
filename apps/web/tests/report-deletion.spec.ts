@@ -1,7 +1,7 @@
 import type { components } from '../src/contracts'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
-import { shellFixture, refreshGame, binding, body, id } from './fixtures/game'
+import { shellFixture, installGameFixture, refreshGame, binding, body, id } from './fixtures/game'
 
 async function selectReports(page: Page, advanceClock = false) {
   if (await page.getByRole('group', {name: 'Report selection'}).isVisible()) return
@@ -941,7 +941,9 @@ for (const width of [1440, 390]) {
     })
     await archived.focus()
     await page.keyboard.press('Space')
-    await expect(page.getByText('Loading archived reports…')).toBeVisible()
+    await expect(rows).toHaveCount(1)
+    await expect(page.getByText('Loading archived reports…')).toHaveCount(0)
+    await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
     // A delayed folder response must never remove the controls or lose focus.
     expect(await originalFolderControl!.evaluate(el => el.isConnected)).toBe(true)
     expect(await originalCleanup!.evaluate(el => el.isConnected)).toBe(true)
@@ -992,5 +994,94 @@ for (const width of [1440, 390]) {
     await expect(rows).toHaveCount(0)
     await expect(selection).toHaveCSS('transform', 'none')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
+for (const width of [1280, 390]) {
+  test(`folder switches retain their shared cached rows during refresh at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    const fixture = await reportsFixture(page, true)
+    fixture.headers[1].hidden = true
+    fixture.bumpRevision()
+    await refreshGame(page)
+    const rows = page.locator('main article')
+    await expect(rows).toHaveCount(1)
+    const folders = await page.getByRole('group', {name: 'Report folder'}).elementHandle()
+    let release!: () => void
+    let heldRequests = 0
+    const gate = new Promise<void>(resolve => { release = resolve })
+    await page.route('**/api/**/reports', async route => {
+      if (!route.request().postDataJSON().cursor) {
+        heldRequests++
+        await gate
+      }
+      await route.fallback()
+    })
+    try {
+      const archived = page.getByRole('button', {name: 'Archived', exact: true})
+      await archived.click()
+      await expect.poll(() => heldRequests).toBe(1)
+      await expect(rows).toHaveCount(1)
+      await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(71)}`)
+      await page.getByRole('button', {name: 'Inbox', exact: true}).click()
+      await expect(rows).toHaveCount(1)
+      await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(70)}`)
+      await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
+      await archived.click()
+      await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(71)}`)
+      expect(heldRequests).toBe(1)
+      expect(await folders!.evaluate(el => el.isConnected)).toBe(true)
+      await expect(archived).toBeFocused()
+      await expect(page.getByText('Loading archived reports…')).toHaveCount(0)
+      await diagnosticScreenshot(page, {path: `test-results/report-shared-refresh-${width}x900.png`})
+    } finally {
+      release()
+    }
+    await expect(rows).toHaveCount(1)
+  })
+
+  test(`rapid folder round trips never treat partial shared history as empty at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    const now = new Date('2026-10-31T12:00:00Z').getTime()
+    await page.clock.setFixedTime(now)
+    await installGameFixture(page, {protocol: 4, hasUnreadReports: () => true, extraCapabilities: ['Reports'], missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}})
+    // The shared engine initially reads to its 99-unread badge cap.
+    const firstPage = Array.from({length: 99}, (_, index) => ({id: id(300 + index), kind: 'Espionage', observed_at: now - index * 1000, read: false, hidden: false}))
+    const olderArchived = {id: id(799), kind: 'Espionage', observed_at: now - 86400000, read: true, hidden: true}
+    let release!: () => void
+    let cursorRequests = 0
+    const gate = new Promise<void>(resolve => { release = resolve })
+    await page.route('**/api/**/reports', async route => {
+      const request = route.request().postDataJSON()
+      expect(request.include_hidden).toBe(true)
+      if (request.cursor) { cursorRequests++; await gate }
+      await route.fulfill({json: {protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: now, as_of_ms: now, data: {items: request.cursor ? [olderArchived] : firstPage, has_more: !request.cursor, next_cursor: request.cursor ? null : id(800), as_of_ms: now}}})
+    })
+    try {
+      await page.goto(`/u/andromeda/b/${body.id}/reports`)
+      const rows = page.locator('main article')
+      await expect(rows).toHaveCount(99)
+      const archived = page.getByRole('button', {name: 'Archived', exact: true})
+      await archived.click()
+      await expect.poll(() => cursorRequests).toBe(1)
+      await expect(rows).toHaveCount(0)
+      await expect(page.getByText('Loading archived reports…')).toBeVisible()
+      await page.getByRole('button', {name: 'Inbox', exact: true}).click()
+      await expect(rows).toHaveCount(99)
+      await archived.click()
+      await expect(page.getByText('Loading archived reports…')).toBeVisible()
+      await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
+      expect(cursorRequests).toBe(1)
+      await diagnosticScreenshot(page, {path: `test-results/report-partial-history-${width}x900.png`})
+    } finally {
+      release()
+    }
+    const rows = page.locator('main article')
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(799)}`)
+    await expect(page.getByText('Loading archived reports…')).toHaveCount(0)
+    await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
   })
 }
