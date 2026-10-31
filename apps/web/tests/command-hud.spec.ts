@@ -620,7 +620,22 @@ for (const width of [390, 1440]) {
     const queued = await page.evaluateHandle(() => (
       window as unknown as { notifyHudIntersection: () => void }
     ).notifyHudIntersection)
+    // Also deliver at the DOM-commit boundary, before a passive-effect cleanup
+    // is guaranteed to run. Layout cleanup must have retired this observer.
+    await page.evaluate(notify => {
+      const inbox = document.querySelector('[aria-label="Intelligence list"]')!.parentElement!
+      const watcher = new MutationObserver(() => {
+        if (!inbox.hidden) return
+        notify()
+        watcher.disconnect()
+        Object.assign(window, { deliveredHiddenObservation: true })
+      })
+      watcher.observe(inbox, { attributes: true, attributeFilter: ['hidden'] })
+    }, queued)
     await entries.first().click()
+    await expect.poll(() => page.evaluate(() => (
+      window as unknown as { deliveredHiddenObservation?: boolean }
+    ).deliveredHiddenObservation)).toBe(true)
     await expect(panel.getByRole('button', { name: 'Attack', exact: true })).toBeVisible()
     await expect.poll(() => f.reads).toContain('MarkReportRead')
     await expect(page.locator('[aria-label="Intelligence list"]')).toHaveAttribute('aria-busy', 'false')

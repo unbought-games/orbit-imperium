@@ -110,6 +110,15 @@ inactive-observer guard. The original case and both controlled regressions then
 passed five repetitions each (15 tests, 16.3s), with current desktop/mobile
 captures refreshed. No pagination assertions were weakened.
 
+Review then identified the hide-before-passive-cleanup window. Observer setup
+and retirement now run in a layout effect, using the already-mounted enclosing
+dialog when its parent ref has not attached yet. The regression also delivers
+notifications through a mutation observer at the DOM-hide boundary. An initial
+local layout-effect attempt failed because the parent ref was not yet attached;
+the ancestor fallback restored native scrolling. All 15 repeated pagination
+cases passed afterward (15.7s), and desktop/mobile captures were refreshed and
+inspected again.
+
 ## October 24 audit
 
 Audited October 24, 2026, against checkout

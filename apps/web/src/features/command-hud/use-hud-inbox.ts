@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react'
 import { reportLoad } from '../../client-model/report-engine'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { GameState } from '../../client-model/game-store'
@@ -50,9 +56,13 @@ export function useHudInbox(
       /* Shared request state supplies retry in both surfaces. */
     }
   }, [visible, loading, buffered, model, limit])
-  useEffect(() => {
+  // Retire the previous observer during commit, before queued browser callbacks
+  // can see a hidden inbox or a newer render's page intent.
+  useLayoutEffect(() => {
     const element = sentinel.current
-    const root = scrollRoot.current
+    // Child layout effects run before the enclosing dialog's ref attaches on
+    // mount. Its DOM ancestor is already available at that point.
+    const root = scrollRoot.current ?? element?.closest('dialog')
     if (!visible || !more || loading || failed || !element || !root) return
     let active = true
     const observer = new IntersectionObserver(
