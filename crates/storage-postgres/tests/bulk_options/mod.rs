@@ -4,7 +4,7 @@ use orbit_storage_postgres::PgStore;
 
 /// Both protocol stores must load one complete player scope for a mixed catalog.
 pub async fn check(game: &GameService<PgStore>, p: Principal, c: QueryContext, body: BodyId) {
-    let requests = vec![
+    let requests = [
         QuoteRequest::Upgrade {
             body,
             building: Building::MetalMine,

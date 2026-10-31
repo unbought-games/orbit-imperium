@@ -141,3 +141,19 @@ files, SHA-256 `545b6736f972cd86142b746dedecf5e39cccf4cac7c36cc259dfdff38e9b3031
   and Clippy passed. Clippy took 6.80 s.
 - Browser/Vite processes were closed by the test runner; no database or additional
   persistent service was started for this repair.
+
+## CI lint repair
+
+CI job 124629964113 on `26aa0084fcd14987ddf20890435fba6d06e98471` passed
+its tooling/client/server tests, then Clippy rejected a fixed test request list
+allocated with `vec!`. The helper now uses an array; assertions and test scope are
+unchanged. The only source change from that revision is this helper (SHA-256
+`5a7b859199c49c9f2038acd87f5f99ce451090e1886751590ea249d22ce1b371`).
+
+Full local `make check` passed after the correction: 113 tooling tests (one
+explicit-only skip, 10.305 s), 1,215 client tests (4.58 s), 575 core server tests
+(30.548 s), 42 bridge tests (1.044 s), and 7 storage unit tests (0.015 s). Full
+workspace Clippy passed in 21.37 s, as did formatting, lint, contracts, boundaries,
+and the production build (3.62 s client, 0.308 s SSR). Log:
+`test-results/bulk-progression-make-check.log`. No service was started. The repair
+changes only test allocation, so the refreshed UI captures remain current.
