@@ -394,6 +394,64 @@ for (const attackEnabled of [true, false]) {
   })
 }
 
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`HUD back button is a ghost with hover, focus and pressed states at ${width}x${height}`, async ({page}) => {
+    await page.setViewportSize({width,height})
+    await page.emulateMedia({reducedMotion:'reduce'})
+    const f=await intelligenceFixture(page)
+    f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await page.getByTestId('command-orb').click()
+    const panel=page.getByRole('dialog')
+    await panel.getByRole('button',{name:/Espionage report/}).click()
+    await expect(panel.getByRole('button',{name:'Attack',exact:true})).toBeVisible()
+    const back=panel.getByRole('button',{name:'Back to list',exact:true})
+    async function expectCompactHeaderControl() {
+      const buttonBounds=(await back.boundingBox())!
+      const headerBounds=(await back.locator('..').boundingBox())!
+      expect(buttonBounds.height).toBeLessThanOrEqual(28)
+      expect(buttonBounds.y).toBeGreaterThanOrEqual(headerBounds.y+4)
+      expect(buttonBounds.y+buttonBounds.height).toBeLessThanOrEqual(headerBounds.y+headerBounds.height-4)
+    }
+    await page.mouse.move(0,0)
+    await expect(back).toHaveAttribute('data-button-variant','ghost')
+    await expect(back).toHaveCSS('background-color','rgba(0, 0, 0, 0)')
+    await expectCompactHeaderControl()
+    await diagnosticScreenshot(page,{path:`${output}/back-ghost-idle-${width}x${height}.png`})
+
+    await back.hover()
+    await expect(back).toHaveCSS('background-color','rgba(255, 255, 255, 0.08)')
+    await expectCompactHeaderControl()
+    await diagnosticScreenshot(page,{path:`${output}/back-ghost-hover-${width}x${height}.png`})
+    await page.mouse.move(0,0)
+    await panel.getByRole('heading',{name:'Espionage report',exact:true}).focus()
+    await page.keyboard.press('Shift+Tab')
+    await page.keyboard.press('Shift+Tab')
+    await expect(back).toBeFocused()
+    await expect(back).toHaveCSS('background-color','rgba(255, 255, 255, 0.08)')
+    await expect(back).toHaveCSS('outline-style','solid')
+    await expectCompactHeaderControl()
+    const focusOutset=await back.evaluate(el=>{
+      const style=getComputedStyle(el)
+      return parseFloat(style.outlineOffset)+parseFloat(style.outlineWidth)
+    })
+    expect(focusOutset).toBeLessThanOrEqual(0)
+    await diagnosticScreenshot(page,{path:`${output}/back-ghost-focus-${width}x${height}.png`})
+    await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
+    await expectCompactHeaderControl()
+    await diagnosticScreenshot(page,{path:`${output}/back-ghost-scrolled-focus-${width}x${height}.png`})
+    await panel.evaluate(el=>{el.scrollTop=0})
+
+    await back.hover()
+    await page.mouse.down()
+    await expect(back).toHaveCSS('background-color','rgba(255, 255, 255, 0.14)')
+    await expectCompactHeaderControl()
+    await diagnosticScreenshot(page,{path:`${output}/back-ghost-pressed-${width}x${height}.png`})
+    await page.mouse.up()
+    await expect(panel).toHaveAccessibleName('Command uplink')
+  })
+}
+
 test('HUD details return to the list without closing, even after scrolling a report', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
   await page.emulateMedia({reducedMotion:'reduce'})
@@ -1020,6 +1078,42 @@ test('fleet accordion shows empire-wide flight paths, live timing, massive manif
 })
 
 
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`enemy attacks appear only for incoming attacks at ${width}x${height}`, async ({page}) => {
+    await page.setViewportSize({width,height})
+    await page.emulateMedia({reducedMotion:'reduce'})
+    await page.clock.install({time:baseTime})
+    await page.clock.pauseAt(baseTime)
+    const f=await intelligenceFixture(page)
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await page.getByTestId('command-orb').click()
+    const panel=page.getByRole('dialog',{name:'Command uplink'})
+    const enemies=panel.getByRole('region',{name:'Enemy attacks',exact:true})
+    await expect(panel).toBeVisible()
+    await expect(enemies).toHaveCount(0)
+    await expect(panel.getByRole('button',{name:/^Fleets/})).toBeVisible()
+
+    const incoming:S['IncomingMission4']={sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Transport',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}}
+    f.missions.incoming.push(incoming)
+    await f.refresh();await page.clock.runFor(1)
+    await expect(enemies).toHaveCount(0)
+    await diagnosticScreenshot(page,{path:`${output}/no-enemy-attacks-${width}x${height}.png`})
+
+    f.missions.incoming.push({...incoming,mission:'Attack'})
+    await f.refresh();await page.clock.runFor(1)
+    await expect(enemies).toBeVisible()
+    await expect(enemies.getByRole('button',{name:'Enemy attacks 1',exact:true})).toHaveAttribute('aria-expanded','true')
+    await expect(enemies.getByRole('article')).toHaveCount(1)
+    await diagnosticScreenshot(page,{path:`${output}/incoming-enemy-attack-${width}x${height}.png`})
+
+    f.missions.incoming.pop()
+    await f.refresh();await page.clock.runFor(1)
+    await expect(enemies).toHaveCount(0)
+    await expect(panel.getByRole('button',{name:/^Enemy attacks/})).toHaveCount(0)
+    await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-cleared-${width}x${height}.png`})
+  })
+}
+
 test('enemy attacks open above fleets, use red, keep hidden intelligence hidden, and collapse independently', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
   await page.emulateMedia({reducedMotion:'reduce'})
@@ -1084,9 +1178,8 @@ test('enemy attacks open above fleets, use red, keep hidden intelligence hidden,
   await page.getByRole('button',{name:'Back to list'}).click()
   f.missions.incoming.length=0
   await f.refresh();await page.clock.runFor(1)
-  await expect(panel.getByRole('button',{name:'Enemy attacks 0',exact:true})).toBeVisible()
-  await expect(enemies.getByRole('article')).toHaveCount(0)
-  await expect(panel.getByText('No enemy attacks inbound.')).toBeVisible()
+  await expect(panel.getByRole('region',{name:'Enemy attacks',exact:true})).toHaveCount(0)
+  await expect(panel.getByRole('button',{name:/^Enemy attacks/})).toHaveCount(0)
   await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-cleared-320x740.png`})
 })
 

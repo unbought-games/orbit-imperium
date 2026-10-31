@@ -543,7 +543,7 @@
   color: var(--hud);
   font-size: 8px;
 }
-.dialogHeader button {
+.dialogHeader button:not(.backToList) {
   width: 36px;
   height: 36px;
   border: 0;
@@ -555,13 +555,16 @@
 }
 .dialogHeader .backToList {
   display: flex;
-  gap: 7px;
+  gap: 4px;
   width: auto;
-  min-height: 44px;
-  padding: 0 8px;
-  border-radius: 6px;
+  min-height: 24px;
+  padding: 2px 4px;
+  border-radius: 3px;
   color: var(--hud);
   font-size: 12px;
+}
+.dialogHeader .backToList:focus-visible {
+  outline-offset: -2px;
 }
 .dialog h2 {
   font: 400 29px/1.2 var(--font-editorial);
