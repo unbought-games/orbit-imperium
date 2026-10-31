@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures/test'
 import { body, binding, id, playerProfilesFixture, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
-import { signOut } from './fixtures/navigation'
+import { openNavigation, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440, 700, 2], [2560, 1100, 1]]) {
@@ -113,6 +113,10 @@ test('sidebar uses full touch targets on a large touch viewport', async ({ brows
     const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
     const small = await sidebar.locator('a, button').evaluateAll(nodes => nodes.filter(node => node.getBoundingClientRect().height < 44).map(node => node.textContent))
     expect(small).toEqual([])
+    await sidebar.getByRole('button', {name: 'Commander profile details'}).tap()
+    await expect(page.getByRole('dialog', {name: 'Commander profile'})).toBeVisible()
+    await diagnosticScreenshot(page, {path: 'test-results/profile-sidebar-touch-1024x900.png'})
+    await page.keyboard.press('Escape')
     await sidebar.getByRole('link', { name: 'Facilities', exact: true }).tap()
     await expect(page.locator('main h1')).toHaveText('Facilities')
   } finally { await context.close() }
@@ -158,4 +162,28 @@ test('tablet brand keeps a full touch target without overlapping resource contro
     await expect(page.locator('main h1')).toHaveText('Resource settings')
     await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
   } finally { await context.close() }
+})
+
+
+test('mobile navigation keeps the player dossier inside the modal top layer', async ({page}) => {
+  await page.setViewportSize({width:390,height:1000})
+  await shellFixture(page, {protocol:4})
+  await playerProfilesFixture(page, () => [{player:binding.player, username:'Aurelia', alliance:{id:id(90),universe:binding.universe,name:'Astral Accord',tag:'ASTRA'}}])
+  await page.reload()
+  const menu = await openNavigation(page)
+  await menu.getByRole('button', {name:'Aurelia profile details'}).click()
+  const popup = menu.getByRole('dialog', {name:'Aurelia profile'})
+  await expect(popup).toBeVisible()
+  const alliance = popup.getByRole('link', {name:'Alliance Astral Accord [ASTRA]'})
+  await expect(alliance).toBeVisible()
+  await alliance.click({trial:true})
+  const cardBounds = (await popup.boundingBox())!, menuBounds = (await menu.boundingBox())!
+  expect(cardBounds.x).toBeGreaterThanOrEqual(menuBounds.x)
+  expect(cardBounds.x + cardBounds.width).toBeLessThanOrEqual(menuBounds.x + menuBounds.width)
+  await diagnosticScreenshot(page, {path:'test-results/profile-navigation-mobile-390x1000.png'})
+  await page.keyboard.press('Escape')
+  await expect(popup).toHaveCount(0)
+  await expect(menu).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
 })

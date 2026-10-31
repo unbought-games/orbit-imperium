@@ -405,7 +405,8 @@
   .sidebar .sidebarDevelop a,
   .sidebar .sidebarDevelop button,
   .sidebarAccount > a,
-  .sidebarPlayer > button {
+  .sidebarPlayer > button,
+  .sidebarPlayer .username > button {
     min-height: var(--control-size);
   }
 }
