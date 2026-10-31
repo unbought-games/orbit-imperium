@@ -27,8 +27,8 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(page.getByRole('heading', { name: 'High Scores', exact: true })).toBeVisible()
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   await expect(table.getByRole('row')).toHaveCount(51)
-  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('1—')
-  await expect(table.getByRole('row').nth(2).getByRole('cell').first()).toHaveText('1—')
+  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('1 (—)')
+  await expect(table.getByRole('row').nth(2).getByRole('cell').first()).toHaveText('1 (—)')
   for (const width of [1440, 768, 390, 360, 320]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -49,7 +49,7 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(table).not.toContainText('Pilot 49')
   await page.getByRole('searchbox', { name: 'Find a player' }).fill('pILot 122')
   await expect(table.getByRole('row')).toHaveCount(2)
-  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('123—')
+  await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('123 (—)')
   await page.getByRole('button', { name: 'Around me', exact: true }).click()
   await expect(page.getByRole('searchbox', { name: 'Find a player' })).toHaveValue('')
   await expect(table.locator('tr[data-self]')).toContainText('My Commander')
@@ -136,22 +136,33 @@ test('rank movement is accessible, stable through filters and paging, and refres
   let baseline: number | null = 1792800000000
   const players = Array.from({ length: 55 }, (_, i) => ({
     player: i === 54 ? binding.player : id(5000 + i), username: `Mover ${i}`, points: `${100 - i}`, rank: i + 1,
-    previous_rank: i === 0 ? 3 : i === 1 ? 1 : i === 2 ? null : i + 1,
+    previous_rank: i === 0 ? 3 : i === 1 ? 1 : i === 2 ? null : i === 5 ? 86 : i + 1,
   }))
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1792886400000, baseline_at: baseline, processing_pending: false, players } }))
   await page.goto('/u/andromeda/high-scores')
   const table = page.getByRole('table')
   await expect(page.getByText('Rank change since yesterday’s first snapshot', { exact: false })).toBeVisible()
-  await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText('+2')
-  await expect(table.getByLabel('Down 1 place since the baseline')).toHaveText('−1')
-  await expect(table.getByLabel('New to the rankings since the baseline')).toHaveText('New')
+  await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText('(+2)')
+  await expect(table.getByLabel('Down 1 place since the baseline')).toHaveText('(−1)')
+  await expect(table.getByLabel('New to the rankings since the baseline')).toHaveText('(New)')
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    const rank = table.getByRole('row').nth(6).getByRole('cell').first()
+    await expect(rank).toHaveText('6 (+80)')
+    const layout = await rank.evaluate(cell => {
+      const range = document.createRange()
+      range.selectNode(cell.firstChild!)
+      const number = range.getBoundingClientRect()
+      const change = cell.querySelector('span')!.getBoundingClientRect()
+      return { sameLine: number.top < change.bottom && change.top < number.bottom, followsRank: change.left >= number.right, fitsCell: change.right <= cell.getBoundingClientRect().right }
+    })
+    expect(layout).toEqual({ sameLine: true, followsRank: true, fitsCell: true })
+    await rank.scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/rank-movement-${width}.png` })
   }
   await page.getByRole('searchbox').fill('Mover 0')
-  await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText('+2')
+  await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText('(+2)')
   await table.getByRole('button', { name: 'Mover 0', exact: true }).click()
   await expect(page.getByRole('dialog').getByLabel('Up 2 places since the baseline')).toHaveText('+2')
   await page.keyboard.press('Escape')
@@ -160,13 +171,13 @@ test('rank movement is accessible, stable through filters and paging, and refres
   await page.getByRole('button', { name: 'Next', exact: true }).click()
   await expect(table.getByLabel('Rank unchanged since the baseline')).toHaveCount(5)
   await page.getByRole('button', { name: 'Around me' }).click()
-  await expect(table.locator('tr[data-self]').getByLabel('Rank unchanged since the baseline')).toHaveText('0')
+  await expect(table.locator('tr[data-self]').getByLabel('Rank unchanged since the baseline')).toHaveText('(0)')
   players[54].rank = 50
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-  await expect(table.locator('tr[data-self]').getByLabel('Up 5 places since the baseline')).toHaveText('+5')
+  await expect(table.locator('tr[data-self]').getByLabel('Up 5 places since the baseline')).toHaveText('(+5)')
   baseline = null
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-  await expect(table.locator('tr[data-self]').getByLabel('Rank change unavailable: no snapshot from yesterday')).toHaveText('—')
+  await expect(table.locator('tr[data-self]').getByLabel('Rank change unavailable: no snapshot from yesterday')).toHaveText('(—)')
   await expect(page.getByText('Rank changes unavailable:', { exact: false })).toBeVisible()
 })
 
@@ -196,10 +207,11 @@ test('alliance standings share one snapshot, search names and tags, and navigate
   await expect(table.getByRole('row')).toHaveCount(51)
   await expect(table.getByRole('row').nth(1)).toContainText('18,446,744,073')
   await expect(table.getByRole('row').nth(1)).toContainText('9,223,372,036')
-  await expect(table.getByLabel('New to the rankings since the baseline')).toHaveText('New')
+  await expect(table.getByLabel('New to the rankings since the baseline')).toHaveText('(New)')
   for (const width of [1440, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await table.getByRole('row').nth(3).scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/alliance-high-scores-${width}.png` })
   }
   await page.getByRole('button', { name: 'Next', exact: true }).click()
@@ -208,7 +220,7 @@ test('alliance standings share one snapshot, search names and tags, and navigate
   await page.getByRole('searchbox', { name: 'Find an alliance' }).fill('tag80')
   await expect(table.getByRole('row')).toHaveCount(2)
   await expect(table.locator('tr[data-self]')).toContainText('Étoile')
-  await expect(table.locator('tr[data-self]').getByLabel('Up 2 places since the baseline')).toHaveText('+2')
+  await expect(table.locator('tr[data-self]').getByLabel('Up 2 places since the baseline')).toHaveText('(+2)')
   await page.getByRole('button', { name: 'Around my alliance' }).click()
   await expect(table.getByRole('row').nth(1)).toContainText('Alliance 55')
   await expect(table.locator('tr[data-self]').getByRole('link')).toBeFocused()

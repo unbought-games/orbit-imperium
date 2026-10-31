@@ -235,8 +235,9 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                       }
                     >
                       <td className={styles.rank}>
-                        {number(row.rank)}
+                        {number(row.rank)}{' '}
                         <RankMovement
+                          inline
                           row={row}
                           baselineAt={ranking.baselineAt}
                         />
@@ -274,8 +275,9 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                       data-self={row.player === player || undefined}
                     >
                       <td className={styles.rank}>
-                        {number(row.rank)}
+                        {number(row.rank)}{' '}
                         <RankMovement
+                          inline
                           row={row}
                           baselineAt={ranking.baselineAt}
                         />
@@ -401,9 +403,11 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
 function RankMovement({
   row,
   baselineAt,
+  inline = false,
 }: {
   row: RankedRow
   baselineAt?: number | null
+  inline?: boolean
 }) {
   const movement = rankMovement(row, baselineAt)
   return (
@@ -414,7 +418,7 @@ function RankMovement({
       aria-label={movement.label}
       title={movement.label}
     >
-      {movement.text}
+      {inline ? `(${movement.text})` : movement.text}
     </span>
   )
 }
