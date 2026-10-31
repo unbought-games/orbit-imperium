@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react'
-import { Rocket } from 'lucide-react'
+import type { RefObject } from 'react'
 import { Button } from '../ui/button'
 import { Field, NumberInput } from '../ui/form'
 import { ActionSheet } from '../ui/action-sheet'
@@ -12,31 +11,30 @@ import type { components } from '../contracts'
 import { useMissileAction } from './use-missile-action'
 import styles from './missiles.module.css'
 type S = components['schemas']
+export type MissileLaunchPresentation = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  opener: RefObject<HTMLButtonElement | null>
+}
 export function MissileLaunchAction({
   model,
   origin,
   position,
+  open,
+  onOpenChange,
+  opener,
 }: {
   model: Coordinator
   origin: string
   position: S['GalaxyPosition4']
-}) {
-  const [open, setOpen] = useState(false)
-  const opener = useRef<HTMLButtonElement>(null)
+} & MissileLaunchPresentation) {
   const mobile = useMobileLayout()
   const body = position.body
   const target = body
     ? { id: body.id, expected_kind: body.kind, expected_owner: body.owner }
     : undefined
   const action = useMissileAction(model, origin, target)
-  if (
-    !body ||
-    body.owner === model.binding?.player ||
-    !model.view?.capabilities.some(
-      (c) => c.capability === 'Missiles' && c.enabled,
-    )
-  )
-    return null
+  if (!body) return null
   const available =
     action.state.view?.bodies
       .find((b) => b.id === origin)
@@ -143,31 +141,17 @@ export function MissileLaunchAction({
   )
   const presentation = {
     open,
-    onOpenChange: setOpen,
+    onOpenChange,
     title: 'Launch missiles',
     description: `${body.name ?? body.kind} · ${coordinates(position)}`,
   }
-  return (
-    <>
-      <Button
-        data-missile-launch=""
-        ref={opener}
-        variant="ghost"
-        size="icon"
-        aria-label={`Launch missiles at ${coordinates(position)}`}
-        onClick={() => setOpen(true)}
-      >
-        <Rocket size={17} />
-      </Button>
-      {mobile ? (
-        <ActionSheet {...presentation} returnFocusRef={opener}>
-          {form}
-        </ActionSheet>
-      ) : (
-        <ActionPopover {...presentation} anchorRef={opener}>
-          {form}
-        </ActionPopover>
-      )}
-    </>
+  return mobile ? (
+    <ActionSheet {...presentation} returnFocusRef={opener}>
+      {form}
+    </ActionSheet>
+  ) : (
+    <ActionPopover {...presentation} anchorRef={opener}>
+      {form}
+    </ActionPopover>
   )
 }

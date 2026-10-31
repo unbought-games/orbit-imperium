@@ -1,7 +1,7 @@
 import { readFileSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { test, expect } from './fixtures/test'
-import { shellFixture, body, binding, id } from './fixtures/game'
+import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
 type S = components['schemas']
@@ -18,6 +18,8 @@ const at = { galaxy: 1, system: 371, position: 3 }
 const hash = 'b'.repeat(64)
 async function setup(page: Parameters<typeof shellFixture>[0]) {
   const commands: S['Command4'][] = []
+  let currentTarget = target
+  let revision = 1
   const now = Date.now()
   const missileBody = {
     ...body,
@@ -45,6 +47,7 @@ async function setup(page: Parameters<typeof shellFixture>[0]) {
   }
   await shellFixture(page, {
     protocol: 4,
+    viewerRevision: () => String(revision),
     bodies: [missileBody],
     catalog: baseline.catalog.map((e: S['CatalogEntry3']) =>
       e.key.kind === 'Missile'
@@ -227,7 +230,7 @@ async function setup(page: Parameters<typeof shellFixture>[0]) {
       protocol: 4,
       binding,
       request_id: q.context.request_id,
-      viewer_revision: '1',
+      viewer_revision: String(revision),
       sampled_at: now,
       as_of_ms: now,
     }
@@ -239,7 +242,7 @@ async function setup(page: Parameters<typeof shellFixture>[0]) {
             intent: q.intent,
             source_coordinates: body.coordinates,
             target_coordinates: at,
-            interceptor_body: target.id,
+            interceptor_body: currentTarget.id,
             distance: 0,
             range: 24,
             duration_ms: 6000,
@@ -263,9 +266,9 @@ async function setup(page: Parameters<typeof shellFixture>[0]) {
               ? {
                   coordinates: at,
                   body: {
-                    id: target.id,
+                    id: currentTarget.id,
                     kind: 'Planet',
-                    owner: target.expected_owner,
+                    owner: currentTarget.expected_owner,
                     name: 'Bastion',
                     activity: { type: 'None' },
                     inactivity: 'Active',
@@ -366,7 +369,20 @@ async function setup(page: Parameters<typeof shellFixture>[0]) {
       },
     })
   })
-  return { commands }
+  return {
+    commands,
+    refreshTarget: async (patch: Partial<typeof target> = {}) => {
+      currentTarget = { ...currentTarget, ...patch }
+      revision++
+      const refreshed = page.waitForResponse(response =>
+        response.url().endsWith('/world') &&
+        response.request().postDataJSON().type === 'Galaxy' &&
+        response.ok(),
+      )
+      await refreshGame(page)
+      await refreshed
+    },
+  }
 }
 for (const width of [1440, 390])
   test(`missile inventory launch and reports at ${width}px`, async ({
@@ -448,24 +464,37 @@ for (const width of [1440, 390])
     ).toBeVisible()
     await capture('silo-details')
     await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
-    await expect(
-      page.getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      }),
-    ).toBeVisible()
-    await page
-      .getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      })
-      .click()
+    const actions = page.getByRole('button', {
+      name: 'Actions for [1:371:3]', exact: true,
+    })
+    const launchItem = page.getByRole('menuitem', { name: 'Launch missiles', exact: true })
+    const dialog = page.getByRole('dialog', { name: 'Launch missiles', exact: true })
+    await expect(actions).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Launch missiles at/ })).toHaveCount(0)
+    await expect(launchItem).not.toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
+    await diagnosticScreenshot(page, {
+      path: `test-results/missile-screenshots/galaxy-${width}x900.png`,
+      animations: 'disabled',
+    })
+    await actions.click()
+    await expect(launchItem).toBeVisible()
+    await diagnosticScreenshot(page, {
+      path: `test-results/missile-screenshots/galaxy-menu-${width}x900.png`,
+      animations: 'disabled',
+    })
+    await launchItem.click()
+    await expect(dialog).toBeVisible()
+    await expect(launchItem).not.toBeVisible()
+    await expect(dialog.getByLabel('Missile quantity', { exact: true })).toHaveValue('1')
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+    await expect(actions).toBeFocused()
+    await actions.press('Enter')
+    await launchItem.focus()
+    await launchItem.press('Enter')
+    await expect(dialog).toBeVisible()
+    expect(commands.some(c => c.type === 'World' && c.action.type === 'LaunchMissiles')).toBe(false)
     await page.getByLabel('Missile quantity', { exact: true }).fill('2')
     await page
       .getByLabel('Primary defense', { exact: true })
@@ -604,11 +633,37 @@ test('missile action columns preserve exact row edges across tablet breakpoints'
         expect(b.left).toBe(0)
         expect(b.right).toBe(width)
       }
-    await expect(
-      page.getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      }),
-    ).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Launch missiles at/ })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true }).click()
+    await expect(page.getByRole('menuitem', { name: 'Launch missiles', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
   }
 })
+
+for (const width of [1440, 390]) {
+  test(`missile menu closes when target identity changes at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const fixture = await setup(page)
+    await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+    const actions = page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true })
+    const dialog = page.getByRole('dialog', { name: 'Launch missiles', exact: true })
+    for (const patch of [{ id: id(90) }, { expected_owner: id(91) }, target]) {
+      await actions.click()
+      await page.getByRole('menuitem', { name: 'Launch missiles', exact: true }).click()
+      await expect(dialog.getByLabel('Missile quantity', { exact: true })).toHaveValue('1')
+      await dialog.getByLabel('Missile quantity', { exact: true }).fill('2')
+      await dialog.getByRole('button', { name: 'Review missile launch' }).click()
+      await expect(dialog.getByRole('button', { name: 'Launch missiles — no recall' })).toBeEnabled()
+      // Ordinary refreshes preserve the player's reviewed launch.
+      await fixture.refreshTarget()
+      await expect(dialog.getByRole('button', { name: 'Launch missiles — no recall' })).toBeEnabled()
+      await expect(dialog.getByLabel('Missile quantity', { exact: true })).toHaveValue('2')
+      // A new body or owner requires explicitly opening a fresh launch form.
+      await fixture.refreshTarget(patch)
+      await expect(dialog).not.toBeVisible()
+      await expect(actions).toBeVisible()
+    }
+    expect(fixture.commands).toEqual([])
+  })
+}
