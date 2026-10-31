@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useIsPresent } from 'motion/react'
 import { ArrowLeft, Radio, Shield, X } from 'lucide-react'
 import type { Coordinator } from '../../client-model/coordinator'
 import { currentServerTime } from '../../client-model/game-projection'
-import { ButtonLink } from '../../ui/button'
+import { Button, ButtonLink } from '../../ui/button'
 import { lockSheetDocument } from '../../ui/action-sheet-effects'
 import { ResourceSummary } from '../../ui/number-value'
 import { useReducedMotion } from '../../ui/use-reduced-motion'
@@ -96,14 +96,15 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
       <div className={styles.dialogInterior} inert={!present}>
         <header className={styles.dialogHeader}>
           {selected && selected !== 'inbox' ? (
-            <button
+            <Button
               type="button"
+              variant="ghost"
               className={styles.backToList}
               onClick={() => hud.select('inbox')}
             >
               <ArrowLeft size={16} aria-hidden="true" />
               Back to list
-            </button>
+            </Button>
           ) : (
             <span className={styles.eyebrow}>
               <Radio size={12} />

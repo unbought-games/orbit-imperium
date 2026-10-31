@@ -97,12 +97,13 @@ export function HudEnemyAttacks({
   const [expansion, setExpansion] = useState<boolean | null>(null)
   const panelId = useId()
   const attacks = enemyAttackRows(state)
-  const expanded = expansion ?? attacks.length > 0
+  const expanded = expansion ?? true
+  if (attacks.length === 0) return null
   return (
     <section
       className={`${styles.fleetAccordion} ${styles.enemyAccordion}`}
-      data-active={attacks.length > 0}
-      data-tone={attacks.length ? 'red' : undefined}
+      data-active={true}
+      data-tone="red"
       aria-label="Enemy attacks"
     >
       <div className={styles.fleetControl}>
@@ -126,21 +127,13 @@ export function HudEnemyAttacks({
         </button>
       </div>
       <div id={panelId} hidden={!expanded}>
-        {attacks.length ? (
-          <ul className={styles.fleetList} aria-label="Enemy attacks">
-            {attacks.map((entry) => (
-              <li key={entry.row.key}>
-                <EnemyAttackRow
-                  entry={entry}
-                  state={state}
-                  onSelect={onSelect}
-                />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={styles.fleetEmpty}>No enemy attacks inbound.</p>
-        )}
+        <ul className={styles.fleetList} aria-label="Enemy attacks">
+          {attacks.map((entry) => (
+            <li key={entry.row.key}>
+              <EnemyAttackRow entry={entry} state={state} onSelect={onSelect} />
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )
