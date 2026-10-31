@@ -521,8 +521,23 @@ for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 
     const NativeObserver = window.IntersectionObserver
     let current: (() => void) | undefined
     let queued: (() => void) | undefined
-    const probe = window as Window & {__hudIntersectionProbe: {capture: () => void; deliver: () => void}}
+    const probe = window as Window & {__hudIntersectionProbe: {capture: () => void; deliver: () => void; ready: boolean; batchDeliveries: number; onNextBatch: () => void}}
     probe.__hudIntersectionProbe = {
+      get ready() { return !!current },
+      batchDeliveries: 0,
+      onNextBatch() {
+        if (!current) throw Error('HUD observer was not installed')
+        const delivery = current
+        const list = document.querySelector('[aria-label="Intelligence list"]')!
+        const count = list.querySelectorAll('button').length
+        const mutation = new MutationObserver(() => {
+          if (list.querySelectorAll('button').length === count) return
+          mutation.disconnect()
+          probe.__hudIntersectionProbe.batchDeliveries++
+          delivery()
+        })
+        mutation.observe(list, {childList: true})
+      },
       capture() { if (!current) throw Error('HUD observer was not installed'); queued = current },
       deliver() { if (!queued) throw Error('No queued HUD intersection'); queued() },
     }
@@ -565,11 +580,14 @@ for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 
   await expect(entries).toHaveCount(20)
   await expect(list).toHaveAttribute('aria-busy','false')
   await diagnosticScreenshot(page,{path:`${output}/infinite-first-${initialViewport.width}x${initialViewport.height}.png`})
+  await expect.poll(() => page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {ready: boolean}}).__hudIntersectionProbe.ready)).toBe(true)
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {onNextBatch: () => void}}).__hudIntersectionProbe.onNextBatch())
   for(const count of [40,60,80,100]){
     await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
     await expect(entries).toHaveCount(count)
     await expect(list).toHaveAttribute('aria-busy','false')
   }
+  expect(await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {batchDeliveries: number}}).__hudIntersectionProbe.batchDeliveries)).toBe(1)
   expect(requests).toBe(0)
   await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
   await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
