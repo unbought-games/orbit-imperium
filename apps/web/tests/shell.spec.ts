@@ -1584,7 +1584,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
         protocol: 4,
         binding,
         request_id: context.request_id,
-        viewer_revision: '1',
+        viewer_revision: String(reportRevision),
         sampled_at: Date.now(),
         as_of_ms: Date.now(),
         data: detail

@@ -3,7 +3,11 @@ import type { Attempt } from '../../client-model/commands'
 import type { GameState } from '../../client-model/game-store'
 import { acceptedEntityReference } from '../../client-model/game-projection'
 import { isHostileMission } from '../../client-model/hostile-fleets'
-import { projectedReportHeader } from '../../client-model/report-state'
+import {
+  projectedReportHeader,
+  hasUnreadReports,
+  projectedReportInbox,
+} from '../../client-model/report-state'
 import { coordinates, label } from '../../ui/format'
 import { formatDuration } from '../../client-model/duration'
 import { incomingManifest, missionLocation } from '../mission-presentation'
@@ -54,15 +58,8 @@ export function incomingAttacks(state: GameState) {
   return incomingThreats(state).filter((fleet) => fleet.mission === 'Attack')
 }
 export function unreadReports(state: GameState) {
-  return [...state.reportHeaders.keys()]
-    .flatMap((id) => {
-      const header = projectedReportHeader(
-        state.reportHeaders,
-        state.attempts.values(),
-        id,
-      )
-      return header && !header.hidden && !header.read ? [header] : []
-    })
+  return (projectedReportInbox(state)?.items ?? [])
+    .filter((header) => !header.read)
     .sort((a, b) => b.observed_at - a.observed_at)
 }
 export function unreadTargets(state: GameState): HudTarget[] {
@@ -83,10 +80,7 @@ export function unreadBadgeCount(state: GameState) {
   return Math.min(99, new Set(unreadTargets(state).map(noticeKey)).size)
 }
 export function hasUnreadIntelligence(state: GameState) {
-  return (
-    (state.view?.protocol === 4 && state.view.has_unread_reports === true) ||
-    unreadTargets(state).length > 0
-  )
+  return hasUnreadReports(state) || unreadTargets(state).length > 0
 }
 export function isHudCommand(attempt: Attempt) {
   const command = attempt.envelope.command

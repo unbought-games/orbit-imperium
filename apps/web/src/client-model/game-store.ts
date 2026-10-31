@@ -7,7 +7,9 @@ import type {
   BoundSettings,
   BoundView,
 } from './commands'
-import type { ReportHeaders, ReportPage } from './report-state'
+import type { ReportHeaders, ReportDetail } from './report-state'
+import type { ReportLoad } from './report-engine'
+import type { ReportInbox } from './report-inbox'
 import type { SubmittedIntent } from './game-projection'
 
 export type GameState = {
@@ -18,7 +20,10 @@ export type GameState = {
     string,
     Omit<components['schemas']['ReportShareStatus'], 'header'>
   >
-  reportInbox: ReportPage | null
+  reportInbox: ReportInbox | null
+  reportInboxLoad: ReportLoad | null
+  reportDetails: Map<string, ReportDetail>
+  reportDetailLoads: Map<string, ReportLoad>
   mailbox: SocialMailbox | null
   reportHeaders: ReportHeaders
   attempts: AttemptLedger
@@ -41,6 +46,9 @@ export function createGameStore() {
     view: null,
     settings: null,
     reportInbox: null,
+    reportInboxLoad: null,
+    reportDetails: new Map(),
+    reportDetailLoads: new Map(),
     mailbox: null,
     reportHeaders: new Map(),
     attempts: new Map(),
