@@ -1948,7 +1948,7 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const trigger = rows(page).nth(1).getByRole('button', {
-      name: 'Quick harvest debris at [1:371:2]: Metal 40,000, Crystal 1, Deuterium 0', exact: true,
+      name: 'Quick harvest debris at [1:371:2]: Metal 40,000, Crystal 1', exact: true,
     })
     const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
     const requests: string[] = []
@@ -2114,6 +2114,38 @@ for (const width of [1440, 390]) {
   })
 }
 
+for (const width of [1440, 390]) {
+  test(`zero debris deuterium stays hidden in galaxy and quick harvest at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await setup(page, null, {
+      catalog: recyclerCatalog,
+      bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'Recycler' }, count: '30' }] }],
+      missions: { fleets: [], incoming: [], fleet_slots: '3', score_value_micro: '0' },
+    }, {
+      2: { debris: { field_identity: id(42), metal: '300000', crystal: '180000', deuterium: '0' } },
+    })
+    for (const index of [1, 3]) {
+      const trigger = rows(page).nth(index).getByRole('button', { name: /^Quick harvest debris/ })
+      await expect(trigger).not.toHaveAccessibleName(/Deuterium/)
+      await expect(trigger.getByRole('img', { name: 'Deuterium', exact: true })).toHaveCount(0)
+      await expect(trigger.getByRole('img', { name: 'Metal', exact: true })).toBeVisible()
+      await expect(trigger.getByRole('img', { name: 'Crystal', exact: true })).toBeVisible()
+    }
+    await page.evaluate(() => document.fonts.ready)
+    await diagnosticScreenshot(page, { path: `test-results/zero-deuterium-galaxy-${width}x1000.png`, fullPage: false })
+    await rows(page).nth(1).getByRole('button', { name: /^Quick harvest debris/ }).click()
+    const form = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
+    await expect(form).toBeVisible()
+    await expect(form.getByRole('img', { name: 'Deuterium', exact: true })).toHaveCount(0)
+    await expect(form.getByRole('img', { name: 'Metal', exact: true })).toBeVisible()
+    await expect(form.getByRole('img', { name: 'Crystal', exact: true })).toBeVisible()
+    await expect(form.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('24')
+    await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    await diagnosticScreenshot(page, { path: `test-results/zero-deuterium-harvest-${width}x1000.png`, fullPage: false })
+  })
+}
 
 test('desktop Harvest keeps its Actions anchor when the planet changes', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })

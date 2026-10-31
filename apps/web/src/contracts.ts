@@ -6561,6 +6561,11 @@ export interface components {
             /** Format: uuid */
             sender: string;
             origin: components["schemas"]["Coordinates"];
+            /**
+             * Format: uuid
+             * @description Origin body identity; public name and kind are supplied in destinations. Optional for older snapshots.
+             */
+            origin_body?: string;
             /** Format: uuid */
             target: string;
             mission: components["schemas"]["Mission4"];

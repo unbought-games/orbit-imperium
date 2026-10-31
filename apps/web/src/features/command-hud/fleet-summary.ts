@@ -198,6 +198,7 @@ export function incomingFleetSummary(
   view: S['BoundView4'],
   fleet: S['IncomingMission4'],
 ): FleetSummaryRow {
+  const origin = endpoint(view, fleet.origin_body, fleet.origin, 'Unknown')
   return {
     key: incomingKey(fleet),
     origin: fleet.target,
@@ -205,11 +206,10 @@ export function incomingFleetSummary(
     leg: 'Incoming',
     ships: fleet.ships.visibility === 'Exact' ? fleet.ships.ships : [],
     home: endpoint(view, fleet.target, undefined, 'Planet'),
-    target: {
-      name: 'Unknown origin',
-      address: coordinates({ coordinates: fleet.origin }),
-      kind: 'Unknown',
-    },
+    target:
+      origin.kind === 'Unknown'
+        ? { ...origin, name: 'Unknown origin' }
+        : origin,
     dueAt: fleet.arrival_at,
     duration: null,
   }

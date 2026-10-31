@@ -327,9 +327,7 @@ it('shows newly collected resources and preserves explicit zero harvests', () =>
         deuterium: '2608000000',
       },
     })
-    expect(text).toContain(
-      `Harvested resources${metal === '0' ? '0' : '250'}00`,
-    )
+    expect(text).toContain(`Harvested resources${metal === '0' ? '0' : '250'}0`)
     expect(text).not.toContain('Carried resources')
     expect(text).not.toContain('unavailable')
     expect(text).not.toContain('2,608')

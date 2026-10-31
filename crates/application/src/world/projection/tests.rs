@@ -180,6 +180,7 @@ fn incoming_disclosure_respects_every_research_threshold_and_wire_privacy() {
             wire,
             json!({
                 "sender": player(2), "origin":{"galaxy":1,"system":2,"position":3},
+                "origin_body": f.intent.origin,
                 "target":BodyId(Uuid::from_u128(20)), "mission":"Transport", "arrival_at":510, "ships":ships
             }),
             "level {level}"
