@@ -509,7 +509,10 @@ for (const width of [1440, 390, 320]) {
       ['Defense', 'Build Rocket Launcher'],
     ]) {
       await navigate(page, tab)
-      await expect(page.getByRole('link', { name: tab, exact: true })).toHaveAttribute('aria-current', 'page')
+      const navigation = width >= 1024
+        ? page.getByRole('complementary', { name: 'Game navigation' })
+        : page.getByRole('navigation', { name: 'Develop navigation' })
+      await expect(navigation.getByRole('link', { name: tab, exact: true })).toHaveAttribute('aria-current', 'page')
       await expect(page.locator('main h1')).toHaveText(tab)
       // Work summaries can have their own headings; the repeated page header is gone.
       await expect(page.locator('main > header').getByRole('heading', { name: tab, exact: true })).toHaveCount(0)
