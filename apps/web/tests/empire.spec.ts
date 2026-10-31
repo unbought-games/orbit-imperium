@@ -340,8 +340,7 @@ test('empire shows every body, its own work and resources, and directional fleet
   await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
   await expect(colony).toContainText('Command focus')
   await expect(page.getByRole('article')).toHaveCount(4)
-  await colony.getByRole('link', { name: 'Dispatch fleet' }).click()
-  await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/dispatch$`))
+  await expect(page.getByRole('link', { name: 'Dispatch fleet' })).toHaveCount(0)
   expect(purchases()).toBe(0)
 })
 
@@ -424,7 +423,7 @@ test('desktop and phone command views keep all information readable without hori
   await expect(ships).toContainText('Solar Satellite4')
   await expect(ships).not.toContainText('Rocket Launcher')
   await expect(ships).not.toContainText('Light Laser')
-  await expect(planet.locator('summary').filter({ hasText: 'Orbital fleet' })).toContainText('2 unit types')
+  await expect(planet.locator('summary').filter({ hasText: 'Orbital fleet' })).toHaveText('Orbital fleet6 ships')
   await planet.locator('summary').filter({ hasText: 'Planetary defenses' }).click()
   const defenses = planet.getByRole('region', { name: 'Planetary defenses', exact: true })
   await expect(defenses).toContainText('Rocket Launcher3')
@@ -719,6 +718,94 @@ for (const width of [320, 390, 1280]) {
     await diagnosticScreenshot(cards.nth(2), { path: `test-results/cargo-returning-attack-${width}.png` })
     await cards.nth(2).getByRole('link', { name: /^View .* fleet$/ }).click()
     await verifyCargo(page.getByRole('article', { name: 'Attack fleet', exact: true }), 2)
+  })
+}
+
+for (const width of [390, 1440]) {
+  test(`orbital fleet shows only stationed ships at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const options = empireFixture()
+    options.bodies[0].inventories = [
+      { item: { kind: 'Ship', id: 'SmallCargo' }, count: '0' },
+      { item: { kind: 'Ship', id: 'LightFighter' }, count: '0' },
+      { item: { kind: 'Ship', id: 'LargeCargo' }, count: '3' },
+      { item: { kind: 'Ship', id: 'SolarSatellite' }, count: '3' },
+      { item: { kind: 'Defense', id: 'RocketLauncher' }, count: '4' },
+    ]
+    // Existing outbound/returning Small Cargo fleets and queued ships must
+    // not appear in the planet's stationed inventory.
+    await shellFixture(page, options)
+    const planet = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
+    const summary = planet.locator('summary').filter({ hasText: 'Orbital fleet' })
+    await expect(summary).toHaveText('Orbital fleet6 ships')
+    await summary.click()
+    const fleet = planet.getByRole('region', { name: 'Orbital fleet', exact: true })
+    await expect(fleet.getByRole('term')).toHaveText(['Large Cargo', 'Solar Satellite'])
+    await expect(fleet.getByRole('definition')).toHaveText(['3', '3'])
+    await fleet.evaluate(element => element.scrollIntoView({ block: 'center' }))
+    await diagnosticScreenshot(page, { path: `test-results/empire-orbital-fleet-stationed-${width}x1000.png` })
+
+    for (const entry of options.bodies[0].inventories) {
+      if (entry.item.kind === 'Ship') entry.count = '0'
+    }
+    await refreshGame(page)
+    await expect(summary).toHaveText('Orbital fleet0 ships')
+    await expect(fleet).toHaveText('No ships stationed here.')
+    await expect(fleet.getByRole('term')).toHaveCount(0)
+    await fleet.evaluate(element => element.scrollIntoView({ block: 'center' }))
+    await diagnosticScreenshot(page, { path: `test-results/empire-orbital-fleet-empty-${width}x1000.png` })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+
+    options.bodies[0].inventories[2].count = '1'
+    await refreshGame(page)
+    await expect(summary).toHaveText('Orbital fleet1 ship')
+    await expect(planet.locator('summary').filter({ hasText: 'Planetary defenses' })).toHaveText('Planetary defenses4 defenses')
+    // Preserve exact totals beyond JavaScript's safe integer range.
+    options.bodies[0].inventories[2].count = '9007199254740993'
+    options.bodies[0].inventories[3].count = '3'
+    await refreshGame(page)
+    await expect(summary).toHaveText('Orbital fleet9,007,199,254,740,996 ships')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
+for (const width of [390, 1440]) {
+  test(`planetary defenses show only present defenses at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const options = empireFixture()
+    options.bodies[0].inventories = [
+      { item: { kind: 'Ship', id: 'SmallCargo' }, count: '12' },
+      { item: { kind: 'Defense', id: 'RocketLauncher' }, count: '3' },
+      { item: { kind: 'Defense', id: 'LightLaser' }, count: '2' },
+      { item: { kind: 'Defense', id: 'HeavyLaser' }, count: '0' },
+    ]
+    await shellFixture(page, options)
+    const planet = page.getByRole('article', { name: 'Planet [1:371:4] dossier', exact: true })
+    const summary = planet.locator('summary').filter({ hasText: 'Planetary defenses' })
+    await expect(summary).toHaveText('Planetary defenses5 defenses')
+    await summary.click()
+    const defenses = planet.getByRole('region', { name: 'Planetary defenses', exact: true })
+    await expect(defenses.getByRole('term')).toHaveText(['Rocket Launcher', 'Light Laser'])
+    await expect(defenses.getByRole('definition')).toHaveText(['3', '2'])
+    await defenses.evaluate(element => element.scrollIntoView({ block: 'center' }))
+    await diagnosticScreenshot(page, { path: `test-results/empire-defenses-populated-${width}x1000.png` })
+    for (const entry of options.bodies[0].inventories) {
+      if (entry.item.kind === 'Defense') entry.count = '0'
+    }
+    await refreshGame(page)
+    await expect(summary).toHaveText('Planetary defenses0 defenses')
+    await expect(defenses).toHaveText('No defenses stationed here.')
+    await expect(defenses.getByRole('term')).toHaveCount(0)
+    await defenses.evaluate(element => element.scrollIntoView({ block: 'center' }))
+    await diagnosticScreenshot(page, { path: `test-results/empire-defenses-empty-${width}x1000.png` })
+    options.bodies[0].inventories[1].count = '1'
+    await refreshGame(page)
+    await expect(summary).toHaveText('Planetary defenses1 defense')
+    options.bodies[0].inventories[1].count = '9007199254740993'
+    options.bodies[0].inventories[2].count = '2'
+    await refreshGame(page)
+    await expect(summary).toHaveText('Planetary defenses9,007,199,254,740,995 defenses')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
 

@@ -453,16 +453,23 @@ function StationedUnits({
   body: Body
   kind: 'Ship' | 'Defense'
 }) {
-  const items = body.inventories.filter((entry) => entry.item.kind === kind)
+  const items = body.inventories.filter(
+    (entry) => entry.item.kind === kind && BigInt(entry.count) > 0n,
+  )
   const title = kind === 'Ship' ? 'Orbital fleet' : 'Planetary defenses'
   const Icon = kind === 'Ship' ? Orbit : Shield
+  const total = items.reduce((sum, item) => sum + BigInt(item.count), 0n)
+  const unit = kind === 'Ship' ? 'ship' : 'defense'
   return (
     <details className={styles.inventory}>
       <summary>
         <span>
           <Icon size={15} /> {title}
         </span>
-        <span>{items.length} unit types</span>
+        <span>
+          {total.toLocaleString('en-US')} {unit}
+          {total === 1n ? '' : 's'}
+        </span>
       </summary>
       <section aria-label={title}>
         {items.length ? (
@@ -659,11 +666,6 @@ function PlanetDossier({
       </details>
       <StationedUnits body={body} kind="Ship" />
       <StationedUnits body={body} kind="Defense" />
-      <div className={styles.cardFooter}>
-        <Destination view={view} body={body.id} page="dispatch">
-          Dispatch fleet <ArrowUpRight size={13} />
-        </Destination>
-      </div>
     </article>
   )
 }

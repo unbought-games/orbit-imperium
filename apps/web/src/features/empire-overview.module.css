@@ -865,19 +865,6 @@
   color: var(--ice);
   font-variant-numeric: tabular-nums;
 }
-.cardFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-.cardFooter a {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 50px;
-  font-size: 0.625rem;
-  text-decoration: none;
-}
 .footer {
   display: flex;
   justify-content: space-between;
