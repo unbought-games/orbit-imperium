@@ -932,9 +932,16 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   page,
 }) => {
   const activate = async (control: ReturnType<Page['getByRole']>) => {
+    // Layout changes can put a resource trigger under the previous click,
+    // opening a hover popover over the next action on slower renderers.
+    await page.mouse.move(0, 0)
+    await expect(
+      page.getByRole('dialog', { name: /^(Metal|Crystal|Deuterium)$/ }),
+    ).toHaveCount(0)
     await expect(control).toBeVisible()
     await expect(control).toBeEnabled()
     await control.click()
+    await page.mouse.move(0, 0)
   }
   const constructions: components['schemas']['Construction3'][] = []
   const planet = structuredClone(body)
