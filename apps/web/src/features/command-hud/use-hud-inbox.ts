@@ -36,7 +36,7 @@ export function useHudInbox(
   const more = limit < targets.length || !!state.reportInbox?.has_more
   const buffered = limit < targets.length
   const loadMore = async () => {
-    if (loading) return
+    if (!visible || loading) return
     if (buffered) {
       setLimit((value) => Math.max(value, limit + batchSize))
       return
@@ -56,14 +56,20 @@ export function useHudInbox(
     const element = sentinel.current
     const root = scrollRoot.current
     if (!visible || !more || loading || failed || !element || !root) return
+    let active = true
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) latestLoad.current()
+        if (active && entries.some((entry) => entry.isIntersecting))
+          latestLoad.current()
       },
       { root, rootMargin: '0px 0px 100px 0px' },
     )
     observer.observe(element)
-    return () => observer.disconnect()
+    return () => {
+      // Disconnect does not retract callbacks already queued for delivery.
+      active = false
+      observer.disconnect()
+    }
   }, [
     visible,
     more,

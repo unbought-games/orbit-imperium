@@ -42,8 +42,8 @@ Implemented changes:
   failures/cancellations/skips, exact-once inventory coverage, compilation
   selection, new database suites and isolated cleanup.
 
-No execution deadlines, retries, test removal, production behavior or
-explicit-only acceptance changes were introduced. Build, lint, client and
+The scheduling changes introduced no execution deadlines, retries, test removal,
+production behavior or explicit-only acceptance changes. Build, lint, client and
 server tests, default/bridge configurations, production homepage checks and
 all relevant PostgreSQL/browser tests remain required.
 
@@ -79,8 +79,28 @@ increased from 3,159s to 4,492s (about 53 to 75 runner-minutes) in these two
 samples. Per-host variability remains visible; this is not a guarantee about
 queue delays or cold-cache runs. Further reductions in total work should target
 repeated browser bootstraps, with special care for the dev-served hook harness
-and anonymous-landing entry tests. The PR run independently verifies the final
-commit; its current check results are the authoritative readiness evidence.
+and anonymous-landing entry tests. PR integration run `41210620800` then found a HUD pagination race against the
+newly merged shared-reports engine: returning from detail showed 129 rows where
+120 were expected. It is failed validation, despite all other jobs passing.
+Integrated base `fc3f68f3f3b2c8ada60a3e90395fd5c067584ba6` locally to investigate.
+
+A controlled browser regression delivered a queued intersection notification
+after leaving the inbox and reproduced an unwanted page advance at both 390px
+and 1440px. The repair ignores notifications from disconnected observers and
+blocks pagination while the inbox is hidden. Both regressions failed before the
+repair, then passed five repetitions per viewport (10 tests, 11.4s). They also
+verify that later genuine scrolling still loads the next page. The original
+pagination assertions remain unchanged.
+
+The original case passed 30 normal-speed diagnostic repetitions (36.1s).
+A separate sixfold CPU-throttling probe had eight passes and one initial badge
+readiness failure; it was not counted as passing validation or used for timings.
+Final normal-speed verification of the original case plus both regressions
+passed (3 tests, 4.1s), with desktop/mobile screenshots captured and inspected
+in the implementation chat. All 1,183 client tests, lint, formatting and the
+production build passed locally after the repair. Browser runners stopped and
+released their ports. The latest PR checks verify the pushed repair; their
+results are the authoritative readiness evidence.
 
 ## October 24 audit
 

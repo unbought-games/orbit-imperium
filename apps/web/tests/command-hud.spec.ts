@@ -588,6 +588,57 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   await diagnosticScreenshot(page,{path:`${output}/infinite-desktop-1440x900.png`})
 })
 
+for (const width of [390, 1440]) {
+  test(`HUD ignores queued pagination observations after opening a report at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    // Deliver an observation captured before leaving the inbox after its observer
+    // disconnects. Browser callback delivery must not create new paging intent.
+    await page.addInitScript(() => {
+      const NativeObserver = window.IntersectionObserver
+      window.IntersectionObserver = class extends NativeObserver {
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          super(callback, options)
+          if (options?.root instanceof HTMLDialogElement) {
+            Object.assign(window, { notifyHudIntersection: () => callback(
+              [{ isIntersecting: true } as IntersectionObserverEntry], this,
+            ) })
+          }
+        }
+      }
+    })
+    const f = await intelligenceFixture(page)
+    f.headers.push(...Array.from({ length: 40 }, (_, i) => ({
+      id: id(6000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false,
+    })))
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await expect(page.getByTestId('unread-count')).toHaveText('40')
+    await page.getByTestId('command-orb').click()
+    const panel = page.getByRole('dialog')
+    const entries = panel.getByLabel('Intelligence list').getByRole('button')
+    await expect(entries).toHaveCount(20)
+    const queued = await page.evaluateHandle(() => (
+      window as unknown as { notifyHudIntersection: () => void }
+    ).notifyHudIntersection)
+    await entries.first().click()
+    await expect(panel.getByRole('button', { name: 'Attack', exact: true })).toBeVisible()
+    await expect.poll(() => f.reads).toContain('MarkReportRead')
+    await expect(page.locator('[aria-label="Intelligence list"]')).toHaveAttribute('aria-busy', 'false')
+    await queued.evaluate(notify => notify())
+    await panel.getByRole('button', { name: 'Back to list' }).click()
+    await expect(panel).toHaveAccessibleName('Command uplink')
+    await expect(entries).toHaveCount(20)
+    await queued.evaluate(notify => notify())
+    await queued.dispose()
+    await expect(entries).toHaveCount(20)
+    await expect(page.getByTestId('unread-count')).toHaveText('39')
+    await diagnosticScreenshot(page, { path: `${output}/queued-pagination-restored-${width}x900.png` })
+    await panel.evaluate(el => { el.scrollTop = el.scrollHeight })
+    await expect(entries).toHaveCount(39)
+    await expect(panel.getByRole('status').filter({ hasText: 'You’re all caught up.' })).toBeVisible()
+  })
+}
+
 test('captions explain once, joke only on confirmed new losses, and keep humor separate from regular feedback', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
   await page.emulateMedia({reducedMotion:'reduce'})
