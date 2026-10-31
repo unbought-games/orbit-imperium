@@ -551,7 +551,11 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   expect(requests).toBe(1)
   await diagnosticScreenshot(page,{path:`${output}/infinite-retry-390x844.png`})
   fail=false
-  await panel.getByRole('button',{name:'Retry loading'}).click()
+  // Two retry gestures before React commits the loading state must join one
+  // request and reveal only the next batch, including observer callbacks.
+  await panel.getByRole('button',{name:'Retry loading'}).evaluate(button => {
+    (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click()
+  })
   await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/infinite-loading-390x844.png`})
   await expect.poll(()=>!!release).toBe(true)
@@ -577,6 +581,7 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   await page.setViewportSize({width:1440,height:900})
   await expect(page.getByTestId('command-orb')).toBeVisible()
   await expect(panel).toBeVisible()
+  await diagnosticScreenshot(page,{path:`${output}/infinite-end-1440x900.png`})
   await page.keyboard.press('Escape')
   await expect(panel).toHaveCount(0)
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')

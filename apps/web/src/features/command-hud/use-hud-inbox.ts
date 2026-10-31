@@ -38,12 +38,14 @@ export function useHudInbox(
   const loadMore = async () => {
     if (loading) return
     if (buffered) {
-      setLimit((value) => value + batchSize)
+      setLimit((value) => Math.max(value, limit + batchSize))
       return
     }
+    // A shared request can complete before its observer sees the new limit.
+    // Repeated requests from this render all express the same next-page intent.
     try {
       await model.reports.refreshInbox(true)
-      setLimit((value) => value + batchSize)
+      setLimit((value) => Math.max(value, limit + batchSize))
     } catch {
       /* Shared request state supplies retry in both surfaces. */
     }
