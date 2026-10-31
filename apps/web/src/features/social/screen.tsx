@@ -145,7 +145,7 @@ function Workspace() {
               />
               <Button
                 variant="ghost"
-                aria-label={`Open conversation with ${c.contact.username}`}
+                aria-label={`Open conversation with ${c.contact.username}${conversationUnread(c, state.readPositions) ? ' · Unread' : ''}`}
                 onClick={() => select(c.contact.player)}
               >
                 Open conversation

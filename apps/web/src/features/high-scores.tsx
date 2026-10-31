@@ -298,7 +298,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                         <Button
                           variant="ghost"
                           className={styles.player}
-                          aria-label={`Score details for ${row.username}`}
+                          aria-label={`Score details for ${row.username}: ${number(row.points)} points`}
                           onClick={(e) => {
                             opener.current = e.currentTarget
                             ranking.select(row.player)

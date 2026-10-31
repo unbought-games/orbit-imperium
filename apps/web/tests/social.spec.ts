@@ -52,6 +52,18 @@ async function fixture(page:Page, count=65){
  failSend:()=>{failNext=true},incoming:()=>{messages.push(message(messages.length+1));hidden=false},invite:()=>{c={...c,request:id(3001),requested_by:peer}}}
 }
 
+test('conversation action announces unread state and clears it after reading', async ({page}) => {
+ await fixture(page)
+ await page.goto('/u/andromeda/messages')
+ const action = page.getByRole('button', {name: /^Open conversation with Nova/})
+ await expect(action).toHaveAccessibleName('Open conversation with Nova · Unread')
+ await action.click()
+ await expect(page.getByLabel('Message history').getByText('Message 65', {exact:true})).toBeVisible()
+ await page.getByRole('button', {name: 'Back to conversations', exact:true}).click()
+ await expect(action).toHaveAccessibleName('Open conversation with Nova')
+ await expect(action).not.toContainText('Unread')
+})
+
 test('conversation paging, safe Markdown, uncertain send retry and blocking',async({page})=>{
  const f=await fixture(page)
  await page.goto(`/u/andromeda/messages?player=${peer}`)
