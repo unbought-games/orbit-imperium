@@ -1,4 +1,7 @@
-import { useLayoutEffect, useRef } from 'react'
+import { Fragment, useLayoutEffect, useRef } from 'react'
+import { messageDay, messageTime, sameMessageDay } from './presentation'
+import { MessageCircle } from 'lucide-react'
+import { EmptyState } from '../../ui/empty-state'
 import type { components } from '../../contracts'
 import { Markdown } from '../alliances/shared'
 import styles from './social.module.css'
@@ -48,19 +51,42 @@ export function MessageHistory({
         }
       }}
     >
-      {messages.map((m) => (
-        <article
-          key={m.id}
-          className={`${styles.message} ${m.sender === self ? styles.own : ''}`}
-        >
-          <div className={styles.meta}>
-            <span>{m.sender === self ? 'You' : name}</span>
-            <time dateTime={new Date(m.sent_at).toISOString()}>
-              {new Date(m.sent_at).toLocaleString()}
-            </time>
-          </div>
-          <Markdown text={m.body} />
-        </article>
+      {!messages.length && (
+        <div className={styles.threadEmpty}>
+          <EmptyState
+            variant="compact"
+            icon={MessageCircle}
+            title="Start your conversation."
+            description={`Say hello to ${name}. Your messages will appear here.`}
+          />
+        </div>
+      )}
+      {messages.map((m, index) => (
+        <Fragment key={m.id}>
+          {(index === 0 ||
+            !sameMessageDay(messages[index - 1].sent_at, m.sent_at)) && (
+            <div className={styles.dayDivider}>{messageDay(m.sent_at)}</div>
+          )}
+          <article
+            aria-label={
+              m.sender === self
+                ? `Message from you to ${name}`
+                : `Message from ${name} to you`
+            }
+            className={`${styles.message} ${m.sender === self ? styles.own : ''}`}
+          >
+            <div className={styles.meta}>
+              <span>{m.sender === self ? 'You' : name}</span>
+              <time
+                dateTime={new Date(m.sent_at).toISOString()}
+                title={new Date(m.sent_at).toLocaleString()}
+              >
+                {messageTime(m.sent_at)}
+              </time>
+            </div>
+            <Markdown text={m.body} compact />
+          </article>
+        </Fragment>
       ))}
     </div>
   )

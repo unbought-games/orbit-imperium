@@ -206,7 +206,7 @@ function GameShellContent() {
       page === 'galaxy' ||
       page === 'fleets' ||
       page === 'settings' ||
-      (view.protocol === 4 && page === 'reports'))
+      (view.protocol === 4 && (page === 'reports' || page === 'messages')))
   const title = !available
     ? 'Destination unavailable'
     : page === 'overview'
