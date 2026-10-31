@@ -68,9 +68,11 @@ async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'
   const circulars:S['SocialCircular'][]=[]
   let failMailbox = false
   const reads:string[]=[]
+  const reportQueries:Array<string|null>=[]
   await installGameFixture(page,{protocol:4,bodies,destinations,playerNames,missions,sampledAt:baseTime,viewerRevision:()=>String(revision),hasUnreadReports:()=>headers.some(h=>!h.read&&!h.hidden),extraCapabilities:['Reports','Espionage',...(attack ? ['Attack' as const] : [])]})
   await page.route('**/api/**/reports',route=>{
     const {context,cursor}=route.request().postDataJSON()
+    reportQueries.push(cursor)
     const start=cursor?headers.findIndex(h=>h.id===cursor)+1:0
     const hasMore=start+50<headers.length
     return route.fulfill({json:{protocol:4,...context,viewer_revision:String(revision),sampled_at:baseTime,as_of_ms:baseTime,data:{items:headers.slice(start,start+50),has_more:hasMore,next_cursor:hasMore?headers[start+49].id:null,as_of_ms:baseTime}}})
@@ -100,7 +102,7 @@ async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'
     reads.push('MarkReportRead');revision++
     return route.fulfill({json:{protocol:4,binding,command_id:gameplay.command_id,status:'Committed',admitted_at:baseTime,executed_at:baseTime,result_ids:[],minimum_viewer_revision:String(revision)}})
   })
-  return { missions, headers, conversations, circulars, reads, fail:()=>{failMailbox=true}, restore:()=>{failMailbox=false}, refresh:async()=>{revision++;await refreshGame(page)} }
+  return { missions, headers, conversations, circulars, reads, reportQueries, fail:()=>{failMailbox=true}, restore:()=>{failMailbox=false}, refresh:async()=>{revision++;await refreshGame(page)} }
 }
 test('live mobile HUD receives reports, messages and threats across navigation and preserves server truth',async({page})=>{
   await page.setViewportSize({width:390,height:844})
@@ -511,8 +513,49 @@ test('unread badge traverses older reports and caps the visible count at 99', as
   await expect(page.getByTestId('command-orb')).toHaveAttribute('data-tone','ice')
 })
 
-test('HUD list infinitely loads past the badge cap, retries in place, and restores the list after detail', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
+for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 900}]) {
+ test(`HUD list infinitely loads past the badge cap, retries in place, and restores the list after detail at ${initialViewport.width}px`, async ({page}) => {
+  // Deliver an already-queued observer event after its list is hidden, and
+  // again after returning. Native scheduling made this race CI-only.
+  await page.addInitScript(() => {
+    const NativeObserver = window.IntersectionObserver
+    let current: (() => void) | undefined
+    let queued: (() => void) | undefined
+    const probe = window as Window & {__hudIntersectionProbe: {capture: () => void; deliver: () => void; ready: boolean; batchDeliveries: number; onNextBatch: () => void}}
+    probe.__hudIntersectionProbe = {
+      get ready() { return !!current },
+      batchDeliveries: 0,
+      onNextBatch() {
+        if (!current) throw Error('HUD observer was not installed')
+        const delivery = current
+        const list = document.querySelector('[aria-label="Intelligence list"]')!
+        const count = list.querySelectorAll('button').length
+        const mutation = new MutationObserver(() => {
+          if (list.querySelectorAll('button').length === count) return
+          mutation.disconnect()
+          probe.__hudIntersectionProbe.batchDeliveries++
+          delivery()
+        })
+        mutation.observe(list, {childList: true})
+      },
+      capture() { if (!current) throw Error('HUD observer was not installed'); queued = current },
+      deliver() { if (!queued) throw Error('No queued HUD intersection'); queued() },
+    }
+    window.IntersectionObserver = class extends NativeObserver {
+      private callback: IntersectionObserverCallback
+      private hud: boolean
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        super(callback, options)
+        this.callback = callback
+        this.hud = options?.root instanceof HTMLDialogElement
+      }
+      observe(target: Element) {
+        super.observe(target)
+        if (this.hud) current = () => this.callback([{target, isIntersecting: true} as IntersectionObserverEntry], this)
+      }
+    }
+  })
+  await page.setViewportSize(initialViewport)
   await page.emulateMedia({reducedMotion:'reduce'})
   const f = await intelligenceFixture(page)
   f.headers.push(...Array.from({length:130},(_,i)=>({id:id(2000+i),kind:'Espionage',observed_at:baseTime-i,read:false,hidden:false})))
@@ -523,34 +566,42 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
     if(route.request().postDataJSON().cursor===id(2099)){
       requests++
       if(fail)return route.fulfill({status:503,json:{code:'Unavailable'}})
-      await new Promise<void>(resolve=>{release=resolve})
+      if (!release) await new Promise<void>(resolve=>{release=resolve})
     }
     return route.fallback()
   })
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   await expect(page.getByTestId('unread-count')).toHaveText('99')
+  await expect(page.getByRole('heading', { level: 1, name: /Empire/ })).toBeVisible()
   await page.getByTestId('command-orb').click()
   const panel=page.getByRole('dialog')
   const list=panel.getByLabel('Intelligence list')
   const entries=list.getByRole('button')
   await expect(entries).toHaveCount(20)
   await expect(list).toHaveAttribute('aria-busy','false')
-  await diagnosticScreenshot(page,{path:`${output}/infinite-first-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/infinite-first-${initialViewport.width}x${initialViewport.height}.png`})
+  await expect.poll(() => page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {ready: boolean}}).__hudIntersectionProbe.ready)).toBe(true)
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {onNextBatch: () => void}}).__hudIntersectionProbe.onNextBatch())
   for(const count of [40,60,80,100]){
     await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
     await expect(entries).toHaveCount(count)
     await expect(list).toHaveAttribute('aria-busy','false')
   }
+  expect(await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {batchDeliveries: number}}).__hudIntersectionProbe.batchDeliveries)).toBe(1)
   expect(requests).toBe(0)
   await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
   await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
   await expect(entries).toHaveCount(100)
   expect(requests).toBe(1)
-  await diagnosticScreenshot(page,{path:`${output}/infinite-retry-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/infinite-retry-${initialViewport.width}x${initialViewport.height}.png`})
   fail=false
-  await panel.getByRole('button',{name:'Retry loading'}).click()
+  // Two retry gestures before React commits the loading state must join one
+  // request and reveal only the next batch, including observer callbacks.
+  await panel.getByRole('button',{name:'Retry loading'}).evaluate(button => {
+    (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click()
+  })
   await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/infinite-loading-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/infinite-loading-${initialViewport.width}x${initialViewport.height}.png`})
   await expect.poll(()=>!!release).toBe(true)
   release!()
   await expect(entries).toHaveCount(120)
@@ -558,12 +609,17 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   // Opening an already loaded row must not throw away the loaded pages or position.
   await entries.nth(95).scrollIntoViewIfNeeded()
   const position=await panel.evaluate(el=>el.scrollTop)
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {capture: () => void}}).__hudIntersectionProbe.capture())
   await entries.nth(95).click()
   await expect(panel.getByRole('button',{name:'Attack',exact:true})).toBeVisible()
+  await expect(list).toHaveAttribute('aria-busy','false')
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {deliver: () => void}}).__hudIntersectionProbe.deliver())
   await panel.getByRole('button',{name:'Back to list'}).click()
   await expect(panel).toHaveAccessibleName('Command uplink')
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {deliver: () => void}}).__hudIntersectionProbe.deliver())
   await expect(entries).toHaveCount(120)
   expect(Math.abs(await panel.evaluate(el=>el.scrollTop)-position)).toBeLessThan(5)
+  await diagnosticScreenshot(page,{path:`${output}/infinite-return-${initialViewport.width}x${initialViewport.height}.png`})
   expect(await page.evaluate(()=>document.body.style.position)).toBe('fixed')
   await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
   await expect(entries).toHaveCount(129)
@@ -574,10 +630,115 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   await page.setViewportSize({width:1440,height:900})
   await expect(page.getByTestId('command-orb')).toBeVisible()
   await expect(panel).toBeVisible()
+  await diagnosticScreenshot(page,{path:`${output}/infinite-end-1440x900.png`})
   await page.keyboard.press('Escape')
   await expect(panel).toHaveCount(0)
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
   await diagnosticScreenshot(page,{path:`${output}/infinite-desktop-1440x900.png`})
+})
+}
+
+for (const width of [390, 1440]) {
+  test(`HUD ignores queued pagination observations after opening a report at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    // Deliver an observation captured before leaving the inbox after its observer
+    // disconnects. Browser callback delivery must not create new paging intent.
+    await page.addInitScript(() => {
+      const NativeObserver = window.IntersectionObserver
+      window.IntersectionObserver = class extends NativeObserver {
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          super(callback, options)
+          if (options?.root instanceof HTMLDialogElement) {
+            Object.assign(window, { notifyHudIntersection: () => callback(
+              [{ isIntersecting: true } as IntersectionObserverEntry], this,
+            ) })
+          }
+        }
+      }
+    })
+    const f = await intelligenceFixture(page)
+    f.headers.push(...Array.from({ length: 40 }, (_, i) => ({
+      id: id(6000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false,
+    })))
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await expect(page.getByTestId('unread-count')).toHaveText('40')
+    await page.getByTestId('command-orb').click()
+    const panel = page.getByRole('dialog')
+    const entries = panel.getByLabel('Intelligence list').getByRole('button')
+    await expect(entries).toHaveCount(20)
+    const queued = await page.evaluateHandle(() => (
+      window as unknown as { notifyHudIntersection: () => void }
+    ).notifyHudIntersection)
+    // Also deliver at the DOM-commit boundary, before a passive-effect cleanup
+    // is guaranteed to run. The latest visibility guard must reject it.
+    await page.evaluate(notify => {
+      const inbox = document.querySelector('[aria-label="Intelligence list"]')!.parentElement!
+      const watcher = new MutationObserver(() => {
+        if (!inbox.hidden) return
+        notify()
+        watcher.disconnect()
+        Object.assign(window, { deliveredHiddenObservation: true })
+      })
+      watcher.observe(inbox, { attributes: true, attributeFilter: ['hidden'] })
+    }, queued)
+    await entries.first().click()
+    await expect.poll(() => page.evaluate(() => (
+      window as unknown as { deliveredHiddenObservation?: boolean }
+    ).deliveredHiddenObservation)).toBe(true)
+    await expect(panel.getByRole('button', { name: 'Attack', exact: true })).toBeVisible()
+    await expect.poll(() => f.reads).toContain('MarkReportRead')
+    await expect(page.locator('[aria-label="Intelligence list"]')).toHaveAttribute('aria-busy', 'false')
+    await queued.evaluate(notify => notify())
+    await panel.getByRole('button', { name: 'Back to list' }).click()
+    await expect(panel).toHaveAccessibleName('Command uplink')
+    await expect(entries).toHaveCount(20)
+    await queued.evaluate(notify => notify())
+    await queued.dispose()
+    await expect(entries).toHaveCount(20)
+    await expect(page.getByTestId('unread-count')).toHaveText('39')
+    await diagnosticScreenshot(page, { path: `${output}/queued-pagination-restored-${width}x900.png` })
+    await panel.evaluate(el => { el.scrollTop = el.scrollHeight })
+    await expect(entries).toHaveCount(39)
+    await expect(panel.getByRole('status').filter({ hasText: 'You’re all caught up.' })).toBeVisible()
+  })
+}
+
+test('stale HUD intersection callbacks cannot consume a later pagination batch', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.addInitScript(() => {
+    const host = window as typeof window & { replayStaleHudIntersection?: () => void }
+    const NativeObserver = window.IntersectionObserver
+    window.IntersectionObserver = class extends NativeObserver {
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        super(callback, options)
+        if (options?.root instanceof HTMLDialogElement && !host.replayStaleHudIntersection) {
+          host.replayStaleHudIntersection = () => callback([{ isIntersecting: true } as IntersectionObserverEntry], this)
+        }
+      }
+    }
+  })
+  const f = await intelligenceFixture(page)
+  f.headers.push(...Array.from({ length: 130 }, (_, i) => ({ id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false })))
+  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await expect(page.getByTestId('unread-count')).toHaveText('99')
+  await page.getByTestId('command-orb').click()
+  const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
+  const entries = panel.getByLabel('Intelligence list').getByRole('button')
+  await expect(entries).toHaveCount(20)
+  await expect.poll(() => page.evaluate(() => typeof (window as typeof window & { replayStaleHudIntersection?: () => void }).replayStaleHudIntersection)).toBe('function')
+  for (const count of [40, 60]) {
+    // Click without scrolling the sentinel into view, then deliver the callback
+    // queued by the first observer after a newer batch has already committed.
+    await panel.getByRole('button', { name: 'Load more intelligence', exact: true }).evaluate(button => (button as HTMLButtonElement).click())
+    await expect(entries).toHaveCount(count)
+    await page.evaluate(async () => {
+      (window as typeof window & { replayStaleHudIntersection?: () => void }).replayStaleHudIntersection!()
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    })
+    await expect(entries).toHaveCount(count)
+  }
 })
 
 test('captions explain once, joke only on confirmed new losses, and keep humor separate from regular feedback', async ({page}) => {
@@ -924,14 +1085,16 @@ test('a missing report cursor offers retry without an observer render loop', asy
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   await page.getByTestId('command-orb').click()
   const panel=page.getByRole('dialog')
-  await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+  await expect(panel.getByRole('button',{name:'Retry intelligence'})).toBeVisible()
   await expect(panel.getByRole('button',{name:'Load more intelligence'})).toHaveCount(0)
+  await expect(panel.getByText('No new intelligence. All channels clear.')).toHaveCount(0)
+  await expect(panel.getByText('Loading intelligence…')).toHaveCount(0)
   const before=requests
   await page.clock.runFor(1000)
   expect(requests).toBe(before)
-  await panel.getByRole('button',{name:'Retry loading'}).click()
+  await panel.getByRole('button',{name:'Retry intelligence'}).click()
   await expect.poll(()=>requests).toBeGreaterThan(before)
-  await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+  await expect(panel.getByRole('button',{name:'Retry intelligence'})).toBeVisible()
 })
 
 
@@ -1381,3 +1544,86 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
   await expect(page.getByTestId('command-orb')).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/updated-desktop-1440x900.png`})
 })
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`shared inbox removes reports deleted elsewhere from the badge and panel at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const f = await intelligenceFixture(page)
+    f.headers.push(
+      ...Array.from({ length: 3 }, (_, i) => ({ id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false })),
+      { id: id(4003), kind: 'SpyContact', observed_at: baseTime - 3, read: true, hidden: false },
+    )
+    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Reports', exact: true })).toBeVisible()
+    const orb = page.getByTestId('command-orb')
+    const badge = page.getByTestId('unread-count')
+    await expect(badge).toHaveText('3')
+    await orb.click()
+    const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(3)
+    await page.getByRole('button', { name: 'Close command HUD' }).click()
+
+    // Another session deleted the unread reports: subsequent server pages omit
+    // them, but their detail headers remain cached in this client.
+    f.headers.splice(0, 3)
+    await f.refresh()
+    await expect(page.locator('main article')).toHaveCount(1)
+    await expect(badge).toHaveCount(0)
+    await expect(orb).toHaveAttribute('data-tone', 'ice')
+    await diagnosticScreenshot(page, { path: `${output}/reconciled-reports-${width}x${height}.png` })
+    await orb.click()
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(0)
+    await expect(panel).toContainText('No new intelligence. All channels clear.')
+    await diagnosticScreenshot(page, { path: `${output}/reconciled-empty-inbox-${width}x${height}.png` })
+
+    f.headers.unshift({ id: id(4004), kind: 'Espionage', observed_at: baseTime + 1, read: false, hidden: false })
+    await f.refresh()
+    await expect(badge).toHaveText('1')
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(1)
+    await expect(panel).not.toContainText('All channels clear.')
+    await diagnosticScreenshot(page, { path: `${output}/reconciled-new-report-${width}x${height}.png` })
+  })
+}
+
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`reports tab and orb share archive pages and read acknowledgements at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const f = await intelligenceFixture(page)
+    f.headers.push(...Array.from({ length: 51 }, (_, i) => ({
+      id: id(5000 + i), kind: 'Espionage', observed_at: baseTime - i, read: i < 50, hidden: false,
+    })))
+    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Reports', exact: true })).toBeVisible()
+    const rows = page.locator('main article')
+    await expect(rows).toHaveCount(51)
+    await expect(rows.getByLabel('Unread', { exact: true })).toHaveCount(1)
+    await expect(page.getByTestId('unread-count')).toHaveText('1')
+    await expect(page.getByRole('button', { name: 'Load more reports' })).toHaveCount(0)
+    // Both mounted consumers share one fetch for each page, including the unread
+    // report beyond the first page; opening the panel never creates another list.
+    expect(f.reportQueries).toEqual([null, id(5049)])
+    await rows.last().scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `${output}/shared-archive-tab-${width}x${height}.png` })
+    await page.getByTestId('command-orb').click()
+    const panel = page.getByRole('dialog')
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(1)
+    expect(f.reportQueries).toEqual([null, id(5049)])
+    await diagnosticScreenshot(page, { path: `${output}/shared-archive-panel-${width}x${height}.png` })
+    await panel.getByRole('button', { name: /Espionage report/ }).click()
+    await expect(panel.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    await expect.poll(() => f.reads.filter(r => r === 'MarkReportRead').length).toBe(1)
+    await expect(page.getByTestId('unread-count')).toHaveCount(0)
+    await panel.getByRole('link', { name: 'Open full report' }).click()
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await expect(rows).toHaveCount(51)
+    await expect(rows.getByLabel('Unread', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('status', { name: 'Unread reports', exact: true })).toHaveCount(0)
+    expect(f.reads.filter(r => r === 'MarkReportRead')).toHaveLength(1)
+    await rows.last().scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `${output}/shared-archive-read-${width}x${height}.png` })
+  })
+}

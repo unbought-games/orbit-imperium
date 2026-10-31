@@ -36,11 +36,13 @@ export function ResourceQuantity({
 
 export function ResourceSummary({
   value,
+  layout = 'inline',
 }: {
   value: components['schemas']['Resources']
+  layout?: 'inline' | 'stacked'
 }) {
   return (
-    <span className={styles.summary}>
+    <span className={styles.summary} data-layout={layout}>
       {(['metal', 'crystal', 'deuterium'] as const).map((resource) => (
         <ResourceQuantity
           key={resource}

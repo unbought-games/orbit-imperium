@@ -409,6 +409,14 @@ for (const width of [1440, 390]) {
       })
     })
     await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
+    // Full navigation restarts the game session before the world and profile
+    // requests run. Check each readiness boundary before asserting identity.
+    await expect(
+      page.getByRole('heading', { name: 'Galaxy', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('region', { name: 'Galaxy positions' }),
+    ).toBeVisible()
     const trigger = page.getByRole('button', {
       name: 'Arcanis profile details',
     })

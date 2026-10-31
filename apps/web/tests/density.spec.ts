@@ -400,9 +400,8 @@ for (const width of [390, 1280]) {
       await expect(tabs.getByRole('link', { name: route === 'dispatch' ? 'Fleets' : title, exact: true })).toHaveAttribute('aria-current', 'page')
       await expect(page.locator('main h1')).toHaveText(title)
       await expect(page.locator('main h1')).toBeFocused()
-      if (route !== 'dispatch')
-        await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
-      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(0)
+      await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
+      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(route === 'dispatch' ? 1 : 0)
       if (route === 'fleets') {
         await expect(page.getByRole('link', { name: 'Dispatch Fleet' })).toBeVisible()
         await expect(page.getByRole('button', { name: /^Fleet slots:/ })).toBeVisible()

@@ -6,18 +6,13 @@ import { formatDuration } from '../client-model/duration'
 import type { components } from '../contracts'
 import { coordinates, label } from '../ui/format'
 import { formatWholeNumber } from '../ui/whole-number'
+import { reportFleetSummary } from './report-fleet-summary'
 
 type S = components['schemas']
 type Preview = S['ReportPreview4']
 export type ReportFact =
   | string
   | { resources: S['Resources']; label?: string; debris?: boolean }
-const shipsText = (ships: S['PublicShip4'][]) =>
-  ships.length
-    ? ships
-        .map((s) => `${formatWholeNumber(s.count)} ${label(s.ship_type)}`)
-        .join(' · ')
-    : 'No ships'
 const totalUnits = (
   observation: Extract<Preview, { kind: 'Espionage' }>['fleet'],
 ) =>
@@ -76,7 +71,7 @@ export function reportPreview(
         preview.kind === 'Returned' || preview.kind === 'Recalled'
           ? preview.origin_coordinates
           : preview.destination_coordinates
-      if (preview.ships) facts.push(shipsText(preview.ships))
+      if (preview.ships) facts.push(reportFleetSummary(preview.ships))
       if (preview.cargo)
         facts.push(
           Object.values(preview.cargo).some((n) => BigInt(n) > 0n)
@@ -86,7 +81,7 @@ export function reportPreview(
       break
     case 'Harvested':
       at = preview.destination_coordinates
-      if (preview.ships) facts.push(shipsText(preview.ships))
+      if (preview.ships) facts.push(reportFleetSummary(preview.ships))
       facts.push(
         preview.harvested
           ? { resources: preview.harvested, label: 'Harvested', debris: true }
@@ -116,7 +111,7 @@ export function reportPreview(
     case 'ContactLost':
       at = preview.target
       if (preview.own_lost_ships)
-        facts.push(`Lost: ${shipsText(preview.own_lost_ships)}`)
+        facts.push(`Lost: ${reportFleetSummary(preview.own_lost_ships)}`)
       if (
         preview.own_cargo_loss &&
         Object.values(preview.own_cargo_loss).some((n) => BigInt(n) > 0n)
@@ -136,13 +131,10 @@ export function reportPreview(
       break
     case 'PlanetAbandoned':
       at = preview.coordinates
-      facts.push('Colony and local assets permanently removed')
       break
     case 'Colonized':
     case 'ColonizationFailed':
       at = preview.destination_coordinates
-      if (preview.kind === 'ColonizationFailed' && preview.reason)
-        facts.push(label(preview.reason))
       break
   }
   return {
@@ -163,6 +155,9 @@ export function reportAge(observedAt: number, now: number): string {
   return minutes < 1 ? 'Just now' : `${formatDuration(minutes * 60000)} ago`
 }
 
+export const reportKindLabel = (kind: string) =>
+  kind === 'Returned' ? 'Fleet Returned' : label(kind)
+
 export function reportListTitle(report: S['ReportHeader4'], viewer?: string) {
   const preview = report.preview
   if (preview?.kind === 'Combat' && preview.outcome) {
@@ -171,7 +166,7 @@ export function reportListTitle(report: S['ReportHeader4'], viewer?: string) {
     )?.side
     return combatOutcome(preview.outcome, side)
   }
-  return { title: label(report.kind), symbol: '', tone: 'neutral' }
+  return { title: reportKindLabel(report.kind), symbol: '', tone: 'neutral' }
 }
 
 /** Names resolve only IDs already exposed by this recipient's historical preview. */

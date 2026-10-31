@@ -1,5 +1,149 @@
 # PR and main test performance audit
 
+## October 31, 2026: independent database groups and eight browser shards
+
+Baseline checkout: `906e18a8d78b49f68f5cd50970407d23f5645551`.
+Sampled completed main runs and the current reports PRs (different revisions,
+not a controlled benchmark):
+
+| Run | Total workflow | Native job | Slowest browser job |
+| --- | ---: | ---: | ---: |
+| [main, 41167688116](https://github.com/unbought-games/orbit-imperium/actions/runs/41167688116) | 17m 07s | 16m 46s, including PostgreSQL | 14m 29s |
+| [main, 41159434654](https://github.com/unbought-games/orbit-imperium/actions/runs/41159434654) | 19m 26s | 5m 28s, PostgreSQL unselected | 19m 04s |
+| [PR #257, 41208029996](https://github.com/unbought-games/orbit-imperium/actions/runs/41208029996) | 19m 38s | 4m 10s, PostgreSQL unselected | 18m 47s |
+| [PR #258, 41207718052](https://github.com/unbought-games/orbit-imperium/actions/runs/41207718052) | 16m 47s | 5m 31s, PostgreSQL unselected | 16m 25s |
+
+The latest main run spent 243s in `make check`, then 661s in PostgreSQL
+preparation/execution. Database compilation took 153s; the `rules_updates`
+binary took 375s and `world_edit` took 249s, both starting late in the
+alphabetical Make queue. The slowest cases were the world-edit round trip
+(95.6s) and battlecruiser activation/restart (78.2s). These exercise persistence,
+real prerequisite chains, replay/audit and both runtime modes; keep that coverage.
+
+Browser tests took 465s, 650s and 787s across three shards on that main run;
+PR #257's third shard reached 1,046s. There is no single dominant browser test:
+main's report-glance case took 50.6s, missile warfare 35.9–37.0s and selection
+audits 26.4–28.4s. Repeated route/bootstrap work across 928 tests dominates.
+Native build/lint/unit checks alone were already below six minutes.
+
+Implemented changes:
+
+- Eight native Playwright shards retain all cases, viewports, assertions and
+  the three-worker-per-host ceiling. This adds five VM setups to shorten the
+  critical path; it trades runner overhead for latency.
+- Three database groups run beside native checks. `rules_updates` and
+  `world_edit` each start independently; the remaining group automatically
+  includes every other binary. Compile only each group's selected binaries.
+- Keep Make's bounded execution, serial tests within each database binary,
+  per-binary disposable databases and group-specific Compose projects.
+- Share the existing trusted-main native dependency cache across Rust jobs,
+  retaining its namespace. Only the native main job writes it.
+- Extend the aggregate gate and executable tooling regressions to check
+  failures/cancellations/skips, exact-once inventory coverage, compilation
+  selection, new database suites and isolated cleanup.
+
+The scheduling changes introduced no execution deadlines, retries, test removal,
+production behavior or explicit-only acceptance changes. Build, lint, client and
+server tests, default/bridge configurations, production homepage checks and
+all relevant PostgreSQL/browser tests remain required.
+
+Hosted validation: [run 41209899129](https://github.com/unbought-games/orbit-imperium/actions/runs/41209899129),
+revision `39f73930597d7b9af0962cbdebddaf5d90f36010`, attempt 1, passed in
+**8m 09s** from workflow creation to completion (14:23:20–14:31:29 UTC).
+The following documentation-only commit records that measured implementation.
+
+| Phase/job | Wall time including setup/cleanup | Execution details |
+| --- | ---: | --- |
+| Native checks | 5m 39s | `make check`: 243s |
+| PostgreSQL rules | 5m 46s | compilation 16.7s; 37 tests 246.9s |
+| PostgreSQL world | 4m 06s | compilation 16.5s; 10 tests 152.5s |
+| PostgreSQL rest | 6m 52s | compilation 159s; 113 tests across bounded parallel binaries |
+| Browser shards | 3m 56s–7m 47s | 116 cases each; fixture preparation/execution 167–381s |
+| Production homepage (inside shard 1) | 27s | build plus 10 browser tests |
+
+All 928 fixture-browser tests, 160 PostgreSQL tests, 623 native Rust tests,
+1,173 client tests and the tooling suite passed. The only tooling skip is the
+existing explicit-only Docker isolation test. All database cleanup steps passed,
+removing their scoped containers, networks and volumes. Browser runners exited
+and lockfiles remained unchanged. Visual validation is not applicable: no UI
+implementation changed.
+
+Local validation passed: full tooling (112 passed, one explicit-only skip,
+9.21s before the cache-policy regression was added), then all 17 targeted
+workflow/database/inventory/policy checks (7.98s) on the final implementation.
+The first exploratory run `41209803481` was intentionally cancelled after
+identifying the job-key cache miss; it is not successful validation evidence.
+
+This is latency optimization with a compute tradeoff: summed job wall time
+increased from 3,159s to 4,492s (about 53 to 75 runner-minutes) in these two
+samples. Per-host variability remains visible; this is not a guarantee about
+queue delays or cold-cache runs. Further reductions in total work should target
+repeated browser bootstraps, with special care for the dev-served hook harness
+and anonymous-landing entry tests. PR integration run `41210620800` then found a HUD pagination race against the
+newly merged shared-reports engine: returning from detail showed 129 rows where
+120 were expected. It is failed validation, despite all other jobs passing.
+Integrated base `fc3f68f3f3b2c8ada60a3e90395fd5c067584ba6` locally to investigate.
+
+A controlled browser regression delivered a queued intersection notification
+after leaving the inbox and reproduced an unwanted page advance at both 390px
+and 1440px. The repair ignores notifications from disconnected observers and
+blocks pagination while the inbox is hidden. Both regressions failed before the
+repair, then passed five repetitions per viewport (10 tests, 11.4s). They also
+verify that later genuine scrolling still loads the next page. The original
+pagination assertions remain unchanged.
+
+The original case passed 30 normal-speed diagnostic repetitions (36.1s).
+A separate sixfold CPU-throttling probe had eight passes and one initial badge
+readiness failure; it was not counted as passing validation or used for timings.
+Final normal-speed verification of the original case plus both regressions
+passed (3 tests, 4.1s), with desktop/mobile screenshots captured and inspected
+in the implementation chat. All 1,183 client tests, lint, formatting and the
+production build passed locally after the repair. Browser runners stopped and
+released their ports. The latest PR checks verify the pushed repair; their
+results are the authoritative readiness evidence.
+
+Run `41211753555` exposed a second delivery window during retry completion:
+100 rows advanced to 130 instead of 120. The observer's latest-callback ref
+could pick up a new render's limit before the old effect cleaned up. Bind the
+observer to a memoized callback for its original page intent, retaining the
+inactive-observer guard. The original case and both controlled regressions then
+passed five repetitions each (15 tests, 16.3s), with current desktop/mobile
+captures refreshed. No pagination assertions were weakened.
+
+Review then identified the hide-before-passive-cleanup window. Observer setup
+and retirement now run in a layout effect, using the already-mounted enclosing
+dialog when its parent ref has not attached yet. The regression also delivers
+notifications through a mutation observer at the DOM-hide boundary. An initial
+local layout-effect attempt failed because the parent ref was not yet attached;
+the ancestor fallback restored native scrolling. All 15 repeated pagination
+cases passed afterward (15.7s), and desktop/mobile captures were refreshed and
+inspected again.
+
+### Merge-queue integration
+
+The verified PR head `f9ae18524d3d66df8d9b36674019a4eb41af9920` passed
+[full CI in 8m50s](https://github.com/unbought-games/orbit-imperium/actions/runs/41213275927),
+including queueing/setup and all 923 fixture-browser cases. Automated review
+passed and the actionable observer-cleanup thread was resolved.
+
+Queue integration with PR #259 exposed overlapping repairs to the same HUD
+pagination hook and tests. Integrating its queued revision
+`7e41993e1ff7638a446179b842909db62bda9d8f` retains its explicitly captured next
+limit and latest-render visibility check, together with this PR's disconnected
+observer guard. This combination closes both delivery windows with the existing
+passive effect; the earlier layout-effect implementation is no longer needed.
+Both sets of regressions are retained. The original pagination case and all
+three regressions passed five repetitions each (20 tests, 17.4s), with refreshed
+and inspected desktop/mobile captures. The new pushed revision must pass PR and
+merge-group checks before merging.
+
+The owner then requested clearing the queue and landing CI optimization first.
+Removed the queued dispatch/navigation feature changes from this PR's tree,
+while retaining the combined HUD fix and all three regressions. PR #259 remains
+open with its feature changes intact; it is not being merged through this PR.
+
+## October 24 audit
+
 Audited October 24, 2026, against checkout
 `42e03e89afd4e2b813837e4c326f21c87c09d0fe`. Recommendations below preserve
 the existing assertions, viewport cases, test selection and isolation.

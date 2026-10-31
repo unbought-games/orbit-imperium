@@ -931,6 +931,11 @@ test('blocked quotes cannot purchase and details remain usable with reduced moti
 test('legacy resource catalogs retain cancellation and refresh the open upgrade after completion', async ({
   page,
 }) => {
+  const activate = async (control: ReturnType<Page['getByRole']>) => {
+    await expect(control).toBeVisible()
+    await expect(control).toBeEnabled()
+    await control.click()
+  }
   const constructions: components['schemas']['Construction3'][] = []
   const planet = structuredClone(body)
   await shellFixture(page, { protocol: 2, constructions, bodies: [planet] })
@@ -1000,42 +1005,54 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   await expect(
     page.getByRole('button', { name: 'Resource settings', exact: true }),
   ).toHaveCount(0)
-  await page
-    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
-    .click()
+  await activate(
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
+  )
   await expect(
     page.getByRole('region', { name: 'Upgrade quote' }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await activate(page.getByRole('button', { name: 'Retry', exact: true }))
   await expect(
     page.getByRole('button', { name: 'Confirm upgrade', exact: true }),
   ).toBeVisible()
-  await page.getByRole('link', { name: 'Back to Resources', exact: true }).click()
+  await activate(
+    page.getByRole('link', { name: 'Back to Resources', exact: true }),
+  )
   await expect(
     page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   ).toBeFocused()
-  await page
-    .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
-    .click()
-  await page
-    .getByRole('button', { name: 'Confirm upgrade', exact: true })
-    .click()
+  await activate(
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
+  )
+  await activate(
+    page.getByRole('button', { name: 'Confirm upgrade', exact: true }),
+  )
   await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
-  await page.getByRole('link', { name: 'Back to Resources', exact: true }).click()
-  await expect(page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true })).toBeEnabled()
-  await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
+  await activate(
+    page.getByRole('link', { name: 'Back to Resources', exact: true }),
+  )
+  await expect(
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
+  ).toBeEnabled()
+  await activate(
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
+  )
   releaseUpgrade()
   await expect(
     page.getByRole('region', { name: 'Active construction' }),
   ).toBeVisible()
-  await page.getByRole('link', { name: 'Back to Resources', exact: true }).click()
+  await activate(
+    page.getByRole('link', { name: 'Back to Resources', exact: true }),
+  )
   await expect(
     page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   ).toBeEnabled()
   await expect(
     page.getByRole('link', { name: 'Upgrade Fusion Reactor', exact: true }),
   ).toHaveAttribute('title', 'Fusion Reactor · unavailable in this universe')
-  await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
+  await activate(
+    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
+  )
   expect(sent[0].command).toMatchObject({
     type: 'StartUpgrade',
     body: body.id,
@@ -1045,10 +1062,11 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   await expect(
     page.getByRole('region', { name: 'Upgrade quote' }),
   ).toBeVisible()
-  await page
-    .getByRole('region', { name: 'Upgrade quote' })
-    .getByRole('button', { name: 'Cancel construction', exact: true })
-    .click()
+  await activate(
+    page
+      .getByRole('region', { name: 'Upgrade quote' })
+      .getByRole('button', { name: 'Cancel construction', exact: true }),
+  )
   await confirmCancellation(page)
   await expect(
     page.getByRole('region', { name: 'Active construction' }),
@@ -1058,9 +1076,9 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
     operation: '00000000-0000-4000-8000-000000000010',
   })
   const pane = page.getByRole('region', { name: 'Upgrade quote' })
-  await pane
-    .getByRole('button', { name: 'Confirm upgrade', exact: true })
-    .click()
+  await activate(
+    pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
+  )
   await expect(
     pane.getByRole('region', { name: 'Active construction' }),
   ).toBeVisible()
@@ -1070,9 +1088,9 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   await expect(
     pane.getByRole('heading', { name: 'Upgrade to level 3', exact: true }),
   ).toBeVisible()
-  await pane
-    .getByRole('button', { name: 'Confirm upgrade', exact: true })
-    .click()
+  await activate(
+    pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
+  )
   await expect.poll(() => sent.length).toBe(4)
   expect(sent[3].command).toMatchObject({
     type: 'StartUpgrade',

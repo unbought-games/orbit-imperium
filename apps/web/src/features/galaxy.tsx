@@ -243,12 +243,21 @@ export function Galaxy({
                 <GalaxyPosition
                   position={position}
                   missileAction={
-                    <MissileLaunchAction
-                      key={`${origin}:${position.body?.id}:${position.body?.owner}`}
-                      model={model}
-                      origin={origin}
-                      position={position}
-                    />
+                    position.body &&
+                    position.body.owner !== model.binding?.player &&
+                    model.view?.capabilities.some(
+                      (c) => c.capability === 'Missiles' && c.enabled,
+                    )
+                      ? (presentation) => (
+                          <MissileLaunchAction
+                            key={`${origin}:${position.body?.id}:${position.body?.owner}`}
+                            model={model}
+                            origin={origin}
+                            position={position}
+                            {...presentation}
+                          />
+                        )
+                      : undefined
                   }
                   playerNames={data.player_names}
                   playerIdentity={
