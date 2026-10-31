@@ -14,7 +14,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
   const items: components['schemas']['ReportHeader4'][] = [
     { id: id(70), kind: 'Returned', observed_at: now - 120000, read: false, hidden: false, preview: { kind: 'Returned', origin_coordinates: { galaxy: 1, system: 1, position: 5 }, ships: [{ ship_type: 'EspionageProbe', count: '1' }], cargo: { metal: '0', crystal: '0', deuterium: '0' } } },
     { id: id(71), kind: 'Espionage', observed_at: now - 134000, read: false, hidden: false, preview: { kind: 'Espionage', target: { body: id(80), owner: id(9), kind: 'Planet', name: 'Nova Roma', coordinates: { galaxy: 1, system: 1, position: 3 } }, resources: { visibility: 'Known', value: { metal: '125000000000', crystal: '80000000000', deuterium: '12000000000' } }, fleet: { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '3' }] }, defenses: { visibility: 'Unknown' } } },
-    { id: id(72), kind: 'Combat', observed_at: now - 600000, read: true, hidden: false, preview: { kind: 'Combat', target_name: 'Luna', target_kind: 'Moon', target: { galaxy: 1, system: 2, position: 7 }, outcome: 'AttackerVictory', participants: [{ owner: binding.player, side: 'Attacker' }, { owner: id(9), side: 'Defender' }], loot: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
+    { id: id(72), kind: 'Combat', observed_at: now - 600000, read: true, hidden: false, preview: { kind: 'Combat', target_name: 'Luna', target_kind: 'Moon', target: { galaxy: 1, system: 2, position: 7 }, outcome: 'AttackerVictory', participants: [{ owner: binding.player, side: 'Attacker' }, { owner: id(9), side: 'Defender' }], debris: { metal: '5400000000', crystal: '1800000000', deuterium: '0' }, loot: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
     { id: id(73), kind: 'Returned', observed_at: now - 900000, read: true, hidden: false, preview: { kind: 'Returned', origin_coordinates: { galaxy: 1, system: 1, position: 5 }, ships: [{ ship_type: 'LightFighter', count: '90' }, { ship_type: 'SmallCargo', count: '15' }], cargo: { metal: '40000000000', crystal: '20000000000', deuterium: '5000000000' } } },
     { id: id(74), kind: 'Delivered', observed_at: now - 1800000, read: true, hidden: false, preview: { kind: 'Delivered', origin: { galaxy: 1, system: 2, position: 8 }, origin_name: 'Nova Roma Historical Homeworld', target_name: 'Very Long Destination Colony Name', target: { galaxy: 1, system: 1, position: 3 }, cargo: { metal: '1000000000', crystal: '2000000000', deuterium: '3000000000' } } },
   ]
@@ -88,7 +88,11 @@ test('report glances expose historical mission facts in compact rows on desktop 
   await expect(rows.nth(2).locator('strong')).toHaveText('Combat')
   await expect(rows.nth(2).getByText('✓ Victory')).toBeVisible()
   await expect(rows.nth(2)).toContainText('Loot:')
-  await expect(rows.nth(2).getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('40,000')
+  const debris = rows.nth(2).getByText('Debris:', { exact: true }).locator('..')
+  await expect(debris.getByRole('img', { name: 'deuterium', exact: true })).toHaveCount(0)
+  await expect(debris.getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('5,400')
+  await expect(rows.nth(2).getByRole('img', { name: 'deuterium', exact: true })).toHaveCount(1)
+  await expect(rows.nth(2).getByRole('img', { name: 'metal', exact: true }).first().locator('..')).toContainText('40,000')
   await expect(rows.first().getByLabel('Unread', { exact: true })).toBeVisible()
   await expect(rows.nth(2).getByLabel('Unread', { exact: true })).toHaveCount(0)
   const remove = rows.first().getByRole('button', { name: 'Archive report', exact: true })

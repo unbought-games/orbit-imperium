@@ -1,3 +1,4 @@
+import { debrisResourceKinds, resourceKinds } from './debris-resources'
 import { AbandonmentLosses } from './abandonment-losses'
 import type { components } from '../contracts'
 import { HistoricalAlliances, type PlayerAlliances } from './player-alliance'
@@ -35,7 +36,13 @@ const record = (v: unknown): RecordValue =>
 const text = (v: unknown) =>
   typeof v === 'string' || typeof v === 'number' ? String(v) : 'Unknown'
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
-function Resources({ value }: { value: unknown }) {
+function Resources({
+  value,
+  debris = false,
+}: {
+  value: unknown
+  debris?: boolean
+}) {
   const r = record(value)
   return (
     <div
@@ -43,18 +50,20 @@ function Resources({ value }: { value: unknown }) {
       role="group"
       aria-label="Resource amounts"
     >
-      {(['metal', 'crystal', 'deuterium'] as const).map((resource) => (
-        <ResourceQuantity
-          key={resource}
-          resource={resource}
-          value={
-            typeof r[resource] === 'string' &&
-            /^(0|[1-9][0-9]*)$/.test(r[resource])
-              ? r[resource]
-              : null
-          }
-        />
-      ))}
+      {(debris ? debrisResourceKinds(r.deuterium) : resourceKinds).map(
+        (resource) => (
+          <ResourceQuantity
+            key={resource}
+            resource={resource}
+            value={
+              typeof r[resource] === 'string' &&
+              /^(0|[1-9][0-9]*)$/.test(r[resource])
+                ? r[resource]
+                : null
+            }
+          />
+        ),
+      )}
     </div>
   )
 }
@@ -549,7 +558,7 @@ function ReportObservationContent({
           <>
             <Heading level={3}>Harvested resources</Heading>
             {payload.harvested ? (
-              <Resources value={payload.harvested} />
+              <Resources value={payload.harvested} debris />
             ) : (
               <Text>
                 Harvested amount unavailable. This older report recorded only

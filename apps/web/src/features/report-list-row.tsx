@@ -1,3 +1,4 @@
+import { debrisResourceKinds, resourceKinds } from './debris-resources'
 import { usePlayerDisplays } from '../shell/player-profiles-context'
 import { reportMetric, type ReportSort } from './report-triage'
 import { CoordinateLink } from './coordinate-link'
@@ -146,25 +147,26 @@ export function ReportListRow({
                 ) : (
                   <>
                     {fact.label && <span>{fact.label}:</span>}
-                    {(['metal', 'crystal', 'deuterium'] as const).map(
-                      (resource) => (
-                        <span
-                          key={resource}
-                          className={styles.resourceValue}
-                          title={label(resource)}
-                        >
-                          <ResourceMark
-                            resource={resource}
-                            width={16}
-                            height={16}
-                            aria-hidden={false}
-                            role="img"
-                            aria-label={label(resource)}
-                          />
-                          <ResourceNumber value={fact.resources[resource]} />
-                        </span>
-                      ),
-                    )}
+                    {(fact.debris
+                      ? debrisResourceKinds(fact.resources.deuterium)
+                      : resourceKinds
+                    ).map((resource) => (
+                      <span
+                        key={resource}
+                        className={styles.resourceValue}
+                        title={label(resource)}
+                      >
+                        <ResourceMark
+                          resource={resource}
+                          width={16}
+                          height={16}
+                          aria-hidden={false}
+                          role="img"
+                          aria-label={label(resource)}
+                        />
+                        <ResourceNumber value={fact.resources[resource]} />
+                      </span>
+                    ))}
                   </>
                 )}
               </span>

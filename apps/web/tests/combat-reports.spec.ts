@@ -250,6 +250,8 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
     if (size === 'deuterium') {
       await expect(page.getByRole('button', { name: 'Prepare harvest', exact: true })).toBeVisible()
     }
+    const debris = report.getByRole('heading', { name: 'Debris created', exact: true }).locator('..')
+    await expect(debris.getByRole('img', { name: 'Deuterium', exact: true })).toHaveCount(size === 'deuterium' ? 1 : 0)
     const identity = report.locator('header').first().locator('p').first()
     const targetName = size === 'legacy' ? '' : huge ? 'VeryLongUnbrokenPlanetNameForMobileWrapping · ' : size === 'defender' ? 'Nova Roma (Moon) · ' : 'Nova Roma · '
     await expect(identity).toContainText(`${targetName}[1:372:10]`)

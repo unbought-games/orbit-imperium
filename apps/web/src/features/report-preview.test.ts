@@ -249,7 +249,7 @@ it('shows only newly harvested resources, including a recorded zero harvest', ()
     ).toEqual({
       location: '[1:2:3]',
       coordinates: { galaxy: 1, system: 2, position: 3 },
-      facts: [{ resources: harvested, label: 'Harvested' }],
+      facts: [{ resources: harvested, label: 'Harvested', debris: true }],
     })
   }
 })
