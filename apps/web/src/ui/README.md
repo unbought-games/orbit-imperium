@@ -56,6 +56,42 @@ patterns unless the user provides guidance to do so.
   explain a change of state; keep it interruptible and respect reduced motion.
   Do not animate layout in a way that moves a focused control or blocks interaction.
 
+## Reusable components and composition
+
+When contexts differ slightly, keep the shared behavior and visual pattern in
+one component and compose the differing parts at the call site. Use explicit
+variants for appearance and children or named slots for content. Avoid copying a
+component or accumulating flags tied to individual screens.
+
+Follow [Base UI's composition guide](https://base-ui.com/react/handbook/composition)
+when a behavior needs a custom control or underlying element:
+
+- Use the `render` prop to compose a Base UI part with an existing shared control.
+  For example, inside a `Menu.Root`:
+
+  ```tsx
+  <Menu.Trigger render={<Button variant="ghost" type="button" />}>
+    Actions
+  </Menu.Trigger>
+  ```
+
+- Custom controls must pass the ref and all received DOM props to the underlying
+  element, preserving handlers, accessibility attributes, and native semantics.
+- Compose compatible behaviors through nested `render` props on one element;
+  do not nest interactive elements such as buttons inside buttons.
+- Element composition merges classes, styles, handlers, and refs. Render-element
+  values win conflicting styles and ordinary attributes; its handlers run first.
+  Configure behavioral props such as `disabled` on each part that needs them.
+- Use a render function when content depends on the part's state, and spread its
+  supplied props onto the returned element. Preserve refs when merging manually:
+  `mergeProps` alone retains only the last ref.
+- Change the underlying element only when its semantics fit the context; retain
+  heading hierarchy, keyboard behavior, and accessible names.
+
+For our own reusable APIs, expose composition where a real context needs it.
+Keep game logic in hooks and pure functions, and test composed focus, activation,
+and disabled behavior when changing those interactions.
+
 ## Visual review
 
 Inspect the actual rendered screen before and after a visual change. Exercise the
