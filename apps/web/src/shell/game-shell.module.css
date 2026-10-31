@@ -1,7 +1,5 @@
 .game-shell {
-  --shell-max-width: 1800px;
   --shell-sidebar-width: 224px;
-  --shell-inline-gutter: clamp(18px, 2.5vw, 48px);
   max-width: var(--shell-max-width);
   min-height: 100dvh;
   margin: auto;
@@ -257,6 +255,13 @@
 .headerSlots {
   margin-inline-start: auto;
   flex-shrink: 0;
+}
+
+/* Give the desktop orb its own space beside the scrolling content. */
+@media (min-width: 1440px) {
+  .game-shell[data-has-command-hud] {
+    padding-right: calc(var(--shell-inline-gutter) + 128px);
+  }
 }
 
 @media (min-width: 768px) {

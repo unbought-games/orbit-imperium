@@ -1,4 +1,7 @@
 :root {
+  /* Shared with the command HUD, which is portaled outside the game shell. */
+  --shell-max-width: 1800px;
+  --shell-inline-gutter: clamp(18px, 2.5vw, 48px);
   --font-editorial: Georgia, 'Times New Roman', serif;
   /* Champagne + ice: shared with the orbital crest SVG sources. */
   --champagne-light: #f4ead2;
@@ -22,7 +25,6 @@
   --surface-selected: #273b4e;
   --surface-glow: var(--navy-light);
   --surface-backdrop: #060e1bcc;
-  --surface-navigation: #0b1d28;
   --surface-navigation-hover: #142b37;
   --surface-navigation-selected: #172f3c;
   --border-navigation: #29404d;
