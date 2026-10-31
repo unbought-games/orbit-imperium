@@ -73,7 +73,7 @@
   font-weight: 500;
 }
 .table th:first-child {
-  width: 4rem;
+  width: 6.5rem;
 }
 .table th:last-child {
   width: 8rem;
@@ -87,6 +87,10 @@
 }
 .rank {
   color: var(--champagne-light);
+  white-space: nowrap;
+}
+.rank .movement {
+  display: inline;
 }
 .player {
   max-width: 100%;
@@ -161,9 +165,6 @@
   .points {
     font-size: 0.8125rem;
     white-space: nowrap;
-  }
-  .table th:first-child {
-    width: 3.5rem;
   }
   .table th:last-child {
     width: 6.75rem;
