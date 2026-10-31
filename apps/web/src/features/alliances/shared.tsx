@@ -6,11 +6,22 @@ import { Button } from '../../ui/button'
 import { allianceMarkdown } from './markdown'
 import styles from './alliances.module.css'
 export type Run = (action: AllianceAction) => Promise<boolean>
-export function Markdown({ text }: { text: string }) {
+export function Markdown({
+  text,
+  compact = false,
+}: {
+  text: string
+  compact?: boolean
+}) {
   // Game clock updates must not replace unchanged notice DOM: that disrupts
   // browser scrolling, text selection and focused links while reading.
   const markup = useMemo(() => ({ __html: allianceMarkdown(text) }), [text])
-  return <div className={styles.markdown} dangerouslySetInnerHTML={markup} />
+  return (
+    <div
+      className={`${styles.markdown} ${compact ? styles.compactMarkdown : ''}`}
+      dangerouslySetInnerHTML={markup}
+    />
+  )
 }
 export function Summary({
   summary,

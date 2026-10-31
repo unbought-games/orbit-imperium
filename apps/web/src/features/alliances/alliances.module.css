@@ -147,6 +147,9 @@
 .markdown > :first-child {
   margin-top: 0;
 }
+.compactMarkdown > :last-child {
+  margin-bottom: 0;
+}
 .markdown pre {
   white-space: pre-wrap;
   word-break: break-word;
