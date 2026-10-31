@@ -1,3 +1,4 @@
+import bulkSnapshot from '../../../../contracts/fixtures/progression-options-bulk.json'
 import { afterEach, expect, it, vi } from 'vitest'
 import { gamePort } from './http'
 import { readyFixture } from '../test-support/bootstrap'
@@ -42,9 +43,12 @@ function fixture(mutate = (options: BoundProgressionOptions[]) => options) {
     const options = mutate(
       (requests ?? [request]).map((r: QuoteRequest) => option(context, r)),
     )
-    return new Response(JSON.stringify(requests ? { options } : options[0]), {
-      status: 200,
-    })
+    return new Response(
+      JSON.stringify(requests ? { options, sampled_at: 1000 } : options[0]),
+      {
+        status: 200,
+      },
+    )
   })
   vi.stubGlobal('fetch', fetch)
   return {
@@ -144,3 +148,41 @@ it('fails the whole batch on network error and allows a fresh retry', async () =
   expect(await read(context, upgrade)).toMatchObject({ request: upgrade })
   expect(fetch).toHaveBeenCalledTimes(2)
 })
+
+for (const protocol of [3, 4] as const) {
+  it.each([false, true])(
+    `reads the real v${protocol} HTTP snapshot with progress metadata=%s`,
+    async (metadata) => {
+      const response = structuredClone(bulkSnapshot)
+      response.options.forEach((option) => {
+        option.protocol = protocol
+      })
+      const { progress, ...legacy } = response
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(JSON.stringify(metadata ? response : legacy)),
+        ),
+      )
+      const read = gamePort(session.csrf, {
+        protocol,
+        binding: response.options[0].binding,
+      }).progressionOptions!
+      const results = await Promise.all(
+        response.options.map((item) =>
+          read(
+            { binding: item.binding, request_id: item.request_id },
+            item.request as QuoteRequest,
+          ),
+        ),
+      )
+      expect(results).toHaveLength(2)
+      for (const item of results) {
+        expect(item.sampled_at).toBe(2000)
+        expect(item.as_of_ms).toBe(1000)
+        expect(item.progress).toEqual(metadata ? progress : undefined)
+      }
+    },
+  )
+}

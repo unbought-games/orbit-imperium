@@ -19981,7 +19981,8 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "options"
+          "options",
+          "sampled_at"
         ],
         "properties": {
           "options": {
@@ -19991,6 +19992,14 @@
             "items": {
               "$ref": "#/components/schemas/GameProgressionOptions"
             }
+          },
+          "sampled_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SnapshotProgress"
           }
         }
       }

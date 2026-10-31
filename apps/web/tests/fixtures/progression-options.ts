@@ -93,7 +93,9 @@ export async function routeProgressionOptions(
         as_of_ms: options[0]?.as_of_ms,
       }))
       return route.fulfill({
-        json: payload.requests ? { options: snapshot } : options[0],
+        json: payload.requests
+          ? { options: snapshot, sampled_at: snapshot[0]?.sampled_at }
+          : options[0],
       })
     })
   }

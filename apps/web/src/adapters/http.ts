@@ -169,7 +169,11 @@ export function gamePort(
           csrf,
         ),
       )
-      return result.options
+      return result.options.map((option) => ({
+        ...option,
+        sampled_at: result.sampled_at,
+        ...(result.progress ? { progress: result.progress } : {}),
+      }))
     },
   )
   return {

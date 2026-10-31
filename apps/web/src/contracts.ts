@@ -8265,6 +8265,8 @@ export interface components {
         };
         BoundProgressionOptionsBatch: {
             options: components["schemas"]["GameProgressionOptions"][];
+            sampled_at: number;
+            progress?: components["schemas"]["SnapshotProgress"];
         };
     };
     responses: never;

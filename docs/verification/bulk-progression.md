@@ -116,3 +116,28 @@ were not run.
 
 Final browser results: `test-results/bulk-progression-browser-results.json`. The
 source manifest was rechecked after validation with no source-file changes.
+
+## PR review repair
+
+Review comment 4432943248 identified missing HTTP snapshot metadata in the bulk
+contract. The HTTP wrapper always adds a top-level `sampled_at` and optionally
+adds `progress`. The schema now declares both, and the adapter carries the shared
+observation timestamp and optional progress into each returned inspection. The
+browser fixture uses the real envelope. A shared JSON contract fixture is checked
+against the actual Rust HTTP serializer for both protocols and with/without
+metadata, and consumed by client transport tests.
+
+Tested source: commit `699d52e74de09a6333ccf35ad3be84f6ac34ffcb` plus this repair.
+Manifest: `test-results/bulk-progression-review-source-manifest.json`, 1206
+files, SHA-256 `545b6736f972cd86142b746dedecf5e39cccf4cac7c36cc259dfdff38e9b3031`.
+
+- Focused HTTP adapter/coordinator tests: 70 passed in 0.552 s.
+- HTTP server tests: 53 passed in 24.093 s; nextest reported one leaky test process
+  while returning success. Bridge tests: 42 passed in 1.031 s; storage unit tests:
+  7 passed in 0.036 s.
+- Catalog request-count and desktop/mobile capture tests: 10 passed in 11.1 s;
+  module preparation 7.319 s. All captures refreshed and inspected.
+- TypeScript, contract compilation/generated-type drift, ESLint, Rust formatting,
+  and Clippy passed. Clippy took 6.80 s.
+- Browser/Vite processes were closed by the test runner; no database or additional
+  persistent service was started for this repair.

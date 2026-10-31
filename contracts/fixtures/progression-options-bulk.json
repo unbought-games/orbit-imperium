@@ -1,0 +1,56 @@
+{
+  "options": [
+    {
+      "protocol": 4,
+      "binding": {
+        "account": "00000000-0000-4000-8000-000000000001",
+        "player": "00000000-0000-4000-8000-000000000002",
+        "universe": "00000000-0000-4000-8000-000000000003",
+        "epoch": "00000000-0000-4000-8000-000000000004"
+      },
+      "request_id": "00000000-0000-4000-8000-000000000010",
+      "viewer_revision": "1",
+      "sampled_at": 1000,
+      "as_of_ms": 1000,
+      "request": {
+        "type": "Upgrade",
+        "body": "00000000-0000-4000-8000-000000000040",
+        "building": "MetalMine"
+      },
+      "terms": null,
+      "terms_hash": null,
+      "blockers": [],
+      "estimates": null
+    },
+    {
+      "protocol": 4,
+      "binding": {
+        "account": "00000000-0000-4000-8000-000000000001",
+        "player": "00000000-0000-4000-8000-000000000002",
+        "universe": "00000000-0000-4000-8000-000000000003",
+        "epoch": "00000000-0000-4000-8000-000000000004"
+      },
+      "request_id": "00000000-0000-4000-8000-000000000010",
+      "viewer_revision": "1",
+      "sampled_at": 1000,
+      "as_of_ms": 1000,
+      "request": {
+        "type": "Upgrade",
+        "body": "00000000-0000-4000-8000-000000000040",
+        "building": "CrystalMine"
+      },
+      "terms": null,
+      "terms_hash": null,
+      "blockers": [],
+      "estimates": null
+    }
+  ],
+  "sampled_at": 2000,
+  "progress": {
+    "sampled_at": 2000,
+    "scopes": [],
+    "minimum_revision_pending": false,
+    "projection_limit": null,
+    "command_references": true
+  }
+}
