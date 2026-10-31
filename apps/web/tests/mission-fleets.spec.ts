@@ -438,12 +438,12 @@ for (const screen of ['fleets', 'overview'] as const) {
       await page.goBack()
       await expect(page).toHaveURL(path)
       await expect(row).toBeVisible()
-      // The shell restores heading focus and scroll in a paint callback after
-      // history navigation. Finish that callback before positioning the mouse.
+      // Verify history focus, then move focus into the row before the pointer
+      // gesture. This keeps a deferred heading-reveal callback from scrolling
+      // the target away between hover and mouse-down on a busy runner.
       await expect(page.locator('main h1')).toBeFocused()
-      await page.evaluate(() => new Promise<void>(resolve =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ))
+      await link.focus()
+      await expect(link).toBeFocused()
       await row.evaluate((el) =>
         window.scrollBy(0, el.getBoundingClientRect().top - 80),
       )
