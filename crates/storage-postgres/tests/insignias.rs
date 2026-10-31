@@ -133,6 +133,17 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
     let (status, initial) = call(&app, b, &login, true, "insignias", load).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(initial["catalog"].as_array().unwrap().len(), 4);
+    assert!(initial["appearance"].is_null());
+    let (_, unequipped) = call(
+        &app,
+        b,
+        &login,
+        true,
+        "player-profiles",
+        json!({"source":{"type":"SelfAccount"}}),
+    )
+    .await;
+    assert!(unequipped["players"][0].get("insignia").is_none());
     assert!(
         initial["catalog"]
             .as_array()
@@ -226,6 +237,41 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         .await
         .0,
         StatusCode::NOT_FOUND
+    );
+    let (status, removed) = call(
+        &app,
+        b,
+        &login,
+        true,
+        "insignias",
+        json!({"action":{"type":"Equip","design_id":null}}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(removed["appearance"].is_null());
+    assert_eq!(removed["library"]["designs"].as_array().unwrap().len(), 1);
+    let (_, unequipped) = call(
+        &app,
+        b,
+        &login,
+        true,
+        "player-profiles",
+        json!({"source":{"type":"SelfAccount"}}),
+    )
+    .await;
+    assert!(unequipped["players"][0].get("insignia").is_none());
+    assert_eq!(
+        call(
+            &app,
+            b,
+            &login,
+            true,
+            "insignias",
+            json!({"action":{"type":"Equip","design_id":design.id}})
+        )
+        .await
+        .0,
+        StatusCode::OK
     );
     let fresh = PgStore::connect(&url).await.unwrap();
     let library = fresh.insignia_library(b).await.unwrap();

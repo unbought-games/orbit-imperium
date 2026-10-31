@@ -2,10 +2,12 @@ import {
   cloneElement,
   type ComponentPropsWithRef,
   type ReactElement,
+  type Ref,
 } from 'react'
 import { Button } from './button'
 import { useState, type ReactNode } from 'react'
 import {
+  useMergeRefs,
   autoUpdate,
   flip,
   offset,
@@ -32,11 +34,17 @@ export function Popover({
   children,
   className,
   link,
+  surfaceClassName,
+  showTitle = true,
+  triggerRef,
 }: {
   label: string
   trigger: ReactNode
   children: ReactNode
   className?: string
+  triggerRef?: Ref<HTMLButtonElement>
+  surfaceClassName?: string
+  showTitle?: boolean
   link?: ReactElement<ComponentPropsWithRef<'a'>>
 }) {
   const [open, setOpen] = useState(false)
@@ -47,6 +55,7 @@ export function Popover({
     middleware: [offset(8), flip(), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
   })
+  const referenceRef = useMergeRefs([refs.setReference, triggerRef])
   const hover = useHover(context, {
     mouseOnly: true,
     delay: { open: 150 },
@@ -80,7 +89,7 @@ export function Popover({
         <Button
           variant="ghost"
           type="button"
-          ref={refs.setReference}
+          ref={referenceRef}
           className={className}
           {...getReferenceProps({
             'aria-label': `${label} details`,
@@ -105,7 +114,9 @@ export function Popover({
             <div
               ref={refs.setFloating}
               style={floatingStyles}
-              className={styles.popover}
+              className={[styles.popover, surfaceClassName]
+                .filter(Boolean)
+                .join(' ')}
               {...getFloatingProps({
                 'aria-label': label,
                 onClick: (event) => {
@@ -123,7 +134,7 @@ export function Popover({
                 },
               })}
             >
-              <strong className={styles.title}>{label}</strong>
+              {showTitle && <strong className={styles.title}>{label}</strong>}
               {children}
             </div>
           </FloatingFocusManager>

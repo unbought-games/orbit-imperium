@@ -264,7 +264,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
         .filter({ has: page.locator('summary', { hasText: /^Round/ }) }),
     ).toHaveCount(n)
     await expect(
-      report.getByRole('heading', { name: 'Vega', exact: true }),
+      report.getByRole('heading', { name: 'Vega profile details', exact: true }),
     ).toBeVisible()
     await page.evaluate(() => document.fonts.ready)
     expect(
@@ -372,7 +372,10 @@ test.describe('explosion counter explanation', () => {
     await expect(popup).toBeHidden()
     await page.mouse.move(0, 0)
     await round.locator('summary').focus()
-    await page.keyboard.press('Tab')
+    // Player dossiers add focusable identities before the combat counters.
+    for (let i = 0; i < 12 && !(await trigger.evaluate(el => el === document.activeElement)); i++) {
+      await page.keyboard.press('Tab')
+    }
     await expect(trigger).toBeFocused()
     await expect(popup).toBeVisible()
     await diagnosticScreenshot(page, { path: 'test-results/combat-explosion-keyboard.png' })

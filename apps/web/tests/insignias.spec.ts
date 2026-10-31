@@ -17,6 +17,8 @@ const fallback = {
   foreground: '#cbb68d',
   background: '#152b40',
 }
+test.use({ hasTouch: true })
+
 type Design = components['schemas']['InsigniaDesign']
 async function fixture(page: Page) {
   await shellFixture(page, {
@@ -58,6 +60,7 @@ async function fixture(page: Page) {
     (state.supporter && !state.unknown)
   const appearance = () => {
     const selected = state.designs.find((d) => d.id === state.equipped)?.recipe
+    if (!selected) return null
     const recipe = selected && available(selected.symbol) ? selected : fallback
     return {
       recipe,
@@ -65,7 +68,11 @@ async function fixture(page: Page) {
     }
   }
   await playerProfilesFixture(page, () => [
-    { player: binding.player, username: 'Aurelia', insignia: appearance() },
+    {
+      player: binding.player,
+      username: 'Aurelia',
+      insignia: appearance() ?? undefined,
+    },
   ])
   await page.route('**/insignias', async (route) => {
     if (state.fail)
@@ -190,7 +197,7 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(page, {
       path: `test-results/insignia-permanent-${width}x1000.png`,
     })
-    expect(appearance().recipe.symbol).toBe('laurel')
+    expect(appearance()?.recipe.symbol).toBe('laurel')
     await page.route('**/world', (route) => {
       const q = route.request().postDataJSON()
       return route.fulfill({
@@ -288,9 +295,9 @@ for (const width of [1440, 390]) {
         panel.getByLabel('Saved designs').locator('option:checked'),
       ).toHaveText(`${name} · Equipped`)
     }
-    await panel.getByRole('button', { name: 'Use default insignia' }).click()
+    await panel.getByRole('button', { name: 'Remove insignia' }).click()
     await expect(
-      panel.getByRole('button', { name: 'Use default insignia' }),
+      panel.getByRole('button', { name: 'Remove insignia' }),
     ).toHaveCount(0)
     await page.reload()
     await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
@@ -298,6 +305,8 @@ for (const width of [1440, 390]) {
     )
     await expect(panel).not.toContainText('Your collection starts here')
     expect(state.equipped).toBeNull()
+    await expect(panel.getByLabel('Current empire insignia')).toHaveCount(0)
+    await expect(panel).toContainText('No insignia equipped.')
     await panel.evaluate((el) =>
       window.scrollBy(0, el.getBoundingClientRect().top - 72),
     )
@@ -316,11 +325,149 @@ for (const width of [1440, 390]) {
     await expect(panel).not.toContainText('Your collection starts here')
     expect(state.designs).toHaveLength(1)
     expect(state.equipped).toBeNull()
+    await expect(panel.getByLabel('Current empire insignia')).toHaveCount(0)
+    await expect(panel).toContainText('No insignia equipped.')
     await panel.evaluate((el) =>
       window.scrollBy(0, el.getBoundingClientRect().top - 72),
     )
     await diagnosticScreenshot(page, {
       path: `test-results/insignia-library-after-delete-${width}x1000.png`,
     })
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`player dossier opens by hover, keyboard and tap at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { state, appearance } = await fixture(page)
+    const peer = '00000000-0000-4000-8000-000000000031'
+    const alliance = {
+      id: '00000000-0000-4000-8000-000000000090',
+      universe: binding.universe,
+      name: 'The Astral Accord',
+      tag: 'ASTRA',
+    }
+    state.designs = [
+      {
+        id: peer,
+        name: 'Starwing',
+        recipe: {
+          ...fallback,
+          symbol: 'wings',
+          foreground: '#e3bd80',
+          background: '#152b40',
+        },
+        revision: 1,
+      },
+    ]
+    state.equipped = peer
+    await playerProfilesFixture(page, () => [
+      {
+        player: peer,
+        username: 'Arcanis',
+        kind: 'bot',
+        alliance,
+        insignia: appearance()!,
+      },
+      { player: binding.player, username: 'Aurelia' },
+    ])
+    await page.route('**/world', (route) => {
+      const q = route.request().postDataJSON()
+      return route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          request_id: q.context.request_id,
+          viewer_revision: '1',
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
+          data: {
+            galaxy: 1,
+            system: 371,
+            observed_at: Date.now(),
+            positions: Array.from({ length: 15 }, (_, i) => ({
+              coordinates: { galaxy: 1, system: 371, position: i + 1 },
+              body:
+                i < 2
+                  ? {
+                      id: i === 0 ? peer : body.id,
+                      kind: 'Planet',
+                      owner: i === 0 ? peer : binding.player,
+                      name: i === 0 ? 'Vesper' : 'Aurelia Prime',
+                      activity: i === 0 ? { type: 'Recent' } : { type: 'None' },
+                      inactivity: 'Active',
+                      vacation: false,
+                      espionage_eligible: true,
+                    }
+                  : null,
+              debris: null,
+            })),
+          },
+        },
+      })
+    })
+    await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
+    const trigger = page.getByRole('button', {
+      name: 'Arcanis profile details',
+    })
+    const popup = page.getByRole('dialog', { name: 'Arcanis profile' })
+    await expect(trigger.getByText('[ASTRA]')).toBeVisible()
+    await expect(trigger.locator('[style*="--insignia-mask"]')).toHaveCount(1)
+    await expect(trigger.locator('button, a')).toHaveCount(0)
+    await expect(page.locator('[data-message-player]')).toHaveCount(0)
+    const activity = page.getByRole('button', {
+      name: 'Activity within the last 15 minutes',
+    })
+    await expect(activity.locator('..')).toContainText('Vesper')
+    await expect(trigger).not.toContainText('●')
+    await diagnosticScreenshot(page, {
+      path: `test-results/profile-galaxy-${width}x1000.png`,
+    })
+    if (width === 1440) await trigger.hover()
+    else await trigger.tap()
+    await expect(popup).toBeVisible()
+    await expect(popup).toContainText('Automated player')
+    await expect(
+      popup.getByRole('link', { name: 'Alliance The Astral Accord [ASTRA]' }),
+    ).toHaveAttribute('href', `/alliances/${binding.universe}/${alliance.id}`)
+    await expect(
+      popup.getByRole('link', { name: 'Message Arcanis' }),
+    ).toHaveAttribute('href', new RegExp(`player=${peer}`))
+    await expect(popup).not.toContainText('Activity')
+    if (width === 1440) await popup.hover()
+    await diagnosticScreenshot(page, {
+      path: `test-results/profile-open-${width}x1000.png`,
+    })
+    await page.keyboard.press('Escape')
+    await expect(popup).toHaveCount(0)
+    await page.mouse.move(0, 0)
+    await trigger.focus()
+    await trigger.press('Tab')
+    await page.keyboard.press('Shift+Tab')
+    await expect(popup).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(popup).toHaveCount(0)
+    const own = page
+      .getByRole('region', { name: 'Galaxy positions' })
+      .getByRole('button', { name: 'Aurelia profile details' })
+    await own.click()
+    const plain = page.getByRole('dialog', { name: 'Aurelia profile' })
+    await expect(plain).toBeVisible()
+    await expect(own.locator('[style*="--insignia-mask"]')).toHaveCount(0)
+    await expect(
+      plain.locator('[style*="--insignia-mask"], [data-message-player]'),
+    ).toHaveCount(0)
+    await diagnosticScreenshot(page, {
+      path: `test-results/profile-none-${width}x1000.png`,
+    })
+    await page.getByLabel('Galaxy', { exact: true }).click()
+    await expect(plain).toHaveCount(0)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
   })
 }

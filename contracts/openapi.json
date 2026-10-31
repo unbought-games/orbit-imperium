@@ -19487,7 +19487,10 @@
             ]
           },
           "appearance": {
-            "$ref": "#/components/schemas/InsigniaAppearance"
+            "oneOf": [
+              { "$ref": "#/components/schemas/InsigniaAppearance" },
+              { "type": "null" }
+            ]
           },
           "expires_at": {
             "type": "integer",

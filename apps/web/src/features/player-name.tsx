@@ -1,6 +1,6 @@
 import { EmpireInsignia } from './empire-insignia'
-import { MessagePlayerLink } from './social/message-player-link'
-import { createContext, useContext } from 'react'
+import { PlayerProfile } from './player-profile'
+import { createContext, useContext, type Ref } from 'react'
 import { usePlayerDisplay } from '../shell/player-profiles-context'
 import { SupporterIdentity } from './supporter-identity'
 import { playerLabel, type PlayerNames } from './player-label'
@@ -19,18 +19,18 @@ export function PlayerName({
   names,
   alliance,
   linkAlliance = true,
-  badgeTooltip = false,
-  messageAction = false,
-  showInsignia = false,
+  showInsignia = true,
+  interactive = true,
+  triggerRef,
 }: {
   player: string
   fallback?: string
   names?: PlayerNames
   alliance?: AllianceIdentity | null
   linkAlliance?: boolean
-  badgeTooltip?: boolean
   showInsignia?: boolean
-  messageAction?: boolean
+  triggerRef?: Ref<HTMLButtonElement>
+  interactive?: boolean
 }) {
   const profile = usePlayerDisplay(player)
   const kinds = useContext(PlayerKinds)
@@ -41,17 +41,15 @@ export function PlayerName({
       : alliance !== undefined
         ? alliance
         : profile?.alliance
-  return (
+  const name = profile?.username ?? fallback ?? playerLabel(player, names)
+  const bot = (profile?.kind ?? kinds[player]) === 'bot'
+  const identity = (
     <>
       {showInsignia && profile?.insignia && (
         <EmpireInsignia appearance={profile.insignia} />
       )}
-      <SupporterIdentity
-        name={profile?.username ?? fallback ?? playerLabel(player, names)}
-        tier={profile?.supporter_tier}
-        badgeTooltip={badgeTooltip}
-      />
-      {(profile?.kind ?? kinds[player]) === 'bot' && (
+      <SupporterIdentity name={name} tier={profile?.supporter_tier} />
+      {bot && (
         <span
           title="Automated player"
           aria-label="Bot"
@@ -61,18 +59,30 @@ export function PlayerName({
           Bot
         </span>
       )}
-      {messageAction && (
-        <MessagePlayerLink
-          player={player}
-          name={profile?.username ?? fallback ?? playerLabel(player, names)}
-        />
-      )}
       {affiliation && (
         <>
           {' '}
-          <AllianceTag alliance={affiliation} linked={linkAlliance} />
+          <AllianceTag
+            alliance={affiliation}
+            linked={!interactive && linkAlliance}
+          />
         </>
       )}
     </>
+  )
+  return interactive ? (
+    <PlayerProfile
+      triggerRef={triggerRef}
+      player={player}
+      name={name}
+      profile={profile}
+      alliance={affiliation}
+      bot={bot}
+      historical={historical !== undefined}
+    >
+      {identity}
+    </PlayerProfile>
+  ) : (
+    identity
   )
 }

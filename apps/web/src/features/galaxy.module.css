@@ -131,6 +131,7 @@
   min-width: 0;
 }
 .player {
+  max-width: 100%;
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;

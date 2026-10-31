@@ -139,12 +139,16 @@ function Workspace() {
           {state.loading && <p role="status">Loading…</p>}
           {state.list?.conversations.map((c) => (
             <article key={c.contact.player} className={styles.card}>
-              <Button variant="ghost" onClick={() => select(c.contact.player)}>
-                <PlayerName
-                  player={c.contact.player}
-                  fallback={c.contact.username}
-                  linkAlliance={false}
-                />
+              <PlayerName
+                player={c.contact.player}
+                fallback={c.contact.username}
+              />
+              <Button
+                variant="ghost"
+                aria-label={`Open conversation with ${c.contact.username}`}
+                onClick={() => select(c.contact.player)}
+              >
+                Open conversation
                 {conversationUnread(c, state.readPositions) && (
                   <strong> · Unread</strong>
                 )}
@@ -155,13 +159,13 @@ function Workspace() {
           ))}
           {state.list?.contacts.map((c) => (
             <article key={c.player} className={styles.card}>
-              <Button variant="ghost" onClick={() => select(c.player)}>
-                Message{' '}
-                <PlayerName
-                  player={c.player}
-                  fallback={c.username}
-                  linkAlliance={false}
-                />
+              <PlayerName player={c.player} fallback={c.username} />
+              <Button
+                variant="ghost"
+                aria-label={`Message ${c.username}`}
+                onClick={() => select(c.player)}
+              >
+                Message
               </Button>
               {c.request && !c.accepted && (
                 <p>

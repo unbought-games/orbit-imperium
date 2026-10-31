@@ -1,0 +1,108 @@
+.trigger.trigger {
+  display: inline-block;
+  vertical-align: middle;
+  min-width: 0;
+  min-height: 24px;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: normal;
+}
+.trigger.trigger:hover,
+.trigger.trigger[aria-expanded='true'] {
+  background: #a4dbef0d;
+  box-shadow: 0 0 0 4px #a4dbef0d;
+  color: inherit;
+}
+.trigger.trigger:focus-visible {
+  outline: 2px solid #a4dbef;
+  outline-offset: 3px;
+}
+.profile.profile {
+  z-index: 60;
+  width: 340px;
+  padding: 20px;
+  border: 1px solid #a4dbef55;
+  border-radius: 16px 16px 5px 16px;
+  color: #f1f4ee;
+  background:
+    radial-gradient(ellipse at top right, #a4dbef16, transparent 70%), #0b1b28f5;
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 16px 48px #0009,
+    0 0 24px #a4dbef0d,
+    inset 0 1px 0 #a4dbef20;
+}
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #a4dbef24;
+}
+.eyebrow {
+  color: #9db2c2;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+.kind {
+  color: #ecd39f;
+  font-size: 11px;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 20px 0;
+}
+.identity > div {
+  min-width: 0;
+}
+.identity h3 {
+  margin: 0 0 6px;
+  font-size: 21px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.subtitle {
+  color: #9db2c2;
+  font-size: 12px;
+}
+.affiliation {
+  display: grid;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid #a4dbef24;
+}
+.affiliation > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.actions:empty {
+  display: none;
+}
+.actions {
+  margin-top: 14px;
+}
+.actions a {
+  display: flex;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid #a4dbef55;
+  border-radius: 8px;
+  background: #a4dbef0d;
+  color: #a4dbef;
+  text-decoration: none;
+}
+.actions a:hover {
+  background: #a4dbef20;
+}

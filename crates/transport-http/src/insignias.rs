@@ -71,7 +71,7 @@ struct InsigniaState {
     library: InsigniaLibrary,
     catalog: Vec<Symbol>,
     policy: CosmeticPolicy,
-    appearance: InsigniaAppearance,
+    appearance: Option<InsigniaAppearance>,
     expires_at: i64,
 }
 
@@ -143,8 +143,7 @@ fn project_state(
     let recipe = library
         .equipped
         .and_then(|id| library.designs.iter().find(|d| d.id == id))
-        .map(|d| effective_insignia(&d.recipe, policy, &library.permanent_symbols, evidence, now))
-        .unwrap_or_default();
+        .map(|d| effective_insignia(&d.recipe, policy, &library.permanent_symbols, evidence, now));
     let catalog = INSIGNIA_SYMBOLS
         .iter()
         .map(|(id, name, supporter)| Symbol {
@@ -166,7 +165,7 @@ fn project_state(
         library,
         catalog,
         policy,
-        appearance: appearance(recipe),
+        appearance: recipe.map(appearance),
         expires_at,
     }
 }
@@ -231,6 +230,45 @@ fn media_digest<'a>(symbol: &str, version: &'a str) -> Option<&'a str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn no_equipped_design_means_no_appearance_even_with_saved_designs() {
+        let id = uuid::Uuid::new_v4();
+        let binding = Binding {
+            account: AccountId(id),
+            player: PlayerId(id),
+            universe: UniverseId(id),
+            epoch: Epoch(id),
+        };
+        let mut library = InsigniaLibrary {
+            designs: vec![],
+            equipped: None,
+            permanent_symbols: vec![],
+        };
+        let project = |library| {
+            project_state(
+                binding,
+                id,
+                library,
+                CosmeticPolicy::Unrestricted,
+                SupporterEvidence::default(),
+                100,
+            )
+        };
+        assert!(project(library.clone()).appearance.is_none());
+        library.designs.push(InsigniaDesign {
+            id,
+            name: "Saved design".into(),
+            recipe: InsigniaRecipe::default(),
+            revision: 1,
+        });
+        assert!(project(library.clone()).appearance.is_none());
+        library.equipped = Some(id);
+        assert!(project(library.clone()).appearance.is_some());
+        library.equipped = None;
+        let removed = project(library);
+        assert!(removed.appearance.is_none());
+        assert_eq!(removed.library.designs.len(), 1);
+    }
     #[tokio::test]
     async fn publication_does_not_require_permission_to_inspect_missing_keys() {
         #[derive(Default)]

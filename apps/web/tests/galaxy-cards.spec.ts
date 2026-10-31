@@ -183,7 +183,7 @@ for (const width of [390, 1280])
       'rgb(124, 185, 240) 3px 0px 0px 0px inset',
     )
     await expect(
-      ally.getByRole('link', { name: 'Alliance Star League [STAR]' }),
+      ally.getByRole('button', { name: 'Alliance mate profile details' }).getByText('[STAR]'),
     ).toBeVisible()
     await expect(
       ally.getByRole('button', {
@@ -785,7 +785,7 @@ test('Galaxy uses the signed-in supporter identity for the owned planet', async 
     cards.first().getByText('StellarNomad', { exact: true }),
   ).toBeVisible()
   await expect(
-    cards.first().getByRole('button', { name: 'Supporter · $25 / month USD' }),
+    cards.first().getByRole('img', { name: 'Supporter · $25 / month USD' }),
   ).toBeVisible()
   await expect(
     cards
@@ -793,17 +793,17 @@ test('Galaxy uses the signed-in supporter identity for the owned planet', async 
       .getByText('CommanderAndromedaTheUnreasonablyLongName', { exact: true }),
   ).toBeVisible()
   await expect(
-    cards.nth(1).getByRole('button', { name: /Supporter/ }),
+    cards.nth(1).getByRole('img', { name: /Supporter/ }),
   ).toHaveCount(0)
   await expect(
     cards.first().getByText('StellarNomad', { exact: true }),
   ).toHaveCSS('color', 'rgb(244, 244, 242)')
   const supporter = cards
     .first()
-    .getByRole('button', { name: 'Supporter · $25 / month USD' })
+    .getByRole('img', { name: 'Supporter · $25 / month USD' })
   await expect(supporter).toHaveCSS('color', 'rgb(240, 172, 212)')
-  await supporter.click()
-  await expect(page.getByRole('tooltip')).toContainText(
+  await cards.first().getByRole('button', { name: 'StellarNomad profile details' }).click()
+  await expect(page.getByRole('dialog', { name: 'StellarNomad profile' })).toContainText(
     'does not affect gameplay strength or protection',
   )
   await page.keyboard.press('Escape')
@@ -811,7 +811,7 @@ test('Galaxy uses the signed-in supporter identity for the owned planet', async 
     cards.nth(2).getByText('ProtectedCommander', { exact: true }),
   ).toHaveCSS('color', 'rgb(164, 232, 200)')
   await expect(
-    cards.nth(2).getByRole('button', { name: 'Supporter · $10 / month USD' }),
+    cards.nth(2).getByRole('img', { name: 'Supporter · $10 / month USD' }),
   ).toHaveCSS('color', 'rgb(133, 214, 239)')
   await expect(
     cards

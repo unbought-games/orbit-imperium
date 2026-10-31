@@ -1,4 +1,3 @@
-import { MessagePlayerLink } from './social/message-player-link'
 import { EmptyState } from '../ui/empty-state'
 import { useEffect, useLayoutEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -15,8 +14,8 @@ import { useGameSession } from '../shell/session-context'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Button } from '../ui/button'
 import { Field, Input } from '../ui/form'
+import { MessagePlayerLink } from './social/message-player-link'
 import { PlayerName } from './player-name'
-import { AllianceTag } from './player-alliance'
 import { useRankings } from './use-rankings'
 import styles from './high-scores.module.css'
 
@@ -281,30 +280,31 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                         />
                       </td>
                       <td>
+                        <PlayerName
+                          player={row.player}
+                          fallback={row.username}
+                          alliance={row.alliance ?? null}
+                          triggerRef={
+                            row.player === player ? ownPlayer : undefined
+                          }
+                        />
+                        {row.player === player && (
+                          <span className={styles.you}>You</span>
+                        )}
+                      </td>
+                      <td className={styles.points}>
                         <Button
                           variant="ghost"
                           className={styles.player}
-                          ref={row.player === player ? ownPlayer : undefined}
+                          aria-label={`Score details for ${row.username}`}
                           onClick={(e) => {
                             opener.current = e.currentTarget
                             ranking.select(row.player)
                           }}
                         >
-                          <PlayerName
-                            player={row.player}
-                            fallback={row.username}
-                            alliance={null}
-                            linkAlliance={false}
-                          />
+                          {number(row.points)}
                         </Button>
-                        {row.alliance && (
-                          <AllianceTag alliance={row.alliance} />
-                        )}
-                        {row.player === player && (
-                          <span className={styles.you}>You</span>
-                        )}
                       </td>
-                      <td className={styles.points}>{number(row.points)}</td>
                     </tr>
                   ))}
             </tbody>
@@ -455,6 +455,7 @@ function RankingDetails({
           player={row.player}
           fallback={row.username}
           alliance={row.alliance ?? null}
+          interactive={false}
         />
       </h2>
       <MessagePlayerLink player={row.player} name={row.username} />

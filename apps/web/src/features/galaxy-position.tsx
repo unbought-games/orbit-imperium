@@ -122,6 +122,7 @@ export function GalaxyPosition({
                   ? 'Abandoned planet'
                   : 'Empty position'}
             </strong>
+            {body && <GalaxyActivity activity={body.activity} />}
             <CoordinateLink
               compact
               at={coordinates}
@@ -164,7 +165,6 @@ export function GalaxyPosition({
                   <span>Your alliance</span>
                 </InfoTooltip>
               )}
-              <GalaxyActivity activity={body.activity} />
             </div>
           )}
           <GalaxyFlightSummary flights={flights} now={now} target={target} />
