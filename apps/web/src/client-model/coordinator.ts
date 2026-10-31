@@ -31,6 +31,7 @@ import {
   terminal,
 } from './commands'
 import { validate } from './schema'
+import { ReportEngine } from './report-engine'
 import {
   acceptReportVisibility,
   mergeReportHeaders,
@@ -65,6 +66,10 @@ export class Coordinator {
   private mailboxVersion = 0
   private mailboxRequest: Promise<void> | null = null
   readonly store = createGameStore()
+  readonly reports = new ReportEngine(this.store, {
+    page: (cursor) => this.readReportPage(cursor),
+    detail: (id) => this.readReportDetail(id),
+  })
   private get attempts() {
     return this.store.getState().attempts
   }
@@ -226,6 +231,7 @@ export class Coordinator {
     return write
   }
   invalidate() {
+    this.reports.invalidate()
     this.mailboxReads.clear()
     this.mailboxVersion++
     this.mailboxRequest = null
@@ -244,6 +250,9 @@ export class Coordinator {
       view: null,
       settings: null,
       reportInbox: null,
+      reportInboxLoad: null,
+      reportDetails: new Map(),
+      reportDetailLoads: new Map(),
       mailbox: null,
       reportHeaders: new Map(),
       attempts: new Map(),
@@ -849,24 +858,15 @@ export class Coordinator {
       throw new Error('The universe changed. Run the simulation again.')
     return result
   }
+  refreshReportInbox(more = false) {
+    return this.reports.refreshInbox(more)
+  }
   async reportPage(cursor: string | null = null, includeHidden = false) {
-    if (!this.port.reports || this.protocol !== 4) return null
-    const pending = this.captureRequest()
-    if (!pending) return null
-    const result = validate<import('./commands').BoundReports>(
-      'BoundReports4',
-      await this.port.reports(pending.context, cursor, includeHidden),
-    )
-    if (!this.responseMatches(pending, result)) return null
+    const binding = this.binding
+    const generation = this.generation
+    const result = await this.readReportPage(cursor, includeHidden)
+    if (!result || !binding || !this.current(generation, binding)) return null
     this.store.setState({
-      ...(cursor === null && !includeHidden
-        ? {
-            reportInbox: {
-              ...result.data,
-              items: result.data.items.map((header) => header.id),
-            },
-          }
-        : {}),
       reportHeaders: mergeReportHeaders(
         this.store.getState().reportHeaders,
         result.data.items,
@@ -875,7 +875,23 @@ export class Coordinator {
     })
     return result.data
   }
-  async reportDetail(id: string) {
+  private async readReportPage(
+    cursor: string | null = null,
+    includeHidden = false,
+  ) {
+    if (!this.port.reports || this.protocol !== 4) return null
+    const pending = this.captureRequest()
+    if (!pending) return null
+    const result = validate<import('./commands').BoundReports>(
+      'BoundReports4',
+      await this.port.reports(pending.context, cursor, includeHidden),
+    )
+    return this.responseMatches(pending, result) ? result : null
+  }
+  reportDetail(id: string, retry = false) {
+    return this.reports.detail(id, retry)
+  }
+  private async readReportDetail(id: string) {
     if (!this.port.report || this.protocol !== 4) return null
     const pending = this.captureRequest()
     if (!pending) return null
@@ -883,16 +899,7 @@ export class Coordinator {
       'BoundReport4',
       await this.port.report(pending.context, id),
     )
-    if (!this.responseMatches(pending, result)) return null
-    const { header } = result.data
-    this.store.setState({
-      reportHeaders: mergeReportHeaders(
-        this.store.getState().reportHeaders,
-        [header],
-        result.viewer_revision,
-      ),
-    })
-    return result.data
+    return this.responseMatches(pending, result) ? result : null
   }
   async send(command: Command, quote?: SubmittedQuote) {
     const b = this.binding,

@@ -144,9 +144,7 @@ async function reportsFixture(page: Page, quiet = false) {
   // controls between focusing a button and submitting a command.
   await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
-  await expect(
-    page.getByRole('button', { name: 'Load more reports' }),
-  ).toBeVisible()
+  await expect(page.locator('main article')).toHaveCount(2)
   return {
     headers,
     readRequests,
@@ -174,7 +172,6 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('button', { name: 'Refresh reports' })).toHaveCount(0)
     await expect(page.getByLabel('Show deleted reports')).toHaveCount(0)
     await expect(page.getByText('Deleted reports leave your list and unread indicator.', { exact: false })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Load more reports' }).click()
     const rows = page.locator('main article')
     await expect(rows).toHaveCount(2)
     const unread = page.getByRole('status', { name: 'Unread reports' }).first()
@@ -242,7 +239,6 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: 'Restore report' }).click()
     await expect(unread).toHaveCount(0)
     await page.getByRole('link', { name: 'Back to reports' }).click()
-    await page.getByRole('button', { name: 'Load more reports' }).click()
     await expect(rows).toHaveCount(2)
     expect(fixture.submitted()).toBe(4)
   })
@@ -252,7 +248,7 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
   page,
 }) => {
   const fixture = await reportsFixture(page)
-  const row = page.locator('main article').first()
+  const row = page.locator(`main article:has(a[href$="${id(70)}"])`)
   let release!: () => void
   fixture.pause(new Promise<void>((resolve) => { release = resolve }))
   fixture.setMode('rejected')
@@ -278,7 +274,7 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
 })
 
 for (const activation of ['click', 'Enter'] as const) {
-  test(`pagination cannot suppress reconciliation during a pending deletion via ${activation}`, async ({
+  test(`shared inbox preserves other reports during a pending deletion via ${activation}`, async ({
     page,
   }) => {
     const fixture = await reportsFixture(page)
@@ -297,10 +293,9 @@ for (const activation of ['click', 'Enter'] as const) {
       // actually held before asserting the optimistic UI and pagination lock.
       await expect.poll(fixture.submitted).toBe(1)
       expect(fixture.headers[0].hidden).toBe(false)
-      await expect(page.locator('main article')).toHaveCount(0)
-      await expect(
-        page.getByRole('button', { name: 'Load more reports' }),
-      ).toBeDisabled()
+      await expect(page.locator('main article')).toHaveCount(1)
+      await expect(page.getByTestId('unread-count')).toHaveText('1')
+      await expect(page.getByRole('button', { name: 'Load more reports' })).toHaveCount(0)
     } finally {
       release()
     }
@@ -316,7 +311,6 @@ for (const activation of ['click', 'Enter'] as const) {
 test('opening a report marks it read after loading, clears the inbox badge and does not resubmit after refresh', async ({ page }) => {
   const fixture = await reportsFixture(page)
   expect(fixture.readRequests).toEqual([])
-  await page.getByRole('button', { name: 'Load more reports' }).click()
   await expect(page.locator('main article')).toHaveCount(2)
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
@@ -373,177 +367,21 @@ test('failed or abandoned report loads do not mark reports read', async ({ page 
     // The URL changes before React commits the inbox and cancels the detail load.
     // Deliver the held response only after the user has actually left the report.
     await expect(page.getByRole('heading', { name: 'Reports', level: 2, exact: true })).toBeVisible()
-    await expect(page.locator('main article')).toHaveCount(1)
+    await expect(page.locator('main article')).toHaveCount(2)
   } finally {
     release()
   }
   await response
-  await expect(page.locator('main article')).toHaveCount(1)
+  await expect(page.locator('main article')).toHaveCount(2)
   expect(fixture.readRequests).toEqual([])
   expect(fixture.headers[1].read).toBe(false)
 })
 
 
-for (const fail of [false, true]) {
-  test(`late load-more ${fail ? 'failure' : 'success'} cannot change a refreshed inbox`, async ({ page }) => {
-    const fixture = await reportsFixture(page)
-    // Wait for the HUD to finish its initial pagination before holding the UI continuation.
-    await expect(page.getByTestId('unread-count')).toHaveText('1')
-    const initialRequests = fixture.pageRequests.length
-    let release!: () => void
-    fixture.holdMore(new Promise<void>(resolve => { release = resolve }), fail)
-    await page.getByRole('button', { name: 'Load more reports' }).click()
-    await expect.poll(() => fixture.pageRequests.slice(initialRequests).filter(cursor => cursor !== null)).toEqual([id(72)])
-    const requestCount = fixture.pageRequests.length
-    // Refresh the first page while its old continuation is still in flight.
-    fixture.headers[0].hidden = true
-    fixture.bumpRevision()
-    // Reconnection adopts a new revision; the HUD and inbox each refresh once.
-    await page.evaluate(() => window.dispatchEvent(new Event('online')))
-    const rows = page.locator('main article')
-    await expect.poll(() => fixture.pageRequests.slice(requestCount)).toEqual([null, null])
-    await expect(rows).toHaveCount(1)
-    await expect(rows.first().getByLabel('Unread', { exact: true })).toBeVisible()
-    const response = page.waitForResponse(r => r.url().endsWith('/reports') && r.request().postDataJSON().cursor === id(72))
-    release()
-    await response
-    await expect(rows).toHaveCount(1)
-    await expect(page.getByRole('alert')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Retry reports' })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Load more reports' })).toHaveCount(0)
-  })
-}
-
-
-for (const change of ['navigate', 'revise', 'rebind', 'visibility', 'retry'] as const) {
-  test(`report hook fences overlapping pages after ${change}`, async ({ page }) => {
-    await shellFixture(page, { protocol: 4 })
-    await page.goto('/')
-    const result = await page.evaluate(async (change) => {
-      const { reportsHarness, reportPage } = await import('/tests/fixtures/reports-hook.ts')
-      const h = await reportsHarness()
-      await h.resolve(0, reportPage(['a'], 'cursor'))
-      await h.more()
-      const requestsAfterDoubleClick = h.calls.length
-      if (change === 'navigate') await h.navigate('b')
-      else await h[change]()
-      const before = h.state()
-      await h.resolve(1, reportPage(['stale'], null))
-      const after = h.state()
-      if (change === 'visibility') await h.settleVisibility()
-      const requests = h.calls.map(({ item, cursor }) => ({ item, cursor }))
-      await h.close()
-      return { requestsAfterDoubleClick, before, after, requests }
-    }, change)
-    expect(result.requestsAfterDoubleClick).toBe(2)
-    expect(result.after).toEqual(result.before)
-    expect(result.after.loadingMore).toBe(false)
-    expect(result.after.ids).toEqual(change === 'rebind' || change === 'visibility' ? [] : ['a'])
-    expect(result.requests[1]).toEqual({ item: null, cursor: 'cursor' })
-    expect(result.requests[2]).toEqual({ item: change === 'navigate' ? 'b' : null, cursor: null })
-  })
-}
-
-test('report hook retains pages on return, reconciles headers and marks each opened report read once', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
-  await page.goto('/')
-  const result = await page.evaluate(async () => {
-    const { reportsHarness, reportPage, reportDetail } = await import('/tests/fixtures/reports-hook.ts')
-    const h = await reportsHarness()
-    await h.resolve(0, reportPage(['a'], 'cursor'))
-    await h.more()
-    await h.resolve(1, reportPage(['b'], null))
-    await h.navigate('b')
-    await h.navigate(null)
-    const retained = h.state()
-    await h.resolve(2, reportDetail('b', false))
-    const afterCancelled = h.state()
-    const sentAfterCancelled = h.sent.length
-    await h.navigate('b')
-    await h.resolve(3, reportDetail('b', false))
-    await h.revise()
-    await h.resolve(4, reportDetail('b', false))
-    const sentAfterRefresh = h.sent.length
-    await h.revise()
-    await h.resolve(5, reportDetail('b', true, true))
-    const hidden = h.state()
-    await h.navigate(null)
-    const requests = h.calls.map(({ item, cursor }) => ({ item, cursor }))
-    await h.close()
-    return { retained, afterCancelled, sentAfterCancelled, sentAfterRefresh, hidden, requests }
-  })
-  expect(result.retained).toMatchObject({ ids: ['a', 'b'], detail: null, loading: false, loadingMore: false })
-  expect(result.afterCancelled).toEqual(result.retained)
-  expect(result.sentAfterCancelled).toBe(0)
-  expect(result.sentAfterRefresh).toBe(1)
-  expect(result.hidden).toMatchObject({ ids: ['a'], detail: 'b' })
-  expect(result.requests).toHaveLength(7)
-  expect(result.requests[6]).toEqual({ item: null, cursor: null })
-})
-
-test('report hook ignores stale initial/detail failures and treats a current unconfirmed page as retryable', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
-  await page.goto('/')
-  const result = await page.evaluate(async () => {
-    const { reportsHarness, reportPage, reportDetail } = await import('/tests/fixtures/reports-hook.ts')
-    const h = await reportsHarness()
-    await h.retry()
-    await h.resolve(1, reportPage(['fresh'], 'cursor'))
-    await h.reject(0)
-    const initial = h.state()
-    await h.navigate('a')
-    await h.navigate('b')
-    await h.resolve(2, reportDetail('a', false))
-    const pending = h.state()
-    await h.resolve(3, reportDetail('b', true))
-    await h.navigate(null)
-    await h.resolve(4, reportPage(['fresh'], 'cursor'))
-    await h.more()
-    await h.resolve(5, null)
-    const failed = h.state()
-    await h.retry()
-    await h.resolve(6, reportPage(['replacement'], null))
-    const retried = h.state()
-    const sent = h.sent
-    await h.close()
-    return { initial, pending, failed, retried, sent }
-  })
-  expect(result.initial).toMatchObject({ ids: ['fresh'], error: null, loading: false })
-  expect(result.pending).toMatchObject({ detail: null, error: null, loading: true })
-  expect(result.failed).toMatchObject({ ids: ['fresh'], error: 'Unable to confirm this report response. Try again.', loadingMore: false })
-  expect(result.retried).toMatchObject({ ids: ['replacement'], error: null, loading: false })
-  expect(result.sent).toEqual([])
-})
-
-
-test('report hook loads uncached reports while a visibility command is unresolved', async ({ page }) => {
-  await shellFixture(page, { protocol: 4 })
-  await page.goto('/')
-  const result = await page.evaluate(async () => {
-    const { reportsHarness, reportPage, reportDetail } = await import('/tests/fixtures/reports-hook.ts')
-    const h = await reportsHarness()
-    await h.visibility()
-    await h.resolve(1, reportPage(['a'], 'cursor'))
-    await h.reject(0)
-    const inbox = h.state()
-    await h.more()
-    const requestsAfterMore = h.calls.length
-    await h.navigate('a')
-    await h.resolve(2, reportDetail('a', true))
-    const detail = h.state()
-    await h.close()
-    return { inbox, requestsAfterMore, detail }
-  })
-  expect(result.inbox).toMatchObject({ ids: [], error: null, loading: false })
-  expect(result.requestsAfterMore).toBe(2)
-  expect(result.detail).toMatchObject({ detail: 'a', error: null, loading: false })
-})
-
 test('independent deletes are optimistic and each failure rolls back only its report', async ({
   page,
 }) => {
   const fixture = await reportsFixture(page)
-  await page.getByRole('button', { name: 'Load more reports' }).click()
   const rows = page.locator('main article')
   let release!: () => void
   fixture.pause(
@@ -632,7 +470,7 @@ for (const width of [1280, 390]) {
     fixture.headers[0].preview = { kind: 'Espionage', resources: { visibility: 'Unknown' } }
     fixture.headers[1].preview = { kind: 'Espionage', resources: { visibility: 'Known', value: { metal: '1000000', crystal: '9000000', deuterium: '0' } } }
     fixture.headers[1].starred = true
-    // Every viewport hydrates the HUD badge before triage requests its own continuation.
+    // Triage refreshes the shared archive, retaining old rows until all pages succeed.
     await expect(page.getByTestId('unread-count')).toHaveText('1')
     const beforeTriage = fixture.pageRequests.filter(cursor => cursor !== null).length
     let release!: () => void
@@ -703,8 +541,8 @@ for (const width of [1440, 390]) {
       await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
       await expect(page.getByRole('combobox', { name: 'Sort by', exact: true })).toBeEnabled()
       expect(fixture.submitted()).toBe(1)
-      // Every viewport mounts a HUD reader alongside the open inbox; each refreshes once.
-      await expect.poll(() => fixture.pageRequests.slice(before)).toEqual([null, null])
+      // Both surfaces consume the same archive refresh.
+      await expect.poll(() => fixture.pageRequests.slice(before)).toEqual([null])
     })
   }
 }
@@ -1043,7 +881,7 @@ for (const width of [1280, 390]) {
     }
     await page.clock.runFor(60000)
     expect(ids).toHaveLength(1)
-    await expect(page.getByRole('article')).toHaveCount(1)
+    await expect(page.getByRole('article')).toHaveCount(2)
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: `test-results/unified-delete-unknown-${width}x900.png`, fullPage: true })
     fixture.setMode('success')
