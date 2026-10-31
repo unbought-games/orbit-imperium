@@ -1223,8 +1223,17 @@
 }
 
 @media (min-width: 768px) {
+  .surface {
+    --hud-inline-inset: max(
+      28px,
+      calc(
+        max(0px, (100vw - var(--shell-max-width)) / 2) +
+          var(--shell-inline-gutter)
+      )
+    );
+  }
   .hudLayer {
-    right: 28px;
+    right: var(--hud-inline-inset);
     bottom: 28px;
   }
   .orbDock {
@@ -1249,7 +1258,7 @@
     font-size: 11px;
   }
   .dialog {
-    inset: auto 28px 152px auto;
+    inset: auto var(--hud-inline-inset) 152px auto;
     width: 440px;
     max-height: calc(100dvh - 184px);
     margin: 0;

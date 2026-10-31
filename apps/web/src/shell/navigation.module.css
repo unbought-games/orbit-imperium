@@ -294,7 +294,7 @@
     overflow-y: auto;
     scroll-padding-block: 12px;
     overscroll-behavior: contain;
-    background: var(--surface-navigation);
+    background: transparent;
     border-right: 1px solid var(--border-navigation);
     padding: 20px 12px 12px;
   }

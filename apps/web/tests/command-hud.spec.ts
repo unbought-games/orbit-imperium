@@ -8,7 +8,7 @@ const output = 'test-results/live-hud'
 const baseTime = 1793120000000
 const emptyMissions = ():S['MissionView4'] => ({fleets:[],incoming:[],fleet_slots:'8',score_value_micro:'0'})
 
-for (const [width, height] of [[768, 600], [1024, 768], [1440, 900], [2560, 1100]]) {
+for (const [width, height] of [[768, 600], [1024, 768], [1440, 900], [2560, 1440], [3440, 1440]]) {
   test(`desktop orb anchors its panel, preserves details across resize and restores focus at ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height })
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -20,9 +20,13 @@ for (const [width, height] of [[768, 600], [1024, 768], [1440, 900], [2560, 1100
     await expect(orb).toHaveAttribute('aria-haspopup', 'dialog')
     await expect(orb).toHaveAttribute('aria-expanded', 'false')
     const bounds = (await orb.boundingBox())!
+    const content = (await page.getByRole('main').boundingBox())!
+    const shell = (await page.locator('[data-has-command-hud]').boundingBox())!
+    const orbRight = bounds.x + bounds.width
     expect(bounds.width).toBe(92)
-    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 28)
-    expect(bounds.x + bounds.width).toBeGreaterThan(width - 36)
+    expect(orbRight).toBeLessThanOrEqual(shell.x + shell.width - 28)
+    expect(orbRight).toBeGreaterThan(shell.x + shell.width - 52)
+    if (width >= 1440) expect(bounds.x).toBeGreaterThan(content.x + content.width + 16)
     expect(bounds.y + bounds.height).toBeLessThan(height - 28)
     await orb.evaluate(el => el.setAttribute('data-instance', 'same-orb'))
     await diagnosticScreenshot(page, { path: `${output}/desktop-orb-${width}x${height}.png` })
@@ -33,7 +37,8 @@ for (const [width, height] of [[768, 600], [1024, 768], [1440, 900], [2560, 1100
     await expect(panel.getByRole('heading', { name: 'Command uplink' })).toBeFocused()
     await expect(orb).toHaveAttribute('aria-expanded', 'true')
     const panelBox = (await panel.boundingBox())!
-    expect(panelBox.x + panelBox.width).toBe(width - 28)
+    expect(panelBox.x + panelBox.width - orbRight).toBeGreaterThanOrEqual(0)
+    expect(panelBox.x + panelBox.width - orbRight).toBeLessThan(4)
     expect(panelBox.y).toBeGreaterThanOrEqual(0)
     expect(panelBox.y + panelBox.height).toBeLessThan(bounds.y)
     await panel.getByRole('button', { name: /Espionage report/ }).click()
