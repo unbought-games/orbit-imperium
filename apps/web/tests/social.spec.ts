@@ -791,10 +791,23 @@ for (const viewport of [
     await page
       .getByRole('button', { name: 'Conversation options', exact: true })
       .click()
+    const optionsMenu = page.getByRole('menu', {
+      name: 'Conversation options',
+      exact: true,
+    })
+    // Menu focus is scheduled after opening. Await that lifecycle explicitly:
+    // diagnostic screenshots must not be responsible for making Escape work.
+    await expect(optionsMenu).toBeVisible()
+    await expect
+      .poll(() =>
+        optionsMenu.evaluate((menu) => menu.contains(document.activeElement)),
+      )
+      .toBe(true)
     await diagnosticScreenshot(page, {
       path: `test-results/dm-options-${viewport.width}x${viewport.height}.png`,
     })
     await page.keyboard.press('Escape')
+    await expect(optionsMenu).toBeHidden()
     await expect(
       page.getByRole('button', { name: 'Conversation options', exact: true }),
     ).toBeFocused()
