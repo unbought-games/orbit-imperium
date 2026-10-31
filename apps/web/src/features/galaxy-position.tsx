@@ -1,7 +1,7 @@
 import { ErrorBannerMessage } from '../ui/error-banner'
 import { CoordinateLink } from './coordinate-link'
 import { playerLabel, type PlayerNames } from './player-label'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { components } from '../contracts'
 import type { DispatchDraft } from './missions'
 import styles from './galaxy.module.css'
@@ -53,7 +53,7 @@ export function GalaxyPosition({
   ) => void
   flights?: GalaxyFlight[]
   now?: number
-  missileAction?: ReactNode
+  missileAction?: ComponentProps<typeof GalaxyActionMenu>['missileAction']
   espionage?: {
     send: () => void
     busy: boolean
@@ -205,11 +205,11 @@ export function GalaxyPosition({
               }
             />
           )}
-          {missileAction}
           <GalaxyActionMenu
             target={target}
             coordinates={coordinates}
             actions={actions}
+            missileAction={missileAction}
             colonyNote={colony.reason ?? colony.warning}
             onDraft={onDraft}
           />

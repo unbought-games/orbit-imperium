@@ -448,24 +448,37 @@ for (const width of [1440, 390])
     ).toBeVisible()
     await capture('silo-details')
     await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
-    await expect(
-      page.getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      }),
-    ).toBeVisible()
-    await page
-      .getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      })
-      .click()
+    const actions = page.getByRole('button', {
+      name: 'Actions for [1:371:3]', exact: true,
+    })
+    const launchItem = page.getByRole('menuitem', { name: 'Launch missiles', exact: true })
+    const dialog = page.getByRole('dialog', { name: 'Launch missiles', exact: true })
+    await expect(actions).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Launch missiles at/ })).toHaveCount(0)
+    await expect(launchItem).not.toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
+    await diagnosticScreenshot(page, {
+      path: `test-results/missile-screenshots/galaxy-${width}x900.png`,
+      animations: 'disabled',
+    })
+    await actions.click()
+    await expect(launchItem).toBeVisible()
+    await diagnosticScreenshot(page, {
+      path: `test-results/missile-screenshots/galaxy-menu-${width}x900.png`,
+      animations: 'disabled',
+    })
+    await launchItem.click()
+    await expect(dialog).toBeVisible()
+    await expect(launchItem).not.toBeVisible()
+    await expect(dialog.getByLabel('Missile quantity', { exact: true })).toHaveValue('1')
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+    await expect(actions).toBeFocused()
+    await actions.press('Enter')
+    await launchItem.focus()
+    await launchItem.press('Enter')
+    await expect(dialog).toBeVisible()
+    expect(commands.some(c => c.type === 'World' && c.action.type === 'LaunchMissiles')).toBe(false)
     await page.getByLabel('Missile quantity', { exact: true }).fill('2')
     await page
       .getByLabel('Primary defense', { exact: true })
@@ -604,11 +617,9 @@ test('missile action columns preserve exact row edges across tablet breakpoints'
         expect(b.left).toBe(0)
         expect(b.right).toBe(width)
       }
-    await expect(
-      page.getByRole('button', {
-        name: 'Launch missiles at [1:371:3]',
-        exact: true,
-      }),
-    ).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Launch missiles at/ })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true }).click()
+    await expect(page.getByRole('menuitem', { name: 'Launch missiles', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
   }
 })
