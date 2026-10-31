@@ -1,3 +1,4 @@
+import { progressionOptionsLoader } from './progression-options'
 import { socialQuery, socialCommand } from './social'
 import { allianceQuery, allianceCommand } from './alliances'
 import { resetAnalytics } from './optional-services'
@@ -143,6 +144,38 @@ export function gamePort(
   if (initial) protocols.set(initial.binding.universe, initial.protocol)
   const base = (u: string, protocol = protocols.get(u) ?? 2) =>
     `/api/v${protocol}/universes/${u}`
+  const progressionOptions = progressionOptionsLoader(
+    async (context, requests) => {
+      if (requests.length === 1)
+        return [
+          validate<import('../client-model/commands').BoundProgressionOptions>(
+            'GameProgressionOptions',
+            await request(
+              `${base(context.binding.universe)}/progression-options`,
+              'POST',
+              { context, request: requests[0] },
+              csrf,
+            ),
+          ),
+        ]
+      const result = validate<
+        components['schemas']['BoundProgressionOptionsBatch']
+      >(
+        'BoundProgressionOptionsBatch',
+        await request(
+          `${base(context.binding.universe)}/progression-options/bulk`,
+          'POST',
+          { context, requests },
+          csrf,
+        ),
+      )
+      return result.options.map((option) => ({
+        ...option,
+        sampled_at: result.sampled_at,
+        ...(result.progress ? { progress: result.progress } : {}),
+      }))
+    },
+  )
   return {
     socialQuery: (context, query) =>
       socialQuery(context.binding, csrf, query, context.request_id),
@@ -231,19 +264,7 @@ export function gamePort(
       protocols.set(u, candidate.protocol)
       return candidate
     },
-    async progressionOptions(context, requestBody) {
-      return validate<
-        import('../client-model/commands').BoundProgressionOptions
-      >(
-        'GameProgressionOptions',
-        await request(
-          `${base(context.binding.universe)}/progression-options`,
-          'POST',
-          { context, request: requestBody },
-          csrf,
-        ),
-      )
-    },
+    progressionOptions,
     async view(context, minimumViewerRevision) {
       return validate<BoundView>(
         'GameView',

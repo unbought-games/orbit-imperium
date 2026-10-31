@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
@@ -80,7 +81,7 @@ async function cancellationFixture(page: Page, lateOptions = false) {
     delivered: boolean
   }[] = []
   let cancelling = false
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const building = request.building as keyof typeof planet.levels
     const level = planet.levels[building]!

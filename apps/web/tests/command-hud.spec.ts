@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { expect, test, type Page } from './fixtures/test'
 import { installGameFixture, binding, body, id, refreshGame } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -197,7 +198,7 @@ test('real quick-build only acknowledges committed orders and leaves rejection v
   await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'})
   let reject=false
   await installGameFixture(page,{protocol:4,missions:emptyMissions(),catalog:[{key:{kind:'Building',id:'MetalMine'},enabled:true,mobile:false,body_kinds:['Planet'],requirements:[]}]})
-  await page.route('**/progression-options',route=>{
+  await routeProgressionOptions(page,route=>{
     const {context,request}=route.request().postDataJSON()
     return route.fulfill({json:{protocol:4,...context,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),request,terms_hash:'b'.repeat(64),blockers:[],estimates:null,terms:{type:'Building',profile_hash:'a'.repeat(64),body:body.id,building:'MetalMine',action:'Upgrade',source_level:1,target_level:2,paid:{metal:'1000000',crystal:'1000000',deuterium:'0'},duration_ms:60000,formula:'BuildingRedesign2011',facilities:[],required_energy:'0',reserve_fields:1}}})
   })
@@ -225,7 +226,7 @@ for (const kind of ['research', 'defense'] as const) {
     const planet={...body,levels:{...body.levels,ResearchLab:10,Shipyard:10}}
     const key:S['ItemKey3']=kind==='research'?{kind:'Research',id:'EnergyTechnology'}:{kind:'Defense',id:'RocketLauncher'}
     await installGameFixture(page,{protocol:4,bodies:[planet],missions:emptyMissions(),research:[{research:'EnergyTechnology',level:1}],catalog:[{key,enabled:true,mobile:false,body_kinds:['Planet'],requirements:[]}]})
-    await page.route('**/progression-options',route=>{
+    await routeProgressionOptions(page,route=>{
       const {context,request}=route.request().postDataJSON()
       const common={profile_hash:'a'.repeat(64),paid:{metal:'2000000',crystal:'1000000',deuterium:'0'}}
       const terms=request.type==='Research'?{...common,type:'Research',host:body.id,research:'EnergyTechnology',source_level:1,target_level:2,duration_ms:60000,formula:'ResearchClassic',labs:[],effective_lab:'10',required_energy:'0'}:{...common,type:'Manufacture',body:body.id,item:key,quantity:request.quantity,unit_cost:common.paid,unit_duration_ms:60000,formula:'ManufactureClassic',facilities:[]}

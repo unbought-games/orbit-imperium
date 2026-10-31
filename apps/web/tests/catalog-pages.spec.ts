@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { navigate } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
@@ -31,7 +32,7 @@ test('active research remains cancellable from its details after removing Curren
     researchOperation: operation as S['ResearchOperationDto'] | null,
   }
   await shellFixture(page, options)
-  await page.route('**/progression-options', (route) => route.abort())
+  await routeProgressionOptions(page, (route) => route.abort())
   let sent: unknown
   await page.route('**/commands', async (route) => {
     const envelope = route.request().postDataJSON()
@@ -164,7 +165,7 @@ async function installCatalogFixture(page: Page, blocked = false, unitCost?: S['
     ],
     ...options,
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     inspections.push(request)
     const paid = unitCost ?? { metal: '60000000', crystal: '15000000', deuterium: '0' }
@@ -744,8 +745,7 @@ for (const action of ['edit', 'dismiss', 'reopen']) {
     const responded = new Promise<void>((resolve) => {
       finished = resolve
     })
-    await page.route(
-      '**/progression-options',
+    await routeProgressionOptions(page,
       async (route) => {
         await gate
         await route.fallback()
@@ -786,7 +786,7 @@ test('manufacturing does not submit when server costs differ from the displayed 
     .click()
   const build = page.getByRole('button', { name: 'Build', exact: true })
   await expect(build).toBeEnabled()
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     await route.fulfill({
       json: {
@@ -936,8 +936,7 @@ test('changing manufacturing quantity while unit terms load uses the latest quan
   const gate = new Promise<void>((resolve) => {
     release = resolve
   })
-  await page.route(
-    '**/progression-options',
+  await routeProgressionOptions(page,
     async (route) => {
       arrived()
       await gate
@@ -1074,7 +1073,7 @@ test('active facility remains cancellable without a fresh quote at each target w
     catalog,
     constructions: [{ id: '00000000-0000-4000-8000-000000000020', body: body.id, building: 'RoboticsFactory', target_level: 1, paid: { metal: '60000000', crystal: '15000000', deuterium: '0' }, due_at: Date.now() + 76000 }],
   })
-  await page.route('**/progression-options', route => route.abort())
+  await routeProgressionOptions(page, route => route.abort())
   await page.goto(`/u/andromeda/b/${body.id}/facilities`)
   await page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true }).click()
   for (const width of [1440, 390, 320]) {
@@ -1155,7 +1154,7 @@ test('activated Impulse Drive uses server gates, supports level four, and shows 
     research: [{ research: 'ImpulseDrive', level: 3 }, { research: 'EnergyTechnology', level: 1 }],
   })
   let sent: unknown
-  await page.route('**/progression-options', async route => {
+  await routeProgressionOptions(page, async route => {
     const { context, request } = route.request().postDataJSON()
     // Other visible research rows inspect their costs before opening details.
     if (request.type !== 'Research' || request.research !== 'ImpulseDrive') return route.fallback()
@@ -1215,7 +1214,7 @@ test('activated Astrophysics shows three gates, exact rounded costs, and deferre
     research: [{ research: 'Astrophysics', level: 4 }, { research: 'ImpulseDrive', level: 3 }, { research: 'EspionageTechnology', level: 4 }],
   })
   let sent: unknown
-  await page.route('**/progression-options', async route => {
+  await routeProgressionOptions(page, async route => {
     const { context, request } = route.request().postDataJSON()
     // Other visible research rows inspect their costs before opening details.
     if (request.type !== 'Research' || request.research !== 'Astrophysics') return route.fallback()

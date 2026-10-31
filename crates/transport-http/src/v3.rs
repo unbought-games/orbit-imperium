@@ -132,3 +132,21 @@ pub(super) async fn options<S: GameStore + IdentityStore>(
             .await?,
     ))
 }
+
+pub(super) async fn options_batch<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(q): ApiJson<ProgressionOptionsBatchQuery>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 3).await?;
+    path_binding(u, q.context.binding)?;
+    Ok(super::snapshot_response(
+        &h,
+        s.game
+            .progression_options_batch(principal(&session, u)?, q)
+            .await?,
+    ))
+}

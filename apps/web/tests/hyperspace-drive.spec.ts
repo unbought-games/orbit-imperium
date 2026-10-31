@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
@@ -164,7 +165,7 @@ async function setup(
     viewerRevision: () => (options.researchOperation ? '2' : '1'),
   }
   await shellFixture(page, options)
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const entry = options.catalog!.find(
       (entry) =>

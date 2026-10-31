@@ -5181,6 +5181,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v3/universes/{universe}/progression-options/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
+        post: operations["progressionOptionsBatchV3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/progression-options/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
+        post: operations["progressionOptionsBatchV4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8230,6 +8264,15 @@ export interface components {
             context: components["schemas"]["QueryContext"];
             action: components["schemas"]["InsigniaAction"];
         };
+        ProgressionOptionsBatchQuery: {
+            context: components["schemas"]["QueryContext"];
+            requests: components["schemas"]["ProgressionQuoteRequest"][];
+        };
+        BoundProgressionOptionsBatch: {
+            options: components["schemas"]["GameProgressionOptions"][];
+            sampled_at: number;
+            progress?: components["schemas"]["SnapshotProgress"];
+        };
     };
     responses: never;
     parameters: never;
@@ -8591,6 +8634,244 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BoundCatalog"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+        };
+    };
+    progressionOptionsBatchV3: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Orbit-View-Metadata"?: "1";
+                "X-Orbit-Minimum-Revision"?: components["schemas"]["Decimal"];
+            };
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionOptionsBatchQuery"];
+            };
+        };
+        responses: {
+            /** @description Bound response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoundProgressionOptionsBatch"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem3"];
+                };
+            };
+        };
+    };
+    progressionOptionsBatchV4: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Orbit-View-Metadata"?: "1";
+                "X-Orbit-Minimum-Revision"?: components["schemas"]["Decimal"];
+            };
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionOptionsBatchQuery"];
+            };
+        };
+        responses: {
+            /** @description Bound response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoundProgressionOptionsBatch"];
                 };
             };
             /** @description Typed service problem */

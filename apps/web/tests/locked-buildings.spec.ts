@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
@@ -20,12 +21,15 @@ for (const width of [1440, 390, 320]) {
       await shellFixture(page, { catalog: rules.catalog })
       const requests: string[] = []
       page.on('request', (request) => {
-        if (request.url().endsWith('/progression-options'))
-          requests.push(request.postDataJSON().request.building)
+        if (/\/progression-options(?:\/bulk)?$/.test(request.url())) {
+          const payload = request.postDataJSON()
+          requests.push(...(payload.requests ?? [payload.request]).map((item: S['QuoteRequest3']) =>
+            item.type === 'Upgrade' || item.type === 'Demolition' ? item.building : item.type))
+        }
         if (request.url().endsWith('/commands')) requests.push('COMMAND')
       })
       // An unavailable item must be explained from the catalog, even offline.
-      await page.route('**/progression-options', (route) => route.abort())
+      await routeProgressionOptions(page, (route) => route.abort())
       for (const [destination, id, title] of [
         ['facilities', 'NaniteFactory', 'Nanite Factory'],
         ['facilities', 'Terraformer', 'Terraformer'],
@@ -107,7 +111,7 @@ for (const width of [1440, 390, 320]) {
         sent.push(route.request().postDataJSON())
         return route.abort()
       })
-      await page.route('**/progression-options', (route) => {
+      await routeProgressionOptions(page, (route) => {
         const { context, request } = route.request().postDataJSON()
         return route.fulfill({
           json: {
@@ -235,7 +239,7 @@ test('body restrictions remain inspectable from facility and resource cards', as
       entry.body_kinds = ['Moon']
   }
   await shellFixture(page, { catalog })
-  await page.route('**/progression-options', (route) => route.abort())
+  await routeProgressionOptions(page, (route) => route.abort())
   for (const [destination, title] of [
     ['facilities', 'Robotics Factory'],
     ['resources', 'Metal Mine'],

@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, body, binding, refreshGame } from './fixtures/game'
@@ -76,7 +77,7 @@ async function fixture(page: Page, scenario: (typeof cases)[number]) {
     researchOperation: null as S['ResearchOperationDto'] | null,
   }
   await installGameFixture(page, options)
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     inspections.push(request)
     const id = request.building ?? request.research ?? request.item.id
@@ -158,6 +159,11 @@ for (const scenario of cases) {
     }) => {
       await page.setViewportSize({ width, height: 900 })
       const state = await fixture(page, scenario)
+      const reads: { url: string; requests: unknown[] }[] = []
+      page.on('request', (request) => {
+        if (request.method() === 'POST' && request.url().includes('/progression-options'))
+          reads.push({ url: request.url(), requests: request.postDataJSON().requests ?? [] })
+      })
       await page.goto(`/u/andromeda/b/${body.id}/${scenario.page}`)
       const tile = page.getByRole('link', { name: scenario.name, exact: true })
       await expect(tile).toHaveAttribute('title', /Not enough resources/)
@@ -177,6 +183,9 @@ for (const scenario of cases) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true)
+      expect(reads).toHaveLength(1)
+      expect(reads[0].url).toMatch(/\/progression-options\/bulk$/)
+      expect(new Set(reads[0].requests.map((request) => JSON.stringify(request))).size).toBe(reads[0].requests.length)
       const queries = state.inspections.length
       // A clock tick and balance-only refresh must not re-fetch server costs.
       await page.clock.fastForward(1000)
@@ -192,6 +201,7 @@ for (const scenario of cases) {
         await refreshGame(page)
         await expect(tile).not.toHaveClass(/unaffordable/)
       }
+      expect(reads).toHaveLength(1)
       expect(state.inspections).toHaveLength(queries)
       // Fresh loading must recover the same affordability after reconnect/reload.
       state.planet.amounts.metal = '59999999'

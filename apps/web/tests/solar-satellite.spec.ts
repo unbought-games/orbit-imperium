@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { selectBody } from './fixtures/body-selector'
 import { openProductionSettings } from './fixtures/production-settings'
@@ -111,7 +112,7 @@ async function setup(
       fleet_slots: '1',
     },
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const satellite =
       request.type === 'Manufacture' && request.item.id === 'SolarSatellite'

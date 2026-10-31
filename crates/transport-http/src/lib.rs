@@ -243,6 +243,10 @@ where
             "/api/v3/universes/{id}/progression-options",
             post(v3::options::<S>),
         )
+        .route(
+            "/api/v3/universes/{id}/progression-options/bulk",
+            post(v3::options_batch::<S>),
+        )
         .route("/api/v3/universes/{id}/commands", post(v3::commands::<S>))
         .route(
             "/api/v3/universes/{id}/commands/{command}",
@@ -262,6 +266,10 @@ where
         .route(
             "/api/v4/universes/{id}/progression-options",
             post(v4::options::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/progression-options/bulk",
+            post(v4::options_batch::<S>),
         )
         .route("/api/v4/universes/{id}/commands", post(v4::commands::<S>))
         .route(
@@ -757,6 +765,40 @@ mod auth_worker_tests;
 #[cfg(test)]
 mod problem_tests {
     use super::*;
+    #[tokio::test]
+    async fn bulk_progression_http_snapshot_matches_browser_contract_fixture() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../contracts/fixtures/progression-options-bulk.json"
+        ))
+        .unwrap();
+        for protocol in [3, 4] {
+            for metadata in [false, true] {
+                let mut expected = fixture.clone();
+                for option in expected["options"].as_array_mut().unwrap() {
+                    option["protocol"] = protocol.into();
+                }
+                let snapshot: ReadSnapshot<BoundProgressionOptionsBatch> =
+                    serde_json::from_value(expected.clone()).unwrap();
+                let mut headers = HeaderMap::new();
+                if metadata {
+                    headers.insert("x-orbit-view-metadata", "1".parse().unwrap());
+                } else {
+                    expected.as_object_mut().unwrap().remove("progress");
+                }
+                let response = snapshot_response(&headers, snapshot);
+                assert_eq!(response.status(), StatusCode::OK);
+                assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+                let bytes = axum::body::to_bytes(response.into_body(), 32_768)
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
+                    expected
+                );
+            }
+        }
+    }
+
     #[tokio::test]
     async fn unsupported_persisted_state_remains_a_private_unavailable_response() {
         let response = Problem(StoreError::UnsupportedState.into()).into_response();
