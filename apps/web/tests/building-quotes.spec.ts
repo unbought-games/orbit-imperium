@@ -1,3 +1,4 @@
+import { routeProgressionOptions, unrouteProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -79,7 +80,7 @@ async function buildingFixture(page: Page, active = false, activeBuilding: S['Bu
       },
     })
   })
-  await page.route('**/progression-options', (route) => {
+  await routeProgressionOptions(page, (route) => {
     const { context, request } = route.request().postDataJSON()
     const building = request.building as S['BuildingId3']
     const source = planet.levels[building]!
@@ -359,7 +360,7 @@ test('a pending building quote labels its disabled action as loading', async ({
   const gate = new Promise<void>((resolve) => {
     release = resolve
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     await gate
     await route.fallback()
   })
@@ -418,7 +419,7 @@ async function quickBuildFixture(page: Page) {
       requirements: [],
     })),
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     queries++
     const planet = planets.find((planet) => planet.id === request.body)!
@@ -606,10 +607,18 @@ for (const [catalog, building] of [
   })
 }
 
-test('quick build follows live affordability without requerying and confirmed completion', async ({
+for (const width of [390, 1440]) {
+test(`quick build follows live affordability without requerying and confirmed completion at ${width}px`, async ({
   page,
 }) => {
+  await page.setViewportSize({ width, height: 900 })
   const fixture = await quickBuildFixture(page)
+  const batches: unknown[][] = []
+  const singles: string[] = []
+  page.on('request', (request) => {
+    if (request.url().endsWith('/progression-options/bulk')) batches.push(request.postDataJSON().requests)
+    if (request.url().endsWith('/progression-options')) singles.push(request.url())
+  })
   fixture.planets[0].amounts.metal = '59999999'
   await page.goto(`/u/andromeda/b/${body.id}/resources`)
   const build = page.getByRole('button', {
@@ -621,6 +630,8 @@ test('quick build follows live affordability without requerying and confirmed co
   await build.evaluate((button) => (button as HTMLButtonElement).click())
   await expect(page).toHaveURL(/\/resources$/)
   expect(fixture.sent).toHaveLength(0)
+  expect(batches).toHaveLength(1)
+  expect(singles).toHaveLength(0)
   const before = fixture.queries()
   fixture.planets[0].amounts.metal = '60000000'
   await fixture.refresh()
@@ -642,6 +653,8 @@ test('quick build follows live affordability without requerying and confirmed co
   await expect(
     page.getByRole('button', { name: 'Build Metal Mine', exact: true }),
   ).toBeDisabled()
+  const beforeCompletion = batches.length
+  await diagnosticScreenshot(page, { path: `test-results/bulk-resources-active-${width}x900.png` })
   fixture.constructions.length = 0
   fixture.planets[0].levels.CrystalMine = 2
   await fixture.refresh()
@@ -653,7 +666,12 @@ test('quick build follows live affordability without requerying and confirmed co
     }),
   ).toBeEnabled()
   expect(fixture.sent).toHaveLength(0)
+  expect(batches).toHaveLength(beforeCompletion + 1)
+  expect(singles).toHaveLength(0)
+  expect(new Set(batches.at(-1)!.map((r) => JSON.stringify(r))).size).toBe(batches.at(-1)!.length)
+  await diagnosticScreenshot(page, { path: `test-results/bulk-resources-completed-${width}x900.png` })
 })
+}
 
 for (const code of [
   'PrerequisiteMissing',
@@ -1043,7 +1061,7 @@ for (const width of [390, 1440]) {
         }],
       })
       const requests: string[] = []
-      await page.route('**/progression-options', async route => {
+      await routeProgressionOptions(page, async route => {
         const { context, request } = route.request().postDataJSON()
         requests.push(request.type)
         const current = {
@@ -1131,7 +1149,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height })
     await buildingFixture(page, true)
     const fail = (route: import('@playwright/test').Route) => route.fulfill({ status: 503 })
-    await page.route('**/progression-options', fail)
+    await routeProgressionOptions(page, fail)
     await page.goto(`/u/andromeda/b/${body.id}/resources/crystal-mine`)
     const active = page.getByRole('region', { name: 'Active construction', exact: true })
     await expect(active.getByRole('alert')).toContainText('Unable to inspect this action')
@@ -1140,7 +1158,7 @@ for (const width of [390, 1440]) {
     await page.clock.runFor(1000)
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: `test-results/crystal-active-error-${width}x${height}.png`, fullPage: false })
-    await page.unroute('**/progression-options', fail)
+    await unrouteProgressionOptions(page, fail)
     await active.getByRole('button', { name: 'Retry', exact: true }).click()
     await expect(active.getByRole('alert')).toHaveCount(0)
     await expect(active.getByRole('button', { name: 'Energy after upgrade details', exact: true })).toBeVisible()

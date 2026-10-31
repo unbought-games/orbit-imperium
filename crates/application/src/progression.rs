@@ -117,6 +117,18 @@ pub struct QuoteQuery3 {
     pub context: QueryContext,
     pub request: QuoteRequestDto3,
 }
+/// One bounded collection, evaluated against a single player snapshot.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProgressionOptionsBatchQuery {
+    pub context: QueryContext,
+    pub requests: Vec<QuoteRequestDto3>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BoundProgressionOptionsBatch {
+    pub options: Vec<BoundProgressionOptions>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct QuoteTerms3 {
     pub material: ProgressionMaterial,
@@ -304,32 +316,36 @@ impl<S: GameStore> GameService<S> {
         if !facts.rules.progression() {
             return Err(ServiceError::UnsupportedProtocol);
         }
-        let inspection = inspect_progression(
-            &facts.state,
-            Actor::Player(c.binding.player),
-            &q,
-            facts.at,
-            &facts.rules,
-        )
-        .map_err(|_| ServiceError::InvariantFailure)?;
-        if inspection
-            .blockers
-            .iter()
-            .any(|x| matches!(x.code, GameError::NotFound | GameError::NotOwned))
-        {
-            return Err(ServiceError::NotFound);
-        }
         Ok(ReadSnapshot {
             progress,
-            facts: BoundProgressionOptions {
-                protocol: facts.rules.protocol(),
-                binding: c.binding,
-                request_id: c.request_id,
-                viewer_revision: revision.to_string(),
-                sampled_at: facts.at,
-                as_of_ms: facts.at,
-                inspection,
-            },
+            facts: progression_option(&facts, revision, &c, &q)?,
+        })
+    }
+    pub async fn progression_options_batch(
+        &self,
+        p: Principal,
+        query: ProgressionOptionsBatchQuery,
+    ) -> Result<ReadSnapshot<BoundProgressionOptionsBatch>, ServiceError> {
+        let c = query.context;
+        Self::principal(p, c.binding)?;
+        let requests = progression_batch_requests(query.requests)?;
+        self.store.bot_observe(c.binding).await?;
+        // Every allowed request uses the player's progression scope. The store
+        // loads all owned bodies and research, so one read serves the collection.
+        let ReadSnapshot {
+            facts: (facts, revision),
+            progress,
+        } = self.store.bound_quote(c.binding, &requests[0]).await?;
+        if !facts.rules.progression() {
+            return Err(ServiceError::UnsupportedProtocol);
+        }
+        let options = requests
+            .iter()
+            .map(|request| progression_option(&facts, revision, &c, request))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ReadSnapshot {
+            facts: BoundProgressionOptionsBatch { options },
+            progress,
         })
     }
     pub async fn progression_quote(
@@ -632,6 +648,81 @@ pub(crate) fn progression_projection(
                 max_active_manufacturing_entries: 256,
             },
         },
+    })
+}
+
+fn progression_batch_requests(
+    requests: Vec<QuoteRequestDto3>,
+) -> Result<Vec<QuoteRequest>, ServiceError> {
+    if requests.is_empty() || requests.len() > 128 {
+        return Err(ServiceError::Malformed);
+    }
+    requests
+        .into_iter()
+        .map(|request| {
+            let request = request.domain()?;
+            if !matches!(
+                request,
+                QuoteRequest::Upgrade { .. }
+                    | QuoteRequest::Demolition { .. }
+                    | QuoteRequest::Research { .. }
+                    | QuoteRequest::Manufacture { .. }
+            ) {
+                return Err(ServiceError::Malformed);
+            }
+            Ok(request)
+        })
+        .collect()
+}
+
+fn progression_option(
+    facts: &QuoteSnapshot,
+    revision: i64,
+    c: &QueryContext,
+    q: &QuoteRequest,
+) -> Result<BoundProgressionOptions, ServiceError> {
+    // The single-item store read checks the first subject. Bulk entries share
+    // that snapshot, so enforce the same ownership gate for every other subject
+    // before the engine's coverage checks (which are internal invariants).
+    let body = match q {
+        QuoteRequest::Upgrade { body, .. }
+        | QuoteRequest::Demolition { body, .. }
+        | QuoteRequest::Manufacture { body, .. } => Some(*body),
+        QuoteRequest::Research { host, .. } => Some(*host),
+        _ => None,
+    };
+    if body.is_some_and(|body| {
+        !facts
+            .state
+            .bodies
+            .get(&body)
+            .is_some_and(|body| body.owner == c.binding.player)
+    }) {
+        return Err(ServiceError::NotFound);
+    }
+    let inspection = inspect_progression(
+        &facts.state,
+        Actor::Player(c.binding.player),
+        q,
+        facts.at,
+        &facts.rules,
+    )
+    .map_err(|_| ServiceError::InvariantFailure)?;
+    if inspection
+        .blockers
+        .iter()
+        .any(|x| matches!(x.code, GameError::NotFound | GameError::NotOwned))
+    {
+        return Err(ServiceError::NotFound);
+    }
+    Ok(BoundProgressionOptions {
+        protocol: facts.rules.protocol(),
+        binding: c.binding,
+        request_id: c.request_id,
+        viewer_revision: revision.to_string(),
+        sampled_at: facts.at,
+        as_of_ms: facts.at,
+        inspection,
     })
 }
 

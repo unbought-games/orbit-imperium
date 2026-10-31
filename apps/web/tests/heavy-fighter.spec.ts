@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { setDestination } from './fixtures/coordinates'
@@ -56,7 +57,7 @@ async function setup(
       fleet_slots: '1',
     },
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const heavy =
       request.type === 'Manufacture' && request.item.id === 'HeavyFighter'
@@ -394,7 +395,7 @@ test('concurrent spending during validation recovers without a stale affordabili
     release = resolve
   })
   let requested = false
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     requested = true
     await gate
     await route.fallback()

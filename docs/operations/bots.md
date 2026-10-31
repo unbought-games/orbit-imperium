@@ -144,7 +144,7 @@ its category and recovery contract before being exposed to bots.
 | Building/demolition/research/manufacturing and cancellations; production settings; rename planet; fleets, recalls, vacation; report read/hide/star commands | `POST machine/commands`, ordinary `CommandEnvelopeV4` | 1 at durable admission, including later engine rejection |
 | Legacy browser command pair | `POST commands` | 1 for the pair, same identity allowance |
 | Explicit foreground presence | `POST presence` | 1; awake and budget required |
-| Progression inspection and quotes | `POST progression-options`, `POST quotes` | 0; awake only |
+| Progression inspection and quotes | `POST progression-options`, `POST progression-options/bulk`, `POST quotes` | 0; awake only |
 | Galaxy system | `POST world`, `type=Galaxy` | 1 per system; UUID-bound retained response |
 | Coordinate/body/debris/empty-position resolution | `POST world`, `type=ResolveDestination` | 1 per coordinate, including observed absence/errors; retained replay |
 | Fleet quote | `POST world`, `type=FleetQuote` | 0; awake only; coordinate-addressed destinations require a prior successful paid resolution |

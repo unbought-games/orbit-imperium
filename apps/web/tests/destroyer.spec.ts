@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { setDestination } from './fixtures/coordinates'
 import { test, expect } from './fixtures/test'
@@ -135,7 +136,7 @@ async function setup(
       fleet_slots: '1',
     },
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const destroyer =
       enabled &&

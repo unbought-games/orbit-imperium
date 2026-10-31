@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { setDestination } from './fixtures/coordinates'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
@@ -87,7 +88,7 @@ async function setup(
       fleet_slots: '1',
     },
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const largeCargo =
       enabled &&

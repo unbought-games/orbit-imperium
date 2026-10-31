@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { navigate, menuDestination } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
@@ -54,7 +55,7 @@ async function setup(
     bodies: planet.id === body.id ? [planet] : [structuredClone(body), planet],
     commandReferences,
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const level = planet.levels[request.building as keyof typeof planet.levels]
     await route.fulfill({
@@ -231,7 +232,7 @@ test('unaffordable tiles stay striped when another building starts and quote ref
   await shellFixture(page, { bodies: [planet], constructions })
   let blocked = false
   let requests = 0
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     requests++
     if (blocked) return route.abort()
     const { context, request } = route.request().postDataJSON()
@@ -305,7 +306,7 @@ test('Improve and resource blockers follow current balances while the quote stay
   await refreshGame(page)
   let quotes = 0
   page.on('request', (request) => {
-    if (request.url().endsWith('/progression-options')) quotes++
+    if (/\/progression-options(?:\/bulk)?$/.test(request.url())) quotes++
   })
   await page
     .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
@@ -858,8 +859,7 @@ test('a late inspection cannot overwrite another building or reopen dismissed de
   const held = new Promise<void>((resolve) => {
     release = resolve
   })
-  await page.route(
-    '**/progression-options',
+  await routeProgressionOptions(page,
     async (route) => {
       await held
       await route.fallback()
@@ -1153,7 +1153,7 @@ for (const [pageName, building, title] of [
         },
       ],
     })
-    await page.route('**/progression-options', (route) => route.abort())
+    await routeProgressionOptions(page, (route) => route.abort())
     let release!: () => void
     const gate = new Promise<void>((resolve) => {
       release = resolve

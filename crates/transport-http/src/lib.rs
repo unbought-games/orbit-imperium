@@ -243,6 +243,10 @@ where
             "/api/v3/universes/{id}/progression-options",
             post(v3::options::<S>),
         )
+        .route(
+            "/api/v3/universes/{id}/progression-options/bulk",
+            post(v3::options_batch::<S>),
+        )
         .route("/api/v3/universes/{id}/commands", post(v3::commands::<S>))
         .route(
             "/api/v3/universes/{id}/commands/{command}",
@@ -262,6 +266,10 @@ where
         .route(
             "/api/v4/universes/{id}/progression-options",
             post(v4::options::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/progression-options/bulk",
+            post(v4::options_batch::<S>),
         )
         .route("/api/v4/universes/{id}/commands", post(v4::commands::<S>))
         .route(

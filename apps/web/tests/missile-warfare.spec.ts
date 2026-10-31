@@ -1,3 +1,4 @@
+import { routeProgressionOptions } from './fixtures/progression-options'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { test, expect } from './fixtures/test'
@@ -140,7 +141,7 @@ async function setup(page: Parameters<typeof shellFixture>[0]) {
       fleet_slots: '1',
     },
   })
-  await page.route('**/progression-options', async (route) => {
+  await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const manufacture = request.type === 'Manufacture'
     const cost = manufacture

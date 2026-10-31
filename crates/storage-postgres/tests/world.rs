@@ -1,3 +1,4 @@
+mod bulk_options;
 use orbit_application::*;
 use orbit_engine::*;
 use orbit_storage_postgres::{MvpAccount, PgStore, PoolLimits};
@@ -8,6 +9,13 @@ async fn paired_admission_rejected_gameplay_restart_and_passive_reads() {
     // next scenario. One debug-build poll frame for this entire journey can
     // exhaust the native test thread stack on Linux.
     let mut fixture = Box::pin(paired_presence_and_restart()).await;
+    bulk_options::check(
+        &GameService::new(fixture.store.clone()),
+        fixture.principal(),
+        fixture.context(),
+        fixture.body,
+    )
+    .await;
     let due = Box::pin(completed_assets_preserve_other_owners(&fixture)).await;
     let (fb, pool) = Box::pin(report_pagination_and_privacy(&fixture)).await;
     fixture.pool = pool;

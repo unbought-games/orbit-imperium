@@ -1,3 +1,4 @@
+mod bulk_options;
 use orbit_application::*;
 use orbit_engine::*;
 use orbit_storage_postgres::{MvpAccount, PgStore};
@@ -164,6 +165,7 @@ async fn concurrent_spend_deadline_ordering_and_restart_preserve_state() {
         body: v.bodies[0].id,
         at: 1000,
     };
+    bulk_options::check(&j.game, j.principal(), j.context(), j.body).await;
     // Prepare only the prerequisites needed by the failure cases below. The
     // engine tests own progression formulas; this suite owns durable races.
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
