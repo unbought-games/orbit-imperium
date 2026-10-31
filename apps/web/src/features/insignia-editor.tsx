@@ -1,6 +1,7 @@
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
 import { Button } from '../ui/button'
+import { defaultInsignia } from '../client-model/insignias'
 import { EmpireInsignia } from './empire-insignia'
 import { useInsigniaEditor } from './use-insignia-editor'
 import styles from './insignia.module.css'
@@ -9,6 +10,8 @@ export function InsigniaEditor() {
   const editor = useInsigniaEditor()
   const { snapshot, design } = editor
   const symbol = snapshot?.catalog.find((s) => s.id === design?.recipe.symbol)
+  const previewSymbol =
+    symbol ?? snapshot?.catalog.find((s) => s.id === defaultInsignia.symbol)
   return (
     <Section aria-label="Empire insignia" className={styles.panel}>
       <div className={styles.heading}>
@@ -95,11 +98,11 @@ export function InsigniaEditor() {
             >
               <div className={styles.workspace}>
                 <div className={styles.preview}>
-                  {symbol && (
+                  {previewSymbol && (
                     <EmpireInsignia
                       appearance={{
-                        recipe: design.recipe,
-                        asset_url: symbol.asset_url,
+                        recipe: symbol ? design.recipe : defaultInsignia,
+                        asset_url: previewSymbol.asset_url,
                       }}
                       size="large"
                       label="Insignia preview"
@@ -183,13 +186,18 @@ export function InsigniaEditor() {
                       })}
                     </div>
                   </fieldset>
-                  {snapshot.policy === 'supporter' && (
-                    <Text>
-                      {editor.access('laurel') === 'unavailable'
-                        ? 'Supporter verification is temporarily unavailable. Free and permanently unlocked symbols remain available.'
-                        : 'Supporters also receive Laureate. Permanent unlocks remain yours after membership ends.'}
-                    </Text>
-                  )}
+                  {snapshot.policy === 'supporter' &&
+                    snapshot.catalog.some((item) => item.supporter) && (
+                      <Text>
+                        {snapshot.catalog.some(
+                          (item) =>
+                            item.supporter &&
+                            editor.access(item.id) === 'unavailable',
+                        )
+                          ? 'Supporter verification is temporarily unavailable. Free and permanently unlocked symbols remain available.'
+                          : 'Supporters can use additional symbols. Permanent unlocks remain yours after membership ends.'}
+                      </Text>
+                    )}
                   <div className={styles.colors}>
                     <label>
                       Symbol color
@@ -230,9 +238,9 @@ export function InsigniaEditor() {
               </div>
               {editor.access(design.recipe.symbol) !== 'available' && (
                 <Text>
-                  This design is preserved in your collection. Your empire
-                  displays the default insignia until access returns or you
-                  equip another design.
+                  {editor.access(design.recipe.symbol) === 'not_installed'
+                    ? 'This symbol is not installed on this server. Your saved design is preserved. Choose an available symbol or ask your server operator about the missing content.'
+                    : 'This design is preserved in your collection. Your empire displays the default insignia until access returns or you equip another design.'}
                 </Text>
               )}
               <div className={styles.actions}>

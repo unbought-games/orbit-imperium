@@ -278,7 +278,9 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             })
             .collect()
     };
-    let include_insignia = h.get("x-orbit-insignia").is_some_and(|value| value == "1");
+    let include_insignia = h
+        .get("x-orbit-insignia")
+        .is_some_and(|value| value == "1" || value == "2");
     let equipped = if include_insignia && s.customization.is_some() {
         s.updates
             .equipped_insignias(universe, players.iter().map(|p| p.player).collect())
@@ -293,6 +295,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         {
             let recipe = equipped.get(&player.player).map(|(recipe, grants)| {
                 effective_insignia(
+                    &c.catalog,
                     recipe,
                     c.policy,
                     grants,
@@ -300,7 +303,17 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
                     unbought_auth::now(),
                 )
             });
-            player.insignia = recipe.map(super::insignias::appearance);
+            player.insignia = recipe.map(|r| {
+                c.appearance(
+                    if h.get("x-orbit-insignia").is_some_and(|v| v == "1")
+                        && !legacy_insignia_id(&r.symbol)
+                    {
+                        InsigniaRecipe::default()
+                    } else {
+                        r
+                    },
+                )
+            });
         }
         player.alliance = alliances.remove(&player.player);
     }

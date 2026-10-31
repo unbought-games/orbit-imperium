@@ -35,3 +35,5 @@ Routine checks and explicitly requested acceptance suites are separate. Follow t
 
 - [ADR 001: Empire customization](architecture/adr-001-empire-customization.md)
 - [Insignia storage and access operations](operations/empire-customization.md)
+
+- [Hosted cosmetic content distribution](architecture/adr-002-hosted-cosmetic-content.md) separates bundled free originals from operator-installed catalogs.

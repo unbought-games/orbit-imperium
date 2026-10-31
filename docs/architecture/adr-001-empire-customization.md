@@ -1,6 +1,6 @@
 # ADR 001: Empire customization belongs to Orbit
 
-Status: accepted and implemented for the initial insignia slice, 2026-10-30.
+Status: initial slice accepted 2026-10-30; content distribution superseded by [ADR 002](adr-002-hosted-cosmetic-content.md), 2026-10-31.
 
 ## Context
 
@@ -94,7 +94,7 @@ a single-host server or supply their own S3 endpoint. Multi-host deployments
 must use S3-compatible storage. There is no filesystem replication, host-count
 detection, or shared-disk coordination feature.
 
-The four original, trusted SVG symbols ship with the binary. API startup
+Historically, all four original SVG symbols shipped with the binary. ADR 002 replaces this with three bundled free originals and separately installed content. API startup
 idempotently writes and verifies them through the configured store under keys
 containing their SHA-256 content hash. Publication does not first inspect missing
 keys, so S3 bucket-list permission is unnecessary. Multiple replicas publish identical bytes. A failed

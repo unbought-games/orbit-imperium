@@ -4,6 +4,14 @@
 - React components should be light-weight with no heavy inline logic. Simple value transformations are acceptable. Heavy logic should be extracted into custom hooks and functions and thoroughly tested.
 - Server functions, API routes should be treated the same way - no heavy logic. All logic should be pulled out into functions and either thoroughly tested with unit or integration tests.
 
+# Cosmetic content and distribution
+
+- Game customization content shipped in this public repository is free content for self-hosted servers and free accounts on official servers. Keep it covered by the applicable repository license; do not bundle paid or supporter-only originals.
+- Paid and supporter-only content belongs in a separate private content repository and is published separately for official servers. This includes artwork, titles, mottos, catalog text, previews, and authoring sources. Do not copy it into public source, fixtures, frontend bundles, binaries, or community release artifacts.
+- Keep catalog loaders, editors, access rules, and reusable formats open source. Self-hosters can install their own content without contacting Unbought. An unrestricted access policy only unlocks installed content; it must never fetch official paid content.
+- Use independently authored, freely licensed fixtures to test restricted content. Preserve saved selections and permanent grants when content is unavailable; derive a free fallback instead of deleting player choices.
+- Before changing cosmetic content or its delivery, read [ADR 002](docs/architecture/adr-002-hosted-cosmetic-content.md) and the [operator guide](docs/operations/empire-customization.md). Keep private repository names, URLs, and deployment details out of public guidance.
+
 # UI design
 
 Before designing, implementing, reviewing, or fixing UI, use the repository

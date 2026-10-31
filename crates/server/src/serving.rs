@@ -23,11 +23,12 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
         .transpose()?;
     let customization = if let Some(config) = &serve.asset_store {
         let assets = config.connect().await?;
-        let customization = Customization {
+        let customization = Customization::load(
+            serve.cosmetic_policy,
             assets,
-            policy: serve.cosmetic_policy,
-        };
-        customization.publish().await?;
+            serve.cosmetic_catalog.as_deref(),
+        )
+        .await?;
         Some(customization)
     } else {
         None

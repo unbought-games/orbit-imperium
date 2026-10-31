@@ -43,6 +43,7 @@ impl PgStore {
         &self,
         b: Binding,
         action: InsigniaAction,
+        catalog: &InsigniaCatalog,
         policy: CosmeticPolicy,
         evidence: SupporterEvidence,
     ) -> Result<(), ServiceError> {
@@ -78,12 +79,13 @@ impl PgStore {
                 .fetch_one(&mut *tx)
                 .await
                 .map_err(db_error)?;
-        let authorize = |symbol: &str| match insignia_access(symbol, policy, &grants, evidence, now)
-        {
-            InsigniaAccess::Available => Ok(()),
-            InsigniaAccess::SupporterRequired => Err(ServiceError::Forbidden),
-            InsigniaAccess::Unavailable => Err(ServiceError::Unavailable),
-        };
+        let authorize =
+            |symbol: &str| match insignia_access(catalog, symbol, policy, &grants, evidence, now) {
+                InsigniaAccess::Available => Ok(()),
+                InsigniaAccess::SupporterRequired => Err(ServiceError::Forbidden),
+                InsigniaAccess::Unavailable => Err(ServiceError::Unavailable),
+                InsigniaAccess::NotInstalled => Err(ServiceError::NotFound),
+            };
         let equip = match action {
             InsigniaAction::Load => None,
             InsigniaAction::Save { design, equip } => {

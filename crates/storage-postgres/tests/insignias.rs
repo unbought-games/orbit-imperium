@@ -12,6 +12,21 @@ use sha2::Digest;
 use tower::ServiceExt;
 use uuid::Uuid;
 
+fn catalog() -> InsigniaCatalog {
+    InsigniaCatalog::with_manifest(InsigniaManifest {
+        version: 1,
+        insignias: vec![InsigniaSymbol {
+            id: "test-star".into(),
+            name: "Test star".into(),
+            supporter: true,
+            sha256: hex::encode(sha2::Sha256::digest(include_bytes!(
+                "fixtures/cosmetics/test-star.svg"
+            ))),
+        }],
+    })
+    .unwrap()
+}
+
 async fn call(
     app: &Router,
     b: Binding,
@@ -23,9 +38,10 @@ async fn call(
     let mut request = Request::post(format!("/api/v1/universes/{}/{endpoint}", b.universe))
         .header("origin", "https://game.test")
         .header("cookie", format!("orbit_session={}", login.token))
-        .header("content-type", "application/json");
+        .header("content-type", "application/json")
+        .header("x-orbit-catalog", "1");
     if endpoint == "player-profiles" {
-        request = request.header("x-orbit-insignia", "1");
+        request = request.header("x-orbit-insignia", "2");
     }
     if csrf {
         request = request.header("x-csrf-token", &login.session.csrf);
@@ -86,7 +102,16 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
     let customization = Customization {
         policy: CosmeticPolicy::Unrestricted,
         assets: config.connect().await.unwrap(),
+        catalog: catalog(),
     };
+    customization
+        .assets
+        .write(
+            &catalog().get("test-star").unwrap().key(),
+            include_bytes!("fixtures/cosmetics/test-star.svg").to_vec(),
+        )
+        .await
+        .unwrap();
     customization.publish().await.unwrap();
     customization.publish().await.unwrap();
     let (_drain, drain) = tokio::sync::watch::channel(false);
@@ -174,15 +199,63 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
             .to_bytes()
             .starts_with(b"<svg")
     );
+    let hosted_asset = initial["catalog"][3]["asset_url"].as_str().unwrap();
+    let anonymous = app
+        .clone()
+        .oneshot(Request::get(hosted_asset).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+    let viewer = app
+        .clone()
+        .oneshot(
+            Request::get(hosted_asset)
+                .header("cookie", format!("orbit_session={}", other.token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        viewer.status(),
+        StatusCode::OK,
+        "all authenticated viewers can see installed artwork without supporter status"
+    );
+    assert_eq!(viewer.headers()["cache-control"], "private, no-store");
+    let orphan = b"<svg/>";
+    let orphan_hash = hex::encode(sha2::Sha256::digest(orphan));
+    customization
+        .assets
+        .write(
+            &format!("insignias/v1/orphan/{orphan_hash}.svg"),
+            orphan.to_vec(),
+        )
+        .await
+        .unwrap();
+    let response = app
+        .clone()
+        .oneshot(
+            Request::get(format!("/api/media/insignias/orphan/{orphan_hash}.svg"))
+                .header("cookie", format!("orbit_session={}", login.token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.status(),
+        StatusCode::NOT_FOUND,
+        "objects do not install themselves"
+    );
     let older=b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1 1\"><path d=\"M0 0h1v1H0Z\"/></svg>";
     let hash = hex::encode(sha2::Sha256::digest(older));
-    let key = format!("insignias/v1/future-symbol/{hash}.svg");
+    let key = format!("insignias/v1/compass/{hash}.svg");
     customization
         .assets
         .write(&key, older.to_vec())
         .await
         .unwrap();
-    let media_url = format!("/api/media/insignias/future-symbol/{hash}.svg");
+    let media_url = format!("/api/media/insignias/compass/{hash}.svg");
     let response = app
         .clone()
         .oneshot(Request::get(&media_url).body(Body::empty()).unwrap())
@@ -209,7 +282,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         id: Uuid::new_v4(),
         name: "Roman stars".into(),
         recipe: InsigniaRecipe {
-            symbol: "laurel".into(),
+            symbol: "test-star".into(),
             ..Default::default()
         },
         revision: 0,
@@ -297,7 +370,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
     .1;
     assert_eq!(
         profile["players"][0]["insignia"]["recipe"]["symbol"],
-        "laurel"
+        "test-star"
     );
     assert!(
         profile["players"][0].get("supporter_tier").is_none(),
@@ -320,8 +393,35 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         .find(|p| p["player"] == b.player.0.to_string())
         .unwrap();
     assert_eq!(
-        seen["insignia"]["recipe"]["symbol"], "laurel",
+        seen["insignia"]["recipe"]["symbol"], "test-star",
         "another authorized player sees the equipped identity"
+    );
+    let old_profile = Request::post(format!("/api/v1/universes/{}/player-profiles", b.universe))
+        .header("origin", "https://game.test").header("cookie", format!("orbit_session={}", login.token))
+        .header("x-csrf-token", &login.session.csrf).header("content-type", "application/json")
+        .header("x-orbit-insignia", "1")
+        .body(Body::from(json!({"context":{"binding":b,"request_id":Uuid::new_v4()},"source":{"type":"SelfAccount"}}).to_string())).unwrap();
+    let response = app.clone().oneshot(old_profile).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let response: Value =
+        serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(
+        response["players"][0]["insignia"]["recipe"]["symbol"],
+        "compass"
+    );
+    let old_editor = Request::post(format!("/api/v1/universes/{}/insignias", b.universe))
+        .header("origin", "https://game.test")
+        .header("cookie", format!("orbit_session={}", login.token))
+        .header("x-csrf-token", &login.session.csrf)
+        .header("content-type", "application/json")
+        .body(Body::from(
+            json!({"context":{"binding":b,"request_id":Uuid::new_v4()},"action":{"type":"Load"}})
+                .to_string(),
+        ))
+        .unwrap();
+    assert_eq!(
+        app.clone().oneshot(old_editor).await.unwrap().status(),
+        StatusCode::CONFLICT
     );
     let legacy_request = Request::post(format!("/api/v1/universes/{}/player-profiles",b.universe))
         .header("origin","https://game.test").header("cookie",format!("orbit_session={}",login.token))
@@ -358,13 +458,19 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
     };
     assert!(matches!(
         fresh
-            .change_insignia(b, action(), CosmeticPolicy::Supporter, expired)
+            .change_insignia(b, action(), &catalog(), CosmeticPolicy::Supporter, expired)
             .await,
         Err(ServiceError::Unavailable)
     ));
     assert!(matches!(
         fresh
-            .change_insignia(b, action(), CosmeticPolicy::Supporter, no_support)
+            .change_insignia(
+                b,
+                action(),
+                &catalog(),
+                CosmeticPolicy::Supporter,
+                no_support
+            )
             .await,
         Err(ServiceError::Forbidden)
     ));
@@ -372,10 +478,10 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         fresh.insignia_library(b).await.unwrap().designs[0]
             .recipe
             .symbol,
-        "laurel"
+        "test-star"
     );
     fresh
-        .change_insignia(b, action(), CosmeticPolicy::Supporter, active)
+        .change_insignia(b, action(), &catalog(), CosmeticPolicy::Supporter, active)
         .await
         .unwrap();
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
@@ -451,11 +557,11 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         assert_eq!(loaded["catalog"][3]["access"], expected);
         assert_eq!(
             loaded["library"]["designs"][0]["recipe"]["symbol"],
-            "laurel"
+            "test-star"
         );
         assert_eq!(
             loaded["appearance"]["recipe"]["symbol"],
-            if value == 0 { "laurel" } else { "compass" }
+            if value == 0 { "test-star" } else { "compass" }
         );
         assert_eq!(
             call(
@@ -491,20 +597,21 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         before_calls,
         "unrestricted cosmetics must not call Accounts"
     );
-    sqlx::query("INSERT INTO insignia_grants(account,symbol,reason) VALUES($1,'laurel','fixture permanent unlock')").bind(b.account.0).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO insignia_grants(account,symbol,reason) VALUES($1,'test-star','fixture permanent unlock')").bind(b.account.0).execute(&pool).await.unwrap();
     fresh
         .change_insignia(
             b,
             InsigniaAction::Equip {
                 design_id: Some(design.id),
             },
+            &catalog(),
             CosmeticPolicy::Supporter,
             expired,
         )
         .await
         .unwrap();
     let library = fresh.insignia_library(b).await.unwrap();
-    assert_eq!(library.permanent_symbols, vec!["laurel"]);
+    assert_eq!(library.permanent_symbols, vec!["test-star"]);
     // The same account owns one collection but each universe equips separately.
     let second = Binding {
         account: b.account,
@@ -545,6 +652,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
             InsigniaAction::Equip {
                 design_id: Some(design.id),
             },
+            &catalog(),
             CosmeticPolicy::Supporter,
             expired,
         )
@@ -568,6 +676,74 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         .0,
         StatusCode::OK
     );
+    let (_, drain) = tokio::sync::watch::channel(false);
+    let missing = router_with_customization(
+        fresh.clone(),
+        HttpConfig {
+            origin: "https://game.test".into(),
+            assets: "apps/web/dist".into(),
+            login_per_minute: 30,
+            signup: None,
+            signup_per_minute: 30,
+            legacy_signup_enabled: false,
+            wake: None,
+            observer: None,
+        },
+        drain,
+        None,
+        None,
+        Customization {
+            catalog: InsigniaCatalog::default(),
+            policy: CosmeticPolicy::Unrestricted,
+            ..customization.clone()
+        },
+    );
+    let (_, loaded) = call(
+        &missing,
+        b,
+        &login,
+        true,
+        "insignias",
+        json!({"action":{"type":"Load"}}),
+    )
+    .await;
+    assert_eq!(loaded["catalog"].as_array().unwrap().len(), 3);
+    assert_eq!(
+        loaded["library"]["designs"][0]["recipe"]["symbol"],
+        "test-star"
+    );
+    assert_eq!(loaded["appearance"]["recipe"]["symbol"], "compass");
+    assert_eq!(
+        call(
+            &missing,
+            b,
+            &login,
+            true,
+            "insignias",
+            json!({"action":{"type":"Equip","design_id":design.id}})
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        fresh.insignia_library(b).await.unwrap().equipped,
+        Some(design.id)
+    );
+    assert_eq!(
+        fresh.insignia_library(b).await.unwrap().permanent_symbols,
+        vec!["test-star"]
+    );
+    let (_, restored) = call(
+        &permanent,
+        b,
+        &login,
+        true,
+        "insignias",
+        json!({"action":{"type":"Load"}}),
+    )
+    .await;
+    assert_eq!(restored["appearance"]["recipe"]["symbol"], "test-star");
     task.abort();
     assert!(task.await.unwrap_err().is_cancelled());
     let before = fresh.bound_world(b).await.unwrap().facts.0.state;
@@ -577,6 +753,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
             InsigniaAction::Delete {
                 design_id: design.id,
             },
+            &catalog(),
             CosmeticPolicy::Supporter,
             expired,
         )
@@ -614,6 +791,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
                     design: extra,
                     equip: true
                 },
+                &catalog(),
                 CosmeticPolicy::Unrestricted,
                 Default::default()
             )
