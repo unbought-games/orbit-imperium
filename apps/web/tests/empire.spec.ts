@@ -485,7 +485,10 @@ for (const longContent of [false, true]) {
         expect(
           await row.evaluate((el) => el.scrollWidth - el.clientWidth),
         ).toBe(0)
-        const action = row.getByRole('link', { name: /^View .* fleet$/ })
+        const action = row.getByRole('link', { name: /^View .* fleet$/ }).or(
+          row.getByRole('button', { name: /^Incoming .* ship composition:/ }),
+        )
+        await expect(action).toBeVisible()
         await action.focus()
         await expect(action).toBeInViewport()
         expect(
@@ -580,7 +583,7 @@ test('a large empire keeps every network target reachable and phone movements vi
   })
   await expect(board.getByRole('list')).toBeVisible()
   await expect(board.getByRole('listitem')).toHaveCount(4)
-  await expect(board.getByText('Ship composition unknown')).toBeVisible()
+  await expect(board.getByRole('button', { name: 'Incoming Attack ship composition: unknown' })).toBeVisible()
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -619,25 +622,29 @@ for (const width of [320, 390, 1280]) {
     await expect(board).toContainText('1 incoming hostile fleet detected')
     const appearance = async (mission: string, leg: string) => {
       const row = board.getByRole('listitem').filter({
-        has: page.getByRole('link', { name: `View ${mission} ${leg} fleet`, exact: true }),
+        has: leg === 'incoming'
+          ? page.getByRole('heading', { name: `Incoming ${mission.toLowerCase()} · Hostile`, exact: true })
+          : page.getByRole('link', { name: `View ${mission} ${leg} fleet`, exact: true }),
       })
       await expect(row).toBeVisible()
       return row.evaluate((el) => ({
         border: getComputedStyle(el).borderLeftColor,
         background: getComputedStyle(el).backgroundColor,
+        gradient: getComputedStyle(el).backgroundImage,
         title: getComputedStyle(el.querySelector('h3') ?? el.querySelector('strong')!).color,
       }))
     }
     const peaceful = await appearance('Transport', 'outbound')
     const combat = await appearance('Attack', 'incoming')
     expect(peaceful.border).not.toBe(combat.border)
-    expect(peaceful.background).not.toBe(combat.background)
+    expect(peaceful.gradient).not.toBe(combat.gradient)
     expect(peaceful.title).not.toBe(combat.title)
     for (const mission of missions) {
       for (const leg of ['outbound', 'returning']) {
         const owned = await appearance(mission, leg)
         expect(owned.border).toBe(peaceful.border)
         expect(owned.background).toBe(peaceful.background)
+        expect(owned.gradient).not.toBe(combat.gradient)
         expect(owned.title).not.toBe(combat.title)
       }
     }

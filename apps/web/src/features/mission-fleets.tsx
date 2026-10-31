@@ -18,6 +18,7 @@ import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { TaskHeader } from '../ui/task-header'
 import { IncomingFleet } from './incoming-fleet'
+import { incomingKey } from './command-hud/model'
 import { FleetSlots } from './fleet-slots'
 import { FleetInventory } from './fleet-inventory'
 import { FleetRecall, MissionFleetCard } from './mission-fleet-card'
@@ -138,23 +139,25 @@ export function MissionFleets({
               description="Detected arrivals will appear here."
             />
           )}
-          {incoming.map((movement) =>
-            movement.kind === 'missile' ? (
-              <MissileFlight
-                key={movement.key}
-                flight={movement.flight}
-                view={view}
-                now={now}
-              />
-            ) : (
-              <IncomingFleet
-                key={movement.key}
-                fleet={movement.flight}
-                view={view}
-                now={now}
-              />
-            ),
-          )}
+          <div className={fleetStyles.list}>
+            {incoming.map((movement) =>
+              movement.kind === 'missile' ? (
+                <MissileFlight
+                  key={movement.key}
+                  flight={movement.flight}
+                  view={view}
+                  now={now}
+                />
+              ) : (
+                <IncomingFleet
+                  key={incomingKey(movement.flight)}
+                  fleet={movement.flight}
+                  view={view}
+                  now={now}
+                />
+              ),
+            )}
+          </div>
         </section>
       )}
       {!item && <FleetInventory model={model} origin={origin} />}
