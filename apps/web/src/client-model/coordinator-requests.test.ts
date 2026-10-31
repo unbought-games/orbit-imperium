@@ -475,3 +475,88 @@ it('restarts paging after acknowledged reads, reconciles later stale mail, and f
   await expect(old).rejects.toThrow('Unable to confirm your inbox')
   expect(model.store.getState().mailbox).toBeNull()
 })
+
+it('replaces shared report membership atomically without treating cached details as inbox entries', async () => {
+  const { model, port } = await setup()
+  const first = report({ ...model.view!, request_id: id(90) }).data.header
+  let items = [first, { ...first, id: id(52) }, { ...first, id: id(53) }]
+  let revision = '1'
+  port.reports.mockImplementation(async (context) => ({
+    ...reports(context),
+    viewer_revision: revision,
+    data: { items, has_more: false, next_cursor: null, as_of_ms: 1000 },
+  }))
+  await model.refreshReportInbox()
+  expect(model.store.getState().reportInbox?.items).toEqual(
+    items.map((h) => h.id),
+  )
+  items = [{ ...first, read: true }]
+  revision = '2'
+  await model.refreshReportInbox()
+  expect(model.store.getState().reportInbox?.items).toEqual([first.id])
+  // Detail caches remain available, but never restore membership.
+  expect(model.store.getState().reportHeaders.size).toBe(3)
+  port.report.mockImplementation(async (context) => {
+    const detail = report(context)
+    return {
+      ...detail,
+      data: { ...detail.data, header: { ...first, id: id(52) } },
+    }
+  })
+  await model.reportDetail(id(52))
+  items.push({ ...first, id: id(52), hidden: true })
+  await model.reportPage(null, true)
+  expect(model.store.getState().reportInbox?.items).toEqual([first.id])
+  const inbox = model.store.getState().reportInbox
+  revision = '1'
+  await expect(model.refreshReportInbox()).rejects.toThrow('out of date')
+  expect(model.store.getState().reportInbox).toBe(inbox)
+  port.reports.mockImplementation(async (context, cursor) => {
+    if (cursor) throw Error('Unavailable')
+    return {
+      ...reports(context),
+      viewer_revision: '3',
+      data: {
+        items: [{ ...first, id: id(54) }],
+        has_more: true,
+        next_cursor: id(54),
+        as_of_ms: 1000,
+      },
+    }
+  })
+  await expect(model.refreshReportInbox()).rejects.toThrow('Unavailable')
+  expect(model.store.getState().reportInbox).toBe(inbox)
+  expect(model.store.getState().reportHeaders.has(id(54))).toBe(false)
+  model.invalidate()
+})
+
+it('shares in-flight report hydration and discards it after session invalidation', async () => {
+  const { model, port } = await setup()
+  const gate = deferred<void>()
+  port.reports.mockImplementation(async (context) => {
+    await gate.promise
+    return reports(context)
+  })
+  const refresh = model.refreshReportInbox()
+  expect(model.refreshReportInbox()).toBe(refresh)
+  expect(port.reports).toHaveBeenCalledTimes(1)
+  model.invalidate()
+  gate.resolve()
+  await expect(refresh).rejects.toThrow('Unable to confirm')
+  expect(model.store.getState().reportInbox).toBeNull()
+  expect(model.store.getState().reportHeaders.size).toBe(0)
+  model.invalidate()
+})
+
+it('does not publish a report page if the session changes between read validation and cache publication', async () => {
+  const { model, port } = await setup()
+  port.reports.mockImplementation(async (context) => {
+    queueMicrotask(() => queueMicrotask(() => model.invalidate()))
+    return {
+      ...reports(context),
+      data: { ...reports(context).data, items: [report(context).data.header] },
+    }
+  })
+  expect(await model.reportPage()).toBeNull()
+  expect(model.store.getState().reportHeaders.size).toBe(0)
+})

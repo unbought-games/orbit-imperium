@@ -1,5 +1,6 @@
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
 import { useStore } from 'zustand'
+import { hasUnreadReports } from '../client-model/report-state'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { FleetSlots } from '../features/fleet-slots'
 import { ContentColumn } from '../ui/content-column'
@@ -51,6 +52,7 @@ function GameShellContent() {
   const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
   const occupiedSlots = useStore(model.store, occupiedFleetSlots)
+  const unreadReports = useStore(model.store, hasUnreadReports)
   const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
   const location = useRouterState({ select: (state) => state.location })
@@ -230,6 +232,7 @@ function GameShellContent() {
             </span>
           </header>
           <Navigation
+            hasUnreadReports={unreadReports}
             activity={developmentActivity(model.store.getState(), body?.id)}
             blockers={developmentBlockers(model.store.getState(), body?.id)}
             view={view}

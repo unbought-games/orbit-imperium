@@ -38,6 +38,7 @@ function revealFocusedDestination(event: FocusEvent<HTMLElement>) {
 }
 
 export function Navigation({
+  hasUnreadReports,
   view,
   body,
   page,
@@ -47,6 +48,7 @@ export function Navigation({
   onLogout,
   children,
 }: {
+  hasUnreadReports: boolean
   view: BoundView
   body: string | undefined
   page: Page
@@ -78,8 +80,6 @@ export function Navigation({
   }, [])
   const close = () => dialog.current?.close()
   const selected = navigationAnchor(page)
-  const hasUnreadReports =
-    view.protocol === 4 && view.has_unread_reports === true
   const destination = (
     p: Page,
     title = pageTitles[p],

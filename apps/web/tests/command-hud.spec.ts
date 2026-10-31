@@ -68,9 +68,11 @@ async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'
   const circulars:S['SocialCircular'][]=[]
   let failMailbox = false
   const reads:string[]=[]
+  const reportQueries:Array<string|null>=[]
   await installGameFixture(page,{protocol:4,bodies,destinations,playerNames,missions,sampledAt:baseTime,viewerRevision:()=>String(revision),hasUnreadReports:()=>headers.some(h=>!h.read&&!h.hidden),extraCapabilities:['Reports','Espionage',...(attack ? ['Attack' as const] : [])]})
   await page.route('**/api/**/reports',route=>{
     const {context,cursor}=route.request().postDataJSON()
+    reportQueries.push(cursor)
     const start=cursor?headers.findIndex(h=>h.id===cursor)+1:0
     const hasMore=start+50<headers.length
     return route.fulfill({json:{protocol:4,...context,viewer_revision:String(revision),sampled_at:baseTime,as_of_ms:baseTime,data:{items:headers.slice(start,start+50),has_more:hasMore,next_cursor:hasMore?headers[start+49].id:null,as_of_ms:baseTime}}})
@@ -100,7 +102,7 @@ async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'
     reads.push('MarkReportRead');revision++
     return route.fulfill({json:{protocol:4,binding,command_id:gameplay.command_id,status:'Committed',admitted_at:baseTime,executed_at:baseTime,result_ids:[],minimum_viewer_revision:String(revision)}})
   })
-  return { missions, headers, conversations, circulars, reads, fail:()=>{failMailbox=true}, restore:()=>{failMailbox=false}, refresh:async()=>{revision++;await refreshGame(page)} }
+  return { missions, headers, conversations, circulars, reads, reportQueries, fail:()=>{failMailbox=true}, restore:()=>{failMailbox=false}, refresh:async()=>{revision++;await refreshGame(page)} }
 }
 test('live mobile HUD receives reports, messages and threats across navigation and preserves server truth',async({page})=>{
   await page.setViewportSize({width:390,height:844})
@@ -523,12 +525,13 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
     if(route.request().postDataJSON().cursor===id(2099)){
       requests++
       if(fail)return route.fulfill({status:503,json:{code:'Unavailable'}})
-      await new Promise<void>(resolve=>{release=resolve})
+      if (!release) await new Promise<void>(resolve=>{release=resolve})
     }
     return route.fallback()
   })
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   await expect(page.getByTestId('unread-count')).toHaveText('99')
+  await expect(page.getByRole('heading', { level: 1, name: /Empire/ })).toBeVisible()
   await page.getByTestId('command-orb').click()
   const panel=page.getByRole('dialog')
   const list=panel.getByLabel('Intelligence list')
@@ -548,7 +551,11 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   expect(requests).toBe(1)
   await diagnosticScreenshot(page,{path:`${output}/infinite-retry-390x844.png`})
   fail=false
-  await panel.getByRole('button',{name:'Retry loading'}).click()
+  // Two retry gestures before React commits the loading state must join one
+  // request and reveal only the next batch, including observer callbacks.
+  await panel.getByRole('button',{name:'Retry loading'}).evaluate(button => {
+    (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click()
+  })
   await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/infinite-loading-390x844.png`})
   await expect.poll(()=>!!release).toBe(true)
@@ -574,6 +581,7 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   await page.setViewportSize({width:1440,height:900})
   await expect(page.getByTestId('command-orb')).toBeVisible()
   await expect(panel).toBeVisible()
+  await diagnosticScreenshot(page,{path:`${output}/infinite-end-1440x900.png`})
   await page.keyboard.press('Escape')
   await expect(panel).toHaveCount(0)
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
@@ -924,14 +932,16 @@ test('a missing report cursor offers retry without an observer render loop', asy
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   await page.getByTestId('command-orb').click()
   const panel=page.getByRole('dialog')
-  await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+  await expect(panel.getByRole('button',{name:'Retry intelligence'})).toBeVisible()
   await expect(panel.getByRole('button',{name:'Load more intelligence'})).toHaveCount(0)
+  await expect(panel.getByText('No new intelligence. All channels clear.')).toHaveCount(0)
+  await expect(panel.getByText('Loading intelligence…')).toHaveCount(0)
   const before=requests
   await page.clock.runFor(1000)
   expect(requests).toBe(before)
-  await panel.getByRole('button',{name:'Retry loading'}).click()
+  await panel.getByRole('button',{name:'Retry intelligence'}).click()
   await expect.poll(()=>requests).toBeGreaterThan(before)
-  await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
+  await expect(panel.getByRole('button',{name:'Retry intelligence'})).toBeVisible()
 })
 
 
@@ -1381,3 +1391,86 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
   await expect(page.getByTestId('command-orb')).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/updated-desktop-1440x900.png`})
 })
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`shared inbox removes reports deleted elsewhere from the badge and panel at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const f = await intelligenceFixture(page)
+    f.headers.push(
+      ...Array.from({ length: 3 }, (_, i) => ({ id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false })),
+      { id: id(4003), kind: 'SpyContact', observed_at: baseTime - 3, read: true, hidden: false },
+    )
+    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Reports', exact: true })).toBeVisible()
+    const orb = page.getByTestId('command-orb')
+    const badge = page.getByTestId('unread-count')
+    await expect(badge).toHaveText('3')
+    await orb.click()
+    const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(3)
+    await page.getByRole('button', { name: 'Close command HUD' }).click()
+
+    // Another session deleted the unread reports: subsequent server pages omit
+    // them, but their detail headers remain cached in this client.
+    f.headers.splice(0, 3)
+    await f.refresh()
+    await expect(page.locator('main article')).toHaveCount(1)
+    await expect(badge).toHaveCount(0)
+    await expect(orb).toHaveAttribute('data-tone', 'ice')
+    await diagnosticScreenshot(page, { path: `${output}/reconciled-reports-${width}x${height}.png` })
+    await orb.click()
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(0)
+    await expect(panel).toContainText('No new intelligence. All channels clear.')
+    await diagnosticScreenshot(page, { path: `${output}/reconciled-empty-inbox-${width}x${height}.png` })
+
+    f.headers.unshift({ id: id(4004), kind: 'Espionage', observed_at: baseTime + 1, read: false, hidden: false })
+    await f.refresh()
+    await expect(badge).toHaveText('1')
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(1)
+    await expect(panel).not.toContainText('All channels clear.')
+    await diagnosticScreenshot(page, { path: `${output}/reconciled-new-report-${width}x${height}.png` })
+  })
+}
+
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`reports tab and orb share archive pages and read acknowledgements at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const f = await intelligenceFixture(page)
+    f.headers.push(...Array.from({ length: 51 }, (_, i) => ({
+      id: id(5000 + i), kind: 'Espionage', observed_at: baseTime - i, read: i < 50, hidden: false,
+    })))
+    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Reports', exact: true })).toBeVisible()
+    const rows = page.locator('main article')
+    await expect(rows).toHaveCount(51)
+    await expect(rows.getByLabel('Unread', { exact: true })).toHaveCount(1)
+    await expect(page.getByTestId('unread-count')).toHaveText('1')
+    await expect(page.getByRole('button', { name: 'Load more reports' })).toHaveCount(0)
+    // Both mounted consumers share one fetch for each page, including the unread
+    // report beyond the first page; opening the panel never creates another list.
+    expect(f.reportQueries).toEqual([null, id(5049)])
+    await rows.last().scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `${output}/shared-archive-tab-${width}x${height}.png` })
+    await page.getByTestId('command-orb').click()
+    const panel = page.getByRole('dialog')
+    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(1)
+    expect(f.reportQueries).toEqual([null, id(5049)])
+    await diagnosticScreenshot(page, { path: `${output}/shared-archive-panel-${width}x${height}.png` })
+    await panel.getByRole('button', { name: /Espionage report/ }).click()
+    await expect(panel.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    await expect.poll(() => f.reads.filter(r => r === 'MarkReportRead').length).toBe(1)
+    await expect(page.getByTestId('unread-count')).toHaveCount(0)
+    await panel.getByRole('link', { name: 'Open full report' }).click()
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await expect(rows).toHaveCount(51)
+    await expect(rows.getByLabel('Unread', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('status', { name: 'Unread reports', exact: true })).toHaveCount(0)
+    expect(f.reads.filter(r => r === 'MarkReportRead')).toHaveLength(1)
+    await rows.last().scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `${output}/shared-archive-read-${width}x${height}.png` })
+  })
+}
