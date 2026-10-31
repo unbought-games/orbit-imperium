@@ -1,8 +1,46 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, delimiter } from 'node:path'
 import { temporaryDirectory, executable, exec, root } from './test-helpers.mjs'
+import { load } from 'js-yaml'
+
+test('CI database groups compile and run every binary exactly once, including new suites', async (t) => {
+  const directory = temporaryDirectory(t)
+  copyFileSync(join(root, 'Makefile'), join(directory, 'Makefile'))
+  const tests = join(directory, 'crates/storage-postgres/tests')
+  mkdirSync(tests, { recursive: true })
+  const suites = readdirSync(join(root, 'crates/storage-postgres/tests'))
+    .filter(name => name.endsWith('.rs')).map(name => name.slice(0, -3))
+  suites.push('future_regression')
+  for (const suite of suites) writeFileSync(join(tests, `${suite}.rs`), '')
+  const log = join(directory, 'events.jsonl')
+  executable(join(directory, 'cargo'), `
+    require('node:fs').appendFileSync(${JSON.stringify(log)}, JSON.stringify({prepare: process.argv.slice(2)}) + '\\n');
+  `)
+  executable(join(directory, 'sh'), `
+    require('node:fs').appendFileSync(${JSON.stringify(log)}, JSON.stringify({run: process.argv[3]}) + '\\n');
+  `)
+  const env = { ...process.env, PATH: `${directory}${delimiter}${process.env.PATH}` }
+  delete env.MAKEFLAGS
+  delete env.MFLAGS
+  delete env.DB_SUITES
+  const workflow = load(readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8'))
+  const selected = []
+  for (const group of workflow.jobs.database.strategy.matrix.group) {
+    writeFileSync(log, '')
+    await exec('make', [`test-db-${group}`], { cwd: directory, env, signal: t.signal })
+    const events = readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse)
+    const { prepare } = events.shift()
+    const compiled = prepare.flatMap((arg, index) => arg === '--test' ? [prepare[index + 1]] : [])
+    const ran = events.map(event => event.run).sort()
+    assert.ok(ran.length > 0)
+    assert.deepEqual(compiled.sort(), ran, `${group} only compiles its selected binaries`)
+    selected.push(...ran)
+  }
+  assert.equal(new Set(selected).size, selected.length, 'groups must not duplicate suites')
+  assert.deepEqual(selected.sort(), suites.sort(), 'groups must not omit suites')
+})
 
 test('Make prepares every database suite before bounded parallel execution', async (t) => {
   const directory = temporaryDirectory(t)
@@ -14,7 +52,7 @@ test('Make prepares every database suite before bounded parallel execution', asy
   const log = join(directory, 'events.jsonl')
   executable(join(directory, 'cargo'), `
     const assert = require('node:assert/strict');
-    assert.deepEqual(process.argv.slice(2), ['nextest', 'run', '-p', 'orbit-storage-postgres', '--features', 'test-support', '--tests', '--no-run']);
+    assert.deepEqual(process.argv.slice(2), ['nextest', 'run', '-p', 'orbit-storage-postgres', '--features', 'test-support', ...${JSON.stringify([...suites].sort().flatMap(suite => ['--test', suite]))}, '--no-run']);
     require('node:fs').appendFileSync(${JSON.stringify(log)}, JSON.stringify({event: 'prepared'}) + '\\n');
   `)
   executable(join(directory, 'sh'), `

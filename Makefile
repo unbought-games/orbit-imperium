@@ -57,8 +57,20 @@ _server:
 	$(DB_TESTS) --lib
 
 test-db:
-	$(DB_TESTS) --tests --no-run
+	$(DB_TESTS) $(addprefix --test ,$(DB_SUITES)) --no-run
 	$(MAKE) -j$(DB_JOBS) _database
+
+# Keep the two measured long-running binaries off the tail of the other suites.
+# The rest group is a complement, so new test binaries are included automatically.
+.PHONY: test-db-rules test-db-world test-db-rest
+test-db-rules:
+	$(MAKE) test-db DB_SUITES=rules_updates
+
+test-db-world:
+	$(MAKE) test-db DB_SUITES=world_edit
+
+test-db-rest:
+	$(MAKE) test-db DB_SUITES="$(filter-out rules_updates world_edit,$(DB_SUITES))"
 
 _database: $(DB_TARGETS)
 $(DB_TARGETS): _db-%:
