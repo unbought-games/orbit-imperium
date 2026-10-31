@@ -2,20 +2,28 @@ import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
 import { ReportStarButton } from './report-star-button'
-import { ReportTriageControls, defaultTriage } from './report-triage-controls'
+import {
+  ReportTriageControls,
+  type ReportPanel,
+} from './report-triage-controls'
+import { defaultReportOptions } from './report-list-options'
+import { ReportSelectionBar } from './report-selection-bar'
+import { ErrorBannerMessage } from '../ui/error-banner'
+import controlStyles from './report-controls.module.css'
 import { triageReports, type ReportFolder } from './report-triage'
 import { ReportSimulation } from './combat-simulation'
 import { ReportShareControl } from './report-share-control'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Link } from '../ui/link'
 import { Button, ButtonLink } from '../ui/button'
-import { ArrowLeft, ArrowRight, FileText } from 'lucide-react'
+import { ArrowLeft, ArrowRight, FileText, X } from 'lucide-react'
 import { EmptyState } from '../ui/empty-state'
 import { resolveDestination } from '../shell/routes'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
 import { ReportListRow } from './report-list-row'
 import { TaskHeader } from '../ui/task-header'
+import { SegmentedControl } from '../ui/segmented-control'
 import styles from './reports.module.css'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
@@ -24,11 +32,10 @@ import { reportFailure } from './report-failure'
 import { ReportVisibilityButton } from './report-visibility-button'
 import { useReports } from './use-reports'
 import type { DispatchDraft } from './missions'
-import { label } from '../ui/format'
 import { useStore } from 'zustand'
 import { currentServerTime } from '../client-model/game-projection'
 import { Popover } from '../ui/popover'
-import { reportAge } from './report-preview'
+import { reportAge, reportKindLabel } from './report-preview'
 import { exactTime } from './mission-presentation'
 export function Reports({
   model,
@@ -45,10 +52,18 @@ export function Reports({
 }) {
   const [folder, setFolder] = useState<ReportFolder>('inbox')
   const archived = folder === 'archived'
-  const [triage, setTriage] = useState(false)
-  const [options, setOptions] = useState(defaultTriage)
+  const [selecting, setSelecting] = useState(false)
+  const [panel, setPanel] = useState<ReportPanel>(null)
+  const [options, setOptions] = useState(defaultReportOptions)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const cleanup = useReportCleanup(model, () => setSelected(new Set()))
+  const filtered = options.status !== 'all' || options.kind !== 'all'
+  const allReports =
+    selecting ||
+    panel !== null ||
+    filtered ||
+    options.sort !== 'newest' ||
+    archived
   const now = useStore(model.store, currentServerTime)
   const {
     page,
@@ -59,14 +74,15 @@ export function Reports({
     changingVisibility,
     more,
     retry,
-  } = useReports(model, item, triage || archived, cleanup.submitting, archived)
+  } = useReports(model, item, allReports, cleanup.submitting, archived)
   const visible = triageReports(
     page?.items ?? [],
     options.sort,
-    options.ascending,
-    options.filter,
-    options.knownOnly,
+    false,
+    options.status,
+    false,
     folder,
+    options.kind,
   )
   const folderCount =
     page?.items.filter((r) => r.hidden === archived).length ?? 0
@@ -101,22 +117,44 @@ export function Reports({
   return (
     <Section className={styles.screen}>
       {!item && (
-        <TaskHeader title="Reports">
-          {page && (
-            <Button
-              variant="secondary"
-              size="small"
-              aria-expanded={triage}
-              disabled={cleanup.submitting}
-              onClick={() => {
-                setTriage(!triage)
-                setOptions(defaultTriage)
+        <TaskHeader>
+          <div className={styles.headerHeading}>
+            <h2>Reports</h2>
+            <SegmentedControl<ReportFolder>
+              label="Report folder"
+              options={[
+                { value: 'inbox', label: 'Inbox' },
+                { value: 'archived', label: 'Archived' },
+              ]}
+              value={folder}
+              disabled={cleanup.submitting || changingVisibility}
+              onChange={(next) => {
+                setFolder(next)
+                setPanel(null)
                 setSelected(new Set())
               }}
-            >
-              Sort, filter & clean up
-            </Button>
-          )}
+            />
+          </div>
+          <ReportTriageControls
+            panel={panel}
+            setPanel={setPanel}
+            options={options}
+            change={(next) => {
+              setOptions(next)
+              setSelected(new Set())
+            }}
+            selecting={selecting}
+            setSelecting={(next) => {
+              setSelecting(next)
+              setSelected(new Set())
+            }}
+            archived={archived}
+            disabled={cleanup.submitting || changingVisibility}
+            complete={complete}
+            reports={page?.items ?? []}
+            cleanup={cleanup}
+            now={now}
+          />
         </TaskHeader>
       )}
       {item && !detail && (
@@ -164,7 +202,7 @@ export function Reports({
             </ButtonLink>
             <div className={styles.detailHeading}>
               <Heading level={2} className={styles.detailTitle}>
-                {label(detail.header.kind)}
+                {reportKindLabel(detail.header.kind)}
               </Heading>
               <Popover
                 label="Report time"
@@ -270,105 +308,112 @@ export function Reports({
         </Text>
       ) : page ? (
         <>
-          <div
-            className={`${styles.controls} ${styles.folders}`}
-            role="group"
-            aria-label="Report folder"
-          >
-            {(['inbox', 'archived'] as const).map((next) => (
-              <Button
-                key={next}
-                variant="secondary"
-                aria-pressed={folder === next}
-                disabled={cleanup.submitting || changingVisibility}
-                onClick={() => {
-                  setFolder(next)
-                  setSelected(new Set())
-                }}
-              >
-                {next === 'inbox' ? 'Inbox' : 'Archived'}
-              </Button>
-            ))}
-          </div>
           {archived && !complete && error === null && (
             <Text role="status">Loading archived reports…</Text>
           )}
-          {triage && (
-            <>
-              {!complete && error === null && (
-                <Text role="status">
-                  Loading report history before sorting and cleanup…
-                </Text>
-              )}
-              <ReportTriageControls
-                cleanup={cleanup}
-                archived={archived}
-                reports={page.items}
-                visible={visible}
-                options={options}
-                change={(next) => {
-                  setOptions(next)
-                  setSelected(new Set())
-                }}
-                selected={selected}
-                select={setSelected}
-                disabled={!complete || changingVisibility}
-                now={now}
-              />
-              {complete && (
-                <Text role="status">
-                  {visible.length} of {folderCount} reports match.
-                </Text>
-              )}
-            </>
+          {allReports && !archived && !complete && error === null && (
+            <Text role="status">Loading reports…</Text>
           )}
-          {!visible.length &&
-            error === null &&
-            (!(triage || archived) || complete) && (
-              <EmptyState
-                icon={FileText}
-                eyebrow={archived ? 'Archived' : 'Inbox'}
-                title={
-                  folderCount
-                    ? 'No reports match these filters.'
-                    : 'No reports to show.'
-                }
-                description={
-                  folderCount
-                    ? 'Try a different report filter or include unknown observations.'
-                    : archived
-                      ? 'Reports you archive appear here. Use Move to inbox to restore them.'
-                      : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
-                }
-                actions={
-                  folderCount ? (
-                    <Button
-                      onClick={() => {
-                        setOptions(defaultTriage)
-                        setSelected(new Set())
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  ) : (
-                    model.view &&
-                    resolveDestination(
-                      {
-                        universe: model.view.binding.universe,
-                        body: origin,
-                        page: 'galaxy',
-                      },
-                      model.view,
-                    ).available && (
-                      <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
-                        Explore the galaxy{' '}
-                        <ArrowRight size={16} aria-hidden="true" />
-                      </ButtonLink>
-                    )
+          {filtered && (
+            <div
+              className={controlStyles.filters}
+              aria-label="Active report filters"
+              role="group"
+            >
+              {options.kind !== 'all' && (
+                <Button
+                  variant="ghost"
+                  aria-label={`Remove ${reportKindLabel(options.kind)} filter`}
+                  onClick={() => {
+                    setOptions({ ...options, kind: 'all' })
+                    setSelected(new Set())
+                  }}
+                >
+                  {reportKindLabel(options.kind)}
+                  <X size={16} aria-hidden="true" />
+                </Button>
+              )}
+              {options.status !== 'all' && (
+                <Button
+                  variant="ghost"
+                  aria-label={`Remove ${options.status} filter`}
+                  onClick={() => {
+                    setOptions({ ...options, status: 'all' })
+                    setSelected(new Set())
+                  }}
+                >
+                  {options.status === 'unread' ? 'Unread' : 'Starred'}
+                  <X size={16} aria-hidden="true" />
+                </Button>
+              )}
+            </div>
+          )}
+          {selecting && (
+            <ReportSelectionBar
+              visible={visible}
+              selected={selected}
+              select={setSelected}
+              archived={archived}
+              disabled={!complete || changingVisibility}
+              cleanup={cleanup}
+              onCancel={() => {
+                setSelecting(false)
+                setSelected(new Set())
+              }}
+            />
+          )}
+          {cleanup.error && panel !== 'cleanup' && (
+            <ErrorBannerMessage>
+              <p role="alert">{cleanup.error}</p>
+            </ErrorBannerMessage>
+          )}
+          {cleanup.submitting && <Text role="status">Archiving reports…</Text>}
+          {!visible.length && error === null && (!allReports || complete) && (
+            <EmptyState
+              className={styles.emptyReports}
+              icon={FileText}
+              eyebrow={archived ? 'Archived' : 'Inbox'}
+              title={
+                folderCount
+                  ? 'No reports match these filters.'
+                  : 'No reports to show.'
+              }
+              description={
+                folderCount
+                  ? 'Try a different filter.'
+                  : archived
+                    ? 'Reports you archive appear here. Use Move to inbox to restore them.'
+                    : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
+              }
+              actions={
+                folderCount ? (
+                  <Button
+                    onClick={() => {
+                      setOptions(defaultReportOptions)
+                      setSelected(new Set())
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                ) : (
+                  model.view &&
+                  resolveDestination(
+                    {
+                      universe: model.view.binding.universe,
+                      body: origin,
+                      page: 'galaxy',
+                    },
+                    model.view,
+                  ).available && (
+                    <ButtonLink {...routeTarget(universe, 'galaxy', origin)}>
+                      Explore the galaxy{' '}
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </ButtonLink>
                   )
-                }
-              />
-            )}
+                )
+              }
+            />
+          )}
           {visible.map((r) => (
             <ReportListRow
               key={r.id}
@@ -378,10 +423,10 @@ export function Reports({
               universe={universe}
               origin={origin}
               now={now}
-              sort={triage ? options.sort : undefined}
+              sort={options.sort}
               selected={selected.has(r.id)}
               onSelect={
-                triage
+                selecting
                   ? (checked) =>
                       setSelected((ids) => {
                         const next = new Set(ids)
@@ -392,11 +437,11 @@ export function Reports({
                   : undefined
               }
               disabled={
-                loadingMore || (triage && !complete) || cleanup.submitting
+                loadingMore || (selecting && !complete) || cleanup.submitting
               }
             />
           ))}
-          {page.has_more && !triage && !archived && (
+          {page.has_more && !allReports && (
             <Button
               disabled={loading || loadingMore || changingVisibility}
               onClick={() => void more()}

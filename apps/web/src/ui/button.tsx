@@ -4,7 +4,13 @@ import { classes } from './classes'
 import styles from './button.module.css'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'
-export type ButtonSize = 'default' | 'small' | 'large' | 'icon' | 'icon-small'
+export type ButtonSize =
+  | 'default'
+  | 'compact'
+  | 'small'
+  | 'large'
+  | 'icon'
+  | 'icon-small'
 export type ButtonPadding = 'default' | 'compact' | 'none'
 export type ButtonAppearance = {
   variant?: ButtonVariant

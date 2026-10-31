@@ -13,6 +13,7 @@ import { label, coordinates } from '../ui/format'
 import { exactTime } from './mission-presentation'
 import {
   reportPreview,
+  reportKindLabel,
   deliveryRoute,
   reportAge,
   reportListTitle,
@@ -58,7 +59,11 @@ export function ReportListRow({
     profiles,
   )
   const route = deliveryRoute(report.preview)
-  const title = [label(report.kind), outcome?.title, identity, route]
+  const title = [
+    outcome?.title ?? reportKindLabel(report.kind),
+    identity,
+    route,
+  ]
     .filter(Boolean)
     .join(' · ')
   return (
@@ -86,17 +91,6 @@ export function ReportListRow({
             onClick={() => void model.recordPresence('AccountVisit', null)}
             {...routeTarget(universe, 'reports', origin, report.id)}
           >
-            <strong className={styles.reportType} data-kind={report.kind}>
-              {label(report.kind)}
-            </strong>
-            {outcome && (
-              <span className={styles[outcome.tone]}>
-                {outcome.symbol && (
-                  <span aria-hidden="true">{outcome.symbol} </span>
-                )}
-                {outcome.title}
-              </span>
-            )}
             {!report.read && (
               <span
                 className={styles.unread}
@@ -104,6 +98,12 @@ export function ReportListRow({
                 title="Unread"
               />
             )}
+            <strong
+              className={outcome ? styles[outcome.tone] : styles.reportType}
+              data-kind={report.kind}
+            >
+              {outcome?.title ?? reportKindLabel(report.kind)}
+            </strong>
             {report.hidden && <span>Archived</span>}
             {route && <span className={styles.deliveryRoute}>{route}</span>}
             {identity && (
