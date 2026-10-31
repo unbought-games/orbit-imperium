@@ -513,8 +513,49 @@ test('unread badge traverses older reports and caps the visible count at 99', as
   await expect(page.getByTestId('command-orb')).toHaveAttribute('data-tone','ice')
 })
 
-test('HUD list infinitely loads past the badge cap, retries in place, and restores the list after detail', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
+for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 900}]) {
+ test(`HUD list infinitely loads past the badge cap, retries in place, and restores the list after detail at ${initialViewport.width}px`, async ({page}) => {
+  // Deliver an already-queued observer event after its list is hidden, and
+  // again after returning. Native scheduling made this race CI-only.
+  await page.addInitScript(() => {
+    const NativeObserver = window.IntersectionObserver
+    let current: (() => void) | undefined
+    let queued: (() => void) | undefined
+    const probe = window as Window & {__hudIntersectionProbe: {capture: () => void; deliver: () => void; ready: boolean; batchDeliveries: number; onNextBatch: () => void}}
+    probe.__hudIntersectionProbe = {
+      get ready() { return !!current },
+      batchDeliveries: 0,
+      onNextBatch() {
+        if (!current) throw Error('HUD observer was not installed')
+        const delivery = current
+        const list = document.querySelector('[aria-label="Intelligence list"]')!
+        const count = list.querySelectorAll('button').length
+        const mutation = new MutationObserver(() => {
+          if (list.querySelectorAll('button').length === count) return
+          mutation.disconnect()
+          probe.__hudIntersectionProbe.batchDeliveries++
+          delivery()
+        })
+        mutation.observe(list, {childList: true})
+      },
+      capture() { if (!current) throw Error('HUD observer was not installed'); queued = current },
+      deliver() { if (!queued) throw Error('No queued HUD intersection'); queued() },
+    }
+    window.IntersectionObserver = class extends NativeObserver {
+      private callback: IntersectionObserverCallback
+      private hud: boolean
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        super(callback, options)
+        this.callback = callback
+        this.hud = options?.root instanceof HTMLDialogElement
+      }
+      observe(target: Element) {
+        super.observe(target)
+        if (this.hud) current = () => this.callback([{target, isIntersecting: true} as IntersectionObserverEntry], this)
+      }
+    }
+  })
+  await page.setViewportSize(initialViewport)
   await page.emulateMedia({reducedMotion:'reduce'})
   const f = await intelligenceFixture(page)
   f.headers.push(...Array.from({length:130},(_,i)=>({id:id(2000+i),kind:'Espionage',observed_at:baseTime-i,read:false,hidden:false})))
@@ -538,18 +579,21 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   const entries=list.getByRole('button')
   await expect(entries).toHaveCount(20)
   await expect(list).toHaveAttribute('aria-busy','false')
-  await diagnosticScreenshot(page,{path:`${output}/infinite-first-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/infinite-first-${initialViewport.width}x${initialViewport.height}.png`})
+  await expect.poll(() => page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {ready: boolean}}).__hudIntersectionProbe.ready)).toBe(true)
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {onNextBatch: () => void}}).__hudIntersectionProbe.onNextBatch())
   for(const count of [40,60,80,100]){
     await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
     await expect(entries).toHaveCount(count)
     await expect(list).toHaveAttribute('aria-busy','false')
   }
+  expect(await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {batchDeliveries: number}}).__hudIntersectionProbe.batchDeliveries)).toBe(1)
   expect(requests).toBe(0)
   await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
   await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
   await expect(entries).toHaveCount(100)
   expect(requests).toBe(1)
-  await diagnosticScreenshot(page,{path:`${output}/infinite-retry-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/infinite-retry-${initialViewport.width}x${initialViewport.height}.png`})
   fail=false
   // Two retry gestures before React commits the loading state must join one
   // request and reveal only the next batch, including observer callbacks.
@@ -557,7 +601,7 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
     (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click()
   })
   await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/infinite-loading-390x844.png`})
+  await diagnosticScreenshot(page,{path:`${output}/infinite-loading-${initialViewport.width}x${initialViewport.height}.png`})
   await expect.poll(()=>!!release).toBe(true)
   release!()
   await expect(entries).toHaveCount(120)
@@ -565,12 +609,17 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   // Opening an already loaded row must not throw away the loaded pages or position.
   await entries.nth(95).scrollIntoViewIfNeeded()
   const position=await panel.evaluate(el=>el.scrollTop)
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {capture: () => void}}).__hudIntersectionProbe.capture())
   await entries.nth(95).click()
   await expect(panel.getByRole('button',{name:'Attack',exact:true})).toBeVisible()
+  await expect(list).toHaveAttribute('aria-busy','false')
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {deliver: () => void}}).__hudIntersectionProbe.deliver())
   await panel.getByRole('button',{name:'Back to list'}).click()
   await expect(panel).toHaveAccessibleName('Command uplink')
+  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {deliver: () => void}}).__hudIntersectionProbe.deliver())
   await expect(entries).toHaveCount(120)
   expect(Math.abs(await panel.evaluate(el=>el.scrollTop)-position)).toBeLessThan(5)
+  await diagnosticScreenshot(page,{path:`${output}/infinite-return-${initialViewport.width}x${initialViewport.height}.png`})
   expect(await page.evaluate(()=>document.body.style.position)).toBe('fixed')
   await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
   await expect(entries).toHaveCount(129)
@@ -587,6 +636,7 @@ test('HUD list infinitely loads past the badge cap, retries in place, and restor
   expect(await page.evaluate(()=>document.body.style.position)).toBe('')
   await diagnosticScreenshot(page,{path:`${output}/infinite-desktop-1440x900.png`})
 })
+}
 
 for (const width of [390, 1440]) {
   test(`HUD ignores queued pagination observations after opening a report at ${width}px`, async ({ page }) => {

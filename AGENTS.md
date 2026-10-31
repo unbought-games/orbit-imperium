@@ -4,6 +4,14 @@
 - React components should be light-weight with no heavy inline logic. Simple value transformations are acceptable. Heavy logic should be extracted into custom hooks and functions and thoroughly tested.
 - Server functions, API routes should be treated the same way - no heavy logic. All logic should be pulled out into functions and either thoroughly tested with unit or integration tests.
 
+# UI design
+
+Before designing, implementing, reviewing, or fixing UI, use the repository
+[ui-design skill](.agents/skills/ui-design/SKILL.md) and read the
+[UI design guide](apps/web/src/ui/README.md). This includes small styling, copy,
+layout, and interaction changes. Follow the guide's component links only when
+implementation details are needed.
+
 # Pull requests
 
 All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests are squash-merged, so the PR title becomes the commit title. Verify the title before creating or updating a PR.
