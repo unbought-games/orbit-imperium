@@ -250,6 +250,7 @@ export function Galaxy({
                     )
                       ? (presentation) => (
                           <MissileLaunchAction
+                            key={`${origin}:${position.body?.id}:${position.body?.owner}`}
                             model={model}
                             origin={origin}
                             position={position}

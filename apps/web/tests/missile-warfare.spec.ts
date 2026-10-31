@@ -648,7 +648,7 @@ for (const width of [1440, 390]) {
     await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
     const actions = page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true })
     const dialog = page.getByRole('dialog', { name: 'Launch missiles', exact: true })
-    for (const patch of [{ id: id(90) }, { expected_owner: id(91) }]) {
+    for (const patch of [{ id: id(90) }, { expected_owner: id(91) }, target]) {
       await actions.click()
       await page.getByRole('menuitem', { name: 'Launch missiles', exact: true }).click()
       await expect(dialog.getByLabel('Missile quantity', { exact: true })).toHaveValue('1')

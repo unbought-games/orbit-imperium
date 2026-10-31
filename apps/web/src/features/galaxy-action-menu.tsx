@@ -1,5 +1,5 @@
 import { Crosshair, Ellipsis, Recycle, Rocket, Truck } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { MissileLaunchPresentation } from './missile-launch-action'
 import { Menu } from '@base-ui/react/menu'
 import { Button } from '../ui/button'
@@ -21,12 +21,14 @@ export function GalaxyActionMenu({
   actions,
   colonyNote,
   missileAction,
+  missileIdentity,
   onDraft,
 }: {
   target: string
   coordinates: components['schemas']['Coordinates']
   actions: ReturnType<typeof galaxyMissionActions>
   colonyNote?: string | null
+  missileIdentity: string
   missileAction?: (presentation: MissileLaunchPresentation) => ReactNode
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
@@ -34,7 +36,14 @@ export function GalaxyActionMenu({
     opener?: HTMLElement | null,
   ) => void
 }) {
-  const [missileOpen, setMissileOpen] = useState(false)
+  const [missileSelection, setMissileSelection] = useState<string | null>(null)
+  const availableMissileIdentity = missileAction ? missileIdentity : null
+  // Invalidate only the launch selection; Harvest still needs this row's trigger.
+  useEffect(() => {
+    setMissileSelection((selection) =>
+      selection === availableMissileIdentity ? selection : null,
+    )
+  }, [availableMissileIdentity])
   const trigger = useRef<HTMLButtonElement>(null)
   const handingOff = useRef(false)
   const enabled = !!missileAction || actions.some((action) => !action.reason)
@@ -97,7 +106,7 @@ export function GalaxyActionMenu({
                   className={styles.menuItem}
                   onClick={() => {
                     handingOff.current = true
-                    setMissileOpen(true)
+                    setMissileSelection(missileIdentity)
                   }}
                 >
                   <Rocket size={15} aria-hidden="true" />
@@ -125,8 +134,9 @@ export function GalaxyActionMenu({
         </Menu.Portal>
       </Menu.Root>
       {missileAction?.({
-        open: missileOpen,
-        onOpenChange: setMissileOpen,
+        open: missileSelection === missileIdentity,
+        onOpenChange: (open) =>
+          setMissileSelection(open ? missileIdentity : null),
         opener: trigger,
       })}
     </>

@@ -206,7 +206,7 @@ export function GalaxyPosition({
             />
           )}
           <GalaxyActionMenu
-            key={`${origin}:${body?.id}:${body?.owner}`}
+            missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
             target={target}
             coordinates={coordinates}
             actions={actions}
