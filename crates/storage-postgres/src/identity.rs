@@ -29,6 +29,8 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn tracker_snapshot(&self, universe: UniverseId, digest: &str) -> Result<Option<TrackerSnapshot>, StoreError> { self.read_tracker_snapshot(universe, digest).await }
+
     async fn insignia_library(&self, b: Binding) -> Result<InsigniaLibrary, StoreError> {
         self.read_insignia_library(b).await
     }

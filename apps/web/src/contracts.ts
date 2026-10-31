@@ -5215,6 +5215,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/universes/{universe}/tracker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read-only atomic public-score and planet-ownership export. No gameplay, presence, history, or bot writes. Requires a dedicated tracker token; cookies and machine tokens are rejected. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Committed snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TrackerSnapshot"];
+                    };
+                };
+                /** @description Missing, invalid, revoked, wrong-universe or stale-epoch tracker token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unsupported universe protocol */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Storage unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8271,6 +8330,26 @@ export interface components {
             options: components["schemas"]["GameProgressionOptions"][];
             sampled_at: number;
             progress?: components["schemas"]["SnapshotProgress"];
+        };
+        TrackerPlanet: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            owner: string;
+            name: string | null;
+            coordinates: components["schemas"]["Coordinates"];
+        };
+        TrackerSnapshot: {
+            /** @constant */
+            schema_version: 1;
+            /** Format: uuid */
+            universe: string;
+            /** Format: uuid */
+            epoch: string;
+            sampled_at: number;
+            processing_pending: boolean;
+            players: components["schemas"]["RankingPlayer"][];
+            planets: components["schemas"]["TrackerPlanet"][];
         };
     };
     responses: never;

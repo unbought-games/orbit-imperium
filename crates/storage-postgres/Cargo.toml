@@ -141,3 +141,7 @@ required-features = ["test-support"]
 [[test]]
 name = "insignias"
 required-features = ["test-support"]
+
+[[test]]
+name = "tracker"
+required-features = ["test-support"]

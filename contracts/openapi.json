@@ -6982,6 +6982,48 @@
         "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.",
         "operationId": "progressionOptionsBatchV4"
       }
+    },
+    "/api/v4/universes/{universe}/tracker": {
+      "get": {
+        "description": "Read-only atomic public-score and planet-ownership export. No gameplay, presence, history, or bot writes. Requires a dedicated tracker token; cookies and machine tokens are rejected.",
+        "security": [
+          {
+            "TrackerBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked, wrong-universe or stale-epoch tracker token"
+          },
+          "426": {
+            "description": "Unsupported universe protocol"
+          },
+          "503": {
+            "description": "Storage unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -19837,8 +19879,12 @@
           },
           "appearance": {
             "oneOf": [
-              { "$ref": "#/components/schemas/InsigniaAppearance" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/InsigniaAppearance"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "expires_at": {
@@ -20003,6 +20049,79 @@
             "$ref": "#/components/schemas/SnapshotProgress"
           }
         }
+      },
+      "TrackerPlanet": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "owner",
+          "name",
+          "coordinates"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          }
+        }
+      },
+      "TrackerSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "universe",
+          "epoch",
+          "sampled_at",
+          "processing_pending",
+          "players",
+          "planets"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": 1
+          },
+          "universe": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "epoch": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sampled_at": {
+            "type": "integer"
+          },
+          "processing_pending": {
+            "type": "boolean"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankingPlayer"
+            }
+          },
+          "planets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackerPlanet"
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -20016,6 +20135,11 @@
         "in": "cookie",
         "name": "orbit_session",
         "description": "Browser mutations also require same-origin and X-CSRF-Token."
+      },
+      "TrackerBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Dedicated universe/epoch-scoped read-only tracker token. Cannot authenticate gameplay APIs."
       }
     }
   }

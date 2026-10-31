@@ -1,5 +1,7 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn tracker_snapshot(&self, _universe: UniverseId, _digest: &str) -> impl std::future::Future<Output = Result<Option<TrackerSnapshot>, StoreError>> + Send { async { Ok(None) } }
+
     fn insignia_library(
         &self,
         _binding: Binding,
