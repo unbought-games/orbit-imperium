@@ -2918,13 +2918,19 @@ for (const width of [390, 1440]) {
     await navigate(page, 'Resources')
     const nav = page.getByRole('navigation', { name: 'Develop navigation' })
     const titles = ['Resources', 'Facilities', 'Research', 'Shipyard', 'Defense']
-    const badges = async (working: string[]) => {
+    const badges = async (working: string[], blocked: Record<string, string> = {}) => {
       for (const title of titles) {
         const tab = nav.getByRole('link', { name: title, exact: true })
         if (working.includes(title)) {
           await expect(tab).toHaveAttribute('aria-description', 'Work in progress')
           await expect(tab).toHaveAttribute('title', 'Work in progress')
           await expect(tab.locator('span[aria-hidden="true"]')).toBeVisible()
+          await expect(tab.locator('span[aria-hidden="true"]')).toHaveCSS('background-color', 'rgb(203, 182, 141)')
+        } else if (blocked[title]) {
+          await expect(tab).toHaveAttribute('aria-description', blocked[title])
+          await expect(tab).toHaveAttribute('title', blocked[title])
+          await expect(tab.locator('span[aria-hidden="true"]')).toBeVisible()
+          await expect(tab.locator('span[aria-hidden="true"]')).toHaveCSS('background-color', 'rgb(89, 97, 104)')
         } else {
           await expect(tab).not.toHaveAttribute('aria-description')
           await expect(tab.locator('span[aria-hidden="true"]')).toHaveCount(0)
@@ -2949,10 +2955,43 @@ for (const width of [390, 1440]) {
     ]
     revision++
     await refreshGame(page)
-    await badges(['Resources', 'Research', 'Shipyard', 'Defense'])
-    await diagnosticScreenshot(nav, { path: `test-results/develop-activity-${width}.png` })
+    await badges(['Resources', 'Research', 'Shipyard', 'Defense'], {
+      Facilities: 'Blocked while a resource building is under construction',
+    })
+    await diagnosticScreenshot(nav, { path: `test-results/develop-resource-building-${width}x900.png` })
     await selectBody(page, id(6))
-    await badges(['Facilities', 'Research'])
+    await badges(['Facilities', 'Research'], {
+      Resources: 'Blocked while a facility is under construction',
+    })
+    options.researchOperation = null
+    revision++
+    await refreshGame(page)
+    await badges(['Facilities'], {
+      Resources: 'Blocked while a facility is under construction',
+      Research: 'Blocked while a research lab is under construction',
+    })
+    await diagnosticScreenshot(nav, { path: `test-results/develop-lab-building-${width}x900.png` })
+    // Blocked categories remain navigable so their details can be inspected.
+    await nav.getByRole('link', { name: 'Research', exact: true }).click()
+    await expect(page.locator('main h1')).toHaveText('Research')
+    await selectBody(page, body.id)
+    await badges(['Resources', 'Shipyard', 'Defense'], {
+      Facilities: 'Blocked while a resource building is under construction',
+      Research: 'Blocked while a research lab is under construction',
+    })
+    options.constructions = [
+      { id: id(25), body: body.id, building: 'Shipyard', target_level: 2, paid: resources, due_at: now + 60000 },
+    ]
+    options.manufacturing = []
+    revision++
+    await refreshGame(page)
+    await badges(['Facilities'], {
+      Resources: 'Blocked while a facility is under construction',
+      Shipyard: 'Blocked while the shipyard is under construction',
+      Defense: 'Blocked while the shipyard is under construction',
+    })
+    await nav.getByRole('link', { name: 'Defense', exact: true }).scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(nav, { path: `test-results/develop-shipyard-building-${width}x900.png` })
     options.constructions = []
     options.manufacturing = []
     options.researchOperation = null

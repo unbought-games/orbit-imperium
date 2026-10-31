@@ -18,7 +18,11 @@ export function playerProfilesApi(binding: Binding, csrf: string) {
         method: 'POST',
         signal: AbortSignal.any([signal, AbortSignal.timeout(12_000)]),
         cache: 'no-store',
-        headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': csrf,
+          'x-orbit-insignia': '1',
+        },
         body: JSON.stringify({ context: { binding, request_id }, source }),
       },
     )

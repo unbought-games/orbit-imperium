@@ -86,6 +86,8 @@ for (const width of [320, 390, 1280]) {
       'Attack Outbound',
       'Deploy Outbound',
     ])
+    await expect(page.getByText('Fleet slots and protection')).toHaveCount(0)
+    await expect(page.getByText('Completed-asset score:')).toHaveCount(0)
     const bounds = await Promise.all(
       (await cards.all()).map((card) => card.boundingBox()),
     )
@@ -144,6 +146,7 @@ for (const width of [320, 390, 1280]) {
     await page.evaluate(() => scrollTo(0, 0))
     await diagnosticScreenshot(page, {
       path: `test-results/active-fleets-list-${width}x900.png`,
+      fullPage: true,
     })
     await manifestToggle.click()
     await expect(manifestToggle).toHaveAttribute('aria-expanded', 'true')
@@ -188,6 +191,8 @@ for (const width of [320, 390, 1280]) {
     await expect(cards).toHaveCount(1)
     await expect(attack).toContainText('Fuel spent')
     await expect(attack).toContainText('Speed 100%')
+    await expect(page.getByText('Fleet slots and protection')).toHaveCount(0)
+    await expect(page.getByText('Completed-asset score:')).toHaveCount(0)
     await page.evaluate(() => scrollTo(0, 0))
     await diagnosticScreenshot(page, {
       path: `test-results/active-fleets-details-${width}x900.png`,
@@ -438,12 +443,12 @@ for (const screen of ['fleets', 'overview'] as const) {
       await page.goBack()
       await expect(page).toHaveURL(path)
       await expect(row).toBeVisible()
-      // The shell restores heading focus and scroll in a paint callback after
-      // history navigation. Finish that callback before positioning the mouse.
+      // Verify history focus, then move focus into the row before the pointer
+      // gesture. This keeps a deferred heading-reveal callback from scrolling
+      // the target away between hover and mouse-down on a busy runner.
       await expect(page.locator('main h1')).toBeFocused()
-      await page.evaluate(() => new Promise<void>(resolve =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ))
+      await link.focus()
+      await expect(link).toBeFocused()
       await row.evaluate((el) =>
         window.scrollBy(0, el.getBoundingClientRect().top - 80),
       )

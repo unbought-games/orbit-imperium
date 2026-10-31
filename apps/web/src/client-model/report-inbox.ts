@@ -1,7 +1,7 @@
 import type { BoundReports } from './commands'
 import type { ReportPage } from './report-state'
 
-/** Membership from one server revision; cached details are not inbox members. */
+/** Shared archive membership, including hidden reports, from one server revision. */
 export type ReportInbox = ReportPage & { revision: string }
 type Read = (cursor: string | null) => Promise<BoundReports | null>
 

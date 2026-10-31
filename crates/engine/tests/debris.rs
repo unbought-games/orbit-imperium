@@ -2,12 +2,12 @@ use orbit_engine::*;
 #[test]
 fn half_fill_and_monday_boundaries() {
     assert_eq!(
-        harvest_allocation(50000, 50000, 20000).unwrap(),
-        (10000, 10000)
+        harvest_allocation([50000, 50000, 0], 20000).unwrap(),
+        [10000, 10000, 0]
     );
-    assert_eq!(harvest_allocation(2, 100, 5).unwrap(), (2, 3));
-    assert_eq!(harvest_allocation(100, 100, 5).unwrap(), (3, 2));
-    assert_eq!(harvest_allocation(100, 1, 5).unwrap(), (4, 1));
+    assert_eq!(harvest_allocation([2, 100, 0], 5).unwrap(), [2, 3, 0]);
+    assert_eq!(harvest_allocation([100, 100, 0], 5).unwrap(), [3, 2, 0]);
+    assert_eq!(harvest_allocation([100, 1, 0], 5).unwrap(), [4, 1, 0]);
     assert_eq!(next_debris_cleanup(0).unwrap(), 4 * 86400000);
     assert_eq!(next_debris_cleanup(4 * 86400000).unwrap(), 11 * 86400000);
 }
@@ -319,4 +319,245 @@ fn historical_replay_keeps_stale_event_hashes_and_rejects_inconsistent_counters(
         .unwrap()["active_references"] = serde_json::json!(2);
     let replayed = replay_legacy_debris_transition(&corrupted, &input, &rules).unwrap();
     assert!(replayed.get("InvalidState").is_some());
+}
+
+#[test]
+fn three_resource_allocation_conserves_capacity_and_preserves_two_resource_results() {
+    for m in 0..12 {
+        for c in 0..12 {
+            for d in 0..12 {
+                for capacity in 0..40 {
+                    let available = [m, c, d];
+                    let got = harvest_allocation(available, capacity).unwrap();
+                    assert_eq!(got.iter().sum::<i64>(), capacity.min(m + c + d));
+                    for r in 0..3 {
+                        assert!((0..=available[r]).contains(&got[r]));
+                    }
+                    if d == 0 {
+                        let mut old_m = m.min((capacity + 1) / 2);
+                        let mut old_c = c.min(capacity / 2);
+                        old_m += (m - old_m).min(capacity - old_m - old_c);
+                        old_c += (c - old_c).min(capacity - old_m - old_c);
+                        assert_eq!(got, [old_m, old_c, 0]);
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(harvest_allocation([100, 100, 100], 5).unwrap(), [2, 2, 1]);
+    assert_eq!(harvest_allocation([1, 100, 100], 10).unwrap(), [1, 5, 4]);
+    assert_eq!(harvest_allocation([0, 0, 100], 10).unwrap(), [0, 0, 10]);
+    assert_eq!(
+        harvest_allocation([i64::MAX; 3], i64::MAX)
+            .unwrap()
+            .iter()
+            .sum::<i64>(),
+        i64::MAX
+    );
+    assert!(harvest_allocation([0, 0, -1], 10).is_err());
+    assert!(harvest_allocation([0; 3], -1).is_err());
+}
+
+#[test]
+fn construction_deuterium_uses_existing_percentage_and_aggregate_rounding() {
+    let mut rules = CombatRules::selected();
+    let losses = |side, origin| BattleCounts {
+        owner: PlayerId(uuid::Uuid::from_u128(1)),
+        side,
+        origin,
+        units: vec![
+            (ManufacturedItem::Ship(ShipType::Recycler), 1),
+            (ManufacturedItem::Ship(ShipType::SmallCargo), 1),
+            (ManufacturedItem::Defense(DefenseId::RocketLauncher), 100),
+        ],
+    };
+    let destroyed = vec![
+        losses(
+            BattleSide::Attacker,
+            BattleOrigin::Fleet(FleetId(uuid::Uuid::from_u128(2))),
+        ),
+        losses(
+            BattleSide::Defender,
+            BattleOrigin::Stationed(BodyId(uuid::Uuid::from_u128(3))),
+        ),
+    ];
+    // Non-round cost proves aggregation happens before flooring, across both sides.
+    rules
+        .units
+        .iter_mut()
+        .find(|u| u.item == ManufacturedItem::Ship(ShipType::Recycler))
+        .unwrap()
+        .cost[2] = 2001;
+    for enabled in [false, true] {
+        rules.deuterium_in_debris = enabled;
+        for bps in [0, 1, 3000, 7777, 10000] {
+            rules.ship_debris_bps = bps;
+            let got = destroyed_ship_debris(&destroyed, &rules).unwrap();
+            assert_eq!(got.metal, 24000 * i64::from(bps) / 10000 * SCALE);
+            assert_eq!(got.crystal, 16000 * i64::from(bps) / 10000 * SCALE);
+            assert_eq!(
+                got.deuterium,
+                if enabled {
+                    4002 * i64::from(bps) / 10000 * SCALE
+                } else {
+                    0
+                }
+            );
+        }
+    }
+    let mut huge = destroyed;
+    huge[0].units[0].1 = i64::MAX;
+    assert!(destroyed_ship_debris(&huge, &rules).is_err());
+}
+
+#[test]
+fn deuterium_balances_survive_serialization_and_obey_invariants() {
+    let (mut state, _) = snapshot(1);
+    let field = state
+        .world
+        .as_mut()
+        .unwrap()
+        .records
+        .debris
+        .values_mut()
+        .next()
+        .unwrap();
+    assert_eq!(field.deuterium, 0);
+    field.deuterium = 400 * SCALE;
+    let wire = serde_json::to_value(&state).unwrap();
+    let decoded: GameState = serde_json::from_value(wire).unwrap();
+    assert_eq!(decoded, state);
+    validate_asset_lineage(&decoded).unwrap();
+    for invalid in [-SCALE, 1] {
+        state
+            .world
+            .as_mut()
+            .unwrap()
+            .records
+            .debris
+            .values_mut()
+            .next()
+            .unwrap()
+            .deuterium = invalid;
+        assert!(validate_asset_lineage(&state).is_err());
+    }
+}
+
+#[test]
+fn deuterium_only_fields_are_visible_targetable_and_cleaned_with_complete_evidence() {
+    for amount in [299, 300, 301] {
+        let (mut state, mut input) = snapshot(4);
+        let player = *state.players.keys().next().unwrap();
+        let f = state
+            .world
+            .as_mut()
+            .unwrap()
+            .records
+            .debris
+            .values_mut()
+            .next()
+            .unwrap();
+        f.metal = 0;
+        f.crystal = 0;
+        f.deuterium = amount * SCALE;
+        let coordinates = f.coordinates;
+        let id = f.id;
+        let rules = historical_rules();
+        let galaxy = galaxy_system(
+            &state,
+            player,
+            coordinates.galaxy,
+            coordinates.system,
+            input.at,
+            &rules,
+        )
+        .unwrap();
+        let visible = galaxy
+            .positions
+            .iter()
+            .find(|p| p.coordinates == coordinates)
+            .unwrap()
+            .debris
+            .as_ref();
+        assert_eq!(visible.is_some(), amount >= 300);
+        if let Some(debris) = visible {
+            assert_eq!(debris.deuterium, amount.to_string());
+        }
+        assert!(
+            resolve_destination(
+                &state,
+                DestinationSelection::DebrisAt { coordinates },
+                &rules
+            )
+            .is_ok()
+        );
+        input.payload = Input::Event(ScheduledEvent::DebrisCleanupDue {
+            field: id,
+            generation: 1,
+        });
+        let changes = apply(&mut state, &input);
+        let f = &state.world.as_ref().unwrap().records.debris[&id];
+        assert_eq!(f.marker_present, amount >= 300);
+        assert_eq!(f.deuterium, if amount >= 300 { amount * SCALE } else { 0 });
+        if amount < 300 {
+            assert_eq!(
+                changes.world.unwrap().audits[0]["deuterium"],
+                (amount * SCALE).to_string()
+            );
+        }
+    }
+}
+
+#[test]
+fn deuterium_harvest_returns_once_even_with_generation_disabled() {
+    let (mut state, arrival) = snapshot(2);
+    let f = state
+        .world
+        .as_mut()
+        .unwrap()
+        .records
+        .debris
+        .values_mut()
+        .next()
+        .unwrap();
+    f.metal = 0;
+    f.crystal = 0;
+    f.deuterium = 30_000 * SCALE;
+    let field_id = f.id;
+    assert!(
+        !historical_rules()
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .combat
+            .deuterium_in_debris
+    );
+    let changes = apply(&mut state, &arrival);
+    let records = &state.world.as_ref().unwrap().records;
+    let fleet = records.fleets.values().next().unwrap();
+    assert_eq!(fleet.cargo.deuterium, 20_000 * SCALE);
+    assert_eq!(records.debris[&field_id].deuterium, 10_000 * SCALE);
+    let report = records
+        .reports
+        .values()
+        .find(|r| r.kind == "Harvested")
+        .unwrap();
+    assert_eq!(
+        report.payloads[&fleet.owner]["harvested"]["deuterium"],
+        (20_000 * SCALE).to_string()
+    );
+    let origin = fleet.intent.origin;
+    let before = state.bodies[&origin].checkpoint.amounts.deuterium;
+    let mut returning = arrival.clone();
+    returning.at = changes.events[0].at;
+    returning.payload = Input::Event(changes.events[0].event.clone());
+    apply(&mut state, &returning);
+    assert_eq!(
+        state.bodies[&origin].checkpoint.amounts.deuterium,
+        before + 20_000 * SCALE
+    );
+    let delivered = state.clone();
+    assert!(apply(&mut state, &returning).world.is_none());
+    assert_eq!(state, delivered);
 }

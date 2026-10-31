@@ -20,6 +20,7 @@ export function useReports(
   item: string | null,
   all = false,
   holdInbox = false,
+  includeHidden = false,
 ) {
   const state = useStore(model.store)
   const scope = reportRequestScope(state)
@@ -81,7 +82,7 @@ export function useReports(
   }, [model, all, holdInbox, canLoadMore, inboxLoad.error, state.reportInbox])
 
   return {
-    page: projectedReportInbox(state),
+    page: projectedReportInbox(state, includeHidden),
     detail: item ? projectedReportDetail(state, item) : null,
     error: load.error,
     loading: load.pending && load.kind !== 'more',

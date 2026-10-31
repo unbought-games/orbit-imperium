@@ -49,7 +49,7 @@ export function preferenceReports(
 }
 
 // A committed receipt is authoritative for every preference in the batch.
-// Its revision prevents older list/detail responses undoing successful deletion.
+// Its revision prevents older list/detail responses undoing successful archiving.
 export function acceptReportVisibility(
   headers: ReportHeaders,
   attempt: Attempt,
@@ -69,9 +69,6 @@ export function acceptReportVisibility(
           ? { starred: action.starred }
           : {
               hidden: action.hidden,
-              ...(action.hidden && previous.header.shared
-                ? { shared: false }
-                : {}),
             }),
     })
   }
@@ -146,7 +143,10 @@ export function pendingReportPreferences(attempts: Iterable<Attempt>) {
   })
 }
 
-export function projectedReportInbox(state: import('./game-store').GameState) {
+export function projectedReportInbox(
+  state: import('./game-store').GameState,
+  includeHidden = false,
+) {
   return (
     state.reportInbox && {
       ...state.reportInbox,
@@ -156,7 +156,7 @@ export function projectedReportInbox(state: import('./game-store').GameState) {
           state.attempts.values(),
           id,
         )
-        return header && !header.hidden ? [header] : []
+        return header && (includeHidden || !header.hidden) ? [header] : []
       }),
     }
   )

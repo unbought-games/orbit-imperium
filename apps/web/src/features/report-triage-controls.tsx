@@ -27,6 +27,7 @@ export const defaultTriage: TriageOptions = {
 }
 export function ReportTriageControls({
   cleanup,
+  archived = false,
   reports,
   visible,
   options,
@@ -36,6 +37,7 @@ export function ReportTriageControls({
   disabled,
   now,
 }: {
+  archived?: boolean
   cleanup: ReturnType<typeof useReportCleanup>
   reports: Header[]
   visible: Header[]
@@ -48,7 +50,7 @@ export function ReportTriageControls({
 }) {
   const [hours, setHours] = useState('24')
   const { submitting, error, remove } = cleanup
-  const eligible = visible.filter((r) => !r.starred)
+  const eligible = visible.filter((r) => archived || !r.starred)
   const chosen = eligible.filter((r) => selected.has(r.id))
   const old = olderUnstarred(reports, hours, now)
   const busy = disabled || submitting
@@ -137,40 +139,44 @@ export function ReportTriageControls({
         <Button
           variant="secondary"
           disabled={busy || cleanup.coolingDown || !chosen.length}
-          onClick={() => void remove(chosen)}
+          onClick={() => void remove(chosen, !archived)}
         >
-          Delete selected ({chosen.length})
+          {archived ? 'Move to inbox' : 'Archive selected'} ({chosen.length})
         </Button>
       </div>
-      <div className={styles.controls}>
-        <Field>
-          Delete reports older than (hours)
-          <Input
-            type="number"
-            min="0.01"
-            step="any"
-            value={hours}
-            disabled={busy}
-            onChange={(e) => setHours(e.target.value)}
-          />
-        </Field>
-        <Button
-          variant="secondary"
-          disabled={
-            busy ||
-            cleanup.coolingDown ||
-            !old.length ||
-            ageCutoff(hours, now) === null
-          }
-          onClick={() => void remove(old)}
-        >
-          Delete older reports ({old.length})
-        </Button>
-      </div>
-      <p>
-        Age cleanup covers the entire inbox, regardless of filters. Starred
-        reports are always protected.
-      </p>
+      {!archived && (
+        <>
+          <div className={styles.controls}>
+            <Field>
+              Archive reports older than (hours)
+              <Input
+                type="number"
+                min="0.01"
+                step="any"
+                value={hours}
+                disabled={busy}
+                onChange={(e) => setHours(e.target.value)}
+              />
+            </Field>
+            <Button
+              variant="secondary"
+              disabled={
+                busy ||
+                cleanup.coolingDown ||
+                !old.length ||
+                ageCutoff(hours, now) === null
+              }
+              onClick={() => void remove(old)}
+            >
+              Archive older reports ({old.length})
+            </Button>
+          </div>
+          <p>
+            Age cleanup covers the entire inbox, regardless of filters. Starred
+            reports are always protected.
+          </p>
+        </>
+      )}
       {error && (
         <ErrorBannerMessage>
           <p role="alert">{error}</p>

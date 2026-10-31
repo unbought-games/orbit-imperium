@@ -8,19 +8,30 @@ import { shellFixture, binding, body, id } from './fixtures/game'
 async function expectAlignedLevels(sections: Locator[]) {
   const grids = (await Promise.all(sections.map(section => section.locator('dl').all()))).flat()
   const firstRow = (await grids[0].locator('div').first().boundingBox())!
-  const firstValue = (await grids[0].locator('dd').first().boundingBox())!
   for (const grid of grids) {
-    const rows = await grid.locator('div').all()
+    const rows = await grid.locator(':scope > div').all()
     const first = (await rows[0].boundingBox())!
     expect(first.x).toBeCloseTo(firstRow.x, 1)
     expect(first.width).toBeCloseTo(firstRow.width, 1)
-    const value = (await rows[0].locator('dd').boundingBox())!
-    expect(value.x + value.width).toBeCloseTo(firstValue.x + firstValue.width, 1)
     for (const row of rows) {
       const name = (await row.locator('dt').boundingBox())!
       const level = (await row.locator('dd').boundingBox())!
-      expect(name.x + name.width).toBeLessThan(level.x)
-      expect(Math.abs(level.y - name.y)).toBeLessThanOrEqual(3)
+      const art = (await row.locator('img').boundingBox())!
+      expect(art.x + art.width).toBeLessThan(name.x)
+      expect(name.x - art.x - art.width).toBeLessThanOrEqual(16)
+      const stacked = level.y >= name.y + name.height
+      if (stacked) {
+        expect(level.x).toBeCloseTo(name.x, 1)
+        expect(level.y - name.y - name.height).toBeLessThanOrEqual(4)
+      } else {
+        expect(level.x).toBeGreaterThan(name.x)
+        expect(Math.abs(level.y + level.height / 2 - name.y - name.height / 2)).toBeLessThanOrEqual(1)
+      }
+      const hierarchy = await row.evaluate(el => ({name: parseFloat(getComputedStyle(el.querySelector('dt')!).fontSize), value: parseFloat(getComputedStyle(el.querySelector('dd strong')!).fontSize)}))
+      if (await row.getAttribute('data-level-state') !== 'unknown')
+        expect(hierarchy.value / hierarchy.name).toBeGreaterThanOrEqual(1.4)
+      await expect(row.locator('dt')).toHaveCSS('font-weight', '500')
+      await expect.poll(() => row.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
       expect(await row.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
     }
   }
@@ -34,6 +45,7 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
     await shellFixture(page, {
       protocol: 4,
       extraCapabilities: ['Reports', 'Attack'],
+      missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'},
     })
     const header = {
       id: id(63),
@@ -107,9 +119,10 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
     await expect(buildings).toBeVisible()
     for (const width of [1440, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 })
+
       const back = (await page.getByRole('link', { name: 'Back to reports' }).boundingBox())!
       const title = (await page.getByRole('heading', { name: 'Espionage', exact: true }).boundingBox())!
-      const remove = (await page.getByRole('button', { name: 'Delete report', exact: true }).boundingBox())!
+      const remove = (await page.getByRole('button', { name: 'Archive report', exact: true }).boundingBox())!
       const timestamp = (await page.getByRole('button', { name: 'Report time details' }).boundingBox())!
       expect(title.x).toBeGreaterThan(back.x + back.width)
       expect(title.y).toBeLessThan(back.y + back.height)
@@ -198,8 +211,8 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
           'Resource buildings',
           'Facility buildings',
         ])
-        const resources = buildings.locator('dl').nth(0)
-        const facilities = buildings.locator('dl').nth(1)
+        const resources = buildings.locator('div').filter({has: page.getByRole('heading', {name: 'Resource buildings', exact: true})}).first()
+        const facilities = buildings.locator('div').filter({has: page.getByRole('heading', {name: 'Facility buildings', exact: true})}).first()
         await expect(resources.locator('dt')).toHaveText([
           'Metal Mine',
           'Crystal Mine',
@@ -222,20 +235,37 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         ])
         await expect(facilities.locator('dt')).toHaveText([
           'Robotics Factory',
+          ...(variant === 'expanded' ? ['Nanite Factory'] : []),
           'Shipyard',
           'Research Lab',
-          ...(variant === 'expanded'
-            ? ['Nanite Factory', 'Lunar Base', 'Sensor Phalanx', 'Jump Gate']
-            : []),
         ])
         await expect(facilities.locator('dd')).toHaveText([
           'Level 0',
+          ...(variant === 'expanded' ? ['Level 1'] : []),
           'Level 0',
           'Level 2',
-          ...(variant === 'expanded'
-            ? ['Level 1', 'Level 0', 'Level 0', 'Level 0']
-            : []),
         ])
+        await expect(resources.locator('dl')).toHaveCount(3)
+        await expect(facilities.locator('dl')).toHaveCount(2)
+        await expect(resources.locator('dl').nth(0).locator('dt')).toHaveText(['Metal Mine', 'Crystal Mine', 'Deuterium Synthesizer'])
+        await expect(resources.locator('dl').nth(1).locator('dt')).toHaveText(['Solar Plant', ...(variant === 'expanded' ? ['Fusion Reactor'] : [])])
+        await expect(resources.locator('dl').nth(2).locator('dt')).toHaveText(['Metal Storage', 'Crystal Storage', 'Deuterium Tank'])
+        for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
+          await expect(buildings.getByText(name, {exact: true})).toHaveCount(0)
+        // Desktop rows must retain their semantic boundary even with empty slots.
+        if (width === 1440) {
+          for (const grid of [...await resources.locator('dl').all(), ...await facilities.locator('dl').all()]) {
+            const boxes = await grid.locator('dt').evaluateAll(nodes => nodes.map(el => el.getBoundingClientRect().y))
+            expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThanOrEqual(1)
+          }
+        }
+        const observed = resources.locator('[data-level-state="known"]').first()
+        const zero = resources.locator('[data-level-state="zero"]').first()
+        await expect(observed.locator('dd')).toHaveCSS('color', 'rgb(203, 182, 141)')
+        await expect(observed.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(zero.locator('dd')).toHaveCSS('color', 'rgb(182, 198, 214)')
+        await expect(zero.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(zero.locator('dd strong')).toHaveText('0')
         await expectAlignedLevels([buildings, research])
         const resourceBounds = await resources.boundingBox()
         const facilityBounds = await facilities.boundingBox()
@@ -249,6 +279,13 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         ),
       ).toBe(true)
       await page.evaluate(() => document.fonts.ready)
+      if (variant === 'expanded') {
+        for (const [name, section] of [['buildings', buildings], ['research', research]] as const) {
+          await section.evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 80))
+          await page.mouse.move(0, 0)
+          await diagnosticScreenshot(page, {path: `test-results/report-${name}-grouped-${width}x1000.png`})
+        }
+      }
       await diagnosticScreenshot(buildings, {
         path: `test-results/espionage-${variant}-${width}.png`,
       })

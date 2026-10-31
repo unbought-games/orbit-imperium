@@ -60,7 +60,7 @@ it('renders only observed building levels under catalog group headings', () => {
     },
   })
   expect(text).toContain(
-    'BuildingsResource buildingsMetal MineLevel UnknownFacility buildingsResearch LabLevel 2Other buildingsLegacy BuildingLevel 0',
+    'BuildingsResource buildingsObserved levelMinesMetal MineLevel UnknownFacility buildingsObserved levelInfrastructureResearch LabLevel 2Other buildingsObserved levelLegacy BuildingLevel 0',
   )
   expect(text).not.toContain('Crystal Mine')
 })
@@ -99,7 +99,7 @@ it('renders observed research in report groups without inventing missing levels'
     },
   })
   expect(text).toContain(
-    'ResearchCombat and espionageWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchCombustion DriveLevel 3Basic researchEnergy TechnologyLevel UnknownAdvanced researchComputer TechnologyLevel 2Other researchFuture ResearchLevel 1',
+    'ResearchCombat and espionageObserved levelWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchObserved levelCombustion DriveLevel 3Basic researchObserved levelEnergy TechnologyLevel UnknownAdvanced researchObserved levelComputer TechnologyLevel 2Other researchObserved levelFuture ResearchLevel 1',
   )
   expect(text).not.toContain('Shielding Technology')
 })
@@ -348,4 +348,25 @@ it('labels historical harvest cargo honestly without inventing a collection amou
   expect(text).toContain('Harvested amount unavailable')
   expect(text).toContain('including cargo loaded before departure')
   expect(text).toContain('Carried resources10,7138,2382,608')
+})
+
+it('uses the recorded body kind to keep moon structures out of planet reports', () => {
+  const observation = {
+    kind: 'Espionage',
+    buildings: {
+      visibility: 'Known',
+      value: {
+        RoboticsFactory: 2,
+        LunarBase: 0,
+        SensorPhalanx: 0,
+        JumpGate: 0,
+      },
+    },
+  }
+  const planet = render({ ...observation, target: { kind: 'Planet' } })
+  expect(planet).toContain('Robotics FactoryLevel 2')
+  for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate']) {
+    expect(planet).not.toContain(name)
+    expect(render({ ...observation, target: { kind: 'Moon' } })).toContain(name)
+  }
 })

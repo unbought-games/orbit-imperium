@@ -396,3 +396,33 @@ it('rejects an inbox observation older than the known game revision even before 
     projectedReportInbox(h.store.getState())?.items.map((h) => h.id),
   ).toEqual(['current'])
 })
+
+it('keeps one archive page chain while inbox and archived views select their own reports', async () => {
+  const h = fixture()
+  const initial = h.engine.ensureInbox()
+  const first = h.page(hundred, 'older')
+  first.data.items.push({ ...header('archived'), hidden: true })
+  h.pages[0].resolve(first)
+  await initial
+  expect(projectedReportInbox(h.store.getState())?.items).toHaveLength(100)
+  expect(
+    projectedReportInbox(h.store.getState(), true)
+      ?.items.filter((h) => h.hidden)
+      .map((h) => h.id),
+  ).toEqual(['archived'])
+  expect(unreadBadgeCount(h.store.getState())).toBe(99)
+  const more = h.engine.refreshInbox(true)
+  const next = h.page(['older-archive'])
+  next.data.items[0].hidden = true
+  h.pages[1].resolve(next)
+  await more
+  expect(h.pages.map((p) => p.cursor)).toEqual([null, 'older'])
+  expect(projectedReportInbox(h.store.getState())?.items).toHaveLength(100)
+  expect(
+    projectedReportInbox(h.store.getState(), true)
+      ?.items.filter((h) => h.hidden)
+      .map((h) => h.id),
+  ).toEqual(['archived', 'older-archive'])
+  await h.engine.ensureInbox()
+  expect(h.pages).toHaveLength(2)
+})

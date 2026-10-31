@@ -52,6 +52,18 @@ async function fixture(page:Page, count=65){
  failSend:()=>{failNext=true},incoming:()=>{messages.push(message(messages.length+1));hidden=false},invite:()=>{c={...c,request:id(3001),requested_by:peer}}}
 }
 
+test('conversation action announces unread state and clears it after reading', async ({page}) => {
+ await fixture(page)
+ await page.goto('/u/andromeda/messages')
+ const action = page.getByRole('button', {name: /^Open conversation with Nova/})
+ await expect(action).toHaveAccessibleName('Open conversation with Nova · Unread')
+ await action.click()
+ await expect(page.getByLabel('Message history').getByText('Message 65', {exact:true})).toBeVisible()
+ await page.getByRole('button', {name: 'Back to conversations', exact:true}).click()
+ await expect(action).toHaveAccessibleName('Open conversation with Nova')
+ await expect(action).not.toContainText('Unread')
+})
+
 test('conversation paging, safe Markdown, uncertain send retry and blocking',async({page})=>{
  const f=await fixture(page)
  await page.goto(`/u/andromeda/messages?player=${peer}`)
@@ -117,7 +129,8 @@ test('Galaxy message shortcut preserves the selected player through route normal
   return route.fulfill({json:{protocol:4,binding,request_id:q.context.request_id,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),data:{galaxy:q.galaxy,system:q.system,observed_at:Date.now(),player_names:{[peer]:'Nova'},positions:Array.from({length:15},(_,i)=>({coordinates:{galaxy:q.galaxy,system:q.system,position:i+1},body:i===0?{id:id(810),kind:'Planet',owner:peer,activity:{type:'None'},inactivity:'Active',vacation:false,espionage_eligible:true}:null,debris:null}))}}})
  })
  await page.goto('/u/andromeda/galaxy')
- const link=page.getByRole('region',{name:'Galaxy positions'}).getByRole('link',{name:/^Message /})
+ await page.getByRole('region',{name:'Galaxy positions'}).getByRole('button',{name:'Nova profile details'}).click()
+ const link=page.getByRole('dialog', {name:'Nova profile'}).getByRole('link',{name:/^Message /})
  await expect(link).toHaveAttribute('href',new RegExp(`player=${peer}`))
  await link.click()
  await expect(page.getByLabel('Message',{exact:true})).toBeVisible()

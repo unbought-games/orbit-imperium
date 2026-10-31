@@ -1,4 +1,3 @@
-import { MessagePlayerLink } from './social/message-player-link'
 import { EmptyState } from '../ui/empty-state'
 import { useEffect, useLayoutEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -15,8 +14,8 @@ import { useGameSession } from '../shell/session-context'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { Button } from '../ui/button'
 import { Field, Input } from '../ui/form'
+import { MessagePlayerLink } from './social/message-player-link'
 import { PlayerName } from './player-name'
-import { AllianceTag } from './player-alliance'
 import { useRankings } from './use-rankings'
 import styles from './high-scores.module.css'
 
@@ -235,8 +234,9 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                       }
                     >
                       <td className={styles.rank}>
-                        {number(row.rank)}
+                        {number(row.rank)}{' '}
                         <RankMovement
+                          inline
                           row={row}
                           baselineAt={ranking.baselineAt}
                         />
@@ -274,37 +274,39 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                       data-self={row.player === player || undefined}
                     >
                       <td className={styles.rank}>
-                        {number(row.rank)}
+                        {number(row.rank)}{' '}
                         <RankMovement
+                          inline
                           row={row}
                           baselineAt={ranking.baselineAt}
                         />
                       </td>
                       <td>
+                        <PlayerName
+                          player={row.player}
+                          fallback={row.username}
+                          alliance={row.alliance ?? null}
+                          triggerRef={
+                            row.player === player ? ownPlayer : undefined
+                          }
+                        />
+                        {row.player === player && (
+                          <span className={styles.you}>You</span>
+                        )}
+                      </td>
+                      <td className={styles.points}>
                         <Button
                           variant="ghost"
                           className={styles.player}
-                          ref={row.player === player ? ownPlayer : undefined}
+                          aria-label={`Score details for ${row.username}: ${number(row.points)} points`}
                           onClick={(e) => {
                             opener.current = e.currentTarget
                             ranking.select(row.player)
                           }}
                         >
-                          <PlayerName
-                            player={row.player}
-                            fallback={row.username}
-                            alliance={null}
-                            linkAlliance={false}
-                          />
+                          {number(row.points)}
                         </Button>
-                        {row.alliance && (
-                          <AllianceTag alliance={row.alliance} />
-                        )}
-                        {row.player === player && (
-                          <span className={styles.you}>You</span>
-                        )}
                       </td>
-                      <td className={styles.points}>{number(row.points)}</td>
                     </tr>
                   ))}
             </tbody>
@@ -401,9 +403,11 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
 function RankMovement({
   row,
   baselineAt,
+  inline = false,
 }: {
   row: RankedRow
   baselineAt?: number | null
+  inline?: boolean
 }) {
   const movement = rankMovement(row, baselineAt)
   return (
@@ -414,7 +418,7 @@ function RankMovement({
       aria-label={movement.label}
       title={movement.label}
     >
-      {movement.text}
+      {inline ? `(${movement.text})` : movement.text}
     </span>
   )
 }
@@ -455,6 +459,7 @@ function RankingDetails({
           player={row.player}
           fallback={row.username}
           alliance={row.alliance ?? null}
+          interactive={false}
         />
       </h2>
       <MessagePlayerLink player={row.player} name={row.username} />

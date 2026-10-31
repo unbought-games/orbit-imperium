@@ -93,25 +93,13 @@ pub fn settle_encounter(
     let mut recovery_rng = RandomStream::new(&facts.secret, s.universe, s.epoch, i.id, "recovery")?;
     let mut recovery = vec![];
     let mut recovery_indices = vec![];
-    let (mut metal, mut crystal) = (0i128, 0i128);
+    let debris = destroyed_ship_debris(&battle.destroyed, rules)?;
     for origin in &battle.destroyed {
         let mut restored = origin.clone();
         restored.units.clear();
         for &(item, count) in &origin.units {
             match item {
-                ManufacturedItem::Ship(_) => {
-                    let unit = rules
-                        .units
-                        .iter()
-                        .find(|u| u.item == item)
-                        .ok_or_else(|| InvariantError("missing unit valuation".into()))?;
-                    metal = metal
-                        .checked_add(i128::from(count) * i128::from(unit.cost[0]))
-                        .ok_or_else(|| InvariantError("debris overflow".into()))?;
-                    crystal = crystal
-                        .checked_add(i128::from(count) * i128::from(unit.cost[1]))
-                        .ok_or_else(|| InvariantError("debris overflow".into()))?;
-                }
+                ManufacturedItem::Ship(_) => {}
                 ManufacturedItem::Defense(_) => {
                     let [a, b] = rules.defense_recovery_probability;
                     let mut indices = vec![];
@@ -131,19 +119,9 @@ pub fn settle_encounter(
         }
         recovery.push(restored);
     }
-    let convert = |n: i128| {
-        i64::try_from(n * i128::from(rules.ship_debris_bps) / 10000)
-            .ok()
-            .and_then(|n| n.checked_mul(SCALE))
-            .ok_or_else(|| InvariantError("debris resource overflow".into()))
-    };
     Ok(EncounterSettlement {
         battle,
-        debris: Resources {
-            metal: convert(metal)?,
-            crystal: convert(crystal)?,
-            deuterium: 0,
-        },
+        debris,
         recovery,
         recovery_cursor: recovery_rng.cursor(),
         recovery_indices,
@@ -420,7 +398,7 @@ fn combat_encounter(
         f.cargo = crate::transition::resources(f.cargo, allocation[0].1, true)?;
     }
     let debris = result.debris;
-    if debris.metal > 0 || debris.crystal > 0 {
+    if debris.metal > 0 || debris.crystal > 0 || debris.deuterium > 0 {
         let coords = target.coordinates;
         let id = OperationId(derived_id(
             InputId(s.epoch.0),
@@ -435,6 +413,7 @@ fn combat_encounter(
             marker_present: false,
             metal: 0,
             crystal: 0,
+            deuterium: 0,
             generation: 0,
             cleanup_at: 0,
             revision: 0,
@@ -463,6 +442,10 @@ fn combat_encounter(
             .crystal
             .checked_add(debris.crystal)
             .ok_or_else(|| invariant("debris crystal overflow"))?;
+        field.deuterium = field
+            .deuterium
+            .checked_add(debris.deuterium)
+            .ok_or_else(|| invariant("debris deuterium overflow"))?;
         field.revision = field
             .revision
             .checked_add(1)

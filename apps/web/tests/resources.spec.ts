@@ -1065,8 +1065,8 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
     pane.getByRole('region', { name: 'Active construction' }),
   ).toBeVisible()
   planet.levels.MetalMine = 2
-  await refreshGame(page)
   constructions.length = 0
+  await refreshGame(page)
   await expect(
     pane.getByRole('heading', { name: 'Upgrade to level 3', exact: true }),
   ).toBeVisible()

@@ -3779,7 +3779,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Opt in to effective insignia appearance. Omit to retain the legacy response shape during rolling upgrades. */
+                    "X-Orbit-Insignia"?: "1";
+                };
                 path: {
                     universe: string;
                 };
@@ -4984,6 +4987,194 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/universes/{universe}/insignias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read and customize an account insignia library and empire selection
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InsigniaRequest"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InsigniaState"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/insignias/{symbol}/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read an immutable operator-published insignia SVG */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    symbol: string;
+                    version: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Trusted SVG with immutable public caching, restrictive CSP, and nosniff */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/svg+xml": string;
+                    };
+                };
+                /** @description Unknown or invalid immutable key */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Storage unavailable or integrity check failed; no-store */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6463,6 +6654,7 @@ export interface components {
             /** Format: uuid */
             field_identity: string;
             metal: components["schemas"]["Decimal"];
+            deuterium?: components["schemas"]["Decimal"];
             crystal: components["schemas"]["Decimal"];
         };
         GalaxyPosition4: {
@@ -6704,6 +6896,10 @@ export interface components {
             origin: components["schemas"]["Coordinates"];
             target: components["schemas"]["Coordinates"];
             cargo: components["schemas"]["Resources"];
+            /** @description Planet name observed at delivery; absent on older reports. */
+            origin_name?: string;
+            /** @description Planet name observed at delivery; absent on older reports. */
+            target_name?: string;
         };
         MissionOutcomePayload4: {
             /** @enum {unknown} */
@@ -7029,6 +7225,7 @@ export interface components {
             expires_at: number;
             alliance?: components["schemas"]["AllianceIdentity"];
             kind?: components["schemas"]["PlayerKind"];
+            insignia?: components["schemas"]["InsigniaAppearance"];
         };
         PlayerProfiles: {
             binding: components["schemas"]["Binding"];
@@ -7103,6 +7300,10 @@ export interface components {
             origin?: components["schemas"]["Coordinates"];
             target?: components["schemas"]["Coordinates"];
             cargo?: components["schemas"]["Resources"];
+            /** @description Planet name observed at delivery; absent on older reports. */
+            origin_name?: string;
+            /** @description Planet name observed at delivery; absent on older reports. */
+            target_name?: string;
         } | {
             /** @enum {unknown} */
             kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed" | "Deployed";
@@ -7955,6 +8156,74 @@ export interface components {
             /** @constant */
             kind: "PlanetAbandoned";
             abandonment: components["schemas"]["Abandonment4"];
+        };
+        InsigniaRecipe: {
+            /** @enum {integer} */
+            version: 1;
+            /** @enum {string} */
+            symbol: "compass" | "wings" | "spire" | "laurel";
+            foreground: string;
+            background: string;
+        };
+        InsigniaDesign: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            recipe: components["schemas"]["InsigniaRecipe"];
+            revision: number;
+        };
+        InsigniaAppearance: {
+            recipe: components["schemas"]["InsigniaRecipe"];
+            asset_url: string;
+        };
+        /** @enum {string} */
+        InsigniaAccess: "available" | "supporter_required" | "unavailable";
+        InsigniaLibrary: {
+            designs: components["schemas"]["InsigniaDesign"][];
+            /** Format: uuid */
+            equipped: string | null;
+            permanent_symbols: string[];
+        };
+        InsigniaSymbol: {
+            id: string;
+            name: string;
+            supporter: boolean;
+            asset_url: string;
+            access: components["schemas"]["InsigniaAccess"];
+        };
+        InsigniaState: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            library: components["schemas"]["InsigniaLibrary"];
+            catalog: components["schemas"]["InsigniaSymbol"][];
+            /** @enum {string} */
+            policy: "unrestricted" | "supporter";
+            appearance: components["schemas"]["InsigniaAppearance"] | null;
+            expires_at: number;
+        };
+        InsigniaAction: {
+            /** @enum {string} */
+            type: "Load";
+        } | {
+            /** @enum {string} */
+            type: "Save";
+            design: components["schemas"]["InsigniaDesign"];
+            equip: boolean;
+        } | {
+            /** @enum {string} */
+            type: "Equip";
+            /** Format: uuid */
+            design_id: string | null;
+        } | {
+            /** @enum {string} */
+            type: "Delete";
+            /** Format: uuid */
+            design_id: string;
+        };
+        InsigniaRequest: {
+            context: components["schemas"]["QueryContext"];
+            action: components["schemas"]["InsigniaAction"];
         };
     };
     responses: never;

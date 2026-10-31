@@ -4532,6 +4532,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-Orbit-Insignia",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to effective insignia appearance. Omit to retain the legacy response shape during rolling upgrades."
           }
         ],
         "responses": {
@@ -6422,6 +6434,205 @@
           }
         ],
         "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
+      }
+    },
+    "/api/v1/universes/{universe}/insignias": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsigniaState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InsigniaRequest"
+              }
+            }
+          }
+        },
+        "summary": "Read and customize an account insignia library and empire selection",
+        "x-bot-category": "social-or-status",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
+      }
+    },
+    "/api/media/insignias/{symbol}/{version}": {
+      "get": {
+        "summary": "Read an immutable operator-published insignia SVG",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,64}$"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}\\.svg$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trusted SVG with immutable public caching, restrictive CSP, and nosniff",
+            "content": {
+              "image/svg+xml": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown or invalid immutable key"
+          },
+          "503": {
+            "description": "Storage unavailable or integrity check failed; no-store"
+          }
+        }
       }
     }
   },
@@ -12698,6 +12909,9 @@
           "metal": {
             "$ref": "#/components/schemas/Decimal"
           },
+          "deuterium": {
+            "$ref": "#/components/schemas/Decimal"
+          },
           "crystal": {
             "$ref": "#/components/schemas/Decimal"
           }
@@ -13688,6 +13902,14 @@
           },
           "cargo": {
             "$ref": "#/components/schemas/Resources"
+          },
+          "origin_name": {
+            "type": "string",
+            "description": "Planet name observed at delivery; absent on older reports."
+          },
+          "target_name": {
+            "type": "string",
+            "description": "Planet name observed at delivery; absent on older reports."
           }
         },
         "required": [
@@ -15168,6 +15390,9 @@
           },
           "kind": {
             "$ref": "#/components/schemas/PlayerKind"
+          },
+          "insignia": {
+            "$ref": "#/components/schemas/InsigniaAppearance"
           }
         },
         "required": [
@@ -15463,6 +15688,14 @@
               },
               "cargo": {
                 "$ref": "#/components/schemas/Resources"
+              },
+              "origin_name": {
+                "type": "string",
+                "description": "Planet name observed at delivery; absent on older reports."
+              },
+              "target_name": {
+                "type": "string",
+                "description": "Planet name observed at delivery; absent on older reports."
               }
             },
             "required": [
@@ -19077,6 +19310,303 @@
           "abandonment"
         ],
         "additionalProperties": false
+      },
+      "InsigniaRecipe": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "symbol": {
+            "type": "string",
+            "enum": [
+              "compass",
+              "wings",
+              "spire",
+              "laurel"
+            ]
+          },
+          "foreground": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "background": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
+        "required": [
+          "version",
+          "symbol",
+          "foreground",
+          "background"
+        ]
+      },
+      "InsigniaDesign": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "recipe": {
+            "$ref": "#/components/schemas/InsigniaRecipe"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "recipe",
+          "revision"
+        ]
+      },
+      "InsigniaAppearance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "recipe": {
+            "$ref": "#/components/schemas/InsigniaRecipe"
+          },
+          "asset_url": {
+            "type": "string",
+            "pattern": "^/api/media/insignias/(compass|wings|spire|laurel)/[0-9a-f]{64}\\.svg$"
+          }
+        },
+        "required": [
+          "recipe",
+          "asset_url"
+        ]
+      },
+      "InsigniaAccess": {
+        "type": "string",
+        "enum": [
+          "available",
+          "supporter_required",
+          "unavailable"
+        ]
+      },
+      "InsigniaLibrary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "designs": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "$ref": "#/components/schemas/InsigniaDesign"
+            }
+          },
+          "equipped": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "permanent_symbols": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "designs",
+          "equipped",
+          "permanent_symbols"
+        ]
+      },
+      "InsigniaSymbol": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "supporter": {
+            "type": "boolean"
+          },
+          "asset_url": {
+            "type": "string",
+            "pattern": "^/api/media/insignias/(compass|wings|spire|laurel)/[0-9a-f]{64}\\.svg$"
+          },
+          "access": {
+            "$ref": "#/components/schemas/InsigniaAccess"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "supporter",
+          "asset_url",
+          "access"
+        ]
+      },
+      "InsigniaState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "library": {
+            "$ref": "#/components/schemas/InsigniaLibrary"
+          },
+          "catalog": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsigniaSymbol"
+            }
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "unrestricted",
+              "supporter"
+            ]
+          },
+          "appearance": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/InsigniaAppearance" },
+              { "type": "null" }
+            ]
+          },
+          "expires_at": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "binding",
+          "request_id",
+          "library",
+          "catalog",
+          "policy",
+          "appearance",
+          "expires_at"
+        ]
+      },
+      "InsigniaAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Load"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Save"
+                ]
+              },
+              "design": {
+                "$ref": "#/components/schemas/InsigniaDesign"
+              },
+              "equip": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "design",
+              "equip"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Equip"
+                ]
+              },
+              "design_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "design_id"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Delete"
+                ]
+              },
+              "design_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "design_id"
+            ]
+          }
+        ]
+      },
+      "InsigniaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "action": {
+            "$ref": "#/components/schemas/InsigniaAction"
+          }
+        },
+        "required": [
+          "context",
+          "action"
+        ]
       }
     },
     "securitySchemes": {

@@ -238,6 +238,8 @@ fn historical_rules_transport_restart_keeps_cargo_fuel_deadlines_and_single_comp
 }
 fn transport_restart(r: Ruleset) {
     let (mut s, r, p, b, t) = fixture_with_rules(r);
+    s.bodies.get_mut(&b).unwrap().name = Some("Origin at delivery".into());
+    s.bodies.get_mut(&t).unwrap().name = Some("Destination at delivery".into());
     let intent = intent(&s, p, b, t);
     let value = value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap();
     let q = quote_fleet(&s, p, &intent, 1000, &r).unwrap();
@@ -296,6 +298,32 @@ fn transport_restart(r: Ruleset) {
     assert_eq!(
         s.bodies[&t].checkpoint.amounts.metal,
         before.amounts.metal + 10 * SCALE
+    );
+    let delivered = s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .reports
+        .values()
+        .find(|report| report.kind == "Delivered")
+        .unwrap();
+    for payload in delivered.payloads.values() {
+        assert_eq!(payload["origin_name"], "Origin at delivery");
+        assert_eq!(payload["target_name"], "Destination at delivery");
+    }
+    s.bodies.get_mut(&b).unwrap().name = Some("Renamed later".into());
+    assert_eq!(
+        s.world
+            .as_ref()
+            .unwrap()
+            .records
+            .reports
+            .values()
+            .find(|report| report.kind == "Delivered")
+            .unwrap()
+            .payloads[&p]["origin_name"],
+        "Origin at delivery"
     );
     assert_eq!(c.events[0].at - event.at, q.duration_ms);
     let result = run(&mut s, &r, p, b, event.at, 102, Input::Event(event.event));
@@ -410,10 +438,13 @@ fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() 
     // Full collection, recycler-limited, free-space-limited, and an
     // exhausted field. Every flight carries all three resources before launch.
     for (loaded, debris, expected) in [
-        ([100, 200, 300], [299, 101], [299, 101, 0]),
-        ([100, 200, 300], [30000, 30000], [10000, 10000, 0]),
-        ([9000, 9000, 6000], [1000, 1000], [500, 500, 0]),
-        ([100, 200, 300], [0, 0], [0, 0, 0]),
+        ([100, 200, 300], [299, 101, 0], [299, 101, 0]),
+        ([100, 200, 300], [30000, 30000, 0], [10000, 10000, 0]),
+        ([9000, 9000, 6000], [1000, 1000, 0], [500, 500, 0]),
+        ([100, 200, 300], [0, 0, 0], [0, 0, 0]),
+        ([100, 200, 300], [30000, 30000, 30000], [6667, 6667, 6666]),
+        ([9000, 9000, 6000], [1000, 1000, 1000], [334, 333, 333]),
+        ([100, 200, 300], [0, 0, 500], [0, 0, 500]),
     ] {
         let (mut s, r, p, b, _) = fixture();
         let field_id = OperationId(Uuid::from_u128(900));
@@ -426,6 +457,7 @@ fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() 
                 marker_present: true,
                 metal: debris[0] * SCALE,
                 crystal: debris[1] * SCALE,
+                deuterium: debris[2] * SCALE,
                 generation: 1,
                 cleanup_at: next_debris_cleanup(1000).unwrap(),
                 revision: 0,
@@ -498,6 +530,11 @@ fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() 
             (debris[1] - expected[1]) * SCALE
         );
 
+        assert_eq!(
+            w.debris[&field_id].deuterium,
+            (debris[2] - expected[2]) * SCALE
+        );
+
         let due = arrival.events[0].clone();
         // Compute the home balance at return time before applying the delivery,
         // so ordinary production is not mistaken for returned cargo.
@@ -535,6 +572,7 @@ fn harvest_reference_survives_return_and_cleanup_records_loss() {
             marker_present: true,
             metal: 299 * SCALE,
             crystal: 0,
+            deuterium: 0,
             generation: 1,
             cleanup_at: cleanup,
             revision: 0,
@@ -665,6 +703,7 @@ fn equal_time_collectors_serialize_and_empty_marker_remains_eligible() {
             marker_present: true,
             metal: 3000 * SCALE,
             crystal: 5000 * SCALE,
+            deuterium: 0,
             generation: 1,
             cleanup_at: next_debris_cleanup(1000).unwrap(),
             revision: 0,
@@ -1153,6 +1192,82 @@ fn clear_units(s: &mut GameState, t: BodyId) {
         .records
         .lots
         .retain(|l| l.location != AssetLocation::Body(t));
+}
+
+#[test]
+fn debris_only_activation_uses_arrival_rules_without_changing_accepted_terms() {
+    let (mut launched, old, p, b, t) = raid_fixture();
+    let mut request = intent(&launched, p, b, t);
+    request.mission = Mission::Attack;
+    let event = launch_raid(&mut launched, &old, p, b, request, 1000, 7000);
+    // Reinforcements after launch guarantee the same destroyed cargo ship in both cases.
+    clear_units(&mut launched, t);
+    set_units(
+        &mut launched,
+        &old,
+        t,
+        ManufacturedItem::Ship(ShipType::LightFighter),
+        100,
+    );
+    let fleet_id = *launched
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .keys()
+        .next()
+        .unwrap();
+    let accepted = launched.world.as_ref().unwrap().records.fleets[&fleet_id]
+        .terms
+        .clone();
+    for bps in [3000, 6000] {
+        let mut artifact = old.artifact.clone();
+        artifact.world.as_mut().unwrap().combat.ship_debris_bps = bps;
+        let active = Ruleset::from_artifact(artifact, old.speed).unwrap();
+        assert_eq!(
+            plan_rules_update(&old, &active).unwrap().impact,
+            if bps == 3000 {
+                RulesUpdateImpact::Unchanged
+            } else {
+                RulesUpdateImpact::RulesOnly
+            }
+        );
+        let mut state = launched.clone();
+        state.profile_hash = active.hash.clone();
+        let result = run(
+            &mut state,
+            &active,
+            p,
+            b,
+            event.at,
+            7001,
+            Input::Event(event.event.clone()),
+        );
+        apply(&mut state, result);
+        let records = &state.world.as_ref().unwrap().records;
+        let fleet = &records.fleets[&fleet_id];
+        assert_eq!(fleet.terms, accepted);
+        assert_eq!(fleet.leg, MissionLeg::Destroyed);
+        let debris = records.debris.values().next().unwrap();
+        assert_eq!(debris.metal, 2000 * i64::from(bps) / 10000 * SCALE);
+        assert_eq!(debris.crystal, debris.metal);
+        let before_retry = state.clone();
+        let result = run(
+            &mut state,
+            &active,
+            p,
+            b,
+            event.at,
+            7002,
+            Input::Event(event.event.clone()),
+        );
+        apply(&mut state, result);
+        assert_eq!(
+            state.world.as_ref().unwrap().records.debris,
+            before_retry.world.as_ref().unwrap().records.debris
+        );
+    }
 }
 #[test]
 fn probe_attack_empty_victory_has_zero_loot_and_qualifies_but_inactive_does_not() {
@@ -3064,4 +3179,83 @@ fn flight_estimate_retains_fuel_without_resources_and_cannot_authorize_launch() 
         estimate_fleet(&s, p, &request, &r),
         Err(GameError::PolicyUnavailable)
     ));
+}
+
+#[test]
+fn deuterium_activation_uses_arrival_rules_and_preserves_accepted_fuel_and_time() {
+    let (mut launched, old, p, b, t) = raid_fixture();
+    let mut request = intent(&launched, p, b, t);
+    request.mission = Mission::Attack;
+    request.ships[0].ship_type = ShipType::Recycler;
+    request.cargo.deuterium = 100 * SCALE;
+    let event = launch_raid(&mut launched, &old, p, b, request, 1000, 7000);
+    // Reinforcements after launch guarantee the same destroyed Recycler in both cases.
+    clear_units(&mut launched, t);
+    set_units(
+        &mut launched,
+        &old,
+        t,
+        ManufacturedItem::Ship(ShipType::LightFighter),
+        100,
+    );
+    let fleet_id = *launched
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .keys()
+        .next()
+        .unwrap();
+    let accepted = launched.world.as_ref().unwrap().records.fleets[&fleet_id]
+        .terms
+        .clone();
+    for enabled in [false, true] {
+        let mut artifact = old.artifact.clone();
+        artifact.world.as_mut().unwrap().combat.deuterium_in_debris = enabled;
+        let active = Ruleset::from_artifact(artifact, old.speed).unwrap();
+        assert_eq!(
+            plan_rules_update(&old, &active).unwrap().impact,
+            if !enabled {
+                RulesUpdateImpact::Unchanged
+            } else {
+                RulesUpdateImpact::RulesOnly
+            }
+        );
+        let mut state = launched.clone();
+        state.profile_hash = active.hash.clone();
+        let result = run(
+            &mut state,
+            &active,
+            p,
+            b,
+            event.at,
+            7001,
+            Input::Event(event.event.clone()),
+        );
+        apply(&mut state, result);
+        let records = &state.world.as_ref().unwrap().records;
+        let fleet = &records.fleets[&fleet_id];
+        assert_eq!(fleet.terms, accepted);
+        assert_eq!(fleet.leg, MissionLeg::Destroyed);
+        let debris = records.debris.values().next().unwrap();
+        assert_eq!(debris.metal, 3000 * SCALE);
+        assert_eq!(debris.crystal, 1800 * SCALE);
+        assert_eq!(debris.deuterium, if enabled { 600 * SCALE } else { 0 });
+        let before_retry = state.clone();
+        let result = run(
+            &mut state,
+            &active,
+            p,
+            b,
+            event.at,
+            7002,
+            Input::Event(event.event.clone()),
+        );
+        apply(&mut state, result);
+        assert_eq!(
+            state.world.as_ref().unwrap().records.debris,
+            before_retry.world.as_ref().unwrap().records.debris
+        );
+    }
 }

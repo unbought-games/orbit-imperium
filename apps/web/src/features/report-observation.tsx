@@ -18,9 +18,15 @@ import type { ReactNode } from 'react'
 import { label } from '../ui/format'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { DetectionPercent } from '../ui/detection'
-import { groupReportBuildings } from './report-buildings'
+import { reportLevel } from './report-level'
+import { reportLevelArt } from './report-level-art'
+import { CatalogImage } from '../ui/image-catalog'
+import {
+  groupReportBuildings,
+  reportBuildingRowTitle,
+} from './report-buildings'
 import { groupReportResearch } from './report-research'
-import type { ObservedLevel } from './report-buildings'
+import type { ObservedLevel, ObservedLevelGroup } from './report-buildings'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
   v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -87,12 +93,29 @@ function Levels({
 }) {
   return rows.length ? (
     <dl className={styles.levels}>
-      {rows.map(([name, level]) => (
-        <div key={name}>
-          <dt>{label(name)}</dt>
-          <dd>Level {text(level)}</dd>
-        </div>
-      ))}
+      {rows.map(([name, level]) => {
+        const observed = reportLevel(level)
+        const art = reportLevelArt(name)
+        return (
+          <div key={name} data-level-state={observed.state}>
+            <dt>
+              {art && (
+                <CatalogImage
+                  art={art}
+                  className={styles.levelArt}
+                  sizes="44px"
+                  loading="lazy"
+                />
+              )}
+              <span>{label(name)}</span>
+            </dt>
+            <dd>
+              <span className={styles.levelCaption}>Level</span>{' '}
+              <strong>{observed.value}</strong>
+            </dd>
+          </div>
+        )
+      })}
     </dl>
   ) : (
     <Text>{emptyLabel}</Text>
@@ -101,15 +124,29 @@ function Levels({
 function GroupedLevels({
   groups,
   emptyLabel,
+  buildings = false,
 }: {
-  groups: { title: string; rows: ObservedLevel[] }[]
+  groups: ObservedLevelGroup[]
   emptyLabel: string
+  buildings?: boolean
 }) {
   return groups.length ? (
     groups.map(({ title, rows }) => (
       <div key={title}>
-        <h4>{title}</h4>
-        <Levels rows={rows} emptyLabel={emptyLabel} />
+        <div className={styles.levelGroupHeader}>
+          <h4 className={styles.levelGroupHeading}>{title}</h4>
+          <span>Observed level</span>
+        </div>
+        {rows.map((line) => (
+          <div key={line[0][0]} className={styles.levelRow}>
+            {buildings && reportBuildingRowTitle(line) && (
+              <h5 className={styles.levelRowHeading}>
+                {reportBuildingRowTitle(line)}
+              </h5>
+            )}
+            <Levels rows={line} emptyLabel={emptyLabel} />
+          </div>
+        ))}
       </div>
     ))
   ) : (
@@ -337,11 +374,7 @@ function ReportObservationContent({
               )}
               <div className={styles.targetInfo}>
                 <span className={styles.targetName}>
-                  <PlayerName
-                    messageAction
-                    player={text(target.owner)}
-                    names={playerNames}
-                  />
+                  <PlayerName player={text(target.owner)} names={playerNames} />
                 </span>
                 <span className={styles.targetDetails}>
                   <BodyIdentity
@@ -369,7 +402,11 @@ function ReportObservationContent({
         <KnownSection title="Buildings" value={payload.buildings}>
           {(v) => (
             <GroupedLevels
-              groups={groupReportBuildings(record(v))}
+              buildings
+              groups={groupReportBuildings(
+                record(v),
+                record(payload.target).kind,
+              )}
               emptyLabel="No buildings"
             />
           )}
@@ -403,12 +440,8 @@ function ReportObservationContent({
         className={styles.observation}
       >
         <Text>
-          <PlayerName
-            messageAction
-            player={text(payload.sender)}
-            names={playerNames}
-          />{' '}
-          made espionage contact from{' '}
+          <PlayerName player={text(payload.sender)} names={playerNames} /> made
+          espionage contact from{' '}
           <CoordinateLink at={payload.origin} label="origin" /> at{' '}
           <CoordinateLink at={payload.target} label="target" />.
         </Text>
@@ -481,6 +514,9 @@ function ReportObservationContent({
           {kind === 'Delivered' || payload.origin_coordinates ? (
             <>
               {' · '}
+              {kind === 'Delivered' &&
+                typeof payload.origin_name === 'string' &&
+                `${payload.origin_name} `}
               <CoordinateLink
                 at={
                   kind === 'Delivered'
@@ -490,6 +526,9 @@ function ReportObservationContent({
                 label="origin"
               />
               {' → '}
+              {kind === 'Delivered' &&
+                typeof payload.target_name === 'string' &&
+                `${payload.target_name} `}
               <CoordinateLink
                 at={
                   kind === 'Delivered'

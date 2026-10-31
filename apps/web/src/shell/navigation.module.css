@@ -77,6 +77,9 @@
   background: var(--accent);
   pointer-events: none;
 }
+.activityBadge[data-blocked] {
+  background: #596168;
+}
 .dialog {
   width: min(680px, calc(100% - 32px));
   max-height: calc(100dvh - 48px);
@@ -291,7 +294,7 @@
     overflow-y: auto;
     scroll-padding-block: 12px;
     overscroll-behavior: contain;
-    background: var(--surface-navigation);
+    background: transparent;
     border-right: 1px solid var(--border-navigation);
     padding: 20px 12px 12px;
   }
@@ -402,7 +405,8 @@
   .sidebar .sidebarDevelop a,
   .sidebar .sidebarDevelop button,
   .sidebarAccount > a,
-  .sidebarPlayer > button {
+  .sidebarPlayer > button,
+  .sidebarPlayer .username > button {
     min-height: var(--control-size);
   }
 }

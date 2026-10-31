@@ -27,6 +27,7 @@ pub struct PublicDebris {
     pub field_identity: OperationId,
     pub metal: String,
     pub crystal: String,
+    pub deuterium: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GalaxySystem {
@@ -176,12 +177,13 @@ pub fn galaxy_system(
             .find(|f| {
                 f.coordinates == coordinates
                     && f.marker_present
-                    && i128::from(f.metal) + i128::from(f.crystal) >= 300 * i128::from(SCALE)
+                    && f.total() >= 300 * i128::from(SCALE)
             })
             .map(|f| PublicDebris {
                 field_identity: f.id,
                 metal: (f.metal / SCALE).to_string(),
                 crystal: (f.crystal / SCALE).to_string(),
+                deuterium: (f.deuterium / SCALE).to_string(),
             });
         positions.push(GalaxyPosition {
             coordinates,

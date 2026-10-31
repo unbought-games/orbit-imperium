@@ -406,7 +406,23 @@ async fn editable_export_round_trips_planets_valuation_and_activity() {
     let u = world(&store).await;
     store.set_test_time(1_790_000_030_000).await.unwrap();
     let due_before:Vec<i64>=sqlx::query_scalar("SELECT (data->>'next_due_at')::bigint FROM manufacturing_batches WHERE universe=$1 AND data->>'status'='Active' ORDER BY queue_sequence").bind(u.0).fetch_all(&pool).await.unwrap();
+    let debris = document(json!([
+        {"op":"debris", "planet":"1:1:7", "resources":{"metal":100,"crystal":200,"deuterium":300}},
+        {"op":"debris", "planet":"1:1:8", "resources":{"deuterium":500}}
+    ]));
+    store
+        .apply_world_scenario(u, &debris, ScenarioMode::Patch, Uuid::new_v4())
+        .await
+        .unwrap();
     let saved = store.export_world_scenario(u).await.unwrap();
+    for (coord, amount) in [("1:1:7", 300), ("1:1:8", 500)] {
+        let field = saved
+            .edits
+            .iter()
+            .find(|e| e.op == "debris" && e.planet.as_deref() == Some(coord))
+            .unwrap();
+        assert_eq!(field.resources["deuterium"], amount);
+    }
     let serialized = serde_json::to_string(&saved).unwrap();
     assert!(!serialized.contains("password_hash"));
     assert!(!serialized.contains("\"password\""));
@@ -420,6 +436,15 @@ async fn editable_export_round_trips_planets_valuation_and_activity() {
         .apply_world_scenario(u, &saved, ScenarioMode::Replace, Uuid::new_v4())
         .await
         .unwrap();
+    let restored = store.export_world_scenario(u).await.unwrap();
+    for original in saved.edits.iter().filter(|e| e.op == "debris") {
+        let field = restored
+            .edits
+            .iter()
+            .find(|e| e.op == "debris" && e.planet == original.planet)
+            .unwrap();
+        assert_eq!(field.resources, original.resources);
+    }
     let after:Vec<(String,i64,i32)>=sqlx::query_as("SELECT galaxy||':'||system||':'||position,fields,max_temperature FROM bodies WHERE universe=$1 ORDER BY galaxy,system,position").bind(u.0).fetch_all(&pool).await.unwrap();
     assert_eq!(before, after);
     let due_after:Vec<i64>=sqlx::query_scalar("SELECT (data->>'next_due_at')::bigint FROM manufacturing_batches WHERE universe=$1 AND data->>'status'='Active' ORDER BY queue_sequence").bind(u.0).fetch_all(&pool).await.unwrap();

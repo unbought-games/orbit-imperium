@@ -962,7 +962,21 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                 credit(&mut c, s, id, cargo, i.at, r)?;
                                 let mut payloads = std::collections::BTreeMap::new();
                                 for owner in [Some(f.owner), target_owner].into_iter().flatten() {
-                                    payloads.insert(owner,json!({"kind":"Delivered","at":i.at,"sender":f.owner,"recipient":target_owner,"origin":f.origin_coordinates,"target":f.destination_coordinates,"cargo":wire_resources(cargo)}));
+                                    let mut payload = json!({"kind":"Delivered","at":i.at,"sender":f.owner,"recipient":target_owner,"origin":f.origin_coordinates,"target":f.destination_coordinates,"cargo":wire_resources(cargo)});
+                                    // Snapshot available names without making delivery depend on
+                                    // the origin still existing. Coordinates always remain useful.
+                                    for (key, body_id) in
+                                        [("origin_name", f.intent.origin), ("target_name", id)]
+                                    {
+                                        if let Some(name) = s
+                                            .bodies
+                                            .get(&body_id)
+                                            .and_then(|body| body.name.as_ref())
+                                        {
+                                            payload[key] = json!(name);
+                                        }
+                                    }
+                                    payloads.insert(owner, payload);
                                 }
                                 mission_report(&mut w, i, &f, "Delivered", payloads);
                                 f.cargo = Resources::default();
@@ -986,18 +1000,23 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                     .checked_mul(20000 * SCALE)
                                     .ok_or(GameError::NumericRange)?;
                                 let free = (cap - sum(f.cargo)?).max(0).min(recycler) / SCALE;
-                                let (m, k) = harvest_allocation(
-                                    field.metal / SCALE,
-                                    field.crystal / SCALE,
+                                let [m, k, d] = harvest_allocation(
+                                    [
+                                        field.metal / SCALE,
+                                        field.crystal / SCALE,
+                                        field.deuterium / SCALE,
+                                    ],
                                     free,
                                 )?;
                                 field.metal -= m * SCALE;
                                 field.crystal -= k * SCALE;
+                                field.deuterium -= d * SCALE;
                                 field.revision = field
                                     .revision
                                     .checked_add(1)
                                     .ok_or(GameError::NumericRange)?;
-                                let harvested = Resources::from_values([m * SCALE, k * SCALE, 0]);
+                                let harvested =
+                                    Resources::from_values([m * SCALE, k * SCALE, d * SCALE]);
                                 f.cargo = resources(f.cargo, harvested, true)?;
                                 let mut payload = own_report_payload(i, &f, "Harvested");
                                 // Capture the collection at arrival: total cargo also includes
@@ -1063,12 +1082,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if f.cleanup_at != i.at {
                 return Err(invariant("cleanup deadline mismatch"));
             }
-            if i128::from(f.metal) + i128::from(f.crystal) < 300 * i128::from(SCALE)
+            if f.total() < 300 * i128::from(SCALE)
                 && debris_reference_count(*field, w.fleets.values()) == 0
             {
-                audits.push(json!({"kind":"DebrisCleanupLoss","field":f.id,"metal":f.metal.to_string(),"crystal":f.crystal.to_string()}));
+                audits.push(json!({"kind":"DebrisCleanupLoss","field":f.id,"metal":f.metal.to_string(),"crystal":f.crystal.to_string(),"deuterium":f.deuterium.to_string()}));
                 f.metal = 0;
                 f.crystal = 0;
+                f.deuterium = 0;
                 f.marker_present = false;
             } else {
                 f.cleanup_at = next_debris_cleanup(i.at)?;

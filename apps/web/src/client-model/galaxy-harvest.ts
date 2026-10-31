@@ -17,8 +17,9 @@ export function harvestSuggestion(
   crystal: string,
   capacity: string,
   available: string,
+  deuterium = '0',
 ) {
-  const total = BigInt(metal) + BigInt(crystal)
+  const total = BigInt(metal) + BigInt(crystal) + BigInt(deuterium)
   // Harvest in engine/missions.rs also caps collection at 20,000 per Recycler.
   const perShip = BigInt(capacity) < 20_000n ? BigInt(capacity) : 20_000n
   const needed = perShip > 0n ? (total + perShip - 1n) / perShip : 0n
@@ -69,7 +70,10 @@ export function galaxyHarvest(
     blockers.push('No fleet slots available. Wait for a fleet to return.')
   if (
     !position.debris ||
-    BigInt(position.debris.metal) + BigInt(position.debris.crystal) === 0n
+    BigInt(position.debris.metal) +
+      BigInt(position.debris.crystal) +
+      BigInt(position.debris.deuterium ?? '0') ===
+      0n
   )
     blockers.push('There is no debris left to collect.')
   if (!capacity || BigInt(capacity) <= 0n)
@@ -81,6 +85,7 @@ export function galaxyHarvest(
     position.debris?.crystal ?? '0',
     capacity ?? '0',
     available,
+    position.debris?.deuterium ?? '0',
   )
   return { available, ...suggestion, blockers }
 }

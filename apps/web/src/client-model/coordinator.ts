@@ -67,7 +67,7 @@ export class Coordinator {
   private mailboxRequest: Promise<void> | null = null
   readonly store = createGameStore()
   readonly reports = new ReportEngine(this.store, {
-    page: (cursor) => this.readReportPage(cursor),
+    page: (cursor) => this.readReportPage(cursor, true),
     detail: (id) => this.readReportDetail(id),
   })
   private get attempts() {

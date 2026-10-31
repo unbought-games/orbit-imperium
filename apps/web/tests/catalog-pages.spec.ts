@@ -1539,7 +1539,7 @@ test(`Ion Technology shows readable field notes, prerequisite progress, costs an
   await notes.scrollIntoViewIfNeeded()
   await diagnosticScreenshot(page, { path: `test-results/ion-field-notes-${width}.png` })
   await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-  const dialog = page.getByRole('dialog')
+  const dialog = page.getByRole('dialog', { name: 'Technology — Ion Technology', exact: true })
   await expect(dialog).toContainText('Research Lab')
   await expect(dialog).toContainText('Energy Technology')
   await expect(dialog).toContainText('Laser Technology')
@@ -2569,5 +2569,22 @@ for (const width of [320, 390, 1440]) {
       await expect(page.getByRole('dialog', { name: 'Deuterium', exact: true })).toContainText('246,913,578,000')
       await page.keyboard.press('Escape')
     }
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`deuterium recycler description at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await setup(page, false, undefined, { catalog: [{
+      key: { kind: 'Ship', id: 'Recycler' }, enabled: true, mobile: true,
+      body_kinds: ['Planet'], requirements: [],
+    }] })
+    await page.goto(`/u/andromeda/b/${body.id}/shipyard/recycler`)
+    await expect(page.getByText('Collects resources from debris fields, including deuterium where available.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Build', exact: true })).toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    await expect(page.getByRole('heading', { name: 'Recycler', exact: true })).toBeInViewport()
+    await diagnosticScreenshot(page, { path: `test-results/deuterium-recycler-${width}x1000.png`, fullPage: true })
   })
 }

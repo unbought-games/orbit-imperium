@@ -43,6 +43,7 @@ export function Navigation({
   body,
   page,
   activity,
+  blockers,
   onVisit,
   onLogout,
   children,
@@ -52,6 +53,7 @@ export function Navigation({
   body: string | undefined
   page: Page
   activity: ReadonlySet<Page>
+  blockers: ReadonlyMap<Page, string>
   onVisit?: (page: Page) => void
   onLogout: () => void
   children: (navigation: ReactNode) => ReactNode
@@ -85,6 +87,8 @@ export function Navigation({
     primary = false,
   ) => {
     const working = !primary && activity.has(p)
+    const blocked = !primary && !working ? blockers.get(p) : undefined
+    const description = working ? 'Work in progress' : blocked
     const available = resolveDestination(
       { universe: view.binding.universe, page: p, body },
       view,
@@ -93,8 +97,12 @@ export function Navigation({
       <>
         {Icon && <Icon size={21} aria-hidden="true" />}
         <span>{title}</span>
-        {working && (
-          <span className={styles.activityBadge} aria-hidden="true" />
+        {description && (
+          <span
+            className={styles.activityBadge}
+            data-blocked={blocked ? '' : undefined}
+            aria-hidden="true"
+          />
         )}
         {p === 'reports' && hasUnreadReports && (
           <span
@@ -118,8 +126,8 @@ export function Navigation({
             : undefined
         }
         preload="intent"
-        aria-description={working ? 'Work in progress' : undefined}
-        title={working ? 'Work in progress' : undefined}
+        aria-description={description}
+        title={description}
         data-analytics={`navigate_${p}`}
         key={p}
         {...routeTarget(universeName, p, body)}

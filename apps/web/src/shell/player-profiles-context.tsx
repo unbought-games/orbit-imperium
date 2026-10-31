@@ -1,3 +1,4 @@
+import { InsigniaProvider } from './insignia-context'
 import {
   createContext,
   useContext,
@@ -39,7 +40,13 @@ export function PlayerProfilesProvider({
   }, [controller])
   return (
     <PlayerProfilesContext.Provider value={controller}>
-      {children}
+      <InsigniaProvider
+        binding={view.binding}
+        csrf={csrf}
+        changed={controller.refreshAll}
+      >
+        {children}
+      </InsigniaProvider>
     </PlayerProfilesContext.Provider>
   )
 }

@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
@@ -9,6 +10,20 @@ import {
   body,
   id,
 } from './fixtures/game'
+
+async function inspectIdentity(page: Page, screen: string, name: string) {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const trigger = page.getByRole('button', { name: `${name} profile details` }).first()
+    await trigger.click()
+    const popup = page.getByRole('dialog', { name: `${name} profile` })
+    await expect(popup).toBeVisible()
+    await expect(popup).not.toContainText('Activity')
+    await diagnosticScreenshot(page, { path: `test-results/profile-${screen}-${width}x1000.png` })
+    await page.keyboard.press('Escape')
+    await expect(popup).toHaveCount(0)
+  }
+}
 
 test('Galaxy shows all three supporter levels and ordinary players, then removes changed and expired badges', async ({
   page,
@@ -84,15 +99,15 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
     'rgb(242, 187, 131)',
   ].entries()) {
     await expect(
-      cards.nth(i).getByRole('button', { name: /Supporter/ }),
+      cards.nth(i).getByRole('img', { name: /Supporter/ }),
     ).toBeVisible()
     await expect(
-      cards.nth(i).getByRole('button', { name: /Supporter/ }),
+      cards.nth(i).getByRole('img', { name: /Supporter/ }),
     ).toHaveCSS('color', color)
   }
   await expect(cards.nth(3)).toContainText('RegularCommander')
   await expect(
-    cards.nth(3).getByRole('button', { name: /Supporter/ }),
+    cards.nth(3).getByRole('img', { name: /Supporter/ }),
   ).toHaveCount(0)
   await openNavigation(page)
   await expect(page.getByLabel('Username', { exact: true }).filter({ visible: true })).toContainText(
@@ -119,12 +134,12 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
   tierTwo = undefined
   await page.clock.fastForward(60_000)
   await expect(
-    cards.nth(1).getByRole('button', { name: /Supporter/ }),
+    cards.nth(1).getByRole('img', { name: /Supporter/ }),
   ).toHaveCount(0)
   await expect(cards.nth(1)).toContainText('RoseCommander')
   unavailable = true
   await page.clock.fastForward(301_000)
-  await expect(page.getByRole('button', { name: /Supporter/ })).toHaveCount(0)
+  await expect(page.getByRole('img', { name: /Supporter/ })).toHaveCount(0)
   await expect(cards).toHaveCount(15)
 })
 
@@ -156,10 +171,12 @@ test('incoming fleets and overview arrivals identify the same supporter', async 
   const arrivals = page.getByRole('region', { name: 'Fleet movements' })
   await expect(arrivals.getByText('Visitor', { exact: true })).toBeVisible()
   await expect(arrivals.getByRole('img', { name: /Supporter/ })).toBeVisible()
-  await page.goto(`/u/andromeda/fleets?body=${body.id}`)
+  await inspectIdentity(page, 'empire', 'Visitor')
+  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   const incoming = page.getByRole('region', { name: 'Incoming fleets' })
   await expect(incoming.getByText('Visitor', { exact: true })).toBeVisible()
   await expect(incoming.getByRole('img', { name: /Supporter/ })).toBeVisible()
+  await inspectIdentity(page, 'fleets', 'Visitor')
 })
 
 test('espionage and combat observations use current public identities without changing historical facts', async ({
@@ -202,8 +219,7 @@ test('espionage and combat observations use current public identities without ch
       },
     })
   })
-  // Identity assertions start after their own response, rather than spending
-  // their assertion budget on a cold route load and legacy-URL redirect.
+  // Start identity assertions after their own profile response, not a cold route load.
   const reportProfiles = () => page.waitForResponse(response => {
     if (!response.url().endsWith('/player-profiles') || response.status() !== 200) return false
     const source = response.request().postDataJSON()?.source
@@ -211,13 +227,14 @@ test('espionage and combat observations use current public identities without ch
   })
   await Promise.all([
     reportProfiles(),
-    page.goto(`/u/andromeda/reports/${id(80)}?body=${body.id}`),
+    page.goto(`/u/andromeda/b/${body.id}/reports/${id(80)}`),
   ])
   const observation = page.getByRole('region', { name: 'Report observation' })
   await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
   await expect(
     observation.getByRole('img', { name: /Supporter/ }),
   ).toBeVisible()
+  await inspectIdentity(page, 'spy-contact', 'Observer')
   payload = {
     kind: 'Espionage',
     observed_at: Date.now(),
@@ -237,6 +254,7 @@ test('espionage and combat observations use current public identities without ch
   }
   await Promise.all([reportProfiles(), page.reload()])
   await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
+  await inspectIdentity(page, 'espionage', 'Observer')
   payload = {
     kind: 'Combat',
     at: Date.now(),
@@ -275,10 +293,11 @@ test('espionage and combat observations use current public identities without ch
       .getByText('Observer', { exact: true }),
   ).toBeVisible()
   await expect(
-    observation.getByRole('heading', { name: 'Defender', exact: true }),
+    observation.getByRole('heading', { name: 'Defender profile details', exact: true }),
   ).toBeVisible()
   await expect(observation.getByRole('img', { name: /Supporter/ })).toHaveCount(
     1,
   )
   await expect(observation.getByRole('heading', { name: /Draw/ })).toBeVisible()
+  await inspectIdentity(page, 'combat', 'Observer')
 })

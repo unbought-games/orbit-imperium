@@ -16,7 +16,6 @@ import { EmptyState } from '../ui/empty-state'
 import { ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
-import { NumberValue, ResourceNumber } from '../ui/number-value'
 import { TaskHeader } from '../ui/task-header'
 import { IncomingFleet } from './incoming-fleet'
 import { FleetSlots } from './fleet-slots'
@@ -159,20 +158,6 @@ export function MissionFleets({
         </section>
       )}
       {!item && <FleetInventory model={model} origin={origin} />}
-      <details className={styles.rules}>
-        <summary>Fleet slots and protection</summary>
-        <Text>Returning fleets occupy a slot.</Text>
-        <Text>
-          Completed-asset score:{' '}
-          <NumberValue
-            value={view.missions.score_value_micro}
-            divisor={1000000000}
-          />{' '}
-          points. Invested resources:{' '}
-          <ResourceNumber value={view.missions.score_value_micro} /> resources.
-          Protection uses the full value before display rounding.
-        </Text>
-      </details>
     </section>
   )
 }

@@ -320,9 +320,6 @@ pub(super) fn colony(
 pub(super) fn debris(s: &mut GameState, i: &OrderedInput, e: &WorldEdit) -> EditResult<()> {
     let coordinates = coordinates(e.planet.as_deref().ok_or("debris requires coordinates")?)?;
     let r = values(&e.resources)?;
-    if r.deuterium != 0 {
-        return Err("debris cannot contain deuterium".into());
-    }
     let w = &mut s.world.as_mut().ok_or("missing world")?.records;
     let id = w
         .debris
@@ -338,6 +335,7 @@ pub(super) fn debris(s: &mut GameState, i: &OrderedInput, e: &WorldEdit) -> Edit
             coordinates,
             metal: r.metal,
             crystal: r.crystal,
+            deuterium: r.deuterium,
             marker_present: true,
             generation: rev,
             cleanup_at: next_debris_cleanup(i.at).map_err(error)?,

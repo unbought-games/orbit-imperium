@@ -1,3 +1,5 @@
+mod insignia;
+pub use insignia::*;
 mod bots;
 pub use bots::*;
 mod simulation;

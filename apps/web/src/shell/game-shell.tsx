@@ -38,7 +38,7 @@ import { buildPages, pageTitles } from './navigation-model'
 import { ArrowLeft } from 'lucide-react'
 import { usePinnedHeader } from './use-pinned-header'
 import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
-import { developmentActivity } from './navigation-activity'
+import { developmentActivity, developmentBlockers } from './navigation-activity'
 export function GameShell() {
   const { model } = useGameSession()
   return (
@@ -234,6 +234,7 @@ function GameShellContent() {
           <Navigation
             hasUnreadReports={unreadReports}
             activity={developmentActivity(model.store.getState(), body?.id)}
+            blockers={developmentBlockers(model.store.getState(), body?.id)}
             view={view}
             body={body?.id}
             page={page}

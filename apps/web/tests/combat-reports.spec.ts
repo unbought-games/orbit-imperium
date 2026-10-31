@@ -22,7 +22,7 @@ const resources = (m: number, c: number, d = 0) => ({
   crystal: String(BigInt(c) * 1000000n),
   deuterium: String(BigInt(d) * 1000000n),
 })
-for (const size of ['small', 'huge', 'defender', 'legacy']) {
+for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
   test(`capture current ${size} combat report`, async ({ page }) => {
     mkdirSync(output, { recursive: true })
     await page.setViewportSize({ width: 1440, height: 1000 })
@@ -168,7 +168,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
       gross_losses: losses,
       recovered,
       permanent_losses: permanent,
-      debris: huge ? resources(1248000000, 672000000) : resources(5400, 1800),
+      debris: size === 'deuterium' ? resources(0, 0, 60000) : huge ? resources(1248000000, 672000000) : resources(5400, 1800),
       loot: huge
         ? resources(42000000, 21000000, 8500000)
         : resources(4200, 2100, 850),
@@ -247,6 +247,9 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
     await expect(report.getByRole('heading', { level: 2 })).toHaveText(
       size === 'defender' ? '✕ Defeat' : '✓ Victory',
     )
+    if (size === 'deuterium') {
+      await expect(page.getByRole('button', { name: 'Prepare harvest', exact: true })).toBeVisible()
+    }
     const identity = report.locator('header').first().locator('p').first()
     const targetName = size === 'legacy' ? '' : huge ? 'VeryLongUnbrokenPlanetNameForMobileWrapping · ' : size === 'defender' ? 'Nova Roma (Moon) · ' : 'Nova Roma · '
     await expect(identity).toContainText(`${targetName}[1:372:10]`)
@@ -261,7 +264,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
         .filter({ has: page.locator('summary', { hasText: /^Round/ }) }),
     ).toHaveCount(n)
     await expect(
-      report.getByRole('heading', { name: 'Vega', exact: true }),
+      report.getByRole('heading', { name: 'Vega profile details', exact: true }),
     ).toBeVisible()
     await page.evaluate(() => document.fonts.ready)
     expect(
@@ -275,7 +278,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
     ).toBe(true)
     await diagnosticScreenshot(page, {
       path: `${output}/${size}-full.png`,
-      fullPage: true,
+      fullPage: size !== 'deuterium',
     })
     if (huge)
       await expect(
@@ -317,8 +320,13 @@ for (const size of ['small', 'huge', 'defender', 'legacy']) {
       await page.evaluate(() => window.scrollTo(0, 0))
       await diagnosticScreenshot(page, {
         path: `${output}/${size}-${width}.png`,
-        fullPage: true,
+        fullPage: size !== 'deuterium',
       })
+    }
+    if (size === 'deuterium') {
+      await page.getByRole('button', { name: 'Prepare harvest', exact: true }).click()
+      await expect(page).toHaveURL(/dispatch/)
+      await expect(page.getByRole('radio', { checked: true })).toHaveValue('Harvest')
     }
   })
 }
@@ -364,7 +372,10 @@ test.describe('explosion counter explanation', () => {
     await expect(popup).toBeHidden()
     await page.mouse.move(0, 0)
     await round.locator('summary').focus()
-    await page.keyboard.press('Tab')
+    // Player dossiers add focusable identities before the combat counters.
+    for (let i = 0; i < 12 && !(await trigger.evaluate(el => el === document.activeElement)); i++) {
+      await page.keyboard.press('Tab')
+    }
     await expect(trigger).toBeFocused()
     await expect(popup).toBeVisible()
     await diagnosticScreenshot(page, { path: 'test-results/combat-explosion-keyboard.png' })

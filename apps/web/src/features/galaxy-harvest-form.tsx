@@ -31,6 +31,9 @@ export function GalaxyHarvestForm({
         <ResourceValue resource="crystal">
           {formatWholeNumber(position.debris?.crystal ?? '0')}
         </ResourceValue>
+        <ResourceValue resource="deuterium">
+          {formatWholeNumber(position.debris?.deuterium ?? '0')}
+        </ResourceValue>
       </div>
       <form
         onSubmit={(event) => {

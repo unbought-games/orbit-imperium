@@ -57,7 +57,7 @@ it('uses player-facing delete and restore labels for report preferences', () => 
         type: 'World',
         action: { type: 'SetReportHidden', report: 'report', hidden },
       }),
-    ).toBe(hidden ? 'Delete report' : 'Restore report')
+    ).toBe(hidden ? 'Archive report' : 'Move to inbox')
 })
 
 it('keeps optimistic report actions quiet except for failure and uncertainty', () => {
@@ -82,7 +82,7 @@ it('keeps optimistic report actions quiet except for failure and uncertainty', (
     } as Attempt
     const message = changedAnnouncements(new Map(), [report]).message
     if (status === 'rejected' || status === 'uncertain')
-      expect(message).toContain('Delete report:')
+      expect(message).toContain('Archive report:')
     else expect(message).toBe('')
   }
 })
@@ -98,7 +98,7 @@ it('labels bulk report deletion and only announces failures', () => {
       },
     }
     expect(actionLabel(command)).toBe(
-      hidden ? 'Delete reports' : 'Restore reports',
+      hidden ? 'Archive reports' : 'Move reports to inbox',
     )
     for (const status of [
       'submitting',

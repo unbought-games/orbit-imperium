@@ -31,6 +31,8 @@ pub struct CombatRules {
     pub explosion_inclusive: bool,
     pub defense_recovery_probability: [u64; 2],
     pub ship_debris_bps: u32,
+    #[serde(default)]
+    pub deuterium_in_debris: bool,
     pub units: Vec<CombatUnitRule>,
     pub rapid_fire: Vec<RapidFire>,
     pub strategy: String,
@@ -40,7 +42,7 @@ impl CombatRules {
         use DefenseId::*;
         use ManufacturedItem::{Defense as D, Ship as S};
         use ShipType::*;
-        Self{id:"oi-classic-combat-v1".into(),max_rounds:6,technology_bonus:[1,10],base_hull_fraction:[1,10],shield_step:[1,100],bounce_threshold:[1,100],explosion_hull_threshold:[7,10],explosion_inclusive:true,defense_recovery_probability:[7,10],ship_debris_bps:3000,strategy:"WholeMaxShieldPercentWithRawOverflowV1/LostHullFractionV1/NonBouncingHitV1/IndependentBernoulliV1/EncounterTimeV1/UniformRoundStartIndividualsV1/RoundEndV1/ResetAfterEncounterV1".into(),units:vec![
+        Self{id:"oi-classic-combat-v1".into(),max_rounds:6,technology_bonus:[1,10],base_hull_fraction:[1,10],shield_step:[1,100],bounce_threshold:[1,100],explosion_hull_threshold:[7,10],explosion_inclusive:true,defense_recovery_probability:[7,10],ship_debris_bps:3000,deuterium_in_debris:false,strategy:"WholeMaxShieldPercentWithRawOverflowV1/LostHullFractionV1/NonBouncingHitV1/IndependentBernoulliV1/EncounterTimeV1/UniformRoundStartIndividualsV1/RoundEndV1/ResetAfterEncounterV1".into(),units:vec![
             CombatUnitRule{item:S(SmallCargo),cost:[2000,2000,0],attack_hundredths:500,shield_hundredths:1000},
             CombatUnitRule{item:S(LightFighter),cost:[3000,1000,0],attack_hundredths:5000,shield_hundredths:1000},
             CombatUnitRule{item:S(Recycler),cost:[10000,6000,2000],attack_hundredths:100,shield_hundredths:1000},

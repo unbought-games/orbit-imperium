@@ -9,7 +9,7 @@ test('harvest reports distinguish new collections, zero collections and historic
   await shellFixture(page, { protocol: 4, sampledAt: now })
   const cargo = { metal: '10713000000', crystal: '8238000000', deuterium: '2608000000' }
   const payloads: components['schemas']['MissionOutcomePayload4'][] = [
-    { metal: '713000000', crystal: '238000000', deuterium: '0' },
+    { metal: '713000000', crystal: '238000000', deuterium: '608000000' },
     { metal: '0', crystal: '0', deuterium: '0' },
     undefined,
   ].map(harvested => ({
@@ -40,7 +40,7 @@ test('harvest reports distinguish new collections, zero collections and historic
     await expect(rows).toHaveCount(3)
     await expect(rows.first()).toContainText('Harvested:')
     await expect(rows.first().getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('713')
-    await expect(rows.first().getByRole('img', { name: 'deuterium', exact: true }).locator('..')).toContainText('0')
+    await expect(rows.first().getByRole('img', { name: 'deuterium', exact: true }).locator('..')).toContainText('608')
     await expect(rows.nth(1).getByRole('img', { name: 'metal', exact: true }).locator('..')).toContainText('0')
     await expect(rows.nth(2)).toContainText('Harvested amount unavailable')
     for (const amount of ['10,713', '8,238', '2,608']) await expect(page.locator('main')).not.toContainText(amount)
@@ -58,7 +58,7 @@ test('harvest reports distinguish new collections, zero collections and historic
         await expect(report).not.toContainText('Carried resources')
         await expect(report).not.toContainText('2,608')
         await expect(report.getByRole('img', { name: 'Metal', exact: true }).locator('..')).toContainText(state === 'zero' ? '0' : '713')
-        await expect(report.getByRole('img', { name: 'Deuterium', exact: true }).locator('..')).toContainText('0')
+        await expect(report.getByRole('img', { name: 'Deuterium', exact: true }).locator('..')).toContainText(state === 'zero' ? '0' : '608')
       }
       for (const name of ['metal', 'crystal', 'deuterium']) {
         const symbol = report.getByRole('img', { name: name[0].toUpperCase() + name.slice(1), exact: true })

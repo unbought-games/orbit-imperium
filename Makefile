@@ -258,3 +258,35 @@ test-persistence:
 .PHONY: test-persistence-db
 test-persistence-db:
 	sh scripts/test-db.sh rules_updates 'test(compatibility::) | test(legacy_rules_) | test(activation_waits_for_admitted_and_claimed_work)'
+
+.PHONY: test-rules-impact test-rules-impact-db
+test-rules-impact:
+	cargo nextest run -p orbit-engine --test rules_update_impact --test rules_updates
+	cargo nextest run -p orbit-engine --test missions -E 'test(debris_only_activation_)'
+	cargo nextest run -p orbit-application --test rules_immutable
+
+test-rules-impact-db:
+	sh scripts/test-db.sh rules_updates 'test(impact::)'
+
+.PHONY: test-insignias
+test-insignias:
+	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(insignia)'
+	cargo nextest run -p orbit-storage-assets --lib
+	npm test -- insignias
+	npm run test:ui -- insignias.spec.ts
+
+# Explicit-only real-server insignia acceptance; use an isolated Compose database.
+.PHONY: test-insignias-live
+test-insignias-live: _dev-binary
+	npm run build
+	$(TIMEOUT) full-system node scripts/insignias-live.mjs
+
+.PHONY: test-deuterium-debris test-deuterium-debris-db
+test-deuterium-debris:
+	cargo nextest run -p orbit-engine --test debris --test missions --test rules_update_impact --test persistence --lib
+	npm test -- galaxy-harvest galaxy-position
+	npm run test:ui -- galaxy-cards.spec.ts combat-reports.spec.ts harvest-reports.spec.ts catalog-pages.spec.ts --grep 'deuterium|harvest reports'
+
+test-deuterium-debris-db:
+	sh scripts/test-db.sh rules_updates 'test(impact::) | test(compatibility::)'
+	sh scripts/test-db.sh world_edit 'test(editable_export_round_trips_planets_valuation_and_activity)'
