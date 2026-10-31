@@ -67,6 +67,7 @@ export function Reports({
   const now = useStore(model.store, currentServerTime)
   const {
     page,
+    pageIsCurrent,
     detail,
     error,
     loading,
@@ -314,7 +315,7 @@ export function Reports({
           {!archived &&
             !complete &&
             error === null &&
-            (allReports || (loading && !visible.length)) && (
+            (allReports || (!pageIsCurrent && loading && !visible.length)) && (
               <Text role="status">Loading reports…</Text>
             )}
           {filtered && (
@@ -372,10 +373,9 @@ export function Reports({
           )}
           {cleanup.submitting && <Text role="status">Archiving reports…</Text>}
           {!visible.length &&
-            !loading &&
-            !loadingMore &&
+            pageIsCurrent &&
             error === null &&
-            (!allReports || complete) && (
+            (!allReports || !page.has_more) && (
               <EmptyState
                 className={styles.emptyReports}
                 icon={FileText}
