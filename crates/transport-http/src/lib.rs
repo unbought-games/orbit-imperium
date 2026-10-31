@@ -1,3 +1,4 @@
+mod tracker;
 mod insignias;
 pub use insignias::Customization;
 mod alliances;
@@ -177,6 +178,7 @@ where
         password_work: Arc::new(Semaphore::new(2)),
     });
     Router::new()
+        .route("/api/v4/universes/{id}/tracker", get(tracker::snapshot::<S>))
         .route(
             "/api/v1/universes/{id}/insignias",
             post(insignias::handle::<S>),
