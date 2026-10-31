@@ -19,6 +19,21 @@ fixtures and frontend bundles. Laureate retains its stable `laurel` ID and exact
 legacy bytes in the separately supplied catalog. Removing it does not withdraw
 its previous CC BY-SA grant or rewrite public Git history.
 
+## Authoring and distribution rule
+
+Customization content committed to this public repository is part of the free
+offering for self-hosted servers and free accounts on official servers, under the
+applicable repository license. Paid and supporter-only content belongs in a
+separate private content repository, with independent publication to official
+servers. This applies to artwork, titles, mottos, catalog text, previews and
+authoring sources, not just the first insignia collection.
+
+Keep the implementation and reusable content formats public. Public tests use
+independently authored, freely licensed fixtures to exercise restricted access.
+Never include paid originals in test fixtures or public build artifacts. Private
+repository locations and deployment-specific details belong in private operator
+documentation. Self-hosters remain free to author and install their own catalogs.
+
 ## Installed content and eligibility
 
 An immutable catalog is authoritative for which items are installed. A server
