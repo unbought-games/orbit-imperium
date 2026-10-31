@@ -18,6 +18,7 @@ import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { TaskHeader } from '../ui/task-header'
 import { IncomingFleet } from './incoming-fleet'
+import { incomingKey } from './command-hud/model'
 import { FleetSlots } from './fleet-slots'
 import { FleetInventory } from './fleet-inventory'
 import { FleetRecall, MissionFleetCard } from './mission-fleet-card'
@@ -149,7 +150,7 @@ export function MissionFleets({
                 />
               ) : (
                 <IncomingFleet
-                  key={movement.key}
+                  key={incomingKey(movement.flight)}
                   fleet={movement.flight}
                   view={view}
                   now={now}

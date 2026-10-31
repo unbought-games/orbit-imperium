@@ -648,3 +648,63 @@ for (const screen of ['fleets', 'overview'] as const) {
     })
   }
 }
+
+for (const screen of ['fleets', 'overview'] as const) {
+  test(`${screen} incoming disclosure state stays with its fleet across snapshot changes`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.clock.setFixedTime(now)
+    let revision = 1
+    const original: S['IncomingMission4'] = {
+      sender: id(90),
+      origin: { galaxy: 1, system: 15, position: 7 },
+      target: body.id,
+      mission: 'Attack',
+      arrival_at: now + 360000,
+      ships: {
+        visibility: 'Exact',
+        total: '30',
+        ships: [{ ship_type: 'Cruiser', count: '30' }],
+      },
+    }
+    const missions: S['MissionView4'] = {
+      fleets: [],
+      incoming: [original],
+      fleet_slots: '8',
+      score_value_micro: '0',
+    }
+    await installGameFixture(page, {
+      protocol: 4,
+      sampledAt: now,
+      missions,
+      viewerRevision: () => String(revision),
+    })
+    await page.goto(`/u/andromeda/b/${body.id}/${screen}`)
+    const toggle = page.getByRole('button', {
+      name: 'Incoming Attack ship composition: 30 ships',
+      exact: true,
+    })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    missions.incoming.unshift({
+      ...original,
+      origin: { ...original.origin, position: 8 },
+      arrival_at: now + 180000,
+      ships: { visibility: 'Total', total: '10' },
+    })
+    revision++
+    await refreshGame(page)
+    const inserted = page.getByRole('button', {
+      name: 'Incoming Attack ship composition: 10 ships',
+      exact: true,
+    })
+    await expect(inserted).toHaveAttribute('aria-expanded', 'false')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    missions.incoming.shift()
+    revision++
+    await refreshGame(page)
+    await expect(inserted).toHaveCount(0)
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  })
+}
