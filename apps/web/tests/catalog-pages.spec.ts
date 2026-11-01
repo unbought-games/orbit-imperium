@@ -831,39 +831,58 @@ test('manufacturing does not submit when server costs differ from the displayed 
   expect(sent).toEqual([])
 })
 
-for (const [destination, tile] of [
-  ['Shipyard', 'Build Small Cargo'],
-  ['Defense', 'Build Rocket Launcher'],
-]) {
-  test(`${destination} keeps the item route while submitting and exposes the order on the catalog`, async ({
-    page,
-  }) => {
-    await setup(page)
-    await navigate(page, destination)
-    await page.getByRole('link', { name: tile, exact: true }).click()
-    let release!: () => void
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
+for (const width of [390, 1440]) {
+  for (const [destination, tile] of [
+    ['Shipyard', 'Build Small Cargo'],
+    ['Defense', 'Build Rocket Launcher'],
+  ]) {
+    test(`${destination} keeps the item route while submitting and exposes the order on the catalog at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await setup(page)
+      await navigate(page, destination)
+      await page.getByRole('link', { name: tile, exact: true }).click()
+      let release!: () => void
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      await page.route('**/commands', async (route) => {
+        await gate
+        await route.fallback()
+      })
+      const build = page.getByRole('button', { name: 'Build', exact: true })
+      await build.click()
+      await expect(build).toBeDisabled()
+      const pane = page.getByRole('region', { name: 'Progression quote' })
+      await expect(pane).toBeVisible()
+      await expect(
+        page.getByRole('list', { name: 'Manufacturing queue' }),
+      ).toHaveCount(0)
+      await pane.getByRole('link', { name: /^Back to / }).click()
+      await expect(
+        page.getByRole('list', { name: 'Manufacturing queue' }),
+      ).toContainText('Confirming')
+      const summary = page.getByRole('region', {
+        name: 'Shipyard & defense',
+        exact: true,
+      })
+      await expect(
+        summary
+          .locator('dt')
+          .filter({ hasText: /^Entire queue$/ })
+          .locator('..'),
+      ).toContainText('Pending')
+      await expect(summary.getByRole('progressbar')).toHaveCount(0)
+      await diagnosticScreenshot(summary, {
+        path: `test-results/queue-${destination.toLowerCase()}-pending-${width}x900.png`,
+      })
+      await page.getByRole('link', { name: tile, exact: true }).click()
+      release()
+      await expect(build).toBeEnabled()
+      await expect(pane).toBeVisible()
     })
-    await page.route('**/commands', async (route) => {
-      await gate
-      await route.fallback()
-    })
-    const build = page.getByRole('button', { name: 'Build', exact: true })
-    await build.click()
-    await expect(build).toBeDisabled()
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toBeVisible()
-    await expect(page.getByRole('list', { name: 'Manufacturing queue' })).toHaveCount(0)
-    await pane.getByRole('link', { name: /^Back to / }).click()
-    await expect(
-      page.getByRole('list', { name: 'Manufacturing queue' }),
-    ).toContainText('Confirming')
-    await page.getByRole('link', { name: tile, exact: true }).click()
-    release()
-    await expect(build).toBeEnabled()
-    await expect(pane).toBeVisible()
-  })
+  }
 }
 
 test('catalogs fit narrow screens and enlarged text without losing controls', async ({

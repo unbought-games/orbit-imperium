@@ -10,7 +10,7 @@ import {
 } from './manufacturing-preview'
 import {
   manufacturingQueue,
-  formatQueueCountdown,
+  manufacturingQueueCompletion,
 } from '../../client-model/manufacturing-queue'
 import {
   currentProgressionOptions,
@@ -136,15 +136,6 @@ function unitOptions(): BoundProgressionOptions {
     },
   }
 }
-
-it.each([
-  ['Queued', '12 seconds remaining', 'Starts in 12 seconds'],
-  ['Producing', '12 seconds remaining', 'Next unit: 12 seconds remaining'],
-  ['Queued', 'Awaiting confirmation', 'Awaiting confirmation'],
-  ['Producing', 'Awaiting confirmation', 'Awaiting confirmation'],
-])('formats %s manufacturing countdown %s', (status, countdown, expected) => {
-  expect(formatQueueCountdown(status, countdown)).toBe(expected)
-})
 
 it('derives exact manufacturing cost, duration and live affordability without mutating unit terms', () => {
   const source = unitOptions()
@@ -309,9 +300,10 @@ it('orders all ships and defenses together and appends pending orders for the se
       id: 'queued-defense',
       item: { kind: 'Defense', id: 'RocketLauncher' },
       first_start_at: 3000,
+      final_due_at: 5000,
       state: 'PaidQueued',
     },
-    { ...batch, id: 'other-body', body: 'other' },
+    { ...batch, id: 'other-body', body: 'other', final_due_at: 9000 },
     batch,
   ]
   const terms = unitOptions().terms!
@@ -336,6 +328,14 @@ it('orders all ships and defenses together and appends pending orders for the se
     'Confirming',
   ])
   expect(rows.map((row) => row.due)).toEqual([2000, 3000, undefined])
+  expect(rows.map((row) => row.finalDue)).toEqual([3000, 5000, undefined])
+  expect(manufacturingQueueCompletion(rows)).toBeUndefined()
+  expect(manufacturingQueueCompletion(rows.slice(0, 1))).toBe(3000)
+  expect(manufacturingQueueCompletion(rows.slice(0, 2).reverse())).toBe(5000)
+  expect(
+    manufacturingQueueCompletion(manufacturingQueue(current, body.id)),
+  ).toBe(5000)
+  expect(manufacturingQueueCompletion([])).toBeUndefined()
   expect(current.progression.manufacturing[0].id).toBe('queued-defense')
 })
 

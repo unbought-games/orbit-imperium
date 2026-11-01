@@ -19,10 +19,8 @@ import { elapsedProgress } from './overview-progress'
 import { WorkCancellationButton } from './work-cancellation-button'
 import { ResearchSummaryContent } from './research-summary-content'
 import { ResourceSummary } from '../ui/number-value'
-import {
-  manufacturingQueue,
-  formatQueueCountdown,
-} from '../client-model/manufacturing-queue'
+import { manufacturingQueue } from '../client-model/manufacturing-queue'
+import { ManufacturingSummary } from './manufacturing-summary'
 export function WorkSummaries({
   view,
   body,
@@ -80,19 +78,6 @@ export function WorkSummaries({
   const researchHost = research
     ? view.bodies.find((entry) => entry.id === research.host)
     : null
-  const manufacturePercent = (id: string) => {
-    const batch =
-      view.protocol !== 2
-        ? view.progression.manufacturing.find((entry) => entry.id === id)
-        : null
-    return batch?.state === 'Producing'
-      ? elapsedProgress(
-          batch.next_due_at - batch.unit_duration_ms,
-          batch.next_due_at,
-          now,
-        )
-      : null
-  }
 
   const summaries = [
     {
@@ -198,7 +183,7 @@ export function WorkSummaries({
                 : null
             return (
               <section
-                className={`${styles.summary} ${compactWork ? styles.activeSummary : ''}`}
+                className={`${styles.summary} ${compactWork ? styles.activeSummary : ''} ${category === 'manufacturing' && queue.length > 0 ? styles.productionSummary : ''}`}
                 key={title}
                 aria-label={title}
               >
@@ -217,32 +202,11 @@ export function WorkSummaries({
                     percent={researchPercent}
                   />
                 ) : category === 'manufacturing' && queue.length > 0 ? (
-                  <ol className={styles.queue} aria-label="Manufacturing queue">
-                    {queue.map((batch) => (
-                      <li key={batch.id}>
-                        <span>
-                          {label(batch.item.id)} · {batch.remaining} remaining
-                        </span>
-                        <strong>{batch.status}</strong>
-                        {layout !== 'cards' &&
-                          manufacturePercent(batch.id) !== null && (
-                            <progress
-                              aria-label={`${label(batch.item.id)} next unit estimated progress`}
-                              value={manufacturePercent(batch.id)!}
-                              max={100}
-                            />
-                          )}
-                        {batch.due !== undefined && (
-                          <span>
-                            {formatQueueCountdown(
-                              batch.status,
-                              countdown(batch.due),
-                            )}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
+                  <ManufacturingSummary
+                    queue={queue}
+                    now={now}
+                    countdown={countdown}
+                  />
                 ) : (
                   <div className={styles['summary-content']}>
                     <Icon aria-hidden="true" size={26} />
