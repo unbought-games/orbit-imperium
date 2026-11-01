@@ -153,9 +153,14 @@ function GameShellContent() {
       available &&
       previousPathname.current === location.pathname &&
       document.activeElement?.closest('[data-galaxy-navigation]')
+    const returningToReports =
+      page === 'reports' &&
+      /\/reports\/?$/.test(location.pathname) &&
+      previousPathname.current?.startsWith(`${location.pathname}/`)
     previousPathname.current = location.pathname
     if (browsingGalaxy) return
-    heading.current?.focus()
+    heading.current?.focus({ preventScroll: !!returningToReports })
+    if (returningToReports) return
     const frame = requestAnimationFrame(() => {
       // Scroll restoration can run after the commit. Never steal focus back
       // if the player has already moved into a control or opened the menu.

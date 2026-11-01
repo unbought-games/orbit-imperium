@@ -23,7 +23,7 @@ async function ageCleanup(page: Page) {
   await expect(page.getByRole('dialog', {name: /^Archive( older)? reports$/})).toBeVisible()
 }
 
-async function reportsFixture(page: Page, quiet = false) {
+async function reportsFixture(page: Page, quiet = false, count = 2) {
   let revision = 1
   const headers: components['schemas']['ReportHeader4'][] = [
     {
@@ -41,6 +41,7 @@ async function reportsFixture(page: Page, quiet = false) {
       hidden: false,
     },
   ]
+  for (let i = 2; i < count; i++) headers.push({ ...headers[0], id: id(70 + i), observed_at: headers[0].observed_at - i * 1000000 })
   await shellFixture(page, {
     protocol: 4,
     extraCapabilities: ['Reports'],
@@ -57,7 +58,7 @@ async function reportsFixture(page: Page, quiet = false) {
       new URL(route.request().url()).pathname.endsWith(r.id),
     )
     const rows = headers.filter((r) => request.include_hidden || !r.hidden)
-    const index = request.cursor ? 1 : 0
+    const index = request.cursor ? Number(request.cursor.slice(-12)) - 71 : 0
     const response = {
       json: {
         protocol: 4,
@@ -90,7 +91,7 @@ async function reportsFixture(page: Page, quiet = false) {
           : {
               items: rows.slice(index, index + 1),
               has_more: index + 1 < rows.length,
-              next_cursor: index + 1 < rows.length ? id(72) : null,
+              next_cursor: index + 1 < rows.length ? id(72 + index) : null,
               as_of_ms: Date.now(),
             },
       },
@@ -164,7 +165,7 @@ async function reportsFixture(page: Page, quiet = false) {
   // controls between focusing a button and submitting a command.
   await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
-  await expect(page.locator('main article')).toHaveCount(2)
+  await expect(page.locator('main article')).toHaveCount(count)
   return {
     headers,
     readRequests,
@@ -235,9 +236,10 @@ for (const width of [1440, 390]) {
     ).toBeEnabled()
     await expect(unread).toHaveCount(0)
     await page.getByRole('button', { name: 'Archive report' }).click()
-    await expect(
-      page.getByRole('button', { name: 'Move to inbox' }),
-    ).toBeEnabled()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    await expect(rows).toHaveCount(1)
+    await page.goto(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
+    await expect(page.getByRole('button', { name: 'Move to inbox' })).toBeEnabled()
     await expect(unread).toHaveCount(0)
     await diagnosticScreenshot(page, {
       path: `test-results/reports-delete-detail-${width}.png`,
@@ -457,26 +459,10 @@ test('a successful HTTP response confirms deletion before the game view refreshe
   const row = page.getByRole('main')
   try {
     await row.getByRole('button', { name: 'Archive report' }).click()
-    await expect(
-      row.getByRole('button', { name: 'Move to inbox' }),
-    ).toBeEnabled()
-    await expect(row.getByRole('button', { name: 'Move to inbox' })).toHaveAttribute('title', 'Move to inbox')
-    await expect(
-      page.getByText('Action committed; awaiting updated view.', {
-        exact: true,
-      }),
-    ).toHaveCount(0)
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.locator('main article')).toHaveCount(1)
     expect(fixture.headers[0].hidden).toBe(true)
-    await row.getByRole('button', { name: 'Move to inbox' }).click()
-    await expect(
-      row.getByRole('button', { name: 'Archive report' }),
-    ).toBeEnabled()
-    expect(fixture.headers[0].hidden).toBe(false)
-    await row.getByRole('button', { name: 'Archive report' }).click()
-    await expect(
-      row.getByRole('button', { name: 'Move to inbox' }),
-    ).toBeEnabled()
-    expect(fixture.headers[0].hidden).toBe(true)
+    await expect(page.getByText('Action committed; awaiting updated view.', { exact: true })).toHaveCount(0)
   } finally {
     release()
   }
@@ -1323,3 +1309,126 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('button', {name: 'Archive selected (1)'})).toBeEnabled()
   })
 }
+
+for (const width of [1440, 390]) {
+  test(`detail archive returns only after acceptance with list context at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const fixture = await reportsFixture(page, true, 24)
+    await page.getByRole('button', { name: 'Filter reports', exact: true }).click()
+    const filter = page.getByRole('dialog', { name: 'Filter reports', exact: true })
+    await filter.getByRole('combobox', { name: 'Report type' }).selectOption('Espionage')
+    await filter.getByRole('button', { name: /Dismiss (sheet|popover)/ }).click()
+    await page.getByRole('button', { name: 'Sort reports', exact: true }).click()
+    await page.getByRole('menuitemradio', { name: 'Oldest first', exact: true }).click()
+    await expect(page.getByRole('menu', { name: 'Sort reports' })).toBeHidden()
+    await expect.poll(() => page.evaluate(() => document.body.style.position)).not.toBe('fixed')
+    const rows = page.locator('main article')
+    const link = rows.nth(16).getByRole('link', { name: 'Espionage', exact: true })
+    await link.evaluate(el => el.scrollIntoView({ block: 'center' }))
+    const scroll = await page.evaluate(() => window.scrollY)
+    expect(scroll).toBeGreaterThan(100)
+    await link.click()
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    const detailUrl = page.url()
+    await diagnosticScreenshot(page, { path: `test-results/archive-return-detail-${width}x900.png` })
+    let release!: () => void
+    fixture.pause(new Promise<void>(resolve => { release = resolve }))
+    try {
+      await page.getByRole('button', { name: 'Archive report', exact: true }).click()
+      await expect.poll(fixture.submitted).toBe(1)
+      await expect(page).toHaveURL(detailUrl)
+      await expect(page.getByRole('button', { name: 'Move to inbox' })).toBeDisabled()
+      await diagnosticScreenshot(page, { path: `test-results/archive-return-pending-${width}x900.png` })
+    } finally { release() }
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    await expect(rows).toHaveCount(23)
+    await expect(page.getByRole('button', { name: 'Remove Espionage filter' })).toBeVisible()
+    await expect.poll(() => page.evaluate(y => window.scrollY - Math.min(y, document.documentElement.scrollHeight - innerHeight), scroll)).toBe(0)
+    await expect(rows.first().getByRole('link', { name: 'Espionage', exact: true })).toHaveAttribute('href', new RegExp(`${id(93)}$`))
+    await diagnosticScreenshot(page, { path: `test-results/archive-return-position-${width}x900.png` })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/archive-return-list-${width}x900.png` })
+    await page.getByRole('button', { name: 'Archived', exact: true }).click()
+    await expect(rows).toHaveCount(1)
+    await rows.getByRole('link', { name: 'Espionage', exact: true }).click()
+    await page.getByRole('button', { name: 'Move to inbox' }).click()
+    await expect(page.getByRole('button', { name: 'Archive report' })).toBeEnabled()
+    // Restoring remains in detail; archiving returns to the originating folder.
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    await page.getByRole('button', { name: 'Archive report' }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.getByRole('button', { name: 'Archived', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(rows).toHaveCount(1)
+    await diagnosticScreenshot(page, { path: `test-results/archive-return-archived-${width}x900.png` })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+
+  test(`detail archive rejection and uncertainty stay recoverable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const fixture = await reportsFixture(page, true)
+    await page.locator('main article').first().getByRole('link', { name: 'Espionage', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    const detailUrl = page.url()
+    fixture.setMode('rejected')
+    await page.getByRole('button', { name: 'Archive report' }).click()
+    await expect(page.getByTestId('game-error-banner')).toContainText('Action rejected: Not Found')
+    await expect(page).toHaveURL(detailUrl)
+    await expect(page.getByRole('button', { name: 'Archive report' })).toBeEnabled()
+    await diagnosticScreenshot(page, { path: `test-results/archive-return-rejected-${width}x900.png` })
+    fixture.setMode('uncertain')
+    await page.getByRole('button', { name: 'Archive report' }).click()
+    await expect(page.getByTestId('game-error-banner')).toContainText('We’re checking whether this order went through.')
+    await expect(page).toHaveURL(detailUrl)
+    await expect(page.getByRole('button', { name: 'Archive report' })).toBeDisabled()
+    await diagnosticScreenshot(page, { path: `test-results/archive-return-uncertain-${width}x900.png` })
+    fixture.setMode('success')
+    await page.getByRole('button', { name: 'Retry order', exact: true }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.locator('main article')).toHaveCount(1)
+  })
+
+  test(`detail archive rate limit stays in detail and allows a fresh gesture at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const now = new Date('2026-11-01T14:00:00Z')
+    await page.clock.install({ time: now })
+    await page.clock.pauseAt(now)
+    await reportsFixture(page, true)
+    await page.locator('main article').first().getByRole('link', { name: 'Espionage', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    const detailUrl = page.url()
+    let throttled = true
+    await page.route('**/commands', async route => {
+      if (throttled && route.request().postDataJSON().gameplay?.command.action.type === 'SetReportHidden')
+        return route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
+      return route.fallback()
+    })
+    await page.getByRole('button', { name: 'Archive report' }).click()
+    await expect(page.getByTestId('game-error-banner')).toContainText('Orders are coming in too fast.')
+    await expect(page).toHaveURL(detailUrl)
+    await diagnosticScreenshot(page, { path: `test-results/archive-return-rate-limit-${width}x900.png` })
+    throttled = false
+    await page.clock.runFor(61000)
+    await expect(page.getByRole('button', { name: 'Archive report' })).toBeEnabled()
+    await page.getByRole('button', { name: 'Archive report' }).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+  })
+}
+
+test('leaving detail during archive does not pull the player back after acceptance', async ({ page }) => {
+  const fixture = await reportsFixture(page, true)
+  await page.locator('main article').first().getByRole('link', { name: 'Espionage', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+  let release!: () => void
+  fixture.pause(new Promise<void>(resolve => { release = resolve }))
+  try {
+    await page.getByRole('button', { name: 'Archive report' }).click()
+    await expect.poll(fixture.submitted).toBe(1)
+    await page.getByRole('link', { name: 'Back to reports' }).click()
+    await page.locator('main article').getByRole('link', { name: 'Espionage', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`${id(71)}$`))
+  } finally { release() }
+  await expect.poll(() => fixture.headers[0].hidden).toBe(true)
+  await expect(page).toHaveURL(new RegExp(`${id(71)}$`))
+  await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+})

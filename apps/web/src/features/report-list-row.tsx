@@ -36,6 +36,7 @@ export function ReportListRow({
   desktopSelection = false,
   onSelect,
   sort,
+  onOpen,
 }: {
   report: components['schemas']['ReportHeader4']
   playerNames?: PlayerNames
@@ -45,6 +46,7 @@ export function ReportListRow({
   now: number
   disabled: boolean
   selectionDisabled?: boolean
+  onOpen?: () => void
   sort?: ReportSort
   desktopSelection?: boolean
   selected?: boolean
@@ -124,6 +126,13 @@ export function ReportListRow({
                 if (!selectionDisabled) onSelect(!selected, true)
                 return
               }
+              if (
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.shiftKey &&
+                !event.altKey
+              )
+                onOpen?.()
               void model.recordPresence('AccountVisit', null)
             }}
             {...routeTarget(universe, 'reports', origin, report.id)}

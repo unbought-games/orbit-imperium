@@ -1,3 +1,4 @@
+import { useReportReturn } from './use-report-return'
 import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
@@ -52,6 +53,7 @@ export function Reports({
   item: string | null
   onDraft: (draft: DispatchDraft) => void
 }) {
+  const reportReturn = useReportReturn(universe, origin)
   const [folder, setFolder] = useState<ReportFolder>('inbox')
   const archived = folder === 'archived'
   const mobile = useMobileLayout()
@@ -265,6 +267,7 @@ export function Reports({
                 hidden={detail.header.hidden}
                 compact
                 disabled={false}
+                onCommitted={reportReturn.onCommitted}
               />
             </div>
           </div>
@@ -441,6 +444,7 @@ export function Reports({
             <ReportListRow
               key={r.id}
               report={r}
+              onOpen={reportReturn.rememberList}
               playerNames={page.player_names}
               model={model}
               universe={universe}

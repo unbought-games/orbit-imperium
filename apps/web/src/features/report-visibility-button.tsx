@@ -12,14 +12,16 @@ export function ReportVisibilityButton({
   hidden,
   disabled,
   compact = false,
+  onCommitted,
 }: {
   model: Coordinator
   report: string
   hidden: boolean
   disabled: boolean
   compact?: boolean
+  onCommitted?: (hidden: boolean) => void
 }) {
-  const visibility = useReportVisibility(model, report)
+  const visibility = useReportVisibility(model, report, onCommitted)
   const starred = useStore(
     model.store,
     (s) =>
