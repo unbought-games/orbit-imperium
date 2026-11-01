@@ -531,7 +531,8 @@ pub fn inspect_progression(
             if *building == Building::ResearchLab && research {
                 out.blockers.push(block(GameError::LabLocked))
             }
-            if *building == Building::Shipyard && !queue.is_empty() {
+            if matches!(building, Building::Shipyard | Building::NaniteFactory) && !queue.is_empty()
+            {
                 out.blockers.push(block(GameError::YardLocked))
             }
             if matches!(q, QuoteRequest::Upgrade { .. })
@@ -555,7 +556,9 @@ pub fn inspect_progression(
             }
         }
         QuoteRequest::Manufacture { item, quantity, .. } => {
-            if construction.is_some_and(|x| x.building == Building::Shipyard) {
+            if construction
+                .is_some_and(|x| matches!(x.building, Building::Shipyard | Building::NaniteFactory))
+            {
                 out.blockers.push(block(GameError::YardLocked))
             }
             if queue.len()

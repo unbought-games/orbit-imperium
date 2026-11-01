@@ -134,6 +134,7 @@ fn bomber_combat_derives_stats_and_applies_only_its_six_rapid_fire_pairs() {
 fn bomber_manufacturing_charges_all_resources_but_times_only_metal_and_crystal() {
     let (state, _, _, body) = common::fixture();
     let mut planet = state.bodies[&body].clone();
+    planet.levels.insert(Building::NaniteFactory, 0);
     planet.levels.insert(Building::Shipyard, 8);
     for (speed, seconds) in [(1, 12000), (5, 2400), (7, 1714), (10, 1200)] {
         let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), speed).unwrap();

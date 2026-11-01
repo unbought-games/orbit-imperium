@@ -52,12 +52,14 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
         assert_eq!(upgrade_standard_rules(&next).unwrap(), next);
         // Collection order is retained for stable hashes; compare keyed collections.
         assert_eq!(next.artifact.ships, fresh.artifact.ships);
+        assert_eq!(next.artifact.buildings, fresh.artifact.buildings);
         assert_eq!(
             next.artifact.progression.as_ref().unwrap().research,
             fresh.artifact.progression.as_ref().unwrap().research
         );
         for key in [
             CatalogKey::Building(Building::FusionReactor),
+            CatalogKey::Building(Building::NaniteFactory),
             CatalogKey::Ship(ShipType::LargeCargo),
             CatalogKey::Ship(ShipType::Bomber),
             CatalogKey::Ship(ShipType::Battlecruiser),
@@ -121,7 +123,11 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
     }
     assert_eq!(
         validate_rules_update(&old, &next).unwrap().add_buildings,
-        vec![Building::FusionReactor, Building::MissileSilo]
+        vec![
+            Building::FusionReactor,
+            Building::NaniteFactory,
+            Building::MissileSilo
+        ]
     );
     assert_eq!(
         next.artifact.ships[&ShipType::SmallCargo],
@@ -805,4 +811,84 @@ fn missile_bundle_has_separate_inventory_and_conflict_safe_activation() {
     assert!(
         upgrade_standard_rules(&Ruleset::from_artifact(disabled, next.speed).unwrap()).is_err()
     );
+}
+
+#[test]
+fn nanite_bundle_is_planet_only_exact_and_conflict_safe() {
+    let old = retained(include_bytes!("../../../../rules/mvp-v1-slice-11.json"));
+    let next = upgrade_standard_rules(&old).unwrap();
+    let key = CatalogKey::Building(Building::NaniteFactory);
+    assert_eq!(
+        next.artifact.buildings[&Building::NaniteFactory].base,
+        [1_000_000, 500_000, 100_000]
+    );
+    assert_eq!(
+        next.artifact.buildings[&Building::NaniteFactory].growth,
+        [2, 1]
+    );
+    let entry = next.artifact.catalog.iter().find(|e| e.key == key).unwrap();
+    assert!(entry.enabled);
+    assert_eq!(
+        entry.body_kinds,
+        std::collections::BTreeSet::from([BodyKind::Planet])
+    );
+    assert_eq!(
+        entry.requirements,
+        vec![
+            Requirement::BodyBuilding {
+                building: Building::RoboticsFactory,
+                level: 10
+            },
+            Requirement::PlayerResearch {
+                research: ResearchId::ComputerTechnology,
+                level: 10
+            },
+        ]
+    );
+    for customized_cost in [false, true] {
+        let mut artifact = next.artifact.clone();
+        if customized_cost {
+            artifact
+                .buildings
+                .get_mut(&Building::NaniteFactory)
+                .unwrap()
+                .base[0] += 1;
+        } else {
+            artifact
+                .catalog
+                .iter_mut()
+                .find(|e| e.key == key)
+                .unwrap()
+                .enabled = false;
+        }
+        let custom = Ruleset::from_artifact(artifact, 3).unwrap();
+        assert!(matches!(
+            upgrade_standard_rules(&custom),
+            Err(StandardRulesError::Conflicts(_))
+        ));
+    }
+    let mut artifact = old.artifact.clone();
+    artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Research(ResearchId::ComputerTechnology))
+        .unwrap()
+        .enabled = false;
+    let disabled = Ruleset::from_artifact(artifact, 3).unwrap();
+    assert!(matches!(
+        upgrade_standard_rules(&disabled),
+        Err(StandardRulesError::Prerequisite(_))
+    ));
+    let mut missing = next.artifact.clone();
+    missing.buildings.remove(&Building::NaniteFactory);
+    assert!(Ruleset::from_artifact(missing, 3).is_err());
+    let mut removed = next.artifact.clone();
+    removed.buildings.remove(&Building::NaniteFactory);
+    removed
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == key)
+        .unwrap()
+        .enabled = false;
+    assert!(validate_rules_update(&next, &Ruleset::from_artifact(removed, 3).unwrap()).is_err());
 }

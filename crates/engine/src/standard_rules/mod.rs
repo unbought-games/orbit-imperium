@@ -7,7 +7,7 @@ use std::fmt;
 mod content;
 mod patch;
 
-pub const STANDARD_RULES_RELEASE: &str = "0.11.0";
+pub const STANDARD_RULES_RELEASE: &str = "0.12.0";
 
 #[derive(Debug, Serialize)]
 pub struct RulesUpgradeConflict {
@@ -61,6 +61,7 @@ pub fn upgrade_standard_rules(current: &Ruleset) -> Result<Ruleset, StandardRule
         CatalogKey::Building(Building::Shipyard),
         CatalogKey::Ship(ShipType::SmallCargo),
         CatalogKey::Research(ResearchId::EnergyTechnology),
+        CatalogKey::Research(ResearchId::ComputerTechnology),
         CatalogKey::Research(ResearchId::CombustionDrive),
         CatalogKey::Research(ResearchId::EspionageTechnology),
         CatalogKey::Research(ResearchId::WeaponsTechnology),

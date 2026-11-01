@@ -148,6 +148,7 @@ fn battlecruiser_combat_derives_stats_and_applies_only_its_seven_rapid_fire_pair
 fn battlecruiser_manufacturing_charges_all_resources_but_times_only_metal_and_crystal() {
     let (state, _, _, body) = common::fixture();
     let mut planet = state.bodies[&body].clone();
+    planet.levels.insert(Building::NaniteFactory, 0);
     planet.levels.insert(Building::Shipyard, 8);
     for (speed, seconds) in [(1, 11200), (5, 2240), (7, 1600), (10, 1120)] {
         let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), speed).unwrap();

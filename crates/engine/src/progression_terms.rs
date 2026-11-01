@@ -332,6 +332,19 @@ fn enabled(r: &Ruleset, key: CatalogKey) -> Result<(), GameError> {
 fn level(b: &Body, k: Building) -> Result<u32, GameError> {
     b.levels.get(&k).copied().ok_or(GameError::InvalidInput)
 }
+// Older artifacts do not define Nanite. A supported building must have an
+// explicit completed level; missing live facts must not silently become zero.
+fn nanite_level(body: &Body, rules: &Ruleset) -> Result<u32, GameError> {
+    if rules
+        .artifact
+        .buildings
+        .contains_key(&Building::NaniteFactory)
+    {
+        level(body, Building::NaniteFactory)
+    } else {
+        Ok(0)
+    }
+}
 fn paid(raw: &[Rational; 3]) -> Result<Resources, GameError> {
     let mut out = [0; 3];
     for i in 0..3 {
@@ -396,10 +409,12 @@ pub fn building_terms(
     };
     let raw: [Rational; 3] = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
     let robotics = level(body, Building::RoboticsFactory)?;
+    let nanite = nanite_level(body, rules)?;
     let b = floor(
         integer(3600) * (raw[0].clone() + raw[1].clone())
             / integer(2500)
             / integer(1 + i64::from(robotics))
+            / power(integer(2), nanite)?
             / integer(i64::from(rules.speed)),
     )?;
     let seconds = if action == BuildingAction::Upgrade && b >= 100 {
@@ -425,7 +440,7 @@ pub fn building_terms(
         facilities: vec![
             FacilityTerm {
                 building: Building::NaniteFactory,
-                level: 0,
+                level: nanite,
             },
             FacilityTerm {
                 building: Building::RoboticsFactory,
@@ -534,10 +549,12 @@ pub fn manufacture_terms(
             .ok_or(GameError::NumericRange)?;
     }
     let yard = level(body, Building::Shipyard)?;
+    let nanite = nanite_level(body, rules)?;
     let duration = millis(floor(
         integer(3600) * integer(add(raw.metal, raw.crystal)?)
             / integer(2500)
             / integer(1 + i64::from(yard))
+            / power(integer(2), nanite)?
             / integer(i64::from(rules.speed)),
     )?)?;
     deadline(
@@ -563,7 +580,7 @@ pub fn manufacture_terms(
         facilities: vec![
             FacilityTerm {
                 building: Building::NaniteFactory,
-                level: 0,
+                level: nanite,
             },
             FacilityTerm {
                 building: Building::Shipyard,

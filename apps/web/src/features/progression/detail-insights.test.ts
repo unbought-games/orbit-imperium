@@ -731,3 +731,31 @@ it('only accepts an authoritative projection for the active body, building and t
     constructionProjection(proposal, body, { ...work, targetLevel: 3 }),
   ).toBe(proposal)
 })
+
+it('explains an occupied manufacturing queue and identifies active Nanite work', () => {
+  const { view, body } = fixture()
+  const blocker: S['ProgressionBlocker'] = {
+    code: 'YardLocked',
+    requirement: null,
+    required: null,
+    actual: null,
+    resource: null,
+    unit: null,
+  }
+  expect(blockerExplanation(blocker, view, body, 1000)).toBe(
+    'Finish all manufacturing on this planet before upgrading or demolishing the factory.',
+  )
+  view.constructions = [
+    {
+      id: id(90),
+      body: body.id,
+      building: 'NaniteFactory',
+      target_level: 1,
+      due_at: 61000,
+      paid: body.amounts,
+    },
+  ]
+  expect(blockerExplanation(blocker, view, body, 1000)).toContain(
+    'Nanite Factory level 1',
+  )
+})

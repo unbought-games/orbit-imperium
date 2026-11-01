@@ -73,6 +73,7 @@ fn plasma_turret_combat_uses_cost_derived_hull_and_combat_technologies_without_r
 fn plasma_turret_manufacturing_uses_exact_batch_cost_and_floored_unit_duration() {
     let (state, _, _, body) = common::fixture();
     let mut planet = state.bodies[&body].clone();
+    planet.levels.insert(Building::NaniteFactory, 0);
     planet.levels.insert(Building::Shipyard, 8);
     for (speed, unit_duration_ms) in [
         (1, 16_000_000),

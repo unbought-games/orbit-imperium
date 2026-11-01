@@ -246,6 +246,19 @@ pub(super) fn patches() -> Vec<Patch> {
         "Destroyer",
         &read(include_bytes!("../../../../rules/content/destroyer.json")),
     );
+    let nanite = read(include_bytes!(
+        "../../../../rules/content/nanite-factory.json"
+    ));
+    out.push(Patch::field(
+        "/buildings/NaniteFactory",
+        nanite["building"].clone(),
+    ));
+    out.push(catalog(
+        "Building",
+        "NaniteFactory",
+        false,
+        nanite["requirements"].clone(),
+    ));
     let fusion = read(include_bytes!(
         "../../../../rules/content/fusion-reactor.json"
     ));

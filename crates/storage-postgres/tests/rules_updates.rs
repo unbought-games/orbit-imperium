@@ -11,6 +11,8 @@ mod gameplay;
 mod hyperspace;
 #[path = "rules_updates/impact.rs"]
 mod impact;
+#[path = "rules_updates/nanite.rs"]
+mod nanite;
 #[path = "rules_updates/plasma_turret.rs"]
 mod plasma_turret;
 #[path = "rules_updates/standard.rs"]

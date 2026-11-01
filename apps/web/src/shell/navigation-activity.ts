@@ -1,3 +1,4 @@
+import { label } from '../ui/format'
 import type { GameState } from '../client-model/game-store'
 import {
   pendingConstruction,
@@ -61,8 +62,11 @@ export function developmentBlockers(state: GameState, body?: string) {
       ? 'Blocked while a resource building is under construction'
       : 'Blocked while a facility is under construction',
   )
-  if (view.protocol !== 2 && construction.building === 'Shipyard') {
-    const reason = 'Blocked while the shipyard is under construction'
+  if (
+    view.protocol !== 2 &&
+    ['Shipyard', 'NaniteFactory'].includes(construction.building)
+  ) {
+    const reason = `Blocked while the ${label(construction.building).toLowerCase()} is under construction`
     blocked.set('shipyard', reason)
     blocked.set('defense', reason)
   }

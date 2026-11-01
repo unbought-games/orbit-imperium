@@ -26,7 +26,7 @@ file. `--universe UUID` selects an existing world. Without it, the command uses
 Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
 --help` works without a database. An empty database needs `orbit setup` first.
 
-The bundled content release is currently **0.11.0**. This is the content bundle's
+The bundled content release is currently **0.12.0**. This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
@@ -50,6 +50,9 @@ they use Hyperspace propulsion from the outset. Other dependent systems remain u
 automatic Anti-Ballistic Missile interception, and permanent defense damage.
 Missile flights appear alongside ordinary fleet movements; live lunar targeting
 remains gated. Existing planets receive silo level zero at activation.
+[Nanite Factory](nanite-factory.md) adds local construction and manufacturing
+acceleration, requiring Robotics Factory 10 and Computer Technology 10. Existing
+planets receive level zero at activation.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
 
@@ -71,7 +74,7 @@ intentionally disabled dome with retained definitions is not silently re-enabled
 
 The upgrade has an explicit list of owned fields: the named content's catalog
 entries, research/ship definitions, unit costs, combat entries, related rapid fire,
-Small Cargo's Impulse Drive alternative, colonization policy, satellite energy, Fusion Reactor building/production definitions, and missile silo/warfare definitions.
+Small Cargo's Impulse Drive alternative, colonization policy, satellite energy, Fusion Reactor building/production definitions, Nanite Factory building definitions, and missile silo/warfare definitions.
 Each owned field or keyed entry must be absent, match its recognized older baseline,
 or already match the bundled value. Anything else produces a conflict with the
 path, current value, recognized older value and proposed value. All conflicts are

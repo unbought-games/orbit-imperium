@@ -13,7 +13,11 @@ async fn fusion_activates_builds_consumes_fuel_and_restarts_in_both_runtimes() {
         let plan = service.prepare_upgrade(u).await.unwrap();
         assert_eq!(
             plan.diff.initialize.add_buildings,
-            vec![Building::FusionReactor, Building::MissileSilo]
+            vec![
+                Building::FusionReactor,
+                Building::NaniteFactory,
+                Building::MissileSilo
+            ]
         );
         service.apply(&plan.document).await.unwrap();
         let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;

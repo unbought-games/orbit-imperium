@@ -166,6 +166,10 @@ fn building_data(data: &mut TechnicalData, building: Building, rules: &Ruleset) 
             data.storage_capacities = r.progression.as_ref().map(|p| p.storage_capacities.iter().map(ToString::to_string).collect());
             data.fact("Storage", "Production stops for this resource at capacity. Incoming deliveries can exceed capacity.");
         }
+        Building::NaniteFactory if rules.progression() => {
+            data.fact("Construction and manufacturing time", "Raw duration is divided by 2^completed Nanite Factory level, in addition to Robotics or Shipyard acceleration. Building upgrades retain the universe’s construction adjustment; manufacturing rounds each unit down to whole seconds with a one-second minimum. Research is unaffected.");
+            data.fact("Industrial lock", "Factory upgrades and demolition cannot overlap any unfinished manufacturing on this planet, including waiting ships, defenses and missiles. Self-upgrades use the old completed Nanite level.");
+        }
         Building::RoboticsFactory if rules.progression() => data.fact("Construction time", "The raw construction duration is divided by (1 + Robotics Factory level). Upgrades use the universe’s construction formula and rounding; this is not a fixed percentage reduction per level."),
         Building::ResearchLab if rules.progression() => data.fact("Research time", "Research duration is divided by (1 + this planet’s Research Lab level), rounded down to whole seconds with a one-second minimum. Only this planet’s lab contributes."),
         Building::Shipyard if rules.progression() => data.fact("Manufacturing time", "Ship and defense duration per unit is divided by (1 + Shipyard level), rounded down to whole seconds with a one-second minimum."),
@@ -469,6 +473,30 @@ mod tests {
                 .unwrap()
                 .storage_capacities
                 .len()
+        );
+    }
+    #[test]
+    fn nanite_technical_data_explains_timing_and_industrial_exclusion() {
+        let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+        let data = data(&r, CatalogKey::Building(Building::NaniteFactory));
+        let fixture: serde_json::Value = serde_json::from_slice(include_bytes!(
+            "../../../contracts/fixtures/nanite-technical-data.json"
+        ))
+        .unwrap();
+        assert_eq!(serde_json::to_value(&data).unwrap(), fixture);
+
+        assert!(
+            data.facts
+                .iter()
+                .any(|f| f.value.contains("2^completed Nanite")
+                    && f.value.contains("Research is unaffected"))
+        );
+        assert!(data.facts.iter().any(|f| f.label == "Industrial lock"
+            && f.value.contains("waiting ships, defenses and missiles")));
+        assert!(
+            data.facts
+                .iter()
+                .any(|f| f.value.contains("2^(target level"))
         );
     }
     #[test]

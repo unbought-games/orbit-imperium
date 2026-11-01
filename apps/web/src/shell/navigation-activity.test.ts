@@ -178,6 +178,7 @@ it.each([
   ['RoboticsFactory', ['resources']],
   ['ResearchLab', ['research', 'resources']],
   ['Shipyard', ['resources', 'shipyard', 'defense']],
+  ['NaniteFactory', ['resources', 'shipyard', 'defense']],
 ] as const)(
   'derives categories blocked by %s until construction is cleared',
   (building, pages) => {
@@ -197,7 +198,7 @@ it.each([
   },
 )
 
-it.each(['ResearchLab', 'Shipyard'] as const)(
+it.each(['ResearchLab', 'Shipyard', 'NaniteFactory'] as const)(
   'includes pending %s construction and demolition, then clears rejected work',
   (building) => {
     const { state, view } = fixture()

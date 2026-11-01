@@ -1,0 +1,22 @@
+{
+  "facts": [
+    {
+      "label": "Cost scaling",
+      "value": "Base cost × 2^(target level − 1), each resource rounded down to whole units.",
+      "subject": null
+    },
+    {
+      "label": "Construction and manufacturing time",
+      "value": "Raw duration is divided by 2^completed Nanite Factory level, in addition to Robotics or Shipyard acceleration. Building upgrades retain the universe’s construction adjustment; manufacturing rounds each unit down to whole seconds with a one-second minimum. Research is unaffected.",
+      "subject": null
+    },
+    {
+      "label": "Industrial lock",
+      "value": "Factory upgrades and demolition cannot overlap any unfinished manufacturing on this planet, including waiting ships, defenses and missiles. Self-upgrades use the old completed Nanite level.",
+      "subject": null
+    }
+  ],
+  "bonuses": [],
+  "combat": null,
+  "storage_capacities": null
+}

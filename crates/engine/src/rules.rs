@@ -167,8 +167,10 @@ impl Ruleset {
                 .any(|k| !artifact.buildings.contains_key(k))
             || artifact.buildings.keys().any(|k| {
                 !Building::MVP.contains(k)
-                    && (!matches!(k, Building::FusionReactor | Building::MissileSilo)
-                        || artifact.progression.is_none())
+                    && (!matches!(
+                        k,
+                        Building::FusionReactor | Building::MissileSilo | Building::NaniteFactory
+                    ) || artifact.progression.is_none())
             })
         {
             return Err(RulesError::InvalidReference);
