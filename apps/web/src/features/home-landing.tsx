@@ -5,7 +5,7 @@ import { BetaNotice } from '../ui/beta-notice'
 import { Heading, Text, Eyebrow } from '../ui/typography'
 import styles from './login.module.css'
 import { HomeDetails } from './home-details'
-import { HomeDiscordLink } from './home-discord-link'
+import { DiscordLink } from '../ui/discord-link'
 import landingStyles from './home-details.module.css'
 
 export function HomeLanding({ signupEnabled }: { signupEnabled: boolean }) {
@@ -52,7 +52,7 @@ export function HomeLanding({ signupEnabled }: { signupEnabled: boolean }) {
               </svg>
               View on GitHub
             </a>
-            <HomeDiscordLink />
+            <DiscordLink />
           </nav>
         </HomeDetails>
       }

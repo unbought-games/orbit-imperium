@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Flag, Infinity as InfinityIcon, Orbit, Trophy } from 'lucide-react'
 import { ButtonLinkAnchor } from '../ui/button'
-import { HomeDiscordLink } from './home-discord-link'
+import { DiscordLink } from '../ui/discord-link'
 import styles from './home-details.module.css'
 
 const repository = 'https://github.com/unbought-games/orbit-imperium'
@@ -141,7 +141,7 @@ export function HomeDetails({
             </p>
             <p>Get the first Eternal Universe launch news on Discord.</p>
             <div className={styles.eternalAction}>
-              <HomeDiscordLink />
+              <DiscordLink className={styles.eternalDiscord} />
             </div>
             <p className={styles.developmentNote}>
               In the meantime,{' '}
