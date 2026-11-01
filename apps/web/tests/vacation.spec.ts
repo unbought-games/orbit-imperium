@@ -131,3 +131,45 @@ for (const width of [1280, 390]) {
     await capture(page, section, { path: `test-results/vacation-rejected-${width}x900.png` })
   })
 }
+
+for (const width of [1280, 390]) {
+  test(`vacation clears confirmation on the same mounted Settings page at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    let now = Date.now()
+    let revision = 1
+    let vacation: Vacation = { active: false, entered_at: null, earliest_exit_at: null, blockers: [] }
+    await shellFixture(page, { protocol: 4, vacation: () => vacation, sampledAt: () => now, viewerRevision: () => String(revision) })
+    const submitted: string[] = []
+    await page.route('**/commands', async (route) => {
+      const pair = route.request().postDataJSON()
+      const type = pair.gameplay?.command.action?.type
+      if (type !== 'EnterVacation' && type !== 'ExitVacation') return route.fallback()
+      submitted.push(type)
+      vacation = type === 'EnterVacation'
+        ? { active: true, entered_at: now, earliest_exit_at: now + minimum, blockers: [] }
+        : { active: false, entered_at: null, earliest_exit_at: null, blockers: [] }
+      revision++
+      await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: now, executed_at: now, status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
+    })
+    await page.goto('/u/andromeda/settings')
+    const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
+    await section.getByRole('button', { name: 'Enter vacation mode', exact: true }).click()
+    await section.getByRole('button', { name: 'Confirm vacation mode' }).click()
+    const leave = section.getByRole('button', { name: 'Leave vacation mode' })
+    await expect(leave).toBeDisabled()
+    now += minimum
+    revision++
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(leave).toBeEnabled()
+    await leave.click()
+    await expect(section.getByText('Vacation mode ended. Your production settings have resumed.')).toBeVisible()
+    await capture(page, section, { path: `test-results/vacation-same-mount-returned-${width}x1200.png` })
+    await expect(section.getByRole('button', { name: 'Confirm vacation mode' })).toHaveCount(0)
+    await expect(section.getByRole('button', { name: 'Enter vacation mode', exact: true })).toBeEnabled()
+    expect(submitted).toEqual(['EnterVacation', 'ExitVacation'])
+    await section.getByRole('button', { name: 'Enter vacation mode', exact: true }).click()
+    await expect(section.getByRole('button', { name: 'Keep playing' })).toBeFocused()
+    await expect(section.getByRole('button', { name: 'Confirm vacation mode' })).toBeEnabled()
+    expect(submitted).toEqual(['EnterVacation', 'ExitVacation'])
+  })
+}

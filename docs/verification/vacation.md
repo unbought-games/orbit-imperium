@@ -117,3 +117,17 @@ failures occurred in this follow-up. Its disposable Compose project
 `orbit-vacation-pr` and volume were removed after validation. Existing screenshots
 still match the implementation. Remote CI and review remain separate checks of
 the pushed head; publication is not evidence of merge or deployment.
+
+## Review repair — 2026-11-01
+
+Bugbot thread `PRRT_kwDOVRgPYs6ydiqr` identified local entry-confirmation state
+surviving a complete vacation cycle on the same mounted Settings screen. Two new
+browser regressions reproduced the failure at 1280px and 390px: after leaving,
+`Confirm vacation mode` was still present. The component now retires that local
+review when the authoritative vacation state becomes active, preserving the
+confirmation on a rejected entry. Re-entering requires opening a fresh review.
+
+Against published head `73359328787d9e62aec2d4d77824ac848a9462e8` plus this repair,
+all six vacation browser tests passed in 12.5s. Production build (3.31s and 0.182s
+prerender), TypeScript and lint passed. Refreshed and inspected the desktop/mobile
+same-mount returned-state captures; no backend or policy changes were needed.

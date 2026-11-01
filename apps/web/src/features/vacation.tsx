@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { components } from '../contracts'
 import { useGameScreen } from '../shell/screen-context'
 import { routeTarget } from '../shell/route-target'
@@ -24,8 +24,11 @@ export function VacationSettings() {
   const action = useVacation(model)
   const [review, setReview] = useState(false)
   const opener = useRef<HTMLButtonElement>(null)
-  if (view.protocol !== 4) return null
   const vacation = action.vacation
+  useEffect(() => {
+    if (vacation?.active) setReview(false)
+  }, [vacation?.active])
+  if (view.protocol !== 4) return null
   return (
     <Section aria-label="Vacation mode" className={styles.settings}>
       <Heading level={2}>Vacation mode</Heading>
