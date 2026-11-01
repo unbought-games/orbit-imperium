@@ -1179,3 +1179,50 @@ test('mobile report dropdown keeps its existing actions', async ({page}) => {
   await expect(menu.getByRole('menuitem', {name: 'Archive all…', exact: true})).toHaveCount(0)
   await diagnosticScreenshot(page, {path: 'test-results/reports-archive-all-mobile-390x900.png'})
 })
+
+test('desktop row archiving stays available while complete history is loading', async ({page}) => {
+  await page.setViewportSize({width: 1280, height: 900})
+  await page.emulateMedia({reducedMotion: 'reduce'})
+  const fixture = await reportsFixture(page, true)
+  const rows = page.getByRole('article')
+  let release!: () => void
+  const before = fixture.pageRequests.filter(cursor => cursor !== null).length
+  fixture.holdMore(new Promise<void>(resolve => {release = resolve}))
+  try {
+    await refreshGame(page)
+    await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(before + 1)
+    await expect(rows.first().getByRole('checkbox')).toBeDisabled()
+    await expect(page.getByRole('button', {name: 'Select all matching (2)'})).toBeDisabled()
+    const archive = rows.first().getByRole('button', {name: 'Archive report', exact: true})
+    await expect(archive).toBeEnabled()
+    await diagnosticScreenshot(page, {path: 'test-results/reports-loading-actions-1280x900.png', clip: {x: 240, y: 80, width: 1040, height: 470}})
+    await archive.click()
+    await expect.poll(() => fixture.headers[0].hidden).toBe(true)
+    await expect(rows).toHaveCount(1)
+    expect(fixture.submitted()).toBe(1)
+  } finally {
+    release()
+  }
+})
+
+test('mobile selection can be cancelled while history is loading', async ({page}) => {
+  await page.setViewportSize({width: 390, height: 900})
+  await page.emulateMedia({reducedMotion: 'reduce'})
+  const fixture = await reportsFixture(page, true)
+  let release!: () => void
+  fixture.holdMore(new Promise<void>(resolve => {release = resolve}))
+  try {
+    await selectReports(page)
+    const selection = page.getByRole('group', {name: 'Report selection'})
+    await expect(selection.getByRole('button', {name: 'Select all matching (2)'})).toBeDisabled()
+    const cancel = selection.getByRole('button', {name: 'Cancel selection'})
+    await expect(cancel).toBeEnabled()
+    await diagnosticScreenshot(page, {path: 'test-results/reports-loading-cancel-390x900.png'})
+    await cancel.click()
+    await expect(selection).toHaveCount(0)
+    await expect(page.getByRole('article').getByRole('checkbox')).toHaveCount(0)
+    expect(fixture.submitted()).toBe(0)
+  } finally {
+    release()
+  }
+})

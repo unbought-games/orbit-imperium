@@ -13,6 +13,7 @@ export function ReportSelectionBar({
   cleanup,
   onCancel,
   onMarkRead,
+  markingRead = false,
 }: {
   visible: components['schemas']['ReportHeader4'][]
   selected: Set<string>
@@ -20,6 +21,7 @@ export function ReportSelectionBar({
   archived: boolean
   disabled: boolean
   cleanup: ReturnType<typeof useReportCleanup>
+  markingRead?: boolean
   onMarkRead?: (ids: string[]) => void
   onCancel: () => void
 }) {
@@ -29,7 +31,7 @@ export function ReportSelectionBar({
   const chosen = eligible.filter((report) => selected.has(report.id))
   const archivable = chosen.filter((report) => archived || !report.starred)
   const unread = chosen.filter((report) => !report.read)
-  const busy = disabled || cleanup.submitting
+  const busy = disabled || cleanup.submitting || markingRead
   const all = eligible.length > 0 && chosen.length === eligible.length
   const label = archived ? 'Move to inbox' : 'Archive selected'
   return (
@@ -91,7 +93,7 @@ export function ReportSelectionBar({
           size="icon"
           aria-label="Cancel selection"
           title="Cancel selection"
-          disabled={busy}
+          disabled={cleanup.submitting || markingRead}
           onClick={onCancel}
         >
           <X size={16} aria-hidden="true" />

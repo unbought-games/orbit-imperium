@@ -31,6 +31,7 @@ export function ReportListRow({
   origin,
   now,
   disabled,
+  selectionDisabled = disabled,
   selected,
   desktopSelection = false,
   onSelect,
@@ -43,6 +44,7 @@ export function ReportListRow({
   origin: string
   now: number
   disabled: boolean
+  selectionDisabled?: boolean
   sort?: ReportSort
   desktopSelection?: boolean
   selected?: boolean
@@ -76,7 +78,8 @@ export function ReportListRow({
         aria-label={`Select ${title} report ${exactTime(report.observed_at)}`}
         checked={selected}
         disabled={
-          disabled || (!desktopSelection && !report.hidden && report.starred)
+          selectionDisabled ||
+          (!desktopSelection && !report.hidden && report.starred)
         }
         onChange={(e) =>
           onSelect(
@@ -118,7 +121,7 @@ export function ReportListRow({
             onClick={(event) => {
               if (desktopSelection && event.shiftKey && onSelect) {
                 event.preventDefault()
-                if (!disabled) onSelect(!selected, true)
+                if (!selectionDisabled) onSelect(!selected, true)
                 return
               }
               void model.recordPresence('AccountVisit', null)

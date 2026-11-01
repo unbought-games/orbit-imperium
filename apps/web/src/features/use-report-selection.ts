@@ -12,6 +12,7 @@ export function useReportSelection(model: Coordinator) {
   const [error, setError] = useState('')
   function select(ids: Set<string>) {
     anchor.current = null
+    setError('')
     setSelected(ids)
   }
   function toggle(
@@ -20,6 +21,7 @@ export function useReportSelection(model: Coordinator) {
     checked: boolean,
     shift: boolean,
   ) {
+    setError('')
     const from = shift ? anchor.current : null
     setSelected((ids) => toggleReportSelection(ids, visible, id, checked, from))
     anchor.current = id

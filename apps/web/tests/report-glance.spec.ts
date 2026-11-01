@@ -454,6 +454,9 @@ for (const width of [1440, 800]) {
     await expect(page.getByText('Could not mark all selected reports as read. Retry the remaining unread reports.')).toBeVisible()
     expect(readRequests).toEqual([id(70)])
     await expect(selection).toContainText('5 selected')
+    await selection.getByRole('button', {name: 'Cancel selection'}).click()
+    await expect(page.getByText('Could not mark all selected reports as read. Retry the remaining unread reports.')).toHaveCount(0)
+    await selection.getByRole('button', {name: 'Select all matching (5)'}).click()
     rejectRead = false
     await selection.getByRole('button', {name: 'Mark as read', exact: true}).click()
     await expect(selection).toContainText('0 selected')

@@ -102,6 +102,7 @@ export function Reports({
       archived={archived}
       disabled={!complete || busy}
       cleanup={cleanup}
+      markingRead={selection.markingRead}
       onMarkRead={!mobile ? (ids) => void selection.markRead(ids) : undefined}
       onCancel={() => {
         setSelecting(false)
@@ -458,9 +459,11 @@ export function Reports({
                       )
                   : undefined
               }
+              selectionDisabled={
+                loadingMore || ((!mobile || selecting) && !complete) || busy
+              }
               disabled={
-                loadingMore ||
-                ((!mobile || selecting) && !complete) ||
+                (mobile && (loadingMore || (selecting && !complete))) ||
                 cleanup.submitting ||
                 selection.markingRead
               }
