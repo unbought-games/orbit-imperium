@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures/test'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Planet actions', exact: true })
 const sheet = (page: Page) => page.getByRole('region', { name: 'Planet actions sheet', exact: true })
@@ -174,6 +175,29 @@ test('native dialog closure releases scroll locking and restores the opener', as
 for (const touch of [false, true]) {
   test.describe(touch ? 'touch focus styling' : 'desktop focus styling', () => {
     test.use({ hasTouch: touch, isMobile: touch })
+
+    test('visible dropdown focus preserves the selected height while text entry still expands', async ({ page }) => {
+      const width = touch ? 390 : 1280
+      await page.setViewportSize({ width, height: 844 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await open(page)
+      const dropdown = page.getByRole('combobox', { name: 'Primary mission', exact: true })
+      await dropdown.focus()
+      await expect(dropdown).toBeFocused()
+      // Let the focus-triggered animation frame run before checking geometry.
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+      await topAt(page, 444)
+      await diagnosticScreenshot(page, { path: `test-results/sheet-dropdown-focused-${width}x844.png` })
+      await dropdown.selectOption('harvest')
+      await expect(dropdown).toHaveValue('harvest')
+      await topAt(page, 444)
+      await page.setViewportSize({ width, height: 900 })
+      await topAt(page, 472)
+      await page.getByLabel('Planet name', { exact: true }).focus()
+      await topAt(page, 44)
+      await expect(page.getByLabel('Planet name', { exact: true })).toBeInViewport()
+      await diagnosticScreenshot(page, { path: `test-results/sheet-text-focused-${width}x900.png` })
+    })
 
     test('sheet and form focus outlines follow the mobile policy without losing focus', async ({ page }) => {
       // Safari does not focus clicked buttons; keyboard activation establishes

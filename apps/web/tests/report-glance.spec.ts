@@ -322,8 +322,21 @@ for (const width of [1280, 390]) {
     const filterButton = page.getByRole('button', {name: 'Filter reports', exact: true})
     await filterButton.click()
     const filter = page.getByRole('dialog', {name: 'Filter reports', exact: true})
+    const panel = width < 768 ? filter.getByRole('region', {name: 'Filter reports sheet', exact: true}) : filter
+    const initialBounds = await panel.boundingBox()
+    for (const name of ['Report type', 'Status']) {
+      const dropdown = filter.getByRole('combobox', {name, exact: true})
+      // selectOption alone does not focus native selects in WebKit. Exercise
+      // the focus event delivered when an iOS user opens the native picker.
+      await dropdown.focus()
+      await expect(dropdown).toBeFocused()
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+      await diagnosticScreenshot(page, {path: `test-results/report-filter-${name === 'Status' ? 'status' : 'type'}-focused-${width}x900.png`})
+      expect(await panel.boundingBox()).toEqual(initialBounds)
+    }
     await filter.getByRole('combobox', {name: 'Report type'}).selectOption('Espionage')
     await filter.getByRole('combobox', {name: 'Status', exact: true}).selectOption('unread')
+    expect(await panel.boundingBox()).toEqual(initialBounds)
     await diagnosticScreenshot(page, {path: `test-results/report-tools-filter-${width}x900.png`})
     await filter.getByRole('button', {name: /Dismiss (sheet|popover)/}).click()
     await expect(filter).toBeHidden()
