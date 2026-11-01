@@ -250,3 +250,49 @@ fn duplicate_fields_and_incomplete_creation_are_rejected() {
     invalid.universe = uuid::Uuid::nil().into();
     assert!(invalid.validate().unwrap_err().contains("universe"));
 }
+
+#[test]
+fn bot_display_is_a_validated_string_with_a_compatible_visible_default() {
+    let mut raw = serde_json::to_value(document()).unwrap();
+    assert_eq!(raw["policy"]["bots"]["display"], "visible");
+    raw["policy"]["bots"]
+        .as_object_mut()
+        .unwrap()
+        .remove("display");
+    let legacy: UniverseConfigDocument = serde_json::from_value(raw.clone()).unwrap();
+    assert_eq!(legacy.policy.bots.display, BotDisplay::Visible);
+    for invalid in [
+        json!(true),
+        json!(false),
+        json!(null),
+        json!("invisible"),
+        json!("Visible"),
+        json!(""),
+    ] {
+        raw["policy"]["bots"]["display"] = invalid;
+        assert!(serde_json::from_value::<UniverseConfigDocument>(raw.clone()).is_err());
+    }
+    raw["policy"]["bots"]["display"] = json!("hidden");
+    let hidden: UniverseConfigDocument = serde_json::from_value(raw).unwrap();
+    hidden.validate().unwrap();
+    let diff = config_diff(&legacy, &hidden).unwrap();
+    assert_eq!(diff["changes"][0]["path"], "policy.bots");
+    assert_eq!(diff["changes"][0]["before"]["display"], "visible");
+    assert_eq!(diff["changes"][0]["after"]["display"], "hidden");
+    assert_eq!(
+        BotDisplay::Hidden.public_kind(PlayerKind::Bot),
+        PlayerKind::Human
+    );
+    assert_eq!(
+        BotDisplay::Visible.public_kind(PlayerKind::Bot),
+        PlayerKind::Bot
+    );
+    assert_eq!(
+        BotDisplay::Visible.public_kind(PlayerKind::Human),
+        PlayerKind::Human
+    );
+    assert_eq!(
+        BotDisplay::Hidden.public_kind(PlayerKind::Human),
+        PlayerKind::Human
+    );
+}

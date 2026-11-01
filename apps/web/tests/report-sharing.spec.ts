@@ -420,3 +420,21 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(page, {path: `test-results/shared-espionage-grouped-${width}x1000.png`, fullPage: true})
   })
 }
+
+for (const width of [1440, 390]) {
+  test(`shared reports follow bot display at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    let kind = 'bot'
+    await page.route(`**/api/v4/shared-reports/${token}`, route => route.fulfill({ json: {
+      ...shared, options: { include_identity: true, include_coordinates: false },
+      player_names: { 'participant-1': 'Harvester' }, player_kinds: { 'participant-1': kind },
+    } }))
+    for (const display of ['visible', 'hidden']) {
+      kind = display === 'visible' ? 'bot' : 'human'
+      await page.goto(`/reports/shared/${token}`)
+      await expect(page.getByText('Harvester', { exact: true })).toBeVisible()
+      await expect(page.getByLabel('Bot', { exact: true })).toHaveCount(display === 'visible' ? 1 : 0)
+      await diagnosticScreenshot(page, { path: `test-results/bot-shared-report-${display}-${width}x1000.png` })
+    }
+  })
+}

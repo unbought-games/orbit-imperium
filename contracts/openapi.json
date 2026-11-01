@@ -18730,7 +18730,8 @@
         "enum": [
           "human",
           "bot"
-        ]
+        ],
+        "description": "Public presentation classification. Bots in universes with hidden bot display are presented as human; this value does not control machine participation."
       },
       "BotPolicy": {
         "type": "object",
@@ -18760,6 +18761,15 @@
             ],
             "minimum": 1,
             "maximum": 4294967295
+          },
+          "display": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "hidden"
+            ],
+            "default": "visible",
+            "description": "Public bot indicators. Hidden suppresses bot labels without changing machine participation. Omission preserves the visible default for older policy documents."
           }
         }
       },

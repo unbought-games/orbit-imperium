@@ -69,11 +69,11 @@ impl IdentityStore for PgStore {
         universe: UniverseId,
         players: Vec<PlayerId>,
     ) -> Result<Vec<PlayerIdentity>, StoreError> {
-        sqlx::query("SELECT m.player,a.name,i.issuer,i.subject,EXISTS(SELECT 1 FROM bot_participation b WHERE b.universe=m.universe AND b.player=m.player) AS bot FROM universe_memberships m JOIN accounts a ON a.id=m.account LEFT JOIN oidc_identity i ON i.account=a.id WHERE m.universe=$1 AND m.player=ANY($2)")
+        sqlx::query("SELECT m.player,a.name,i.issuer,i.subject,COALESCE(p.bots->'display','\"visible\"'::jsonb) AS bot_display,EXISTS(SELECT 1 FROM bot_participation b WHERE b.universe=m.universe AND b.player=m.player) AS bot FROM universe_memberships m JOIN accounts a ON a.id=m.account LEFT JOIN oidc_identity i ON i.account=a.id LEFT JOIN universe_policies_v2 p ON p.universe=m.universe WHERE m.universe=$1 AND m.player=ANY($2)")
             .bind(universe.0).bind(players.iter().map(|p|p.0).collect::<Vec<_>>())
             .fetch_all(self.read_pool()?).await.map_err(db_error)?
             .into_iter().map(|row| Ok(PlayerIdentity {
-                kind: if row.try_get::<bool,_>("bot").map_err(db_error)? {PlayerKind::Bot}else{PlayerKind::Human},
+                kind: row.try_get::<sqlx::types::Json<BotDisplay>,_>("bot_display").map_err(db_error)?.0.public_kind(if row.try_get::<bool,_>("bot").map_err(db_error)? {PlayerKind::Bot}else{PlayerKind::Human}),
                 player: PlayerId(row.try_get("player").map_err(db_error)?),
                 username: row.try_get("name").map_err(db_error)?,
                 issuer: row.try_get("issuer").map_err(db_error)?,

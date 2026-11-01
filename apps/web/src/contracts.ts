@@ -7946,7 +7946,10 @@ export interface components {
             rank: number;
             previous_rank: number | null;
         };
-        /** @enum {string} */
+        /**
+         * @description Public presentation classification. Bots in universes with hidden bot display are presented as human; this value does not control machine participation.
+         * @enum {string}
+         */
         PlayerKind: "human" | "bot";
         BotPolicy: {
             /** @constant */
@@ -7954,6 +7957,12 @@ export interface components {
             enabled: boolean;
             max_active: number;
             action_units_per_24h: number | null;
+            /**
+             * @description Public bot indicators. Hidden suppresses bot labels without changing machine participation. Omission preserves the visible default for older policy documents.
+             * @default visible
+             * @enum {string}
+             */
+            display: "visible" | "hidden";
         };
         BotStatus: {
             binding: components["schemas"]["Binding"];

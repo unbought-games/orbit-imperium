@@ -101,7 +101,7 @@ target/universe-final/release/orbit universe config diff --universe "$ORBIT_UNIV
 target/universe-final/release/orbit universe config apply --universe "$ORBIT_UNIVERSE_ID" --file universe.json
 ```
 
-The version-1 document includes `universe`, `base_revision`, speed/topology context that is read-only to policy edits and all four policy fields: `signup_enabled`, `max_players`, `signup_per_minute`, `commands_per_minute`. Use `null` for `max_players` to restore geometric capacity. Its numeric ceiling must be 1 through geometric capacity; both rate limits must be integers 1–10000. Missing fields are errors, not resets. Changing this context or using another universe's file is rejected. After a speed activation, re-export policy documents so their speed context matches the current rules. The version-1 `immutable` field name is retained for compatibility; speed changes belong to rules activation.
+The version-1 document includes `universe`, `base_revision`, speed/topology context that is read-only to policy edits and the four admission fields (`signup_enabled`, `max_players`, `signup_per_minute`, `commands_per_minute`) plus the `bots` policy extension. Use `null` for `max_players` to restore geometric capacity. Its numeric ceiling must be 1 through geometric capacity; both rate limits must be integers 1–10000. Missing required fields are errors, not resets; the backward-compatible `bots.display` field defaults to `"visible"` when omitted. Changing this context or using another universe's file is rejected. After a speed activation, re-export policy documents so their speed context matches the current rules. The version-1 `immutable` field name is retained for compatibility; speed changes belong to rules activation.
 
 A successful effective change advances revision once and records an audit entry. An unchanged retry returns `already_active`, even with an older base revision. A changed stale document conflicts: export again, reconcile the desired policy and review a fresh diff. Do not automatically retry a stale edit. Policy edits preserve gameplay hashes, queues and paid terms.
 
@@ -186,7 +186,11 @@ The routine server, PostgreSQL and fixture-browser classes cover the contracts. 
 ## Machine participation policy (S1)
 
 The complete revision-checked policy also requires a typed `bots` extension:
-`{"version":1,"enabled":false,"max_active":0,"action_units_per_24h":null}`.
+`{"display":"visible","version":1,"enabled":false,"max_active":0,"action_units_per_24h":null}`.
+`policy.bots.display` accepts `"visible"` (default, including older documents) or
+`"hidden"` to control public bot indicators independently of participation. Set it
+with live config export/diff/apply or `--bot-display visible|hidden` during
+`setup` / `universe create`. See [bot display](bots.md#bot-display).
 Existing worlds migrate to disabled policy without account classification. Enabling
 requires an explicit positive active cap and rolling 24-hour allowance. Disabling
 blocks new participation immediately; lowering the cap terminally retires the

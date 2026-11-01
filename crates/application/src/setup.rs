@@ -12,6 +12,7 @@ pub struct UniverseSetup {
     pub galaxies: Option<u32>,
     pub systems_per_galaxy: Option<u32>,
     pub positions_per_system: Option<u32>,
+    pub bot_display: Option<crate::BotDisplay>,
     pub signup_enabled: Option<bool>,
     pub max_players: Option<u32>,
     pub signup_per_minute: Option<u32>,
@@ -35,7 +36,10 @@ impl UniverseSetup {
                     .unwrap_or(immutable.positions_per_system),
             },
             policy: UniversePolicy {
-                bots: Default::default(),
+                bots: crate::BotPolicy {
+                    display: self.bot_display.unwrap_or_default(),
+                    ..Default::default()
+                },
                 signup_enabled: self.signup_enabled.unwrap_or(policy.signup_enabled),
                 max_players: self.max_players,
                 signup_per_minute: self.signup_per_minute.unwrap_or(policy.signup_per_minute),
@@ -84,6 +88,7 @@ impl UniverseSetup {
         check!(galaxies, current.immutable.galaxies);
         check!(systems_per_galaxy, current.immutable.systems_per_galaxy);
         check!(positions_per_system, current.immutable.positions_per_system);
+        check!(bot_display, current.policy.bots.display);
         check!(signup_enabled, current.policy.signup_enabled);
         if self.max_players.is_some() && self.max_players != current.policy.max_players {
             return Err("setup conflicts with saved max_players; use universe config export/diff/apply; no universe settings were changed".into());
@@ -108,6 +113,7 @@ mod tests {
             galaxies: Some(2),
             systems_per_galaxy: Some(200),
             positions_per_system: Some(15),
+            bot_display: Some(crate::BotDisplay::Hidden),
             signup_enabled: Some(false),
             max_players: Some(1000),
             signup_per_minute: Some(7),
@@ -123,6 +129,17 @@ mod tests {
             policy: creation.policy,
         };
         request.check_existing(&current, "Friends").unwrap();
+        current.policy.bots.display = crate::BotDisplay::Visible;
+        assert!(
+            request
+                .check_existing(&current, "Friends")
+                .unwrap_err()
+                .contains("bot_display")
+        );
+        UniverseSetup::default()
+            .check_existing(&current, "Friends")
+            .unwrap();
+        current.policy.bots.display = crate::BotDisplay::Hidden;
         current.immutable.systems_per_galaxy = 201;
         assert!(
             request

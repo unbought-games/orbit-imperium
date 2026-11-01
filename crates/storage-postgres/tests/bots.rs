@@ -16,6 +16,7 @@ async fn setup(limit: u32) -> (PgStore, PgPool, UniverseId) {
             immutable: UniverseImmutable::default(),
             policy: UniversePolicy {
                 bots: BotPolicy {
+                    display: BotDisplay::Visible,
                     version: 1,
                     enabled: true,
                     max_active: 3,
@@ -858,6 +859,19 @@ async fn shared_report_bot_kinds_follow_redacted_ids_and_identity_option() {
         );
         if visible {
             assert_eq!(shared.player_kinds.get(local), Some(&PlayerKind::Bot));
+            // Already-published links follow the current policy without republishing.
+            for (display, expected) in [
+                (BotDisplay::Hidden, PlayerKind::Human),
+                (BotDisplay::Visible, PlayerKind::Bot),
+            ] {
+                let mut desired = store.universe_config(u).await.unwrap();
+                desired.policy.bots.display = display;
+                store.apply_universe_config(&desired).await.unwrap();
+                let refreshed = game.shared_report(token).await.unwrap();
+                assert_eq!(refreshed.player_kinds.get(local), Some(&expected));
+                assert_eq!(refreshed.player_names, shared.player_names);
+                assert_eq!(refreshed.payload, shared.payload);
+            }
             assert_eq!(
                 shared.player_names.get(local).map(String::as_str),
                 Some("machinetarget")
@@ -1071,4 +1085,63 @@ async fn depot_admission_waits_for_social_lock_before_locking_bot_identity() {
     .unwrap();
     social.commit().await.unwrap();
     admission.await.unwrap().unwrap();
+}
+
+#[tokio::test]
+async fn display_policy_is_live_universe_scoped_and_preserves_machine_participation() {
+    let (store, pool, u) = setup(5).await;
+    let bot = store.create_bot(u, "display-machine", 0).await.unwrap();
+    let (_, _, other_u) = setup(5).await;
+    let other = store.create_bot(other_u, "display-other", 0).await.unwrap();
+    // Retained JSON has no display field; both configuration and public reads default visible.
+    sqlx::query("UPDATE universe_policies_v2 SET bots=bots-'display' WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let original = store.universe_config(u).await.unwrap();
+    assert_eq!(original.policy.bots.display, BotDisplay::Visible);
+    assert_eq!(
+        store.player_identities(u, vec![bot.player]).await.unwrap()[0].kind,
+        PlayerKind::Bot
+    );
+    let token = store.issue_bot_token(u, bot.player).await.unwrap();
+    for (display, expected) in [
+        (BotDisplay::Hidden, PlayerKind::Human),
+        (BotDisplay::Visible, PlayerKind::Bot),
+    ] {
+        let mut desired = store.universe_config(u).await.unwrap();
+        desired.policy.bots.display = display;
+        let applied = store.apply_universe_config(&desired).await.unwrap();
+        assert!(applied.changed);
+        assert_eq!(applied.document.base_revision, desired.base_revision + 1);
+        assert!(!store.apply_universe_config(&desired).await.unwrap().changed);
+        assert_eq!(
+            store.universe_config(u).await.unwrap().policy.bots.display,
+            display
+        );
+        assert_eq!(
+            store.player_identities(u, vec![bot.player]).await.unwrap()[0].kind,
+            expected
+        );
+        assert_eq!(
+            store
+                .player_identities(other_u, vec![other.player])
+                .await
+                .unwrap()[0]
+                .kind,
+            PlayerKind::Bot
+        );
+        assert!(
+            store
+                .authenticate_machine(&token_digest(&token))
+                .await
+                .unwrap()
+                .is_some()
+        );
+        let status = store.bot_status(principal(bot)).await.unwrap();
+        assert_eq!(status.retired_at, None);
+        assert_eq!(status.policy.display, display);
+        assert_eq!(status.policy.action_units_per_24h, Some(5));
+    }
 }

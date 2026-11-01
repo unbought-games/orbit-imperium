@@ -17,6 +17,7 @@ pub fn visible_report_alliances(
 
 /// Internal account mapping. Provider subjects never go to game browsers.
 pub struct PlayerIdentity {
+    /// Public classification after applying the universe bot display policy.
     pub kind: crate::PlayerKind,
     pub player: PlayerId,
     pub username: String,

@@ -378,6 +378,7 @@ export async function playerProfilesFixture(
   profiles: () => Array<{
     player: string
     username: string
+    kind?: 'human' | 'bot'
     supporter_tier?: number
     observed_at?: number
     expires_at?: number
