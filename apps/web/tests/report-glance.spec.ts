@@ -154,7 +154,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
     const unread = rows.first().getByLabel('Unread', { exact: true })
     await expect(unread).toHaveCSS('background-color', 'rgb(164, 219, 239)')
     const unreadBox = (await unread.boundingBox())!
-    expect(unreadBox.x).toBe(rowBox.x)
+    expect(unreadBox.x).toBe(rowBox.x + (width >= 768 ? 8 : 0))
     expect(Math.abs(unreadBox.y + unreadBox.height / 2 - rowBox.y - rowBox.height / 2)).toBeLessThanOrEqual(1)
     expect((await heading.boundingBox())!.x).toBeGreaterThan(unreadBox.x + unreadBox.width)
     // Read rows retain the same gutter so their content stays aligned.
@@ -311,9 +311,10 @@ for (const width of [1280, 390]) {
     const tools = page.getByRole('group', {name: 'Report tools'})
     const originalTools = await tools.elementHandle()
     await expect(tools.getByRole('button')).toHaveCount(3)
-    await expect(rows.getByRole('checkbox')).toHaveCount(0)
+    await expect(rows.getByRole('checkbox')).toHaveCount(width >= 768 ? 5 : 0)
     await expect(page.getByText('Known sort values only')).toHaveCount(0)
     await diagnosticScreenshot(page, {path: `test-results/report-tools-default-${width}x900.png`})
+    await diagnosticScreenshot(page.locator('main section').filter({has: page.getByRole('heading', {name: 'Reports', exact: true, level: 2})}), {path: `test-results/reports-default-section-${width}x900.png`})
 
     await page.getByRole('button', {name: 'Sort reports', exact: true}).click()
     await expect(page.getByRole('menuitemradio')).toHaveCount(5)
@@ -342,21 +343,24 @@ for (const width of [1280, 390]) {
     await page.getByRole('button', {name: 'Remove Espionage filter', exact: true}).click()
     await expect(rows).toHaveCount(5)
 
-    await page.getByRole('button', {name: 'More report actions'}).click()
-    await page.getByRole('menuitem', {name: 'Select reports', exact: true}).click()
+    if (width < 768) {
+      await page.getByRole('button', {name: 'More report actions'}).click()
+      await page.getByRole('menuitem', {name: 'Select reports', exact: true}).click()
+    }
     const selection = page.getByRole('group', {name: 'Report selection'})
     await expect(selection).toContainText('0 selected')
     await expect(selection.getByRole('button', {name: /Archive selected/})).toHaveCount(0)
-    await selection.getByRole('button', {name: 'Select all matching (4)'}).click()
-    await expect(selection).toContainText('4 selected')
+    await selection.getByRole('button', {name: `Select all matching (${width >= 768 ? 5 : 4})`}).click()
+    await expect(selection).toContainText(width >= 768 ? '5 selected' : '4 selected')
     await expect(selection.getByRole('button', {name: 'Archive selected (4)'})).toBeEnabled()
     await diagnosticScreenshot(page, {path: `test-results/report-tools-selection-${width}x900.png`})
     await selection.getByRole('button', {name: 'Cancel selection'}).click()
-    await expect(selection).toHaveCount(0)
+    if (width < 768) await expect(selection).toHaveCount(0)
+    else await expect(selection).toContainText('0 selected')
 
     await page.getByRole('button', {name: 'More report actions'}).click()
-    await page.getByRole('menuitem', {name: 'Archive older reports…'}).click()
-    const cleanup = page.getByRole('dialog', {name: 'Archive older reports', exact: true})
+    await page.getByRole('menuitem', {name: /^Archive( older reports)?…$/}).click()
+    const cleanup = page.getByRole('dialog', {name: /^Archive( older)? reports$/})
     await expect(cleanup.getByRole('button', {name: 'Archive 1 report', exact: true})).toBeEnabled()
     await expect(cleanup).toContainText('Entire Inbox · Starred reports stay.')
     await diagnosticScreenshot(page, {path: `test-results/report-tools-cleanup-${width}x900.png`})
@@ -372,5 +376,105 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({width, height: 900})
     expect(await originalTools!.evaluate(el => el.isConnected)).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+  })
+}
+
+for (const width of [1440, 800]) {
+  test(`desktop report ranges and bulk read preserve navigation and archive protection at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 1000})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    const now = new Date('2026-10-30T12:00:00Z').getTime()
+    await page.clock.setFixedTime(now)
+    let revision = 1
+    const items: components['schemas']['ReportHeader4'][] = Array.from({length: 5}, (_, i) => ({
+      id: id(70 + i), kind: 'Espionage', observed_at: now - (i + 1) * 60000,
+      read: i === 1, hidden: false, starred: i === 2,
+      preview: {kind: 'Espionage', target: {body: id(80 + i), name: ['Nova Roma', 'Churak', 'Luna', 'New Alexandria', 'Kepler'][i], owner: id(9), kind: 'Planet', coordinates: {galaxy: 1, system: 24, position: i + 1}}, resources: {visibility: 'Known', value: {metal: '18372000', crystal: '5832000', deuterium: '1347000'}}},
+    }))
+    await shellFixture(page, {protocol: 4, sampledAt: now, viewerRevision: () => String(revision), extraCapabilities: ['Reports'], hasUnreadReports: () => items.some(r => !r.hidden && !r.read), missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}})
+    const readRequests: string[] = []
+    let rejectRead = false
+    await page.route('**/api/**/reports', async route => {
+      const {context} = route.request().postDataJSON()
+      await route.fulfill({json: {protocol: 4, binding, request_id: context.request_id, viewer_revision: String(revision), sampled_at: now, as_of_ms: now, data: {items, has_more: false, next_cursor: null, as_of_ms: now}}})
+    })
+    await page.route('**/commands', async route => {
+      const envelope = route.request().postDataJSON().gameplay
+      const action = envelope.command.action
+      if (action.type === 'MarkReportRead') {
+        readRequests.push(action.report)
+        if (!rejectRead) items.find(r => r.id === action.report)!.read = true
+      } else if (action.type === 'SetReportsHidden') {
+        for (const report of action.reports) items.find(r => r.id === report)!.hidden = action.hidden
+      } else throw Error(`Unexpected command: ${action.type}`)
+      revision++
+      await route.fulfill({json: {protocol: 4, binding, command_id: envelope.command_id, admitted_at: now, executed_at: now,
+        ...(rejectRead ? {status: 'Rejected', code: 'NotFound'} : {status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision)})}})
+    })
+    const inbox = `/u/andromeda/b/${body.id}/reports`
+    await page.goto(inbox)
+    const rows = page.locator('main article')
+    const checkboxes = rows.getByRole('checkbox')
+    const selection = page.getByRole('group', {name: 'Report selection'})
+    await expect(checkboxes).toHaveCount(5)
+    await expect(checkboxes.nth(2)).toBeEnabled()
+    await expect(selection.getByRole('button', {name: 'Mark as read'})).toHaveCount(0)
+    await diagnosticScreenshot(page, {path: `test-results/reports-desktop-inbox-${width}x1000.png`})
+    await diagnosticScreenshot(page.locator('main section').filter({has: page.getByRole('heading', {name: 'Reports', exact: true, level: 2})}), {path: `test-results/reports-desktop-inbox-section-${width}x1000.png`})
+
+    await checkboxes.nth(1).click()
+    await checkboxes.nth(4).click({modifiers: ['Shift']})
+    for (let i = 0; i < 5; i++) await expect(checkboxes.nth(i)).toBeChecked({checked: i > 0})
+    await expect(selection).toContainText('4 selected')
+    await expect(page).toHaveURL(inbox)
+    await rows.nth(2).getByRole('link', {name: /^Espionage/}).click({modifiers: ['Shift']})
+    for (let i = 0; i < 5; i++) await expect(checkboxes.nth(i)).toBeChecked({checked: i === 1})
+    // Native keyboard activation keeps the checkbox independent from the report link.
+    await checkboxes.nth(0).press('Space')
+    await expect(checkboxes.nth(0)).toBeChecked()
+    await selection.getByRole('button', {name: 'Select all matching (5)'}).click()
+    await expect(selection).toContainText('5 selected')
+    await expect(selection.getByRole('button', {name: 'Archive selected (4)'})).toBeEnabled()
+    await expect(selection.getByRole('button', {name: 'Mark as read', exact: true})).toBeEnabled()
+    const folders = page.getByRole('group', {name: 'Report folder'})
+    expect(await selection.evaluate(el => el.closest('header') !== null)).toBe(true)
+    if (width === 1440) {
+      const folderBox = (await folders.boundingBox())!
+      const selectionBox = (await selection.boundingBox())!
+      expect(selectionBox.x).toBeGreaterThan(folderBox.x + folderBox.width)
+      expect(Math.abs(selectionBox.y + selectionBox.height / 2 - folderBox.y - folderBox.height / 2)).toBeLessThanOrEqual(1)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    await diagnosticScreenshot(page, {path: `test-results/reports-desktop-selected-${width}x1000.png`})
+    await diagnosticScreenshot(page.locator('main section').filter({has: page.getByRole('heading', {name: 'Reports', exact: true, level: 2})}), {path: `test-results/reports-desktop-selected-section-${width}x1000.png`})
+
+    // A failed read preserves selection and reports the error; retry uses current read state.
+    rejectRead = true
+    await selection.getByRole('button', {name: 'Mark as read', exact: true}).click()
+    await expect(page.getByText('Could not mark all selected reports as read. Retry the remaining unread reports.')).toBeVisible()
+    expect(readRequests).toEqual([id(70)])
+    await expect(selection).toContainText('5 selected')
+    rejectRead = false
+    await selection.getByRole('button', {name: 'Mark as read', exact: true}).click()
+    await expect(selection).toContainText('0 selected')
+    await expect(rows.getByLabel('Unread', {exact: true})).toHaveCount(0)
+    expect(readRequests).toEqual([id(70), id(70), id(72), id(73), id(74)])
+    await expect(page).toHaveURL(inbox)
+    await selection.getByRole('button', {name: 'Select all matching (5)'}).click()
+    await expect(selection.getByRole('button', {name: 'Mark as read', exact: true})).toBeDisabled()
+    await selection.getByRole('button', {name: 'Archive selected (4)'}).click()
+    await expect(rows).toHaveCount(1)
+    expect(items[2].hidden).toBe(false)
+    await folders.getByRole('button', {name: 'Archived', exact: true}).click()
+    await expect(rows).toHaveCount(4)
+    await selection.getByRole('button', {name: 'Select all matching (4)'}).click()
+    await diagnosticScreenshot(page, {path: `test-results/reports-desktop-archived-${width}x1000.png`})
+    await diagnosticScreenshot(page.locator('main section').filter({has: page.getByRole('heading', {name: 'Reports', exact: true, level: 2})}), {path: `test-results/reports-desktop-archived-section-${width}x1000.png`})
+    await selection.getByRole('button', {name: 'Move to inbox (4)'}).click()
+    await expect(rows).toHaveCount(0)
+    await expect(page.getByText('No reports to show.', {exact: true})).toBeVisible()
+    await expect(selection.getByRole('button', {name: 'Select all matching (0)'})).toBeDisabled()
+    await diagnosticScreenshot(page, {path: `test-results/reports-desktop-empty-${width}x1000.png`})
+    await diagnosticScreenshot(page.locator('main section').filter({has: page.getByRole('heading', {name: 'Reports', exact: true, level: 2})}), {path: `test-results/reports-desktop-empty-section-${width}x1000.png`})
   })
 }

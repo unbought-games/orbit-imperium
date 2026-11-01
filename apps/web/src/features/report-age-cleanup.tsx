@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Archive } from 'lucide-react'
 import type { components } from '../contracts'
 import { Button } from '../ui/button'
@@ -14,7 +15,9 @@ export function ReportAgeCleanup({
   error,
   age,
   change,
+  children,
 }: {
+  children?: ReactNode
   reports: components['schemas']['ReportHeader4'][]
   cleanup: ReturnType<typeof useReportCleanup>
   now: number
@@ -72,6 +75,7 @@ export function ReportAgeCleanup({
         <Archive size={16} aria-hidden="true" />
         Archive {old.length} {old.length === 1 ? 'report' : 'reports'}
       </Button>
+      {children}
     </div>
   )
 }

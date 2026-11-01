@@ -27,6 +27,7 @@ import {
   type ReportListOptions,
 } from './report-list-options'
 import { ReportAgeCleanup } from './report-age-cleanup'
+import { ReportArchiveAll } from './report-archive-all'
 import type { useReportCleanup } from './use-report-cleanup'
 import type { components } from '../contracts'
 import styles from './report-controls.module.css'
@@ -38,6 +39,7 @@ export function ReportTriageControls({
   options,
   change,
   selecting,
+  allowSelectionMode,
   setSelecting,
   archived,
   disabled,
@@ -50,6 +52,7 @@ export function ReportTriageControls({
   setPanel: Dispatch<SetStateAction<ReportPanel>>
   options: ReportListOptions
   change: (options: ReportListOptions) => void
+  allowSelectionMode: boolean
   selecting: boolean
   setSelecting: (selected: boolean) => void
   archived: boolean
@@ -181,7 +184,7 @@ export function ReportTriageControls({
             render={<Button variant="ghost" size="icon" />}
             aria-label="More report actions"
             title="More report actions"
-            disabled={disabled}
+            disabled={disabled || (!allowSelectionMode && archived)}
           >
             <Ellipsis size={16} aria-hidden="true" />
           </Menu.Trigger>
@@ -196,13 +199,15 @@ export function ReportTriageControls({
                 aria-label="Report actions"
                 finalFocus={panel === 'cleanup' ? false : undefined}
               >
-                <Menu.Item
-                  className={styles.menuItem}
-                  onClick={() => setSelecting(!selecting)}
-                >
-                  <ListChecks size={16} aria-hidden="true" />
-                  {selecting ? 'Cancel selection' : 'Select reports'}
-                </Menu.Item>
+                {allowSelectionMode && (
+                  <Menu.Item
+                    className={styles.menuItem}
+                    onClick={() => setSelecting(!selecting)}
+                  >
+                    <ListChecks size={16} aria-hidden="true" />
+                    {selecting ? 'Cancel selection' : 'Select reports'}
+                  </Menu.Item>
+                )}
                 {!archived && (
                   <Menu.Item
                     className={styles.menuItem}
@@ -211,7 +216,7 @@ export function ReportTriageControls({
                     }}
                   >
                     <Archive size={16} aria-hidden="true" />
-                    Archive older reports…
+                    {allowSelectionMode ? 'Archive older reports…' : 'Archive…'}
                   </Menu.Item>
                 )}
               </Menu.Popup>
@@ -228,7 +233,7 @@ export function ReportTriageControls({
         {filterForm}
       </ReportControlPanel>
       <ReportControlPanel
-        title="Archive older reports"
+        title={allowSelectionMode ? 'Archive older reports' : 'Archive reports'}
         open={panel === 'cleanup'}
         onClose={() => close('cleanup')}
         anchor={moreTrigger}
@@ -241,7 +246,16 @@ export function ReportTriageControls({
           disabled={disabled || !complete}
           age={age}
           change={setAge}
-        />
+        >
+          {!allowSelectionMode && (
+            <ReportArchiveAll
+              reports={reports}
+              cleanup={cleanup}
+              complete={complete}
+              disabled={disabled}
+            />
+          )}
+        </ReportAgeCleanup>
       </ReportControlPanel>
     </>
   )

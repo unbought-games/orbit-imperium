@@ -1,6 +1,8 @@
 import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
+import { useMobileLayout } from '../ui/use-mobile-layout'
+import { useReportSelection } from './use-report-selection'
 import { ReportStarButton } from './report-star-button'
 import {
   ReportTriageControls,
@@ -52,13 +54,16 @@ export function Reports({
 }) {
   const [folder, setFolder] = useState<ReportFolder>('inbox')
   const archived = folder === 'archived'
+  const mobile = useMobileLayout()
   const [selecting, setSelecting] = useState(false)
   const [panel, setPanel] = useState<ReportPanel>(null)
   const [options, setOptions] = useState(defaultReportOptions)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const selection = useReportSelection(model)
+  const { selected, select: setSelected } = selection
   const cleanup = useReportCleanup(model, () => setSelected(new Set()))
   const filtered = options.status !== 'all' || options.kind !== 'all'
   const allReports =
+    (!mobile && !item) ||
     selecting ||
     panel !== null ||
     filtered ||
@@ -88,6 +93,22 @@ export function Reports({
     page?.items.filter((r) => r.hidden === archived).length ?? 0
   const complete =
     !!page && !page.has_more && !loading && !loadingMore && error === null
+  const busy = cleanup.submitting || changingVisibility || selection.markingRead
+  const selectionBar = (
+    <ReportSelectionBar
+      visible={visible}
+      selected={selected}
+      select={setSelected}
+      archived={archived}
+      disabled={!complete || busy}
+      cleanup={cleanup}
+      onMarkRead={!mobile ? (ids) => void selection.markRead(ids) : undefined}
+      onCancel={() => {
+        setSelecting(false)
+        setSelected(new Set())
+      }}
+    />
+  )
   const loadingList =
     (loading || loadingMore) &&
     (!page || page.has_more) &&
@@ -131,13 +152,14 @@ export function Reports({
                 { value: 'archived', label: 'Archived' },
               ]}
               value={folder}
-              disabled={cleanup.submitting || changingVisibility}
+              disabled={busy}
               onChange={(next) => {
                 setFolder(next)
                 setPanel(null)
                 setSelected(new Set())
               }}
             />
+            {!mobile && selectionBar}
           </div>
           <ReportTriageControls
             panel={panel}
@@ -148,12 +170,13 @@ export function Reports({
               setSelected(new Set())
             }}
             selecting={selecting}
+            allowSelectionMode={mobile}
             setSelecting={(next) => {
               setSelecting(next)
               setSelected(new Set())
             }}
             archived={archived}
-            disabled={cleanup.submitting || changingVisibility}
+            disabled={busy}
             complete={complete}
             reports={page?.items ?? []}
             cleanup={cleanup}
@@ -351,19 +374,14 @@ export function Reports({
               )}
             </div>
           )}
-          {selecting && (
-            <ReportSelectionBar
-              visible={visible}
-              selected={selected}
-              select={setSelected}
-              archived={archived}
-              disabled={!complete || changingVisibility}
-              cleanup={cleanup}
-              onCancel={() => {
-                setSelecting(false)
-                setSelected(new Set())
-              }}
-            />
+          {mobile && selecting && selectionBar}
+          {selection.error && (
+            <Text tone="danger" role="alert">
+              {selection.error}
+            </Text>
+          )}
+          {selection.markingRead && (
+            <Text role="status">Marking reports as read…</Text>
           )}
           {cleanup.error && panel !== 'cleanup' && (
             <ErrorBannerMessage>
@@ -428,19 +446,23 @@ export function Reports({
               now={now}
               sort={options.sort}
               selected={selected.has(r.id)}
+              desktopSelection={!mobile}
               onSelect={
-                selecting
-                  ? (checked) =>
-                      setSelected((ids) => {
-                        const next = new Set(ids)
-                        if (checked) next.add(r.id)
-                        else next.delete(r.id)
-                        return next
-                      })
+                !mobile || selecting
+                  ? (checked, shift) =>
+                      selection.toggle(
+                        visible.map((r) => r.id),
+                        r.id,
+                        checked,
+                        !mobile && shift,
+                      )
                   : undefined
               }
               disabled={
-                loadingMore || (selecting && !complete) || cleanup.submitting
+                loadingMore ||
+                ((!mobile || selecting) && !complete) ||
+                cleanup.submitting ||
+                selection.markingRead
               }
             />
           ))}

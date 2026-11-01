@@ -54,8 +54,10 @@
   color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
-.selectionBar > :last-child {
-  margin-inline-start: auto;
+@media (max-width: 767px) {
+  .selectionBar > :last-child {
+    margin-inline-start: auto;
+  }
 }
 .filters {
   display: flex;

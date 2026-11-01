@@ -286,3 +286,35 @@
   align-items: center;
   gap: 16px;
 }
+
+.reportRow[data-selection] {
+  grid-template-columns: 8px 24px minmax(0, 1fr) auto auto;
+  padding-inline: 8px;
+}
+.reportRow[data-selected] {
+  background: var(--surface-selected);
+}
+.reportRow[data-selection] > .rowTime {
+  grid-column: 4;
+}
+.reportRow[data-selection] > .selection {
+  justify-content: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+.unreadSlot {
+  display: flex;
+  align-items: center;
+}
+.unreadSlot > .unread {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ice);
+}
+@media (min-width: 768px) {
+  .headerHeading {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+}
