@@ -2249,6 +2249,22 @@ fn detected_escorted_espionage_victory_observes_before_battle_and_never_plunders
             let full = &combat.payloads[&s.bodies[&t].owner];
             assert_eq!(full["outcome"], "AttackerVictory");
             assert_eq!(full["loot"], wire_resources(Resources::default()));
+            assert_eq!(full["mission"], "Espionage");
+            for (side, body) in [("Attacker", b), ("Defender", t)] {
+                let participant = full["participants"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|p| p["side"] == side)
+                    .unwrap();
+                assert_eq!(
+                    participant["location"],
+                    serde_json::json!({
+                        "name": s.bodies[&body].name, "kind": s.bodies[&body].kind,
+                        "coordinates": s.bodies[&body].coordinates
+                    })
+                );
+            }
             assert_eq!(w.fleets.values().next().unwrap().cargo.metal, 10 * SCALE);
             detected = true;
             break;
@@ -2980,11 +2996,15 @@ fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
     for name in [Some("Nova Roma"), None] {
         let (mut s, r, p, b, t) = raid_fixture();
         s.bodies.get_mut(&t).unwrap().name = Some("Name at launch".into());
+        let origin_coordinates = s.bodies[&b].coordinates;
+        s.bodies.get_mut(&b).unwrap().name = Some("Origin at launch".into());
         let mut request = intent(&s, p, b, t);
         request.mission = Mission::Attack;
         let arrival = launch_raid(&mut s, &r, p, b, request, 1000, 5200);
         clear_units(&mut s, t);
         s.bodies.get_mut(&t).unwrap().name = name.map(str::to_owned);
+        let origin_name = name.map(|_| "Origin at contact");
+        s.bodies.get_mut(&b).unwrap().name = origin_name.map(str::to_owned);
         let result = run(
             &mut s,
             &r,
@@ -2996,6 +3016,7 @@ fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
         );
         apply(&mut s, result);
         s.bodies.get_mut(&t).unwrap().name = Some("Renamed later".into());
+        s.bodies.get_mut(&b).unwrap().name = Some("Origin renamed later".into());
         let report = s
             .world
             .as_ref()
@@ -3010,6 +3031,27 @@ fn combat_preserves_identity_at_contact_for_both_recipients_after_rename() {
             assert_eq!(payload["kind"], "Combat");
             assert_eq!(payload["target_name"], serde_json::json!(name));
             assert_eq!(payload["target_kind"], "Planet");
+            let participants = payload["participants"].as_array().unwrap();
+            let attacker = participants
+                .iter()
+                .find(|p| p["side"] == "Attacker")
+                .unwrap();
+            let defender = participants
+                .iter()
+                .find(|p| p["side"] == "Defender")
+                .unwrap();
+            assert_eq!(
+                attacker["location"],
+                serde_json::json!({
+                    "name": origin_name, "kind": "Planet", "coordinates": origin_coordinates
+                })
+            );
+            assert_eq!(
+                defender["location"],
+                serde_json::json!({
+                    "name": name, "kind": "Planet", "coordinates": s.bodies[&t].coordinates
+                })
+            );
             assert_eq!(
                 payload["target"],
                 serde_json::json!(s.bodies[&t].coordinates)

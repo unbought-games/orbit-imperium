@@ -22,7 +22,7 @@ const resources = (m: number, c: number, d = 0) => ({
   crystal: String(BigInt(c) * 1000000n),
   deuterium: String(BigInt(d) * 1000000n),
 })
-for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
+for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espionage']) {
   test(`capture current ${size} combat report`, async ({ page }) => {
     mkdirSync(output, { recursive: true })
     await page.setViewportSize({ width: 1440, height: 1000 })
@@ -38,6 +38,8 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
       },
     })
     const huge = size === 'huge'
+    const espionage = size === 'espionage'
+    const defending = size === 'defender' || espionage
     const attackers = units(
       huge
         ? {
@@ -51,7 +53,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
             Dreadnought: 100,
             LargeCargo: 5000,
           }
-        : { LightFighter: 12, SmallCargo: 2 },
+        : espionage ? { EspionageProbe: 6 } : { LightFighter: 12, SmallCargo: 2 },
     )
     const defenders = units(
       huge
@@ -74,19 +76,19 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
     )
     const counts = [
       {
-        owner: size === 'defender' ? id(9) : binding.player,
+        owner: defending ? id(9) : binding.player,
         origin: { Fleet: id(40) },
         side: 'Attacker',
         units: attackers,
       },
       {
-        owner: size === 'defender' ? binding.player : id(9),
+        owner: defending ? binding.player : id(9),
         origin: { Stationed: id(41) },
         side: 'Defender',
         units: defenders,
       },
     ]
-    const n = huge ? 6 : 2
+    const n = huge ? 6 : espionage ? 1 : 2
     const atRound = (r: number) =>
       counts.map((side, index) => ({
         ...side,
@@ -96,7 +98,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
             count: String(
               Math.floor(
                 Number(unit.count) *
-                  (index === 0
+                  (espionage ? (index === 0 ? 1 - r / n : 1) : index === 0
                     ? 1 - ((huge ? 0.35 : 0.17) * r) / n
                     : 1 - r / n),
               ),
@@ -120,7 +122,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
         }))
         .filter((unit) => unit.count !== '0'),
     }))
-    const recovered = [
+    const recovered = espionage ? [] : [
       {
         ...counts[1],
         units: defenders
@@ -157,11 +159,17 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
         target_name: huge ? 'VeryLongUnbrokenPlanetNameForMobileWrapping' : 'Nova Roma',
         target_kind: size === 'defender' ? 'Moon' : 'Planet',
       }),
-      outcome: 'AttackerVictory',
-      mission: 'Attack',
-      return_at: at + 5400000,
+      outcome: espionage ? 'DefenderVictory' : 'AttackerVictory',
+      mission: espionage ? 'Espionage' : 'Attack',
+      ...(espionage ? {} : { return_at: at + 5400000 }),
       participants: counts.map((side) => ({
         ...side,
+        ...(size === 'legacy' ? {} : { location: side.side === 'Attacker' ? {
+          name: huge ? 'VeryLongUnbrokenLaunchColonyNameForMobileWrapping' : 'Luna Outpost',
+          kind: 'Moon', coordinates: { galaxy: 2, system: 24, position: 5 },
+        } : { name: huge ? 'VeryLongUnbrokenPlanetNameForMobileWrapping' : 'Nova Roma',
+          kind: size === 'defender' ? 'Moon' : 'Planet', coordinates: { galaxy: 1, system: 372, position: 10 },
+        } }),
         technology: huge ? [18, 17, 19] : [3, 2, 3],
       })),
       survivors,
@@ -169,7 +177,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
       recovered,
       permanent_losses: permanent,
       debris: size === 'deuterium' ? resources(0, 0, 60000) : huge ? resources(1248000000, 672000000) : resources(5400, 1800),
-      loot: huge
+      loot: espionage ? resources(0, 0) : huge
         ? resources(42000000, 21000000, 8500000)
         : resources(4200, 2100, 850),
       own_cargo_loss: resources(0, 0),
@@ -256,6 +264,23 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
     const targetName = size === 'legacy' ? '' : huge ? 'VeryLongUnbrokenPlanetNameForMobileWrapping · ' : size === 'defender' ? 'Nova Roma (Moon) · ' : 'Nova Roma · '
     await expect(identity).toContainText(`${targetName}[1:372:10]`)
     await expect(identity.getByRole('link', { name: 'View target [1:372:10] in galaxy' })).toHaveAttribute('href', /galaxy\?galaxy=1&system=372&position=10/)
+    const forces = report.getByRole('region', { name: 'Forces and losses' })
+    const attacker = forces.getByRole('article').nth(0)
+    const defender = forces.getByRole('article').nth(1)
+    await expect(defender.getByRole('link', { name: 'View defender location [1:372:10] in galaxy' })).toBeVisible()
+    await expect(defender).toContainText(`${targetName}[1:372:10]`)
+    if (size === 'legacy') {
+      await expect(attacker).toContainText('Origin · Not recorded')
+      await expect(attacker.locator('[data-coordinate]')).toHaveCount(0)
+    } else {
+      await expect(attacker).toContainText('Origin · ')
+      await expect(attacker).toContainText('(Moon) · [2:24:5]')
+      await expect(attacker.getByRole('link', { name: 'View attacker origin [2:24:5] in galaxy' })).toHaveAttribute('href', /galaxy=2&system=24&position=5&target=moon/)
+    }
+    if (espionage) {
+      await expect(report).toContainText('Combat followed detection during espionage. No loot is taken.')
+      await expect(attacker).toContainText('6 permanently lost')
+    }
     await expect(page.getByText('Dispatches from the frontier.')).toHaveCount(0)
     await expect(
       report.getByText('Your cargo lost', { exact: true }),
@@ -282,6 +307,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
       path: `${output}/${size}-full.png`,
       fullPage: size !== 'deuterium',
     })
+    await diagnosticScreenshot(forces, { path: `${output}/${size}-forces-1440.png` })
     if (huge)
       await expect(
         report.getByRole('cell', { name: '500,000', exact: true }),
@@ -300,7 +326,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
       ).toHaveCount(n)
     } else {
       const attack = report.getByRole('article', {
-        name: `Round 1 Attacker ${size === 'defender' ? 'Vega' : 'You'}`,
+        name: `Round 1 Attacker ${defending ? 'Vega' : 'You'}`,
         exact: true,
       })
       await expect(
@@ -311,7 +337,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
       ).toHaveCount(0)
     }
     for (const width of [320, 390, 768]) {
-      await page.setViewportSize({ width, height: 900 })
+      await page.setViewportSize({ width, height: 1000 })
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -319,11 +345,30 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium']) {
       ).toBe(true)
       await expect(report.getByRole('heading', { level: 2 })).toBeVisible()
       await expect(identity).toContainText(`${targetName}[1:372:10]`)
+      if (width === 390 || width === 320) {
+        await forces.evaluate(el => window.scrollTo(0, window.scrollY + el.getBoundingClientRect().top - 80))
+        await diagnosticScreenshot(forces, { path: `${output}/${size}-forces-${width}.png` })
+      }
       await page.evaluate(() => window.scrollTo(0, 0))
       await diagnosticScreenshot(page, {
         path: `${output}/${size}-${width}.png`,
         fullPage: size !== 'deuterium',
       })
+    }
+    if (size === 'small') {
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 1000 })
+        const link = attacker.getByRole('link', { name: 'View attacker origin [2:24:5] in galaxy' })
+        await link.focus()
+        await expect(link).toBeFocused()
+        await attacker.getByRole('button', { name: 'Location actions for [2:24:5]' }).click()
+        await expect(page.getByRole('menuitem', { name: 'Copy coordinates', exact: true })).toBeVisible()
+        await diagnosticScreenshot(page, { path: `${output}/origin-actions-${width}.png` })
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('menu')).toHaveCount(0)
+      }
+      await attacker.getByRole('link', { name: 'View attacker origin [2:24:5] in galaxy' }).click()
+      await expect(page).toHaveURL(/galaxy\?galaxy=2&system=24&position=5&target=moon/)
     }
     if (size === 'deuterium') {
       await page.getByRole('button', { name: 'Prepare harvest', exact: true }).click()
@@ -399,3 +444,50 @@ test.describe('explosion counter explanation', () => {
     }
   })
 })
+
+for (const visible of [false, true]) {
+  test(`shared combat participant locations ${visible ? 'visible' : 'redacted'}`, async ({ page }) => {
+    const token = id(76)
+    const locations = [
+      { name: 'Luna Outpost', kind: 'Moon', coordinates: { galaxy: 2, system: 24, position: 5 } },
+      { name: 'Outer Colony', kind: 'Planet', coordinates: { galaxy: 3, system: 100, position: 8 } },
+      { name: 'Nova Roma', kind: 'Planet', coordinates: { galaxy: 1, system: 372, position: 10 } },
+    ]
+    const participants = locations.map((location, index) => ({
+      owner: index === 2 ? 'defender' : 'attacker',
+      side: index === 2 ? 'Defender' : 'Attacker',
+      origin: index === 2 ? { Stationed: 'target' } : { Fleet: `fleet-${index}` },
+      location: visible ? location : { kind: location.kind, coordinates_hidden: true },
+      technology: [1, 2, 3], units: units({ LightFighter: 5 }),
+    }))
+    await page.route(`**/api/v4/shared-reports/${token}`, route => route.fulfill({ json: {
+      report: id(77), observed_at: 1792692000000,
+      options: { include_identity: visible, include_coordinates: visible },
+      player_names: { attacker: visible ? 'Vega' : 'Player 1', defender: visible ? 'Sol' : 'Player 2' },
+      payload: { kind: 'Combat', outcome: 'Draw',
+        ...(visible ? { target: locations[2].coordinates, target_name: locations[2].name, target_kind: 'Planet' } : {}),
+        participants, survivors: participants, recovered: [], rounds: [],
+      },
+    } }))
+    await page.goto(`/reports/shared/${token}`)
+    const forces = page.getByRole('region', { name: 'Forces and losses' })
+    await expect(forces.getByRole('article')).toHaveCount(3)
+    for (const [index, location] of locations.entries()) {
+      const force = forces.getByRole('article').nth(index)
+      if (visible) {
+        await expect(force).toContainText(location.name)
+        await expect(force.locator('[data-coordinate]')).toHaveCount(1)
+      } else {
+        await expect(force).toContainText('Coordinates hidden')
+        await expect(force.locator('[data-coordinate]')).toHaveCount(0)
+        await expect(page.getByText(location.name, { exact: false })).toHaveCount(0)
+      }
+    }
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 })
+      await page.evaluate(() => document.fonts.ready)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await diagnosticScreenshot(page, { path: `${output}/shared-${visible ? 'visible' : 'redacted'}-${width}.png`, fullPage: true })
+    }
+  })
+}

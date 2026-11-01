@@ -165,6 +165,23 @@ function ForceCard({ force }: { force: CombatForce }) {
           <PlayerName player={force.owner} fallback={force.name} />
         </h3>
       </header>
+      <p className={styles.forceLocation}>
+        <span className={styles.note}>
+          {force.side === 'Attacker' ? 'Origin' : 'Location'} ·{' '}
+        </span>
+        {force.location ? (
+          <BodyIdentity
+            {...force.location}
+            label={
+              force.side === 'Attacker'
+                ? 'attacker origin'
+                : 'defender location'
+            }
+          />
+        ) : (
+          <span className={styles.note}>Not recorded</span>
+        )}
+      </p>
       <div className={styles.strength}>
         <strong>
           <Amount value={force.start} />

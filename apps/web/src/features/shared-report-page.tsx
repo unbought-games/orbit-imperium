@@ -55,8 +55,8 @@ export function SharedReportPage({ token }: { token: string }) {
               ? 'Names recorded at publication.'
               : 'Player and planet names hidden.'}{' '}
             {report.options.include_coordinates
-              ? 'Target coordinates included.'
-              : 'Target coordinates hidden.'}{' '}
+              ? 'Coordinates included.'
+              : 'Coordinates hidden.'}{' '}
             “Your” refers to the publishing player.
           </Text>
           <PlayerKinds.Provider value={report.player_kinds ?? {}}>

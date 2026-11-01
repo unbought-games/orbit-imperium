@@ -77,6 +77,16 @@ assert.equal(combatPayload({ ...battle, target_kind: 'Unknown' }), false);
 assert.equal(reportPreview({ kind: 'ContactLost', target: battle.target, target_name: 'Hidden' }), false);
 assert.ok(espionage({ ...observed, target: { ...observed.target, kind: 'Moon', name: 'Luna' } }));
 console.log('Combat body identity is optional for legacy payloads and absent from restricted previews.');
+const participant = { owner: id, origin: { Fleet: id }, side: 'Attacker', units: [], technology: [0, 0, 0] };
+const location = { coordinates: battle.target, name: 'Launch colony', kind: 'Moon' };
+for (const evidence of [{}, { location }, { location: { coordinates: battle.target, name: null, kind: null } }]) {
+ assert.ok(combatPayload({ ...battle, participants: [{ ...participant, ...evidence }] }), 'participant location is optional, historical evidence');
+}
+for (const invalid of [{ ...location, name: 42 }, { ...location, kind: 'Unknown' }, { ...location, coordinates: {} }, { ...location, coordinates_hidden: true }, { ...location, private: 'secret' }]) {
+ assert.equal(combatPayload({ ...battle, participants: [{ ...participant, location: invalid }] }), false, 'private reports require a valid allowlisted location');
+}
+console.log('Combat participant locations accept legacy and unnamed observations and reject malformed evidence.');
+
 
 for (const [path, operations] of Object.entries(schema.paths)) {
  if (!path.includes('/universes/')) continue;

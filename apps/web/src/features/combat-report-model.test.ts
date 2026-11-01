@@ -188,3 +188,89 @@ it.each(['0', '1', '60000000000', 'invalid'])(
     ).toEqual(['metal', 'crystal', 'deuterium'])
   },
 )
+
+it('keeps historical locations with each force, including multiple fleets of one owner', () => {
+  const first = {
+    name: 'Luna',
+    kind: 'Moon',
+    coordinates: { galaxy: 2, system: 3, position: 4 },
+  }
+  const second = {
+    name: 'Mars',
+    kind: 'Planet',
+    coordinates: { galaxy: 5, system: 6, position: 7 },
+  }
+  for (const mission of ['Attack', 'Espionage']) {
+    const model = combatReportModel({
+      ...payload,
+      mission,
+      participants: [
+        { ...attacker, location: first },
+        { ...attacker, origin: { Fleet: 'second' }, location: second },
+        { ...defender, location: second },
+      ],
+    })
+    expect(model.forces.map((f) => f.location)).toEqual(
+      [first, second, second].map((l) => ({
+        name: l.name,
+        kind: l.kind,
+        at: l.coordinates,
+        coordinatesHidden: false,
+      })),
+    )
+    expect(new Set(model.forces.map((f) => f.key)).size).toBe(3)
+  }
+})
+it('uses only recorded target evidence for legacy defenders and never invents an attacker origin', () => {
+  const model = combatReportModel({
+    ...payload,
+    target: { galaxy: 1, system: 2, position: 3 },
+    target_name: 'Old target',
+    target_kind: 'Moon',
+  })
+  expect(model.forces[0].location).toBeNull()
+  expect(model.forces[1].location).toEqual({
+    name: 'Old target',
+    kind: 'Moon',
+    at: { galaxy: 1, system: 2, position: 3 },
+    coordinatesHidden: false,
+  })
+  expect(combatReportModel(payload).forces[1].location).toBeNull()
+})
+it('preserves explicit sharing redaction, unnamed coordinates, and missing location evidence', () => {
+  const model = combatReportModel(
+    {
+      ...payload,
+      participants: [
+        { ...attacker, location: { kind: 'Moon', coordinates_hidden: true } },
+        {
+          ...defender,
+          location: { name: 'Visible name', coordinates_hidden: true },
+        },
+      ],
+    },
+    undefined,
+    undefined,
+    true,
+  )
+  expect(
+    model.forces.every(
+      (f) => f.location?.coordinatesHidden && f.location.at === null,
+    ),
+  ).toBe(true)
+  expect(model.forces[0].location?.name).toBeUndefined()
+  const legacy = combatReportModel(payload, undefined, undefined, true)
+  expect(legacy.forces[0].location).toBeNull()
+  expect(legacy.forces[1].location?.coordinatesHidden).toBe(true)
+  expect(
+    combatReportModel({
+      ...payload,
+      participants: [
+        {
+          ...attacker,
+          location: { coordinates: { galaxy: 1, system: 2, position: 3 } },
+        },
+      ],
+    }).forces[0].location?.at,
+  ).toEqual({ galaxy: 1, system: 2, position: 3 })
+})

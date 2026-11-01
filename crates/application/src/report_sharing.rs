@@ -90,6 +90,22 @@ fn resources(v: &Value) -> Value {
 fn coordinates(v: &Value) -> Value {
     fields(v, &["galaxy", "system", "position"])
 }
+fn shared_location(location: &Value, options: &ReportShareOptions) -> Value {
+    let mut visible = fields(location, &["kind"]);
+    if options.include_identity
+        && let Some(name) = fields(location, &["name"]).get("name")
+    {
+        visible["name"] = name.clone();
+    }
+    if location.get("coordinates").is_some() {
+        if options.include_coordinates {
+            visible["coordinates"] = coordinates(&location["coordinates"]);
+        } else {
+            visible["coordinates_hidden"] = json!(true);
+        }
+    }
+    visible
+}
 fn unit(v: &Value) -> Value {
     let mut out = fields(v, &["count", "ship_type"]);
     if v.get("item").is_some() {
@@ -232,6 +248,19 @@ pub fn project_shared_report_with_identity(
             ] {
                 if source.get(key).is_some() {
                     payload[key] = array(&source[key], participant);
+                }
+            }
+            // Locations are historical evidence and use the same independent
+            // identity/coordinate controls as the report target. Keep the
+            // recursive allowlist; never copy a location object wholesale.
+            if let (Some(original), Some(projected)) = (
+                source["participants"].as_array(),
+                payload["participants"].as_array_mut(),
+            ) {
+                for (source, participant) in original.iter().zip(projected) {
+                    if let Some(location) = source.get("location").filter(|v| v.is_object()) {
+                        participant["location"] = shared_location(location, &options);
+                    }
                 }
             }
             payload["rounds"] = array(&source["rounds"], round);
@@ -549,6 +578,54 @@ mod tests {
             "9007199254740991999"
         );
         assert_eq!(report.payload["loot"]["metal"], "9007199254740991999");
+    }
+    #[test]
+    fn combat_locations_obey_independent_sharing_controls_and_allowlists() {
+        let source = json!({"kind":"Combat", "participants":[
+            {"owner":"a", "side":"Attacker", "origin":{"Fleet":"f"},
+                "location":{"name":"Launch colony", "kind":"Moon",
+                    "coordinates":{"galaxy":2,"system":3,"position":4,"private":"SECRET"},
+                    "private":"SECRET"}},
+            {"owner":"b", "side":"Defender", "origin":{"Stationed":"p"},
+                "location":{"name":"Target colony", "kind":"Planet",
+                    "coordinates":{"galaxy":5,"system":6,"position":7}}},
+            {"owner":"a", "side":"Attacker", "origin":{"Fleet":"legacy"}}
+        ]});
+        for include_identity in [false, true] {
+            for include_coordinates in [false, true] {
+                let report = project_shared_report(
+                    ReportId::default(),
+                    1000,
+                    &source,
+                    &Default::default(),
+                    ReportShareOptions {
+                        include_identity,
+                        include_coordinates,
+                    },
+                )
+                .unwrap();
+                assert!(!serde_json::to_string(&report).unwrap().contains("SECRET"));
+                for (index, name) in [(0, "Launch colony"), (1, "Target colony")] {
+                    let location = &report.payload["participants"][index]["location"];
+                    assert_eq!(location.get("name").is_some(), include_identity);
+                    if include_identity {
+                        assert_eq!(location["name"], name);
+                    }
+                    assert_eq!(location.get("coordinates").is_some(), include_coordinates);
+                    assert_eq!(
+                        location.get("coordinates_hidden").is_some(),
+                        !include_coordinates
+                    );
+                    if include_coordinates {
+                        assert_eq!(
+                            location["coordinates"]["galaxy"],
+                            source["participants"][index]["location"]["coordinates"]["galaxy"]
+                        );
+                    }
+                }
+                assert!(report.payload["participants"][2].get("location").is_none());
+            }
+        }
     }
     #[test]
     fn contact_lost_never_gains_defender_facts_even_when_publishing_everything() {

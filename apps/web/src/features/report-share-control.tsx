@@ -182,7 +182,7 @@ function ShareSettings({
               disabled={busy}
               onChange={(e) => setCoordinates(e.target.checked)}
             />{' '}
-            Include target coordinates
+            Include coordinates (target and origins)
           </label>
           <Button
             disabled={busy}

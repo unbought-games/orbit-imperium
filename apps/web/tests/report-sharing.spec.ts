@@ -204,7 +204,7 @@ for (const width of [390, 1440])
       page.getByRole('checkbox', { name: 'Include player and planet names' }),
     ).not.toBeChecked()
     await expect(
-      page.getByRole('checkbox', { name: 'Include target coordinates' }),
+      page.getByRole('checkbox', { name: 'Include coordinates (target and origins)' }),
     ).not.toBeChecked()
     await diagnosticScreenshot(page, {
       path: `test-results/share-settings-${width}.png`,

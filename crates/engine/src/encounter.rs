@@ -130,6 +130,46 @@ pub fn settle_encounter(
 fn public_counts(counts: &[BattleCounts]) -> serde_json::Value {
     json!(counts.iter().map(|p|json!({"owner":p.owner,"origin":p.origin,"side":p.side,"units":p.units.iter().map(|(item,n)|json!({"item":item,"count":n.to_string()})).collect::<Vec<_>>()})).collect::<Vec<_>>())
 }
+// Snapshot participant locations when contact occurs. Fleet coordinates come from
+// launch evidence; names/kinds belong to that exact body at contact, never a
+// player's currently selected or replacement planet.
+fn participant_observation(
+    s: &GameState,
+    participant: &BattleParticipant,
+    arriving: &MissionFleet,
+) -> serde_json::Value {
+    let mut observation = json!({
+        "owner": participant.owner, "origin": participant.origin,
+        "side": participant.side, "technology": participant.technology,
+        "units": participant.units.iter().map(|(item, n)|
+            json!({"item": item, "count": n.to_string()})
+        ).collect::<Vec<_>>()
+    });
+    let location = match participant.origin {
+        BattleOrigin::Fleet(id) => {
+            let fleet = if id == arriving.id {
+                Some(arriving)
+            } else {
+                s.world
+                    .as_ref()
+                    .and_then(|world| world.records.fleets.get(&id))
+            };
+            fleet.map(|fleet| {
+                let body = s.bodies.get(&fleet.intent.origin);
+                json!({"coordinates": fleet.origin_coordinates,
+                    "name": body.and_then(|body| body.name.as_ref()),
+                    "kind": body.map(|body| body.kind)})
+            })
+        }
+        BattleOrigin::Stationed(id) => s.bodies.get(&id).map(
+            |body| json!({"coordinates": body.coordinates, "name": body.name, "kind": body.kind}),
+        ),
+    };
+    if let Some(location) = location {
+        observation["location"] = location;
+    }
+    observation
+}
 pub(crate) fn spy_encounter(
     s: &GameState,
     i: &OrderedInput,
@@ -470,7 +510,7 @@ fn combat_encounter(
             losses
         })
         .collect();
-    let mut full = json!({"kind":"Combat","at":i.at,"target":target.coordinates,"outcome":result.battle.outcome,"participants":result.battle.participants.iter().map(|p|json!({"owner":p.owner,"origin":p.origin,"side":p.side,"technology":p.technology,"units":p.units.iter().map(|(item,n)|json!({"item":item,"count":n.to_string()})).collect::<Vec<_>>()})).collect::<Vec<_>>(),"rounds":result.battle.rounds.iter().map(|round|json!({"number":round.number,"start":public_counts(&round.start),"end":public_counts(&round.end),"fire":round.fire})).collect::<Vec<_>>(),"survivors":public_counts(&result.battle.survivors),"gross_losses":public_counts(&result.battle.destroyed),"recovered":public_counts(&result.recovery),"permanent_losses":public_counts(&permanent),"debris":wire_resources(debris),"loot":wire_resources(loot)});
+    let mut full = json!({"kind":"Combat","at":i.at,"target":target.coordinates,"outcome":result.battle.outcome,"participants":result.battle.participants.iter().map(|p| participant_observation(s, p, f)).collect::<Vec<_>>(),"rounds":result.battle.rounds.iter().map(|round|json!({"number":round.number,"start":public_counts(&round.start),"end":public_counts(&round.end),"fire":round.fire})).collect::<Vec<_>>(),"survivors":public_counts(&result.battle.survivors),"gross_losses":public_counts(&result.battle.destroyed),"recovered":public_counts(&result.recovery),"permanent_losses":public_counts(&permanent),"debris":wire_resources(debris),"loot":wire_resources(loot)});
     // Capture the identity at contact, not when the report is read. The restricted
     // ContactLost observation below deliberately does not inherit defender facts.
     full["target_name"] = json!(target.name);

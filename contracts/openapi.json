@@ -14759,6 +14759,32 @@
             },
             "minItems": 3,
             "maxItems": 3
+          },
+          "location": {
+            "description": "Historical participant body at combat contact. Fleet coordinates are recorded at launch; body name and kind are captured at contact. Optional for legacy reports.",
+            "type": "object",
+            "properties": {
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
+              }
+            },
+            "required": [
+              "coordinates"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

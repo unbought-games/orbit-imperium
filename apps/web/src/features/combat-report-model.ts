@@ -1,3 +1,4 @@
+import { readCoordinates } from '../shell/galaxy-location'
 import { debrisResourceKinds, resourceKinds } from './debris-resources'
 import { playerLabel, type PlayerNames } from './player-label'
 import { label } from '../ui/format'
@@ -124,6 +125,30 @@ function force(participant: Observation, end: unknown, recovery?: unknown) {
   }
 }
 
+/** Use report evidence only. Legacy reports recorded the target, but no launch origin. */
+function participantLocation(
+  p: Observation,
+  payload: Observation,
+  shared: boolean,
+) {
+  const location =
+    p.location && typeof p.location === 'object'
+      ? record(p.location)
+      : p.side === 'Defender'
+        ? {
+            name: payload.target_name,
+            kind: payload.target_kind,
+            coordinates: payload.target,
+            coordinates_hidden: shared && !payload.target,
+          }
+        : {}
+  const at = readCoordinates(location.coordinates)
+  const coordinatesHidden = shared && location.coordinates_hidden === true
+  if (!at && !coordinatesHidden && typeof location.name !== 'string')
+    return null
+  return { name: location.name, kind: location.kind, at, coordinatesHidden }
+}
+
 export function combatReportModel(
   payload: Observation,
   viewer?: string,
@@ -141,6 +166,7 @@ export function combatReportModel(
     owner: String(p.owner ?? ''),
     name: name(p),
     side: String(p.side),
+    location: participantLocation(p, payload, shared),
     technology: Array.isArray(p.technology) ? (p.technology as number[]) : null,
     ...force(p, payload.survivors, payload.recovered),
   }))
