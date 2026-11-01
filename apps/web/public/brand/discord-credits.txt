@@ -1,0 +1,5 @@
+Discord Clyde symbol: Discord Inc. All rights reserved.
+Official white asset, unchanged, used to identify the Discord community link.
+Source: https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg
+Brand guidelines and usage terms: https://discord.com/branding
+Discord trademarks are not covered by the repository's code or artwork licenses.

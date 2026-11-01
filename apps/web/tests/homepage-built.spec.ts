@@ -13,7 +13,14 @@ for (const signup of [true, false]) {
     expect(response.ok()).toBe(true)
     const html = await response.text()
     for (const content of [
-      'Persistent multiplayer space strategy',
+      'Multiplayer space strategy',
+      'An ending worth playing for.',
+      'Seasonal Universes',
+      'About three months',
+      'One final campaign',
+      'A permanent legacy',
+      'Eternal Universes are coming.',
+      'Join Discord',
       'Build planets. Plan your next move.',
       'Develop your economy',
       'Choose your research',
@@ -95,7 +102,7 @@ for (const signup of [true, false]) {
             'Victory isn’t for sale.',
           )
           await expect(page.locator('a[href="/signup"]')).toHaveCount(
-            signup ? 3 : 0,
+            signup ? 4 : 0,
           )
           await expect(
             page.getByRole('heading', { name: 'Fair play', exact: true }),
@@ -111,6 +118,44 @@ for (const signup of [true, false]) {
             await expect(page.locator('main')).toBeFocused()
             expect(new URL(page.url()).hash).toBe('')
           }
+          await page
+            .getByRole('link', { name: 'How our universes will work' })
+            .click()
+          const universes = page.getByRole('region', {
+            name: 'An ending worth playing for.',
+          })
+          await expect(
+            universes.getByRole('heading', { level: 2 }),
+          ).toBeInViewport()
+          await expect(universes).toContainText(
+            'Final campaigns and permanent account rewards are in development.',
+          )
+          await expect(universes).toContainText(
+            'We’re not there yet, and we don’t have a launch date.',
+          )
+          const discord = universes.getByRole('link', {
+            name: 'Join Discord',
+          })
+          await expect(discord).toHaveAttribute(
+            'href',
+            'https://discord.gg/AVMHp7jUcw',
+          )
+          await expect(
+            universes.getByRole('link', {
+              name: 'come play in the current universe',
+            }),
+          ).toHaveAttribute('href', signup ? '/signup' : '/login')
+          await expect(discord.locator('img')).toHaveAttribute(
+            'src',
+            '/brand/discord-symbol-white.svg',
+          )
+          await discord.focus()
+          await page.keyboard.press('Tab')
+          await page.keyboard.press('Shift+Tab')
+          await expect(discord).toBeFocused()
+          await diagnosticScreenshot(universes, {
+            path: `test-results/universes-${signup ? 'open' : 'closed'}-js-${javaScriptEnabled}-${width}x900.png`,
+          })
           expect(
             await page.evaluate(
               () => document.documentElement.scrollWidth <= innerWidth,
@@ -129,9 +174,18 @@ for (const signup of [true, false]) {
           }
           await page.evaluate(() => window.scrollTo(0, 0))
           await diagnosticScreenshot(page, {
+            path: `test-results/homepage-hero-${signup ? 'open' : 'closed'}-js-${javaScriptEnabled}-${width}x900.png`,
+          })
+          await diagnosticScreenshot(page, {
             path: `test-results/homepage-${signup ? 'open' : 'closed'}-js-${javaScriptEnabled}-${width}x900.png`,
             fullPage: true,
           })
+          await diagnosticScreenshot(
+            page.getByRole('region', { name: 'Start with your first planet.' }),
+            {
+              path: `test-results/homepage-community-${signup ? 'open' : 'closed'}-js-${javaScriptEnabled}-${width}x900.png`,
+            },
+          )
           expect(errors).toEqual([])
           expect(gameStartup).toBe(false)
           await page.getByRole('link', { name: 'Log in', exact: true }).click()

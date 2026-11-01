@@ -113,7 +113,7 @@ for (const signup of [true, false]) {
         } else {
           await expect(register).toBeHidden()
           await expect(
-            page.getByRole('link', { name: 'Create an account', exact: true }),
+            page.getByRole('link', { name: 'Join the current universe', exact: true }),
           ).toBeVisible()
         }
       } else {
@@ -264,7 +264,7 @@ for (const signup of [true, false]) {
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/art\/orbital-capital\/orbital-capital-1200.webp$/)
     const graph = await page.locator('script[type="application/ld+json"]').textContent()
     expect(JSON.parse(graph!)['@graph'][1]['@type']).toBe('VideoGame')
-    await expect(page.getByRole('link', { name: 'Create an account', exact: true })).toHaveCount(signup ? 1 : 0)
+    await expect(page.getByRole('link', { name: 'Join the current universe', exact: true })).toHaveCount(signup ? 1 : 0)
     expect(gameStartup).toBe(false)
     await page.getByRole('link', { name: 'Log in', exact: true }).click()
     await expect(page).toHaveURL(/\/login$/)
