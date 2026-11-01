@@ -52,7 +52,8 @@ export class SocialController {
     list: SocialView | null
     history: SocialView | null
     loading: boolean
-    loadingHistory: boolean
+    historyRequest: 'latest' | 'older' | 'newer' | null
+    olderRequested: boolean
     busy: boolean
     pending: SocialRequest | null
     error: string
@@ -63,7 +64,8 @@ export class SocialController {
     list: null,
     history: null,
     loading: false,
-    loadingHistory: false,
+    historyRequest: null,
+    olderRequested: false,
     busy: false,
     pending: null,
     error: '',
@@ -102,7 +104,8 @@ export class SocialController {
       list: null,
       history: null,
       loading: false,
-      loadingHistory: false,
+      historyRequest: null,
+      olderRequested: false,
       busy: false,
       pending: null,
       error: '',
@@ -163,13 +166,24 @@ export class SocialController {
     this.player = player
     this.newerRequested = false
     this.historyGeneration++
-    this.store.setState({ history: null, loadingHistory: false, error: '' })
+    this.store.setState({
+      history: null,
+      historyRequest: null,
+      olderRequested: false,
+      error: '',
+    })
     if (player) await this.history()
   }
   async history(direction: 'latest' | 'older' | 'newer' = 'latest') {
     const player = this.player
     if (!player) return
-    if (this.store.getState().loadingHistory) {
+    if (this.store.getState().historyRequest) {
+      if (
+        direction === 'older' &&
+        this.store.getState().historyRequest !== 'older' &&
+        this.store.getState().history?.next_cursor
+      )
+        this.store.setState({ olderRequested: true })
       if (direction === 'newer') this.newerRequested = true
       return
     }
@@ -179,7 +193,10 @@ export class SocialController {
       direction === 'newer' ? (old?.messages.at(-1)?.id ?? null) : null
     if (direction === 'older' && !before) return
     const gen = ++this.historyGeneration
-    this.store.setState({ loadingHistory: true })
+    this.store.setState({
+      historyRequest: direction,
+      ...(direction !== 'newer' ? { error: '' } : {}),
+    })
     try {
       const view = await this.ports.read({
         type: 'Messages',
@@ -200,19 +217,23 @@ export class SocialController {
               next_cursor:
                 direction === 'newer' ? old.next_cursor : view.next_cursor,
             }
-      this.store.setState({ history: merged, loadingHistory: false })
+      this.store.setState({ history: merged, historyRequest: null })
       // Drain bounded forward pages in order. Never jump to the newest page and skip a gap.
       if (direction === 'newer' && after && view.next_cursor)
         this.newerRequested = true
     } catch (e) {
       if (gen === this.historyGeneration)
         this.store.setState({
-          loadingHistory: false,
+          historyRequest: null,
           error: errorText(e),
           ...([401, 403, 404].includes(status(e)) ? { history: null } : {}),
         })
     }
-    if (gen === this.historyGeneration && this.newerRequested) {
+    if (gen !== this.historyGeneration) return
+    if (this.store.getState().olderRequested) {
+      this.store.setState({ olderRequested: false })
+      await this.history('older')
+    } else if (this.newerRequested) {
       this.newerRequested = false
       await this.history('newer')
     }

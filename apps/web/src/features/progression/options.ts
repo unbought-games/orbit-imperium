@@ -87,7 +87,22 @@ export function progressionContext(view: ProgressionProps['view']) {
     binding: view.binding,
     profile: view.profile_hash,
     speed: view.speed,
-    bodies: view.bodies.map(({ amounts: _amounts, ...body }) => body),
+    // Explicit quote inputs exclude names, artwork/colony metadata and sampled
+    // balances. Keep climate and energy inputs for server benefit projections.
+    bodies: view.bodies.map((body) => ({
+      id: body.id,
+      kind: body.kind,
+      coordinates: body.coordinates,
+      levels: body.levels,
+      fields: body.fields,
+      fields_used: body.fields_used,
+      fields_reserved: body.fields_reserved,
+      energy: body.energy,
+      inventories: body.inventories,
+      silo: body.silo,
+      min_temperature: body.min_temperature,
+      max_temperature: body.max_temperature,
+    })),
     research: view.research,
     catalog: view.catalog,
     capabilities: view.capabilities,

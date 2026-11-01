@@ -18,6 +18,7 @@ type Request = {
 }
 type Result = {
   key: string
+  model: Coordinator
   terms?: S['FleetTerms4'] | S['FleetEstimate4']
   error?: string
 }
@@ -31,9 +32,7 @@ export function useDispatchTiming(
   estimateOnly = false,
 ) {
   const key =
-    request && enabled
-      ? JSON.stringify({ ...request, revision, estimateOnly })
-      : null
+    request && enabled ? JSON.stringify({ ...request, estimateOnly }) : null
   const [result, setResult] = useState<Result | null>(null)
   useEffect(() => {
     if (!key || !enabled) return
@@ -62,7 +61,7 @@ export function useDispatchTiming(
             destination,
           )
           if (problem) {
-            setResult({ key, error: problem })
+            setResult({ key, model, error: problem })
             return
           }
           const terms = await model.world({
@@ -72,9 +71,9 @@ export function useDispatchTiming(
           if (!current) return
           if (!terms || !('maximum_payload' in terms))
             throw Error('Unavailable')
-          setResult({ key, terms })
+          setResult({ key, model, terms })
         } catch (error) {
-          if (current) setResult({ key, error: dispatchFailure(error) })
+          if (current) setResult({ key, model, error: dispatchFailure(error) })
         }
       })()
     }, 250)
@@ -83,5 +82,7 @@ export function useDispatchTiming(
       clearTimeout(timer)
     }
   }, [model, key, revision, enabled, estimateOnly])
-  return key && result?.key === key ? result : null
+  // A revision triggers revalidation, but unchanged mission inputs can keep
+  // their advisory values. Explicit Review obtains its own authoritative quote.
+  return key && result?.key === key && result.model === model ? result : null
 }

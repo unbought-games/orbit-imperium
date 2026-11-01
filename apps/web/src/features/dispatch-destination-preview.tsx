@@ -23,7 +23,6 @@ export function DispatchDestinationPreview({
   kind,
   target,
   lookup,
-  refreshing,
   player,
   playerNames,
   value,
@@ -38,7 +37,6 @@ export function DispatchDestinationPreview({
   kind: LocationKind
   target: ReturnType<typeof destinationBody>
   lookup: 'loading' | 'ready' | 'unavailable'
-  refreshing: boolean
   player: string
   playerNames: PlayerNames
   value: string
@@ -152,7 +150,8 @@ export function DispatchDestinationPreview({
         <LocationSummaryDescription aria-live="polite" aria-atomic="true">
           <span className={styles.destinationAnnouncement}>{title}. </span>
           {detail}
-          {refreshing && ' · Last observation · Updating…'}
+          {target?.source === 'observation' &&
+            ' · Last observed · Review verifies destination.'}
         </LocationSummaryDescription>
         <CoordinateInput
           embedded

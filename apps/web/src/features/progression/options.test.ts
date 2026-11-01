@@ -741,3 +741,46 @@ it.each([researchOptions(), unitOptions()])(
     expect(currentCatalogCost({ ...source, terms: null }, view)).toBeNull()
   },
 )
+
+it('ignores body presentation metadata while preserving live affordability', () => {
+  const current = structuredClone(view)
+  current.bodies[0].name = 'Renamed elsewhere'
+  current.bodies[0].diameter_km = 12000
+  current.bodies[0].amounts.metal = '60'
+  current.viewer_revision = '99'
+  current.sampled_at += 1000
+  expect(progressionContext(current)).toBe(progressionContext(view))
+  expect(currentProgressionOptions(proposal, current)?.blockers).toEqual([])
+  current.bodies[0].amounts.metal = '59'
+  expect(currentProgressionOptions(proposal, current)?.blockers).toMatchObject([
+    { code: 'InsufficientResources', actual: '59' },
+  ])
+})
+
+it.each([
+  (v: typeof view) => {
+    v.bodies[0].levels.RoboticsFactory++
+  },
+  (v: typeof view) => {
+    v.bodies[0].fields_reserved++
+  },
+  (v: typeof view) => {
+    v.bodies[0].energy.supply = '100'
+  },
+  (v: typeof view) => {
+    v.bodies[0].max_temperature = 50
+  },
+  (v: typeof view) => {
+    v.profile_hash = 'changed'
+  },
+  (v: typeof view) => {
+    v.binding.epoch = 'new'
+  },
+  (v: typeof view) => {
+    v.research.push({ research: 'EnergyTechnology', level: 1 })
+  },
+])('invalidates actual quote and eligibility dependencies %#', (change) => {
+  const current = structuredClone(view)
+  change(current)
+  expect(progressionContext(current)).not.toBe(progressionContext(view))
+})
