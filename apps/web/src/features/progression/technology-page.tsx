@@ -1,4 +1,3 @@
-import { SiloSummary } from '../missile-inventory'
 import { ShipComparison } from './ship-comparison'
 import { useState } from 'react'
 import { Network } from 'lucide-react'
@@ -104,7 +103,6 @@ export function TechnologyPage(props: ProgressionProps) {
   }
   return (
     <>
-      {page === 'defense' && <SiloSummary body={body} />}
       <WorkSummaries
         view={view}
         body={body}

@@ -416,7 +416,7 @@ for (const width of [1440, 390])
     await page.goto(`/u/andromeda/b/${body.id}/defense`)
     await expect(
       page.getByRole('region', { name: 'Missile silo capacity' }),
-    ).toContainText('Reserved in queue')
+    ).toHaveCount(0)
     await expect(
       page.getByText('Interplanetary Missile', { exact: true }).first(),
     ).toBeVisible()
@@ -424,6 +424,9 @@ for (const width of [1440, 390])
     for (const slug of ['anti-ballistic-missile', 'interplanetary-missile']) {
       await page.goto(`/u/andromeda/b/${body.id}/defense/${slug}`)
       const pane = page.getByRole('region', { name: 'Progression quote' })
+      await expect(
+        pane.getByRole('region', { name: 'Missile silo capacity' }),
+      ).toContainText('Reserved in queue')
       await expect(
         pane.getByRole('button', { name: 'Build', exact: true }),
       ).toBeVisible()
