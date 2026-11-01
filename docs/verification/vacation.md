@@ -103,3 +103,17 @@ to main, or deployment was performed for Vacation Mode.
 
 Deployment requires the coordinated API/worker upgrade and legacy-flag behavior
 in [the feature guide](../features/vacation.md).
+
+## PR integration follow-up — 2026-11-01
+
+Vacation implementation was committed as
+`b7982cdce1be1ab9deab9bb3cfde9df5b39e63a2` and published as PR #299, initially
+stacked on cleanup PR #297. Integrated cleanup's leadership-invalidation repair
+`1476a8bc94d1d802b4e2bd9b36752545946f22b0` into tested revision
+`56d1746eb79d4d6c788c397052a22712694a2ea2` without conflicts or UI changes.
+`make test-db DB_SUITES='empire_deletion alliances' DB_JOBS=2` passed all 18 tests:
+preparation 9.19s, alliance suite 20.553s, deletion/vacation suite 24.631s. No
+failures occurred in this follow-up. Its disposable Compose project
+`orbit-vacation-pr` and volume were removed after validation. Existing screenshots
+still match the implementation. Remote CI and review remain separate checks of
+the pushed head; publication is not evidence of merge or deployment.
