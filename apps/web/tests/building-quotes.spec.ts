@@ -994,7 +994,15 @@ for (const response of ['early', 'late', 'rejected'] as const) {
         ).toHaveCSS('opacity', '1')
         await expect(
           page.getByRole('link', { name: /^Solar Plant · Level 2/ }),
-        ).toContainText(
+        ).toBeVisible()
+        await expect(
+          page
+            .getByRole('region', { name: 'Buildings', exact: true })
+            .locator('dt')
+            .filter({ hasText: /^Time remaining$/ })
+            .locator('..')
+            .locator('dd'),
+        ).toHaveText(
           (await control
             .getByLabel('Solar Plant time remaining')
             .textContent())!,
