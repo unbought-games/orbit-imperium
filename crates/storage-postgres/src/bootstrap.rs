@@ -491,7 +491,7 @@ pub(crate) async fn insert_member(
             deletion_requested_at: None,
             player: PlayerId(member.player),
             last_presence_at: at,
-            vacation: false,
+            vacation: VacationState::default(),
             lifecycle: PlayerLifecycle::Active,
             policy_hash: rules.hash.clone(),
             revision: 0,

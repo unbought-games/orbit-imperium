@@ -33,6 +33,10 @@ pub enum GameError {
     NoHarvestTarget,
     #[error("PolicyUnavailable")]
     PolicyUnavailable,
+    #[error("VacationBlocked")]
+    VacationBlocked,
+    #[error("VacationMinimum")]
+    VacationMinimum,
     #[error("ActorVacation")]
     ActorVacation,
     #[error("ActorDraining")]

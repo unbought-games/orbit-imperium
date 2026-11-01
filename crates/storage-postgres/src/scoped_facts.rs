@@ -64,7 +64,11 @@ pub(crate) async fn select(
     if let (
         Actor::Player(player),
         Input::Command(Command::World {
-            action: WorldAction::RequestEmpireDeletion | WorldAction::CancelEmpireDeletion,
+            action:
+                WorldAction::RequestEmpireDeletion
+                | WorldAction::CancelEmpireDeletion
+                | WorldAction::EnterVacation
+                | WorldAction::ExitVacation,
         }),
     ) = (actor, input)
     {

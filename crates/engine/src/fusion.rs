@@ -269,14 +269,26 @@ pub fn body_economy(
     body: &Body,
     rules: &Ruleset,
 ) -> Result<ProductionEconomy, InvariantError> {
-    let settings = &state
-        .production_settings
-        .get(&body.id)
-        .ok_or_else(|| InvariantError("missing production settings".into()))?
-        .settings;
+    if crate::vacation::vacation_start(state, body)?.is_some_and(|at| at <= body.checkpoint.at) {
+        let gross = crate::vacation::vacation_rates(body, rules)?;
+        return Ok(ProductionEconomy {
+            energy: EnergyStats {
+                supply: 0,
+                demand: 0,
+                utilization: SCALE,
+            },
+            gross,
+            fuel: 0,
+            net_deuterium: gross.deuterium,
+            fuel_utilization: 0,
+            fusion_supply: 0,
+            stable_for_ms: None,
+        });
+    }
+    let settings = effective_production_settings(state, body)?;
     Ok(production_economy(
         body,
-        settings,
+        &settings,
         solar_satellite_count(state, body, rules)?,
         energy_technology(state, body)?,
         rules,

@@ -113,6 +113,11 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
             || policy
                 .deletion_requested_at
                 .is_some_and(|at| !(0..=MAX_WIRE_MS).contains(&at))
+            || policy
+                .vacation
+                .entered_at()
+                .is_some_and(|at| !(0..=MAX_WIRE_MS).contains(&at))
+            || policy.vacation.earliest_exit_at().is_err()
             || !w.covered_players.contains(&owner)
         {
             return Err(InvariantError("invalid policy coverage or profile".into()));

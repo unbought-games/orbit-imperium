@@ -120,7 +120,7 @@ fn presence_and_vacation_defer_automatic_cleanup_but_not_explicit_deletion() {
             .get_mut(&p)
             .unwrap();
         policy.last_presence_at = 20 * DAY_MS;
-        policy.vacation = vacation;
+        policy.vacation = VacationState::Legacy(vacation);
         let result = run(
             &mut s,
             &r,
@@ -181,7 +181,7 @@ fn pending_status_is_derived_at_exact_boundaries_and_old_json_stays_stable() {
         serde_json::from_value::<PlayerPolicy>(value).unwrap(),
         policy
     );
-    policy.vacation = true;
+    policy.vacation = VacationState::Legacy(true);
     assert!(!policy.deletion_pending(100 * DAY_MS));
     policy.deletion_requested_at = Some(40 * DAY_MS);
     assert_eq!(policy.deletion_deadline().unwrap(), Some(47 * DAY_MS));

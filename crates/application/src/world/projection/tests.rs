@@ -305,8 +305,11 @@ fn snapshot() -> ViewerSnapshot {
     let mut coverage = FactCoverage::default();
     coverage.research_players.insert(research.owner);
     coverage.fleet_owners.insert(research.owner);
+    coverage.owned_body_players.insert(research.owner);
+    coverage.research_slot_players.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            covered_vacation_players: [research.owner].into_iter().collect(),
             alliance_leaders: Some(Default::default()),
             holding_relationships: None,
             covered_depot_sources: Default::default(),
@@ -318,7 +321,7 @@ fn snapshot() -> ViewerSnapshot {
                     PlayerPolicy {
                         player: research.owner,
                         last_presence_at: 0,
-                        vacation: false,
+                        vacation: VacationState::default(),
                         lifecycle: PlayerLifecycle::Active,
                         deletion_requested_at: None,
                         policy_hash: rules.hash.clone(),
@@ -329,7 +332,7 @@ fn snapshot() -> ViewerSnapshot {
                 ..Default::default()
             },
             secret: [0; 32],
-            covered_players: Default::default(),
+            covered_players: [research.owner].into_iter().collect(),
             covered_coordinates: Default::default(),
             covered_reports: Default::default(),
             requested_pair: None,

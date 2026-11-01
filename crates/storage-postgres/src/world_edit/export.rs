@@ -157,7 +157,7 @@ impl PgStore {
                     .map(|(k, v)| (format!("{k:?}"), i64::from(*v)))
                     .collect(),
                 valuation: Some(values(&w.lots, p, AssetLocation::Player)),
-                vacation: Some(w.policies[&p].vacation),
+                vacation: Some(w.policies[&p].vacation.is_active()),
                 presence_age_ms: Some(at.saturating_sub(w.policies[&p].last_presence_at)),
                 ..Default::default()
             });

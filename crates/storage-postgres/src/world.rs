@@ -245,7 +245,7 @@ pub(crate) async fn load_selected(
         .flat_map(|g| g.members.iter().map(|f| f.0))
         .collect();
     let mut fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>(
-        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)) ORDER BY id",
+        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->>'leg'='Holding' AND (data->'intent'->'destination'->>'expected_owner')::uuid=ANY($4)) OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)) ORDER BY id",
     )
     .bind(u.0)
     .bind(fleet_id)
@@ -567,6 +567,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     .await
     .map_err(db_error)?;
     s.world = Some(WorldFacts {
+        covered_vacation_players: owners.iter().copied().map(PlayerId).collect(),
         alliance_leaders: Some(alliance_leaders.into_iter().map(PlayerId).collect()),
         holding_relationships,
         covered_depot_sources: body_ids.iter().copied().map(BodyId).collect(),

@@ -170,6 +170,7 @@ pub struct BoundView4 {
     pub empire_deletion: Option<EmpireDeletionStatus>,
     #[serde(default)]
     pub leads_alliance: bool,
+    pub vacation: VacationView,
     #[serde(default)]
     pub attack_groups: Vec<AttackGroupView>,
     #[serde(default)]

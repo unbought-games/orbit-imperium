@@ -48,6 +48,7 @@ export const body: components['schemas']['BodyV3'] = {
 export async function installGameFixture(
   page: Page,
   options: {
+    vacation?: () => components['schemas']['VacationView4']
     universeName?: string
     dimensions?: { galaxies: number; systems_per_galaxy: number }
     catalog?: components['schemas']['CatalogEntry3'][]
@@ -230,6 +231,7 @@ export async function installGameFixture(
         ? {
             empire_deletion: options.empireDeletion?.(),
             leads_alliance: options.leadsAlliance ?? false,
+            vacation: options.vacation?.() ?? { active: false, entered_at: null, earliest_exit_at: null, blockers: [] },
             attack_groups: options.attackGroups ?? [],
             holdings: options.holdings ?? [],
             depots: options.depots ?? [],

@@ -9,7 +9,9 @@ pub(crate) fn requires_lock(input: &Input) -> bool {
     matches!(
         input,
         Input::Command(Command::World {
-            action: WorldAction::CreateAttackGroup { .. }
+            action: WorldAction::EnterVacation
+                | WorldAction::ExitVacation
+                | WorldAction::CreateAttackGroup { .. }
                 | WorldAction::InviteAttackGroup { .. }
                 | WorldAction::RevokeAttackGroupInvitation { .. }
                 | WorldAction::LaunchFleet { .. }

@@ -255,6 +255,25 @@ export function canSubmitIntent(
     cost = state.view ? payment(command, intent, state.view, state) : null
   if (!view) return false
   if (
+    view.protocol === 4 &&
+    view.vacation?.active &&
+    !(
+      command.type === 'World' &&
+      [
+        'ExitVacation',
+        'RecordForegroundPresence',
+        'RenamePlanet',
+        'MarkReportRead',
+        'SetReportHidden',
+        'SetReportsHidden',
+        'SetReportStarred',
+        'RequestEmpireDeletion',
+        'CancelEmpireDeletion',
+      ].includes(command.action.type)
+    )
+  )
+    return false
+  if (
     command.type === 'World' &&
     command.action.type === 'LaunchFleet' &&
     command.action.intent.attack_group

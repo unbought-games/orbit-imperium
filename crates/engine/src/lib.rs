@@ -114,3 +114,6 @@ pub mod world_edit;
 
 mod attack_groups;
 pub use attack_groups::*;
+
+mod vacation;
+pub use vacation::*;

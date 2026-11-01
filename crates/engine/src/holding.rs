@@ -276,7 +276,7 @@ pub fn quote_depot_supply(
                 GameError::HoldingUnavailable
             });
         }
-        if policy.vacation {
+        if policy.vacation.is_active() {
             return Err(if player == owner {
                 GameError::ActorVacation
             } else {

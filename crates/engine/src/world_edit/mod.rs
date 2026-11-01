@@ -235,6 +235,14 @@ pub fn edit_world(
                     "planet edits require coordinates or explicit all_planets with user".into(),
                 );
             }
+            if edit.vacation.is_some() {
+                let player = owner.ok_or("vacation requires user")?;
+                for b in next.bodies.values_mut().filter(|b| b.owner == player) {
+                    b.checkpoint = settle_production(state, &state.bodies[&b.id], input.at, rules)
+                        .map_err(|e| e.to_string())?;
+                    b.revision += 1;
+                }
+            }
             for id in ids {
                 assets::edit_body(&mut next, rules, input, edit, id, op == "give")?;
             }
@@ -259,7 +267,14 @@ pub fn edit_world(
                     .get_mut(&p)
                     .ok_or("missing player policy")?;
                 if let Some(v) = edit.vacation {
-                    policy.vacation = v
+                    policy.vacation = if v {
+                        VacationState::Active {
+                            entered_at: input.at,
+                            policy_hash: policy.policy_hash.clone(),
+                        }
+                    } else {
+                        VacationState::default()
+                    };
                 }
                 if let Some(a) = &edit.activity {
                     let age = match a.to_ascii_lowercase().as_str() {

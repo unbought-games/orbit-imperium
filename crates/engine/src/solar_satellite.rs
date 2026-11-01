@@ -107,13 +107,13 @@ pub fn body_production_rates(
     body: &Body,
     rules: &Ruleset,
 ) -> Result<Resources, InvariantError> {
-    let settings = state
-        .production_settings
-        .get(&body.id)
-        .ok_or_else(|| InvariantError("missing production settings".into()))?;
+    if crate::vacation::vacation_start(state, body)?.is_some_and(|at| at <= body.checkpoint.at) {
+        return Ok(crate::vacation::vacation_rates(body, rules)?);
+    }
+    let settings = effective_production_settings(state, body)?;
     Ok(production_rates_with_settings(
         body,
-        &settings.settings,
+        &settings,
         solar_satellite_count(state, body, rules)?,
         rules,
     )?)

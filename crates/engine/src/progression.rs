@@ -132,6 +132,23 @@ pub fn settle_production(
         return settle_economy(b, at, r);
     }
     validate_body(s, b.id, r)?;
+    if let Some(start) = crate::vacation::vacation_start(s, b)?
+        && at >= start
+    {
+        let mut boundary = b.clone();
+        if b.checkpoint.at < start {
+            boundary.checkpoint = settle_normal_production(s, b, start, r)?;
+        }
+        return crate::vacation::settle_vacation(&boundary, at, r);
+    }
+    settle_normal_production(s, b, at, r)
+}
+fn settle_normal_production(
+    s: &GameState,
+    b: &Body,
+    at: Timestamp,
+    r: &Ruleset,
+) -> Result<ResourceCheckpoint, InvariantError> {
     if fusion_rule(r).is_some() {
         return settle_fusion(
             b,
@@ -360,6 +377,13 @@ pub fn inspect_progression(
         return Ok(out);
     }
     validate_progression_collections(s, b)?;
+    if s.world
+        .as_ref()
+        .and_then(|w| w.records.policies.get(&b.owner))
+        .is_some_and(|p| p.vacation.is_active())
+    {
+        out.blockers.push(block(GameError::ActorVacation));
+    }
     let Some(entry) = r
         .artifact
         .catalog

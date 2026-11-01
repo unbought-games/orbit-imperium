@@ -68,7 +68,7 @@ impl AllianceState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{DAY_MS, Hash, PlayerLifecycle};
+    use crate::{DAY_MS, Hash, PlayerLifecycle, VacationState};
     fn fixture() -> (AllianceState, BTreeMap<PlayerId, PlayerPolicy>) {
         let p = PlayerId(Uuid::from_u128(1));
         let mut a = AllianceState::create(
@@ -100,7 +100,7 @@ mod tests {
                     PlayerPolicy {
                         player: m.player,
                         last_presence_at: 20 * DAY_MS,
-                        vacation: false,
+                        vacation: VacationState::default(),
                         lifecycle: PlayerLifecycle::Active,
                         deletion_requested_at: None,
                         policy_hash: Hash("test".into()),
@@ -118,7 +118,7 @@ mod tests {
         p.get_mut(&PlayerId(Uuid::from_u128(2)))
             .unwrap()
             .last_presence_at = 13 * DAY_MS; // exact seven-day boundary
-        p.get_mut(&PlayerId(Uuid::from_u128(3))).unwrap().vacation = true;
+        p.get_mut(&PlayerId(Uuid::from_u128(3))).unwrap().vacation = VacationState::Legacy(true);
         assert!(
             !a.remove_deleted_member(leader, &p, 20 * DAY_MS, Uuid::from_u128(900))
                 .unwrap()
