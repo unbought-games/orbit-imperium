@@ -146,8 +146,8 @@ pub fn settle_encounter(
 fn public_counts(counts: &[BattleCounts]) -> serde_json::Value {
     json!(counts.iter().map(|p|json!({"owner":p.owner,"origin":p.origin,"side":p.side,"units":p.units.iter().map(|(item,n)|json!({"item":item,"count":n.to_string()})).collect::<Vec<_>>()})).collect::<Vec<_>>())
 }
-// Snapshot participant locations when contact occurs. Fleet coordinates come from
-// launch evidence; names/kinds belong to that exact body at contact, never a
+// Snapshot participant locations when contact occurs. Attacker coordinates come
+// from launch evidence; names/kinds belong to that exact body at contact, never a
 // player's currently selected or replacement planet.
 fn participant_observation(
     s: &GameState,

@@ -7052,7 +7052,7 @@ export interface components {
                 count: components["schemas"]["Decimal"];
             }[];
             technology: number[];
-            /** @description Historical participant body at combat contact. Fleet coordinates are recorded at launch; body name and kind are captured at contact. Optional for legacy reports. */
+            /** @description Historical participant body at combat contact. Attackers use launch coordinates; defenders use the battle location. Body name and kind are captured at contact. Optional for legacy reports. */
             location?: {
                 coordinates: components["schemas"]["Coordinates"];
                 name?: string | null;
