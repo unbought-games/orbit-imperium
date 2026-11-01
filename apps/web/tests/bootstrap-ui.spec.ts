@@ -47,6 +47,16 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/config', (route) =>
     route.fulfill({ json: { mode: 'local', universes: [] } }),
   )
+  await page.route('**/api/auth/entry*', (route) =>
+    route.fulfill({
+      status: 303,
+      headers: {
+        location: new URL(route.request().url()).searchParams.get('signup') === 'true'
+          ? '/signup'
+          : '/login',
+      },
+    }),
+  )
 })
 
 for (const blocked of [
