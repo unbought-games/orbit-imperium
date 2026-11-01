@@ -327,6 +327,10 @@ for (const width of [1280, 390]) {
     const filterButton = page.getByRole('button', {name: 'Filter reports', exact: true})
     await filterButton.click()
     const filter = page.getByRole('dialog', {name: 'Filter reports', exact: true})
+    // Wait for the desktop popover's initial focus before exercising native
+    // selects; otherwise its focus manager can overwrite the test's focus().
+    if (width >= 768)
+      await expect(filter.getByRole('button', {name: 'Dismiss popover'})).toBeFocused()
     const panel = width < 768 ? filter.getByRole('region', {name: 'Filter reports sheet', exact: true}) : filter
     const initialBounds = await panel.boundingBox()
     for (const name of ['Report type', 'Status']) {
