@@ -1158,7 +1158,9 @@ test('world shell omits the utility row and opens defense production from its su
     page.locator('main').getByRole('link', { name: 'Reports', exact: true }),
   ).toHaveCount(0)
   await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
-  await expect(page.getByText('Rocket Launcher · 2 remaining')).toBeVisible()
+  const production = page.getByRole('list', { name: 'Manufacturing queue' })
+  await expect(production.getByRole('heading', { name: 'Rocket Launcher', exact: true })).toBeVisible()
+  await expect(production.getByTitle('Units remaining')).toHaveText('2 remaining')
   await expect(
     page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Defense', exact: true }),
   ).toHaveAttribute('href', /\/defense$/)

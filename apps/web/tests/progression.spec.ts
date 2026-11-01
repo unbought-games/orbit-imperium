@@ -46,7 +46,9 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await expect(page.getByRole('button',{name:'Retry order'})).toBeVisible();
  expect(originalId).toBeTruthy();
  await go('resources');await page.reload();
- await expect(page.getByText('Light Fighter · 2 remaining',{exact:false})).toBeVisible();
+ const production=page.getByRole('list',{name:'Manufacturing queue'});
+ await expect(production.getByRole('heading',{name:'Light Fighter',exact:true})).toBeVisible();
+ await expect(production.getByTitle('Units remaining')).toHaveText('2 remaining');
  const restored=await page.evaluate(id=>Object.entries(sessionStorage).filter(([k,v])=>k.startsWith('orbit:attempts:v3:')&&JSON.parse(v).envelope.command_id===id).map(([,v])=>JSON.parse(v)),originalId);
  expect(restored).toHaveLength(1);expect(restored[0].envelope).toEqual(originalEnvelope);expect(restored[0].envelope.protocol).toBe(3);expect(restored[0].envelope.command.quantity).toBe('2');expect(restored[0].status).toBe('uncertain');
  await page.unroute(receiptRoute);
