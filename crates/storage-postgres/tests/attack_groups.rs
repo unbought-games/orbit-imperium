@@ -306,10 +306,13 @@ async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes(
                 expected_owner: h.player,
             },
             mission: Mission::Hold,
+            // One defender is defeated in the first round and cannot damage an
+            // attacker enough to trigger an explosion. Keep the exact pooled
+            // cargo assertion below independent of random target selection.
             ships: vec![ManifestStack {
                 owner: guard.player,
                 ship_type: ShipType::Cruiser,
-                count: 2,
+                count: 1,
             }],
             cargo: Resources::default(),
             speed_percent: 100,
