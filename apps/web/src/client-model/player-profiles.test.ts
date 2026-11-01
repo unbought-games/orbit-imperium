@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { PlayerProfilesController, currentPlayer } from './player-profiles'
-import type { PlayerProfiles } from '../adapters/player-profiles'
+import type { PlayerProfiles, ProfileSource } from '../adapters/player-profiles'
 const binding = { account: 'a', player: 'self', universe: 'u', epoch: 'e' }
 const result = (tier?: 1 | 2 | 3, at = 100): PlayerProfiles => ({
   binding,
@@ -108,6 +108,42 @@ it('refreshes on page restoration and releases timers on stop', async () => {
   expect(api).toHaveBeenCalledTimes(2)
   expect(c.store.getState().players).toEqual({})
 })
+
+it.each([
+  { type: 'Rankings', players: ['other'] },
+  { type: 'Galaxy', galaxy: 1, system: 1 },
+  { type: 'Incoming' },
+  { type: 'Report', report: 'report' },
+] satisfies ProfileSource[])(
+  '$type replaces a public bot identity with human on foreground refresh',
+  async (source) => {
+    const visible = result()
+    visible.players[0].kind = 'bot'
+    const hidden = result(undefined, 101)
+    hidden.players[0].kind = 'human'
+    const api = vi
+      .fn()
+      .mockResolvedValueOnce(visible)
+      .mockResolvedValueOnce(hidden)
+    const controller = new PlayerProfilesController(api)
+    cleanup.push(controller.start(), controller.watch(source))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(currentPlayer(controller.store.getState(), 'other')?.kind).toBe(
+      'bot',
+    )
+
+    await vi.advanceTimersByTimeAsync(1000)
+    window.dispatchEvent(new Event('pageshow'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(api).toHaveBeenCalledTimes(2)
+    expect(api).toHaveBeenLastCalledWith(source, expect.any(AbortSignal))
+    expect(currentPlayer(controller.store.getState(), 'other')).toMatchObject({
+      username: 'Commander',
+      kind: 'human',
+      observed_at: 101,
+    })
+  },
+)
 
 it('refreshes affiliation after social changes and fences older in-flight responses', async () => {
   const old = result(1)

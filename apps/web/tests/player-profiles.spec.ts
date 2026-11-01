@@ -6,6 +6,7 @@ import { test, expect } from './fixtures/test'
 import type { components } from '../src/contracts'
 import {
   shellFixture,
+  installGameFixture,
   playerProfilesFixture,
   binding,
   body,
@@ -304,11 +305,12 @@ test('espionage and combat observations use current public identities without ch
 })
 
 for (const width of [1440, 390]) {
-  test(`bot display follows public profiles across screens at ${width}px`, async ({ page }) => {
+  test(`bot profile labels follow authoritative refresh at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
-    await shellFixture(page, { protocol: 4, missions: {
-      fleets: [], incoming: [{ sender: id(31), origin: { galaxy: 1, system: 2, position: 3 }, target: body.id, mission: 'Attack', arrival_at: Date.now() + 600_000, ships: { visibility: 'Unknown' } }], fleet_slots: '1', score_value_micro: '0',
-    } })
+    await installGameFixture(page, {
+      protocol: 4,
+      missions: { fleets: [], incoming: [], fleet_slots: '1', score_value_micro: '0' },
+    })
     let kind: 'bot' | 'human' = 'bot'
     await playerProfilesFixture(page, () => [
       { player: id(31), username: 'Harvester', kind },
@@ -319,58 +321,39 @@ for (const width of [1440, 390]) {
       sampled_at: Date.now(), processing_pending: false,
       players: [{ player: id(31), username: 'Harvester', points: '12500', rank: 1 }],
     } }))
-    await page.route('**/world', route => {
-      const q = route.request().postDataJSON()
-      return route.fulfill({ json: { protocol: 4, binding, request_id: q.context.request_id,
-        viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: {
-          galaxy: q.galaxy, system: q.system, observed_at: Date.now(),
-          positions: Array.from({ length: 15 }, (_, i) => ({
-            coordinates: { galaxy: q.galaxy, system: q.system, position: i + 1 },
-            body: i === 0 ? { id: id(40), kind: 'Planet', owner: id(31), activity: { type: 'None' }, inactivity: 'Active', vacation: false, espionage_eligible: true } : null,
-            debris: null,
-          })),
-        },
-      } })
-    })
-    const payload = { kind: 'SpyContact', at: Date.now(), probability_ppm: 0, detected: false, sender: id(31), origin: { galaxy: 1, system: 1, position: 1 }, target: { galaxy: 1, system: 1, position: 2 } }
-    await page.route(`**/api/**/reports/${id(80)}`, route => route.fulfill({ json: {
-      protocol: 4, binding, request_id: route.request().postDataJSON().request_id,
-      viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(),
-      data: { header: { id: id(80), kind: payload.kind, observed_at: Date.now(), read: false, hidden: false }, payload },
-    } }))
-    for (const display of ['visible', 'hidden'] as const) {
-      kind = display === 'visible' ? 'bot' : 'human'
-      for (const [screen, path] of [
-        ['rankings', 'high-scores'], ['galaxy', 'galaxy?galaxy=1&system=1'],
-        ['empire', `b/${body.id}/overview`], ['fleets', `b/${body.id}/fleets`],
-        ['report', `b/${body.id}/reports/${id(80)}`],
-      ]) {
-        await page.goto(`/u/andromeda/${path}`)
-        const trigger = page.getByRole('button', { name: 'Harvester profile details' }).first()
-        await expect(trigger).toBeVisible()
-        await expect(trigger.getByLabel('Bot', { exact: true })).toHaveCount(display === 'visible' ? 1 : 0)
-        await diagnosticScreenshot(page, { path: `test-results/bot-${screen}-${display}-${width}x1000.png` })
-        await trigger.click()
-        const profile = page.getByRole('dialog', { name: 'Harvester profile' })
-        await expect(profile).toBeVisible()
-        if (display === 'visible') await expect(profile).toContainText('Automated player')
-        else {
-          await expect(profile).toContainText('Commander')
-          await expect(profile).not.toContainText(/automated|\bBot\b/i)
-        }
-        if (screen === 'rankings') await diagnosticScreenshot(page, { path: `test-results/bot-profile-${display}-${width}x1000.png` })
-        await page.keyboard.press('Escape')
-      }
+    // Wait for this screen's identity data, not HTML load or unrelated HUD profiles.
+    const withProfiles = async (action: () => Promise<unknown>) => {
+      const [response] = await Promise.all([
+        page.waitForResponse(response => {
+          if (!response.url().endsWith('/player-profiles')) return false
+          const source = response.request().postDataJSON()?.source
+          return source?.type === 'Rankings' && source.players.includes(id(31))
+        }),
+        action(),
+      ])
+      expect(response.ok()).toBe(true)
+      expect(await response.finished()).toBeNull()
     }
-    // A running screen also removes the label on the next authoritative profile refresh.
-    kind = 'bot'
-    await page.goto('/u/andromeda/high-scores')
+    await withProfiles(() => page.goto('/u/andromeda/high-scores'))
     const trigger = page.getByRole('button', { name: 'Harvester profile details' })
+    const profile = page.getByRole('dialog', { name: 'Harvester profile' })
     await expect(trigger.getByLabel('Bot', { exact: true })).toBeVisible()
+    await trigger.click()
+    await expect(profile).toBeVisible()
+    await expect(profile).toContainText('Automated player')
+    await page.keyboard.press('Escape')
+    await expect(profile).toHaveCount(0)
+
     kind = 'human'
-    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+    await withProfiles(() => page.evaluate(() => window.dispatchEvent(new Event('pageshow'))))
     await expect(trigger.getByLabel('Bot', { exact: true })).toHaveCount(0)
     await expect(trigger).toContainText('Harvester')
+    await trigger.click()
+    await expect(profile).toBeVisible()
+    await expect(profile).toContainText('Commander')
+    await expect(profile).not.toContainText(/automated|\bBot\b/i)
+    await page.keyboard.press('Escape')
+    await expect(profile).toHaveCount(0)
   })
 }
 
