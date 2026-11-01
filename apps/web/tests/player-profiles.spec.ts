@@ -323,8 +323,8 @@ test('player attachments align together and long identities stay within narrow r
   await playerProfilesFixture(page, () => players)
   await page.route('**/rankings', route => route.fulfill({ json: {
     binding, request_id: route.request().postDataJSON().request_id,
-    sampled_at: 1792843200000, processing_pending: false,
-    players: players.map((player, i) => ({ player: player.player, username: player.username, alliance: player.alliance, points: `${100 - i}`, rank: i + 1 })),
+    sampled_at: 1792843200000, baseline_at: 1792756800000, processing_pending: false,
+    players: players.map((player, i) => ({ player: player.player, username: player.username, alliance: player.alliance, points: `${100 - i}`, rank: [123, 1234, 12345][i], previous_rank: [null, 1334, 12245][i] })),
   } }))
   await page.goto(`/u/andromeda/high-scores?body=${body.id}`)
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
@@ -352,6 +352,15 @@ test('player attachments align together and long identities stay within narrow r
         expect(part.left).toBeGreaterThanOrEqual(bounds!.x)
         expect(part.right).toBeLessThanOrEqual(bounds!.x + bounds!.width)
       }
+    }
+    const rankCells = table.getByRole('row').filter({ has: page.getByRole('cell') }).locator('td:first-child')
+    for (const rankCell of await rankCells.all()) {
+      const { right, contentRight } = await rankCell.evaluate(cell => {
+        const range = document.createRange()
+        range.selectNodeContents(cell)
+        return { right: cell.getBoundingClientRect().right, contentRight: range.getBoundingClientRect().right }
+      })
+      expect(contentRight).toBeLessThanOrEqual(right)
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (width === 1440) {

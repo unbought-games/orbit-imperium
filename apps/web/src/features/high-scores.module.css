@@ -165,6 +165,12 @@
   .table th:first-child {
     width: 4rem;
   }
+  .table .rank {
+    white-space: normal;
+  }
+  .table .rank .movement {
+    display: inline-block;
+  }
   .points {
     font-size: 0.8125rem;
     white-space: nowrap;
