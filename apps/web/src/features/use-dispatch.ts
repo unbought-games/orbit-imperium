@@ -13,6 +13,7 @@ import {
 } from '../client-model/game-projection'
 import {
   allDispatchCargo,
+  dispatchCargoCapacity,
   maxDispatchCargo,
 } from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
@@ -131,9 +132,11 @@ export function useDispatch({
   )
   const quoteRef = useRef<HTMLElement>(null)
   let timingShips: S['FleetIntent4']['ships'] = []
+  let invalidShips = false
   try {
     timingShips = dispatchShips(types, ships, view.binding.player)
   } catch {
+    invalidShips = true
     // Keep invalid edits local; review reports the validation error.
   }
   const timingReady =
@@ -387,6 +390,14 @@ export function useDispatch({
     submittedAttempt,
     submittedCoordinates: submitted?.coordinates,
     timing: timing?.terms,
+    cargoCapacity: dispatchCargoCapacity(timing?.terms, cargo),
+    cargoCapacityMessage: invalidShips
+      ? 'Enter valid ship counts to see capacity.'
+      : timingShips.length === 0
+        ? 'Select ships to see capacity.'
+        : !timingReady || timing?.error
+          ? 'Capacity unavailable.'
+          : 'Calculating capacity…',
     timingMessage: !coordinatesValid
       ? 'Enter a valid destination to see flight times.'
       : targetProblem ||

@@ -4,6 +4,31 @@ import { resourceNames } from './resources'
 
 type Resource = (typeof resourceNames)[number]
 
+/** Advisory whole-unit space from the current server estimate, never ship rules. */
+export function dispatchCargoCapacity(
+  terms:
+    | Pick<
+        components['schemas']['FleetEstimate4'],
+        'capacity' | 'maximum_payload'
+      >
+    | undefined,
+  current: string[],
+) {
+  if (!terms) return null
+  const capacity = BigInt(terms.capacity) / 1000000n
+  const payload = BigInt(terms.maximum_payload) / 1000000n
+  let loaded: bigint
+  try {
+    loaded = resourceNames.reduce(
+      (sum, _, i) => sum + BigInt(dispatchQuantity(current[i])),
+      0n,
+    )
+  } catch {
+    return { capacity, payload, loaded: null, remaining: null }
+  }
+  return { capacity, payload, loaded, remaining: payload - loaded }
+}
+
 function cargoSpace(
   available: components['schemas']['Resources'],
   maximumPayload: string,

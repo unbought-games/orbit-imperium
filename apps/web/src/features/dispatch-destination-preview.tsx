@@ -6,7 +6,7 @@ import {
   LocationSummaryDescription,
 } from '../ui/location-summary'
 import { useRef } from 'react'
-import { Orbit, Radar } from 'lucide-react'
+import { Radar } from 'lucide-react'
 import type { components } from '../contracts'
 import type { LocationKind } from '../shell/location-address'
 import { BodyIllustration } from './body-illustration'
@@ -94,7 +94,13 @@ export function DispatchDestinationPreview({
             sizes="80px"
           />
         ) : kind === 'debris' && coordinates ? (
-          <Orbit />
+          <img
+            src="/art/debris/debris-medium.webp"
+            className={styles.destinationWorld}
+            width={80}
+            height={80}
+            alt=""
+          />
         ) : (
           <Radar />
         )}

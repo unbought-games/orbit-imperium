@@ -1,5 +1,61 @@
 import { expect, it } from 'vitest'
-import { allDispatchCargo, maxDispatchCargo } from './dispatch-cargo'
+import {
+  allDispatchCargo,
+  dispatchCargoCapacity,
+  maxDispatchCargo,
+} from './dispatch-cargo'
+
+it('derives empty, loaded, full and excessive cargo space from server terms', () => {
+  const terms = { capacity: '5000000000', maximum_payload: '4998500000' }
+  expect(dispatchCargoCapacity(terms, ['', '0', '0'])).toEqual({
+    capacity: 5000n,
+    payload: 4998n,
+    loaded: 0n,
+    remaining: 4998n,
+  })
+  expect(dispatchCargoCapacity(terms, ['100', '200', '300'])?.remaining).toBe(
+    4398n,
+  )
+  expect(dispatchCargoCapacity(terms, ['4998', '0', '0'])?.remaining).toBe(0n)
+  expect(dispatchCargoCapacity(terms, ['4999', '0', '0'])?.remaining).toBe(-1n)
+})
+
+it('leaves unknown or invalid cargo space unknown without hiding valid capacity', () => {
+  expect(dispatchCargoCapacity(undefined, ['42'])).toBeNull()
+  for (const value of ['-1', '1.5', 'invalid']) {
+    expect(
+      dispatchCargoCapacity(
+        { capacity: '5000000', maximum_payload: '4000000' },
+        [value],
+      ),
+    ).toEqual({
+      capacity: 5n,
+      payload: 4n,
+      loaded: null,
+      remaining: null,
+    })
+  }
+})
+
+it('uses authoritative payload for fuel-only ships and preserves large exact counts', () => {
+  expect(
+    dispatchCargoCapacity({ capacity: '0', maximum_payload: '0' }, []),
+  ).toEqual({
+    capacity: 0n,
+    payload: 0n,
+    loaded: 0n,
+    remaining: 0n,
+  })
+  expect(
+    dispatchCargoCapacity(
+      {
+        capacity: '9007199254740993123456',
+        maximum_payload: '9007199254740992000000',
+      },
+      ['9007199254740991'],
+    )?.remaining,
+  ).toBe(1n)
+})
 
 it('loads available whole units and reserves the quoted fuel', () => {
   expect(

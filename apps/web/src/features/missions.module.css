@@ -341,9 +341,38 @@
   border: 0;
 }
 .cargoHeader {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin-bottom: 8px;
   color: var(--text-muted);
   font-size: 0.875rem;
+}
+.cargoCapacity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+.cargoCapacity > span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cargoOverCapacity {
+  color: var(--danger);
+}
+@container (max-width: 519px) {
+  .cargoHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@container (max-width: 319px) {
+  .cargoCapacity {
+    min-height: 2lh;
+  }
 }
 .cargoInputs {
   display: grid;

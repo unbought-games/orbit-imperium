@@ -1237,7 +1237,9 @@ for (const width of [320, 390, 1280]) {
       expect(box.y).toBe(cargoBoxes[0].y + (wideCargo ? 0 : i * 52))
       expect(box.height).toBe(44)
     }
-    expect((await cargo.boundingBox())!.height).toBeLessThanOrEqual(wideCargo ? 75 : 231)
+    const headerHeight = (await cargo.getByText('Cargo', { exact: true }).locator('..').boundingBox())!.height
+    expect(headerHeight).toBeLessThanOrEqual(wideCargo ? 23 : 70)
+    expect((await cargo.boundingBox())!.height - headerHeight).toBeLessThanOrEqual(wideCargo ? 52 : 208)
     const maxButtons = cargo.getByRole('button', { name: /^Max / })
     await expect(maxButtons).toHaveCount(3)
     for (let i = 0; i < 3; i++) {
@@ -2544,5 +2546,114 @@ for (const width of [1440, 390]) {
       await expect(page.getByRole('button', {name: 'Launch fleet', exact: true})).toHaveCount(0)
       expect(state.launches).toBe(0)
     } finally {release(); state.hold = null}
+  })
+}
+
+for (const width of [390, 1440]) {
+  test(`dispatch cargo capacity follows current estimates and edits at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const state = await setup(page)
+    const capacity = page.getByRole('group', { name: 'Cargo capacity', exact: true })
+    const cargo = page.getByRole('group', { name: 'Cargo', exact: true })
+    const metal = page.getByRole('textbox', { name: 'Metal', exact: true })
+    await expect(capacity).toHaveText('5,000 total capacity4,999 after fuel')
+    await expect(metal).toHaveValue('0')
+    await cargo.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/cargo-capacity-empty-${width}x1000.png` })
+    await diagnosticScreenshot(cargo, { path: `test-results/cargo-capacity-empty-detail-${width}x1000.png` })
+    const estimates = state.estimates
+    const initialInputY = await metal.evaluate(el => el.getBoundingClientRect().top + window.scrollY)
+    await metal.fill('100')
+    await expect(capacity).toContainText('4,899 remaining')
+    expect(state.estimates).toBe(estimates)
+    expect(await metal.evaluate(el => el.getBoundingClientRect().top + window.scrollY)).toBe(initialInputY)
+    await diagnosticScreenshot(page, { path: `test-results/cargo-capacity-loaded-${width}x1000.png` })
+    await diagnosticScreenshot(cargo, { path: `test-results/cargo-capacity-loaded-detail-${width}x1000.png` })
+    await metal.fill('4999')
+    await expect(capacity).toContainText('0 remaining')
+    await metal.fill('5001')
+    await expect(capacity).toContainText('2 over capacity')
+    state.quoteError = 'CargoCapacity'
+    await review(page).click()
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+    await expect(metal).toHaveValue('5001')
+    await expect(capacity).toContainText('2 over capacity')
+    await cargo.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(cargo, { path: `test-results/cargo-capacity-excess-${width}x1000.png` })
+    state.quoteError = null
+    await metal.fill('1.5')
+    await expect(capacity).toContainText('Enter whole nonnegative cargo amounts.')
+    await expect(capacity).not.toContainText('remaining')
+    await metal.fill('100')
+
+    // A different ship selection invalidates the old advisory result immediately.
+    let release!: () => void
+    let held = false
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    state.hold = async (route) => {
+      if (route.request().postDataJSON().type === 'FleetEstimate') {
+        held = true
+        await gate
+      }
+    }
+    state.capacity = '10000000000'
+    state.maximumPayload = '9998000000'
+    await page.getByLabel('Small Cargo · 2 available').fill('2')
+    try {
+      await expect.poll(() => held).toBe(true)
+      await expect(capacity).toHaveText('Calculating capacity…')
+    } finally {
+      release()
+      state.hold = null
+    }
+    await expect(capacity).toHaveText('10,000 total capacity9,998 after fuel9,898 remaining')
+
+    state.maximumPayload = '9999000000'
+    state.fuel = '1000000'
+    await setSpeed(page, 50)
+    await expect(capacity).toContainText('9,999 after fuel9,899 remaining')
+    state.maximumPayload = '9997000000'
+    state.fuel = '3000000'
+    await setDestination(page, { system: '2' })
+    await expect(capacity).toContainText('9,997 after fuel9,897 remaining')
+
+    state.estimateError = 'NotFound'
+    await setSpeed(page, 40)
+    await expect(capacity).toHaveText('Capacity unavailable.')
+    await expect(metal).toHaveValue('100')
+    state.estimateError = null
+    await page.getByLabel('Small Cargo · 2 available').fill('0')
+    await expect(capacity).toHaveText('Select ships to see capacity.')
+    await page.getByLabel('Small Cargo · 2 available').fill('1.5')
+    await expect(capacity).toHaveText('Enter valid ship counts to see capacity.')
+    await page.getByLabel('Small Cargo · 2 available').fill('1')
+    await expect(capacity).toContainText('total capacity')
+    await setDestination(page, { system: '0' })
+    await expect(capacity).toHaveText('Capacity unavailable.')
+    await expect(review(page)).toBeDisabled()
+    expect(state.launches).toBe(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+  })
+
+  test(`dispatch debris preview reuses debris artwork at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const state = await setup(page)
+    await page.getByRole('radio', { name: 'Harvest', exact: true }).check()
+    const preview = page.getByLabel('Destination preview')
+    await expect(preview).toContainText('Debris field')
+    const art = preview.locator('img')
+    await expect(art).toHaveAttribute('src', '/art/debris/debris-medium.webp')
+    await expect.poll(() => art.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true)
+    await expect(preview).toContainText('System observation checked.')
+    await preview.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/debris-preview-${width}x1000.png` })
+    await diagnosticScreenshot(preview, { path: `test-results/debris-preview-detail-${width}x1000.png` })
+    state.debris = false
+    await setDestination(page, { system: '2' })
+    await expect(page.getByRole('status').filter({ hasText: 'no available debris field' })).toBeVisible()
+    await expect(review(page)).toBeDisabled()
+    await expect(art).toHaveAttribute('src', '/art/debris/debris-medium.webp')
+    expect(state.launches).toBe(0)
   })
 }
