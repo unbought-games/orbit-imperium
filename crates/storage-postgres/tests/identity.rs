@@ -44,6 +44,20 @@ async fn seed_login_revocation_and_private_views() {
     );
     drop(guard);
     assert!(store.server_guard(4).await.is_err());
+    // Both Drop and the failed startup close their retained sessions asynchronously.
+    // Wait for PostgreSQL to release their shared guards before expecting reset to
+    // acquire the exclusive guard. A broken release still fails this readiness gate.
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let mut released = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL lock_timeout='10s'")
+        .execute(&mut *released)
+        .await
+        .unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(901321)")
+        .execute(&mut *released)
+        .await
+        .unwrap();
+    released.commit().await.unwrap();
     store
         .reset(universe, 2_000_000, 1, &passwords)
         .await

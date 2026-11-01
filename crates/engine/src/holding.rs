@@ -270,10 +270,18 @@ pub fn quote_depot_supply(
             .get(&player)
             .ok_or(GameError::PolicyUnavailable)?;
         if policy.lifecycle != PlayerLifecycle::Active {
-            return Err(GameError::ActorDraining);
+            return Err(if player == owner {
+                GameError::ActorDraining
+            } else {
+                GameError::HoldingUnavailable
+            });
         }
         if policy.vacation {
-            return Err(GameError::ActorVacation);
+            return Err(if player == owner {
+                GameError::ActorVacation
+            } else {
+                GameError::HoldingUnavailable
+            });
         }
     }
     let terms = fleet

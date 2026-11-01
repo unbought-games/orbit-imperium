@@ -135,3 +135,26 @@ Terraformer and Depot activation. The holding journey passed in 13.932 s. Six
 refreshed desktop/mobile Depot browser journeys passed in 5.9 s; affected captures
 were inspected again. The isolated integration Compose project and its test
 databases are removed after validation. No CI assertions or checks were bypassed.
+
+## Review and CI repair — November 1, 2026
+
+Review thread PRRT_kwDOVRgPYs6yZ8o4 correctly identified actor-only error codes
+being returned for visitor restrictions. Host vacation/deletion retains actor
+errors; a restricted visitor now returns HoldingUnavailable without attributing
+the visitor's private account status to the host. The engine regression covers
+both participants and both restrictions.
+
+CI run 41304205667 failed identity reset validation with Conflict immediately
+after dropping retained server guards. Those sessions close asynchronously. The
+test now waits for PostgreSQL's actual exclusive advisory-lock acquisition after
+the failed startup check, before asserting reset succeeds. A ten-second lock
+readiness guard detects broken release; it is not a suite execution deadline.
+The existing protection, revocation and epoch assertions remain intact.
+
+Tested patch against `57ed0532d690fec2d040114e433c27ed729a7724`, SHA-256
+`3a99421908a559bb3957ae4f8c0786db48cff29c62e1b1d8076cf555a6bb4aef` over the binary Git diff of the three Rust files.
+All nine holding engine tests passed in 0.116 s, identity integration passed in
+3.312 s, the serial/scoped holding integration passed in 7.830 s, and workspace
+Clippy passed in 5.81 s. Disposable databases were removed by the runner and the
+isolated review Compose project is removed after validation. No UI layout or
+copy changed; previously refreshed screenshots remain current.

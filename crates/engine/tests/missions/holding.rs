@@ -382,8 +382,55 @@ fn depot_rounding_uses_survivors_and_deletion_blocks_new_supply() {
         .lifecycle = PlayerLifecycle::DeletionPending;
     assert_eq!(
         quote_depot_supply(&s, host, &request, event.at, &r),
-        Err(GameError::ActorDraining)
+        Err(GameError::HoldingUnavailable)
     );
+    for (player, lifecycle, vacation, expected) in [
+        (
+            p,
+            PlayerLifecycle::Active,
+            true,
+            GameError::HoldingUnavailable,
+        ),
+        (
+            host,
+            PlayerLifecycle::DeletionPending,
+            false,
+            GameError::ActorDraining,
+        ),
+        (
+            host,
+            PlayerLifecycle::Active,
+            true,
+            GameError::ActorVacation,
+        ),
+    ] {
+        for owner in [p, host] {
+            let policy = s
+                .world
+                .as_mut()
+                .unwrap()
+                .records
+                .policies
+                .get_mut(&owner)
+                .unwrap();
+            policy.lifecycle = PlayerLifecycle::Active;
+            policy.vacation = false;
+        }
+        let policy = s
+            .world
+            .as_mut()
+            .unwrap()
+            .records
+            .policies
+            .get_mut(&player)
+            .unwrap();
+        policy.lifecycle = lifecycle;
+        policy.vacation = vacation;
+        assert_eq!(
+            quote_depot_supply(&s, host, &request, event.at, &r),
+            Err(expected)
+        );
+    }
 }
 #[test]
 fn capacity_counts_host_and_distinct_owners_at_arrival() {
