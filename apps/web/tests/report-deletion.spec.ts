@@ -497,10 +497,16 @@ for (const width of [1280, 390]) {
     fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
     if (width >= 768) await page.reload()
     else await selectReports(page)
-    await expect(page.getByRole('group', {name: 'Report selection'}).getByRole('button', {name: /Select all matching/})).toBeDisabled()
-    if (width < 768) await expect(page.getByRole('article').first().getByRole('button', { name: 'Archive report', exact: true })).toBeDisabled()
-    await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length - beforeTriage).toBe(1)
-    release()
+    try {
+      const selectAll = page.getByRole('group', {name: 'Report selection'}).getByRole('button', {name: /Select all matching/})
+      // Reload has no usable snapshot; mobile selection retains the complete inbox.
+      if (width >= 768) await expect(selectAll).toBeDisabled()
+      else {
+        await expect(selectAll).toBeEnabled()
+        await expect(page.getByRole('article').first().getByRole('button', { name: 'Archive report', exact: true })).toBeEnabled()
+      }
+      await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length - beforeTriage).toBe(1)
+    } finally { release() }
     await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)
     await page.getByRole('button', {name: 'Sort reports', exact: true}).click()
     await page.getByRole('menuitemradio', {name: 'Most resources'}).click()
@@ -1180,7 +1186,7 @@ test('mobile report dropdown keeps its existing actions', async ({page}) => {
   await diagnosticScreenshot(page, {path: 'test-results/reports-archive-all-mobile-390x900.png'})
 })
 
-test('desktop row archiving stays available while complete history is loading', async ({page}) => {
+test('desktop selection and row archiving stay available during cached refresh', async ({page}) => {
   await page.setViewportSize({width: 1280, height: 900})
   await page.emulateMedia({reducedMotion: 'reduce'})
   const fixture = await reportsFixture(page, true)
@@ -1191,8 +1197,8 @@ test('desktop row archiving stays available while complete history is loading', 
   try {
     await refreshGame(page)
     await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(before + 1)
-    await expect(rows.first().getByRole('checkbox')).toBeDisabled()
-    await expect(page.getByRole('button', {name: 'Select all matching (2)'})).toBeDisabled()
+    await expect(rows.first().getByRole('checkbox')).toBeEnabled()
+    await expect(page.getByRole('button', {name: 'Select all matching (2)'})).toBeEnabled()
     const archive = rows.first().getByRole('button', {name: 'Archive report', exact: true})
     await expect(archive).toBeEnabled()
     await diagnosticScreenshot(page, {path: 'test-results/reports-loading-actions-1280x900.png', clip: {x: 240, y: 80, width: 1040, height: 470}})
@@ -1205,7 +1211,7 @@ test('desktop row archiving stays available while complete history is loading', 
   }
 })
 
-test('mobile selection can be cancelled while history is loading', async ({page}) => {
+test('mobile selection can be used and cancelled during cached refresh', async ({page}) => {
   await page.setViewportSize({width: 390, height: 900})
   await page.emulateMedia({reducedMotion: 'reduce'})
   const fixture = await reportsFixture(page, true)
@@ -1214,7 +1220,7 @@ test('mobile selection can be cancelled while history is loading', async ({page}
   try {
     await selectReports(page)
     const selection = page.getByRole('group', {name: 'Report selection'})
-    await expect(selection.getByRole('button', {name: 'Select all matching (2)'})).toBeDisabled()
+    await expect(selection.getByRole('button', {name: 'Select all matching (2)'})).toBeEnabled()
     const cancel = selection.getByRole('button', {name: 'Cancel selection'})
     await expect(cancel).toBeEnabled()
     await diagnosticScreenshot(page, {path: 'test-results/reports-loading-cancel-390x900.png'})
@@ -1226,3 +1232,94 @@ test('mobile selection can be cancelled while history is loading', async ({page}
     release()
   }
 })
+
+
+for (const width of [1440, 390]) {
+  test(`selection remains interactive through the 15-second background refresh at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    const now = new Date('2026-10-31T20:00:00Z')
+    await page.clock.install({time: now})
+    await page.clock.pauseAt(now)
+    const fixture = await reportsFixture(page, true)
+    await selectReports(page, true)
+    const rows = page.locator('main article')
+    const boxes = rows.getByRole('checkbox')
+    await expect(boxes.first()).toBeEnabled()
+    await boxes.last().check()
+    await boxes.first().focus()
+    const focused = await boxes.first().elementHandle()
+    const baseline = fixture.pageRequests.length
+    let release!: () => void
+    fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
+    try {
+      // Only the HUD's timer fires: no click, focus event, or revision change.
+      await page.clock.runFor(15000)
+      await expect.poll(() => fixture.pageRequests.length).toBe(baseline + 2)
+      await expect(boxes.first()).toBeFocused()
+      expect(await focused!.evaluate(el => el.isConnected)).toBe(true)
+      await expect(boxes.last()).toBeChecked()
+      await expect(boxes.first()).toBeEnabled()
+      await expect(page.getByRole('button', {name: 'Archive selected (1)'})).toBeEnabled()
+      if (width >= 768)
+        await expect(page.getByRole('button', {name: 'Mark as read', exact: true})).toBeEnabled()
+      await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)
+      await page.getByRole('button', {name: 'Select all matching (2)'}).click()
+      await expect(boxes.first()).toBeChecked()
+      await expect(boxes.last()).toBeChecked()
+      await boxes.first().uncheck()
+      await boxes.first().check()
+      await diagnosticScreenshot(page, {path: `test-results/reports-background-selection-${width}x900.png`})
+      // A user mutation supersedes the held refresh; its old rows must not return.
+      await page.getByRole('button', {name: 'Archive selected (2)'}).click()
+      await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
+      await expect(rows).toHaveCount(0)
+    } finally { release() }
+    await page.clock.runFor(15000)
+    await expect(rows).toHaveCount(0)
+    await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toBeVisible()
+  })
+
+  test(`archive inputs and cached selection survive a failed background refresh at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    const now = new Date('2026-10-31T20:00:00Z')
+    await page.clock.install({time: now})
+    await page.clock.pauseAt(now)
+    const fixture = await reportsFixture(page, true)
+    await selectReports(page, true)
+    await page.locator('main article').last().getByRole('checkbox').check()
+    await page.getByRole('button', {name: 'More report actions'}).click()
+    await page.clock.runFor(1000)
+    await page.getByRole('menuitem', {name: /^Archive( older reports)?…$/}).click()
+    await page.clock.runFor(1000)
+    const dialog = page.getByRole('dialog', {name: /^Archive( older)? reports$/})
+    await dialog.getByRole('combobox', {name: 'Older than'}).selectOption('custom')
+    const hours = dialog.getByRole('spinbutton', {name: 'Hours', exact: true})
+    await hours.fill('12')
+    const baseline = fixture.pageRequests.length
+    let release!: () => void
+    fixture.holdMore(new Promise<void>(resolve => { release = resolve }), true)
+    try {
+      await page.clock.runFor(15000)
+      await expect.poll(() => fixture.pageRequests.length).toBe(baseline + 2)
+      await expect(hours).toBeFocused()
+      await expect(hours).toBeEnabled()
+      await expect(hours).toHaveValue('12')
+      await hours.fill('6')
+      await expect(dialog.getByRole('button', {name: 'Archive 2 reports', exact: true})).toBeEnabled()
+      if (width >= 768)
+        await expect(dialog.getByRole('button', {name: 'Archive all (2)', exact: true})).toBeEnabled()
+      await diagnosticScreenshot(page, {path: `test-results/reports-background-cleanup-${width}x900.png`})
+    } finally { release() }
+    await expect(page.getByRole('button', {name: 'Retry reports', exact: true})).toBeVisible()
+    await expect(hours).toHaveValue('6')
+    await expect(hours).toBeEnabled()
+    await expect(dialog.getByRole('button', {name: 'Archive 2 reports', exact: true})).toBeEnabled()
+    await dialog.getByRole('button', {name: /Dismiss (sheet|popover)/}).click()
+    const selected = page.locator('main article').last().getByRole('checkbox')
+    await expect(selected).toBeChecked()
+    await expect(selected).toBeEnabled()
+    await expect(page.getByRole('button', {name: 'Archive selected (1)'})).toBeEnabled()
+  })
+}

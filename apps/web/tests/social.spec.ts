@@ -536,8 +536,10 @@ for (const viewport of [
     await diagnosticScreenshot(page, {
       path: `test-results/messages-composer-${viewport.width}.png`,
     })
+    const polled = page.waitForResponse(r => r.url().endsWith('/social/query') && r.request().postDataJSON().query.type === 'Messages')
     releasePoll()
-    // The disabled paging button tells us the unchanged response has settled.
+    await polled
+    // Passive polling keeps pagination available throughout the request.
     await expect(
       page.getByRole('button', { name: 'Load older messages' }),
     ).toBeEnabled()
@@ -1059,3 +1061,40 @@ test('message categories share the heading and collapse into a keyboard-accessib
     path: 'test-results/dm-header-320x740.png',
   })
 })
+
+for (const width of [1440, 390]) {
+  test(`background message poll accepts older history and preserves edits at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.clock.install()
+    await page.clock.pauseAt(new Date())
+    const f = await fixture(page)
+    await page.goto(`/u/andromeda/messages?player=${peer}`)
+    const older = page.getByRole('button', {name: 'Load older messages'})
+    await expect(older).toBeEnabled()
+    const history = page.getByLabel('Message history')
+    await history.evaluate(el => {el.scrollTop = 0; el.dispatchEvent(new Event('scroll'))})
+    const anchor = history.getByText('Message 16', {exact: true})
+    const offset = () => anchor.evaluate(el => el.getBoundingClientRect().top - el.closest('[aria-label="Message history"]')!.getBoundingClientRect().top)
+    const before = await offset()
+    const composer = page.getByLabel('Message', {exact: true})
+    await composer.fill('Unsent refresh draft')
+    const release = f.holdHistory()
+    try {
+      await page.clock.runFor(5000)
+      await expect.poll(() => f.requests.filter(q => q.type === 'Messages').length).toBe(2)
+      await expect(older).toBeEnabled()
+      await expect(composer).toBeFocused()
+      await expect(composer).toHaveValue('Unsent refresh draft')
+      await diagnosticScreenshot(page, {path: `test-results/background-messages-${width}x900.png`, fullPage: true})
+      await older.click()
+      await expect(older).toBeDisabled()
+      expect(f.requests.filter(q => q.type === 'Messages')).toHaveLength(2)
+      await composer.fill('Still editing while history is queued')
+    } finally {release()}
+    await expect(history.getByText('Message 1', {exact: true})).toHaveCount(1)
+    expect(f.requests.filter(q => q.type === 'Messages' && q.before)).toHaveLength(1)
+    expect(Math.abs(await offset() - before)).toBeLessThan(1)
+    await expect(composer).toBeFocused()
+    await expect(composer).toHaveValue('Still editing while history is queued')
+  })
+}

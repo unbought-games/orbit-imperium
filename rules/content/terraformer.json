@@ -1,0 +1,7 @@
+{
+  "building": { "base": [0, 50000, 100000], "growth": [2, 1] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "NaniteFactory", "level": 1 },
+    { "type": "PlayerResearch", "research": "EnergyTechnology", "level": 12 }
+  ]
+}

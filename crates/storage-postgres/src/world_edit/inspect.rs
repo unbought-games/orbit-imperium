@@ -34,7 +34,17 @@ impl PgStore {
             None
         };
         let coord = planet.map(coordinates).transpose()?;
-        let bodies=state.bodies.values().filter(|b|owner.is_none_or(|p|b.owner==p)&&coord.is_none_or(|c|b.coordinates==c)).map(|b|json!({"planet":coordinate_label(b.coordinates),"name":b.name,"user":names.get(&b.owner),"fields":b.fields,"resources":b.checkpoint.amounts.values().map(|n|n/SCALE),"buildings":b.levels,"ships":state.inventories.iter().filter(|x|x.body==b.id).map(|x|json!({"item":x.item,"count":x.count})).collect::<Vec<_>>()})).collect::<Vec<_>>();
+        let bodies = state.bodies.values()
+            .filter(|b| owner.is_none_or(|p| b.owner == p) && coord.is_none_or(|c| b.coordinates == c))
+            .map(|b| -> Result<Value> {
+                Ok(json!({
+                    "planet": coordinate_label(b.coordinates), "name": b.name, "user": names.get(&b.owner),
+                    "fields": body_field_capacity(b, &rules)?, "base_fields": b.fields,
+                    "resources": b.checkpoint.amounts.values().map(|n| n / SCALE), "buildings": b.levels,
+                    "ships": state.inventories.iter().filter(|x| x.body == b.id)
+                        .map(|x| json!({"item": x.item, "count": x.count})).collect::<Vec<_>>()
+                }))
+            }).collect::<Result<Vec<_>>>()?;
         Ok(
             json!({"universe":u,"planets":bodies,"players":state.research.values().filter(|r|owner.is_none_or(|p|r.owner==p)).map(|r|json!({"user":names.get(&r.owner),"research":r.levels,"policy":state.world.as_ref().and_then(|w|w.records.policies.get(&r.owner))})).collect::<Vec<_>>(),"catalog":rules.artifact.catalog,"queues":{"buildings":state.constructions,"research":state.research_operations,"manufacturing":state.manufacturing_batches}}),
         )

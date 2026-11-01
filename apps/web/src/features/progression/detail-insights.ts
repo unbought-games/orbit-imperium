@@ -176,6 +176,7 @@ export function buildingInsights(
       : null,
     storage,
     energy: {
+      grossSupply: supply.toString(),
       current: (supply - demand).toString(),
       after:
         afterDemand === null ? null : (afterSupply - afterDemand).toString(),
@@ -221,13 +222,15 @@ export function buildingInsights(
                 ? 'Planet total at saved settings, net of fuel use'
                 : 'Planet total at saved settings, including base production'
               : 'Mine potential at 100% output and full power; planet estimate unavailable'
-            : benefit.kind === 'Energy'
-              ? id === 'FusionReactor' && projected
-                ? 'At saved settings and current fuel availability'
-                : production
-                  ? null
-                  : 'At 100% output'
-              : null,
+            : benefit.kind === 'FieldCapacity'
+              ? 'Five fields added; this level occupies one, leaving four more free fields'
+              : benefit.kind === 'Energy'
+                ? id === 'FusionReactor' && projected
+                  ? 'At saved settings and current fuel availability'
+                  : production
+                    ? null
+                    : 'At 100% output'
+                : null,
         }
       : null,
   }
@@ -344,8 +347,12 @@ export function blockerExplanation(
     )
       return `${label(research.research)} · ${until(research.due_at)}`
   }
+  if (blocker.code === 'EnergyRequired')
+    return 'Increase gross energy production. Saved production settings and available fusion fuel apply; mine demand is not subtracted.'
+  if (blocker.code === 'NotDemolishable')
+    return 'This building cannot be demolished.'
   if (blocker.code === 'NoFreeField')
-    return 'Free a field by demolishing a building, or increase available fields.'
+    return 'Free a field by demolishing an eligible building. Terraformer also needs one free field to start.'
   if (blocker.code === 'YardLocked')
     return 'Finish all manufacturing on this planet before upgrading or demolishing the factory.'
   if (blocker.code === 'QueueCapacity') {

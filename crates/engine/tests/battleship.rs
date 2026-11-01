@@ -132,6 +132,7 @@ fn battleship_manufacturing_charges_and_times_metal_and_crystal_only() {
     let (state, _, _, body) = common::fixture();
     let mut planet = state.bodies[&body].clone();
     planet.levels.insert(Building::NaniteFactory, 0);
+    planet.levels.insert(Building::Terraformer, 0);
     planet.levels.insert(Building::Shipyard, 7);
     for (speed, seconds) in [(1, 10800), (5, 2160), (7, 1542), (10, 1080)] {
         let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), speed).unwrap();

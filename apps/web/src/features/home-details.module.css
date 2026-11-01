@@ -26,6 +26,13 @@
 .beta {
   margin-top: 24px;
 }
+.universeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin-top: 16px;
+}
 .beta > section {
   font-size: var(--font-size-xs);
   max-width: 50ch;
@@ -130,6 +137,89 @@
 .sectionIntro {
   margin-bottom: 36px;
 }
+.universeIntro,
+.eternal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(28px, 5vw, 72px);
+}
+.campaign {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 36px;
+  margin-top: 40px;
+}
+.campaign article {
+  border-top: 1px solid var(--border-accent);
+  padding-top: 24px;
+}
+.campaign p {
+  font-size: var(--font-size-sm);
+}
+.campaignIcon {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 24px;
+  color: var(--champagne-light);
+  border: 1px solid var(--border-accent);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--navy-light), transparent 75%);
+}
+.eternalIcon {
+  display: block;
+  color: var(--ice-light);
+  margin-bottom: 20px;
+}
+.eternal {
+  margin-top: 40px;
+  padding: clamp(24px, 4vw, 48px);
+  background: linear-gradient(120deg, var(--navy-light), var(--surface-page));
+  border-left: 2px solid var(--champagne);
+}
+.eternal h3 {
+  font-size: clamp(1.6rem, 2.5vw, 2rem);
+  margin-top: 0;
+}
+.eternalAction {
+  margin: 24px 0;
+}
+.details .discordButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 14px 24px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #5865f2;
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.discordButton img {
+  flex-shrink: 0;
+}
+.details .discordButton:hover {
+  color: #fff;
+  box-shadow: inset 0 0 0 100px #0002;
+}
+.details .discordButton:active {
+  box-shadow: inset 0 2px 6px #0006;
+}
+.details .discordButton:focus-visible {
+  outline: 3px solid #e0e3ff;
+  outline-offset: 4px;
+}
+.details .developmentNote {
+  font-size: var(--font-size-sm);
+  margin-bottom: 0;
+}
 .strategy {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -201,6 +291,9 @@
     font-size: clamp(2.6rem, 12vw, 4.2rem);
   }
   .mobile,
+  .universeIntro,
+  .campaign,
+  .eternal,
   .fairPlay,
   .join,
   .strategy {
@@ -237,6 +330,9 @@
     gap: 32px;
   }
   .joinAction a {
+    width: 100%;
+  }
+  .eternalAction .discordButton {
     width: 100%;
   }
 }

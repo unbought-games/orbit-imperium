@@ -76,10 +76,6 @@ export function useDispatchDestination(
     target,
     observation,
     problem,
-    refreshing:
-      !!currentRead &&
-      currentRead.revision !== revision &&
-      target?.source !== 'empire',
     planets,
     selectedPlanet,
     lookup: currentRead

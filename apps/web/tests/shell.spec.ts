@@ -579,75 +579,230 @@ test('small phone resource row fits large stocks and negative energy without sta
   expect((await ledger.boundingBox())!.height).toBe(44)
 })
 
-test('shipyard and defense show every batch in the same ordered queue', async ({
-  page,
-}) => {
-  const now = Date.now()
-  const batch = {
-    id: id(10),
-    body: body.id,
-    item: { kind: 'Ship' as const, id: 'SmallCargo' as const },
-    quantity: '3',
-    completed_prefix: '1',
-    remaining: '2',
-    paid: resources,
-    accepted_at: now,
-    first_start_at: now,
-    next_due_at: now + 50000,
-    final_due_at: now + 100000,
-    unit_duration_ms: 50000,
-    state: 'Producing' as const,
-    can_cancel: false as const,
-  }
-  await page.setViewportSize({ width: 390, height: 844 })
-  await shellFixture(page, {
-    manufacturing: [
-      {
-        ...batch,
-        id: id(12),
-        item: { kind: 'Ship', id: 'LightFighter' },
-        state: 'PaidQueued',
-        first_start_at: now + 200000,
-      },
+for (const width of [320, 390, 1440]) {
+  test(`shipyard and defense show every batch and total completion at ${width}px`, async ({
+    page,
+  }) => {
+    const now = Date.now()
+    await page.clock.install({ time: now - 1000 })
+    await page.clock.pauseAt(now)
+    const batch = {
+      id: id(10),
+      body: body.id,
+      item: { kind: 'Ship' as const, id: 'SmallCargo' as const },
+      quantity: '3',
+      completed_prefix: '1',
+      remaining: '2',
+      paid: resources,
+      accepted_at: now,
+      first_start_at: now - 75000,
+      next_due_at: now + 25000,
+      final_due_at: now + 75000,
+      unit_duration_ms: 50000,
+      state: 'Producing' as const,
+      can_cancel: false as const,
+    }
+    await page.setViewportSize({ width, height: 900 })
+    const options: NonNullable<Parameters<typeof shellFixture>[1]> = {
+      sampledAt: now,
+      manufacturing: [
+        {
+          ...batch,
+          id: id(12),
+          item: { kind: 'Ship', id: 'LightFighter' },
+          state: 'PaidQueued',
+          first_start_at: now + 175000,
+          next_due_at: now + 225000,
+          final_due_at: now + 275000,
+        },
+        batch,
+        {
+          ...batch,
+          id: id(11),
+          item: { kind: 'Defense', id: 'RocketLauncher' },
+          state: 'PaidQueued',
+          first_start_at: now + 75000,
+          next_due_at: now + 125000,
+          final_due_at: now + 175000,
+        },
+        {
+          ...batch,
+          id: id(13),
+          body: id(6),
+          final_due_at: now + 900000,
+          item: { kind: 'Ship', id: 'LargeCargo' },
+        },
+      ],
+    }
+    await shellFixture(page, options)
+    for (const destination of ['overview', 'shipyard', 'defense']) {
+      await page.goto(`/u/andromeda/b/${body.id}/${destination}`)
+      const scope =
+        destination === 'overview'
+          ? page.getByRole('article', {
+              name: 'Planet [1:371:12] dossier',
+              exact: true,
+            })
+          : page
+      const queue = scope.getByRole('list', { name: 'Manufacturing queue' })
+      await expect(
+        queue.getByRole('heading', { name: 'Small Cargo' }),
+      ).toBeVisible()
+      await expect(queue).toContainText('Building now')
+      await expect(queue.getByTitle('Units remaining')).toHaveText('2 remaining')
+      await expect(queue).not.toContainText('remaining in this order')
+      const upcoming = queue.getByRole('list', { name: 'Upcoming orders' })
+      await expect(upcoming.getByRole('listitem')).toHaveCount(2)
+      const firstOrder = upcoming.getByRole('button').nth(0)
+      await expect(firstOrder).toHaveAccessibleName(
+        'Rocket Launcher · 2 remaining details',
+      )
+      await expect(upcoming.getByRole('button').nth(1)).toHaveAccessibleName(
+        'Light Fighter · 2 remaining details',
+      )
+      await expect(
+        queue.getByRole('button', { name: /Large Cargo/ }),
+      ).toHaveCount(0)
+      await expect(queue.locator('dl').first()).toContainText('Next unit25s')
+      await expect(queue.locator('dl').first()).toContainText(
+        'This order1m 15s',
+      )
+      await expect(queue.locator('dl').first()).toContainText('Entire queue5m')
+      await expect(queue.getByRole('progressbar')).toHaveAttribute(
+        'aria-valuenow',
+        '50',
+      )
+      await expect
+        .poll(() =>
+          queue
+            .locator('img')
+            .evaluateAll((images) =>
+              images.every(
+                (image) =>
+                  (image as HTMLImageElement).complete &&
+                  (image as HTMLImageElement).naturalWidth > 0,
+              ),
+            ),
+        )
+        .toBe(true)
+      await firstOrder.click()
+      const details = page.getByRole('dialog', {
+        name: 'Rocket Launcher · 2 remaining',
+        exact: true,
+      })
+      await expect(details).toContainText('Starts in1m 15s')
+      await expect(details).toContainText('Order complete2m 55s')
+      await diagnosticScreenshot(page, {
+        path: `test-results/queue-${destination}-details-${width}x900.png`,
+      })
+      await page.keyboard.press('Escape')
+      await expect(details).toHaveCount(0)
+      await firstOrder.focus()
+      await page.keyboard.press('Enter')
+      await expect(details).toBeVisible()
+      await page.keyboard.press('Escape')
+      await firstOrder.blur()
+      await page.mouse.move(0, 0)
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await page.evaluate(() => document.fonts.ready)
+      await diagnosticScreenshot(
+        scope.getByRole('region', { name: 'Shipyard & defense', exact: true }),
+        {
+          path: `test-results/queue-${destination}-multiple-${width}x900.png`,
+        },
+      )
+    }
+    const captureState = async (state: string) => {
+      // Tall narrow queues exceed a viewport; capture the document so sticky
+      // navigation does not obscure the top of a scrolled locator capture.
+      if (state === 'long-queue' && width === 320) {
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+        await diagnosticScreenshot(page, { path: `test-results/queue-defense-${state}-${width}x900.png`, fullPage: true })
+        return
+      }
+      await diagnosticScreenshot(
+        page.getByRole('region', { name: 'Shipyard & defense', exact: true }),
+        { path: `test-results/queue-defense-${state}-${width}x900.png` },
+      )
+    }
+    options.manufacturing = [
       batch,
-      {
+      ...Array.from({ length: 12 }, (_, index) => ({
         ...batch,
-        id: id(11),
-        item: { kind: 'Defense', id: 'RocketLauncher' },
-        state: 'PaidQueued',
-        first_start_at: now + 100000,
-      },
-      {
-        ...batch,
-        id: id(13),
-        body: id(6),
-        item: { kind: 'Ship', id: 'LargeCargo' },
-      },
-    ],
+        id: id(100 + index),
+        item: {
+          kind: 'Missile' as const,
+          id: 'InterplanetaryMissile' as const,
+        },
+        quantity: index === 0 ? '9007199254740994' : '25',
+        remaining: index === 0 ? '9007199254740994' : '25',
+        completed_prefix: '0',
+        state: 'PaidQueued' as const,
+        first_start_at: now + 75000 + index * 1250000,
+        next_due_at: now + 125000 + index * 1250000,
+        final_due_at: now + 1325000 + index * 1250000,
+      })),
+    ]
+    await page.reload()
+    await expect(
+      page.getByRole('list', { name: 'Upcoming orders' }).getByRole('button'),
+    ).toHaveCount(12)
+    await expect(
+      page.getByRole('button', {
+        name: 'Interplanetary Missile · 9007199254740994 remaining details',
+      }),
+    ).toContainText('9,007,199,254,740,994')
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await captureState('long-queue')
+    options.manufacturing = [batch]
+    await page.reload()
+    await expect(
+      page
+        .locator('dt')
+        .filter({ hasText: /^Entire queue$/ })
+        .locator('..')
+        .getByText('1m 15s', { exact: true }),
+    ).toBeVisible()
+    await captureState('single')
+    await page.clock.fastForward(1000)
+    await expect(
+      page
+        .locator('dt')
+        .filter({ hasText: /^Entire queue$/ })
+        .locator('..')
+        .getByText('1m 14s', { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '52',
+    )
+    options.sampledAt = now + 75000
+    await page.reload()
+    await expect(
+      page
+        .locator('dt')
+        .filter({ hasText: /^Entire queue$/ })
+        .locator('..')
+        .getByText('Pending', { exact: true }),
+    ).toBeVisible()
+    await captureState('awaiting')
+    options.manufacturing = []
+    await page.reload()
+    await expect(
+      page.getByText('No ships or defenses in production.'),
+    ).toBeVisible()
+    await expect(page.getByText('Entire queue', { exact: true })).toHaveCount(0)
+    await captureState('empty')
   })
-  for (const destination of ['overview', 'shipyard', 'defense']) {
-    await page.goto(`/u/andromeda/b/${body.id}/${destination}`)
-    const scope = destination === 'overview' ? page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }) : page
-    const queue = scope.getByRole('list', { name: 'Manufacturing queue' })
-    await expect(queue.getByRole('listitem')).toHaveCount(3)
-    await expect(queue.getByRole('listitem').nth(0)).toContainText(
-      'Small Cargo · 2 remaining',
-    )
-    await expect(queue.getByRole('listitem').nth(0)).toContainText('Producing')
-    await expect(queue.getByRole('listitem').nth(1)).toContainText(
-      'Rocket Launcher · 2 remaining',
-    )
-    await expect(queue.getByRole('listitem').nth(1)).toContainText('Starts in')
-    await expect(queue.getByRole('listitem').nth(2)).toContainText(
-      'Light Fighter · 2 remaining',
-    )
-    await expect(queue).not.toContainText('Large Cargo')
-  }
-  await diagnosticScreenshot(page, {
-    path: '/tmp/orbit-shared-manufacturing-queue.png',
-    fullPage: true,
-  })
-})
+}
 
 for (const [kind, elapsed] of [
   ['construction', 0],
@@ -1003,7 +1158,9 @@ test('world shell omits the utility row and opens defense production from its su
     page.locator('main').getByRole('link', { name: 'Reports', exact: true }),
   ).toHaveCount(0)
   await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
-  await expect(page.getByText('Rocket Launcher · 2 remaining')).toBeVisible()
+  const production = page.getByRole('list', { name: 'Manufacturing queue' })
+  await expect(production.getByRole('heading', { name: 'Rocket Launcher', exact: true })).toBeVisible()
+  await expect(production.getByTitle('Units remaining')).toHaveText('2 remaining')
   await expect(
     page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Defense', exact: true }),
   ).toHaveAttribute('href', /\/defense$/)

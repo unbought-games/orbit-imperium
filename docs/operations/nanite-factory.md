@@ -46,7 +46,8 @@ upgrade is a no-op. Custom definitions and deliberately disabled Nanites produce
 conflicts rather than silent overwrites. Disabled base prerequisites are rejected.
 Use `rules export`, `rules diff` and `rules apply` for intentional customizations.
 Retain the building definition when disabling new construction so existing levels
-and paid work remain valid. Terraformer and lunar content remain unavailable.
+and paid work remain valid. Terraformer is included in the subsequent standard bundle; see
+[Terraformer](terraformer.md). Lunar content remains unavailable.
 
 No new schema migration, environment variable or preparation script is required.
 Confirm `Applied` or `AlreadyActive`, record the rules hash/revision, and verify

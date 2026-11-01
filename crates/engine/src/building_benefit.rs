@@ -18,6 +18,7 @@ pub enum BuildingBenefitKind {
     MetalCapacity,
     CrystalCapacity,
     DeuteriumCapacity,
+    FieldCapacity,
 }
 
 pub fn building_benefit(
@@ -36,9 +37,11 @@ pub fn building_benefit(
         Building::MetalStorage => MetalCapacity,
         Building::CrystalStorage => CrystalCapacity,
         Building::DeuteriumTank => DeuteriumCapacity,
+        Building::Terraformer => FieldCapacity,
         _ => return Ok(None),
     };
     let value = |level| match building {
+        Building::Terraformer => terraformer_field_capacity(body.fields, level).map(i64::from),
         Building::MetalStorage | Building::CrystalStorage | Building::DeuteriumTank => {
             storage_capacity(level, rules)
         }

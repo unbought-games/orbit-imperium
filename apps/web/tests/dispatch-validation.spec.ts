@@ -1610,7 +1610,7 @@ test('destination retains its last observation while refreshing the same system'
   await refreshGame(page)
   await expect.poll(() => held).toBe(true)
   await expect(preview).toContainText('Ember Watch')
-  await expect(preview).toContainText('Last observation · Updating…')
+  await expect(preview).toContainText('Last observed · Review verifies destination.')
   await expect(preview.locator('img')).toHaveCount(1)
   state.observationAvailable = false
   const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
@@ -1621,7 +1621,7 @@ test('destination retains its last observation while refreshing the same system'
   await expect(preview).not.toContainText('Updating')
 })
 
-test('a retained observation of a former colony is explicitly marked as updating', async ({ page }) => {
+test('a retained observation of a former colony is explicitly marked as historical', async ({ page }) => {
   const state = await setup(page)
   const preview = page.getByLabel('Destination preview')
   await expect(preview).toContainText('Ember Watch')
@@ -1645,7 +1645,7 @@ test('a retained observation of a former colony is explicitly marked as updating
   await expect.poll(() => held).toBe(true)
   await expect(page.getByRole('combobox', { name: 'Your other planets' })).toBeDisabled()
   await expect(preview).toContainText('Haven Colony')
-  await expect(preview).toContainText('Last observation · Updating…')
+  await expect(preview).toContainText('Last observed · Review verifies destination.')
   await expect(preview).toContainText('You (last observed)')
   await expect(preview).not.toContainText('Your colony')
   state.ownedObservation = false
@@ -2498,5 +2498,51 @@ for (const width of [390, 635, 1440]) {
     await diagnosticScreenshot(page, { path: `test-results/dispatch-edit-dense-${width}x1000.png`, fullPage: false })
     await review(page).scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/dispatch-edit-cargo-${width}x1000.png`, fullPage: false })
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`background refresh retains compatible flight estimates and fresh Review at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    const state = await setup(page)
+    const timing = page.getByRole('region', {name: 'Flight timing'})
+    const preview = page.getByLabel('Destination preview')
+    await expect(timing.locator('dd').first()).toHaveText('1m 40s')
+    const previewText = await preview.textContent()
+    const ships = page.getByLabel('Small Cargo · 2 available')
+    await ships.focus()
+    let release!: () => void
+    let held = false
+    const gate = new Promise<void>(resolve => {release = resolve})
+    state.hold = async route => {
+      if (['FleetEstimate', 'Galaxy'].includes(route.request().postDataJSON().type)) {
+        if (route.request().postDataJSON().type === 'FleetEstimate') held = true
+        await gate
+      }
+    }
+    try {
+      state.advanceRevision()
+      await refreshGame(page)
+      await expect.poll(() => held).toBe(true)
+      await expect(timing.locator('dd').first()).toHaveText('1m 40s')
+      await expect(timing.locator('dd').nth(2)).toHaveText('3m 20s')
+      for (const value of await timing.locator('dd').allTextContents()) expect(value).not.toBe('—')
+      await expect(timing).not.toContainText('Updating flight times…')
+      expect(await preview.textContent()).toBe(previewText)
+      await expect(ships).toBeEnabled()
+      await expect(ships).toBeFocused()
+      await expect(ships).toHaveValue('1')
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, {path: `test-results/background-dispatch-${width}x900.png`, fullPage: true})
+      await timing.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, {path: `test-results/background-dispatch-timing-${width}x900.png`})
+      // Advisory retention never substitutes for fresh, authoritative launch terms.
+      const quotes = state.quotes
+      state.quoteError = 'InsufficientResources'
+      await page.getByRole('button', {name: 'Review fleet', exact: true}).click()
+      await expect.poll(() => state.quotes).toBe(quotes + 1)
+      await expect(page.getByRole('button', {name: 'Launch fleet', exact: true})).toHaveCount(0)
+      expect(state.launches).toBe(0)
+    } finally {release(); state.hold = null}
   })
 }

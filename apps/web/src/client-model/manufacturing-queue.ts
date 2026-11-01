@@ -1,13 +1,6 @@
 import type { BoundView } from './commands'
 import type { pendingWork } from './game-projection'
 
-export function formatQueueCountdown(status: string, countdown: string) {
-  if (countdown === 'Awaiting confirmation') return countdown
-  return status === 'Queued'
-    ? `Starts in ${countdown.replace(' remaining', '')}`
-    : `Next unit: ${countdown}`
-}
-
 export function manufacturingQueue(
   view: BoundView,
   body: string,
@@ -28,6 +21,8 @@ export function manufacturingQueue(
             id: batch.id,
             item: batch.item,
             remaining: batch.remaining,
+            finalDue: batch.final_due_at,
+            unitDuration: batch.unit_duration_ms,
             status: batch.state === 'Producing' ? 'Producing' : 'Queued',
             due:
               batch.state === 'Producing'
@@ -52,9 +47,19 @@ export function manufacturingQueue(
                   ? 'Awaiting confirmation'
                   : 'Confirming',
               due: undefined,
+              finalDue: undefined,
+              unitDuration: undefined,
             },
           ]
         : [],
     )
   return [...confirmed, ...submitted]
+}
+
+export function manufacturingQueueCompletion(
+  queue: ReturnType<typeof manufacturingQueue>,
+): number | undefined {
+  if (queue.length === 0 || queue.some((batch) => batch.finalDue === undefined))
+    return undefined
+  return queue.reduce((latest, batch) => Math.max(latest, batch.finalDue!), 0)
 }

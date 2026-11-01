@@ -179,6 +179,29 @@ it('reconciles external deletion for all surfaces, retaining cached details outs
   expect(projectedReportDetail(h.store.getState(), 'b')?.header.id).toBe('b')
 })
 
+it('retains a complete inbox until a growing background refresh is complete', async () => {
+  const h = fixture()
+  const initial = h.engine.ensureInbox()
+  h.pages[0].resolve(h.page(hundred))
+  await initial
+  const previous = h.store.getState().reportInbox
+
+  const refresh = h.engine.refreshInbox()
+  h.pages[1].resolve(h.page(['new', ...hundred.slice(0, 99)], 'older'))
+  await vi.waitFor(() => expect(h.pages).toHaveLength(3))
+  expect(h.store.getState().reportInbox).toBe(previous)
+  expect(reportLoad(h.store.getState()).pending).toBe(true)
+  expect(projectedReportInbox(h.store.getState())?.has_more).toBe(false)
+
+  h.pages[2].resolve(h.page(['99']))
+  await refresh
+  expect(
+    projectedReportInbox(h.store.getState())?.items.map((h) => h.id),
+  ).toEqual(['new', ...hundred])
+  expect(projectedReportInbox(h.store.getState())?.has_more).toBe(false)
+  expect(reportLoad(h.store.getState()).pending).toBe(false)
+})
+
 it('retains the last good inbox on failure and exposes the same retry state to both surfaces', async () => {
   const h = fixture()
   const first = h.engine.ensureInbox()
@@ -424,5 +447,77 @@ it('keeps one archive page chain while inbox and archived views select their own
       .map((h) => h.id),
   ).toEqual(['archived', 'older-archive'])
   await h.engine.ensureInbox()
+  expect(h.pages).toHaveLength(2)
+})
+
+it.each([false, true])(
+  'pagination waits through consecutive passive refreshes (first fails: %s)',
+  async (fail) => {
+    const h = fixture()
+    const initial = h.engine.ensureInbox()
+    h.pages[0].resolve(h.page(hundred, 'next'))
+    await initial
+    const refresh = h.engine.refreshInbox()
+    // Mirrors the HUD's queued `again` refresh, registered before pagination.
+    const followup = refresh.then(
+      () => h.engine.refreshInbox(),
+      () => h.engine.refreshInbox(),
+    )
+    let settled = false
+    const more = h.engine.refreshInbox(true).then(() => {
+      settled = true
+    })
+    const duplicate = h.engine.refreshInbox(true)
+    if (fail) h.pages[1].reject(Error('refresh unavailable'))
+    else h.pages[1].resolve(h.page(hundred, 'next'))
+    await vi.waitFor(() => expect(h.pages).toHaveLength(3))
+    expect(h.pages[2].cursor).toBeNull()
+    expect(settled).toBe(false)
+    h.pages[2].resolve(h.page(hundred, 'next'))
+    await vi.waitFor(() => expect(h.pages).toHaveLength(4))
+    expect(h.pages[3].cursor).toBe('next')
+    expect(settled).toBe(false)
+    h.pages[3].resolve(h.page(['last']))
+    await Promise.all([more, duplicate, followup])
+    expect(h.pages).toHaveLength(4)
+    expect(h.store.getState().reportInbox?.items).toEqual([...hundred, 'last'])
+  },
+)
+
+it('queued pagination preserves explicit page failure without automatic retry', async () => {
+  const h = fixture()
+  const initial = h.engine.ensureInbox()
+  h.pages[0].resolve(h.page(hundred, 'next'))
+  await initial
+  const refresh = h.engine.refreshInbox()
+  const more = h.engine.refreshInbox(true)
+  h.pages[1].resolve(h.page(hundred, 'next'))
+  await refresh
+  await vi.waitFor(() => expect(h.pages).toHaveLength(3))
+  const rejected = expect(more).rejects.toThrow('page failed')
+  h.pages[2].reject(Error('page failed'))
+  await rejected
+  expect(h.pages).toHaveLength(3)
+  expect(reportLoad(h.store.getState())).toMatchObject({
+    kind: 'more',
+    pending: false,
+    error: expect.any(Error),
+  })
+})
+
+it('does not carry queued pagination into a different binding', async () => {
+  const h = fixture()
+  const initial = h.engine.ensureInbox()
+  h.pages[0].resolve(h.page(hundred, 'next'))
+  await initial
+  const refresh = h.engine.refreshInbox()
+  const more = h.engine.refreshInbox(true)
+  h.store.setState({
+    binding: { ...h.store.getState().binding!, account: 'another' },
+  })
+  h.engine.invalidate()
+  h.pages[1].resolve(h.page(hundred, 'next'))
+  await expect(refresh).rejects.toThrow('Unable to confirm your reports')
+  await more
   expect(h.pages).toHaveLength(2)
 })

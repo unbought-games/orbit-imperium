@@ -213,3 +213,87 @@ it('confirmed read positions clear stale paged inbox badges without hiding newer
   c.clear()
   expect(c.store.getState().readPositions).toEqual({})
 })
+
+it.each([false, true])(
+  'queues older history behind a passive poll (poll fails: %s)',
+  async (fail) => {
+    const poll = defer<SocialView>()
+    const older = defer<SocialView>()
+    const olderStarted = defer<void>()
+    const queries: SocialQuery[] = []
+    const c = new SocialController({
+      newId: () => 'id',
+      command: async () => null,
+      read: async (q) => {
+        queries.push(q)
+        if (q.type !== 'Messages') return view()
+        if (q.before) {
+          olderStarted.resolve(undefined)
+          return older.promise
+        }
+        if (q.after === 'm52') return view({ messages: [msg(53)] })
+        if (q.after) {
+          await poll.promise
+          if (fail) throw Error('offline')
+          return view({ messages: [msg(52)], next_cursor: 'm52' })
+        }
+        return view({ messages: [msg(50), msg(51)], next_cursor: 'm50' })
+      },
+    })
+    await c.open('peer')
+    const refresh = c.history('newer')
+    expect(c.store.getState().historyRequest).toBe('newer')
+    await c.history('older')
+    await c.history('older')
+    expect(c.store.getState().olderRequested).toBe(true)
+    expect(queries).toHaveLength(2)
+    poll.resolve(view())
+    await olderStarted.promise
+    expect(queries[2]).toMatchObject({ before: 'm50', after: null })
+    expect(c.store.getState().historyRequest).toBe('older')
+    older.resolve(view({ messages: [msg(49)] }))
+    await refresh
+    expect(c.store.getState().history?.messages.map((m) => m.id)).toEqual(
+      fail ? ['m49', 'm50', 'm51'] : ['m49', 'm50', 'm51', 'm52', 'm53'],
+    )
+    expect(
+      queries.filter((q) => q.type === 'Messages' && q.before),
+    ).toHaveLength(1)
+    expect(c.store.getState().historyRequest).toBeNull()
+    expect(c.store.getState().olderRequested).toBe(false)
+  },
+)
+
+it.each(['switch', 'clear'] as const)(
+  'drops queued older intent on %s and ignores the late poll',
+  async (action) => {
+    const poll = defer<SocialView>()
+    const queries: SocialQuery[] = []
+    const c = new SocialController({
+      newId: () => 'id',
+      command: async () => null,
+      read: async (q) => {
+        queries.push(q)
+        if (q.type === 'Messages' && q.after) return poll.promise
+        return view({
+          messages: [
+            msg(q.type === 'Messages' && q.player === 'new' ? 99 : 50),
+          ],
+          next_cursor: 'm50',
+        })
+      },
+    })
+    await c.open('old')
+    const refresh = c.history('newer')
+    await c.history('older')
+    if (action === 'clear') c.clear()
+    else await c.open('new')
+    poll.resolve(view({ messages: [msg(51)] }))
+    await refresh
+    expect(queries.some((q) => q.type === 'Messages' && q.before)).toBe(false)
+    expect(c.store.getState().history?.messages ?? []).toEqual(
+      action === 'clear' ? [] : [msg(99)],
+    )
+    expect(c.store.getState().olderRequested).toBe(false)
+  },
+)

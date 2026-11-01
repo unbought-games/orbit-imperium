@@ -828,3 +828,74 @@ async fn ordinary_demolition_survives_scenario_export_replace_and_completion() {
         .binding;
     validate_asset_lineage(&store.bound_world(binding).await.unwrap().facts.0.state).unwrap();
 }
+
+#[tokio::test]
+async fn terraformer_expanded_planet_round_trips_original_fields_and_completed_levels() {
+    let (store, pool) = fresh().await;
+    let u = world(&store).await;
+    let planet: (String, i64) = sqlx::query_as("SELECT galaxy||':'||system||':'||position,fields FROM bodies WHERE universe=$1 AND kind='Planet' AND fields=163 ORDER BY id LIMIT 1").bind(u.0).fetch_one(&pool).await.unwrap();
+    store
+        .apply_world_scenario(
+            u,
+            &document(json!([{"op":"clear","planet":planet.0}])),
+            ScenarioMode::Patch,
+            Uuid::new_v4(),
+        )
+        .await
+        .unwrap();
+    let edit = document(json!([{"op":"set","planet":planet.0,"buildings":{
+        "MetalMine":30,"CrystalMine":30,"DeuteriumSynthesizer":30,"SolarPlant":30,
+        "ResearchLab":25,"RoboticsFactory":10,"Shipyard":14,"NaniteFactory":1,"Terraformer":2,
+        "MetalStorage":0,"CrystalStorage":0,"DeuteriumTank":0,"FusionReactor":0,"MissileSilo":0
+    }}]));
+    // Use a homeworld (163 base fields); its 172 completed levels fit only because
+    // Terraformer contributes ten derived fields.
+    assert_eq!(planet.1, 163);
+    store
+        .apply_world_scenario(u, &edit, ScenarioMode::Patch, Uuid::new_v4())
+        .await
+        .unwrap();
+    let saved = store.export_world_scenario(u).await.unwrap();
+    let base_before: i64 = sqlx::query_scalar(
+        "SELECT fields FROM bodies WHERE universe=$1 AND galaxy||':'||system||':'||position=$2",
+    )
+    .bind(u.0)
+    .bind(&planet.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(base_before, 163);
+    store
+        .apply_world_scenario(u, &saved, ScenarioMode::Replace, Uuid::new_v4())
+        .await
+        .unwrap();
+    let base_after: i64 = sqlx::query_scalar(
+        "SELECT fields FROM bodies WHERE universe=$1 AND galaxy||':'||system||':'||position=$2",
+    )
+    .bind(u.0)
+    .bind(&planet.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(base_after, 163);
+    let inspected = store.inspect_world(u, None, Some(&planet.0)).await.unwrap();
+    assert_eq!(inspected["planets"][0]["fields"], 173);
+    assert_eq!(inspected["planets"][0]["base_fields"], 163);
+    let restored = store.export_world_scenario(u).await.unwrap();
+    let level = restored
+        .edits
+        .iter()
+        .find(|e| e.planet.as_ref() == Some(&planet.0) && e.buildings.contains_key("Terraformer"))
+        .unwrap()
+        .buildings["Terraformer"];
+    assert_eq!(level, 2);
+    let overflow = document(json!([{"op":"set","planet":planet.0,"buildings":{"Shipyard":16}}]));
+    let error = store
+        .apply_world_scenario(u, &overflow, ScenarioMode::Patch, Uuid::new_v4())
+        .await
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("buildings use 174 fields"),
+        "{error}"
+    );
+}

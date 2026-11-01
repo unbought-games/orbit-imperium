@@ -117,3 +117,21 @@ passed in 7.805 s. Focused Clippy with warnings denied passed in 11.42 s.
 The existing database runner removed its disposable databases after both the
 expected pre-fix failure and the successful rerun. The isolated PR validation
 Compose project is removed after these checks.
+
+## Main/Terraformer integration — November 1, 2026
+
+The first queue enrollment encountered six additive conflicts with Terraformer
+PR 284. After its confirmed merge, this branch merged main revision
+`40d2fe8788d193a33ba74c3eb121f02bee48621c`, preserving both catalog entries,
+technical data, building support, upgrade expectations and browser registrations.
+The combined standard content release is 0.14.0. The validated integrated Git tree
+before this audit note is `4bb73b9e1597e92e01b1f5942efa79c91e367562`.
+
+`make check` passed: 117 tooling tests (11.002 s), 1,261 client tests in 129 files
+(3.27 s), 610 native tests (24.628 s), 43 bridge tests (0.797 s), seven database
+library tests (0.011 s), Clippy, formatting, contracts, boundaries and production
+build. All 40 PostgreSQL rules-upgrade tests passed in 259.948 s, including both
+Terraformer and Depot activation. The holding journey passed in 13.932 s. Six
+refreshed desktop/mobile Depot browser journeys passed in 5.9 s; affected captures
+were inspected again. The isolated integration Compose project and its test
+databases are removed after validation. No CI assertions or checks were bypassed.

@@ -35,6 +35,7 @@ const benefitLabels = {
   MetalCapacity: 'Metal capacity',
   CrystalCapacity: 'Crystal capacity',
   DeuteriumCapacity: 'Deuterium capacity',
+  FieldCapacity: 'Planet field capacity',
 } as const
 export function benefitLabel(insight: NonNullable<Insight['benefit']>) {
   return insight.planetTotal
@@ -54,6 +55,19 @@ export function BenefitValue({
   potential?: boolean
   change?: boolean
 }) {
+  if (insight.kind === 'FieldCapacity') {
+    const value = change
+      ? BigInt(insight.target) - BigInt(insight.current)
+      : target
+        ? insight.target
+        : insight.current
+    return (
+      <span title={insight.qualifier ?? undefined}>
+        {change && BigInt(value) > 0n ? '+' : ''}
+        <NumberValue value={value} /> fields
+      </span>
+    )
+  }
   return (
     <DetailResourceValue
       title={insight.qualifier ?? undefined}

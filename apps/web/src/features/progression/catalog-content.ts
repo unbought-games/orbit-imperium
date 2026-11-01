@@ -17,6 +17,8 @@ const content: Record<string, string> = {
     'Permanently destroys enemy defenses, bypassing shields. Range grows with Impulse Drive; Weapons Technology increases damage. Launch from the galaxy. Missiles cannot be recalled.',
   AllianceDepot:
     'Supply deuterium to allied fleets holding at this planet to extend their defense. Each level permits 10,000 deuterium per rolling hour. The fleet owner retains recall control.',
+  Terraformer:
+    'Transforms uninhabitable terrain into room for development. Each completed level adds five planet fields and occupies one. Construction requires one free field and enough gross energy at the start. Terraformer cannot be demolished.',
   NaniteFactory:
     'Nanite assemblers accelerate construction and manufacturing on this planet. Each completed level halves raw build time. Research is unaffected. Factory upgrades and demolition cannot overlap manufacturing.',
   RoboticsFactory: 'Robotic workers accelerate construction on this planet.',

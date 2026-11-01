@@ -262,7 +262,6 @@ export function Dispatch({
               kind={targetKind}
               target={target}
               lookup={destination.lookup}
-              refreshing={destination.refreshing}
               player={view.binding.player}
               playerNames={playerNames}
               value={destinationText}

@@ -3555,3 +3555,6 @@ mod hyperspace_drive;
 
 #[path = "progression/nanite.rs"]
 mod nanite;
+
+#[path = "progression/terraformer.rs"]
+mod terraformer;

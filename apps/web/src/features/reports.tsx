@@ -91,8 +91,9 @@ export function Reports({
   )
   const folderCount =
     page?.items.filter((r) => r.hidden === archived).length ?? 0
-  const complete =
-    !!page && !page.has_more && !loading && !loadingMore && error === null
+  // Background reads retain an atomic snapshot. Its completeness, rather than
+  // the next request's status, determines whether selection can use it.
+  const complete = !!page && !page.has_more
   const busy = cleanup.submitting || changingVisibility || selection.markingRead
   const selectionBar = (
     <ReportSelectionBar

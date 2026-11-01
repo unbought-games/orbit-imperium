@@ -53,25 +53,6 @@
   border-top: 1px solid #263c4b88;
   padding-top: 4px;
 }
-.queue {
-  list-style: none;
-  padding: 0 6px;
-  margin: 0;
-  font-size: 0.75rem;
-}
-.queue li {
-  display: grid;
-  gap: 4px;
-  padding-block: 12px;
-}
-.queue li + li {
-  border-top: 1px solid #263c4b88;
-}
-.queue strong {
-  color: #d0b47a;
-  font-size: 0.6875rem;
-  font-weight: 400;
-}
 .actions button {
   font-size: 0.6875rem;
   padding: 4px 10px;
@@ -193,13 +174,6 @@
   font-size: 0.75rem;
   padding-block: 4px;
 }
-.editorial .queue {
-  padding: 0;
-  font-size: 0.875rem;
-}
-.editorial .queue li {
-  padding-block: 8px;
-}
 .editorial .summary:only-child {
   width: auto;
 }
@@ -283,18 +257,6 @@
     grid-row: 3;
     margin-block: 3px;
   }
-  .editorial .queue li {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 4px 16px;
-    padding-block: 4px;
-  }
-  .editorial .queue li > span:last-child {
-    grid-column: 2;
-    grid-row: 1 / 4;
-    align-self: center;
-    font-size: 0.8125rem;
-    color: var(--link);
-  }
 }
 
 /* Dense empire dossiers retain the same work, cancellation and queue semantics. */
@@ -352,21 +314,6 @@
 .compact .workStatus {
   font-size: 0.6875rem;
 }
-.compact .queue li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-.compact .queue {
-  grid-column: 1;
-  grid-row: 2;
-  align-self: center;
-  font-size: 0.8125rem;
-}
-.compact .queue li > span:last-child {
-  grid-column: 1 / -1;
-  grid-row: auto;
-  font-size: 0.75rem;
-}
 .compact progress {
   width: 100%;
   height: 3px;
@@ -389,15 +336,6 @@
 }
 .compact .actions > a {
   min-height: 36px;
-}
-.compact .queue li {
-  grid-template-columns: minmax(0, 1fr);
-}
-.compact .queue li > span:last-child {
-  grid-column: 1;
-}
-.compact .queue strong {
-  font-size: 0.625rem;
 }
 @media (pointer: coarse) {
   .compact .actions > a {
@@ -557,4 +495,28 @@
   .researchTitle strong {
     font-size: 0.9375rem;
   }
+}
+
+/* Production owns a full-width active build and its compact upcoming queue. */
+.editorial .productionSummary,
+.compact .productionSummary {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.editorial .productionSummary h2,
+.compact .productionSummary h2 {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  overflow: visible;
+}
+.editorial .productionSummary .actions,
+.compact .productionSummary .actions {
+  grid-column: 1;
+  grid-row: auto;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 16px;
+  max-width: none;
 }

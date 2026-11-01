@@ -12,6 +12,11 @@
 - Use independently authored, freely licensed fixtures to test restricted content. Preserve saved selections and permanent grants when content is unavailable; derive a free fallback instead of deleting player choices.
 - Before changing cosmetic content or its delivery, read [ADR 002](docs/architecture/adr-002-hosted-cosmetic-content.md) and the [operator guide](docs/operations/empire-customization.md). Keep private repository names, URLs, and deployment details out of public guidance.
 
+# Brand name
+
+Write **Unbought Games** with capital U and G in all text. The lowercase
+**unbought games** styling is reserved for the logo only.
+
 # UI design
 
 Before designing, implementing, reviewing, or fixing UI, use the repository

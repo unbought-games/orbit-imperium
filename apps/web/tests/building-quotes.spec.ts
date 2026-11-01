@@ -1190,3 +1190,53 @@ test('active facility inspection follows its actual target after direct navigati
   await expect(active.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
   await expect(active.getByText('Completion forecast unavailable.', { exact: true })).toHaveCount(0)
 })
+
+for (const width of [1440, 390]) {
+  test(`background metadata refresh preserves building details and focus at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await buildingFixture(page)
+    // Navigation bootstraps again. Build the update from that current snapshot,
+    // rather than the earlier fixture setup response rejected on slower hosts.
+    const bootstrap = page.waitForResponse(r => r.url().endsWith('/api/v1/bootstrap'))
+    await page.goto(`/u/andromeda/b/${body.id}/resources/crystal-mine`)
+    const snapshot = (await (await bootstrap).json()).result.game.snapshot.view as S['BoundView4']
+    const build = page.getByRole('button', {name: 'Confirm upgrade', exact: true})
+    await expect(build).toBeEnabled()
+    await page.clock.runFor(8000)
+    await build.focus()
+    let quoteRequests = 0
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    await routeProgressionOptions(page, async route => { quoteRequests++; await gate; await route.fallback() })
+    let revision = 2
+    let insufficient = false
+    await page.route('**/overview', async route => {
+      await route.fulfill({json: {
+        ...snapshot,
+        request_id: route.request().postDataJSON().request_id,
+        viewer_revision: String(revision),
+        sampled_at: snapshot.sampled_at + revision * 1000,
+        as_of_ms: snapshot.sampled_at + revision * 1000,
+        bodies: snapshot.bodies.map(b => ({...b, name: 'Renamed from another session', ...(insufficient ? { amounts: {metal: '0', crystal: '0', deuterium: '0'} } : {})})),
+      }})
+    })
+    try {
+      await refreshGame(page)
+      await expect(page.getByRole('combobox', { name: 'Selected body' })).toContainText('Renamed from another session')
+      await expect(build).toBeEnabled()
+      await expect(build).toHaveText('Build level 2')
+      await expect(build).toBeFocused()
+      await expect(page.getByText('Loading building details…', {exact: true})).toHaveCount(0)
+      await expect(page.getByRole('button', {name: 'Demolish Crystal Mine', exact: true})).toBeEnabled()
+      expect(quoteRequests).toBe(0)
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, {path: `test-results/background-building-${width}x900.png`, fullPage: true})
+      insufficient = true
+      revision++
+      await refreshGame(page)
+      await expect(build).toBeDisabled()
+      await expect(build).toHaveText('Build level 2')
+      expect(quoteRequests).toBe(0)
+    } finally { release() }
+  })
+}

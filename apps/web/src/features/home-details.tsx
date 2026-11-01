@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
+import { Flag, Infinity as InfinityIcon, Orbit, Trophy } from 'lucide-react'
 import { ButtonLinkAnchor } from '../ui/button'
+import { HomeDiscordLink } from './home-discord-link'
 import styles from './home-details.module.css'
 
 const repository = 'https://github.com/unbought-games/orbit-imperium'
@@ -53,6 +55,104 @@ export function HomeDetails({
 }) {
   return (
     <div className={styles.details}>
+      <section id="universes" aria-labelledby="universes-title">
+        <div className={styles.universeIntro}>
+          <div>
+            <p className={styles.eyebrow}>
+              Seasonal Universes · Official servers
+            </p>
+            <h2 id="universes-title">An ending worth playing for.</h2>
+          </div>
+          <div>
+            <p>
+              Build an empire, find your allies, and give it something to fight
+              for. We’re planning Seasonal Universes that build toward a final
+              campaign, with a place in Orbit’s history for the people who take
+              part.
+            </p>
+            <p className={styles.developmentNote}>
+              Final campaigns and permanent account rewards are in development.
+              Here’s where we’re heading.
+            </p>
+          </div>
+        </div>
+        <div className={styles.campaign}>
+          <article>
+            <div className={styles.campaignIcon} aria-hidden="true">
+              <Orbit size={44} strokeWidth={1.4} />
+            </div>
+            <p className={styles.eyebrow}>Build</p>
+            <h3>About three months</h3>
+            <p>
+              That’s the planned length of a season: time to develop your
+              planets, form alliances, and make your moves. Each new universe
+              brings a fresh start and another chance to compete.
+            </p>
+          </article>
+          <article>
+            <div className={styles.campaignIcon} aria-hidden="true">
+              <Flag size={44} strokeWidth={1.4} />
+            </div>
+            <p className={styles.eyebrow}>Rally</p>
+            <h3>One final campaign</h3>
+            <p>
+              Depending on the universe, alliances will compete for victory or
+              everyone will work toward a shared goal. We’re designing
+              objectives that give smaller empires a meaningful part in the
+              outcome, too.
+            </p>
+          </article>
+          <article>
+            <div className={styles.campaignIcon} aria-hidden="true">
+              <Trophy size={44} strokeWidth={1.4} />
+            </div>
+            <p className={styles.eyebrow}>Be remembered</p>
+            <h3>A permanent legacy</h3>
+            <p>
+              The universe will end. Participants and winners will earn
+              permanent rewards and recognition in their Unbought Games
+              accounts, carrying their achievements with them into whatever
+              comes next.
+            </p>
+          </article>
+        </div>
+        <div className={styles.eternal}>
+          <div>
+            <InfinityIcon
+              className={styles.eternalIcon}
+              size={56}
+              strokeWidth={1.3}
+              aria-hidden="true"
+            />
+            <p className={styles.eyebrow}>A longer horizon</p>
+            <h3>Eternal Universes are coming.</h3>
+            <p>
+              We will have universes with no planned ending. First, we need
+              enough players to give one a strong start. We’re not there yet,
+              and we don’t have a launch date.
+            </p>
+          </div>
+          <div>
+            <p>
+              Opening one now would give a handful of early players a long head
+              start. We want the first Eternal Universe to feel like a gold
+              rush: a new frontier, a busy galaxy, and a community arriving
+              together.
+            </p>
+            <p>Get the first Eternal Universe launch news on Discord.</p>
+            <div className={styles.eternalAction}>
+              <HomeDiscordLink />
+            </div>
+            <p className={styles.developmentNote}>
+              In the meantime,{' '}
+              <a href={signupEnabled ? '/signup' : '/login'}>
+                come play in the current universe
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+      </section>
       <section
         id="gameplay"
         className={styles.gameplay}
@@ -144,7 +244,7 @@ export function HomeDetails({
 
       <section className={styles.fairPlay} aria-labelledby="fair-play-title">
         <div>
-          <p className={styles.eyebrow}>By unbought games</p>
+          <p className={styles.eyebrow}>By Unbought Games</p>
           <h2 id="fair-play-title">Fair play</h2>
           <p>
             You can’t buy resources, faster queues, or stronger fleets. Your

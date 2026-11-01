@@ -15,9 +15,9 @@ export function useHudInbox(
   scrollRoot: RefObject<HTMLDialogElement | null>,
 ) {
   const [limit, setLimit] = useState(batchSize)
+  const [pageIntent, setPageIntent] = useState<number | null>(null)
   const request = reportLoad(state)
   const changingVisibility = !!pendingReportVisibility(state.attempts.values())
-  const loading = request.pending || changingVisibility
   const failed = request.kind === 'more' && request.error !== null
   const sentinel = useRef<HTMLDivElement>(null)
   const targets = [
@@ -35,20 +35,34 @@ export function useHudInbox(
   ]
   const more = limit < targets.length || !!state.reportInbox?.has_more
   const buffered = limit < targets.length
-  const loadTo = async (nextLimit: number) => {
-    if (!visible || loading || nextLimit <= limit) return
-    if (buffered) {
-      setLimit((value) => Math.max(value, nextLimit))
-      return
+  const loading =
+    changingVisibility ||
+    (!state.reportInbox && request.pending) ||
+    (!buffered &&
+      (pageIntent !== null || (request.pending && request.kind === 'more')))
+  // Only a pagination gesture creates an outstanding page intent. A change in
+  // the unread count must not turn the settled display limit into new work.
+  useEffect(() => {
+    if (pageIntent === null) return
+    let active = true
+    void (async () => {
+      try {
+        await model.reports.refreshInbox(true)
+        if (active) setLimit((value) => Math.max(value, pageIntent))
+      } catch {
+        /* Shared request state supplies retry in both surfaces. */
+      } finally {
+        if (active) setPageIntent(null)
+      }
+    })()
+    return () => {
+      active = false
     }
-    // A shared request can complete before its observer sees the new limit.
-    // Repeated requests from this render all express the same next-page intent.
-    try {
-      await model.reports.refreshInbox(true)
-      setLimit((value) => Math.max(value, nextLimit))
-    } catch {
-      /* Shared request state supplies retry in both surfaces. */
-    }
+  }, [model, pageIntent])
+  const loadTo = (nextLimit: number) => {
+    if (!visible || changingVisibility || nextLimit <= limit) return
+    if (buffered) setLimit((value) => Math.max(value, nextLimit))
+    else setPageIntent(nextLimit)
   }
   const loadMore = () => loadTo(limit + batchSize)
   const latestLoad = useRef(loadTo)

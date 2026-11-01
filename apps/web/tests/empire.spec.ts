@@ -378,7 +378,7 @@ test('each empire card centers idle construction beside Resources and Facilities
   await expect(page).toHaveURL(`/u/andromeda/b/${options.bodies[0].id}/facilities`)
 })
 
-test('shipyard summary centers production beside Shipyard and Defense', async ({ page }) => {
+test('shipyard summary gives production full width with Shipyard and Defense below', async ({ page }) => {
   const options = empireFixture()
   await shellFixture(page, options)
   for (const width of [320, 390, 1280]) {
@@ -398,10 +398,17 @@ test('shipyard summary centers production beside Shipyard and Defense', async ({
       const contentBox = (await content.boundingBox())!
       const shipyardBox = (await shipyard.boundingBox())!
       const defenseBox = (await defense.boundingBox())!
-      expect(defenseBox.y).toBeGreaterThanOrEqual(shipyardBox.y + shipyardBox.height)
-      expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(shipyardBox.x)
-      const actionsCenter = (shipyardBox.y + defenseBox.y + defenseBox.height) / 2
-      expect(Math.abs(contentBox.y + contentBox.height / 2 - actionsCenter)).toBeLessThan(1)
+      if (active) {
+        expect(shipyardBox.y).toBeGreaterThanOrEqual(contentBox.y + contentBox.height)
+        expect(Math.abs(shipyardBox.y - defenseBox.y)).toBeLessThan(1)
+        expect(shipyardBox.x + shipyardBox.width).toBeLessThanOrEqual(defenseBox.x)
+      } else {
+        expect(defenseBox.y).toBeGreaterThanOrEqual(shipyardBox.y + shipyardBox.height)
+        expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(shipyardBox.x)
+        const actionsCenter = (shipyardBox.y + defenseBox.y + defenseBox.height) / 2
+        expect(Math.abs(contentBox.y + contentBox.height / 2 - actionsCenter)).toBeLessThan(1)
+      }
+      expect(await summary.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
       if (width !== 320) {
         await diagnosticScreenshot(summary, {
           path: `test-results/shipyard-${active ? 'active' : 'idle'}-${width}x900.png`,

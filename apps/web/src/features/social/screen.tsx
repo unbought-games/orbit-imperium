@@ -290,7 +290,7 @@ function Workspace() {
                 Back to conversations
               </Button>
             )}
-            {state.loadingHistory && !history && (
+            {state.historyRequest && !history && (
               <p role="status">Loading messages…</p>
             )}
             {history?.contact && (
@@ -346,7 +346,11 @@ function Workspace() {
                   {history.next_cursor && (
                     <Button
                       variant="ghost"
-                      disabled={state.loadingHistory}
+                      disabled={
+                        state.olderRequested ||
+                        state.historyRequest === 'older' ||
+                        state.historyRequest === 'latest'
+                      }
                       onClick={() => void controller.history('older')}
                     >
                       Load older messages

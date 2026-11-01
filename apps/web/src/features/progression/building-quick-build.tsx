@@ -1,5 +1,5 @@
 import { useId, type ComponentProps } from 'react'
-import { ImageTile } from '../../ui/image-catalog'
+import { CatalogCountdown, ImageTile } from '../../ui/image-catalog'
 import { VisuallyHidden } from '../../ui/visually-hidden'
 import { Hammer, Check, Clock3, AlertTriangle } from 'lucide-react'
 import type { ProgressionProps } from './shared'
@@ -80,7 +80,7 @@ export function BuildingQuickBuild({
             >
               <Clock3 size={16} aria-hidden="true" />
             </span>
-            <span
+            <CatalogCountdown
               className={`${styles.layer} ${styles.countdown}`}
               aria-hidden={feedback.phase !== 'countdown'}
               aria-label={`${title} time remaining`}
@@ -88,7 +88,7 @@ export function BuildingQuickBuild({
               {feedback.work?.secondsRemaining != null
                 ? feedback.work.countdown
                 : ''}
-            </span>
+            </CatalogCountdown>
             <span
               className={styles.layer}
               aria-hidden={feedback.phase !== 'uncertain'}

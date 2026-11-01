@@ -5,7 +5,6 @@ import type {
   MouseEventHandler,
 } from 'react'
 import { useId } from 'react'
-import { FlaskConical } from 'lucide-react'
 import { classes } from './classes'
 import { VisuallyHidden } from './visually-hidden'
 import styles from './image-catalog.module.css'
@@ -115,6 +114,22 @@ export function ImageCatalog({
     </div>
   )
 }
+
+/** Shared timer for catalog progress and the quick-build feedback slot. */
+export function CatalogCountdown({
+  children,
+  status,
+  className,
+  ...props
+}: HTMLAttributes<HTMLSpanElement> & { status?: string }) {
+  return (
+    <span className={classes(styles.countdown, className)} {...props}>
+      <span className={styles.time}>{children}</span>
+      {status && <small>{status}</small>}
+    </span>
+  )
+}
+
 export function ImageTile({
   href,
   title,
@@ -161,7 +176,6 @@ export function ImageTile({
         type={href ? undefined : 'button'}
         className={classes(
           styles.tile,
-          !!action && styles.withAction,
           selected && styles.selected,
           locked && styles.locked,
           props.disabled && styles.unavailable,
@@ -189,11 +203,15 @@ export function ImageTile({
         </span>
         <span className={styles.caption}>
           <span>{title}</span>
-          {progress && progress.kind !== 'research' ? (
+          {progress ? (
             <strong
               id={progressId}
               role="group"
-              aria-label="Construction progress"
+              aria-label={
+                progress.kind === 'research'
+                  ? 'Research progress'
+                  : 'Construction progress'
+              }
             >
               {countLabel} {level} →{' '}
               <b aria-label={`Target level ${progress.targetLevel}`}>
@@ -218,32 +236,18 @@ export function ImageTile({
           )}
         </span>
         {progress && !action && (
-          <span
-            id={progress.kind === 'research' ? progressId : undefined}
+          <CatalogCountdown
             className={styles.progress}
-            role={progress.kind === 'research' ? 'group' : undefined}
-            aria-label={
-              progress.kind === 'research' ? 'Research progress' : undefined
+            aria-label={`${title} time remaining`}
+            status={
+              progress.status !== 'In progress' &&
+              progress.status !== progress.countdown
+                ? progress.status
+                : undefined
             }
           >
-            {progress.kind === 'research' && (
-              <span className={styles.progressHeader}>
-                <span className={styles.direction} aria-label="Researching">
-                  <FlaskConical size={14} aria-hidden="true" />
-                </span>
-                <strong aria-label={`Target level ${progress.targetLevel}`}>
-                  {progress.targetLevel}
-                </strong>
-              </span>
-            )}
-            <span className={styles.countdown}>
-              {progress.countdown}
-              {progress.status !== 'In progress' &&
-                progress.status !== progress.countdown && (
-                  <small>{progress.status}</small>
-                )}
-            </span>
-          </span>
+            {progress.countdown}
+          </CatalogCountdown>
         )}
       </Tile>
       {action && <div className={styles.action}>{action}</div>}
