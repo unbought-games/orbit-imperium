@@ -156,6 +156,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
 }
 fn intent(s: &GameState, p: PlayerId, b: BodyId, t: BodyId) -> FleetIntent {
     FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin: b,
         destination: MissionDestination::Body {
@@ -209,7 +210,10 @@ fn run(
                 body: if matches!(
                     i.payload,
                     Input::Command(Command::World {
-                        action: WorldAction::SetReportHidden { .. }
+                        action: WorldAction::CreateAttackGroup { .. }
+                            | WorldAction::InviteAttackGroup { .. }
+                            | WorldAction::RevokeAttackGroupInvitation { .. }
+                            | WorldAction::SetReportHidden { .. }
                             | WorldAction::SetReportsHidden { .. }
                             | WorldAction::MarkReportRead { .. }
                             | WorldAction::SetReportStarred { .. }
@@ -469,6 +473,7 @@ fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() 
         let loaded = Resources::from_values(loaded.map(|n| n * SCALE));
         let collected = Resources::from_values(expected.map(|n| n * SCALE));
         let intent = FleetIntent {
+            attack_group: None,
             hold_hours: None,
             origin: b,
             destination: MissionDestination::Debris {
@@ -583,6 +588,7 @@ fn harvest_reference_survives_return_and_cleanup_records_loss() {
         },
     );
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin: b,
         destination: MissionDestination::Debris {
@@ -715,6 +721,7 @@ fn equal_time_collectors_serialize_and_empty_marker_remains_eligible() {
         },
     );
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin: b,
         destination: MissionDestination::Debris {
@@ -3310,3 +3317,6 @@ fn deuterium_activation_uses_arrival_rules_and_preserves_accepted_fuel_and_time(
 
 #[path = "missions/holding.rs"]
 mod holding;
+
+#[path = "missions/attack_groups.rs"]
+mod attack_groups;

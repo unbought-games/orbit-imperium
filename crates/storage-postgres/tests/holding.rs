@@ -78,6 +78,7 @@ async fn launch(
     scoped: bool,
 ) -> MissionFleet {
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: (mission == Mission::Hold).then_some(1),
         origin,
         destination: MissionDestination::Body {

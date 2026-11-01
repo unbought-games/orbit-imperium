@@ -1,0 +1,55 @@
+.groups {
+  display: grid;
+  gap: 1.5rem;
+  margin-block: 1.5rem;
+}
+.group {
+  display: grid;
+  gap: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+  min-width: 0;
+}
+.row,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.actions {
+  justify-content: flex-start;
+}
+.members,
+.invite {
+  display: grid;
+  gap: 0.75rem;
+}
+.member {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(0, 2fr);
+  gap: 1rem;
+}
+.action {
+  display: inline-grid;
+  gap: 0.5rem;
+}
+.invite {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+@media (max-width: 600px) {
+  .member {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+.group > p,
+.row > p {
+  margin: 0;
+}
+.invite .row {
+  justify-content: flex-start;
+}

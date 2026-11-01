@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 pub enum GameError {
+    #[error("AttackGroupClosed")]
+    AttackGroupClosed,
+    #[error("AttackGroupFull")]
+    AttackGroupFull,
+    #[error("AttackGroupTooLate")]
+    AttackGroupTooLate,
     #[error("HoldingUnavailable")]
     HoldingUnavailable,
     #[error("DepotBudgetExceeded")]

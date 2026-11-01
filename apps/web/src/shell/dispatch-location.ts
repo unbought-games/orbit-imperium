@@ -5,12 +5,24 @@ import {
   type LocationIntent,
 } from './location-address'
 import type { DispatchDraft } from '../features/missions'
-export function validateDispatchSearch(search: Record<string, unknown>) {
-  return { ...validateGalaxySearch(search), ...validateLocationIntent(search) }
+export function validateDispatchSearch(
+  search: Record<string, unknown>,
+): ReturnType<typeof validateGalaxySearch> &
+  LocationIntent & { attackGroup?: string } {
+  return {
+    ...validateGalaxySearch(search),
+    ...validateLocationIntent(search),
+    attackGroup:
+      typeof search.attackGroup === 'string' &&
+      /^[0-9a-f-]{36}$/i.test(search.attackGroup)
+        ? search.attackGroup
+        : undefined,
+  }
 }
 export function dispatchSearch(draft: DispatchDraft) {
   return {
     ...draft.coordinates,
+    attackGroup: draft.attackGroup,
     mission: draft.mission,
     target:
       draft.targetKind ??
@@ -23,6 +35,7 @@ export function dispatchSearch(draft: DispatchDraft) {
 }
 export function draftFromSearch(
   search: {
+    attackGroup?: string
     galaxy?: number
     system?: number
     position?: number
@@ -34,6 +47,7 @@ export function draftFromSearch(
   return coordinates
     ? {
         coordinates,
+        attackGroup: search.attackGroup,
         targetKind: search.target ?? 'planet',
         mission:
           search.mission ??

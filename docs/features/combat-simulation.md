@@ -68,3 +68,9 @@ Coverage includes pure visibility/mapping and input validation tests, Rust engin
 reuse with custom rule statistics, an authenticated HTTP integration test, and
 fixture browser tests covering prefill, explicit unknown assumptions, request
 contents, result invalidation, mobile widths and Escape/focus restoration.
+
+Allied contingents can be added to either side with separately entered technology
+and mobile ships. The 2,000-unit limit applies to all forces combined. Results
+combine surviving unit counts only after resolving each contingent with its own
+stats. Changing or removing a contingent invalidates previous results; report
+attack planning still dispatches the primary attacking fleet only.

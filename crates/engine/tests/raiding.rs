@@ -115,3 +115,31 @@ fn owner_precedes_origin_in_canonical_allocation_ties() {
         vec![(first, units([1, 0, 0])), (second, Resources::default())]
     );
 }
+
+#[test]
+fn pooled_capacity_can_exceed_a_single_stock_range_without_overflow_or_extra_loot() {
+    let whole_max = i64::MAX / SCALE * SCALE;
+    let capacities: Vec<_> = (1..=3)
+        .map(|n| LootCapacity {
+            owner: PlayerId(uuid::Uuid::from_u128(n)),
+            origin: BattleOrigin::Fleet(FleetId(uuid::Uuid::from_u128(n))),
+            free_capacity: whole_max,
+        })
+        .collect();
+    let stock = Resources::all(whole_max);
+    let loot = raid_loot_for_fleets(stock, &capacities).unwrap();
+    assert_eq!(loot, Resources::all(whole_max / (2 * SCALE) * SCALE));
+    let shares = allocate_loot(loot, &capacities).unwrap();
+    for index in 0..3 {
+        assert_eq!(
+            shares
+                .iter()
+                .map(|(_, r)| i128::from(r.values()[index]))
+                .sum::<i128>(),
+            i128::from(loot.values()[index])
+        );
+    }
+    for (_, r) in shares {
+        assert!(r.values().iter().map(|v| i128::from(*v)).sum::<i128>() <= i128::from(whole_max));
+    }
+}

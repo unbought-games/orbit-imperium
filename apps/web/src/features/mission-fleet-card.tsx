@@ -1,3 +1,4 @@
+import { AttackGroupAction } from './attack-groups'
 import { useId, useState } from 'react'
 import { ChevronDown, RotateCcw } from 'lucide-react'
 import { useStore } from 'zustand'
@@ -71,7 +72,7 @@ export function FleetRecall({
           </Text>
           <Text>
             {estimate !== null
-              ? `Estimated return if recalled now: ${exactTime(estimate)}. ${fleet?.leg === 'Holding' ? 'The return leg uses the original flight duration.' : 'The return leg equals time already travelled.'}`
+              ? `Estimated return if recalled now: ${exactTime(estimate)}. ${fleet?.leg === 'Holding' ? 'The return leg uses the original flight duration.' : fleet?.attack_group ? 'The return leg includes all elapsed time since launch, including group delays.' : 'The return leg equals time already travelled.'}`
               : 'The server will confirm the return time when it accepts recall.'}{' '}
             Arrival may resolve before a recall reaches the server.
           </Text>
@@ -239,6 +240,22 @@ export function MissionFleetCard({
         </div>
       </div>
       <div className={fleetStyles.actions}>
+        {fleet.intent.mission === 'Attack' &&
+          fleet.leg === 'Outbound' &&
+          fleet.can_recall &&
+          now < fleet.due_at &&
+          !fleet.attack_group &&
+          view.capabilities.some(
+            (c) => c.capability === 'AllianceAttacks' && c.enabled,
+          ) && (
+            <AttackGroupAction
+              model={model}
+              action={{ type: 'CreateAttackGroup', fleet: fleet.id }}
+            >
+              Create attack group
+            </AttackGroupAction>
+          )}
+        {fleet.attack_group && <Text>Alliance attack · shared arrival</Text>}
         {(fleet.can_recall ||
           pendingCommand(state, {
             type: 'World',

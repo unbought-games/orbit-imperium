@@ -1618,3 +1618,66 @@ it('Depot supply uses planetary payment, quote identity, live holdings and the s
   view.bodies[0].amounts.deuterium = '6000000000'
   expect(canSubmitQuote(state, command, quote)).toBe(false)
 })
+
+it('requires the current group revision and joining window on a submitted fleet quote', () => {
+  const s = state()
+  s.ready = true
+  const view = s.view as S['BoundView4']
+  const destination: S['MissionDestination4'] = {
+    type: 'Body',
+    id: 'other',
+    expected_kind: 'Planet',
+    expected_owner: 'enemy',
+  }
+  view.attack_groups = [
+    {
+      id: 'group',
+      revision: 3,
+      initiator: 'p',
+      target: destination,
+      coordinates: { galaxy: 1, system: 2, position: 8 },
+      arrival_at: 20000,
+      joining_open: true,
+      can_join: true,
+      members: [],
+    },
+  ]
+  const q: S['FleetTerms4'] = {
+    group_revision: 3,
+    intent: {
+      attack_group: 'group',
+      origin: 'body',
+      destination,
+      mission: 'Attack',
+      ships: [{ owner: 'p', ship_type: 'SmallCargo', count: '1' }],
+      cargo: { metal: '0', crystal: '0', deuterium: '0' },
+      speed_percent: 100,
+    },
+    profile_hash: 'profile',
+    terms_hash: 'hash',
+    duration_ms: 10000,
+    distance: 1000,
+    speeds: [],
+    fuel: '1',
+    capacity: '1000',
+    maximum_payload: '999',
+    slot_limit: '1',
+  }
+  const command: Command = {
+    type: 'World',
+    action: {
+      type: 'LaunchFleet',
+      intent: q.intent,
+      expected_terms_hash: q.terms_hash,
+    },
+  }
+  expect(canSubmitQuote(s, command, q)).toBe(true)
+  view.attack_groups[0].revision++
+  expect(canSubmitQuote(s, command, q)).toBe(false)
+  view.attack_groups[0].revision = 3
+  view.attack_groups[0].can_join = false
+  expect(canSubmitQuote(s, command, q)).toBe(false)
+  view.attack_groups[0].can_join = true
+  view.attack_groups[0].arrival_at = 1000
+  expect(canSubmitQuote(s, command, q)).toBe(false)
+})

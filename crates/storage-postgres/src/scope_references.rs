@@ -109,8 +109,14 @@ pub(crate) async fn load(
     let mut operation = None;
     let mut fleet = None;
     let mut holding_target = None;
+    refs.attack_groups = crate::attack_groups::scopes(tx, u, input).await?;
     let mut field = None;
     match input {
+        Input::Command(Command::World {
+            action: WorldAction::CreateAttackGroup { fleet: id },
+        }) => {
+            fleet = Some(*id);
+        }
         Input::Command(Command::World {
             action: WorldAction::SupplyHoldingFleet { intent, .. },
         }) => {
@@ -205,16 +211,21 @@ pub(crate) async fn load(
                 .map_err(db_error)?
         {
             let f: MissionFleet = decode_supported(value)?;
-            if matches!(
+            let contact = matches!(
                 input,
                 Input::Event(ScheduledEvent::FleetLegDue {
                     expected_leg: MissionLeg::Outbound,
                     ..
+                }) | Input::Command(Command::World {
+                    action: WorldAction::CreateAttackGroup { .. }
                 })
-            ) && matches!(
-                f.intent.mission,
-                Mission::Attack | Mission::Espionage | Mission::Hold
-            ) && let MissionDestination::Body { id, .. } = f.intent.destination
+            );
+            if contact
+                && matches!(
+                    f.intent.mission,
+                    Mission::Attack | Mission::Espionage | Mission::Hold
+                )
+                && let MissionDestination::Body { id, .. } = f.intent.destination
             {
                 holding_target = Some(id);
             }

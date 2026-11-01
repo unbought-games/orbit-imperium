@@ -235,7 +235,12 @@ pub(crate) async fn load_selected(
         }
         s.coverage.fleet_ids.insert(FleetId(derived));
     }
-    let fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>(
+    let attack_groups = crate::attack_groups::load(tx, u, input, &owners, selected.all).await?;
+    let member_ids: Vec<_> = attack_groups
+        .iter()
+        .flat_map(|g| g.members.iter().map(|f| f.0))
+        .collect();
+    let mut fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>(
         "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)) ORDER BY id",
     )
     .bind(u.0)
@@ -250,6 +255,26 @@ pub(crate) async fn load_selected(
     .into_iter()
     .map(decode)
     .collect::<Result<_, _>>()?;
+    let loaded: BTreeSet<_> = fleets.iter().map(|f| f.id.0).collect();
+    let missing: Vec<_> = member_ids
+        .into_iter()
+        .filter(|id| !loaded.contains(id))
+        .collect();
+    if !missing.is_empty() {
+        let members = sqlx::query_scalar::<_, serde_json::Value>(
+            "SELECT data FROM mission_fleets WHERE universe=$1 AND id=ANY($2) ORDER BY id",
+        )
+        .bind(u.0)
+        .bind(missing)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(db_error)?
+        .into_iter()
+        .map(decode_supported)
+        .collect::<Result<Vec<MissionFleet>, _>>()?;
+        fleets.extend(members);
+        fleets.sort_by_key(|f| f.id);
+    }
     if let (
         Some(input_id),
         Input::Event(ScheduledEvent::FleetLegDue {
@@ -521,7 +546,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
             policies.push(decode(value)?);
         }
     }
-    let holding_relationships = if holding_enabled(rules) {
+    let holding_relationships = if holding_enabled(rules) || attack_groups_enabled(rules) {
         Some(crate::holding::relationships(tx, u, epoch, &relationship_owners).await?)
     } else {
         None
@@ -534,6 +559,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
         homeworlds,
         planet_slots,
         records: WorldRecords {
+            attack_groups: attack_groups.into_iter().map(|g| (g.id, g)).collect(),
             depot_supplies: depot_supplies.into_iter().map(|s| (s.id, s)).collect(),
             abandonments: abandonments.into_iter().map(|t| (t.body, t)).collect(),
             missiles: missiles.into_iter().map(|f| (f.id, f)).collect(),
@@ -758,6 +784,7 @@ pub(crate) async fn save(
             sqlx::query("INSERT INTO missile_flights(universe,id,owner,data) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET data=excluded.data WHERE missile_flights.universe=excluded.universe").bind(u.0).bind(id.0).bind(f.owner.0).bind(sqlx::types::Json(f)).execute(&mut **tx).await.map_err(db_error)?;
         }
     }
+    crate::attack_groups::save(tx, i, &old.attack_groups, &c.records).await?;
     for (x, f) in &c.records.fleets {
         if old.fleets.get(x) != Some(f) {
             sqlx::query("INSERT INTO mission_fleets(universe,id,owner,data) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET data=excluded.data WHERE mission_fleets.universe=excluded.universe").bind(u.0).bind(x.0).bind(f.owner.0).bind(sqlx::types::Json(f)).execute(&mut **tx).await.map_err(db_error)?;

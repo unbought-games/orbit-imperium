@@ -101,6 +101,12 @@ pub(super) fn world_projection(
         }
     }
     Ok(BoundView4 {
+        attack_groups: attack_group_views(
+            &world.records,
+            viewer,
+            snapshot.at,
+            attack_groups_enabled(&snapshot.rules),
+        ),
         holdings,
         depots,
         homeworld_id: snapshot.homeworld.as_ref().map(|(id, _)| *id),
@@ -148,9 +154,19 @@ fn mission_projection(
     let mut incoming = vec![];
     // Preserve the records' fleet-ID order for both public lists.
     for fleet in records.fleets.values() {
-        if let Some(own) = own_mission(fleet, research.owner, at) {
+        if let Some(mut own) = own_mission(fleet, research.owner, at) {
+            own.due_at = effective_fleet_due(records, fleet);
+            own.can_recall =
+                matches!(fleet.leg, MissionLeg::Outbound | MissionLeg::Holding) && at < own.due_at;
+            own.attack_group = if fleet.leg == MissionLeg::Outbound {
+                fleet_attack_group(records, fleet.id).map(|g| g.id)
+            } else {
+                None
+            };
             fleets.push(own);
-        } else if let Some(mission) = incoming_mission(fleet, research.owner, espionage)? {
+        } else if let Some(mut mission) = incoming_mission(fleet, research.owner, espionage)? {
+            mission.arrival_at = effective_fleet_due(records, fleet);
+            mission.attack_group = fleet_attack_group(records, fleet.id).map(|g| g.id);
             incoming.push(mission);
         }
     }
@@ -169,6 +185,7 @@ fn own_mission(fleet: &MissionFleet, viewer: PlayerId, at: Timestamp) -> Option<
         return None;
     }
     Some(OwnMission {
+        attack_group: None,
         id: fleet.id,
         intent: fleet.intent.clone(),
         origin: fleet.origin_coordinates,
@@ -211,6 +228,7 @@ fn incoming_mission(
         return Ok(None);
     }
     Ok(Some(IncomingMission {
+        attack_group: None,
         sender: fleet.owner,
         origin: fleet.origin_coordinates,
         origin_body: Some(fleet.intent.origin),
@@ -258,6 +276,13 @@ fn world_capabilities(
             reason: "Available".into(),
         });
     }
+    if attack_groups_enabled(rules) {
+        capabilities.push(CapabilityState {
+            capability: "AllianceAttacks".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+    }
     if holding_enabled(rules) {
         capabilities.push(CapabilityState {
             capability: "Hold".into(),
@@ -284,3 +309,60 @@ fn world_capabilities(
 
 #[cfg(test)]
 mod tests;
+
+fn attack_group_views(
+    w: &WorldRecords,
+    viewer: PlayerId,
+    at: Timestamp,
+    enabled: bool,
+) -> Vec<AttackGroupView> {
+    w.attack_groups
+        .values()
+        .filter_map(|g| {
+            if g.resolved_at.is_some() {
+                return None;
+            }
+            let initiator = w.fleets.get(&g.initiator)?;
+            let own_member = g
+                .members
+                .iter()
+                .any(|id| w.fleets.get(id).is_some_and(|f| f.owner == viewer));
+            if initiator.owner != viewer && !g.invited.contains(&viewer) && !own_member {
+                return None;
+            }
+            let members: Vec<_> = group_members(w, g).collect();
+            let owners: std::collections::BTreeSet<_> = members.iter().map(|f| f.owner).collect();
+            Some(AttackGroupView {
+                id: g.id,
+                revision: g.revision,
+                initiator: initiator.owner,
+                target: initiator.intent.destination.clone(),
+                coordinates: initiator.destination_coordinates,
+                arrival_at: g.arrival_at,
+                joining_open: enabled && group_open(w, g, at),
+                can_join: enabled
+                    && group_open(w, g, at)
+                    && (viewer == initiator.owner || g.invited.contains(&viewer))
+                    && members.len() < 16
+                    && (owners.len() < 5 || owners.contains(&viewer)),
+                invitations: (viewer == initiator.owner)
+                    .then(|| g.invited.iter().copied().collect()),
+                members: members
+                    .into_iter()
+                    .map(|f| AttackGroupMemberView {
+                        owner: f.owner,
+                        own_fleet: (f.owner == viewer).then_some(f.id),
+                        ships: f
+                            .ships
+                            .iter()
+                            .map(|s| PublicShipStack {
+                                ship_type: s.ship_type,
+                                count: s.count.to_string(),
+                            })
+                            .collect(),
+                    })
+                    .collect(),
+            })
+        })
+        .collect()
+}

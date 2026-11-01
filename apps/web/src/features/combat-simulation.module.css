@@ -34,12 +34,14 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
-.sides fieldset {
+.sides fieldset,
+.contingent {
   min-width: 0;
   border: 1px solid var(--border);
   padding: 12px;
 }
-.sides legend {
+.sides legend,
+.contingent legend {
   font-size: 1.2rem;
   color: var(--champagne-light);
 }
@@ -122,4 +124,9 @@
 .outcomes .loss,
 .outcomes .loss strong {
   color: #e39885;
+}
+
+.contingent,
+.alliedActions {
+  margin-block: 16px;
 }

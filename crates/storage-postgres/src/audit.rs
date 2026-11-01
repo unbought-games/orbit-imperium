@@ -85,6 +85,9 @@ async fn audit_state(
             // The world loader already validates every player's progression: do not do it twice.
             let state = crate::world::load(tx, u, epoch, rules, &input, None).await?;
             crate::facts::validate_rule_references(tx, &state).await?;
+            if let Some(w) = &state.world {
+                crate::attack_groups::audit(tx, u, &w.records).await?;
+            }
         }
     } else if rules.progression() {
         let players: Vec<uuid::Uuid> =

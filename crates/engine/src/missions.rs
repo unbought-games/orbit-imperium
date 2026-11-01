@@ -202,6 +202,7 @@ fn flight_terms(
         return Err(GameError::CargoCapacity);
     }
     Ok(FleetTermsData {
+        group_revision: None,
         holding,
         intent,
         profile_hash: r.hash.clone(),
@@ -418,6 +419,7 @@ fn quote_inner(
         None => arrival,
     };
     deadline(departure, q.duration_ms)?;
+    q.group_revision = crate::attack_groups::validate_join(s, owner, intent, at, q.duration_ms, r)?;
     Ok(q.seal())
 }
 fn inventory(
@@ -479,7 +481,7 @@ fn credit(
     c.bodies.push(b);
     Ok(())
 }
-fn signal(w: &mut WorldRecords, id: BodyId, i: &OrderedInput, cause: ActivityCause) {
+pub(crate) fn signal(w: &mut WorldRecords, id: BodyId, i: &OrderedInput, cause: ActivityCause) {
     if w.activity.get(&id).is_none_or(|a| a.last_signal_at <= i.at) {
         w.activity.insert(
             id,
@@ -704,6 +706,17 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
     match &i.payload {
         Input::Command(Command::World {
             action:
+                action @ (WorldAction::CreateAttackGroup { .. }
+                | WorldAction::InviteAttackGroup { .. }
+                | WorldAction::RevokeAttackGroupInvitation { .. }),
+        }) => {
+            crate::attack_groups::command(s, i, action, r, &mut c, &mut w)?;
+        }
+        Input::Event(ScheduledEvent::AttackGroupDue { .. }) => {
+            crate::attack_groups::arrive(s, i, r, &mut c, &mut w, &mut audits)?;
+        }
+        Input::Command(Command::World {
+            action:
                 WorldAction::SupplyHoldingFleet {
                     intent,
                     expected_terms_hash,
@@ -873,12 +886,17 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     .ok_or(GameError::NumericRange)?;
             }
             signal(&mut w, origin.id, i, ActivityCause::Launch);
-            schedule(&mut c, i, &f);
+            if f.intent.attack_group.is_none() {
+                schedule(&mut c, i, &f);
+            }
             c.affected_viewers.insert(owner);
             if let Some(owner) = target_owner {
                 c.affected_viewers.insert(owner);
             }
-            w.fleets.insert(id, f);
+            w.fleets.insert(id, f.clone());
+            if f.intent.attack_group.is_some() {
+                crate::attack_groups::join(i, &f, &mut c, &mut w)?;
+            }
         }
         Input::Command(Command::World {
             action: WorldAction::RecallMission { fleet },
@@ -890,7 +908,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if !matches!(f.leg, MissionLeg::Outbound | MissionLeg::Holding) {
                 return Err(GameError::NotOutbound.into());
             }
-            if i.at >= f.due_at {
+            if i.at >= effective_fleet_due(&w, &f) {
                 return Err(invariant("arrival not settled before recall"));
             }
             c.cancelled_events.push(ScheduledEvent::FleetLegDue {
@@ -921,6 +939,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 c.affected_viewers.insert(owner);
             }
             w.fleets.insert(*fleet, f);
+            crate::attack_groups::recalled(i, *fleet, &mut c, &mut w)?;
         }
         Input::Event(ScheduledEvent::FleetLegDue {
             fleet,

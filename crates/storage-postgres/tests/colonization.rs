@@ -218,6 +218,7 @@ async fn launch(
     )
     .unwrap();
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin,
         destination,

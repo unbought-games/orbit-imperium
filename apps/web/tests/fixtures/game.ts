@@ -58,6 +58,7 @@ export async function installGameFixture(
     viewerRevision?: () => string
     homeworldId?: string
     playerNames?: components['schemas']['PublicPlayerNames4']
+    attackGroups?: components['schemas']['AttackGroup4'][]
     holdings?: components['schemas']['HeldFleetView4'][]
     depots?: components['schemas']['DepotView4'][]
     missiles?: components['schemas']['MissileFlightView4'][]
@@ -71,6 +72,7 @@ export async function installGameFixture(
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
     extraCapabilities?: Array<
+      | 'AllianceAttacks'
       | 'Hold'
       | 'Missiles'
       | 'Attack'
@@ -224,6 +226,7 @@ export async function installGameFixture(
       ),
       ...(protocol === 4
         ? {
+            attack_groups: options.attackGroups ?? [],
             holdings: options.holdings ?? [],
             depots: options.depots ?? [],
             missiles: options.missiles ?? [],

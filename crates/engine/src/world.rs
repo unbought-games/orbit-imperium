@@ -56,6 +56,8 @@ pub struct ManifestStack {
 #[serde(deny_unknown_fields)]
 pub struct FleetIntent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_group: Option<OperationId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hold_hours: Option<u32>,
     pub origin: BodyId,
     pub destination: MissionDestination,
@@ -68,6 +70,8 @@ pub struct FleetIntent {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FleetTermsData {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_revision: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub holding: Option<HoldingTerms>,
     pub intent: FleetIntent,
@@ -159,6 +163,17 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    CreateAttackGroup {
+        fleet: FleetId,
+    },
+    InviteAttackGroup {
+        group: OperationId,
+        player: PlayerId,
+    },
+    RevokeAttackGroupInvitation {
+        group: OperationId,
+        player: PlayerId,
+    },
     SupplyHoldingFleet {
         intent: DepotSupplyIntent,
         expected_terms_hash: Hash,
@@ -248,6 +263,8 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub attack_groups: BTreeMap<OperationId, AttackGroup>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub depot_supplies: BTreeMap<InputId, DepotSupply>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub abandonments: BTreeMap<BodyId, Abandonment>,
@@ -292,6 +309,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_groups: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub holding: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub missiles: Option<MissileRules>,
@@ -314,6 +333,13 @@ fn default_beginner_protection_multiplier() -> u32 {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if self
+            .attack_groups
+            .as_deref()
+            .is_some_and(|v| v != "oi-group-attack-v1")
+        {
+            return Err(RulesError::Unsupported);
+        }
         if self
             .holding
             .as_ref()

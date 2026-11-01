@@ -110,7 +110,8 @@ pub(crate) async fn load(
             | Command::StartManufacture { .. },
         )
         | Input::Event(
-            ScheduledEvent::MissileImpact { .. }
+            ScheduledEvent::AttackGroupDue { .. }
+            | ScheduledEvent::MissileImpact { .. }
             | ScheduledEvent::FleetLegDue { .. }
             | ScheduledEvent::DebrisCleanupDue { .. }
             | ScheduledEvent::AbandonedSlotDue { .. }

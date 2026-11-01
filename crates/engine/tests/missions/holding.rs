@@ -32,6 +32,7 @@ fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
 }
 fn hold(s: &GameState, p: PlayerId, b: BodyId, t: BodyId, hours: u32) -> FleetIntent {
     FleetIntent {
+        attack_group: None,
         mission: Mission::Hold,
         hold_hours: Some(hours),
         cargo: Resources::default(),

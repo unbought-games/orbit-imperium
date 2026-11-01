@@ -1094,6 +1094,7 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
     .await
     .unwrap();
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin,
         destination: MissionDestination::Body {
@@ -1401,6 +1402,7 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
         .find(|body| body.owner == b.player)
         .unwrap();
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin: origin.id,
         destination: MissionDestination::Body {
@@ -1414,6 +1416,7 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
         speed_percent: 100,
     };
     let terms = FleetTermsData {
+        group_revision: None,
         holding: None,
         intent: intent.clone(),
         profile_hash: snapshot.state.profile_hash.clone(),

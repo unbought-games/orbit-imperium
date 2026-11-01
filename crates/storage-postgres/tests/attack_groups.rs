@@ -1,0 +1,438 @@
+use orbit_application::*;
+use orbit_engine::*;
+use orbit_storage_postgres::PgStore;
+use serde_json::json;
+use uuid::Uuid;
+async fn drain(store: &PgStore, u: UniverseId, scoped: bool) {
+    let game = GameService::new(store.clone());
+    for _ in 0..100 {
+        let result = if scoped {
+            game.step_scoped(u, WorkerId(Uuid::new_v4()), &InlineEngine)
+                .await
+                .unwrap()
+        } else {
+            game.step(u, WorkerId(Uuid::new_v4())).await.unwrap()
+        };
+        if matches!(result, StepOutcome::Idle) {
+            return;
+        }
+    }
+    panic!("missile fixture did not drain")
+}
+fn pair(binding: Binding, body: Option<BodyId>, command: Command) -> ForegroundAction {
+    let id = CommandId(Uuid::new_v4());
+    ForegroundAction {
+        gameplay: CommandEnvelopeV4 {
+            protocol: 4,
+            binding,
+            command_id: id,
+            command: CommandDto3::Progression(command),
+        },
+        presence: CommandEnvelopeV4 {
+            protocol: 4,
+            binding,
+            command_id: CommandId(Uuid::new_v4()),
+            command: CommandDto3::Progression(Command::World {
+                action: WorldAction::RecordForegroundPresence {
+                    body,
+                    cause: PresenceCause::GameplayGesture,
+                    paired_command_id: Some(id),
+                },
+            }),
+        },
+    }
+}
+async fn binding(store: &PgStore, user: &str) -> Binding {
+    let login = SessionService::new(store.clone())
+        .login(user, "password", None)
+        .await
+        .unwrap();
+    GameService::new(store.clone())
+        .initial_game(&login.session, Uuid::new_v4())
+        .await
+        .unwrap()
+        .unwrap()
+        .candidate
+        .binding
+}
+async fn order(
+    store: &PgStore,
+    b: Binding,
+    body: Option<BodyId>,
+    action: WorldAction,
+    scoped: bool,
+) -> BoundReceipt {
+    let p = pair(b, body, Command::World { action });
+    let first = store.bound_admit4(p.clone()).await.unwrap();
+    drain(store, b.universe, scoped).await;
+    let retry = store.bound_admit4(p).await.unwrap();
+    assert_eq!(first.command_id, retry.command_id);
+    assert!(
+        matches!(retry.status, ReceiptStatus::Committed { .. }),
+        "{retry:?}"
+    );
+    retry
+}
+async fn launch(
+    store: &PgStore,
+    b: Binding,
+    origin: BodyId,
+    destination: (Binding, BodyId),
+    group: Option<OperationId>,
+    speed: u32,
+    scoped: bool,
+) -> MissionFleet {
+    let (host, target) = destination;
+    let intent = FleetIntent {
+        attack_group: group,
+        hold_hours: None,
+        origin,
+        destination: MissionDestination::Body {
+            id: target,
+            expected_kind: BodyKind::Planet,
+            expected_owner: host.player,
+        },
+        mission: Mission::Attack,
+        ships: vec![ManifestStack {
+            owner: b.player,
+            ship_type: ShipType::Cruiser,
+            count: 10,
+        }],
+        cargo: Resources::default(),
+        speed_percent: speed,
+    };
+    let (snap, _) = store
+        .bound_world_query(
+            b,
+            WorldQueryKind::FleetQuote {
+                intent: intent.clone(),
+            },
+        )
+        .await
+        .unwrap()
+        .facts;
+    let q = quote_fleet(&snap.state, b.player, &intent, snap.at, &snap.rules).unwrap();
+    order(
+        store,
+        b,
+        Some(origin),
+        WorldAction::LaunchFleet {
+            intent,
+            expected_terms_hash: q.terms_hash.clone(),
+        },
+        scoped,
+    )
+    .await;
+    store
+        .bound_world(b)
+        .await
+        .unwrap()
+        .facts
+        .0
+        .state
+        .world
+        .unwrap()
+        .records
+        .fleets
+        .into_values()
+        .filter(|f| f.owner == b.player && f.intent.attack_group == group)
+        .max_by_key(|f| f.launched_at)
+        .unwrap()
+}
+#[tokio::test]
+async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes() {
+    for scoped in [false, true] {
+        let url = std::env::var("TEST_DATABASE_URL").unwrap();
+        let pool = sqlx::PgPool::connect(&url).await.unwrap();
+        sqlx::raw_sql("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let store = PgStore::connect(&url).await.unwrap();
+        store.migrate().await.unwrap();
+        let at = 1_790_000_000_000;
+        store.set_test_time(at).await.unwrap();
+        let u = UniverseId(Uuid::new_v4());
+        let mut edits = vec![];
+        for (name, coords) in [
+            ("lead", "1:50:8"),
+            ("joiner", "1:50:9"),
+            ("host", "1:51:8"),
+            ("guard", "1:51:9"),
+        ] {
+            edits
+                .push(json!({"op":"add-player","user":name,"password":"password","planet":coords}));
+            edits.push(json!({"op":"set","user":name,"planet":coords,"research":{"ComputerTechnology":4,"WeaponsTechnology":if name=="joiner" {7} else {3}},"buildings":{"MetalStorage":if name=="host" {8} else {0}},"ships":{"Cruiser":if name=="host" {0} else {20}},"resources":{"metal":1000000,"crystal":1000000,"deuterium":1000000}}));
+        }
+        let doc: WorldScenario =
+            serde_json::from_value(json!({"version":1,"edits":edits})).unwrap();
+        store
+            .apply_world_scenario(u, &doc, ScenarioMode::Create, Uuid::new_v4())
+            .await
+            .unwrap();
+        let a = binding(&store, "lead").await;
+        let b = binding(&store, "joiner").await;
+        let h = binding(&store, "host").await;
+        let guard = binding(&store, "guard").await;
+        let mut bodies = vec![];
+        for player in [a, b, h, guard] {
+            bodies.push(
+                store
+                    .bound_world(player)
+                    .await
+                    .unwrap()
+                    .facts
+                    .0
+                    .state
+                    .bodies
+                    .values()
+                    .find(|body| body.owner == player.player)
+                    .unwrap()
+                    .id,
+            );
+        }
+        if scoped {
+            store.prepare_scoped_runtime(u, 100).await.unwrap();
+            store.activate_scoped_runtime(u).await.unwrap();
+        }
+        let first = launch(&store, a, bodies[0], (h, bodies[2]), None, 10, scoped).await;
+        order(
+            &store,
+            a,
+            None,
+            WorldAction::CreateAttackGroup { fleet: first.id },
+            scoped,
+        )
+        .await;
+        let group = *store
+            .bound_world(a)
+            .await
+            .unwrap()
+            .facts
+            .0
+            .state
+            .world
+            .unwrap()
+            .records
+            .attack_groups
+            .keys()
+            .next()
+            .unwrap();
+        order(
+            &store,
+            a,
+            None,
+            WorldAction::InviteAttackGroup {
+                group,
+                player: b.player,
+            },
+            scoped,
+        )
+        .await;
+        store.set_test_time(at + 1000).await.unwrap();
+        let second = launch(
+            &store,
+            b,
+            bodies[1],
+            (h, bodies[2]),
+            Some(group),
+            100,
+            scoped,
+        )
+        .await;
+        assert!(second.due_at < first.due_at);
+        // Revoking the invitation stops future joins but preserves committed membership.
+        order(
+            &store,
+            a,
+            None,
+            WorldAction::RevokeAttackGroupInvitation {
+                group,
+                player: b.player,
+            },
+            scoped,
+        )
+        .await;
+        // A later allied defender extends the already scheduled group's scopes.
+        let social = |binding, action| SocialCommandRequest {
+            context: QueryContext {
+                binding,
+                request_id: Uuid::new_v4(),
+            },
+            command_id: Uuid::new_v4(),
+            action,
+        };
+        store
+            .social_command(social(
+                guard,
+                SocialAction::RequestFriend { player: h.player },
+            ))
+            .await
+            .unwrap();
+        let request = store
+            .social_query(SocialQueryRequest {
+                context: QueryContext {
+                    binding: h,
+                    request_id: Uuid::new_v4(),
+                },
+                query: SocialQuery::Contacts {
+                    kind: ContactKind::Requests,
+                    cursor: None,
+                    limit: 20,
+                },
+            })
+            .await
+            .unwrap()
+            .contacts[0]
+            .request
+            .unwrap();
+        store
+            .social_command(social(
+                h,
+                SocialAction::AcceptFriend {
+                    player: guard.player,
+                    request,
+                },
+            ))
+            .await
+            .unwrap();
+        let hold = FleetIntent {
+            attack_group: None,
+            hold_hours: Some(16),
+            origin: bodies[3],
+            destination: MissionDestination::Body {
+                id: bodies[2],
+                expected_kind: BodyKind::Planet,
+                expected_owner: h.player,
+            },
+            mission: Mission::Hold,
+            ships: vec![ManifestStack {
+                owner: guard.player,
+                ship_type: ShipType::Cruiser,
+                count: 2,
+            }],
+            cargo: Resources::default(),
+            speed_percent: 100,
+        };
+        let (snap, _) = store
+            .bound_world_query(
+                guard,
+                WorldQueryKind::FleetQuote {
+                    intent: hold.clone(),
+                },
+            )
+            .await
+            .unwrap()
+            .facts;
+        let q = quote_fleet(&snap.state, guard.player, &hold, snap.at, &snap.rules).unwrap();
+        order(
+            &store,
+            guard,
+            Some(bodies[3]),
+            WorldAction::LaunchFleet {
+                intent: hold,
+                expected_terms_hash: q.terms_hash.clone(),
+            },
+            scoped,
+        )
+        .await;
+        store.audit_universe(u).await.unwrap();
+        let reopened = PgStore::connect(&url).await.unwrap();
+        let snapshot = reopened.bound_world(a).await.unwrap().facts.0;
+        let g = &snapshot.state.world.as_ref().unwrap().records.attack_groups[&group];
+        assert_eq!(g.members.len(), 2);
+        let due = g.arrival_at;
+        reopened.set_test_time(due).await.unwrap();
+        drain(&reopened, u, scoped).await;
+        let snapshot = reopened.bound_world(a).await.unwrap().facts.0;
+        assert_eq!(
+            snapshot
+                .state
+                .world
+                .as_ref()
+                .unwrap()
+                .records
+                .attack_groups
+                .get(&group),
+            None,
+            "resolved groups leave live projections"
+        );
+        let reports: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM mission_reports WHERE universe=$1 AND kind='Combat'",
+        )
+        .bind(u.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(reports, 1);
+        let recipients:i64=sqlx::query_scalar("SELECT count(*) FROM mission_report_recipients p JOIN mission_reports r ON r.id=p.report WHERE r.universe=$1 AND r.kind='Combat'").bind(u.0).fetch_one(&pool).await.unwrap();
+        assert_eq!(recipients, 4);
+        let payload: serde_json::Value = sqlx::query_scalar(
+            "SELECT data FROM mission_reports WHERE universe=$1 AND kind='Combat'",
+        )
+        .bind(u.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        let defender = &payload["payloads"][h.player.to_string()];
+        assert_eq!(
+            defender["participants"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|p| p["side"] == "Attacker")
+                .count(),
+            2
+        );
+        assert_eq!(
+            defender["participants"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|p| p["side"] == "Defender")
+                .count(),
+            2
+        );
+        assert_eq!(defender["outcome"], "AttackerVictory");
+        let participants = defender["participants"].as_array().unwrap();
+        for (owner, level) in [(a.player, 3), (b.player, 7)] {
+            assert_eq!(
+                participants
+                    .iter()
+                    .find(|p| p["owner"] == owner.to_string())
+                    .unwrap()["technology"][0],
+                level
+            );
+        }
+        let amount = |value: &serde_json::Value, key: &str| {
+            value[key].as_str().unwrap().parse::<i64>().unwrap()
+        };
+        let mut loot_total = 0;
+        for key in ["metal", "crystal", "deuterium"] {
+            let pooled = amount(&defender["loot"], key);
+            let allocated = [a.player, b.player]
+                .iter()
+                .map(|owner| {
+                    amount(
+                        &payload["payloads"][owner.to_string()]["own_returns"][0]["loot"],
+                        key,
+                    )
+                })
+                .sum::<i64>();
+            assert_eq!(pooled, allocated);
+            loot_total += pooled;
+        }
+        assert_eq!(loot_total, 16_000 * SCALE);
+        reopened.audit_universe(u).await.unwrap();
+        reopened
+            .set_test_time(due + first.terms.duration_ms.max(second.terms.duration_ms))
+            .await
+            .unwrap();
+        drain(&reopened, u, scoped).await;
+        let active:i64=sqlx::query_scalar("SELECT count(*) FROM mission_fleets WHERE universe=$1 AND data->>'leg' IN ('Outbound','Returning')").bind(u.0).fetch_one(&pool).await.unwrap();
+        assert_eq!(active, 0);
+        drop(reopened);
+        drop(store);
+        pool.close().await;
+    }
+}

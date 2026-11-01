@@ -299,6 +299,12 @@ impl PgStore {
             }
             edits.push(e);
         }
+        if w.attack_groups.values().any(|g| g.resolved_at.is_none()) {
+            return Err(
+                "cannot export active attack groups; wait for combat or recall all members first"
+                    .into(),
+            );
+        }
         if w.missiles
             .values()
             .any(|f| f.status == MissileStatus::InFlight)

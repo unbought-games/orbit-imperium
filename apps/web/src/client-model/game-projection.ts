@@ -54,6 +54,7 @@ export function nextWorkDelay(state: GameState) {
         d.next_budget_release_at === null ? [] : [d.next_budget_release_at],
       ),
       ...(view.holdings ?? []).map((f) => f.departure_at),
+      ...(view.attack_groups ?? []).map((g) => g.arrival_at),
       ...view.missions.fleets
         .filter((f) => f.leg === 'Holding')
         .map((f) => f.due_at),
@@ -253,6 +254,26 @@ export function canSubmitIntent(
   const view = projectGameView(state),
     cost = state.view ? payment(command, intent, state.view, state) : null
   if (!view) return false
+  if (
+    command.type === 'World' &&
+    command.action.type === 'LaunchFleet' &&
+    command.action.intent.attack_group
+  ) {
+    const groupId = command.action.intent.attack_group
+    const group =
+      view.protocol === 4
+        ? view.attack_groups?.find((g) => g.id === groupId)
+        : undefined
+    if (
+      !group ||
+      !group.can_join ||
+      currentServerTime(state) >= group.arrival_at ||
+      !intent.quote ||
+      !('group_revision' in intent.quote) ||
+      intent.quote.group_revision !== group.revision
+    )
+      return false
+  }
   if (
     command.type === 'World' &&
     command.action.type === 'SupplyHoldingFleet'

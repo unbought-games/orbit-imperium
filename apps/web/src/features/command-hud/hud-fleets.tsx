@@ -65,6 +65,23 @@ export function HudFleets({
           <ExternalLink size={13} aria-hidden="true" />
         </Link>
       </div>
+      {view?.protocol === 4 &&
+        (view.attack_groups ?? []).some(
+          (g) =>
+            g.initiator !== view.binding.player &&
+            !g.members.some((m) => m.own_fleet) &&
+            g.can_join &&
+            now < g.arrival_at,
+        ) && (
+          <p className={styles.fleetEmpty}>
+            <Link
+              {...routeTarget(universe, 'fleets', body ?? view.bodies[0]?.id)}
+              onClick={close}
+            >
+              Alliance attack invitations
+            </Link>
+          </p>
+        )}
       <div id={panelId} hidden={!expanded}>
         {rows.length ? (
           <ul className={styles.fleetList} aria-label="Empire fleets">

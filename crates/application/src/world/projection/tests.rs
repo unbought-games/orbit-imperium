@@ -8,6 +8,7 @@ fn player(n: u128) -> PlayerId {
 
 fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> MissionFleet {
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin: BodyId(Uuid::from_u128(10)),
         destination: MissionDestination::Body {
@@ -39,6 +40,7 @@ fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> Mission
             position: 4,
         },
         terms: FleetTermsData {
+            group_revision: None,
             holding: None,
             intent,
             profile_hash: Hash("historical-profile".into()),
@@ -423,4 +425,67 @@ fn world_projection_rejects_foreign_research_in_the_viewer_slot() {
         world_projection(&facts, player(1), context),
         Err(ServiceError::InvariantFailure)
     ));
+}
+
+#[test]
+fn attack_group_views_are_recipient_bound_and_never_reveal_private_terms() {
+    let (a, b, target, outsider) = (player(1), player(2), player(3), player(4));
+    let mut first = fleet(100, a, target, MissionLeg::Outbound);
+    first.intent.mission = Mission::Attack;
+    let mut second = fleet(101, b, target, MissionLeg::Outbound);
+    second.intent.mission = Mission::Attack;
+    let group = AttackGroup {
+        id: OperationId(Uuid::from_u128(99)),
+        initiator: first.id,
+        members: std::collections::BTreeSet::from([first.id, second.id]),
+        invited: std::collections::BTreeSet::from([b, outsider]),
+        arrival_at: 9000,
+        generation: 1,
+        revision: 2,
+        resolved_at: None,
+    };
+    let mut w = WorldRecords::default();
+    w.fleets.insert(first.id, first);
+    w.fleets.insert(second.id, second);
+    w.attack_groups.insert(group.id, group);
+    assert!(attack_group_views(&w, target, 1000, true).is_empty());
+    let member = attack_group_views(&w, b, 1000, true);
+    assert_eq!(member.len(), 1);
+    assert!(!attack_group_views(&w, b, 1000, false)[0].can_join);
+    assert!(member[0].invitations.is_none());
+    assert!(member[0].members[0].own_fleet.is_none());
+    assert_eq!(
+        member[0].members[1].own_fleet,
+        Some(FleetId(Uuid::from_u128(101)))
+    );
+    let visible = serde_json::to_value(&member[0]).unwrap().to_string();
+    for forbidden in [
+        "cargo",
+        "technology",
+        "fuel",
+        "return_at",
+        "origin_coordinates",
+    ] {
+        assert!(!visible.contains(forbidden));
+    }
+    assert_eq!(
+        attack_group_views(&w, a, 1000, true)[0]
+            .invitations
+            .as_ref()
+            .unwrap()
+            .len(),
+        2
+    );
+    w.attack_groups
+        .values_mut()
+        .next()
+        .unwrap()
+        .invited
+        .remove(&outsider);
+    assert!(attack_group_views(&w, outsider, 1000, true).is_empty());
+    w.fleets
+        .get_mut(&FleetId(Uuid::from_u128(100)))
+        .unwrap()
+        .leg = MissionLeg::Returning;
+    assert!(!attack_group_views(&w, b, 1000, true)[0].can_join);
 }

@@ -46,6 +46,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import { bodyName } from '../ui/format'
 type S = components['schemas']
 export type DispatchDraft = {
+  attackGroup?: string
   ships?: Record<string, string>
   speed?: number
   origin?: string
@@ -161,6 +162,13 @@ export function Dispatch({
       </header>
       {!quote && (
         <>
+          {draft?.attackGroup && (
+            <Text role="status">
+              Joining an alliance attack. Your fleet must arrive within 130% of
+              the group’s remaining flight time. Review the shared arrival
+              before launching.
+            </Text>
+          )}
           <TaskHeader>
             <div className={styles.origin}>
               <LocationSummaryLabel>Origin</LocationSummaryLabel>
@@ -213,9 +221,13 @@ export function Dispatch({
           >
             <MissionSelector
               value={mission}
-              available={view.capabilities
-                .filter((c) => c.enabled)
-                .map((c) => c.capability)}
+              available={
+                draft?.attackGroup
+                  ? ['Attack']
+                  : view.capabilities
+                      .filter((c) => c.enabled)
+                      .map((c) => c.capability)
+              }
               onChange={(nextMission) => {
                 setMission(nextMission)
                 if (nextMission === 'Harvest') setTargetKind('debris')
@@ -261,6 +273,7 @@ export function Dispatch({
               </Field>
             )}
             <DispatchDestinationPreview
+              readOnly={!!draft?.attackGroup}
               coordinates={destinationCoordinates}
               kind={targetKind}
               target={target}
@@ -295,7 +308,7 @@ export function Dispatch({
                 clear()
               }}
             />
-            {recentlyCopied && (
+            {recentlyCopied && !draft?.attackGroup && (
               <Text>
                 Recently copied in game: [
                 {coordinateText(recentlyCopied.coordinates)}]{' '}

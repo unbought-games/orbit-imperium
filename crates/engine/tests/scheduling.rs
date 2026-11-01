@@ -26,6 +26,7 @@ fn launches_declare_both_players_and_successor_locations() {
     let command = Command::World {
         action: WorldAction::LaunchFleet {
             intent: FleetIntent {
+                attack_group: None,
                 hold_hours: None,
                 origin,
                 destination: MissionDestination::Body {
