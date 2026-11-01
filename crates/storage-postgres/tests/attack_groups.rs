@@ -436,3 +436,238 @@ async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes(
         pool.close().await;
     }
 }
+
+#[tokio::test]
+async fn returned_recalls_remain_loadable_for_later_joins_and_group_visibility() {
+    for scoped in [false, true] {
+        let url = std::env::var("TEST_DATABASE_URL").unwrap();
+        let pool = sqlx::PgPool::connect(&url).await.unwrap();
+        sqlx::raw_sql("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let store = PgStore::connect(&url).await.unwrap();
+        store.migrate().await.unwrap();
+        let at = 1_790_000_000_000;
+        store.set_test_time(at).await.unwrap();
+        let universe = UniverseId(Uuid::new_v4());
+        let mut edits = vec![];
+        for (user, planet) in [
+            ("leader", "1:50:8"),
+            ("member", "1:50:9"),
+            ("target", "1:51:8"),
+        ] {
+            edits
+                .push(json!({"op":"add-player","user":user,"password":"password","planet":planet}));
+            edits.push(json!({"op":"set","user":user,"planet":planet,"research":{"ComputerTechnology":4},"ships":{"Cruiser":20},"resources":{"metal":1000000,"crystal":1000000,"deuterium":1000000}}));
+        }
+        let scenario: WorldScenario =
+            serde_json::from_value(json!({"version":1,"edits":edits})).unwrap();
+        store
+            .apply_world_scenario(universe, &scenario, ScenarioMode::Create, Uuid::new_v4())
+            .await
+            .unwrap();
+        let leader = binding(&store, "leader").await;
+        let member = binding(&store, "member").await;
+        let target = binding(&store, "target").await;
+        let mut bodies = vec![];
+        for binding in [leader, member, target] {
+            let snapshot = store.bound_world(binding).await.unwrap();
+            bodies.push(
+                snapshot
+                    .facts
+                    .0
+                    .state
+                    .bodies
+                    .values()
+                    .find(|body| body.owner == binding.player)
+                    .unwrap()
+                    .id,
+            );
+        }
+        if scoped {
+            store.prepare_scoped_runtime(universe, 100).await.unwrap();
+            store.activate_scoped_runtime(universe).await.unwrap();
+        }
+        let initiator = launch(
+            &store,
+            leader,
+            bodies[0],
+            (target, bodies[2]),
+            None,
+            10,
+            scoped,
+        )
+        .await;
+        assert!(initiator.due_at > at + 10000);
+        order(
+            &store,
+            leader,
+            None,
+            WorldAction::CreateAttackGroup {
+                fleet: initiator.id,
+            },
+            scoped,
+        )
+        .await;
+        let group = *store
+            .bound_world(leader)
+            .await
+            .unwrap()
+            .facts
+            .0
+            .state
+            .world
+            .unwrap()
+            .records
+            .attack_groups
+            .keys()
+            .next()
+            .unwrap();
+        order(
+            &store,
+            leader,
+            None,
+            WorldAction::InviteAttackGroup {
+                group,
+                player: member.player,
+            },
+            scoped,
+        )
+        .await;
+        store.set_test_time(at + 1000).await.unwrap();
+        let recalled = launch(
+            &store,
+            member,
+            bodies[1],
+            (target, bodies[2]),
+            Some(group),
+            100,
+            scoped,
+        )
+        .await;
+        store.set_test_time(at + 2000).await.unwrap();
+        order(
+            &store,
+            member,
+            Some(bodies[1]),
+            WorldAction::RecallMission { fleet: recalled.id },
+            scoped,
+        )
+        .await;
+        store.set_test_time(at + 3000).await.unwrap();
+        drain(&store, universe, scoped).await;
+        let reopened = PgStore::connect(&url).await.unwrap();
+        let snapshot = reopened.bound_world(member).await.unwrap().facts.0;
+        let records = &snapshot.state.world.as_ref().unwrap().records;
+        assert_eq!(records.fleets[&recalled.id].leg, MissionLeg::Returned);
+        assert!(group_open(
+            records,
+            &records.attack_groups[&group],
+            snapshot.at
+        ));
+        reopened.audit_universe(universe).await.unwrap();
+        reopened.set_test_time(at + 4000).await.unwrap();
+        let continuing = launch(
+            &reopened,
+            member,
+            bodies[1],
+            (target, bodies[2]),
+            Some(group),
+            100,
+            scoped,
+        )
+        .await;
+        assert_ne!(continuing.id, recalled.id);
+        reopened.set_test_time(at + 5000).await.unwrap();
+        order(
+            &reopened,
+            leader,
+            Some(bodies[0]),
+            WorldAction::RecallMission {
+                fleet: initiator.id,
+            },
+            scoped,
+        )
+        .await;
+        reopened.set_test_time(at + 10000).await.unwrap();
+        drain(&reopened, universe, scoped).await;
+        let after_return = PgStore::connect(&url).await.unwrap();
+        let snapshot = after_return.bound_world(member).await.unwrap().facts.0;
+        let records = &snapshot.state.world.as_ref().unwrap().records;
+        assert_eq!(records.fleets[&initiator.id].leg, MissionLeg::Returned);
+        assert_eq!(records.fleets[&recalled.id].leg, MissionLeg::Returned);
+        assert_eq!(
+            group_members(records, &records.attack_groups[&group]).count(),
+            1
+        );
+        let arrival = records.attack_groups[&group].arrival_at;
+        assert_eq!(arrival, initiator.due_at);
+        let mut another = continuing.intent.clone();
+        another.ships[0].count = 1;
+        let quote_snapshot = after_return
+            .bound_world_query(
+                member,
+                WorldQueryKind::FleetQuote {
+                    intent: another.clone(),
+                },
+            )
+            .await
+            .unwrap()
+            .facts
+            .0;
+        assert_eq!(
+            quote_fleet(
+                &quote_snapshot.state,
+                member.player,
+                &another,
+                quote_snapshot.at,
+                &quote_snapshot.rules
+            ),
+            Err(GameError::AttackGroupClosed)
+        );
+        let game = GameService::new(after_return.clone());
+        for viewer in [leader, member] {
+            let view = game
+                .world_view(
+                    Principal {
+                        account: viewer.account,
+                        player: viewer.player,
+                        universe,
+                    },
+                    QueryContext {
+                        binding: viewer,
+                        request_id: Uuid::new_v4(),
+                    },
+                )
+                .await
+                .unwrap();
+            let visible = view.attack_groups.iter().find(|g| g.id == group).unwrap();
+            assert!(!visible.joining_open && !visible.can_join);
+            assert_eq!(visible.members.len(), 1);
+            assert_eq!(visible.members[0].owner, member.player);
+        }
+        after_return.audit_universe(universe).await.unwrap();
+        after_return.set_test_time(arrival).await.unwrap();
+        drain(&after_return, universe, scoped).await;
+        let resolved: i64 = sqlx::query_scalar(
+            "SELECT (data->>'resolved_at')::bigint FROM attack_groups WHERE universe=$1 AND id=$2",
+        )
+        .bind(universe.0)
+        .bind(group.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(resolved, arrival);
+        let battles: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM mission_reports WHERE universe=$1 AND kind='Combat'",
+        )
+        .bind(universe.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(battles, 1);
+        after_return.audit_universe(universe).await.unwrap();
+        pool.close().await;
+    }
+}
