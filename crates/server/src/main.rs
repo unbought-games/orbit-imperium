@@ -6,6 +6,7 @@ mod engine_executor;
 #[cfg(feature = "test-support")]
 mod lab_support;
 mod metrics;
+mod public_universe;
 mod rules_cli;
 mod runtime;
 mod runtime_cli;

@@ -43,15 +43,49 @@ impl Default for Histogram {
         }
     }
 }
+#[derive(Default)]
+struct PublicationMetrics {
+    events: std::collections::BTreeMap<&'static str, u64>,
+    duration_micros: u128,
+    duration_count: u64,
+}
 pub struct RuntimeMetrics {
+    publications: std::sync::Mutex<
+        std::collections::BTreeMap<
+            (orbit_application::UniverseId, &'static str),
+            PublicationMetrics,
+        >,
+    >,
+    publication_scan_failures: AtomicU64,
     durations: [Histogram; 10],
     events: [AtomicU64; 8],
 }
 impl RuntimeMetrics {
     pub fn new() -> Self {
         Self {
+            publications: Default::default(),
+            publication_scan_failures: AtomicU64::new(0),
             durations: std::array::from_fn(|_| Histogram::default()),
             events: std::array::from_fn(|_| AtomicU64::new(0)),
+        }
+    }
+    pub fn publication_scan_failed(&self) {
+        self.publication_scan_failures
+            .fetch_add(1, Ordering::Relaxed);
+    }
+    pub fn publication_event(
+        &self,
+        universe: orbit_application::UniverseId,
+        feed: orbit_application::PublicFeed,
+        event: &'static str,
+        duration: Duration,
+    ) {
+        let mut publications = self.publications.lock().unwrap();
+        let metrics = publications.entry((universe, feed.name())).or_default();
+        *metrics.events.entry(event).or_default() += 1;
+        if matches!(event, "success" | "retry" | "exhausted") {
+            metrics.duration_micros += duration.as_micros();
+            metrics.duration_count += 1;
         }
     }
     pub fn render(&self) -> String {
@@ -101,6 +135,15 @@ impl RuntimeMetrics {
             started.saturating_sub(finished)
         )
         .unwrap();
+        writeln!(text, "# TYPE orbit_public_feed_scan_failures_total counter\norbit_public_feed_scan_failures_total {}", self.publication_scan_failures.load(Ordering::Relaxed)).unwrap();
+        text.push_str("# TYPE orbit_public_feed_events_total counter\n# TYPE orbit_public_feed_duration_seconds summary\n");
+        for ((universe, feed), metrics) in self.publications.lock().unwrap().iter() {
+            for (event, count) in &metrics.events {
+                writeln!(text, "orbit_public_feed_events_total{{universe=\"{universe}\",feed=\"{feed}\",event=\"{event}\"}} {count}").unwrap();
+            }
+            writeln!(text, "orbit_public_feed_duration_seconds_sum{{universe=\"{universe}\",feed=\"{feed}\"}} {}", metrics.duration_micros as f64 / 1_000_000.0).unwrap();
+            writeln!(text, "orbit_public_feed_duration_seconds_count{{universe=\"{universe}\",feed=\"{feed}\"}} {}", metrics.duration_count).unwrap();
+        }
         text
     }
 }
@@ -146,6 +189,33 @@ async fn scrape(State(state): State<MetricsState>) -> impl IntoResponse {
                 status.blocked_scope_count
             )
             .unwrap();
+        }
+        for health in state.store.public_feed_health().await? {
+            let universe = health.universe;
+            let feed = health.feed.name();
+            for (name, value) in [
+                (
+                    "available",
+                    f64::from(u8::from(health.sampled_at.is_some())),
+                ),
+                (
+                    "age_seconds",
+                    health.sampled_at.map_or(0, |at| (health.now - at).max(0)) as f64 / 1000.0,
+                ),
+                ("attempts", f64::from(health.attempts)),
+                (
+                    "delayed",
+                    f64::from(u8::from(
+                        health.next_refresh_at.is_some_and(|at| health.now >= at),
+                    )),
+                ),
+            ] {
+                writeln!(
+                    text,
+                    "orbit_public_feed_{name}{{universe=\"{universe}\",feed=\"{feed}\"}} {value}"
+                )
+                .unwrap();
+            }
         }
         Ok::<_, orbit_application::StoreError>(())
     }
@@ -229,5 +299,43 @@ mod tests {
         assert!(text.contains("orbit_runtime_seconds_count{stage=\"admission\"} 1"));
         assert!(text.contains("orbit_runtime_events_total{event=\"claim_recovered\"} 1"));
         assert!(!text.contains("player"));
+    }
+}
+
+#[cfg(test)]
+mod public_feed_tests {
+    use super::*;
+    use orbit_application::{PublicFeed, UniverseId};
+    #[test]
+    fn publication_failures_retries_and_duration_are_exported_by_feed() {
+        let metrics = RuntimeMetrics::new();
+        let universe = UniverseId(uuid::Uuid::nil());
+        metrics.publication_scan_failed();
+        for event in ["attempt", "retry", "attempt", "exhausted"] {
+            metrics.publication_event(
+                universe,
+                PublicFeed::Players,
+                event,
+                Duration::from_millis(250),
+            );
+        }
+        metrics.publication_event(
+            universe,
+            PublicFeed::Planets,
+            "success",
+            Duration::from_secs(1),
+        );
+        let text = metrics.render();
+        assert!(text.contains("orbit_public_feed_scan_failures_total 1"));
+        assert!(text.contains("feed=\"players\",event=\"attempt\"} 2"));
+        assert!(text.contains("feed=\"players\",event=\"retry\"} 1"));
+        assert!(text.contains("feed=\"players\",event=\"exhausted\"} 1"));
+        assert!(text.contains(&format!(
+            "orbit_public_feed_duration_seconds_sum{{universe=\"{universe}\",feed=\"players\"}} 0.5"
+        )));
+        assert!(text.contains(&format!(
+            "orbit_public_feed_duration_seconds_count{{universe=\"{universe}\",feed=\"players\"}} 2"
+        )));
+        assert!(text.contains("feed=\"planets\",event=\"success\"} 1"));
     }
 }

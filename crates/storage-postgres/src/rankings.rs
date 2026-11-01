@@ -118,7 +118,7 @@ async fn baseline(
     observation.map(decode::<RankingObservation>).transpose()
 }
 
-async fn source_facts(
+pub(crate) async fn source_facts(
     tx: &mut Tx<'_>,
     universe: UniverseId,
     epoch: Epoch,

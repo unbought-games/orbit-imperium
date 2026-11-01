@@ -73,6 +73,13 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
     let _analytics_worker = analytics
         .as_ref()
         .map(|integration| BackgroundTask(tokio::spawn(integration.clone().run(drain_rx.clone()))));
+    let _publications = serve.role.runs_worker().then(|| {
+        BackgroundTask(tokio::spawn(crate::public_universe::run(
+            store.clone(),
+            metrics.clone(),
+            drain_rx.clone(),
+        )))
+    });
     let wake = Arc::new(Notify::new());
     let scheduler = if serve.role.runs_worker() {
         Some(Scheduler(tokio::spawn(runtime::run(

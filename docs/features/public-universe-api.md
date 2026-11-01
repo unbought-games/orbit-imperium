@@ -1,6 +1,6 @@
 # Public universe APIs
 
-Status: approved product scope; not yet implemented.
+Status: implemented. See the [consumer and operator guide](../operations/public-universe-api.md).
 
 Give players and community tools equal access to basic universe information for
 maps, player lookup and historical tracking. Ship two public, read-only JSON
@@ -50,6 +50,10 @@ settling gameplay or recording player/bot participation. It represents committed
 facts at the sample time, not a promise that all due gameplay has been processed.
 Preserve publication source facts and derive scores/ranks with existing domain
 logic; do not persist derived totals, ranks or duplicate authoritative game state.
+
+Transient publication failures receive bounded retries with backoff. After retry
+exhaustion, wait for the next scheduled boundary. Emit structured diagnostics and
+metrics for investigation, including retry exhaustion and publication freshness.
 
 If publication fails, keep serving the last complete observation with its original
 timestamps; a passed `next_refresh_at` makes the delay visible. Never label old

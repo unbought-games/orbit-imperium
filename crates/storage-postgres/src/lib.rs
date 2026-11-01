@@ -3,6 +3,8 @@ mod alliances;
 mod bots;
 mod colonization;
 mod insignias;
+mod public_universe;
+pub use public_universe::PublicationClaim;
 mod rankings;
 mod report_sharing;
 mod social;

@@ -82,6 +82,14 @@ pub(crate) async fn public_destinations(
     Ok(destinations)
 }
 impl GameStore for PgStore {
+    async fn public_observation(
+        &self,
+        universe: UniverseId,
+        feed: PublicFeed,
+    ) -> Result<PublicObservation, StoreError> {
+        self.read_public_observation(universe, feed).await
+    }
+
     async fn shared_report_universe(
         &self,
         token: uuid::Uuid,

@@ -11,6 +11,8 @@ pub use location::*;
 mod catalog_view;
 mod technical_data;
 pub use catalog_view::*;
+mod public_universe;
+pub use public_universe::*;
 mod rankings;
 pub use rankings::*;
 pub mod report_preview;

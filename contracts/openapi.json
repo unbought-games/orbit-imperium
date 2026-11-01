@@ -6982,6 +6982,288 @@
         "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.",
         "operationId": "progressionOptionsBatchV4"
       }
+    },
+    "/api/public/v1/universes/{universe}/players": {
+      "get": {
+        "operationId": "publicUniversePlayers",
+        "summary": "Published public universe players",
+        "x-bot-category": "public",
+        "security": [],
+        "description": "Anonymous complete roster. Published hourly at each UTC hour. Requests never trigger publication or participation. Unknown query parameters and credentials do not alter the observation.",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest complete observation, possibly delayed.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Mandatory revalidation prevents cached previous-epoch responses after reset."
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string",
+                  "const": "*"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPlayers"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Current epoch observation matches the validator.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Mandatory revalidation prevents cached previous-epoch responses after reset."
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string",
+                  "const": "*"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed universe UUID.",
+            "headers": {},
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown universe.",
+            "headers": {},
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Availability limit; retry after the indicated seconds.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No current-epoch observation or storage unavailable.",
+            "headers": {},
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "operationId": "publicUniversePlayersOptions",
+        "summary": "Anonymous conditional GET preflight",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Cross-origin GET, HEAD and If-None-Match are supported."
+          }
+        }
+      }
+    },
+    "/api/public/v1/universes/{universe}/planets": {
+      "get": {
+        "operationId": "publicUniversePlanets",
+        "summary": "Published public universe planets",
+        "x-bot-category": "public",
+        "security": [],
+        "description": "Anonymous complete roster. Published daily at 00:00 UTC. Requests never trigger publication or participation. Unknown query parameters and credentials do not alter the observation.",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest complete observation, possibly delayed.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Mandatory revalidation prevents cached previous-epoch responses after reset."
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string",
+                  "const": "*"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPlanets"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Current epoch observation matches the validator.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Mandatory revalidation prevents cached previous-epoch responses after reset."
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string",
+                  "const": "*"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed universe UUID.",
+            "headers": {},
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown universe.",
+            "headers": {},
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Availability limit; retry after the indicated seconds.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No current-epoch observation or storage unavailable.",
+            "headers": {},
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeedProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "operationId": "publicUniversePlanetsOptions",
+        "summary": "Anonymous conditional GET preflight",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Cross-origin GET, HEAD and If-None-Match are supported."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -19837,8 +20119,12 @@
           },
           "appearance": {
             "oneOf": [
-              { "$ref": "#/components/schemas/InsigniaAppearance" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/InsigniaAppearance"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "expires_at": {
@@ -20001,6 +20287,202 @@
           },
           "progress": {
             "$ref": "#/components/schemas/SnapshotProgress"
+          }
+        }
+      },
+      "PublicFeedAlliance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "tag"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicPlayer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "player_id",
+          "username",
+          "points",
+          "rank",
+          "alliance"
+        ],
+        "properties": {
+          "player_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "points": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "alliance": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicFeedAlliance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "PublicPlanet": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "planet_id",
+          "name",
+          "coordinates",
+          "owner_player_id"
+        ],
+        "properties": {
+          "planet_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "owner_player_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "PublicPlayers": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "universe",
+          "epoch",
+          "sampled_at",
+          "next_refresh_at",
+          "players"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "universe": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "epoch": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sampled_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "next_refresh_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicPlayer"
+            }
+          }
+        },
+        "description": "Complete published observation. UTC Unix millisecond timestamps; next_refresh_at is a scheduled boundary, not a success guarantee. History is scoped by universe and epoch."
+      },
+      "PublicPlanets": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "universe",
+          "epoch",
+          "sampled_at",
+          "next_refresh_at",
+          "planets"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "universe": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "epoch": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sampled_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "next_refresh_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "planets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicPlanet"
+            }
+          }
+        },
+        "description": "Complete published observation. UTC Unix millisecond timestamps; next_refresh_at is a scheduled boundary, not a success guarantee. History is scoped by universe and epoch."
+      },
+      "PublicFeedProblem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "status",
+          "code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "about:blank"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
           }
         }
       }

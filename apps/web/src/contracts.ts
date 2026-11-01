@@ -5215,6 +5215,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/v1/universes/{universe}/players": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Published public universe players
+         * @description Anonymous complete roster. Published hourly at each UTC hour. Requests never trigger publication or participation. Unknown query parameters and credentials do not alter the observation.
+         */
+        get: operations["publicUniversePlayers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        /** Anonymous conditional GET preflight */
+        options: operations["publicUniversePlayersOptions"];
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/v1/universes/{universe}/planets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Published public universe planets
+         * @description Anonymous complete roster. Published daily at 00:00 UTC. Requests never trigger publication or participation. Unknown query parameters and credentials do not alter the observation.
+         */
+        get: operations["publicUniversePlanets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        /** Anonymous conditional GET preflight */
+        options: operations["publicUniversePlanetsOptions"];
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8272,6 +8314,58 @@ export interface components {
             sampled_at: number;
             progress?: components["schemas"]["SnapshotProgress"];
         };
+        PublicFeedAlliance: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            tag: string;
+        };
+        PublicPlayer: {
+            /** Format: uuid */
+            player_id: string;
+            username: string;
+            points: string;
+            rank: number;
+            alliance: components["schemas"]["PublicFeedAlliance"] | null;
+        };
+        PublicPlanet: {
+            /** Format: uuid */
+            planet_id: string;
+            name: string | null;
+            coordinates: components["schemas"]["Coordinates"];
+            /** Format: uuid */
+            owner_player_id: string;
+        };
+        /** @description Complete published observation. UTC Unix millisecond timestamps; next_refresh_at is a scheduled boundary, not a success guarantee. History is scoped by universe and epoch. */
+        PublicPlayers: {
+            /** @constant */
+            schema_version: 1;
+            /** Format: uuid */
+            universe: string;
+            /** Format: uuid */
+            epoch: string;
+            sampled_at: number;
+            next_refresh_at: number;
+            players: components["schemas"]["PublicPlayer"][];
+        };
+        /** @description Complete published observation. UTC Unix millisecond timestamps; next_refresh_at is a scheduled boundary, not a success guarantee. History is scoped by universe and epoch. */
+        PublicPlanets: {
+            /** @constant */
+            schema_version: 1;
+            /** Format: uuid */
+            universe: string;
+            /** Format: uuid */
+            epoch: string;
+            sampled_at: number;
+            next_refresh_at: number;
+            planets: components["schemas"]["PublicPlanet"][];
+        };
+        PublicFeedProblem: {
+            /** @constant */
+            type: "about:blank";
+            status: number;
+            code: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -8962,6 +9056,194 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["Problem4"];
                 };
+            };
+        };
+    };
+    publicUniversePlayers: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string;
+            };
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Latest complete observation, possibly delayed. */
+            200: {
+                headers: {
+                    ETag?: string;
+                    /** @description Mandatory revalidation prevents cached previous-epoch responses after reset. */
+                    "Cache-Control"?: string;
+                    "Access-Control-Allow-Origin"?: "*";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPlayers"];
+                };
+            };
+            /** @description Current epoch observation matches the validator. */
+            304: {
+                headers: {
+                    ETag?: string;
+                    /** @description Mandatory revalidation prevents cached previous-epoch responses after reset. */
+                    "Cache-Control"?: string;
+                    "Access-Control-Allow-Origin"?: "*";
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed universe UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+            /** @description Unknown universe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+            /** @description Availability limit; retry after the indicated seconds. */
+            429: {
+                headers: {
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+            /** @description No current-epoch observation or storage unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+        };
+    };
+    publicUniversePlayersOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cross-origin GET, HEAD and If-None-Match are supported. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    publicUniversePlanets: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string;
+            };
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Latest complete observation, possibly delayed. */
+            200: {
+                headers: {
+                    ETag?: string;
+                    /** @description Mandatory revalidation prevents cached previous-epoch responses after reset. */
+                    "Cache-Control"?: string;
+                    "Access-Control-Allow-Origin"?: "*";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPlanets"];
+                };
+            };
+            /** @description Current epoch observation matches the validator. */
+            304: {
+                headers: {
+                    ETag?: string;
+                    /** @description Mandatory revalidation prevents cached previous-epoch responses after reset. */
+                    "Cache-Control"?: string;
+                    "Access-Control-Allow-Origin"?: "*";
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed universe UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+            /** @description Unknown universe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+            /** @description Availability limit; retry after the indicated seconds. */
+            429: {
+                headers: {
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+            /** @description No current-epoch observation or storage unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["PublicFeedProblem"];
+                };
+            };
+        };
+    };
+    publicUniversePlanetsOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cross-origin GET, HEAD and If-None-Match are supported. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

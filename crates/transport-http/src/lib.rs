@@ -12,6 +12,7 @@ mod oidc;
 mod oidc_enrollment;
 mod password_work;
 mod player_profiles;
+mod public_universe;
 mod shared_report_preview;
 mod simulation;
 mod social;
@@ -70,6 +71,8 @@ struct HttpState<S> {
     game: GameService<S>,
     sessions: SessionService<S>,
     config: HttpConfig,
+    public_feed_work: Arc<Semaphore>,
+    public_feed_budget: Mutex<rate_limit::LoginBudget>,
     alliance_public_budget: Mutex<rate_limit::LoginBudget>,
     login_budget: Mutex<rate_limit::LoginBudget>,
     signup_budget: Mutex<rate_limit::LoginBudget>,
@@ -171,12 +174,22 @@ where
         updates: store,
         drain,
         config,
+        public_feed_work: Arc::new(Semaphore::new(8)),
+        public_feed_budget: Mutex::new(rate_limit::LoginBudget::new()),
         alliance_public_budget: Mutex::new(rate_limit::LoginBudget::new()),
         login_budget: Mutex::new(rate_limit::LoginBudget::new()),
         signup_budget: Mutex::new(rate_limit::LoginBudget::new()),
         password_work: Arc::new(Semaphore::new(2)),
     });
     Router::new()
+        .route(
+            "/api/public/v1/universes/{id}/players",
+            get(public_universe::players::<S>).options(public_universe::options),
+        )
+        .route(
+            "/api/public/v1/universes/{id}/planets",
+            get(public_universe::planets::<S>).options(public_universe::options),
+        )
         .route(
             "/api/v1/universes/{id}/insignias",
             post(insignias::handle::<S>),

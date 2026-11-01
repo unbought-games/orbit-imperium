@@ -148,6 +148,14 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send;
 }
 pub trait GameStore: Send + Sync {
+    fn public_observation(
+        &self,
+        _universe: UniverseId,
+        _feed: PublicFeed,
+    ) -> impl std::future::Future<Output = Result<PublicObservation, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+
     fn shared_report_universe(
         &self,
         _token: uuid::Uuid,
