@@ -352,6 +352,15 @@ async fn leader_cleanup_transfers_atomically_and_preserves_conversations() {
     alliance_action(&f, third, AllianceAction::Join { alliance: a }, None).await;
     sqlx::query("UPDATE player_policies SET data=jsonb_set(data,'{last_presence_at}',to_jsonb($2::bigint)) WHERE id=$1")
         .bind(third.player.0).bind(34*DAY_MS+1000).execute(&f.pool).await.unwrap();
+    let successor_cursor = f
+        .store
+        .read_updates(successor, None, 128)
+        .await
+        .unwrap()
+        .items[0]
+        .cursor
+        .clone()
+        .unwrap();
     let rejected = f.command(WorldAction::RequestEmpireDeletion).await;
     assert!(matches!(
         rejected.status,
@@ -378,6 +387,30 @@ async fn leader_cleanup_transfers_atomically_and_preserves_conversations() {
             .await
             .unwrap(),
         successor.player.0
+    );
+    let promoted_updates = f
+        .store
+        .read_updates(successor, Some(&successor_cursor), 128)
+        .await
+        .unwrap();
+    assert_eq!(promoted_updates.items.len(), 1);
+    assert!(
+        matches!(&promoted_updates.items[0].event, StreamEvent::Invalidate { minimum_viewer_revision } if minimum_viewer_revision == "1")
+    );
+    assert_eq!(
+        f.store
+            .bound_world(successor)
+            .await
+            .unwrap()
+            .facts
+            .0
+            .state
+            .world
+            .unwrap()
+            .records
+            .policies[&successor.player]
+            .last_presence_at,
+        34 * DAY_MS + 1000
     );
     assert_eq!(
         sqlx::query_scalar::<_, i64>(

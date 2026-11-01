@@ -144,3 +144,21 @@ Its file list is `test-results/empire-deletion-pr-source-manifest.json`.
 
 The additional group handling repairs an interaction with newly merged code;
 successor nominations and other feature scope remain deferred.
+
+## PR review repair — leadership invalidation
+
+Addressed review comment `4436925279` on PR #297. Alliance create, transfer and
+disband now increment affected leaders' view revisions and publish the existing
+durable invalidation stream atomically with the source mutation. Automatic
+succession also invalidates the new leader's view. No foreground presence or
+gameplay time is synthesized; unchanged leadership and exact retries do not
+publish extra updates. Report sharing reuses the same publication helper.
+
+Tested on parent `11dd5b98aa410c0f9c7e679e19ff2cfcba06bd2c` plus the repair,
+whose changed-code SHA-256 is `d33b5663530e586400a3aa4ec8d4fd8aee244b4f1a5b9efaaff7f514096990ad` using the path/NUL/content/NUL
+algorithm above. `make test-db DB_SUITES='alliances empire_deletion report_sharing'
+DB_JOBS=3` passed all 14 tests: 7 alliance (18.491s), 6 deletion (11.064s), and one
+report-sharing test (3.774s). New assertions cover the published minimum revision,
+both transfer participants, disband, idempotent replay, unrelated recipients,
+unchanged presence, and automatic succession. Workspace Clippy passed in 5.10s.
+Presentation is unchanged; the refreshed desktop/mobile screenshots remain current.

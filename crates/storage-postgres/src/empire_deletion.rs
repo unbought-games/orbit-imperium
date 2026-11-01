@@ -276,6 +276,18 @@ pub(crate) async fn remove(
             crate::alliances::persistence::save(tx, binding, &after).await?;
             let members = after.members.iter().map(|m| m.player).collect();
             refresh_checks(tx, i.universe, &members, i.id).await?;
+            if before.leader != after.leader {
+                // The removed player already receives the engine invalidation;
+                // the newly promoted leader also needs their deletion guard refreshed.
+                crate::alliances::invalidation::leadership(
+                    tx,
+                    i.universe,
+                    i.epoch,
+                    None,
+                    Some(after.leader),
+                )
+                .await?;
+            }
         }
     }
     sqlx::query("WITH removed AS (DELETE FROM alliance_applications WHERE universe=$1 AND epoch=$2 AND player=$3 RETURNING alliance) UPDATE alliances SET revision=revision+1 WHERE id IN (SELECT alliance FROM removed)")

@@ -9,6 +9,7 @@ use orbit_application::*;
 use orbit_engine::alliances::{AllianceError, AllianceState, StateApplication, StateMember};
 use sqlx::{Row, postgres::PgRow};
 use uuid::Uuid;
+pub(crate) mod invalidation;
 pub(crate) mod persistence;
 mod reads;
 use persistence::*;
@@ -184,6 +185,14 @@ impl PgStore {
             b.universe,
             &affected,
             orbit_engine::InputId::default(),
+        )
+        .await?;
+        invalidation::leadership(
+            &mut tx,
+            b.universe,
+            b.epoch,
+            previous.as_ref().map(|state| state.leader),
+            (!disbanded).then_some(state.leader),
         )
         .await?;
         tx.commit().await.map_err(db_error)?;
