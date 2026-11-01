@@ -140,3 +140,27 @@ All 18 vacation, deletion and player-profile browser tests passed in 37.1s.
 Production build (20.76s plus 0.700s prerender), TypeScript, lint and diff checks
 passed. Refreshed screenshots and inspected both same-mount returned-state
 captures again. The browser runner closed its server and contexts normally.
+
+## CI screenshot-helper race — 2026-11-01
+
+CI run `41342823824`, browser shard 8 job `124956968558`, failed one vacation
+scenario while 131 other shard tests passed. All other native, database and
+browser shards passed; Bugbot completed successfully. The failed assertion was
+inside screenshot preparation: dismissing a HUD toast did not reduce the total
+count because a new notification replaced it. The game-flow assertions did not
+fail.
+
+Added a deterministic browser fixture that synchronously replaces the dismissed
+toast while keeping the count at one. It reproduced the original helper failure.
+The helper now waits for the specific dismissed DOM node to disconnect, then
+handles any replacement separately; it still verifies dismissal and retains the
+existing assertion deadlines. No production UI, gameplay, or CI configuration
+changed, and existing screenshots remain current.
+
+Tested parent `11325e0fabdfb1f7dea6b381abb87be45952cb68` plus the test-only repair;
+SHA-256 of `apps/web/tests/vacation.spec.ts` is
+`a8c84edd04010e8d02062fdaeeeb5645f47f807145e018b921e8673f0f4229b5`.
+`npm run test:ui -- vacation.spec.ts --repeat-each=3` passed all 21 executions
+(seven scenarios repeated three times) in 35.7s. The original deterministic
+regression failed before the repair. The runner closed all browser contexts and
+its Vite server; no database resources were needed.

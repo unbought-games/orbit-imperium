@@ -11,9 +11,15 @@ async function capture(page: Page, target: Page | Locator, options: Parameters<P
   // hostile-fleet indicator stays visible and usable throughout vacation.
   const toasts = page.getByTestId('swipeable-toast')
   while (await toasts.count()) {
-    const count = await toasts.count()
-    await toasts.first().getByRole('button').press('Escape')
-    await expect.poll(() => toasts.count()).toBeLessThan(count)
+    const dismissed = await toasts.first().elementHandle()
+    if (!dismissed) continue
+    try {
+      await toasts.first().getByRole('button').press('Escape')
+      // A new notification can replace this one without reducing the total.
+      await expect.poll(() => dismissed.evaluate((node) => node.isConnected)).toBe(false)
+    } finally {
+      await dismissed.dispose()
+    }
   }
   const viewport = page.viewportSize()!
   if (target !== page) {
@@ -173,3 +179,28 @@ for (const width of [1280, 390]) {
     expect(submitted).toEqual(['EnterVacation', 'ExitVacation'])
   })
 }
+
+test('capture dismisses a replacement notification even when the count stays constant', async ({ page }) => {
+  await page.setContent('<main><output aria-label="Dismissed notifications">0</output></main>')
+  await page.evaluate(() => {
+    let dismissed = 0
+    function addToast(replace: boolean) {
+      const toast = document.createElement('div')
+      toast.dataset.testid = 'swipeable-toast'
+      const button = document.createElement('button')
+      button.textContent = replace ? 'First notification' : 'Replacement notification'
+      button.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return
+        toast.remove()
+        document.querySelector('output')!.textContent = String(++dismissed)
+        if (replace) addToast(false)
+      })
+      toast.append(button)
+      document.querySelector('main')!.append(toast)
+    }
+    addToast(true)
+  })
+  await capture(page, page, { path: 'test-results/vacation-capture-helper.png' })
+  await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
+  await expect(page.getByLabel('Dismissed notifications')).toHaveText('2')
+})
