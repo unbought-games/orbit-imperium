@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as JoinUniverseRouteImport } from './routes/join.$universe'
 import { Route as UUniverseRouteImport } from './routes/u.$universe'
 import { Route as UUniverseIndexRouteImport } from './routes/u.$universe.index'
 import { Route as UUniverseSplatRouteImport } from './routes/u.$universe.$'
@@ -71,6 +72,11 @@ const LoginRoute = LoginRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinUniverseRoute = JoinUniverseRouteImport.update({
+  id: '/join/$universe',
+  path: '/join/$universe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UUniverseRoute = UUniverseRouteImport.update({
@@ -287,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
@@ -332,6 +339,7 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
   '/u/$universe/combat-simulator': typeof UUniverseCombatSimulatorRoute
@@ -373,6 +381,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/login'
     | '/signup'
+    | '/join/$universe'
     | '/u/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
@@ -465,6 +475,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/login'
     | '/signup'
+    | '/join/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
     | '/u/$universe/combat-simulator'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/login'
     | '/signup'
+    | '/join/$universe'
     | '/u/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
@@ -551,6 +563,7 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  JoinUniverseRoute: typeof JoinUniverseRoute
   UUniverseRoute: typeof UUniverseRouteWithChildren
 }
 
@@ -582,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$universe': {
+      id: '/join/$universe'
+      path: '/join/$universe'
+      fullPath: '/join/$universe'
+      preLoaderRoute: typeof JoinUniverseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/u/$universe': {
@@ -1049,6 +1069,7 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  JoinUniverseRoute: JoinUniverseRoute,
   UUniverseRoute: UUniverseRouteWithChildren,
 }
 export const routeTree = rootRouteImport

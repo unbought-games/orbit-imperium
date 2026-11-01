@@ -1,3 +1,4 @@
+import { accountLinks } from '../src/features/account-links'
 import { test, expect } from './fixtures/test'
 import {
   attachFailureScreenshots,
@@ -33,8 +34,8 @@ for (const signup of [true, false]) {
       'href="/updates/index.html"',
     ])
       expect(html).toContain(content)
-    expect(html.includes('href="/signup"')).toBe(signup)
-    expect(html).toContain('href="/login"')
+    expect(html.includes('href="/api/auth/entry?signup=true"')).toBe(signup)
+    expect(html).toContain('href="/api/auth/entry"')
     const styles = [
       ...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g),
     ]
@@ -79,6 +80,9 @@ for (const signup of [true, false]) {
         await page.route('**/api/auth/config', (route) =>
           route.fulfill({ json: { mode: 'local', universes: [] } }),
         )
+        await page.route('**/api/auth/entry*', (route) =>
+          route.fulfill({ status: 303, headers: { location: new URL(route.request().url()).searchParams.get('signup') === 'true' ? '/signup' : '/login' } }),
+        )
         await page.route('**/api/v1/bootstrap', (route) =>
           route.fulfill({
             json: {
@@ -101,7 +105,7 @@ for (const signup of [true, false]) {
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(
             'Victory isn’t for sale.',
           )
-          await expect(page.locator('a[href="/signup"]')).toHaveCount(
+          await expect(page.locator('a[href="/api/auth/entry?signup=true"]')).toHaveCount(
             signup ? 4 : 0,
           )
           await expect(
@@ -144,7 +148,7 @@ for (const signup of [true, false]) {
             universes.getByRole('link', {
               name: 'come play in the current universe',
             }),
-          ).toHaveAttribute('href', signup ? '/signup' : '/login')
+          ).toHaveAttribute('href', signup ? accountLinks.signup : accountLinks.login)
           await expect(discord.locator('img')).toHaveAttribute(
             'src',
             '/brand/discord-symbol-white.svg',

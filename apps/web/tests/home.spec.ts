@@ -1,8 +1,12 @@
+import { accountLinks } from '../src/features/account-links'
 import { test, expect } from './fixtures/test'
 import { body, installGameFixture } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 async function anonymous(page: import('@playwright/test').Page, signup = true) {
+  await page.route('**/api/auth/entry*', (route) =>
+    route.fulfill({ status: 303, headers: { location: new URL(route.request().url()).searchParams.get('signup') === 'true' ? '/signup' : '/login' } }),
+  )
   await page.route('**/api/analytics', (route) =>
     route.fulfill({ json: { enabled: false } }),
   )
@@ -90,7 +94,7 @@ for (const signup of [true, false]) {
       const account = header.getByRole('navigation', { name: 'Player account' })
       const login = account.getByRole('link', { name: 'Log in', exact: true })
       await expect(login).toBeInViewport()
-      await expect(login).toHaveAttribute('href', '/login')
+      await expect(login).toHaveAttribute('href', accountLinks.login)
       const bounds = (await login.boundingBox())!
       expect(bounds.height).toBeGreaterThanOrEqual(44)
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
@@ -109,6 +113,7 @@ for (const signup of [true, false]) {
           await expect(
             page.getByRole('button', { name: 'Create account', exact: true }),
           ).toBeVisible()
+          await diagnosticScreenshot(page, { path: `test-results/local-signup-${width}x844.png` })
           await page.goto('/')
         } else {
           await expect(register).toBeHidden()
@@ -117,7 +122,7 @@ for (const signup of [true, false]) {
           ).toBeVisible()
         }
       } else {
-        await expect(header.locator('a[href="/signup"]')).toHaveCount(0)
+        await expect(header.locator('a[href="/api/auth/entry?signup=true"]')).toHaveCount(0)
       }
       await diagnosticScreenshot(header, {
         path: `test-results/compact-header-${width}-${signup}.png`,
@@ -127,6 +132,7 @@ for (const signup of [true, false]) {
       await expect(
         page.getByRole('button', { name: 'Sign in', exact: true }),
       ).toBeVisible()
+      await diagnosticScreenshot(page, { path: `test-results/local-login-${width}x844.png` })
     }
   })
 }
@@ -184,7 +190,7 @@ for (const width of [320, 390, 768, 1440]) {
     ).toBe(true)
     await expect(
       page.getByRole('link', { name: 'Join the open beta', exact: true }),
-    ).toHaveAttribute('href', '/signup')
+    ).toHaveAttribute('href', accountLinks.signup)
     await diagnosticScreenshot(page, {
       path: `test-results/landing-${width}.png`,
       fullPage: true,
@@ -210,10 +216,10 @@ test('both landing invitations respect disabled registration', async ({
 }) => {
   await anonymous(page, false)
   await page.goto('/')
-  await expect(page.locator('a[href="/signup"]')).toHaveCount(0)
+  await expect(page.locator('a[href="/api/auth/entry?signup=true"]')).toHaveCount(0)
   await expect(
     page.getByRole('link', { name: 'Sign in', exact: true }),
-  ).toHaveAttribute('href', '/login')
+  ).toHaveAttribute('href', accountLinks.login)
   await page
     .getByRole('link', { name: 'Return to your account', exact: true })
     .click()

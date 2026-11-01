@@ -15,6 +15,7 @@ const routes = [
   '/',
   '/login',
   '/signup',
+  '/join/:universe',
   '/updates/:article',
   '/u/:universe',
   '/u/:universe/overview',
@@ -134,7 +135,10 @@ export function startAnalytics() {
       if (!link || (link.target && link.target !== '_self') || link.download)
         return
       const url = new URL(link.href)
-      if (url.origin !== location.origin || url.pathname !== '/api/auth/login')
+      if (
+        url.origin !== location.origin ||
+        !['/api/auth/login', '/api/auth/entry'].includes(url.pathname)
+      )
         return
       event.preventDefault()
       if (navigatingToLogin) return
@@ -173,6 +177,8 @@ async function prepareLogin(url: URL): Promise<string> {
             handoff,
             return_to: url.searchParams.get('return_to'),
             verify: url.searchParams.get('verify') === 'true',
+            entry: url.pathname === '/api/auth/entry',
+            signup: url.searchParams.get('signup') === 'true',
           }),
           signal: controller.signal,
         })

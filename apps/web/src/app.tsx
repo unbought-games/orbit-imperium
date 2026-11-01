@@ -1,3 +1,5 @@
+import { HostedJoin } from './features/hosted-join'
+import { hostedJoinUniverse } from './client-model/use-hosted-join'
 import { Provider } from 'jotai'
 import { InvalidRoute } from './shell/invalid-route'
 import { useLocation } from '@tanstack/react-router'
@@ -20,6 +22,9 @@ export function App() {
         typeof location.search.redirect === 'string' &&
         location.search.redirect.includes('/location/')),
   })
+  const joinUniverse = useLocation({
+    select: (location) => hostedJoinUniverse(location.pathname),
+  })
   const session = useAppSession()
   const { runtime, busy, message, errorRef, commands, logout, retry } = session
   return (
@@ -27,6 +32,13 @@ export function App() {
       <SkipLink />
       {runtime.status === 'anonymous' ? (
         <Outlet />
+      ) : runtime.status === 'authenticated' && joinUniverse ? (
+        <HostedJoin
+          universe={joinUniverse}
+          hasMembership={runtime.session.memberships.some(
+            (membership) => membership.universe === joinUniverse,
+          )}
+        />
       ) : runtime.status === 'authenticated' &&
         commands.view &&
         commands.ready ? (

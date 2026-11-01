@@ -22,6 +22,107 @@ struct GatedStore {
     policy: Arc<StdMutex<Result<Option<UniversePolicy>, ()>>>,
 }
 
+#[tokio::test]
+async fn homepage_account_entry_keeps_community_auth_local_and_exposes_only_the_hosted_binding() {
+    let universe = UniverseId(uuid::Uuid::from_u128(7));
+    for (origin, issuer, hosted) in [
+        ("https://community.example", None, false),
+        (
+            "https://community.example",
+            Some("https://identity.example"),
+            false,
+        ),
+        (
+            "https://community.example",
+            Some("https://accounts.unbought.games/api/auth"),
+            false,
+        ),
+        (
+            "https://orbitimperium.com",
+            Some("https://accounts.unbought.games/api/auth"),
+            true,
+        ),
+    ] {
+        let (entered, _calls) = mpsc::unbounded_channel();
+        let app = build_router(
+            GatedStore {
+                hold_policy: false,
+                oidc_status: Arc::default(),
+                memberships: Arc::default(),
+                entered,
+                login: Arc::default(),
+                signup: Arc::default(),
+                policy: Arc::new(StdMutex::new(Ok(None))),
+            },
+            HttpConfig {
+                origin: origin.into(),
+                assets: "absent".into(),
+                login_per_minute: 30,
+                signup: Some(SignupPolicy {
+                    universe,
+                    max_players: 10,
+                }),
+                signup_per_minute: 100,
+                legacy_signup_enabled: false,
+                wake: None,
+                observer: None,
+            },
+            None,
+            issuer.map(|issuer| {
+                unbought_auth::RelyingParty::new(unbought_auth::Configuration {
+                    issuer: issuer.into(),
+                    client_id: "orbit".into(),
+                    client_secret: "test".into(),
+                    redirect_uri: format!("{origin}/api/auth/callback"),
+                })
+                .unwrap()
+            }),
+        );
+        let response = app
+            .clone()
+            .oneshot(
+                Request::get("/api/auth/config")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let config: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            config["hosted_universe"],
+            if hosted {
+                serde_json::json!(universe.0)
+            } else {
+                serde_json::Value::Null
+            }
+        );
+        if !hosted {
+            for (path, destination) in [
+                ("/api/auth/entry", "/login"),
+                ("/api/auth/entry?signup=true", "/signup"),
+            ] {
+                let response = app
+                    .clone()
+                    .oneshot(
+                        Request::get(path)
+                            .header(header::HOST, "orbitimperium.com")
+                            .header("x-forwarded-host", "orbitimperium.com")
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::SEE_OTHER);
+                assert_eq!(response.headers()[header::LOCATION], destination);
+                assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+                assert!(!response.headers().contains_key(header::SET_COOKIE));
+            }
+        }
+    }
+}
+
 impl GatedStore {
     async fn wait(&self, operation: &'static str) {
         let gate = match operation {

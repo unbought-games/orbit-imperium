@@ -43,6 +43,10 @@ test-placement:
 test-client:
 	npm test
 
+.PHONY: test-http
+test-http:
+	cargo nextest run -p orbit-transport-http
+
 prepare-server:
 	$(SERVER_TESTS) --no-run
 	$(BRIDGE_TESTS) --no-run

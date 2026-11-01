@@ -1,3 +1,4 @@
+import { accountLinks } from './account-links'
 import type { ReactNode } from 'react'
 import { Flag, Infinity as InfinityIcon, Orbit, Trophy } from 'lucide-react'
 import { ButtonLinkAnchor } from '../ui/button'
@@ -145,7 +146,9 @@ export function HomeDetails({
             </div>
             <p className={styles.developmentNote}>
               In the meantime,{' '}
-              <a href={signupEnabled ? '/signup' : '/login'}>
+              <a
+                href={signupEnabled ? accountLinks.signup : accountLinks.login}
+              >
                 come play in the current universe
               </a>
               .
@@ -283,7 +286,9 @@ export function HomeDetails({
             something feels wrong, we’d like to hear about it.
           </p>
           <div className={styles.joinAction}>
-            <ButtonLinkAnchor href={signupEnabled ? '/signup' : '/login'}>
+            <ButtonLinkAnchor
+              href={signupEnabled ? accountLinks.signup : accountLinks.login}
+            >
               {signupEnabled ? 'Join the open beta' : 'Return to your account'}
               <span aria-hidden="true">→</span>
             </ButtonLinkAnchor>
