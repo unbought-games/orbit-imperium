@@ -165,13 +165,13 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
     await nav.getByRole('link', { name: 'Research', exact: true }).click()
     const research = page.getByRole('region', { name: 'Research', exact: true })
     await expect(research.getByRole('link', { name: /^Open / })).toHaveCount(0)
-    await expect(research).toContainText(
-      building ? 'Energy Technology · Level 1' : 'No research in progress.',
-    )
-    if (building)
+    if (building) {
+      await expect(research.getByRole('link', { name: 'Energy Technology · Level 1', exact: true })).toBeVisible()
+      await expect(research.getByText('Level 1', { exact: true })).toBeVisible()
       await expect(
         research.getByRole('button', { name: 'Cancel research' }),
       ).toBeEnabled()
+    } else await expect(research).toContainText('No research in progress.')
     for (const destination of ['Shipyard', 'Defense'] as const) {
       await nav.getByRole('link', { name: destination, exact: true }).click()
       const manufacturing = page.getByRole('region', {
@@ -893,11 +893,12 @@ for (const [kind, elapsed] of [
     } else await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(cancel).toBeDisabled()
     await expect(cancel).toHaveText('Cancelling…')
-    await expect(summary).toContainText(
-      kind === 'construction'
-        ? 'Research Lab · Level 1'
-        : 'Energy Technology · Level 1',
-    )
+    if (kind === 'construction') {
+      await expect(summary).toContainText('Research Lab · Level 1')
+    } else {
+      await expect(summary.getByRole('link', { name: 'Energy Technology · Level 1', exact: true })).toBeVisible()
+      await expect(summary.getByText('Level 1', { exact: true })).toBeVisible()
+    }
     await expect(summary).toContainText(/1m \d+s/)
     await expect(summary).not.toContainText(`No ${kind} in progress.`)
     if (kind === 'construction')
@@ -2253,7 +2254,8 @@ for (const width of [390, 1440]) {
     }
     await page.goto(`/u/andromeda/b/${body.id}/resources`)
     const work = page.getByRole('region', { name: 'Buildings', exact: true })
-    await expect(work).toContainText('Metal Mine · Level 2')
+    await expect(work.getByRole('link', { name: 'Metal Mine · Level 2', exact: true })).toBeVisible()
+    await expect(work.getByText('Level 2', { exact: true })).toBeVisible()
     await expect(work.getByRole('button', { name: 'Cancel construction' })).toBeEnabled()
     await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
     const detail = page.getByRole('region', { name: 'Active construction' })
@@ -2655,7 +2657,7 @@ test.describe('planet-scoped gameplay routes retain context and redirect old que
 })
 
 for (const width of [320, 390, 1440]) {
-  test(`active building and research summaries use two tight lines at ${width}px`, async ({ page }) => {
+  test(`active building and research cards retain timing and touch targets at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const now = Date.now()
     await page.clock.setFixedTime(now)
@@ -2672,23 +2674,25 @@ for (const width of [320, 390, 1440]) {
       const link = queue.getByRole('link', { name: new RegExp(label) })
       await expect(link).toBeVisible()
       await expect(queue).not.toContainText('In progress')
-      const lines = await link.locator(':scope > span').all()
-      expect(lines).toHaveLength(2)
-      await expect(lines[0]).toHaveText(label)
-      // The real server fixture clock advances while pages load; formatting is unit-tested separately.
-      await expect(lines[1]).toHaveText(/^\d+s$/)
-      const seconds = parseInt((await lines[1].textContent())!, 10)
+      await expect(link).toHaveText(label.split(' · ')[0])
+      await expect(queue.getByText('Level 3', { exact: true })).toBeVisible()
+      const timer = queue.locator('dt').filter({ hasText: /^Time remaining$/ }).locator('..').locator('dd')
+      // The fixture clock advances while pages load; formatting is unit-tested separately.
+      await expect(timer).toHaveText(/^\d+s$/)
+      const seconds = parseInt((await timer.textContent())!, 10)
       expect(seconds).toBeGreaterThan(0)
       expect(seconds).toBeLessThanOrEqual(35)
-      const first = (await lines[0].boundingBox())!
-      const second = (await lines[1].boundingBox())!
-      expect(second.y - (first.y + first.height)).toBeLessThanOrEqual(2)
+      await expect(queue.getByText('Scheduled finish', { exact: true })).toBeVisible()
+      await expect(queue.locator('img')).toBeVisible()
       const bounds = (await link.boundingBox())!
       expect(bounds.height).toBeGreaterThanOrEqual(44)
-      expect(bounds.height).toBeLessThanOrEqual(45)
-      expect((await queue.boundingBox())!.height).toBeLessThanOrEqual(62)
+      const card = (await queue.boundingBox())!
+      const time = (await timer.boundingBox())!
+      expect(time.x).toBeGreaterThanOrEqual(card.x)
+      expect(time.x + time.width).toBeLessThanOrEqual(card.x + card.width)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       await expect(queue.getByRole('button', { name: /^Cancel / })).toBeEnabled()
-      await diagnosticScreenshot(queue, { path: `test-results/compact-work-${path}-${width}.png` })
+      await diagnosticScreenshot(queue, { path: `test-results/work-card-${path}-${width}x900.png` })
     }
   })
 }
