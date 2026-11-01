@@ -120,3 +120,28 @@ logs and captures remain. No production deployment, universe activation, CI
 schedule change or routine execution deadline was introduced.
 
 Activation instructions are in [Alliance attacks](../operations/alliance-attacks.md).
+
+## PR 294 recall-history review
+
+Review comment 4436155185 claimed returned recalled fleets disappear from group
+facts, preventing later joins or hiding the group after the initiator returns.
+Inspection found that mission records are retained: terminal return updates the
+fleet leg, persistence upserts the record, and the world loader explicitly fetches
+missing group members by ID without filtering out terminal legs. Group membership
+is historical; active participation is derived from the fleet leg.
+
+Revision `4e8a05c444aee9b321cc7612b5db1c8ddf14da72` adds a real PostgreSQL regression
+in both runtime modes. A member recalls, lands before group contact, survives a
+storage reopen, and can launch a new fleet into the group. The initiator then
+recalls and lands; another storage reopen still exposes the group to both players,
+with one active member and joining correctly closed. Audit passes and the remaining
+fleet resolves exactly one battle. No production behavior or UI change was needed.
+
+The first test draft attempted to authorize a new fleet quote using a viewer-only
+snapshot and correctly received PolicyUnavailable. It now uses the production
+FleetQuote loader, retaining the expected AttackGroupClosed assertion. The full
+`make _db-attack_groups` binary passed both tests in 19.162 s (compilation 1.57 s;
+new regression 9.263 s). Focused Clippy with warnings denied passed in 0.43 s.
+The runner removed both disposable databases; the isolated `orbit-alliance-pr-294`
+Compose container, network and volume were removed after confirming no test
+databases remained. Existing UI captures remain current.
