@@ -100,3 +100,20 @@ browser processes. Source, ignored logs/captures and build caches are retained.
 No routine CI categories, schedules, deadlines or production services were
 changed. Existing universes require the deployment and activation sequence in
 [the operator guide](../operations/alliance-depot.md).
+
+## PR lock-order repair — November 1, 2026
+
+Publishing review found that fleet admission acquired bot participation before
+the alliance/social lock, opposite to social-command charging. The new scoped
+PostgreSQL regression holds the social lock, observes the actual admission wait
+through PostgreSQL blocking facts, and attempts the bot row with `NOWAIT`. It
+failed against `ec0e20486fac9d266d89baae56a493a107c9e327` with SQLSTATE 55P03,
+then passed after moving the social lock before bot participation. No UI changed.
+
+Tested code patch SHA-256 (binary Git diff of the two Rust files against that
+revision): `0ce401dc14a5a281b77256cf15c224b1ab18e482f863b72d974b37e3400653f5`. The full bot suite passed 10 tests in
+5.814 s, including the regression in 0.345 s; the serial/scoped holding journey
+passed in 7.805 s. Focused Clippy with warnings denied passed in 11.42 s.
+The existing database runner removed its disposable databases after both the
+expected pre-fix failure and the successful rerun. The isolated PR validation
+Compose project is removed after these checks.

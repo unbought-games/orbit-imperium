@@ -868,10 +868,12 @@ impl PgStore {
         if !rules.world() {
             return Err(StoreError::UnsupportedProtocol);
         }
-        crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
+        // Social actions authorize under the alliance lock before charging bot
+        // participation. Fleet admission must acquire those locks in that order too.
         if crate::holding::requires_lock(&Input::Command(g.clone())) {
             crate::holding::lock(&mut tx, b.universe, b.epoch).await?;
         }
+        crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
         let pair_hash = hash(&pair);
         if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
             return Ok(receipt);
