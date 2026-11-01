@@ -982,3 +982,151 @@ async fn vacation_migration_preserves_old_flags_and_source_settings() {
         .unwrap()
     );
 }
+
+async fn operator_vacation_edit(f: &Fixture, edit: serde_json::Value, operation: Uuid) {
+    let name: String = sqlx::query_scalar("SELECT name FROM accounts WHERE id=$1")
+        .bind(f.binding.account.0)
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    let mut edit = edit;
+    edit["op"] = serde_json::json!("set");
+    edit["user"] = serde_json::json!(name);
+    let document: WorldScenario =
+        serde_json::from_value(serde_json::json!({"version":1,"edits":[edit]})).unwrap();
+    f.store
+        .apply_world_scenario(
+            f.binding.universe,
+            &document,
+            ScenarioMode::Patch,
+            operation,
+        )
+        .await
+        .unwrap();
+}
+
+async fn live_cleanup_times(f: &Fixture) -> Vec<i64> {
+    sqlx::query_scalar("SELECT at_ms FROM scheduled_events WHERE universe=$1 AND event->>'type'='EmpireDeletionDue' AND event->>'player'=$2 AND NOT done AND NOT cancelled ORDER BY at_ms")
+        .bind(f.binding.universe.0).bind(f.binding.player.to_string()).fetch_all(&f.pool).await.unwrap()
+}
+
+#[tokio::test]
+async fn operator_vacation_exit_with_explicit_activity_reschedules_cleanup() {
+    let f = Fixture::new().await;
+    f.command(WorldAction::EnterVacation).await;
+    let returned_at = 100 * DAY_MS + 1000;
+    f.store.set_test_time(returned_at).await.unwrap();
+    f.settle().await;
+    let edit = serde_json::json!({"vacation":false,"activity":"active"});
+    let operation = Uuid::new_v4();
+    operator_vacation_edit(&f, edit.clone(), operation).await;
+    let (snapshot, _) = f.store.bound_world(f.binding).await.unwrap().facts;
+    let p = &snapshot.state.world.as_ref().unwrap().records.policies[&f.binding.player];
+    assert!(!p.vacation.is_active());
+    assert_eq!(p.last_presence_at, returned_at);
+    assert_eq!(
+        p.deletion_deadline().unwrap(),
+        Some(returned_at + INACTIVITY_DELETION_MS)
+    );
+    assert_eq!(
+        live_cleanup_times(&f).await,
+        vec![returned_at + INACTIVITY_WARNING_MS]
+    );
+    operator_vacation_edit(&f, edit, operation).await;
+    assert_eq!(
+        live_cleanup_times(&f).await,
+        vec![returned_at + INACTIVITY_WARNING_MS]
+    );
+    f.store
+        .set_test_time(returned_at + INACTIVITY_WARNING_MS)
+        .await
+        .unwrap();
+    f.settle().await;
+    assert_eq!(
+        live_cleanup_times(&f).await,
+        vec![returned_at + INACTIVITY_DELETION_MS]
+    );
+    f.store.audit_universe(f.binding.universe).await.unwrap();
+}
+
+#[tokio::test]
+async fn operator_combined_vacation_body_edits_persist_and_retry_without_duplicate_changes() {
+    let f = Fixture::new().await;
+    let (snapshot, _) = f.store.bound_world(f.binding).await.unwrap().facts;
+    let original = snapshot
+        .state
+        .bodies
+        .values()
+        .find(|b| b.owner == f.binding.player)
+        .unwrap()
+        .clone();
+    let operation = Uuid::new_v4();
+    let edit = serde_json::json!({"vacation":true,"all_planets":true,"resources":{"metal":42},"buildings":{"MetalMine":1}});
+    operator_vacation_edit(&f, edit.clone(), operation).await;
+    let (snapshot, _) = f.store.bound_world(f.binding).await.unwrap().facts;
+    let body = &snapshot.state.bodies[&original.id];
+    assert_eq!(body.checkpoint.amounts.metal, 42 * SCALE);
+    assert_eq!(body.levels[&Building::MetalMine], 1);
+    assert!(body.revision > original.revision);
+    let committed = body.clone();
+    assert!(
+        snapshot.state.world.as_ref().unwrap().records.policies[&f.binding.player]
+            .vacation
+            .is_active()
+    );
+    operator_vacation_edit(&f, edit, operation).await;
+    let (snapshot, _) = f.store.bound_world(f.binding).await.unwrap().facts;
+    assert_eq!(snapshot.state.bodies[&original.id], committed);
+    f.store.audit_universe(f.binding.universe).await.unwrap();
+}
+
+#[tokio::test]
+async fn operator_vacation_exit_preserves_explicit_deletion_and_explicit_presence_age() {
+    let f = Fixture::new().await;
+    f.command(WorldAction::EnterVacation).await;
+    f.command(WorldAction::RequestEmpireDeletion).await;
+    let at = DAY_MS + 1000;
+    f.store.set_test_time(at).await.unwrap();
+    operator_vacation_edit(
+        &f,
+        serde_json::json!({"vacation":false,"activity":"active","presence_age_ms":100}),
+        Uuid::new_v4(),
+    )
+    .await;
+    let (snapshot, _) = f.store.bound_world(f.binding).await.unwrap().facts;
+    let p = &snapshot.state.world.as_ref().unwrap().records.policies[&f.binding.player];
+    assert_eq!(p.last_presence_at, at - 100);
+    assert_eq!(p.deletion_requested_at, Some(1000));
+    assert_eq!(
+        p.deletion_deadline().unwrap(),
+        Some(1000 + DELETION_GRACE_MS)
+    );
+    assert_eq!(live_cleanup_times(&f).await, vec![1000 + DELETION_GRACE_MS]);
+    f.store.audit_universe(f.binding.universe).await.unwrap();
+}
+
+#[tokio::test]
+async fn operator_vacation_flag_alone_does_not_fabricate_foreground_presence() {
+    let f = Fixture::new().await;
+    f.command(WorldAction::EnterVacation).await;
+    let at = 100 * DAY_MS + 1000;
+    f.store.set_test_time(at).await.unwrap();
+    f.settle().await;
+    operator_vacation_edit(&f, serde_json::json!({"vacation":false}), Uuid::new_v4()).await;
+    let (snapshot, _) = f.store.bound_world(f.binding).await.unwrap().facts;
+    let p = &snapshot.state.world.as_ref().unwrap().records.policies[&f.binding.player];
+    assert_eq!(p.last_presence_at, 1000);
+    assert_eq!(
+        p.deletion_deadline().unwrap(),
+        Some(1000 + INACTIVITY_DELETION_MS)
+    );
+    assert_eq!(live_cleanup_times(&f).await, vec![at + 1]);
+    f.store.set_test_time(at + 1).await.unwrap();
+    f.settle().await;
+    assert!(matches!(
+        f.store
+            .current_binding(f.binding.account, f.binding.universe)
+            .await,
+        Err(StoreError::NotFound)
+    ));
+}

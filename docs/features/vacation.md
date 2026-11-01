@@ -39,6 +39,14 @@ existing bodies with no retroactive mine income. Rules and speed cutovers use th
 same vacation-aware settlement. Operator edits settle before applying resource
 or policy changes, including combined edits.
 
+Operator edits are raw source edits, not foreground player actions. Clearing
+`vacation` alone preserves the existing activity age and can make an already
+overdue empire eligible for cleanup at the next safe ordered instant. To restore
+an empire with a fresh inactivity window, explicitly set `activity: "active"`
+(or `presence_age_ms: 0`) together with `vacation: false`. Policy edits reconcile
+the scheduler with the resulting source deadline; an explicit deletion request
+keeps its original deadline. Saved/exported activity ages are not overwritten.
+
 ## Cleanup integration
 
 The shared player policy exempts vacationing empires from automatic inactivity

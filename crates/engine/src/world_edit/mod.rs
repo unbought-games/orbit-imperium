@@ -266,6 +266,8 @@ pub fn edit_world(
                     .policies
                     .get_mut(&p)
                     .ok_or("missing player policy")?;
+                // This is a raw operator override, not a foreground ExitVacation.
+                // Only explicit activity/presence_age edits reset the source age.
                 if let Some(v) = edit.vacation {
                     policy.vacation = if v {
                         VacationState::Active {
@@ -370,6 +372,36 @@ pub fn edit_world(
             .ok_or("missing player")?;
         policy.last_presence_at = input.at - age;
         policy.revision += 1;
+    }
+    if let Some(player) = owner
+        && (edit.vacation.is_some() || edit.activity.is_some() || edit.presence_age_ms.is_some())
+    {
+        let policy = next
+            .world
+            .as_ref()
+            .ok_or("missing world")?
+            .records
+            .policies
+            .get(&player)
+            .ok_or("missing player policy")?;
+        if let Some(due) = policy
+            .next_deletion_check(input.at)
+            .map_err(|e| e.to_string())?
+        {
+            // Raw edits preserve presence unless explicitly changed. An overdue
+            // source deadline must wake at the next safe order, never in the past.
+            let next_order = input
+                .at
+                .checked_add(1)
+                .filter(|at| *at <= MAX_WIRE_MS)
+                .ok_or("cleanup check outside supported time range")?;
+            crate::empire_deletion::schedule_empire_check(
+                &mut change,
+                input,
+                player,
+                due.max(next_order),
+            );
+        }
     }
     if let Some(values) = &edit.valuation {
         assets::restore_values(

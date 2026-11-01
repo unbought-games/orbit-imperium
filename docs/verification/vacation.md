@@ -164,3 +164,97 @@ SHA-256 of `apps/web/tests/vacation.spec.ts` is
 (seven scenarios repeated three times) in 35.7s. The original deterministic
 regression failed before the repair. The runner closed all browser contexts and
 its Vite server; no database resources were needed.
+
+## Merge-queue Settings integration — 2026-11-01
+
+Head `50c475e987090053c45defd26c1773b20c167cdd` passed every PR CI check and
+Bugbot review. Queue enrollment then reported `UNMERGEABLE` behind PR #298:
+both features inserted a section immediately after Settings' beta notice.
+Removed #299 from the queue while preparing its replacement head.
+
+Integrated #298's queued prospective-main commit
+`4a1cb2542d8f843c7732edcbfbdd2a0c7cbf3004` (source PR head
+`cdcbd761cf6c3605124d1ffd08d576d94bd5eece`). The sole conflict resolution keeps
+Vacation Mode first, followed by Community, and preserves empire deletion. The
+resulting tested Git tree is `f2ed5e15e8f50ae36596e9148d601c0a958543ff` before this
+verification-note update. Integrating the queued main candidate produces the same
+tree as resolving against the source branch.
+
+All 52 vacation, deletion and bootstrap/community browser tests passed in 41.0s.
+Production build (7.96s plus 0.523s prerender), TypeScript, lint and diff checks
+passed. Refreshed vacation captures and inspected the combined Settings view at
+desktop/mobile sizes, plus the community keyboard/touch captures. Runners closed
+their Vite servers and browsers; no database setup was needed. #299 must finish
+new-head CI/review and follow #298 through the normal queue; this integration is
+not a merge or deployment claim.
+
+## Hosted-account main integration — 2026-11-01
+
+Head `1ab01644bc60dd22ae60571b9d99b9379c581af1` passed all PR CI and Bugbot checks.
+New main revision `e817ee7ffd59f07f7dfae1af1b91686ec414a8b4` (#300) then conflicted
+with our browser-suite manifest. Merged it while retaining both `vacation.spec.ts`
+and `hosted-auth.spec.ts`; no test suite was removed. The automatically combined
+homepage retains the queued community-link work and the new account-entry flow.
+
+The resolved tree `34e6cd85395d4ac595050b22ebae1a1e434114f3` passed all 76 vacation,
+empire-deletion, hosted-auth, bootstrap and home browser tests in 52.1s. Production
+build (8.63s plus 0.396s prerender), TypeScript, lint and diff checks passed.
+Refreshed and inspected desktop/mobile Vacation Mode captures.
+
+Also retained PR #298's subsequent test-only forecast-response synchronization
+fix from `45b7fdf9b65de61df9fc1e5b65bcadd2e76c1c9b`, avoiding reintroduction of its
+known CI race. All 42 building-quote browser tests passed in 32.4s. The resulting
+tested tree, before this documentation update, is
+`e38dd1ed446c945c89e09bac8ab1f70b4a9b333f`. Both runners closed their servers and
+browser contexts. No database resources were created. Remote checks of the new
+head and PR #298's merge remain pending; no queue or merge completion is claimed.
+
+## Operator-policy review follow-up — 2026-11-01
+
+Reviewed Bugbot threads `PRRT_kwDOVRgPYs6ye80t` (operator exit/cleanup,
+comment 4437567478) and `PRRT_kwDOVRgPYs6ye80u` (combined-edit revisions,
+comment 4437567481).
+
+The alleged combined-edit persistence failure is a false positive: shared
+persistence in `crates/storage-postgres/src/commit.rs` compares the database with
+the original loaded `previous.revision`, not the new revision minus one. A new
+PostgreSQL regression passed before any implementation change, proving that a
+combined vacation/resource/building edit persists all values, preserves lineage,
+and returns the same result without duplicate changes on operation-ID retry.
+The two revision increments therefore did not need a speculative rewrite.
+
+Raw operator edits deliberately preserve activity unless explicitly changed;
+`world set` changes only listed source values and is not a foreground player
+`ExitVacation`. Clearing protection on an already overdue empire does not imply
+player activity. Documented this distinction and how to restore an empire with
+`vacation: false` plus `activity: "active"` (or `presence_age_ms: 0`). Normal player
+exit continues to use its paired foreground-presence action.
+
+Found and reproduced a real related scheduler defect: an operator ending a
+100-day vacation with explicit active presence retained an old check at day 133,
+missing the new day-128 warning. Policy edits now schedule from their final source
+facts after explicit activity-age overrides; overdue source deadlines wake at the
+next safe ordered instant. Existing persistence replaces the prior live check.
+Voluntary deletion keeps its original source deadline. No new presence is
+invented, and saved/exported activity ages are preserved.
+
+Tested base `a9877ba03dba352cf1deac8f7b778af4c5f3f7a6` plus the two code/test files
+listed in `test-results/vacation-operator-source-manifest.json`, SHA-256
+`dbf6ad8b9770d1487eeca0378a8ba15ea9018cb0cfae5e16faa45e9a367ea870`.
+The explicit-activity regression failed before the repair (8 prior tests passed;
+remaining tests were not run after failure). After repair:
+
+- `make test-db DB_SUITES='empire_deletion world_edit' DB_JOBS=2`: 15 lifecycle
+  tests passed in 81.717s and 11 world-edit tests passed in 243.274s; preparation
+  7.44s. One 78.976s round-trip test reported slow and passed.
+- Native missions: 128 passed in 6.609s; engine library: 47 passed in 1.649s;
+  storage library: 7 passed in 0.056s, via the existing Make runner.
+- Workspace/all-target Clippy with warnings denied passed in 24.43s; Rust
+  formatting and diff checks passed. No test assertions or deadlines weakened.
+
+The new database cases cover explicit return activity and timer replacement,
+exact operation retry, combined edits, explicit presence-age precedence, voluntary
+request preservation, and raw flag-only removal without fabricated foreground
+presence. Disposable Compose project `orbit-vacation-operator` on localhost port
+55438 and its volume were removed after all suites completed. UI and gameplay
+entry/exit behavior are unchanged, so existing screenshots remain current.
