@@ -153,6 +153,7 @@ fn participant_observation(
     s: &GameState,
     participant: &BattleParticipant,
     arriving: &MissionFleet,
+    target: BodyId,
 ) -> serde_json::Value {
     let mut observation = json!({
         "owner": participant.owner, "origin": participant.origin,
@@ -161,7 +162,13 @@ fn participant_observation(
             json!({"item": item, "count": n.to_string()})
         ).collect::<Vec<_>>()
     });
-    let location = match participant.origin {
+    // A holding fleet defends the battle target, not its launch planet.
+    let location_origin = if participant.side == BattleSide::Defender {
+        BattleOrigin::Stationed(target)
+    } else {
+        participant.origin
+    };
+    let location = match location_origin {
         BattleOrigin::Fleet(id) => {
             let fleet = if id == arriving.id {
                 Some(arriving)
@@ -592,7 +599,7 @@ fn combat_encounter(
             losses
         })
         .collect();
-    let mut full = json!({"kind":"Combat","at":i.at,"target":target.coordinates,"outcome":result.battle.outcome,"participants":result.battle.participants.iter().map(|p| participant_observation(s, p, f)).collect::<Vec<_>>(),"rounds":result.battle.rounds.iter().map(|round|json!({"number":round.number,"start":public_counts(&round.start),"end":public_counts(&round.end),"fire":round.fire})).collect::<Vec<_>>(),"survivors":public_counts(&result.battle.survivors),"gross_losses":public_counts(&result.battle.destroyed),"recovered":public_counts(&result.recovery),"permanent_losses":public_counts(&permanent),"debris":wire_resources(debris),"loot":wire_resources(loot)});
+    let mut full = json!({"kind":"Combat","at":i.at,"target":target.coordinates,"outcome":result.battle.outcome,"participants":result.battle.participants.iter().map(|p| participant_observation(s, p, f, id)).collect::<Vec<_>>(),"rounds":result.battle.rounds.iter().map(|round|json!({"number":round.number,"start":public_counts(&round.start),"end":public_counts(&round.end),"fire":round.fire})).collect::<Vec<_>>(),"survivors":public_counts(&result.battle.survivors),"gross_losses":public_counts(&result.battle.destroyed),"recovered":public_counts(&result.recovery),"permanent_losses":public_counts(&permanent),"debris":wire_resources(debris),"loot":wire_resources(loot)});
     // Capture the identity at contact, not when the report is read. The restricted
     // ContactLost observation below deliberately does not inherit defender facts.
     full["target_name"] = json!(target.name);

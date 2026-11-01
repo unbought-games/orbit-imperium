@@ -518,6 +518,23 @@ fn same_player_on_both_sides_receives_defender_report_and_keeps_held_assets() {
             .len(),
         3
     );
+    for payload in report.payloads.values() {
+        for participant in payload["participants"].as_array().unwrap() {
+            let location_body = if participant["side"] == "Defender" {
+                t
+            } else {
+                b
+            };
+            assert_eq!(
+                participant["location"],
+                serde_json::json!({
+                    "coordinates": s.bodies[&location_body].coordinates,
+                    "name": s.bodies[&location_body].name,
+                    "kind": s.bodies[&location_body].kind,
+                })
+            );
+        }
+    }
     assert_eq!(records.fleets[&held.id].leg, MissionLeg::Holding);
     assert_eq!(records.fleets[&held.id].due_at, held.due_at);
     validate_asset_lineage(&s).unwrap();
