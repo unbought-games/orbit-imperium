@@ -131,3 +131,12 @@ Against published head `73359328787d9e62aec2d4d77824ac848a9462e8` plus this repa
 all six vacation browser tests passed in 12.5s. Production build (3.31s and 0.182s
 prerender), TypeScript and lint passed. Refreshed and inspected the desktop/mobile
 same-mount returned-state captures; no backend or policy changes were needed.
+
+After #297 squash-merged as `e6392c20f60b7a3d3587444f54fb270d52f8dee9`, replayed
+only the three Vacation Mode commits onto `main`. Tested rebased code revision
+`8af9efd84000ff1be1cfe3e7a4cb271b6ef46387`; the tree differs from its pre-rebase
+counterpart only by the six identity-presentation files from merged PR #296.
+All 18 vacation, deletion and player-profile browser tests passed in 37.1s.
+Production build (20.76s plus 0.700s prerender), TypeScript, lint and diff checks
+passed. Refreshed screenshots and inspected both same-mount returned-state
+captures again. The browser runner closed its server and contexts normally.
