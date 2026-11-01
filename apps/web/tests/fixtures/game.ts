@@ -58,6 +58,8 @@ export async function installGameFixture(
     viewerRevision?: () => string
     homeworldId?: string
     playerNames?: components['schemas']['PublicPlayerNames4']
+    holdings?: components['schemas']['HeldFleetView4'][]
+    depots?: components['schemas']['DepotView4'][]
     missiles?: components['schemas']['MissileFlightView4'][]
     missions?: components['schemas']['MissionView4']
     fleets?: components['schemas']['Fleet'][]
@@ -69,6 +71,7 @@ export async function installGameFixture(
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
     extraCapabilities?: Array<
+      | 'Hold'
       | 'Missiles'
       | 'Attack'
       | 'Espionage'
@@ -221,6 +224,8 @@ export async function installGameFixture(
       ),
       ...(protocol === 4
         ? {
+            holdings: options.holdings ?? [],
+            depots: options.depots ?? [],
             missiles: options.missiles ?? [],
             has_unread_reports: options.hasUnreadReports?.() ?? false,
             player_names: options.playerNames,

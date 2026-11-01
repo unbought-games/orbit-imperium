@@ -71,7 +71,7 @@ export function FleetRecall({
           </Text>
           <Text>
             {estimate !== null
-              ? `Estimated return if recalled now: ${exactTime(estimate)}. The return leg equals time already travelled.`
+              ? `Estimated return if recalled now: ${exactTime(estimate)}. ${fleet?.leg === 'Holding' ? 'The return leg uses the original flight duration.' : 'The return leg equals time already travelled.'}`
               : 'The server will confirm the return time when it accepts recall.'}{' '}
             Arrival may resolve before a recall reaches the server.
           </Text>
@@ -182,7 +182,12 @@ export function MissionFleetCard({
       <div id={shipsId} hidden={!showShips} className={fleetStyles.manifest}>
         <ShipComposition ships={fleet.ships} />
         <p className={fleetStyles.exactArrival}>
-          {fleet.leg === 'Returning' ? 'Return' : 'Arrival'}:{' '}
+          {fleet.leg === 'Holding'
+            ? 'Departure'
+            : fleet.leg === 'Returning'
+              ? 'Return'
+              : 'Arrival'}
+          :{' '}
           <time dateTime={new Date(fleet.due_at).toISOString()}>
             {exactTime(fleet.due_at)}
           </time>

@@ -90,6 +90,12 @@ export function destinationError(
   if (destination.type !== 'Body') return ''
   if (mission === 'Colonize')
     return 'This position is occupied. Choose an empty position.'
+  if (
+    mission === 'Hold' &&
+    (destination.expected_owner === player ||
+      destination.expected_kind !== 'Planet')
+  )
+    return 'Hold requires another player’s planet. Choose an ally or accepted friend.'
   if (mission === 'Deploy' && destination.expected_owner !== player)
     return 'Deploy requires another planet or moon that you own.'
   if (
@@ -105,6 +111,12 @@ export function destinationError(
 }
 
 const messages: Partial<Record<S['GameError4'], string>> = {
+  HoldingUnavailable:
+    'Holding requires another player in your alliance or accepted friends. The host must permit it; supply also requires a fleet still defending here.',
+  DepotBudgetExceeded:
+    'This Depot’s rolling-hour supply budget is exhausted. Reduce the amount or wait for budget to become available.',
+  ExtensionTooSmall:
+    'This fuel amount grants less than one millisecond. Supply a larger amount.',
   PrerequisiteMissing:
     'Your empire does not meet the requirements for this mission. Check your research and review again.',
   PositionOccupied: 'This position is occupied. Choose an empty position.',

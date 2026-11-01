@@ -246,6 +246,20 @@ pub(super) fn patches() -> Vec<Patch> {
         "Destroyer",
         &read(include_bytes!("../../../../rules/content/destroyer.json")),
     );
+    let depot = read(include_bytes!(
+        "../../../../rules/content/alliance-depot.json"
+    ));
+    out.push(Patch::field(
+        "/buildings/AllianceDepot",
+        depot["building"].clone(),
+    ));
+    out.push(catalog(
+        "Building",
+        "AllianceDepot",
+        false,
+        depot["requirements"].clone(),
+    ));
+    out.push(Patch::field("/world/holding", depot["holding"].clone()));
     let nanite = read(include_bytes!(
         "../../../../rules/content/nanite-factory.json"
     ));

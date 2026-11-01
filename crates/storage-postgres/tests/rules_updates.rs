@@ -1,3 +1,5 @@
+#[path = "rules_updates/depot.rs"]
+mod depot;
 use orbit_application::*;
 use orbit_engine::*;
 use orbit_storage_postgres::PgStore;

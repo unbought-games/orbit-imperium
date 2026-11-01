@@ -15,6 +15,8 @@ const content: Record<string, string> = {
     'Automatically destroys one incoming Interplanetary Missile at impact. Built in the shared manufacturing queue and stored in the planetary silo.',
   InterplanetaryMissile:
     'Permanently destroys enemy defenses, bypassing shields. Range grows with Impulse Drive; Weapons Technology increases damage. Launch from the galaxy. Missiles cannot be recalled.',
+  AllianceDepot:
+    'Supply deuterium to allied fleets holding at this planet to extend their defense. Each level permits 10,000 deuterium per rolling hour. The fleet owner retains recall control.',
   Terraformer:
     'Transforms uninhabitable terrain into room for development. Each completed level adds five planet fields and occupies one. Construction requires one free field and enough gross energy at the start. Terraformer cannot be demolished.',
   NaniteFactory:

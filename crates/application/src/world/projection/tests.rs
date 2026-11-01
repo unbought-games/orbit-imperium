@@ -8,6 +8,7 @@ fn player(n: u128) -> PlayerId {
 
 fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> MissionFleet {
     let intent = FleetIntent {
+        hold_hours: None,
         origin: BodyId(Uuid::from_u128(10)),
         destination: MissionDestination::Body {
             id: BodyId(Uuid::from_u128(20)),
@@ -38,6 +39,7 @@ fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> Mission
             position: 4,
         },
         terms: FleetTermsData {
+            holding: None,
             intent,
             profile_hash: Hash("historical-profile".into()),
             distance: 1000,
@@ -303,6 +305,8 @@ fn snapshot() -> ViewerSnapshot {
     coverage.fleet_owners.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            holding_relationships: None,
+            covered_depot_sources: Default::default(),
             homeworlds: Default::default(),
             planet_slots: vec![],
             records: WorldRecords::default(),

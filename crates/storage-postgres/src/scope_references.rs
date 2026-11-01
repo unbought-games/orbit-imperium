@@ -108,12 +108,20 @@ pub(crate) async fn load(
     let mut bodies = BTreeSet::new();
     let mut operation = None;
     let mut fleet = None;
+    let mut holding_target = None;
     let mut field = None;
     match input {
+        Input::Command(Command::World {
+            action: WorldAction::SupplyHoldingFleet { intent, .. },
+        }) => {
+            bodies.insert(intent.source_planet.0);
+            fleet = Some(intent.fleet);
+        }
         Input::Command(Command::World {
             action: WorldAction::AbandonPlanet { body, .. },
         }) => {
             bodies.insert(body.0);
+            holding_target = Some(*body);
         }
         Input::Command(Command::World {
             action: WorldAction::LaunchMissiles { intent, .. },
@@ -147,6 +155,12 @@ pub(crate) async fn load(
             bodies.insert(intent.origin.0);
             if let MissionDestination::Body { id, .. } = intent.destination {
                 bodies.insert(id.0);
+                if matches!(
+                    intent.mission,
+                    Mission::Attack | Mission::Espionage | Mission::Hold
+                ) {
+                    holding_target = Some(id);
+                }
             }
         }
         Input::Command(Command::LaunchTransport { origin, target, .. }) => {
@@ -191,6 +205,19 @@ pub(crate) async fn load(
                 .map_err(db_error)?
         {
             let f: MissionFleet = decode_supported(value)?;
+            if matches!(
+                input,
+                Input::Event(ScheduledEvent::FleetLegDue {
+                    expected_leg: MissionLeg::Outbound,
+                    ..
+                })
+            ) && matches!(
+                f.intent.mission,
+                Mission::Attack | Mission::Espionage | Mission::Hold
+            ) && let MissionDestination::Body { id, .. } = f.intent.destination
+            {
+                holding_target = Some(id);
+            }
             refs.fleets.insert(
                 id,
                 (
@@ -258,6 +285,9 @@ pub(crate) async fn load(
     }
 
     load_bodies(tx, u, &bodies, &mut refs).await?;
+    if let Some(body) = holding_target {
+        refs.holding = crate::holding::participant_scopes(tx, u, body).await?;
+    }
     Ok(refs)
 }
 async fn load_bodies(

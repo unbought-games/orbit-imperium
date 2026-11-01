@@ -67,7 +67,12 @@ export function DispatchReview({
       : null,
   )
 
-  const schedule = flightSchedule(quote.duration_ms, now, mission)
+  const schedule = flightSchedule(
+    quote.duration_ms,
+    now,
+    mission,
+    quote.holding?.duration_ms ?? 0,
+  )
   const returning = missionReturn[mission]
   const shipCount = fleetShipCount(quote.intent.ships)
   return (
@@ -192,6 +197,19 @@ export function DispatchReview({
                 </time>
               </dd>
             </div>
+            {quote.holding && (
+              <div>
+                <dt>Prepaid holding</dt>
+                <dd>
+                  {flightDuration(quote.holding.duration_ms)} ·{' '}
+                  <ResourceQuantity
+                    resource="deuterium"
+                    value={quote.holding.fuel}
+                  />{' '}
+                  included in fuel
+                </dd>
+              </div>
+            )}
             <div>
               <dt>{returning.label}</dt>
               <dd>

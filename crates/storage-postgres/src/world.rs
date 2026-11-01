@@ -150,7 +150,7 @@ pub(crate) async fn load_selected(
         .iter()
         .map(|c| serde_json::to_value(c).expect("coordinates"))
         .collect();
-    let policies: Vec<PlayerPolicy> = if selected.all {
+    let mut policies: Vec<PlayerPolicy> = if selected.all {
         records(tx, u, "player_policies").await?
     } else {
         sqlx::query_scalar(
@@ -206,6 +206,13 @@ pub(crate) async fn load_selected(
         Input::Command(Command::World {
             action: WorldAction::RecallMission { fleet },
         })
+        | Input::Command(Command::World {
+            action:
+                WorldAction::SupplyHoldingFleet {
+                    intent: DepotSupplyIntent { fleet, .. },
+                    ..
+                },
+        })
         | Input::Event(ScheduledEvent::FleetLegDue { fleet, .. }) => Some(fleet.0),
         _ => None,
     };
@@ -229,7 +236,7 @@ pub(crate) async fn load_selected(
         s.coverage.fleet_ids.insert(FleetId(derived));
     }
     let fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>(
-        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg'='Outbound') OR data->'intent'->'destination'->'coordinates'=ANY($6)) ORDER BY id",
+        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)) ORDER BY id",
     )
     .bind(u.0)
     .bind(fleet_id)
@@ -490,10 +497,44 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
             homeworlds.insert(PlayerId(*owner), id);
         }
     }
+    let mut relationship_owners = owners.clone();
+    if selected.incoming_for.is_some() {
+        for fleet in fleets.iter().filter(|f| f.leg == MissionLeg::Holding) {
+            relationship_owners.push(fleet.owner.0);
+        }
+        relationship_owners.sort();
+        relationship_owners.dedup();
+        let visitors: Vec<_> = relationship_owners
+            .iter()
+            .copied()
+            .filter(|p| !owners.contains(p))
+            .collect();
+        for value in sqlx::query_scalar::<_, serde_json::Value>(
+            "SELECT data FROM player_policies WHERE universe=$1 AND id=ANY($2)",
+        )
+        .bind(u.0)
+        .bind(&visitors)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(db_error)?
+        {
+            policies.push(decode(value)?);
+        }
+    }
+    let holding_relationships = if holding_enabled(rules) {
+        Some(crate::holding::relationships(tx, u, epoch, &relationship_owners).await?)
+    } else {
+        None
+    };
+    let depot_supplies: Vec<DepotSupply> = sqlx::query_scalar::<_, serde_json::Value>("SELECT s.data FROM depot_supplies s JOIN bodies b ON b.id=s.source_planet AND b.universe=s.universe WHERE s.universe=$1 AND s.source_planet=ANY($2) AND s.at_ms>b.checkpoint_at-3600000 ORDER BY s.at_ms,s.id")
+        .bind(u.0).bind(&body_ids).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?;
     s.world = Some(WorldFacts {
+        holding_relationships,
+        covered_depot_sources: body_ids.iter().copied().map(BodyId).collect(),
         homeworlds,
         planet_slots,
         records: WorldRecords {
+            depot_supplies: depot_supplies.into_iter().map(|s| (s.id, s)).collect(),
             abandonments: abandonments.into_iter().map(|t| (t.body, t)).collect(),
             missiles: missiles.into_iter().map(|f| (f.id, f)).collect(),
             colonies: colonies.into_iter().map(|c| (c.body, c)).collect(),
@@ -597,6 +638,16 @@ pub(crate) async fn save(
 ) -> Result<(), StoreError> {
     let old = &s.world.as_ref().ok_or(StoreError::CorruptData)?.records;
     let u = i.universe;
+    for (id, supply) in &c.records.depot_supplies {
+        if let Some(previous) = old.depot_supplies.get(id) {
+            if previous != supply {
+                return Err(StoreError::CorruptData);
+            }
+        } else {
+            sqlx::query("INSERT INTO depot_supplies(id,universe,source_planet,at_ms,data) VALUES($1,$2,$3,$4,$5)")
+                .bind(id.0).bind(u.0).bind(supply.intent.source_planet.0).bind(supply.at).bind(sqlx::types::Json(supply)).execute(&mut **tx).await.map_err(db_error)?;
+        }
+    }
     for (id, t) in &c.records.abandonments {
         if old.abandonments.get(id) == Some(t) {
             continue;
@@ -816,6 +867,11 @@ impl PgStore {
         let rules = crate::facts::rules(&mut tx, b.universe).await?;
         if !rules.world() {
             return Err(StoreError::UnsupportedProtocol);
+        }
+        // Social actions authorize under the alliance lock before charging bot
+        // participation. Fleet admission must acquire those locks in that order too.
+        if crate::holding::requires_lock(&Input::Command(g.clone())) {
+            crate::holding::lock(&mut tx, b.universe, b.epoch).await?;
         }
         crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
         let pair_hash = hash(&pair);

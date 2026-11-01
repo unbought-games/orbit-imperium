@@ -389,6 +389,7 @@ impl PgStore {
                 q.query,
                 WorldQueryKind::FleetQuote { .. }
                     | WorldQueryKind::FleetEstimate { .. }
+                    | WorldQueryKind::DepotSupplyQuote { .. }
                     | WorldQueryKind::MissileQuote { .. }
                     | WorldQueryKind::AbandonmentQuote { .. }
             )
@@ -466,6 +467,7 @@ impl PgStore {
             }
             WorldQueryKind::FleetQuote { .. }
             | WorldQueryKind::FleetEstimate { .. }
+            | WorldQueryKind::DepotSupplyQuote { .. }
             | WorldQueryKind::MissileQuote { .. }
             | WorldQueryKind::AbandonmentQuote { .. } => {
                 unreachable!()
@@ -547,6 +549,7 @@ pub(crate) async fn participation_body(
     match c {
         Command::SetProduction{body,..}|Command::StartUpgrade{body,..}|Command::StartDemolition{body,..}|Command::StartManufacture{body,..}=>Ok(Some(*body)),
         Command::StartResearch{host,..}=>Ok(Some(*host)),
+        Command::World{action:WorldAction::SupplyHoldingFleet{intent,..}}=>Ok(Some(intent.source_planet)),
         Command::World{action:WorldAction::LaunchMissiles{intent,..}}=>Ok(Some(intent.origin)),
         Command::World{action:WorldAction::ScrapMissiles{body,..}}=>Ok(Some(*body)),
         Command::World{action:WorldAction::RenamePlanet{body,..} | WorldAction::AbandonPlanet{body,..}}=>Ok(Some(*body)),
@@ -578,7 +581,7 @@ pub(crate) async fn unmetered_world_query(
         return Ok(());
     }
     match q {
-        WorldQueryKind::AbandonmentQuote { .. } => Ok(()),
+        WorldQueryKind::DepotSupplyQuote { .. } | WorldQueryKind::AbandonmentQuote { .. } => Ok(()),
         WorldQueryKind::MissileQuote { intent } => {
             require_destination_observation(
                 tx,

@@ -128,7 +128,8 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
             Building::FusionReactor,
             Building::NaniteFactory,
             Building::Terraformer,
-            Building::MissileSilo
+            Building::MissileSilo,
+            Building::AllianceDepot
         ]
     );
     assert_eq!(
@@ -963,4 +964,44 @@ fn terraformer_bundle_is_exact_planet_only_and_conflict_safe() {
         .unwrap()
         .enabled = false;
     assert!(validate_rules_update(&next, &Ruleset::from_artifact(removed, 3).unwrap()).is_err());
+}
+
+#[test]
+fn depot_bundle_is_planet_only_idempotent_and_preserves_custom_content() {
+    let old = Ruleset::mvp_raids().unwrap();
+    let next = upgrade_standard_rules(&old).unwrap();
+    assert!(holding_enabled(&next));
+    let key = CatalogKey::Building(Building::AllianceDepot);
+    let entry = next.artifact.catalog.iter().find(|e| e.key == key).unwrap();
+    assert!(entry.enabled && entry.requirements.is_empty());
+    assert_eq!(
+        entry.body_kinds,
+        std::collections::BTreeSet::from([BodyKind::Planet])
+    );
+    assert_eq!(
+        next.artifact.buildings[&Building::AllianceDepot].base,
+        [20000, 40000, 0]
+    );
+    assert_eq!(
+        next.artifact.buildings[&Building::AllianceDepot].growth,
+        [2, 1]
+    );
+    assert!(next.equivalent(&upgrade_standard_rules(&next).unwrap()));
+    let mut changed = next.artifact.clone();
+    changed
+        .buildings
+        .get_mut(&Building::AllianceDepot)
+        .unwrap()
+        .base[0] = 30000;
+    let custom = Ruleset::from_artifact(changed, next.speed).unwrap();
+    assert!(matches!(
+        upgrade_standard_rules(&custom),
+        Err(StandardRulesError::Conflicts(_))
+    ));
+    let mut removed = next.artifact.clone();
+    removed.world.as_mut().unwrap().holding = None;
+    assert!(
+        validate_rules_update(&next, &Ruleset::from_artifact(removed, next.speed).unwrap())
+            .is_err()
+    );
 }

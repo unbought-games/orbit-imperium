@@ -10,6 +10,7 @@ pub enum Mission {
     Attack,
     Deploy,
     Colonize,
+    Hold,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
@@ -54,6 +55,8 @@ pub struct ManifestStack {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FleetIntent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold_hours: Option<u32>,
     pub origin: BodyId,
     pub destination: MissionDestination,
     pub mission: Mission,
@@ -65,6 +68,8 @@ pub struct FleetIntent {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FleetTermsData {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub holding: Option<HoldingTerms>,
     pub intent: FleetIntent,
     pub profile_hash: Hash,
     pub distance: i64,
@@ -111,6 +116,7 @@ impl FleetTermsData {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MissionLeg {
     Outbound,
+    Holding,
     Returning,
     Returned,
     Destroyed,
@@ -144,12 +150,19 @@ pub struct MissionFleet {
 }
 impl MissionFleet {
     pub fn active(&self) -> bool {
-        matches!(self.leg, MissionLeg::Outbound | MissionLeg::Returning)
+        matches!(
+            self.leg,
+            MissionLeg::Outbound | MissionLeg::Holding | MissionLeg::Returning
+        )
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    SupplyHoldingFleet {
+        intent: DepotSupplyIntent,
+        expected_terms_hash: Hash,
+    },
     AbandonPlanet {
         body: BodyId,
         expected_terms_hash: Hash,
@@ -235,6 +248,8 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub depot_supplies: BTreeMap<InputId, DepotSupply>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub abandonments: BTreeMap<BodyId, Abandonment>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub missiles: BTreeMap<OperationId, MissileFlight>,
@@ -251,6 +266,10 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub holding_relationships: Option<HoldingRelationships>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub covered_depot_sources: BTreeSet<BodyId>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub homeworlds: BTreeMap<PlayerId, BodyId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -273,6 +292,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub holding: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub missiles: Option<MissileRules>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colonization: Option<ColonizationRules>,
@@ -293,6 +314,13 @@ fn default_beginner_protection_multiplier() -> u32 {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if self
+            .holding
+            .as_ref()
+            .is_some_and(|v| v != "allied-holding-depot-v1")
+        {
+            return Err(RulesError::Unsupported);
+        }
         if let Some(m) = &self.missiles {
             m.validate()?;
         }

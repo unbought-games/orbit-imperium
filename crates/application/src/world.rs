@@ -118,7 +118,26 @@ pub struct MissionView {
     pub fleet_slots: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct HeldFleetView {
+    pub id: FleetId,
+    pub owner: PlayerId,
+    pub target: BodyId,
+    pub ships: Vec<PublicShipStack>,
+    pub departure_at: Timestamp,
+    pub can_supply: bool,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DepotView {
+    pub body: BodyId,
+    pub remaining_budget: String,
+    pub next_budget_release_at: Option<Timestamp>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoundView4 {
+    #[serde(default)]
+    pub holdings: Vec<HeldFleetView>,
+    #[serde(default)]
+    pub depots: Vec<DepotView>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub homeworld_id: Option<BodyId>,
     #[serde(default)]
@@ -140,6 +159,7 @@ pub struct WorldQuery {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldQueryKind {
+    DepotSupplyQuote { intent: DepotSupplyIntent },
     AbandonmentQuote { body: BodyId },
     MissileQuote { intent: MissileIntent },
     Galaxy { galaxy: u32, system: u32 },
@@ -283,6 +303,10 @@ impl<S: GameStore> GameService<S> {
                 quote_abandonment(&facts.state, p.player, body, facts.at, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
             ),
+            WorldQueryKind::DepotSupplyQuote { intent } => serde_json::to_value(
+                quote_depot_supply(&facts.state, p.player, &intent, facts.at, &facts.rules)
+                    .map_err(ServiceError::GameRejected)?,
+            ),
             WorldQueryKind::MissileQuote { intent } => serde_json::to_value(
                 quote_missiles(&facts.state, p.player, &intent, facts.at, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
@@ -360,6 +384,7 @@ impl<S: GameStore> GameService<S> {
                     .iter()
                     .map(|f| f.sender)
                     .chain(projected.facts.missiles.iter().map(|f| f.attacker))
+                    .chain(projected.facts.holdings.iter().map(|f| f.owner))
                     .collect(),
             )
             .await?;

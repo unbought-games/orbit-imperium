@@ -824,6 +824,13 @@ export class Coordinator {
             result.data.profile_hash !== this.view?.profile_hash)
         )
           return null
+        if (
+          captured.type === 'DepotSupplyQuote' &&
+          (!('extension_ms' in result.data) ||
+            canonical(captured.intent) !== canonical(result.data.intent) ||
+            result.data.profile_hash !== this.view?.profile_hash)
+        )
+          return null
         return result.data
       } catch (error) {
         if (!this.current(g, b)) return null

@@ -76,6 +76,7 @@ pub(super) fn mission(
         canonical_map(&e.ships, r.artifact.ships.keys().copied())?
     };
     let intent = FleetIntent {
+        hold_hours: None,
         origin: origin.id,
         destination: MissionDestination::Body {
             id: target.id,

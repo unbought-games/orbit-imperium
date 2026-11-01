@@ -218,6 +218,7 @@ async fn launch(
     )
     .unwrap();
     let intent = FleetIntent {
+        hold_hours: None,
         origin,
         destination,
         mission: Mission::Colonize,

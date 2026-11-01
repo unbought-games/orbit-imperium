@@ -172,6 +172,7 @@ impl Ruleset {
                         Building::FusionReactor
                             | Building::MissileSilo
                             | Building::NaniteFactory
+                            | Building::AllianceDepot
                             | Building::Terraformer
                     ) || artifact.progression.is_none())
             })

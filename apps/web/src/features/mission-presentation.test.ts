@@ -71,3 +71,15 @@ it('labels current owned and public fleet destinations without changing recorded
   expect(missionLocation(view, 'unknown', at)).toBe('[1:2:3]')
   expect(missionLocation(view, undefined, at)).toBe('[1:2:3]')
 })
+
+it('held recall uses the committed one-way duration, regardless of time already defending', () => {
+  const fleet = {
+    launched_at: 1000,
+    due_at: 9000000,
+    duration_ms: 120000,
+    leg: 'Holding',
+    can_recall: true,
+  } as components['schemas']['OwnMission4']
+  expect(recallEstimate(fleet, 3600000)).toBe(3720000)
+  expect(recallEstimate(fleet, 9000000)).toBeNull()
+})

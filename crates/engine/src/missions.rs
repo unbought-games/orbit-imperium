@@ -187,6 +187,11 @@ fn flight_terms(
         i64::from(intent.speed_percent),
         i64::from(r.speed),
     )?;
+    let holding = holding_terms(&intent, research, r)?;
+    let holding_fuel = holding.as_ref().map_or(0, |h| h.fuel);
+    let fuel = fuel
+        .checked_add(holding_fuel)
+        .ok_or(GameError::NumericRange)?;
     let maximum_payload = capacity
         .checked_add(probe_capacity)
         .and_then(|v| v.checked_sub(fuel))
@@ -197,6 +202,7 @@ fn flight_terms(
         return Err(GameError::CargoCapacity);
     }
     Ok(FleetTermsData {
+        holding,
         intent,
         profile_hash: r.hash.clone(),
         distance,
@@ -300,6 +306,17 @@ fn quote_inner(
     }
     let (coords, target_owner) = target(s, &intent.destination, r)?;
     check_mission_eligibility(s, owner, target_owner, intent.mission, at, r)?;
+    if intent.mission == Mission::Hold
+        && !matches!(
+            intent.destination,
+            MissionDestination::Body {
+                expected_kind: BodyKind::Planet,
+                ..
+            }
+        )
+    {
+        return Err(GameError::BodyKindNotAllowed.into());
+    }
     if matches!(intent.destination,MissionDestination::Body{id,..} if id==b.id) {
         return Err(GameError::InvalidInput.into());
     }
@@ -340,7 +357,7 @@ fn quote_inner(
                 .iter()
                 .any(|x| x.ship_type == ShipType::Recycler && x.count > 0) => {}
         (
-            Mission::Transport | Mission::Attack | Mission::Deploy,
+            Mission::Transport | Mission::Attack | Mission::Deploy | Mission::Hold,
             MissionDestination::Body { .. },
         ) => {}
         (Mission::Espionage, MissionDestination::Body { .. })
@@ -395,7 +412,12 @@ fn quote_inner(
         true,
     )?;
     resources(settle_production(s, b, at, r)?.amounts, cost, false)?;
-    deadline(deadline(at, q.duration_ms)?, q.duration_ms)?;
+    let arrival = deadline(at, q.duration_ms)?;
+    let departure = match q.holding.as_ref().filter(|h| h.duration_ms > 0) {
+        Some(h) => deadline(arrival, h.duration_ms)?,
+        None => arrival,
+    };
+    deadline(departure, q.duration_ms)?;
     Ok(q.seal())
 }
 fn inventory(
@@ -494,7 +516,7 @@ pub(crate) fn mission_report(
 fn own_report_payload(i: &OrderedInput, f: &MissionFleet, kind: &str) -> serde_json::Value {
     json!({"kind":kind,"fleet":f.id,"origin":f.intent.origin,"destination":f.intent.destination,"origin_coordinates":f.origin_coordinates,"destination_coordinates":f.destination_coordinates,"cargo":wire_resources(f.cargo),"ships":f.ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>(),"at":i.at})
 }
-fn own_report(w: &mut WorldRecords, i: &OrderedInput, f: &MissionFleet, kind: &str) {
+pub(crate) fn own_report(w: &mut WorldRecords, i: &OrderedInput, f: &MissionFleet, kind: &str) {
     mission_report(
         w,
         i,
@@ -503,7 +525,7 @@ fn own_report(w: &mut WorldRecords, i: &OrderedInput, f: &MissionFleet, kind: &s
         std::collections::BTreeMap::from([(f.owner, own_report_payload(i, f, kind))]),
     );
 }
-fn schedule(c: &mut ChangeSet, i: &OrderedInput, f: &MissionFleet) {
+pub(crate) fn schedule(c: &mut ChangeSet, i: &OrderedInput, f: &MissionFleet) {
     c.events.push(NewEvent {
         id: InputId(derived_id(i.id, &format!("leg:{}:{}", f.id, f.generation))),
         at: f.due_at,
@@ -617,6 +639,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     s.research_operations.get(operation).map(|op| op.host)
                 }
                 Command::World {
+                    action: WorldAction::SupplyHoldingFleet { intent, .. },
+                } => Some(intent.source_planet),
+                Command::World {
                     action: WorldAction::ScrapMissiles { body, .. },
                 } => Some(*body),
                 Command::World {
@@ -660,10 +685,15 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 {
                     return Err(GameError::ActorVacation.into());
                 }
-                if matches!(
-                    p.lifecycle,
-                    PlayerLifecycle::DeletionDraining | PlayerLifecycle::Removed
-                ) {
+                if p.lifecycle == PlayerLifecycle::Removed
+                    || (p.lifecycle == PlayerLifecycle::DeletionDraining
+                        && !matches!(
+                            command,
+                            Command::World {
+                                action: WorldAction::RecallMission { .. }
+                            }
+                        ))
+                {
                     return Err(GameError::ActorDraining.into());
                 }
             }
@@ -672,6 +702,15 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action:
+                WorldAction::SupplyHoldingFleet {
+                    intent,
+                    expected_terms_hash,
+                },
+        }) => {
+            crate::holding::supply(s, i, intent, expected_terms_hash, r, &mut c, &mut w)?;
+        }
         Input::Command(Command::World {
             action:
                 WorldAction::AbandonPlanet {
@@ -848,7 +887,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if i.actor != Actor::Player(f.owner) {
                 return Err(GameError::NotOwned.into());
             }
-            if f.leg != MissionLeg::Outbound {
+            if !matches!(f.leg, MissionLeg::Outbound | MissionLeg::Holding) {
                 return Err(GameError::NotOutbound.into());
             }
             if i.at >= f.due_at {
@@ -861,14 +900,19 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             });
             f.generation = f.generation.checked_add(1).ok_or(GameError::NumericRange)?;
             f.revision = f.revision.checked_add(1).ok_or(GameError::NumericRange)?;
+            let return_duration = if f.leg == MissionLeg::Holding {
+                f.terms.duration_ms
+            } else {
+                i.at - f.launched_at
+            };
             f.leg = MissionLeg::Returning;
-            if i.at == f.launched_at {
+            if return_duration == 0 {
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
                 if is_probe_only_espionage(&f) {
                     own_report(&mut w, i, &f, "Recalled");
                 }
             } else {
-                f.due_at = deadline(i.at, i.at - f.launched_at)?;
+                f.due_at = deadline(i.at, return_duration)?;
                 schedule(&mut c, i, &f);
                 own_report(&mut w, i, &f, "Recalled");
             }
@@ -899,6 +943,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             c.affected_viewers.insert(f.owner);
             if f.leg == MissionLeg::Returning {
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
+            } else if f.leg == MissionLeg::Holding {
+                f.leg = MissionLeg::Returning;
+                f.due_at = deadline(i.at, f.terms.duration_ms)?;
+                schedule(&mut c, i, &f);
+                if let Some(host) = f.authorization.target_owner {
+                    c.affected_viewers.insert(host);
+                }
             } else if f.leg == MissionLeg::Outbound {
                 let physical = target(s, &f.intent.destination, r);
                 match physical {
@@ -908,6 +959,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     Err(e) => return Err(e),
                     Ok((_, target_owner)) => {
                         match f.intent.mission {
+                            Mission::Hold => crate::holding::arrive(s, i, &mut f, &mut c, &mut w)?,
                             Mission::Deploy => {
                                 let MissionDestination::Body { id, .. } = f.intent.destination
                                 else {
@@ -1057,7 +1109,10 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                         }
                     }
                 }
-                if matches!(f.leg, MissionLeg::Colonized | MissionLeg::Deployed) {
+                if matches!(
+                    f.leg,
+                    MissionLeg::Colonized | MissionLeg::Deployed | MissionLeg::Holding
+                ) {
                     // The single consumed ship leaves no empty return obligation.
                 } else if f.ships.is_empty() {
                     f.leg = MissionLeg::Destroyed;

@@ -2,6 +2,7 @@ mod alliance_identity;
 mod alliances;
 mod bots;
 mod colonization;
+mod holding;
 mod insignias;
 mod public_universe;
 pub use public_universe::PublicationClaim;

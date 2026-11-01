@@ -41,7 +41,68 @@ pub(super) fn world_projection(
     progression.as_of_ms = snapshot.at;
     progression.sampled_at = snapshot.at;
     progression.capabilities = world_capabilities(progression.capabilities, &snapshot.rules);
+    let holdings = world
+        .records
+        .fleets
+        .values()
+        .filter_map(|fleet| {
+            let MissionDestination::Body {
+                id, expected_owner, ..
+            } = fleet.intent.destination
+            else {
+                return None;
+            };
+            if fleet.leg != MissionLeg::Holding || expected_owner != viewer || fleet.owner == viewer
+            {
+                return None;
+            }
+            let eligible = can_hold(state, fleet.owner, viewer).is_ok()
+                && [viewer, fleet.owner].iter().all(|p| {
+                    world
+                        .records
+                        .policies
+                        .get(p)
+                        .is_some_and(|p| p.lifecycle == PlayerLifecycle::Active && !p.vacation)
+                });
+            Some(HeldFleetView {
+                id: fleet.id,
+                owner: fleet.owner,
+                target: id,
+                ships: fleet
+                    .ships
+                    .iter()
+                    .map(|s| PublicShipStack {
+                        ship_type: s.ship_type,
+                        count: s.count.to_string(),
+                    })
+                    .collect(),
+                departure_at: fleet.due_at,
+                can_supply: eligible && snapshot.at < fleet.due_at,
+            })
+        })
+        .collect();
+    let mut depots = vec![];
+    if holding_enabled(&snapshot.rules) {
+        for body in state
+            .bodies
+            .values()
+            .filter(|b| b.owner == viewer && b.kind == BodyKind::Planet)
+        {
+            if let Some(level) = body.levels.get(&Building::AllianceDepot) {
+                let (budget, next) =
+                    depot_budget(*level, body.id, snapshot.at, &world.records.depot_supplies)
+                        .map_err(|_| ServiceError::InvariantFailure)?;
+                depots.push(DepotView {
+                    body: body.id,
+                    remaining_budget: budget.to_string(),
+                    next_budget_release_at: next,
+                });
+            }
+        }
+    }
     Ok(BoundView4 {
+        holdings,
+        depots,
         homeworld_id: snapshot.homeworld.as_ref().map(|(id, _)| *id),
         missiles: world
             .records
@@ -127,7 +188,8 @@ fn own_mission(fleet: &MissionFleet, viewer: PlayerId, at: Timestamp) -> Option<
         // Paid launch terms remain historical even if research or rules change.
         duration_ms: fleet.terms.duration_ms,
         paid_fuel: fleet.terms.fuel.to_string(),
-        can_recall: fleet.leg == MissionLeg::Outbound && at < fleet.due_at,
+        can_recall: matches!(fleet.leg, MissionLeg::Outbound | MissionLeg::Holding)
+            && at < fleet.due_at,
     })
 }
 
@@ -192,6 +254,13 @@ fn world_capabilities(
         });
         capabilities.push(CapabilityState {
             capability: "Deploy".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+    }
+    if holding_enabled(rules) {
+        capabilities.push(CapabilityState {
+            capability: "Hold".into(),
             enabled: true,
             reason: "Available".into(),
         });

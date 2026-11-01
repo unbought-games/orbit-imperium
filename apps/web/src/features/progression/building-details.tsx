@@ -1,3 +1,4 @@
+import { AllianceDepot } from '../alliance-depot'
 import { SiloSummary } from '../missile-inventory'
 import {
   DurationValue,
@@ -342,6 +343,9 @@ export function BuildingDetails({
             <p>Construction is unavailable.</p>
           )}
         </DetailSection>
+      )}
+      {building.id === 'AllianceDepot' && view.protocol === 4 && (
+        <AllianceDepot model={model} view={view} body={body} showEmpty />
       )}
       {building.id === 'MissileSilo' && <SiloSummary body={body} />}
       {entry && (

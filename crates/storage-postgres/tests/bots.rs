@@ -987,3 +987,88 @@ async fn observed_coordinate_destinations_authorize_quotes_without_free_scanning
         1
     );
 }
+
+#[tokio::test]
+async fn depot_admission_waits_for_social_lock_before_locking_bot_identity() {
+    use orbit_engine::{BodyId, DepotSupplyIntent, FleetId, Hash, PresenceCause};
+    let (store, pool, u) = setup(100).await;
+    let b = store.create_bot(u, "supply-lock-order", 0).await.unwrap();
+    store.prepare_scoped_runtime(u, 100).await.unwrap();
+    store.activate_scoped_runtime(u).await.unwrap();
+    let snapshot = store.bound_world(b).await.unwrap().facts.0;
+    let body: BodyId = snapshot
+        .state
+        .bodies
+        .values()
+        .find(|body| body.owner == b.player)
+        .unwrap()
+        .id;
+    let id = CommandId(Uuid::new_v4());
+    let pair = ForegroundAction {
+        presence: CommandEnvelopeV4 {
+            protocol: 4,
+            binding: b,
+            command_id: CommandId(Uuid::new_v4()),
+            command: CommandDto3::Progression(Command::World {
+                action: WorldAction::RecordForegroundPresence {
+                    body: Some(body),
+                    cause: PresenceCause::GameplayGesture,
+                    paired_command_id: Some(id),
+                },
+            }),
+        },
+        gameplay: CommandEnvelopeV4 {
+            protocol: 4,
+            binding: b,
+            command_id: id,
+            command: CommandDto3::Progression(Command::World {
+                action: WorldAction::SupplyHoldingFleet {
+                    intent: DepotSupplyIntent {
+                        source_planet: body,
+                        fleet: FleetId(Uuid::new_v4()),
+                        deuterium: 1_000_000,
+                    },
+                    expected_terms_hash: Hash("0".repeat(64)),
+                },
+            }),
+        },
+    };
+    let mut social = pool.begin().await.unwrap();
+    let pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *social)
+        .await
+        .unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,19))")
+        .bind(format!("alliances:{u}:{}", b.epoch))
+        .execute(&mut *social)
+        .await
+        .unwrap();
+    let admission_store = store.clone();
+    let admission = tokio::spawn(async move { admission_store.bound_admit4(pair).await });
+    // Observe the actual database wait, rather than relying on a scheduling sleep.
+    let started = std::time::Instant::now();
+    loop {
+        let waiting: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)) AND query LIKE '%pg_advisory_xact_lock%')")
+            .bind(pid).fetch_one(&pool).await.unwrap();
+        if waiting {
+            break;
+        }
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(10),
+            "admission did not reach the social lock"
+        );
+        tokio::task::yield_now().await;
+    }
+    // Social commands hold this lock first, then charge bot participation. This
+    // must succeed while the fleet admission is waiting, or their locks invert.
+    sqlx::query(
+        "SELECT player FROM bot_participation WHERE universe=$1 AND player=$2 FOR UPDATE NOWAIT",
+    )
+    .bind(u.0)
+    .bind(b.player.0)
+    .fetch_one(&mut *social)
+    .await
+    .unwrap();
+    social.commit().await.unwrap();
+    admission.await.unwrap().unwrap();
+}

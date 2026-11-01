@@ -11883,7 +11883,8 @@
           "Espionage",
           "Attack",
           "Deploy",
-          "Colonize"
+          "Colonize",
+          "Hold"
         ]
       },
       "MissionLeg4": {
@@ -11894,7 +11895,8 @@
           "Returned",
           "Destroyed",
           "Colonized",
-          "Deployed"
+          "Deployed",
+          "Holding"
         ]
       },
       "MissionDestination4": {
@@ -12107,6 +12109,18 @@
               90,
               100
             ]
+          },
+          "hold_hours": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2,
+              4,
+              8,
+              16,
+              32
+            ]
           }
         },
         "required": [
@@ -12169,6 +12183,9 @@
           "terms_hash": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
+          },
+          "holding": {
+            "$ref": "#/components/schemas/HoldingTerms4"
           }
         },
         "required": [
@@ -12444,6 +12461,26 @@
               "expected_terms_hash"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "SupplyHoldingFleet"
+              },
+              "intent": {
+                "$ref": "#/components/schemas/DepotSupplyIntent4"
+              },
+              "expected_terms_hash": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "intent",
+              "expected_terms_hash"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12585,7 +12622,10 @@
           "InsufficientMissiles",
           "OutOfRange",
           "SiloBusy",
-          "AbandonmentBlocked"
+          "AbandonmentBlocked",
+          "HoldingUnavailable",
+          "DepotBudgetExceeded",
+          "ExtensionTooSmall"
         ]
       },
       "BoundReceipt4": {
@@ -13087,7 +13127,8 @@
             "type": "string",
             "enum": [
               "Outbound",
-              "Returning"
+              "Returning",
+              "Holding"
             ]
           },
           "ships": {
@@ -13323,6 +13364,18 @@
             "type": "string",
             "format": "uuid",
             "description": "Viewer homeworld identity from the saved membership manifest; omitted when unknown."
+          },
+          "holdings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeldFleetView4"
+            }
+          },
+          "depots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DepotView4"
+            }
           }
         },
         "required": [
@@ -13370,7 +13423,8 @@
                   "Attack",
                   "Colonize",
                   "Deploy",
-                  "Missiles"
+                  "Missiles",
+                  "Hold"
                 ]
               },
               "enabled": {
@@ -13406,7 +13460,8 @@
                   "Attack",
                   "Colonize",
                   "Deploy",
-                  "Missiles"
+                  "Missiles",
+                  "Hold"
                 ]
               },
               "enabled": {
@@ -13735,6 +13790,22 @@
               "body"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "DepotSupplyQuote"
+              },
+              "intent": {
+                "$ref": "#/components/schemas/DepotSupplyIntent4"
+              }
+            },
+            "required": [
+              "type",
+              "intent"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -13866,6 +13937,26 @@
               "body"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "DepotSupplyQuote"
+              },
+              "intent": {
+                "$ref": "#/components/schemas/DepotSupplyIntent4"
+              },
+              "context": {
+                "$ref": "#/components/schemas/QueryContext"
+              }
+            },
+            "required": [
+              "type",
+              "intent",
+              "context"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -13914,6 +14005,9 @@
               },
               {
                 "$ref": "#/components/schemas/AbandonmentQuote4"
+              },
+              {
+                "$ref": "#/components/schemas/DepotSupplyQuote4"
               }
             ]
           },
@@ -14604,6 +14698,9 @@
           "harvested": {
             "$ref": "#/components/schemas/Resources",
             "description": "Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo."
+          },
+          "reason": {
+            "type": "string"
           }
         },
         "required": [
@@ -14964,7 +15061,7 @@
             "$ref": "#/components/schemas/Resources"
           },
           "own_cargo_loss": {
-            "$ref": "#/components/schemas/Resources"
+            "$ref": "#/components/schemas/BattleResourceTotals4"
           },
           "permanent_losses": {
             "type": "array",
@@ -15598,6 +15695,9 @@
               },
               {
                 "$ref": "#/components/schemas/MissileTerms4"
+              },
+              {
+                "$ref": "#/components/schemas/DepotSupplyQuote4"
               }
             ]
           },
@@ -20512,6 +20612,208 @@
             "type": "string"
           }
         }
+      },
+      "HoldingTerms4": {
+        "type": "object",
+        "properties": {
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rates": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/ShipId3"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          "fuel": {
+            "$ref": "#/components/schemas/Decimal"
+          }
+        },
+        "required": [
+          "duration_ms",
+          "rates",
+          "fuel"
+        ],
+        "additionalProperties": false
+      },
+      "DepotSupplyIntent4": {
+        "type": "object",
+        "properties": {
+          "source_planet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deuterium": {
+            "$ref": "#/components/schemas/PositiveDecimal"
+          }
+        },
+        "required": [
+          "source_planet",
+          "fleet",
+          "deuterium"
+        ],
+        "additionalProperties": false
+      },
+      "DepotSupplyQuote4": {
+        "type": "object",
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/DepotSupplyIntent4"
+          },
+          "rate_micro_per_hour": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "extension_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "departure_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "remaining_budget": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "available_deuterium": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "next_budget_release_at": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terms_hash": {
+            "type": "string"
+          },
+          "profile_hash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent",
+          "rate_micro_per_hour",
+          "extension_ms",
+          "departure_at",
+          "remaining_budget",
+          "available_deuterium",
+          "next_budget_release_at",
+          "terms_hash",
+          "profile_hash"
+        ],
+        "additionalProperties": false
+      },
+      "HeldFleetView4": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "target": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicShip4"
+            }
+          },
+          "departure_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "can_supply": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "owner",
+          "target",
+          "ships",
+          "departure_at",
+          "can_supply"
+        ],
+        "additionalProperties": false
+      },
+      "DepotView4": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "remaining_budget": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "next_budget_release_at": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "body",
+          "remaining_budget",
+          "next_budget_release_at"
+        ],
+        "additionalProperties": false
+      },
+      "BattleResourceTotals4": {
+        "type": "object",
+        "properties": {
+          "metal": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,38})$"
+          },
+          "crystal": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,38})$"
+          },
+          "deuterium": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,38})$"
+          }
+        },
+        "required": [
+          "metal",
+          "crystal",
+          "deuterium"
+        ],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

@@ -93,6 +93,20 @@ pub(crate) async fn select_query(
     query: &WorldQueryKind,
     rules: &Ruleset,
 ) -> Result<Selection, StoreError> {
+    if let WorldQueryKind::DepotSupplyQuote { intent } = query {
+        return select(
+            tx,
+            b.universe,
+            Actor::Player(b.player),
+            &Input::Command(Command::World {
+                action: WorldAction::SupplyHoldingFleet {
+                    intent: intent.clone(),
+                    expected_terms_hash: Hash(String::new()),
+                },
+            }),
+        )
+        .await;
+    }
     if let WorldQueryKind::MissileQuote { intent } = query {
         return select(
             tx,
@@ -154,6 +168,7 @@ pub(crate) async fn select_query(
         }
         WorldQueryKind::FleetQuote { .. }
         | WorldQueryKind::FleetEstimate { .. }
+        | WorldQueryKind::DepotSupplyQuote { .. }
         | WorldQueryKind::MissileQuote { .. } => unreachable!(),
     }
     for coords in &selected.coordinates {

@@ -48,6 +48,7 @@ export function dispatchSendLabel(
   if (intent.mission === 'Transport' || intent.mission === 'Deploy')
     return `${intent.mission} to ${destination.name} [${coordinateText(destination.coordinates)}]`
   const verb = {
+    Hold: 'Defend',
     Attack: 'Attack',
     Espionage: 'Spy',
     Harvest: 'Harvest',
@@ -60,6 +61,10 @@ export function dispatchSendLabel(
 }
 
 export const missionReturn = {
+  Hold: {
+    label: 'Return if surviving',
+    note: 'Ships defend during the prepaid hold and return with their cargo. Holding fuel is not refunded. The host can extend the hold with a Depot; you can recall at any time.',
+  },
   Transport: {
     label: 'Estimated return',
     note: 'Ships return after delivering cargo.',

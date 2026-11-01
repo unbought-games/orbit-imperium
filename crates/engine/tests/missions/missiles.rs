@@ -1,6 +1,6 @@
 use super::*;
 use std::collections::BTreeMap;
-fn edit(s: &mut GameState, r: &Ruleset, b: BodyId, n: u128, value: serde_json::Value) {
+pub(super) fn edit(s: &mut GameState, r: &Ruleset, b: BodyId, n: u128, value: serde_json::Value) {
     let owner = s.bodies[&b].owner;
     let mut e: world_edit::WorldEdit = serde_json::from_value(value).unwrap();
     e.op = "set".into();

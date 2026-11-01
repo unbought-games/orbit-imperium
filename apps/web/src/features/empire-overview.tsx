@@ -183,6 +183,8 @@ function FlightList({
             <span className={styles.flightIcon}>
               {flight.hostile ? (
                 <ShieldAlert size={18} />
+              ) : flight.leg === 'Holding' ? (
+                <Shield size={18} />
               ) : flight.leg === 'Outbound' ? (
                 <ArrowUpRight size={18} />
               ) : (
@@ -660,7 +662,7 @@ function PlanetDossier({
             icon={Radar}
             variant="compact"
             headingLevel={3}
-            title="No visible fleets in transit."
+            title="No active fleets."
           />
         )}
       </details>
@@ -707,7 +709,7 @@ export function EmpireOverview({
             <dd>{String(moons).padStart(2, '0')}</dd>
           </div>
           <div>
-            <dt>In transit</dt>
+            <dt>Fleets</dt>
             <dd>{String(flights.length).padStart(2, '0')}</dd>
           </div>
         </dl>
@@ -748,10 +750,10 @@ export function EmpireOverview({
                   <ResourceNumber value={totals.onWorlds[name]} />
                 </dd>
               </div>
-              <div title="On fleets in transit">
+              <div title="On active fleets">
                 <dt>
                   <Rocket size={14} aria-hidden="true" />
-                  <span className={styles.srOnly}>On fleets in transit</span>
+                  <span className={styles.srOnly}>On active fleets</span>
                 </dt>
                 <dd>
                   <ResourceNumber value={totals.inTransit[name]} />

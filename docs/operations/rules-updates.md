@@ -55,6 +55,9 @@ remains gated. Existing planets receive silo level zero at activation.
 [Nanite Factory](nanite-factory.md) adds local construction and manufacturing
 acceleration, requiring Robotics Factory 10 and Computer Technology 10. Existing
 planets receive level zero at activation.
+[Alliance Depot](alliance-depot.md) adds allied holding and host-funded resupply.
+Existing planets receive Depot level zero; migration 0028 must be installed on
+every runtime before enabling the holding rules.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
 
@@ -76,7 +79,7 @@ intentionally disabled dome with retained definitions is not silently re-enabled
 
 The upgrade has an explicit list of owned fields: the named content's catalog
 entries, research/ship definitions, unit costs, combat entries, related rapid fire,
-Small Cargo's Impulse Drive alternative, colonization policy, satellite energy, Fusion Reactor building/production definitions, Nanite Factory building definitions, and missile silo/warfare definitions.
+Small Cargo's Impulse Drive alternative, colonization policy, satellite energy, Fusion Reactor building/production definitions, Nanite Factory building definitions, missile silo/warfare definitions, and allied holding/Alliance Depot definitions.
 Each owned field or keyed entry must be absent, match its recognized older baseline,
 or already match the bundled value. Anything else produces a conflict with the
 path, current value, recognized older value and proposed value. All conflicts are

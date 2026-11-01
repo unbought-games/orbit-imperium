@@ -1,0 +1,47 @@
+.section {
+  display: grid;
+  gap: var(--space-4);
+  margin-block: var(--space-6);
+}
+.list {
+  display: grid;
+  gap: var(--space-4);
+}
+.fleet {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.fleet header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 42rem;
+}
+.facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.facts dd {
+  margin: 0;
+}
+
+.section > p,
+.form > p,
+.fleet header h3 {
+  margin: 0;
+}

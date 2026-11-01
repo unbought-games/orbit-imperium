@@ -1,3 +1,4 @@
+import { RichSelect } from '../ui/rich-select'
 import { BodyIllustration } from './body-illustration'
 import { PlayerName } from './player-name'
 import {
@@ -56,6 +57,7 @@ export type DispatchDraft = {
     | 'Attack'
     | 'Colonize'
     | 'Deploy'
+    | 'Hold'
   observedAt?: number
   target?: S['MissionDestination4']
 }
@@ -85,6 +87,8 @@ export function Dispatch({
     mission,
     colony,
     setMission,
+    holdHours,
+    setHoldHours,
     destinationText,
     setDestinationText,
     targetKind,
@@ -217,6 +221,42 @@ export function Dispatch({
                 clear()
               }}
             />
+            {mission === 'Hold' && (
+              <Field>
+                Holding duration
+                <RichSelect
+                  label="Holding duration"
+                  value={String(holdHours)}
+                  onValueChange={(value) => {
+                    setHoldHours(
+                      Number(value) as NonNullable<
+                        S['FleetIntent4']['hold_hours']
+                      >,
+                    )
+                    clear()
+                  }}
+                  options={[0, 1, 2, 4, 8, 16, 32].map((h) => ({
+                    value: String(h),
+                    label:
+                      h === 0
+                        ? 'Round trip · no defense'
+                        : `${h} ${h === 1 ? 'hour' : 'hours'}`,
+                    content:
+                      h === 0
+                        ? 'Round trip · no defense'
+                        : `${h} ${h === 1 ? 'hour' : 'hours'}`,
+                  }))}
+                >
+                  {holdHours === 0
+                    ? 'Round trip · no defense'
+                    : `${holdHours} ${holdHours === 1 ? 'hour' : 'hours'}`}
+                </RichSelect>
+                <Text>
+                  Real hours. Fuel is prepaid and not refunded. Your ships and
+                  cargo remain yours.
+                </Text>
+              </Field>
+            )}
             <DispatchDestinationPreview
               coordinates={destinationCoordinates}
               kind={targetKind}
@@ -373,6 +413,7 @@ export function Dispatch({
               />
             </Field>
             <DispatchTiming
+              holdingMs={mission === 'Hold' ? holdHours * 3600000 : 0}
               terms={timing}
               availableFuel={body.amounts.deuterium}
               mission={mission}

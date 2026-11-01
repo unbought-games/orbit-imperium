@@ -305,6 +305,15 @@ impl PgStore {
         {
             return Err("cannot export active missile flights; wait for impact first".into());
         }
+        if w.depot_supplies
+            .values()
+            .any(|s| i128::from(at) < i128::from(s.at) + i128::from(HOLD_HOUR_MS))
+        {
+            return Err(
+                "cannot export an active Depot supply budget; wait for its rolling hour to expire"
+                    .into(),
+            );
+        }
         for f in w.fleets.values().filter(|f| f.active()) {
             let MissionDestination::Body { id: target, .. } = f.intent.destination else {
                 return Err(
@@ -315,6 +324,10 @@ impl PgStore {
                 Mission::Attack => "attack",
                 Mission::Espionage => "spy",
                 Mission::Transport => "transport",
+                Mission::Hold => return Err(
+                    "cannot export active holding missions; recall them and wait for return first"
+                        .into(),
+                ),
                 _ => return Err("cannot export active deploy mission; finish it first".into()),
             };
             let source = coordinate_label(s.bodies[&f.intent.origin].coordinates);

@@ -119,10 +119,14 @@ pub fn check_mission_eligibility(
         || !(matches!(
             mission,
             Mission::Transport | Mission::Harvest | Mission::Espionage
-        ) || (mission == Mission::Attack && r.attacks())
+        ) || (mission == Mission::Hold && holding_enabled(r))
+            || (mission == Mission::Attack && r.attacks())
             || (matches!(mission, Mission::Colonize | Mission::Deploy) && r.colonization()))
     {
         return Err(GameError::UnavailableContent);
+    }
+    if mission == Mission::Hold {
+        can_hold(s, actor, target.ok_or(GameError::InvalidInput)?)?;
     }
     check_action_policy(s, actor, target, Some(mission), at, r)
 }

@@ -1,3 +1,4 @@
+import { AllianceDepot } from './alliance-depot'
 import { MissileFlight } from './missile-flight'
 import { incomingMovements, outgoingMovements } from './fleet-movements'
 import { Radar, Rocket } from 'lucide-react'
@@ -127,6 +128,17 @@ export function MissionFleets({
           )}
         </div>
       )}
+      {!item &&
+        view.bodies
+          .filter((b) => (view.holdings ?? []).some((f) => f.target === b.id))
+          .map((body) => (
+            <AllianceDepot
+              key={body.id}
+              model={model}
+              view={view}
+              body={body}
+            />
+          ))}
       {!item && (
         <section className={styles.incoming} aria-label="Incoming fleets">
           <Heading level={2}>Incoming fleets</Heading>

@@ -25,3 +25,7 @@ The schema stores role definitions and assignments, Markdown, membership/applica
 Validation: 19 engine policy tests, two application projection tests and six real PostgreSQL/HTTP tests pass. Focused native suites are `make _db-alliances` and the alliance engine/application test filters. Exact source digest, timings, intermediate compilation issues and cleanup are recorded in `docs/plans/alliance-backend-handoff.md`.
 
 Final integrated validation, exact implementation revision, failures and cleanup are recorded in [Alliance validation](../verification/alliances.md).
+
+With allied holding enabled, current members and accepted friends can defend each
+other’s planets. See [Allied holding and Alliance Depot](../operations/alliance-depot.md)
+for prepaid duration, host capacity, resupply, and relationship-change rules.
