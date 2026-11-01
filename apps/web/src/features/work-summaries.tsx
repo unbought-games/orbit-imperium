@@ -21,6 +21,7 @@ import { ResearchSummaryContent } from './research-summary-content'
 import { ResourceSummary } from '../ui/number-value'
 import { manufacturingQueue } from '../client-model/manufacturing-queue'
 import { ManufacturingSummary } from './manufacturing-summary'
+import { LevelWorkSummary } from './level-work-summary'
 export function WorkSummaries({
   view,
   body,
@@ -75,6 +76,12 @@ export function WorkSummaries({
         now,
       )
     : null
+  const constructionPercent =
+    construction &&
+    'started_at' in construction &&
+    construction.started_at !== undefined
+      ? elapsedProgress(construction.started_at, construction.due_at, now)
+      : null
   const researchHost = research
     ? view.bodies.find((entry) => entry.id === research.host)
     : null
@@ -177,21 +184,39 @@ export function WorkSummaries({
                   : null
             const compactWork =
               layout === 'compact' && target && work && due !== undefined
+            const catalogWork = compactWork && currentPage !== 'overview'
             const host =
               category === 'research' && researchHost
                 ? `Host ${bodyName(researchHost)} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
                 : null
             return (
               <section
-                className={`${styles.summary} ${compactWork ? styles.activeSummary : ''} ${category === 'manufacturing' && queue.length > 0 ? styles.productionSummary : ''}`}
+                className={`${styles.summary} ${compactWork ? styles.activeSummary : ''} ${(category === 'manufacturing' && queue.length > 0) || catalogWork ? styles.productionSummary : ''}`}
                 key={title}
                 aria-label={title}
               >
                 <Heading level={2}>{title}</Heading>
-                {layout === 'directive' &&
-                category === 'research' &&
-                research &&
-                target ? (
+                {catalogWork &&
+                (category === 'buildings' ? construction : research) ? (
+                  <LevelWorkSummary
+                    item={
+                      category === 'buildings' && construction
+                        ? { kind: 'Building', id: construction.building }
+                        : { kind: 'Research', id: research!.research }
+                    }
+                    work={work}
+                    target={target}
+                    host={host}
+                    percent={
+                      category === 'buildings'
+                        ? constructionPercent
+                        : researchPercent
+                    }
+                  />
+                ) : layout === 'directive' &&
+                  category === 'research' &&
+                  research &&
+                  target ? (
                   <ResearchSummaryContent
                     research={research.research}
                     targetLevel={research.target_level}

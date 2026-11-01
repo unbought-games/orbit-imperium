@@ -1,4 +1,4 @@
-import { ArrowRight, Clock3, Layers3, Radar } from 'lucide-react'
+import { ArrowRight, Radar } from 'lucide-react'
 import type { manufacturingQueue } from '../client-model/manufacturing-queue'
 import { manufacturingQueueCompletion } from '../client-model/manufacturing-queue'
 import { resolveCatalogArt } from '../ui/artwork'
@@ -8,6 +8,12 @@ import { VisuallyHidden } from '../ui/visually-hidden'
 import { Popover } from '../ui/popover'
 import { manufacturingSummary } from './manufacturing-summary-model'
 import styles from './manufacturing-summary.module.css'
+import {
+  ActiveWorkCard,
+  WorkCardSurface,
+  WorkTimer as Timer,
+  WorkTimers,
+} from './active-work-card'
 
 type Batch = ReturnType<typeof manufacturingQueue>[number]
 
@@ -22,37 +28,6 @@ function UnitArt({ batch, size }: { batch: Batch; size: number }) {
       height={size}
       alt=""
     />
-  )
-}
-
-function Timer({
-  title,
-  value,
-  total = false,
-}: {
-  title: string
-  value: string
-  total?: boolean
-}) {
-  return (
-    <div className={total ? styles.totalTimer : styles.timer}>
-      <dt>
-        {total ? (
-          <Layers3 size={16} aria-hidden="true" />
-        ) : (
-          <Clock3 size={16} aria-hidden="true" />
-        )}
-        {title}
-      </dt>
-      <dd
-        className={
-          value === 'Awaiting confirmation' ? styles.unconfirmed : undefined
-        }
-        aria-label={value === 'Awaiting confirmation' ? value : undefined}
-      >
-        {value === 'Awaiting confirmation' ? 'Pending' : value}
-      </dd>
-    </div>
   )
 }
 
@@ -75,53 +50,39 @@ export function ManufacturingSummary({
   const producing = current.status === 'Producing'
   const waiting = producing && time(current.due) === 'Awaiting confirmation'
   return (
-    <div className={styles.production}>
+    <WorkCardSurface>
       <ol className={styles.queue} aria-label="Manufacturing queue">
-        <li className={styles.current}>
-          <div className={styles.activeBuild}>
-            <div className={styles.portrait}>
-              <UnitArt batch={current} size={96} />
-            </div>
-            <div className={styles.identity}>
-              <span className={styles.status}>
-                <span className={styles.statusLight} />
-                {waiting
-                  ? 'Awaiting confirmation'
-                  : producing
-                    ? 'Building now'
-                    : current.status === 'Queued'
-                      ? 'Up next'
-                      : current.status}
+        <li>
+          <ActiveWorkCard
+            item={current.item}
+            status={
+              waiting
+                ? 'Awaiting confirmation'
+                : producing
+                  ? 'Building now'
+                  : current.status === 'Queued'
+                    ? 'Up next'
+                    : current.status
+            }
+            badge={
+              <span title="Units remaining">
+                <NumberValue value={current.remaining} />
+                <VisuallyHidden> remaining</VisuallyHidden>
               </span>
-              <div className={styles.unitTitle}>
-                <h3>{label(current.item.id)}</h3>
-                <div className={styles.count} title="Units remaining">
-                  <NumberValue value={current.remaining} />
-                  <VisuallyHidden> remaining</VisuallyHidden>
-                </div>
-              </div>
-            </div>
-          </div>
-          <dl className={styles.timers}>
-            <Timer
-              title={producing ? 'Next unit' : 'Starts in'}
-              value={time(current.due)}
-            />
-            <Timer title="This order" value={time(current.finalDue)} />
-            <Timer title="Entire queue" value={time(completion)} total />
-          </dl>
-          {percent !== null && (
-            <div
-              className={styles.progress}
-              role="progressbar"
-              aria-label={`${label(current.item.id)} next unit estimated progress`}
-              aria-valuenow={Math.round(percent)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <span style={{ width: `${percent}%` }} />
-            </div>
-          )}
+            }
+            percent={percent}
+            progressLabel={`${label(current.item.id)} next unit estimated progress`}
+            moving={producing && !waiting}
+          >
+            <WorkTimers>
+              <Timer
+                title={producing ? 'Next unit' : 'Starts in'}
+                value={time(current.due)}
+              />
+              <Timer title="This order" value={time(current.finalDue)} />
+              <Timer title="Entire queue" value={time(completion)} total />
+            </WorkTimers>
+          </ActiveWorkCard>
         </li>
         {upcoming.length > 0 && (
           <li className={styles.upcoming}>
@@ -178,6 +139,6 @@ export function ManufacturingSummary({
           No further orders queued
         </p>
       )}
-    </div>
+    </WorkCardSurface>
   )
 }

@@ -1,148 +1,8 @@
-.production {
-  container-type: inline-size;
-  min-width: 0;
-  background: linear-gradient(115deg, #a4dbef08, transparent 65%);
-  border: 1px solid #a4dbef26;
-  border-top-color: #cbb68d66;
-  box-shadow: inset 0 1px #cbb68d12;
-}
 .queue,
 .orders {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-.current {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-  padding: var(--space-5);
-  position: relative;
-}
-.activeBuild {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  min-width: 0;
-}
-.portrait {
-  flex: 0 0 88px;
-  width: 88px;
-  height: 88px;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(ellipse at center, #a4dbef22, transparent 70%);
-  border: 1px solid #cbb68d40;
-  box-shadow: inset 0 0 18px #a4dbef08;
-}
-.portrait img {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  filter: drop-shadow(0 5px 8px #0008);
-}
-.identity {
-  min-width: 0;
-}
-.status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--accent);
-  font-size: 0.625rem;
-  font-weight: 650;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.statusLight {
-  width: 5px;
-  height: 5px;
-  flex-shrink: 0;
-  background: var(--accent);
-  box-shadow: 0 0 8px #cbb68d66;
-}
-.unitTitle {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: 6px;
-}
-.identity h3 {
-  margin: 0;
-  font: 500 1.375rem/1.2 var(--font-editorial);
-  color: var(--text);
-  overflow-wrap: anywhere;
-}
-.count {
-  min-width: 24px;
-  max-width: 100%;
-  padding: 3px 7px;
-  border: 1px solid #cbb68d55;
-  border-radius: 3px;
-  background: #cbb68d12;
-  color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 650;
-  line-height: 1.25;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-.timers {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  gap: var(--space-3);
-  align-items: start;
-}
-.timer,
-.totalTimer {
-  min-width: 0;
-}
-.timers > div + div {
-  border-left: 1px solid #a4dbef26;
-  padding-left: var(--space-3);
-}
-.timer dt,
-.totalTimer dt {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-muted);
-  font-size: 0.6875rem;
-  line-height: 1.5;
-}
-.timer dt svg,
-.totalTimer dt svg {
-  flex-shrink: 0;
-}
-.timer dd,
-.totalTimer dd {
-  margin: 6px 0 0;
-  font-size: 1.0625rem;
-  line-height: 1.35;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-.totalTimer dt,
-.totalTimer dd {
-  color: var(--ice);
-}
-.totalTimer dd {
-  font-weight: 650;
-}
-.progress {
-  grid-column: 1 / -1;
-  height: 4px;
-  background: #a4dbef1c;
-  overflow: hidden;
-}
-.progress > span {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--ice-shadow), var(--ice));
-  box-shadow: 0 0 10px #a4dbef55;
 }
 .upcoming {
   padding: var(--space-3) var(--space-5) var(--space-4);
@@ -221,9 +81,6 @@
   gap: var(--space-6);
   margin: var(--space-3) 0 0;
 }
-.orderDetails dd {
-  font-size: 0.875rem;
-}
 .queueEmpty {
   display: flex;
   align-items: center;
@@ -234,53 +91,9 @@
   color: var(--text-muted);
   font-size: 0.6875rem;
 }
-@container (min-width: 700px) {
-  .current {
-    grid-template-columns: minmax(240px, 1fr) minmax(360px, 1fr);
-    align-items: center;
-    gap: var(--space-4) var(--space-8);
-  }
-  .timer dd,
-  .totalTimer dd {
-    font-size: 1.375rem;
-  }
-}
 @container (max-width: 360px) {
-  .current {
-    padding: var(--space-4);
-    gap: var(--space-4);
-  }
-  .portrait {
-    flex-basis: 64px;
-    width: 64px;
-    height: 64px;
-  }
-  .portrait img {
-    width: 76px;
-    height: 76px;
-  }
-  .identity h3 {
-    font-size: 1.25rem;
-  }
-  .timer dt svg,
-  .totalTimer dt svg {
-    display: none;
-  }
   .upcoming,
   .queueEmpty {
     padding-inline: var(--space-4);
   }
-  .timers {
-    gap: var(--space-2);
-  }
-  .timers > div + div {
-    padding-left: var(--space-2);
-  }
-}
-
-.timer .unconfirmed,
-.totalTimer .unconfirmed {
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  font-weight: 400;
 }

@@ -153,7 +153,7 @@
     0.8125rem/1.5 system-ui,
     sans-serif;
 }
-.editorial time {
+.editorial .summary-content time {
   display: block;
   font:
     0.6875rem/1.5 system-ui,
@@ -247,7 +247,7 @@
     grid-column: 1;
     grid-row: 2;
   }
-  .editorial time {
+  .editorial .summary-content time {
     grid-column: 2;
     grid-row: 2 / 4;
     text-align: right;
@@ -297,7 +297,7 @@
   text-align: left;
   font-size: 0.75rem;
 }
-.compact time {
+.compact .summary-content time {
   display: none;
 }
 .compact .actions {
