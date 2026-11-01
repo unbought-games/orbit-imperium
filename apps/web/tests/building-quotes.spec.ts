@@ -1094,7 +1094,15 @@ for (const width of [390, 1440]) {
         }
         await route.fulfill({ json: response })
       })
+      // Wait for the quote network boundary before asserting its rendered values.
+      // A cold detail route can take longer than the assertion window in CI.
+      const quoteResponse = page.waitForResponse(response =>
+        /\/progression-options(?:\/bulk)?$/.test(new URL(response.url()).pathname),
+      )
       await page.goto(`/u/andromeda/b/${planet.id}/resources/${fusion ? 'fusion-reactor' : 'crystal-mine'}`)
+      const response = await quoteResponse
+      expect(response.status()).toBe(200)
+      await response.finished()
       const section = fusion ? page.getByLabel('Target level and benefit') : page.getByRole('region', { name: 'Active construction', exact: true })
       const energyLabel = fusion ? 'Energy after build' : demolition ? 'Energy after demolition' : 'Energy after upgrade'
       const energy = section.getByRole('button', { name: `${energyLabel} details`, exact: true })
