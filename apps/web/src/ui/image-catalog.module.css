@@ -37,19 +37,17 @@
   gap: 12px;
 }
 .tileContainer {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   position: relative;
   min-width: 0;
 }
-/* Reserve space in the full-row link for its separate auxiliary action. */
-.tile.withAction {
-  padding-right: 56px;
-}
+/* Share the trailing track so timers can grow without covering the row link. */
 .action {
-  position: absolute;
-  inset-block: 0;
-  right: 8px;
-  width: 44px;
+  grid-area: 1 / 3;
+  z-index: 1;
+  min-width: 44px;
+  margin-right: 8px;
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -58,9 +56,10 @@
   pointer-events: auto;
 }
 .tile {
+  grid-area: 1 / 1 / 2 / -1;
   width: 100%;
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: subgrid;
   align-items: center;
   padding: 0;
   border: 1px solid var(--tile-border, #3d5365);
@@ -104,33 +103,19 @@
   pointer-events: none;
 }
 .progress {
-  flex-shrink: 0;
-  max-width: 40%;
-  margin-left: auto;
   padding: 4px 8px 4px 0;
-  color: var(--ice);
   text-align: right;
   pointer-events: none;
-  font-variant-numeric: tabular-nums;
-}
-.progressHeader {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.8125rem;
-}
-.direction {
-  display: flex;
-  color: var(--resource-deuterium);
 }
 .countdown {
-  display: block;
   color: var(--text);
   font-size: 0.8125rem;
   font-weight: 650;
+  font-variant-numeric: tabular-nums;
   line-height: 1.3;
-  overflow-wrap: anywhere;
+}
+.time {
+  white-space: nowrap;
 }
 .countdown small {
   display: block;
@@ -199,9 +184,6 @@
 .tile:disabled strong,
 .unavailable strong {
   color: #87939c;
-}
-.working:disabled .progressHeader strong {
-  color: var(--ice);
 }
 @container (max-width: 600px) {
   .grid {

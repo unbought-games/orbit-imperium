@@ -11,6 +11,78 @@ import { installGameFixture, shellFixture, body, binding, refreshGame, id } from
 import { universeSlug } from '../src/client-model/universe-name'
 import type { components } from '../src/contracts'
 type S = components['schemas']
+
+for (const width of [320, 390, 1440]) {
+  for (const screen of ['resources', 'facilities', 'research'] as const) {
+    test(`${screen} shares level transitions and keeps long timers on one line at ${width}px`, async ({ page }) => {
+      const height = width === 1440 ? 1000 : 844
+      const now = 1_800_000_000_000
+      await page.clock.install({ time: now })
+      await page.clock.pauseAt(now)
+      await page.setViewportSize({ width, height })
+      const research = screen === 'research'
+      const building = screen === 'resources' ? 'CrystalMine' : 'ResearchLab'
+      const title = research ? 'Impulse Drive' : screen === 'resources' ? 'Crystal Mine' : 'Research Lab'
+      const planet = structuredClone(body)
+      planet.levels[building] = 4
+      const operation: S['ResearchOperationDto'] = {
+        id: id(20), host: body.id, research: 'ImpulseDrive', source_level: 4, target_level: 5,
+        paid: { metal: '0', crystal: '0', deuterium: '0' },
+        started_at: now, due_at: now + 96 * 60_000, labs: [], effective_lab: '1', can_cancel: true,
+      }
+      const construction: S['Construction3'] = {
+        id: id(21), body: body.id, building, target_level: 5,
+        due_at: operation.due_at, paid: operation.paid,
+      }
+      const options = {
+        bodies: [planet], sampledAt: now,
+        research: [{ research: 'ImpulseDrive' as const, level: 4 }],
+        researchOperation: research ? operation : null,
+        constructions: research ? [] : [construction],
+        catalog: [...catalog, ...(['CrystalMine', 'ImpulseDrive'] as const).map(item => ({
+          key: item === 'ImpulseDrive' ? { kind: 'Research' as const, id: item } : { kind: 'Building' as const, id: item },
+          requirements: [], enabled: true, mobile: false, body_kinds: ['Planet' as const],
+        }))],
+      }
+      await shellFixture(page, options)
+      await page.goto(`/u/andromeda/b/${body.id}/${screen}`)
+      const row = page.getByRole('link', { name: `${research ? 'Research' : 'Upgrade'} ${title}`, exact: true })
+      const progress = row.getByRole('group', { name: research ? 'Research progress' : 'Construction progress' })
+      const timer = page.getByLabel(`${title} time remaining`, { exact: true })
+      await expect(progress).toContainText('Level 4 → Level 5')
+      await expect(progress.getByLabel('Target level 5')).toHaveText('Level 5')
+      await expect(progress.getByLabel('Target level 5')).toHaveCSS('font-weight', '700')
+      for (const [duration, text] of [[96 * 60_000, '1h 36m'], [123 * 86_400_000, '123 days']] as const) {
+        operation.due_at = now + duration
+        construction.due_at = now + duration
+        // Load each authoritative duration with the clock held still.
+        await page.reload()
+        await expect(timer).toHaveText(text)
+        const time = timer.getByText(text, { exact: true })
+        // Verify actual text geometry, not just the requested CSS property.
+        const lines = await time.evaluate(element => {
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          return [...range.getClientRects()].map(rect => rect.y)
+        })
+        expect(new Set(lines).size).toBe(1)
+        const timerBox = (await timer.boundingBox())!
+        const rowBox = (await row.boundingBox())!
+        const targetBox = (await progress.getByLabel('Target level 5').boundingBox())!
+        expect(timerBox.x).toBeGreaterThanOrEqual(targetBox.x + targetBox.width)
+        expect(rowBox.x + rowBox.width - timerBox.x - timerBox.width).toBeLessThanOrEqual(10)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        await row.scrollIntoViewIfNeeded()
+        await page.clock.runFor(1000)
+        await diagnosticScreenshot(page, { path: `test-results/catalog-${screen}-${text.replaceAll(' ', '-')}-${width}x${height}.png` })
+      }
+      await row.focus()
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('region', { name: 'Progression quote' })).toBeVisible()
+    })
+  }
+}
+
 test('active research remains cancellable from its details after removing Current work', async ({
   page,
 }) => {
