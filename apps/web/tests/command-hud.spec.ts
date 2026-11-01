@@ -1737,3 +1737,54 @@ for (const width of [1440, 390]) {
 }
 
 }
+
+for (const width of [1440, 390]) {
+  test(`reading a HUD item does not request more history at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    await page.clock.install()
+    await page.clock.pauseAt(new Date())
+    await page.addInitScript(() => {
+      const NativeObserver = window.IntersectionObserver
+      window.IntersectionObserver = class extends NativeObserver {
+        private hud: boolean
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          super(callback, options)
+          this.hud = options?.root instanceof HTMLDialogElement
+        }
+        observe(target: Element) { if (!this.hud) super.observe(target) }
+      }
+    })
+    const f = await intelligenceFixture(page)
+    f.headers.push(...Array.from({length: 130}, (_, i) => ({id: id(5000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false})))
+    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await expect(page.getByTestId('unread-count')).toHaveText('99')
+    await page.getByTestId('command-orb').click()
+    await page.clock.runFor(1000)
+    const panel = page.getByRole('dialog')
+    const list = panel.getByLabel('Intelligence list')
+    const entries = list.getByRole('button')
+    const more = panel.getByRole('button', {name: 'Load more intelligence', exact: true})
+    for (const count of [40, 60, 80, 100]) {
+      await more.click()
+      await expect(entries).toHaveCount(count)
+    }
+    // Reading an item lowers the target count below the already satisfied
+    // display limit. The passive refresh still has 99 unread in its first 100.
+    await entries.first().click()
+    await expect.poll(() => f.reads).toContain('MarkReportRead')
+    await panel.getByRole('button', {name: 'Back to list'}).click()
+    await expect(entries).toHaveCount(99)
+    await expect(more).toBeEnabled()
+    await page.clock.runFor(15000)
+    await expect(entries).toHaveCount(99)
+    await expect(list).toHaveAttribute('aria-busy', 'false')
+    expect(f.reportQueries).not.toContain(id(5099))
+    await more.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, {path: `test-results/background-hud-read-${width}x900.png`})
+    // A new gesture still loads the next page.
+    await more.click()
+    await expect(entries).toHaveCount(120)
+    expect(f.reportQueries.filter(cursor => cursor === id(5099))).toHaveLength(1)
+  })
+}

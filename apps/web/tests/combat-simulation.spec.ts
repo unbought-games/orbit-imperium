@@ -168,14 +168,16 @@ test('prepares an editable observed-moon attack with authoritative, race-safe fl
   await delayed
   await expect(timing).toContainText('8m 20s')
   await expect(timing).not.toContainText('3m 20s')
-  // A viewer revision immediately invalidates a previously successful estimate.
+  // A viewer revision revalidates unchanged advisory inputs without blanking them.
   release = undefined
   hold = true
   revision++
   await refreshGame(page)
-  await expect.poll(() => release !== undefined).toBe(true)
-  await expect(timing).not.toContainText('8m 20s')
-  release!()
+  try {
+    await expect.poll(() => release !== undefined).toBe(true)
+    await expect(timing).toContainText('8m 20s')
+    await expect(timing).not.toContainText('Updating flight times')
+  } finally { release?.() }
   await expect(timing).toContainText('8m 20s')
   // Server eligibility failures remain visible, with no guessed duration or fuel.
   blocked = 'BeginnerProtected'

@@ -1194,10 +1194,12 @@ test('active facility inspection follows its actual target after direct navigati
 for (const width of [1440, 390]) {
   test(`background metadata refresh preserves building details and focus at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
-    const bootstrap = page.waitForResponse(r => r.url().endsWith('/api/v1/bootstrap'))
     await buildingFixture(page)
-    const snapshot = (await (await bootstrap).json()).result.game.snapshot.view as S['BoundView4']
+    // Navigation bootstraps again. Build the update from that current snapshot,
+    // rather than the earlier fixture setup response rejected on slower hosts.
+    const bootstrap = page.waitForResponse(r => r.url().endsWith('/api/v1/bootstrap'))
     await page.goto(`/u/andromeda/b/${body.id}/resources/crystal-mine`)
+    const snapshot = (await (await bootstrap).json()).result.game.snapshot.view as S['BoundView4']
     const build = page.getByRole('button', {name: 'Confirm upgrade', exact: true})
     await expect(build).toBeEnabled()
     await page.clock.runFor(8000)

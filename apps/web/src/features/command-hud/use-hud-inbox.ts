@@ -15,6 +15,7 @@ export function useHudInbox(
   scrollRoot: RefObject<HTMLDialogElement | null>,
 ) {
   const [limit, setLimit] = useState(batchSize)
+  const [pageIntent, setPageIntent] = useState<number | null>(null)
   const request = reportLoad(state)
   const changingVisibility = !!pendingReportVisibility(state.attempts.values())
   const failed = request.kind === 'more' && request.error !== null
@@ -34,49 +35,42 @@ export function useHudInbox(
   ]
   const more = limit < targets.length || !!state.reportInbox?.has_more
   const buffered = limit < targets.length
-  const needsPage = limit > targets.length && !!state.reportInbox?.has_more
   const loading =
     changingVisibility ||
     (!state.reportInbox && request.pending) ||
     (!buffered &&
-      ((needsPage && !failed) || (request.pending && request.kind === 'more')))
-  // The limit is user intent. A passive request may already own the shared
-  // inbox; wait for it to settle, then fetch any page still needed by that intent.
+      (pageIntent !== null || (request.pending && request.kind === 'more')))
+  // Only a pagination gesture creates an outstanding page intent. A change in
+  // the unread count must not turn the settled display limit into new work.
   useEffect(() => {
-    if (
-      !visible ||
-      !needsPage ||
-      request.pending ||
-      changingVisibility ||
-      failed
-    )
-      return
+    if (pageIntent === null) return
     let active = true
-    void model.reports.refreshInbox(true).catch(async () => {
-      // A failed refresh publishes its error before its shared promise clears.
-      // If this effect joined that promise, retry the queued pagination intent
-      // after it settles. A failure of the page itself remains an explicit retry.
-      const settled = reportLoad(model.store.getState())
-      if (active && settled.kind === 'refresh' && settled.error)
-        await model.reports.refreshInbox(true).catch(() => {
-          /* Shared request state supplies retry in both surfaces. */
-        })
-    })
+    void (async () => {
+      try {
+        try {
+          await model.reports.refreshInbox(true)
+        } catch (error) {
+          if (reportLoad(model.store.getState()).kind !== 'refresh') throw error
+        }
+        // A passive refresh may already own the shared request. Wait for its
+        // promise (including failure cleanup), then fetch the requested page.
+        if (active && reportLoad(model.store.getState()).kind === 'refresh')
+          await model.reports.refreshInbox(true)
+        if (active) setLimit((value) => Math.max(value, pageIntent))
+      } catch {
+        /* Shared request state supplies retry in both surfaces. */
+      } finally {
+        if (active) setPageIntent(null)
+      }
+    })()
     return () => {
       active = false
     }
-  }, [
-    model,
-    visible,
-    needsPage,
-    request.pending,
-    changingVisibility,
-    failed,
-    state.reportInbox,
-  ])
+  }, [model, pageIntent])
   const loadTo = (nextLimit: number) => {
     if (!visible || changingVisibility || nextLimit <= limit) return
-    setLimit((value) => Math.max(value, nextLimit))
+    if (buffered) setLimit((value) => Math.max(value, nextLimit))
+    else setPageIntent(nextLimit)
   }
   const loadMore = () => loadTo(limit + batchSize)
   const latestLoad = useRef(loadTo)
@@ -120,9 +114,6 @@ export function useHudInbox(
     failed,
     sentinel,
     loadMore,
-    retry: () =>
-      void model.reports.refreshInbox(true).catch(() => {
-        /* Shared request state supplies retry in both surfaces. */
-      }),
+    retry: loadMore,
   }
 }
