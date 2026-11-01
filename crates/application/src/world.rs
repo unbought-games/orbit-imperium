@@ -40,6 +40,14 @@ pub struct ForegroundAction {
     pub gameplay: CommandEnvelopeV4,
 }
 impl ForegroundAction {
+    pub fn requires_recent_authentication(&self) -> Result<bool, ServiceError> {
+        Ok(matches!(
+            self.gameplay.domain()?,
+            Command::World {
+                action: WorldAction::RequestEmpireDeletion | WorldAction::CancelEmpireDeletion
+            }
+        ))
+    }
     pub fn validate(&self) -> Result<(Command, Command), ServiceError> {
         if self.presence.binding != self.gameplay.binding
             || self.presence.command_id == self.gameplay.command_id
@@ -134,6 +142,10 @@ pub struct DepotView {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoundView4 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empire_deletion: Option<EmpireDeletionStatus>,
+    #[serde(default)]
+    pub leads_alliance: bool,
     #[serde(default)]
     pub holdings: Vec<HeldFleetView>,
     #[serde(default)]

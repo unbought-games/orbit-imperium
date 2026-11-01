@@ -1,3 +1,4 @@
+import { EmpireDeletion } from './empire-deletion'
 import { InsigniaEditor } from './insignia-editor'
 import { useGameScreen } from '../shell/screen-context'
 import { Section } from '../ui/section'
@@ -81,6 +82,7 @@ export function SettingsScreen() {
           </Text>
         </Section>
       )}
+      <EmpireDeletion />
       <Heading level={2}>Display & accessibility</Heading>
       <Text>
         Display follows your device’s text size. UI changes appear without

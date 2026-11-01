@@ -87,6 +87,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         w.policies.insert(
             body.owner,
             PlayerPolicy {
+                deletion_requested_at: None,
                 player: body.owner,
                 last_presence_at: 0,
                 vacation: false,
@@ -137,6 +138,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         }
     }
     s.world = Some(WorldFacts {
+        alliance_leaders: Some(Default::default()),
         holding_relationships: None,
         covered_depot_sources: Default::default(),
         homeworlds: Default::default(),
@@ -3310,3 +3312,6 @@ fn deuterium_activation_uses_arrival_rules_and_preserves_accepted_fuel_and_time(
 
 #[path = "missions/holding.rs"]
 mod holding;
+
+#[path = "missions/empire_deletion.rs"]
+mod empire_deletion;

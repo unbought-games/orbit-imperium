@@ -56,6 +56,8 @@ mod progression;
 pub use progression::*;
 mod policy;
 pub use policy::*;
+mod empire_deletion;
+pub use empire_deletion::*;
 mod valuation;
 pub use valuation::*;
 mod movement;

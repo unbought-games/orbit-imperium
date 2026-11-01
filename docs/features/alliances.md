@@ -29,3 +29,10 @@ Final integrated validation, exact implementation revision, failures and cleanup
 With allied holding enabled, current members and accepted friends can defend each
 other’s planets. See [Allied holding and Alliance Depot](../operations/alliance-depot.md)
 for prepaid duration, host capacity, resupply, and relationship-change rules.
+
+Automatic empire cleanup transfers a removed leader's authority using recent
+activity, continuous membership tenure, and stable player ID as deterministic
+criteria. Members pending deletion cannot acquire leadership. Voluntary empire
+deletion requires transferring leadership or disbanding first. See
+[Empire deletion and inactivity cleanup](empire-deletion.md) for exact selection,
+fleet handling, and retention rules. Successor nominations remain deferred.

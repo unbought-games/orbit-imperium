@@ -111,6 +111,9 @@ pub(crate) async fn load(
     let mut holding_target = None;
     let mut field = None;
     match input {
+        Input::Event(ScheduledEvent::EmpireDeletionDue { player }) => {
+            refs.empire = crate::empire_deletion::scopes(tx, u, *player).await?;
+        }
         Input::Command(Command::World {
             action: WorldAction::SupplyHoldingFleet { intent, .. },
         }) => {

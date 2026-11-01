@@ -270,7 +270,13 @@ pub(super) async fn enroll<S: IdentityStore>(
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     ApiJson(body): ApiJson<Enrollment>,
 ) -> Result<Response, Problem> {
-    if s.oidc.is_none() {
+    // Local accounts can rejoin their configured universe after empire removal.
+    // Shared Accounts logins retain the existing multi-universe enrollment path.
+    if s.oidc.is_none()
+        && s.config
+            .signup
+            .is_none_or(|policy| policy.universe.0 != body.universe)
+    {
         return Err(ServiceError::Forbidden.into());
     }
     let session = authenticate(&s, &h, true).await?;

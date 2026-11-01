@@ -825,6 +825,8 @@ async fn concurrent_applications_enforce_five_and_join_withdraws_everywhere() {
             .execute(&f.pool)
             .await
             .unwrap();
+        sqlx::query("INSERT INTO player_policies(universe,id,data) SELECT universe,$1,jsonb_set(data,'{player}',to_jsonb($1::text)) FROM player_policies WHERE id=$2")
+            .bind(player).bind(b.player.0).execute(&f.pool).await.unwrap();
         let leader = Binding {
             account: AccountId(account),
             player: PlayerId(player),

@@ -49,6 +49,24 @@ impl PgStore {
         }
         crate::bots::charge(&mut tx, b, "alliance", q.command_id, true).await?;
         let at = now(&mut tx).await?;
+        let gaining_leadership = match &q.action {
+            AllianceAction::Create { .. } => Some(b.player),
+            AllianceAction::Transfer { player, .. } => Some(*player),
+            _ => None,
+        };
+        if let Some(player) = gaining_leadership {
+            let data: serde_json::Value =
+                sqlx::query_scalar("SELECT data FROM player_policies WHERE universe=$1 AND id=$2")
+                    .bind(b.universe.0)
+                    .bind(player.0)
+                    .fetch_one(&mut *tx)
+                    .await
+                    .map_err(db_error)?;
+            let policy: orbit_engine::PlayerPolicy = crate::ordering::decode_supported(data)?;
+            if policy.deletion_pending(at) {
+                return Err(StoreError::Conflict);
+            }
+        }
         let joining = matches!(
             &q.action,
             AllianceAction::Create { .. }
@@ -155,6 +173,19 @@ impl PgStore {
         };
         sqlx::query("INSERT INTO alliance_command_receipts(universe,epoch,account,player,command_id,intent_hash,result) VALUES($1,$2,$3,$4,$5,$6,$7)")
             .bind(b.universe.0).bind(b.epoch.0).bind(b.account.0).bind(b.player.0).bind(q.command_id).bind(intent).bind(sqlx::types::Json(&result)).execute(&mut *tx).await.map_err(db_error)?;
+        let mut affected: std::collections::BTreeSet<_> =
+            state.members.iter().map(|m| m.player).collect();
+        affected.insert(b.player);
+        if let Some(old) = &previous {
+            affected.extend(old.members.iter().map(|m| m.player));
+        }
+        crate::empire_deletion::refresh_checks(
+            &mut tx,
+            b.universe,
+            &affected,
+            orbit_engine::InputId::default(),
+        )
+        .await?;
         tx.commit().await.map_err(db_error)?;
         Ok(result)
     }

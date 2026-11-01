@@ -189,3 +189,43 @@ Optional `alliance: AllianceIdentity` on PlayerDisplay and RankingPlayer. Option
 **Tests must prove:**
 - The complete create → recruit → join → delegate → post → transfer/leave flow works with real service persistence and browser contract fixtures.
 - Public share pages, rankings and player labels work without exposing the private roster or activity.
+
+## Deletion succession scope decision — 2026-11-01
+
+This records the policy selected for player deletion and inactivity cleanup. The
+implementation is documented in [Empire deletion](../features/empire-deletion.md).
+
+**Deferred:** leader-nominated successors, successor settings, and related commands
+or UI. They are not dependencies of player cleanup. Use existing membership,
+foreground-presence, and player-lifecycle facts instead.
+
+When automatic cleanup actually removes an alliance leader:
+
+1. Consider remaining current members whose player lifecycle is `Active`. Exclude
+   the departing leader and members pending deletion, draining, or already removed.
+   Vacation does not disqualify a member.
+2. Prefer members whose last qualifying foreground presence is less than seven
+   days old at the ordered deletion timestamp.
+3. Within that group, choose the earliest current membership `joined_at`. If no
+   eligible member was active within seven days, choose the earliest `joined_at`
+   among all eligible members. Leaving and rejoining resets continuous tenure.
+4. Break equal join timestamps by ascending stable `PlayerId` UUID byte order.
+5. If no eligible member remains, disband using the existing history-preserving
+   disband semantics, including when all remaining members are pending deletion.
+
+Derive the choice at finalization from complete, transactionally consistent facts;
+do not store a provisional successor or cached activity ranking. Missing facts are
+an error, not evidence that nobody is eligible. Transfer leadership and remove the
+departing member atomically, preserving the alliance's identity, other roles,
+settings, and history, and recording the result in the existing audit log. Retries
+must not transfer leadership twice. Do not trigger succession merely at seven or
+28 days of inactivity, or when deletion becomes pending.
+
+For voluntary account deletion, require the leader to transfer leadership or
+disband before starting the deletion grace period. A member pending deletion
+cannot acquire leadership through manual transfer or alliance creation either.
+
+Future coverage must include recent-member preference, inactive-member fallback,
+the exact seven-day boundary, tenure and UUID ties, vacation eligibility, deletion
+exclusions, no eligible member, missing facts, concurrent membership/lifecycle
+changes, and replay of finalization.

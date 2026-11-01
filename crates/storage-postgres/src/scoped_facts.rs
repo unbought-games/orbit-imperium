@@ -60,7 +60,16 @@ pub(crate) async fn select(
     actor: Actor,
     input: &Input,
 ) -> Result<Selection, StoreError> {
-    let refs = crate::scope_references::load(tx, u, input).await?;
+    let mut refs = crate::scope_references::load(tx, u, input).await?;
+    if let (
+        Actor::Player(player),
+        Input::Command(Command::World {
+            action: WorldAction::RequestEmpireDeletion | WorldAction::CancelEmpireDeletion,
+        }),
+    ) = (actor, input)
+    {
+        refs.empire = crate::empire_deletion::scopes(tx, u, player).await?;
+    }
     let scopes = match (actor, input) {
         (Actor::Player(player), Input::Command(command)) => {
             command_scopes(player, command, &refs).map_err(|_| StoreError::CorruptData)?
