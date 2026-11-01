@@ -318,3 +318,11 @@
     gap: 8px 16px;
   }
 }
+@media (max-width: 359px) {
+  .detailToolbar {
+    gap: 4px;
+  }
+  .detailToolbar .controls {
+    gap: 4px;
+  }
+}
