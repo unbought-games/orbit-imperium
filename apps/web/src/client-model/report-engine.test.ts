@@ -179,6 +179,29 @@ it('reconciles external deletion for all surfaces, retaining cached details outs
   expect(projectedReportDetail(h.store.getState(), 'b')?.header.id).toBe('b')
 })
 
+it('retains a complete inbox until a growing background refresh is complete', async () => {
+  const h = fixture()
+  const initial = h.engine.ensureInbox()
+  h.pages[0].resolve(h.page(hundred))
+  await initial
+  const previous = h.store.getState().reportInbox
+
+  const refresh = h.engine.refreshInbox()
+  h.pages[1].resolve(h.page(['new', ...hundred.slice(0, 99)], 'older'))
+  await vi.waitFor(() => expect(h.pages).toHaveLength(3))
+  expect(h.store.getState().reportInbox).toBe(previous)
+  expect(reportLoad(h.store.getState()).pending).toBe(true)
+  expect(projectedReportInbox(h.store.getState())?.has_more).toBe(false)
+
+  h.pages[2].resolve(h.page(['99']))
+  await refresh
+  expect(
+    projectedReportInbox(h.store.getState())?.items.map((h) => h.id),
+  ).toEqual(['new', ...hundred])
+  expect(projectedReportInbox(h.store.getState())?.has_more).toBe(false)
+  expect(reportLoad(h.store.getState()).pending).toBe(false)
+})
+
 it('retains the last good inbox on failure and exposes the same retry state to both surfaces', async () => {
   const h = fixture()
   const first = h.engine.ensureInbox()

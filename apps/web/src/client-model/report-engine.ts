@@ -98,7 +98,12 @@ export class ReportEngine {
     work.promise = (
       more && inbox
         ? extendReportInbox(read, inbox)
-        : readReportInbox(read, inbox?.items.length ?? 0)
+        : readReportInbox(
+            read,
+            // Once the full archive is loaded, replace it only with another
+            // complete snapshot, even if new reports add pages during refresh.
+            inbox && !inbox.has_more ? Infinity : (inbox?.items.length ?? 0),
+          )
     )
       .then((reportInbox) => {
         if (!current()) return
