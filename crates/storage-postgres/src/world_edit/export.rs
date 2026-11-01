@@ -130,7 +130,11 @@ impl PgStore {
         for (p, n) in &names {
             refs.insert(p.to_string(), json!({"$user":n}));
         }
-        for m in &manifest.members {
+        for m in manifest.members.iter().filter(|m| {
+            w.policies
+                .get(&PlayerId(m.player))
+                .is_some_and(|p| p.lifecycle != PlayerLifecycle::Removed)
+        }) {
             let p = PlayerId(m.player);
             let bot:Option<(i32,Option<i64>)>=sqlx::query_as("SELECT sleep_start_utc_minute,retired_at FROM bot_participation WHERE universe=$1 AND player=$2").bind(u.0).bind(p.0).fetch_optional(&mut *tx).await?;
             edits.push(WorldEdit {

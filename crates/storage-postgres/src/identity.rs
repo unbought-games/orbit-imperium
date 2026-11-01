@@ -29,6 +29,10 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn recent_authentication(&self, digest: &str) -> Result<bool, StoreError> {
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM sessions WHERE digest=$1 AND authenticated_at>0 AND authenticated_at>=floor(extract(epoch FROM clock_timestamp())*1000)::bigint-300000 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint)")
+            .bind(digest).fetch_one(&self.pool).await.map_err(db_error)
+    }
     async fn insignia_library(&self, b: Binding) -> Result<InsigniaLibrary, StoreError> {
         self.read_insignia_library(b).await
     }
@@ -220,7 +224,7 @@ impl IdentityStore for PgStore {
                 .await
                 .map_err(db_error)?;
         }
-        let expires:i64=sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000) RETURNING expires_at").bind(digest).bind(account.0).bind(csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
+        let expires:i64=sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at,authenticated_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000,floor(extract(epoch FROM clock_timestamp())*1000)::bigint) RETURNING expires_at").bind(digest).bind(account.0).bind(csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
         tx.commit().await.map_err(db_error)?;
         let mut connection = self.acquire_pool(self.read_pool()?).await?;
         Ok(AuthenticatedSession {

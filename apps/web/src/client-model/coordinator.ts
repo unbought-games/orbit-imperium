@@ -59,7 +59,12 @@ type CapturedRequest = {
   generation: number
 }
 type BoundResponse = Pick<QueryContext, 'binding' | 'request_id'>
-type Failure = { status?: number; code?: string; retryAfterMs?: number }
+type Failure = {
+  status?: number
+  code?: string
+  message?: string
+  retryAfterMs?: number
+}
 const failure = (e: unknown): Failure => (e && typeof e === 'object' ? e : {})
 export class Coordinator {
   private mailboxReads = new Map<string, import('./social').SocialAction>()
@@ -1044,7 +1049,22 @@ export class Coordinator {
         await this.port.submit(structuredClone(a.envelope)),
       )
     } catch (e) {
-      if (failure(e).status === 429) {
+      const rejected = failure(e)
+      if (
+        rejected.status === 422 &&
+        rejected.code === 'GameRejected' &&
+        rejected.message === 'ReauthenticationRequired' &&
+        a.envelope.command.type === 'World' &&
+        (a.envelope.command.action.type === 'RequestEmpireDeletion' ||
+          a.envelope.command.action.type === 'CancelEmpireDeletion')
+      ) {
+        // The named gate rejects this submission before admission. Only a first
+        // delivery is safe to forget: an earlier uncertain request may still commit.
+        this.message =
+          'Sign out and sign in again, then retry this action within five minutes.'
+        if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+        await this.uncertain(a, g)
+      } else if (failure(e).status === 429) {
         // Apply the cooldown before awaiting local storage, so concurrent clicks
         // cannot send more orders while the rejected one is being cleared.
         await this.problem(e, g, a.envelope.binding)

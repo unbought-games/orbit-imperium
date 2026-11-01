@@ -15,7 +15,9 @@ pub(crate) fn requires_lock(input: &Input) -> bool {
                 | WorldAction::LaunchFleet { .. }
                 | WorldAction::SupplyHoldingFleet { .. }
                 | WorldAction::AbandonPlanet { .. }
-        })
+                | WorldAction::RequestEmpireDeletion
+                | WorldAction::CancelEmpireDeletion
+        }) | Input::Event(ScheduledEvent::EmpireDeletionDue { .. })
     )
 }
 pub(crate) async fn lock(tx: &mut Tx<'_>, u: UniverseId, epoch: Epoch) -> Result<(), StoreError> {

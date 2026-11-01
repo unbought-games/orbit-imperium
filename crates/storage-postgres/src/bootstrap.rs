@@ -285,7 +285,26 @@ pub(crate) async fn validate_manifest(
             .and_then(|w| w.colonization.as_ref())
             .is_none()
     {
-        homeworlds(secret, u, m.epoch, m.members.len()).map_err(|_| StoreError::CorruptData)?
+        let pool = homeworlds(
+            secret,
+            u,
+            m.epoch,
+            profile
+                .homeworld_capacity()
+                .map_err(|_| StoreError::CorruptData)? as usize,
+        )
+        .map_err(|_| StoreError::CorruptData)?;
+        // A later empire can reuse a removed empire's coordinate with a new ID.
+        // Physical creation facts must still match this legacy world's seeded pool.
+        m.members
+            .iter()
+            .map(|member| {
+                pool.iter()
+                    .find(|home| home.coordinates == member.homeworld.coordinates)
+                    .cloned()
+                    .ok_or(StoreError::CorruptData)
+            })
+            .collect::<Result<Vec<_>, _>>()?
     } else {
         // Placement is a creation fact. Current occupancy must not relocate or
         // invalidate a homeworld allocated against an earlier occupancy snapshot.
@@ -312,18 +331,42 @@ pub(crate) async fn validate_manifest(
         return Err(StoreError::CorruptData);
     }
     let counts:(i64,i64,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM universe_memberships WHERE universe=$1),(SELECT count(*) FROM players WHERE universe=$1),(SELECT count(*) FROM bodies WHERE universe=$1)").bind(u.0).fetch_one(&mut **tx).await.map_err(db_error)?;
-    let count = m.members.len() as i64;
+    let removed: std::collections::BTreeSet<Uuid> = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM player_policies WHERE universe=$1 AND data->>'lifecycle'='Removed'",
+    )
+    .bind(u.0)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?
+    .into_iter()
+    .collect();
+    let count = m
+        .members
+        .iter()
+        .filter(|member| !removed.contains(&member.player))
+        .count() as i64;
     let colonies: i64 = sqlx::query_scalar("SELECT count(*) FROM colony_genesis WHERE universe=$1")
         .bind(u.0)
         .fetch_one(&mut **tx)
         .await
         .map_err(db_error)?;
-    if counts != (count, count, count + colonies) {
+    if counts != (count, count + removed.len() as i64, count + colonies) {
         return Err(StoreError::CorruptData);
     }
     let mut seen = std::collections::BTreeSet::new();
     for (member, world) in m.members.iter().zip(worlds) {
-        if member.homeworld != world || !seen.insert(member.account) {
+        if member.homeworld != world {
+            return Err(StoreError::CorruptData);
+        }
+        if removed.contains(&member.player) {
+            let residual: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE owner=$1) OR EXISTS(SELECT 1 FROM universe_memberships WHERE player=$1)")
+                .bind(member.player).fetch_one(&mut **tx).await.map_err(db_error)?;
+            if residual {
+                return Err(StoreError::CorruptData);
+            }
+            continue;
+        }
+        if !seen.insert(member.account) {
             return Err(StoreError::CorruptData);
         }
         let valid:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM accounts a JOIN universe_memberships m ON m.account=a.id JOIN players p ON p.id=m.player AND p.universe=m.universe JOIN bodies b ON b.owner=p.id AND b.universe=m.universe WHERE a.id=$1 AND a.name=$2 AND m.player=$3 AND m.universe=$4 AND b.id=$5 AND b.kind='Planet' AND b.galaxy=$8 AND b.system=$9 AND b.position=$6 AND b.fields=163 AND b.max_temperature=$7)")
@@ -445,6 +488,7 @@ pub(crate) async fn insert_member(
     }
     if fleets {
         let policy = PlayerPolicy {
+            deletion_requested_at: None,
             player: PlayerId(member.player),
             last_presence_at: at,
             vacation: false,
@@ -465,6 +509,13 @@ pub(crate) async fn insert_member(
             .execute(&mut **tx)
             .await
             .map_err(db_error)?;
+        crate::empire_deletion::seed_check(
+            tx,
+            universe,
+            PlayerId(member.player),
+            deadline(at, INACTIVITY_WARNING_MS).map_err(|_| StoreError::CorruptData)?,
+        )
+        .await?;
     }
     Ok(())
 }

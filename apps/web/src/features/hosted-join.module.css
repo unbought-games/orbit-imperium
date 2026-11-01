@@ -1,0 +1,9 @@
+.message {
+  min-block-size: 4lh;
+}
+
+@media (min-width: 768px) {
+  .message {
+    min-block-size: 2lh;
+  }
+}

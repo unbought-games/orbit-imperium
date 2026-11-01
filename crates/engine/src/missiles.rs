@@ -165,6 +165,7 @@ impl MissileTermsData {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MissileStatus {
+    Destroyed,
     InFlight,
     Impacted,
     NoTarget,

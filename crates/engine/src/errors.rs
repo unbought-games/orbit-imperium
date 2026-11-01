@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 pub enum GameError {
+    #[error("ReauthenticationRequired")]
+    ReauthenticationRequired,
+    #[error("AllianceLeader")]
+    AllianceLeader,
+    #[error("DeletionDue")]
+    DeletionDue,
     #[error("AttackGroupClosed")]
     AttackGroupClosed,
     #[error("AttackGroupFull")]

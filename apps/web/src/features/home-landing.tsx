@@ -1,3 +1,4 @@
+import { accountLinks } from './account-links'
 import { PublicFrame } from './public-frame'
 import linkStyles from '../ui/link.module.css'
 import { ButtonLinkAnchor } from '../ui/button'
@@ -5,7 +6,7 @@ import { BetaNotice } from '../ui/beta-notice'
 import { Heading, Text, Eyebrow } from '../ui/typography'
 import styles from './login.module.css'
 import { HomeDetails } from './home-details'
-import { HomeDiscordLink } from './home-discord-link'
+import { DiscordLink } from '../ui/discord-link'
 import landingStyles from './home-details.module.css'
 
 export function HomeLanding({ signupEnabled }: { signupEnabled: boolean }) {
@@ -20,13 +21,16 @@ export function HomeLanding({ signupEnabled }: { signupEnabled: boolean }) {
         >
           {signupEnabled && (
             <a
-              href="/signup"
+              href={accountLinks.signup}
               className={`${linkStyles.link} ${landingStyles.headerSignup}`}
             >
               Sign up
             </a>
           )}
-          <ButtonLinkAnchor href="/login" className={landingStyles.headerLogin}>
+          <ButtonLinkAnchor
+            href={accountLinks.login}
+            className={landingStyles.headerLogin}
+          >
             Log in
           </ButtonLinkAnchor>
         </nav>
@@ -52,7 +56,7 @@ export function HomeLanding({ signupEnabled }: { signupEnabled: boolean }) {
               </svg>
               View on GitHub
             </a>
-            <HomeDiscordLink />
+            <DiscordLink />
           </nav>
         </HomeDetails>
       }
@@ -75,16 +79,22 @@ export function HomeLanding({ signupEnabled }: { signupEnabled: boolean }) {
       </div>
       <nav aria-label="Get started" className={styles.actions}>
         {signupEnabled && (
-          <ButtonLinkAnchor className={styles.primary} href="/signup">
+          <ButtonLinkAnchor
+            className={styles.primary}
+            href={accountLinks.signup}
+          >
             Join the current universe
           </ButtonLinkAnchor>
         )}
         {signupEnabled ? (
-          <a href="/login" className={linkStyles.link}>
+          <a href={accountLinks.login} className={linkStyles.link}>
             Sign in <span aria-hidden="true">→</span>
           </a>
         ) : (
-          <ButtonLinkAnchor className={styles.primary} href="/login">
+          <ButtonLinkAnchor
+            className={styles.primary}
+            href={accountLinks.login}
+          >
             Sign in
           </ButtonLinkAnchor>
         )}

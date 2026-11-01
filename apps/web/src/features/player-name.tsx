@@ -4,6 +4,7 @@ import { createContext, useContext, type Ref } from 'react'
 import { usePlayerDisplay } from '../shell/player-profiles-context'
 import { SupporterIdentity } from './supporter-identity'
 import { playerLabel, type PlayerNames } from './player-label'
+import styles from './player-name.module.css'
 import {
   AllianceTag,
   HistoricalAlliances,
@@ -44,31 +45,25 @@ export function PlayerName({
   const name = profile?.username ?? fallback ?? playerLabel(player, names)
   const bot = (profile?.kind ?? kinds[player]) === 'bot'
   const identity = (
-    <>
-      {showInsignia && profile?.insignia && (
-        <EmpireInsignia appearance={profile.insignia} />
-      )}
-      <SupporterIdentity name={name} tier={profile?.supporter_tier} />
+    <span className={styles.identity}>
+      <span className={styles.name}>
+        {showInsignia && profile?.insignia && (
+          <EmpireInsignia appearance={profile.insignia} />
+        )}
+        <SupporterIdentity name={name} tier={profile?.supporter_tier} />
+      </span>
       {bot && (
-        <span
-          title="Automated player"
-          aria-label="Bot"
-          className="text-xs text-muted-foreground"
-        >
-          {' '}
+        <span title="Automated player" aria-label="Bot" className={styles.bot}>
           Bot
         </span>
       )}
       {affiliation && (
-        <>
-          {' '}
-          <AllianceTag
-            alliance={affiliation}
-            linked={!interactive && linkAlliance}
-          />
-        </>
+        <AllianceTag
+          alliance={affiliation}
+          linked={!interactive && linkAlliance}
+        />
       )}
-    </>
+    </span>
   )
   return interactive ? (
     <PlayerProfile

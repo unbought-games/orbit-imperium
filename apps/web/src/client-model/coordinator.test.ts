@@ -1640,3 +1640,71 @@ it('blocks concurrent clicks as soon as 429 arrives, before local cleanup finish
   await first
   expect(c.ledger.size).toBe(0)
 })
+
+it('clears an unadmitted deletion after the named recent-sign-in rejection without replaying it', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { c, port, saved, sent } = setup()
+  const fixture = readyFixture(4)
+  await c.initialize(fixture.session, fixture.snapshot)
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw {
+      status: 422,
+      code: 'GameRejected',
+      message: 'ReauthenticationRequired',
+    }
+  }
+  const command = {
+    type: 'World' as const,
+    action: { type: 'RequestEmpireDeletion' as const },
+  }
+  expect(await c.send(command)).toBeUndefined()
+  expect(c.message).toContain('Sign out and sign in again')
+  expect(c.ready).toBe(true)
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
+  await c.reconcilePending()
+  expect(sent).toHaveLength(1)
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    return {
+      protocol: 4,
+      binding,
+      command_id: envelope.command_id,
+      status: 'Pending',
+      admitted_at: 1000,
+      executed_at: null,
+    }
+  }
+  expect(await c.send(command)).toBeDefined()
+  expect(sent).toHaveLength(2)
+  expect(sent[0]).not.toBe(sent[1])
+})
+
+it('retains an uncertain deletion ID when a retry needs recent authentication', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { c, port, saved, sent } = setup()
+  const fixture = readyFixture(4)
+  await c.initialize(fixture.session, fixture.snapshot)
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw Error('response lost')
+  }
+  const commandId = await c.send({
+    type: 'World',
+    action: { type: 'RequestEmpireDeletion' },
+  })
+  expect(commandId).toBeDefined()
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw {
+      status: 422,
+      code: 'GameRejected',
+      message: 'ReauthenticationRequired',
+    }
+  }
+  await c.retryOrder(commandId!)
+  expect(sent).toEqual([commandId, commandId])
+  expect(saved.size).toBe(1)
+  expect([...c.ledger.values()][0].status).toBe('uncertain')
+})

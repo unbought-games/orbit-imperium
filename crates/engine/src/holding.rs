@@ -269,7 +269,7 @@ pub fn quote_depot_supply(
             .policies
             .get(&player)
             .ok_or(GameError::PolicyUnavailable)?;
-        if policy.lifecycle != PlayerLifecycle::Active {
+        if policy.deletion_pending(at) {
             return Err(if player == owner {
                 GameError::ActorDraining
             } else {

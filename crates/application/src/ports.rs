@@ -1,5 +1,11 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn recent_authentication(
+        &self,
+        _digest: &str,
+    ) -> impl std::future::Future<Output = Result<bool, StoreError>> + Send {
+        async { Ok(false) }
+    }
     fn insignia_library(
         &self,
         _binding: Binding,

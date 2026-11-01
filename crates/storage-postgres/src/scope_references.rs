@@ -112,6 +112,9 @@ pub(crate) async fn load(
     refs.attack_groups = crate::attack_groups::scopes(tx, u, input).await?;
     let mut field = None;
     match input {
+        Input::Event(ScheduledEvent::EmpireDeletionDue { player }) => {
+            refs.empire = crate::empire_deletion::scopes(tx, u, *player).await?;
+        }
         Input::Command(Command::World {
             action: WorldAction::CreateAttackGroup { fleet: id },
         }) => {

@@ -75,9 +75,17 @@ pub(super) async fn add(
             position: p as u32,
         })
         .collect();
+    let live: std::collections::BTreeSet<Uuid> =
+        sqlx::query_scalar::<_, Uuid>("SELECT player FROM universe_memberships WHERE universe=$1")
+            .bind(i.universe.0)
+            .fetch_all(&mut **tx)
+            .await?
+            .into_iter()
+            .collect();
     let homes = manifest
         .members
         .iter()
+        .filter(|m| live.contains(&m.player))
         .map(|m| m.homeworld.coordinates)
         .collect::<Vec<_>>();
     // Explicit operator coordinates retain their historical creation path and

@@ -4,6 +4,7 @@ export interface OidcConfig {
   universes: { universe: string; name: string }[]
   accounts_url?: string
   client_id?: string
+  hosted_universe?: string | null
 }
 
 export interface OidcIdentity {
