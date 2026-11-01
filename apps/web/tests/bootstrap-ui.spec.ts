@@ -317,7 +317,7 @@ test('public pages have distinct URLs that survive refresh and history navigatio
   await page.getByRole('link', { name: /^Orbit Imperium$/i }).click()
   await expect(page).toHaveURL(/\/$/)
   await page
-    .getByRole('link', { name: 'Create an account', exact: true })
+    .getByRole('link', { name: 'Join the current universe', exact: true })
     .click()
   await expect(page).toHaveURL(/\/signup$/)
   await page.getByRole('link', { name: 'Back to sign in', exact: true }).click()
@@ -345,7 +345,7 @@ test('disabled signup and protected game routes lead to login', async ({
     page.getByRole('link', { name: 'Sign in', exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole('link', { name: 'Create an account' }),
+    page.getByRole('link', { name: 'Join the current universe' }),
   ).toHaveCount(0)
   for (const path of ['/signup', '/u/u/b/earth/overview']) {
     await page.goto(path)
@@ -936,14 +936,15 @@ test('homepage centers policies and highlights news, GitHub, and Discord', async
     const community = page.getByRole('navigation', { name: 'News and community' })
     const news = community.getByRole('link', { name: 'What’s New', exact: true })
     const repository = community.getByRole('link', { name: 'View on GitHub', exact: true })
-    const discord = community.getByRole('link', { name: 'Join our Discord', exact: true })
+    const discord = community.getByRole('link', { name: 'Join Discord', exact: true })
     await expect(news).toHaveAttribute('href', '/updates/index.html')
     await expect(repository).toHaveAttribute('href', 'https://github.com/unbought-games/orbit-imperium')
     await expect(repository.locator('svg')).toBeVisible()
     await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
     await expect(discord).toBeVisible()
-    await expect(discord.locator('svg')).toBeVisible()
-    await expect(discord.locator('svg')).toHaveCSS('color', 'rgb(88, 101, 242)')
+    await expect(discord.locator('img')).toBeVisible()
+    await expect(discord.locator('img')).toHaveAttribute('src', '/brand/discord-symbol-white.svg')
+    await expect(discord).toHaveCSS('background-color', 'rgb(88, 101, 242)')
     const heroActionsBounds = (await page.getByRole('navigation', { name: 'Get started' }).boundingBox())!
     const newsBounds = (await news.boundingBox())!
     const repositoryBounds = (await repository.boundingBox())!

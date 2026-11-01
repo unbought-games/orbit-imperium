@@ -4,7 +4,7 @@ import {test,expect} from './fixtures/test';
 test('new player signs up, builds, refreshes and signs back in on mobile',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
- await page.getByRole('link',{name:'Create an account',exact:true}).click();
+ await page.getByRole('link',{name:'Join the current universe',exact:true}).click();
  await expect(page.getByRole('button',{name:'Create account',exact:true})).toBeVisible();
  await diagnosticScreenshot(page, {path:'target/signup-form-mobile.png',fullPage:true});
  await page.getByLabel('Account',{exact:true}).fill('  NewPlayer  ');
