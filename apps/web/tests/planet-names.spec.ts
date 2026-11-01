@@ -1,4 +1,5 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { withGalaxyResponse } from './fixtures/galaxy'
 import { expect, test } from './fixtures/test'
 import { binding, body, id, shellFixture } from './fixtures/game'
 
@@ -155,7 +156,9 @@ for (const width of [1280, 390]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
+    await withGalaxyResponse(page, () =>
+      page.goto(`/u/andromeda/galaxy?body=${body.id}`),
+    )
     await expect(
       page.getByText('Other player’s world', { exact: true }),
     ).toBeVisible()
@@ -163,7 +166,7 @@ for (const width of [1280, 390]) {
       page.getByRole('button', { name: /Rename planet/ }),
     ).toHaveCount(0)
     publicName = 'W'.repeat(40)
-    await page.reload()
+    await withGalaxyResponse(page, () => page.reload())
     await expect(page.getByText(publicName, { exact: true })).toBeVisible()
     expect(
       await page.evaluate(

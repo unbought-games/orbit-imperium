@@ -1,6 +1,7 @@
 import { selectBody } from './fixtures/body-selector'
 import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { withGalaxyResponse } from './fixtures/galaxy'
 import { test, expect, type Page } from './fixtures/test'
 import {
   installGameFixture,
@@ -93,7 +94,9 @@ async function setup(
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+  await withGalaxyResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/galaxy`),
+  )
   return {
     setFailure: (value: boolean) => {
       fail = value
@@ -170,7 +173,7 @@ for (const width of [390, 1280])
         alliance: { ...alliance, id: id(91) },
       },
     ])
-    await page.reload()
+    await withGalaxyResponse(page, () => page.reload())
     const ally = rows(page).nth(1)
     const badge = ally.getByRole('button', {
       name: 'Your alliance',
