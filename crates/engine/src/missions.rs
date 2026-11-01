@@ -615,6 +615,12 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         let Actor::Player(owner) = i.actor else {
             return Err(invariant("command actor"));
         };
+        if w.policies
+            .get(&owner)
+            .is_some_and(|p| p.lifecycle == PlayerLifecycle::Removed)
+        {
+            return Err(GameError::NotFound.into());
+        }
         if !matches!(
             command,
             Command::World {
@@ -682,6 +688,8 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                         command,
                         Command::World {
                             action: WorldAction::RenamePlanet { .. }
+                                | WorldAction::RequestEmpireDeletion
+                                | WorldAction::CancelEmpireDeletion
                         }
                     )
                 {
@@ -704,6 +712,25 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action: WorldAction::RequestEmpireDeletion | WorldAction::CancelEmpireDeletion,
+        }) => {
+            crate::empire_deletion::request(
+                s,
+                i,
+                &mut w,
+                &mut c,
+                matches!(
+                    i.payload,
+                    Input::Command(Command::World {
+                        action: WorldAction::CancelEmpireDeletion
+                    })
+                ),
+            )?;
+        }
+        Input::Event(ScheduledEvent::EmpireDeletionDue { player }) => {
+            crate::empire_deletion::finalize(s, i, &mut w, &mut c, *player, &mut audits)?;
+        }
         Input::Command(Command::World {
             action:
                 action @ (WorldAction::CreateAttackGroup { .. }

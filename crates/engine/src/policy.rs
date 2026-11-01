@@ -23,6 +23,9 @@ pub enum PlayerLifecycle {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerPolicy {
+    /// Explicit player intent. Automatic pending deletion is derived from presence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deletion_requested_at: Option<Timestamp>,
     pub player: PlayerId,
     pub last_presence_at: Timestamp,
     pub vacation: bool,

@@ -110,6 +110,9 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
             || policy.player != owner
             || policy.revision < 0
             || !(0..=MAX_WIRE_MS).contains(&policy.last_presence_at)
+            || policy
+                .deletion_requested_at
+                .is_some_and(|at| !(0..=MAX_WIRE_MS).contains(&at))
             || !w.covered_players.contains(&owner)
         {
             return Err(InvariantError("invalid policy coverage or profile".into()));

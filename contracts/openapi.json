@@ -9076,7 +9076,10 @@
           "InsufficientShips",
           "NoFleetSlot",
           "CargoCapacity",
-          "NotOutbound"
+          "NotOutbound",
+          "AllianceLeader",
+          "DeletionDue",
+          "ReauthenticationRequired"
         ]
       },
       "ServiceCode": {
@@ -10627,7 +10630,10 @@
           "ModeRestricted",
           "InsufficientMissiles",
           "OutOfRange",
-          "SiloBusy"
+          "SiloBusy",
+          "AllianceLeader",
+          "DeletionDue",
+          "ReauthenticationRequired"
         ]
       },
       "ProgressionBlocker": {
@@ -12551,6 +12557,30 @@
               "player"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "RequestEmpireDeletion"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "CancelEmpireDeletion"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12698,7 +12728,10 @@
           "ExtensionTooSmall",
           "AttackGroupClosed",
           "AttackGroupFull",
-          "AttackGroupTooLate"
+          "AttackGroupTooLate",
+          "AllianceLeader",
+          "DeletionDue",
+          "ReauthenticationRequired"
         ]
       },
       "BoundReceipt4": {
@@ -13463,6 +13496,12 @@
             "items": {
               "$ref": "#/components/schemas/AttackGroup4"
             }
+          },
+          "empire_deletion": {
+            "$ref": "#/components/schemas/EmpireDeletionStatus4"
+          },
+          "leads_alliance": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -21034,6 +21073,28 @@
           "can_join",
           "members",
           "revision"
+        ],
+        "additionalProperties": false
+      },
+      "EmpireDeletionStatus4": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Requested",
+              "Inactivity"
+            ]
+          },
+          "due_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "reason",
+          "due_at"
         ],
         "additionalProperties": false
       }

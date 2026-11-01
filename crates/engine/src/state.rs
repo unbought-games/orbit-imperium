@@ -300,6 +300,38 @@ impl ChangeSet {
         for research in &self.research {
             state.research.insert(research.owner, research.clone());
         }
+        if let Some(world) = &self.world {
+            let removed: std::collections::BTreeSet<_> = world
+                .records
+                .policies
+                .values()
+                .filter(|p| p.lifecycle == PlayerLifecycle::Removed)
+                .map(|p| p.player)
+                .collect();
+            let ids: std::collections::BTreeSet<_> = state
+                .bodies
+                .values()
+                .filter(|b| removed.contains(&b.owner))
+                .map(|b| b.id)
+                .collect();
+            state.bodies.retain(|id, _| !ids.contains(id));
+            state
+                .inventories
+                .retain(|x| !ids.contains(&x.body) && !removed.contains(&x.owner));
+            state.production_settings.retain(|id, _| !ids.contains(id));
+            if let Some(w) = state.world.as_mut() {
+                w.homeworlds.retain(|p, _| !removed.contains(p));
+                for slot in &mut w.planet_slots {
+                    if slot.occupant.is_some_and(|id| ids.contains(&id)) {
+                        slot.occupant = None;
+                        slot.revision = slot
+                            .revision
+                            .checked_add(1)
+                            .ok_or_else(|| InvariantError("slot revision exhausted".into()))?;
+                    }
+                }
+            }
+        }
         Ok(())
     }
 }

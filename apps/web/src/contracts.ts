@@ -5707,7 +5707,7 @@ export interface components {
             submitted_intent?: components["schemas"]["SubmittedIntent"];
         };
         /** @enum {unknown} */
-        GameError: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound";
+        GameError: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired";
         /** @enum {unknown} */
         ServiceCode: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "GameRejected" | "RateLimited" | "Unavailable" | "BodyTooLarge";
         Problem: {
@@ -6062,7 +6062,7 @@ export interface components {
             progress?: components["schemas"]["SnapshotProgress"];
         };
         /** @enum {unknown} */
-        GameError3: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy";
+        GameError3: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired";
         ProgressionBlocker: {
             code: components["schemas"]["GameError3"];
             requirement: components["schemas"]["Requirement3"] | null;
@@ -6503,6 +6503,12 @@ export interface components {
             group: string;
             /** Format: uuid */
             player: string;
+        } | {
+            /** @constant */
+            type: "RequestEmpireDeletion";
+        } | {
+            /** @constant */
+            type: "CancelEmpireDeletion";
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -6531,7 +6537,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AttackGroupClosed" | "AttackGroupFull" | "AttackGroupTooLate";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AttackGroupClosed" | "AttackGroupFull" | "AttackGroupTooLate" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -6724,6 +6730,8 @@ export interface components {
             holdings?: components["schemas"]["HeldFleetView4"][];
             depots?: components["schemas"]["DepotView4"][];
             attack_groups?: components["schemas"]["AttackGroup4"][];
+            empire_deletion?: components["schemas"]["EmpireDeletionStatus4"];
+            leads_alliance?: boolean;
         };
         CapabilityState4: {
             /** @enum {unknown} */
@@ -8495,6 +8503,11 @@ export interface components {
             members: components["schemas"]["AttackGroupMember4"][];
             invitations?: string[];
             revision: number;
+        };
+        EmpireDeletionStatus4: {
+            /** @enum {string} */
+            reason: "Requested" | "Inactivity";
+            due_at: number;
         };
     };
     responses: never;

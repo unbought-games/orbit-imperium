@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -300,4 +301,85 @@ test('espionage and combat observations use current public identities without ch
   )
   await expect(observation.getByRole('heading', { name: /Draw/ })).toBeVisible()
   await inspectIdentity(page, 'combat', 'Observer')
+})
+
+
+test('player attachments align together and long identities stay within narrow rows', async ({ page }) => {
+  await shellFixture(page, { protocol: 4, missions: { fleets: [], incoming: [], fleet_slots: '1', score_value_micro: '0' } })
+  const alliance = { id: id(85), universe: binding.universe, name: 'Starward', tag: 'STAR' }
+  const insignia = {
+    recipe: { version: 1, symbol: 'compass', foreground: '#cbb68d', background: '#152b40' },
+    asset_url: `/api/media/insignias/compass/${'a'.repeat(64)}.svg`,
+  }
+  await page.route(`**${insignia.asset_url}`, route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: readFileSync('crates/application/assets/insignias/compass.svg'),
+  }))
+  const players = [
+    { player: id(31), username: 'steveish', kind: 'bot' },
+    { player: id(32), username: 'Aurelia', kind: 'bot', supporter_tier: 2, insignia, alliance },
+    { player: id(33), username: 'CommanderBeyondTheFarthestStars', supporter_tier: 3, insignia, alliance },
+  ]
+  await playerProfilesFixture(page, () => players)
+  await page.route('**/rankings', route => route.fulfill({ json: {
+    binding, request_id: route.request().postDataJSON().request_id,
+    sampled_at: 1792843200000, baseline_at: 1792756800000, processing_pending: false,
+    players: players.map((player, i) => ({ player: player.player, username: player.username, alliance: player.alliance, points: `${100 - i}`, rank: [123, 1234, 12345][i], previous_rank: [null, 1334, 12245][i] })),
+  } }))
+  await page.goto(`/u/andromeda/high-scores?body=${body.id}`)
+  const table = page.getByRole('table', { name: 'Universe total-score rankings' })
+  const trigger = table.getByRole('button', { name: 'Aurelia profile details' })
+  await expect(trigger.getByRole('img', { name: /Supporter/ })).toBeVisible()
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const simple = table.getByRole('button', { name: 'steveish profile details' })
+    const name = await simple.getByText('steveish', { exact: true }).boundingBox()
+    const bot = await simple.getByLabel('Bot', { exact: true }).boundingBox()
+    expect(name).not.toBeNull()
+    expect(bot).not.toBeNull()
+    // Short identities stay centered on one line even in the narrow table.
+    expect(Math.abs(name!.y + name!.height / 2 - bot!.y - bot!.height / 2)).toBeLessThan(1)
+    await expect(simple.getByLabel('Bot', { exact: true })).toHaveCSS('font-size', '12px')
+    for (const player of players) {
+      const identity = table.getByRole('button', { name: `${player.username} profile details` })
+      const cell = identity.locator('..')
+      const bounds = await cell.boundingBox()
+      const parts = await identity.locator('span, svg').evaluateAll(elements => elements.map(element => {
+        const rect = element.getBoundingClientRect()
+        return { left: rect.left, right: rect.right }
+      }))
+      for (const part of parts) {
+        expect(part.left).toBeGreaterThanOrEqual(bounds!.x)
+        expect(part.right).toBeLessThanOrEqual(bounds!.x + bounds!.width)
+      }
+    }
+    const rankCells = table.getByRole('row').filter({ has: page.getByRole('cell') }).locator('td:first-child')
+    for (const rankCell of await rankCells.all()) {
+      const { right, contentRight } = await rankCell.evaluate(cell => {
+        const range = document.createRange()
+        range.selectNodeContents(cell)
+        return { right: cell.getBoundingClientRect().right, contentRight: range.getBoundingClientRect().right }
+      })
+      expect(contentRight).toBeLessThanOrEqual(right)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1440) {
+      const centers = await trigger.locator(':scope > span > *').evaluateAll(elements => elements.map(element => {
+        const rect = element.getBoundingClientRect()
+        return rect.y + rect.height / 2
+      }))
+      expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(1)
+    }
+    if (width < 1440) await table.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: `test-results/player-alignment-rankings-${width}x1000.png` })
+    if (width !== 320) {
+      if (width === 1440) await trigger.focus()
+      else await trigger.click()
+      const popup = page.getByRole('dialog', { name: 'Aurelia profile' })
+      await expect(popup).toBeVisible()
+      await diagnosticScreenshot(page, { path: `test-results/player-alignment-profile-${width}x1000.png` })
+      await page.keyboard.press('Escape')
+      await expect(popup).toHaveCount(0)
+    }
+  }
 })

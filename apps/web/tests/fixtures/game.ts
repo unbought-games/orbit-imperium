@@ -55,6 +55,8 @@ export async function installGameFixture(
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
     protocol?: 2 | 3 | 4
     hasUnreadReports?: () => boolean
+    empireDeletion?: () => components['schemas']['EmpireDeletionStatus4'] | undefined
+    leadsAlliance?: boolean
     viewerRevision?: () => string
     homeworldId?: string
     playerNames?: components['schemas']['PublicPlayerNames4']
@@ -226,6 +228,8 @@ export async function installGameFixture(
       ),
       ...(protocol === 4
         ? {
+            empire_deletion: options.empireDeletion?.(),
+            leads_alliance: options.leadsAlliance ?? false,
             attack_groups: options.attackGroups ?? [],
             holdings: options.holdings ?? [],
             depots: options.depots ?? [],

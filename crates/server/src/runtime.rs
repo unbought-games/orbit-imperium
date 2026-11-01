@@ -57,6 +57,7 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
     max_in_flight: usize,
     drain_timeout: Duration,
 ) -> Result<(), StoreError> {
+    store.ensure_empire_cleanup().await?;
     let mut universes = store.universes().await?;
     let mut refresh_worlds = tokio::time::Instant::now();
     let worker = Uuid::new_v4().into();

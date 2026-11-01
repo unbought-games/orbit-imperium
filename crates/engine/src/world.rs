@@ -163,6 +163,8 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    RequestEmpireDeletion,
+    CancelEmpireDeletion,
     CreateAttackGroup {
         fleet: FleetId,
     },
@@ -283,6 +285,8 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alliance_leaders: Option<BTreeSet<PlayerId>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub holding_relationships: Option<HoldingRelationships>,
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]

@@ -69,7 +69,11 @@ pub(crate) async fn load_selected(
         .homeworld_capacity()
         .map_err(|_| StoreError::CorruptData)?;
     if owners.len() > capacity as usize {
-        return Err(StoreError::CorruptData);
+        let live: i64 = sqlx::query_scalar("SELECT count(*) FROM players p LEFT JOIN player_policies x ON x.universe=p.universe AND x.id=p.id WHERE p.universe=$1 AND p.id=ANY($2) AND (x.data->>'lifecycle' IS DISTINCT FROM 'Removed')")
+            .bind(u.0).bind(&owners).fetch_one(&mut **tx).await.map_err(db_error)?;
+        if live > i64::from(capacity) {
+            return Err(StoreError::CorruptData);
+        }
     }
     let mut all: Option<GameState> = None;
     for owner in &owners {
@@ -553,7 +557,17 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     };
     let depot_supplies: Vec<DepotSupply> = sqlx::query_scalar::<_, serde_json::Value>("SELECT s.data FROM depot_supplies s JOIN bodies b ON b.id=s.source_planet AND b.universe=s.universe WHERE s.universe=$1 AND s.source_planet=ANY($2) AND s.at_ms>b.checkpoint_at-3600000 ORDER BY s.at_ms,s.id")
         .bind(u.0).bind(&body_ids).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?;
+    let alliance_leaders: Vec<uuid::Uuid> = sqlx::query_scalar(
+        "SELECT leader FROM alliances WHERE universe=$1 AND epoch=$2 AND leader=ANY($3)",
+    )
+    .bind(u.0)
+    .bind(epoch.0)
+    .bind(&owners)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?;
     s.world = Some(WorldFacts {
+        alliance_leaders: Some(alliance_leaders.into_iter().map(PlayerId).collect()),
         holding_relationships,
         covered_depot_sources: body_ids.iter().copied().map(BodyId).collect(),
         homeworlds,
@@ -736,6 +750,14 @@ pub(crate) async fn save(
         }
     }
     for (x, p) in &c.records.policies {
+        if p.lifecycle == PlayerLifecycle::Removed
+            && old
+                .policies
+                .get(x)
+                .is_some_and(|old| old.lifecycle != PlayerLifecycle::Removed)
+        {
+            crate::empire_deletion::remove(tx, i, s, c, *x).await?;
+        }
         if old.policies.get(x) != Some(p) {
             put(tx, u, "player_policies", x.0, p).await?;
         }

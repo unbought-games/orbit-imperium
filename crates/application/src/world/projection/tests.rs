@@ -307,11 +307,27 @@ fn snapshot() -> ViewerSnapshot {
     coverage.fleet_owners.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            alliance_leaders: Some(Default::default()),
             holding_relationships: None,
             covered_depot_sources: Default::default(),
             homeworlds: Default::default(),
             planet_slots: vec![],
-            records: WorldRecords::default(),
+            records: WorldRecords {
+                policies: [(
+                    research.owner,
+                    PlayerPolicy {
+                        player: research.owner,
+                        last_presence_at: 0,
+                        vacation: false,
+                        lifecycle: PlayerLifecycle::Active,
+                        deletion_requested_at: None,
+                        policy_hash: rules.hash.clone(),
+                        revision: 0,
+                    },
+                )]
+                .into(),
+                ..Default::default()
+            },
             secret: [0; 32],
             covered_players: Default::default(),
             covered_coordinates: Default::default(),

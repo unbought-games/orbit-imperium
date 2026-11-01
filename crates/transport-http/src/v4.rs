@@ -62,7 +62,32 @@ pub(super) async fn commands<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, e.gameplay.binding)?;
-    let r = s.game.world_submit(principal(&session, u)?, e).await?;
+    let actor = principal(&session, u)?;
+    if e.requires_recent_authentication()? {
+        let existing = s
+            .game
+            .bound_receipt(actor, e.gameplay.binding, e.gameplay.command_id)
+            .await;
+        let known = match existing {
+            Ok(_) => true,
+            Err(ServiceError::NotFound) => false,
+            Err(error) => return Err(error.into()),
+        };
+        if !known {
+            let fresh = match token(&h) {
+                Some(token) if !h.contains_key(header::AUTHORIZATION) => s
+                    .updates
+                    .recent_authentication(&token_digest(token))
+                    .await
+                    .map_err(ServiceError::from)?,
+                _ => false,
+            };
+            if !fresh {
+                return Err(ServiceError::GameRejected(GameError::ReauthenticationRequired).into());
+            }
+        }
+    }
+    let r = s.game.world_submit(actor, e).await?;
     if let Some(wake) = &s.config.wake {
         wake.notify_one();
     }
