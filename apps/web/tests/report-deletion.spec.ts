@@ -718,13 +718,13 @@ test.describe('report touch actions', () => {
       await expect(row.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
       await expect(remove).toBeEnabled()
       const box = (await remove.boundingBox())!
-      expect(box.width).toBe(24)
-      expect(box.height).toBe(24)
+      expect(box.width).toBe(44)
+      expect(box.height).toBe(44)
       expect((await remove.locator('svg').boundingBox())!.width).toBe(16)
 
-      // Tap the compact button corners, outside the glyph.
+      // Tap the expanded button corners, outside the glyph.
       fixture.setMode('rejected')
-      for (const [x, y] of [[2, 2], [22, 2], [2, 22], [22, 22]]) {
+      for (const [x, y] of [[2, 2], [42, 2], [2, 42], [42, 42]]) {
         const submitted = fixture.submitted()
         await remove.tap({ position: { x, y } })
         await expect.poll(fixture.submitted).toBe(submitted + 1)
@@ -746,7 +746,7 @@ test.describe('report touch actions', () => {
       await expect(remove).toBeDisabled()
       await remove.scrollIntoViewIfNeeded()
       const disabledBox = (await remove.boundingBox())!
-      for (const [x, y] of [[2, 2], [22, 2], [2, 22], [22, 22]]) {
+      for (const [x, y] of [[2, 2], [42, 2], [2, 42], [42, 42]]) {
         await page.touchscreen.tap(disabledBox.x + x, disabledBox.y + y)
         await expect(page).toHaveURL(inbox)
         expect(fixture.submitted()).toBe(4)
@@ -770,7 +770,7 @@ test.describe('report touch actions', () => {
       await expect(remove).toBeEnabled()
       fixture.setMode('success')
       // Recheck target size after detail navigation before tapping its padding.
-      expect((await remove.boundingBox())!.height).toBe(24)
+      expect((await remove.boundingBox())!.height).toBe(44)
       await remove.tap({ position: { x: 2, y: 22 } })
       await expect.poll(() => fixture.headers[0].hidden).toBe(true)
       await expect(page).toHaveURL(inbox)
