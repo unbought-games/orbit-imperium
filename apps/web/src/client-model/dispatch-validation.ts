@@ -111,6 +111,10 @@ export function destinationError(
 }
 
 const messages: Partial<Record<S['GameError4'], string>> = {
+  AttackGroupClosed: 'This attack group is closed to new fleets.',
+  AttackGroupFull: 'This group has reached its player or fleet limit.',
+  AttackGroupTooLate:
+    'This fleet would arrive too late. Increase speed, choose faster ships, or launch from a closer planet.',
   HoldingUnavailable:
     'Holding requires another player in your alliance or accepted friends. The host must permit it; supply also requires a fleet still defending here.',
   DepotBudgetExceeded:

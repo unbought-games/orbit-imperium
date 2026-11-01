@@ -1,3 +1,4 @@
+import type { SimulationAlly } from './simulation-allies'
 import { useEffect, useRef, useState } from 'react'
 import type { Coordinator } from '../client-model/coordinator'
 import type {
@@ -9,6 +10,7 @@ type RunState =
   | { scope: string; status: 'done'; response: SimulationResponse }
   | { scope: string; status: 'error'; message: string }
 export function useCombatSimulation(model: Coordinator, scope: string) {
+  const [allies, setAllies] = useState<SimulationAlly[]>([])
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [state, setState] = useState<RunState | null>(null)
   const sequence = useRef(0)
@@ -44,6 +46,20 @@ export function useCombatSimulation(model: Coordinator, scope: string) {
   }
   const current = state?.scope === scope ? state : null
   return {
+    allies,
+    addAlly: (side: 'attacker' | 'defender') => {
+      edit({})
+      setAllies((previous) =>
+        previous.filter((a) => a.side === side).length >=
+        (side === 'attacker' ? 15 : 16)
+          ? previous
+          : [...previous, { id: crypto.randomUUID(), side }],
+      )
+    },
+    removeAlly: (id: string) => {
+      edit({})
+      setAllies((previous) => previous.filter((a) => a.id !== id))
+    },
     edits,
     result: current?.status === 'done' ? current.response : null,
     error: current?.status === 'error' ? current.message : null,

@@ -9,7 +9,7 @@ implementation files. Compute SHA-256 over sorted relative paths followed by NUL
 file bytes, and NUL; enumerate tracked differences plus nonignored untracked files,
 excluding `docs/`. The local file list is in
 `test-results/empire-deletion-source-manifest.json`. No commit, push, PR, or deployment
-was performed.
+had been performed at that initial checkpoint.
 
 ## Coverage and results
 
@@ -114,3 +114,33 @@ signup journeys were not run. Older workers do not understand the new deletion
 event vocabulary; deploy this feature with a coordinated worker upgrade. Existing
 35-day-inactive empires are eligible when cleanup is adopted, as documented in the
 feature guide. This work has not changed any running game universe.
+
+## PR integration — 2026-11-01
+
+Integrated `main` at `3f59e2147f1f905bb9d63bcf2a647175038c977b` after implementation commit
+`bd0327d`. The base added alliance attacks and migration 0029, so empire deletion
+now uses migration 0030. Removed owners' grouped fleets are destroyed while foreign
+members retain their committed shared arrival; groups with no remaining attackers
+close and cancel their due event. Active invitations for a removed player are
+revoked. Cleanup scopes include group participants and existing event dependencies.
+
+The merged code/configuration snapshot relative to that base covers 60 files,
+with SHA-256 `a3940a302154aeb7a2545bec49d89382d4742edc12af0e2bc0c317c91befb872` using the same path/NUL/content/NUL algorithm.
+Its file list is `test-results/empire-deletion-pr-source-manifest.json`.
+
+- `make test-server`: 630 workspace tests, 43 bridge tests and seven storage unit
+  tests passed; suites 22.873s, 0.650s and 0.012s.
+- `make test-db DB_SUITES='empire_deletion attack_groups' DB_JOBS=2`: six deletion
+  tests and three group-attack tests passed; suites 16.623s and 45.802s. The added
+  regression covers partial and complete group removal in the real scoped runtime,
+  then settles the original arrival and audits the resulting state.
+- `make test-tooling test-client _static`: 117 tooling tests (8.061s), 1,280 client
+  tests (4.18s), formatting, lint, contracts and boundaries passed. The first tooling
+  run caught raw screenshot calls; the specs now use the repository's gated helper.
+- Production build and warning-free Clippy passed; Clippy 21.27s.
+- Browser regression: 16 deletion/alliance-attack cases passed in 20.9s. The final
+  gated screenshot run (`ORBIT_TEST_SCREENSHOTS=1`) passed all eight deletion cases
+  in 9.7s and refreshed desktop/mobile captures for this implementation.
+
+The additional group handling repairs an interaction with newly merged code;
+successor nominations and other feature scope remain deferred.

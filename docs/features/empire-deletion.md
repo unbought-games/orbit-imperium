@@ -65,6 +65,9 @@ at the deadline is too late. Same-time events use the existing durable sequence.
   Cancel their scheduled events and retain terminal history.
 - Foreign fleets already holding at the removed bodies begin their normal return
   with surviving ships and cargo. Prepaid fuel is not refunded.
+- Group attacks retain the original shared arrival for surviving foreign members.
+  If removal leaves no outbound members, cancel the group arrival; losing its
+  initiator closes new joins without recalling other owners' ships.
 - Other foreign inbound flights retain their committed timing. A missing bound
   body causes failure and return; replacement colonies cannot inherit the target.
 - Existing debris and other players' harvesting flights remain independent.

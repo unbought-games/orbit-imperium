@@ -7,6 +7,12 @@ pub enum GameError {
     AllianceLeader,
     #[error("DeletionDue")]
     DeletionDue,
+    #[error("AttackGroupClosed")]
+    AttackGroupClosed,
+    #[error("AttackGroupFull")]
+    AttackGroupFull,
+    #[error("AttackGroupTooLate")]
+    AttackGroupTooLate,
     #[error("HoldingUnavailable")]
     HoldingUnavailable,
     #[error("DepotBudgetExceeded")]

@@ -1,3 +1,4 @@
+import { groupFlightSchedule } from './attack-group-model'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { missionOptions } from './mission-options'
 import type { Ref } from 'react'
@@ -67,12 +68,18 @@ export function DispatchReview({
       : null,
   )
 
-  const schedule = flightSchedule(
+  const independentSchedule = flightSchedule(
     quote.duration_ms,
     now,
     mission,
     quote.holding?.duration_ms ?? 0,
   )
+  const group = view.attack_groups?.find(
+    (g) => g.id === quote.intent.attack_group,
+  )
+  const schedule = group
+    ? groupFlightSchedule(quote.duration_ms, now, group.arrival_at)
+    : independentSchedule
   const returning = missionReturn[mission]
   const shipCount = fleetShipCount(quote.intent.ships)
   return (
@@ -190,7 +197,7 @@ export function DispatchReview({
               </dd>
             </div>
             <div>
-              <dt>Estimated arrival</dt>
+              <dt>{group ? 'Shared group arrival' : 'Estimated arrival'}</dt>
               <dd>
                 <time dateTime={new Date(schedule.arrival).toISOString()}>
                   {exactTime(schedule.arrival)}
@@ -223,7 +230,11 @@ export function DispatchReview({
               </dd>
             </div>
           </dl>
-          <Text className={styles.reviewNote}>{returning.note}</Text>
+          <Text className={styles.reviewNote}>
+            {group
+              ? 'Your fleet waits for the shared arrival. Later joins may delay it further. Survivors return using this fleet’s original one-way flight time.'
+              : returning.note}
+          </Text>
         </section>
       </div>
       {mission === 'Colonize' && colonyWarning && (

@@ -1,3 +1,4 @@
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import { binding, shellFixture } from './fixtures/game'
 import type { components } from '../src/contracts'
@@ -51,7 +52,7 @@ for (const width of [1280, 390]) {
     })
     await expect(section).toContainText('Your Unbought Games account')
     await section.scrollIntoViewIfNeeded()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-settings-${width}x900.png`,
     })
     await section
@@ -63,7 +64,7 @@ for (const width of [1280, 390]) {
     await expect(
       dialog.getByRole('button', { name: 'Keep my empire' }),
     ).toBeFocused()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-review-${width}x900.png`,
     })
     await dialog.getByRole('button', { name: 'Keep my empire' }).click()
@@ -82,7 +83,7 @@ for (const width of [1280, 390]) {
         }),
       ).toBeDisabled()
       await expect.poll(() => submitted.length).toBe(1)
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         path: `test-results/empire-deletion-submitting-${width}x900.png`,
       })
     } finally {
@@ -93,14 +94,14 @@ for (const width of [1280, 390]) {
     ).toBeVisible()
     await expect(section).toContainText('You requested deletion.')
     await section.scrollIntoViewIfNeeded()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-pending-${width}x900.png`,
     })
     await page.goto('/u/andromeda/overview')
     await expect(
       page.getByRole('region', { name: 'Empire deletion scheduled' }),
     ).toBeVisible()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-notice-${width}x900.png`,
     })
     await page
@@ -150,7 +151,7 @@ for (const width of [1280, 390]) {
     ).toBeDisabled()
     await expect(section).toContainText('Transfer alliance leadership')
     await section.scrollIntoViewIfNeeded()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-leader-${width}x900.png`,
     })
   })
@@ -198,7 +199,7 @@ for (const width of [1280, 390]) {
       }),
     ).toBeEnabled()
     await section.scrollIntoViewIfNeeded()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-error-${width}x900.png`,
     })
   })
@@ -232,7 +233,7 @@ for (const width of [1280, 390]) {
       section.getByRole('button', { name: 'Keep my empire', exact: true }),
     ).toBeVisible()
     await section.scrollIntoViewIfNeeded()
-    await page.screenshot({
+    await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-inactivity-${width}x900.png`,
     })
     await page.route('**/presence', async (route) => {

@@ -20,6 +20,7 @@ pub struct OrderKey {
 #[derive(Clone, Debug, Default)]
 pub struct ScopeReferences {
     pub empire: BTreeSet<ScopeKey>,
+    pub attack_groups: BTreeSet<ScopeKey>,
     pub holding: BTreeSet<ScopeKey>,
     pub missiles: BTreeMap<OperationId, (PlayerId, PlayerId, Coordinates, Coordinates)>,
     pub bodies: BTreeMap<BodyId, (PlayerId, Coordinates)>,
@@ -51,7 +52,20 @@ pub fn command_scopes(
     let mut scopes = BTreeSet::from([ScopeKey::Player(actor)]);
     scopes.extend(refs.holding.iter().cloned());
     scopes.extend(refs.empire.iter().cloned());
+    scopes.extend(refs.attack_groups.iter().cloned());
     match command {
+        Command::World {
+            action: WorldAction::CreateAttackGroup { fleet },
+        } => {
+            scopes.extend(fleet_scopes(*fleet, refs).unwrap_or_default());
+        }
+        Command::World {
+            action:
+                WorldAction::InviteAttackGroup { player, .. }
+                | WorldAction::RevokeAttackGroupInvitation { player, .. },
+        } => {
+            scopes.insert(ScopeKey::Player(*player));
+        }
         Command::World {
             action: WorldAction::SupplyHoldingFleet { intent, .. },
         } => {
@@ -124,6 +138,7 @@ pub fn event_scopes(
         ScheduledEvent::EmpireDeletionDue { player } => {
             Some(BTreeSet::from([ScopeKey::Player(*player)]))
         }
+        ScheduledEvent::AttackGroupDue { .. } => Some(refs.attack_groups.clone()),
         ScheduledEvent::AbandonedSlotDue {
             coordinates, owner, ..
         } => Some(BTreeSet::from([
@@ -158,6 +173,7 @@ pub fn event_scopes(
         scopes.ok_or_else(|| InvariantError("missing immutable scheduling reference".into()))?;
     scopes.extend(refs.holding.iter().cloned());
     scopes.extend(refs.empire.iter().cloned());
+    scopes.extend(refs.attack_groups.iter().cloned());
     Ok(scopes)
 }
 pub fn validate_successor_scopes(

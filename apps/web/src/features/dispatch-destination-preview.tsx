@@ -1,3 +1,4 @@
+import { CoordinateLink } from './coordinate-link'
 import {
   LocationSummary,
   LocationSummaryMedia,
@@ -20,6 +21,7 @@ import styles from './missions.module.css'
 
 export function DispatchDestinationPreview({
   coordinates,
+  readOnly = false,
   kind,
   target,
   lookup,
@@ -33,6 +35,7 @@ export function DispatchDestinationPreview({
   onChange,
   onSelectPlanet,
 }: {
+  readOnly?: boolean
   coordinates: components['schemas']['Coordinates'] | null
   kind: LocationKind
   target: ReturnType<typeof destinationBody>
@@ -159,13 +162,17 @@ export function DispatchDestinationPreview({
           {target?.source === 'observation' &&
             ' · Last observed · Review verifies destination.'}
         </LocationSummaryDescription>
-        <CoordinateInput
-          embedded
-          value={value}
-          universe={universe}
-          error={error}
-          onChange={onChange}
-        />
+        {readOnly && coordinates ? (
+          <CoordinateLink at={coordinates} label="group target" />
+        ) : (
+          <CoordinateInput
+            embedded
+            value={value}
+            universe={universe}
+            error={error}
+            onChange={onChange}
+          />
+        )}
       </LocationSummaryContent>
     </LocationSummary>
   )

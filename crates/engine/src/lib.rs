@@ -111,3 +111,6 @@ pub use fusion::*;
 mod fuel_settlement;
 
 pub mod world_edit;
+
+mod attack_groups;
+pub use attack_groups::*;

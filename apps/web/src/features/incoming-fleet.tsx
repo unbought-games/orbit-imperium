@@ -52,7 +52,8 @@ export function IncomingFleet({
           className={styles.title}
           aria-label={`Incoming ${fleet.mission.toLowerCase()}${hostile ? ' · Hostile' : ''}`}
         >
-          {fleet.mission} <span>Incoming{hostile ? ' · Hostile' : ''}</span>
+          {fleet.attack_group ? 'Alliance attack' : fleet.mission}{' '}
+          <span>Incoming{hostile ? ' · Hostile' : ''}</span>
         </Heading>
         <Button
           variant="ghost"

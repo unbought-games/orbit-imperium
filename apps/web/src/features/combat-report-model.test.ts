@@ -274,3 +274,30 @@ it('preserves explicit sharing redaction, unnamed coordinates, and missing locat
     }).forces[0].location?.at,
   ).toEqual({ galaxy: 1, system: 2, position: 3 })
 })
+
+it('preserves each personal return and describes participation on both sides', () => {
+  const report = combatReportModel(
+    {
+      ...payload,
+      participants: [attacker, { ...defender, owner: 'attacker' }],
+      own_returns: [
+        {
+          fleet: 'one',
+          origin: { galaxy: 1, system: 1, position: 1 },
+          return_at: 2000,
+          loot: { metal: '1000000', crystal: '0', deuterium: '0' },
+        },
+        {
+          fleet: 'two',
+          origin: { galaxy: 1, system: 2, position: 1 },
+          return_at: 4000,
+          loot: { metal: '0', crystal: '0', deuterium: '0' },
+        },
+      ],
+    },
+    'attacker',
+  )
+  expect(report.bothSides).toBe(true)
+  expect(report.side).toBeUndefined()
+  expect(report.ownReturns.map((f) => f.returnAt)).toEqual([2000, 4000])
+})

@@ -46,7 +46,7 @@ export function useDispatch({
   draft: DispatchDraft | null
 }) {
   const [mission, setMission] = useState<DispatchDraft['mission']>(
-      draft?.mission ?? 'Transport',
+      draft?.attackGroup ? 'Attack' : (draft?.mission ?? 'Transport'),
     ),
     [destinationText, setDestinationText] = useState(
       draft
@@ -155,6 +155,7 @@ export function useDispatch({
           },
           intent: {
             origin: body.id,
+            ...(draft?.attackGroup ? { attack_group: draft.attackGroup } : {}),
             mission,
             ...(mission === 'Hold' ? { hold_hours: holdHours } : {}),
             ships: timingShips,
@@ -222,6 +223,22 @@ export function useDispatch({
     setBusy(false)
     setSubmitted(null)
   }
+  const quotedGroup = view.attack_groups?.find(
+    (g) => g.id === quote?.intent.attack_group,
+  )
+  useEffect(() => {
+    if (
+      quote?.intent.attack_group &&
+      (!quotedGroup ||
+        quotedGroup.revision !== quote.group_revision ||
+        !quotedGroup.can_join)
+    ) {
+      setQuote(null)
+      setError(
+        'The attack group changed. Review your fleet again for its current arrival and availability.',
+      )
+    }
+  }, [quote, quotedGroup])
   const clear = () => {
     generation.current++
     setSubmitted(null)
@@ -317,6 +334,7 @@ export function useDispatch({
         : cargo.map(dispatchQuantity)
       const intent: S['FleetIntent4'] = {
         origin: body.id,
+        ...(draft?.attackGroup ? { attack_group: draft.attackGroup } : {}),
         destination,
         mission,
         ...(mission === 'Hold' ? { hold_hours: holdHours } : {}),

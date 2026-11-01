@@ -1,3 +1,4 @@
+import { ResourceSummary } from '../ui/number-value'
 import type { ReactNode } from 'react'
 import { BodyIdentity } from './body-identity'
 import { PlayerName } from './player-name'
@@ -241,7 +242,9 @@ export function CombatReport({
             at={payload.target}
             label="target"
           />
-          {report.side && ` · You were the ${report.side.toLowerCase()}`}
+          {report.bothSides
+            ? ' · You fought on both sides'
+            : report.side && ` · You were the ${report.side.toLowerCase()}`}
         </p>
         <Heading level={2} className={styles.result}>
           {report.symbol && <span aria-hidden="true">{report.symbol} </span>}
@@ -256,6 +259,21 @@ export function CombatReport({
             Survivors return {new Date(report.returnAt).toLocaleString()}.
           </p>
         )}
+        {report.ownReturns.map((fleet) => (
+          <p className={styles.note} key={fleet.fleet}>
+            Your fleet
+            {fleet.origin &&
+              ` to [${fleet.origin.galaxy}:${fleet.origin.system}:${fleet.origin.position}]`}{' '}
+            returns {new Date(fleet.returnAt).toLocaleString()}. Loot:{' '}
+            <ResourceSummary
+              value={{
+                metal: String(fleet.loot.metal ?? '0'),
+                crystal: String(fleet.loot.crystal ?? '0'),
+                deuterium: String(fleet.loot.deuterium ?? '0'),
+              }}
+            />
+          </p>
+        ))}
         {report.noReturn && (
           <p className={styles.note}>No surviving return fleet.</p>
         )}

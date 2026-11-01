@@ -213,3 +213,5 @@ pub use bootstrap::MvpAccount;
 mod rules_update;
 
 mod world_edit;
+
+mod attack_groups;

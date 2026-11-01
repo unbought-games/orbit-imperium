@@ -1,3 +1,8 @@
+import {
+  allyFields,
+  withSimulationAllies,
+  combinedSimulationUnits,
+} from './simulation-allies'
 import { useEffect, useRef, useState } from 'react'
 import { Swords } from 'lucide-react'
 import { createPortal } from 'react-dom'
@@ -129,12 +134,24 @@ function SimulationForm({
     body?.inventories,
   )
   const scope = JSON.stringify([report, view?.research, view?.profile_hash])
-  const { edits, result, error, running, edit, run } = useCombatSimulation(
-    model,
-    scope,
-  )
+  const {
+    allies,
+    addAlly,
+    removeAlly,
+    edits,
+    result,
+    error,
+    running,
+    edit,
+    run,
+  } = useCombatSimulation(model, scope)
   const assumptions = unknownAssumptions(fields, edits)
-  const prepared = simulationInputs(fields, edits, report?.resources)
+  const prepared = withSimulationAllies(
+    simulationInputs(fields, edits, report?.resources),
+    fields,
+    allies,
+    edits,
+  )
   const unsupported = report ? unsupportedReportUnits(report, fields) : []
   return (
     <div className={styles.content}>
@@ -188,6 +205,58 @@ function SimulationForm({
             </fieldset>
           ))}
         </div>
+        {allies.map((ally, index) => (
+          <fieldset
+            className={styles.contingent}
+            key={ally.id}
+            disabled={running}
+          >
+            <legend>
+              Allied {ally.side === 'attacker' ? 'attacking' : 'defending'}{' '}
+              fleet {index + 1}
+            </legend>
+            <p>
+              Enter this owner’s technology and ships. No private player data is
+              imported.
+            </p>
+            <SimulationFields
+              fields={allyFields(fields, ally)}
+              edits={edits}
+              edit={edit}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => removeAlly(ally.id)}
+            >
+              Remove allied fleet
+            </Button>
+          </fieldset>
+        ))}
+        <div className={`${styles.sides} ${styles.alliedActions}`}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              running ||
+              allies.filter((a) => a.side === 'attacker').length >= 15
+            }
+            onClick={() => addAlly('attacker')}
+          >
+            Add attacking fleet
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              running ||
+              allies.filter((a) => a.side === 'defender').length >= 16
+            }
+            onClick={() => addAlly('defender')}
+          >
+            Add defending fleet
+          </Button>
+        </div>
         {unsupported.length > 0 && (
           <p role="alert">
             This report contains units unsupported by the current combat rules.
@@ -237,38 +306,27 @@ function SimulationForm({
                   : 'Defender · average survivors before repairs'}
               </h4>
               <dl className={styles.survivors}>
-                {fields
-                  .filter(
-                    (f) =>
-                      f.side === side &&
-                      f.item &&
-                      Number(edits[f.key] ?? f.value) > 0,
-                  )
-                  .map((f) => (
-                    <div key={f.key}>
-                      <dt>{label(f.label)}</dt>
-                      <dd>
-                        {side === 'attacker' && (
-                          <strong>
-                            {attackerLosses(result, {
-                              item: f.item!,
-                              count: Number(edits[f.key] ?? f.value),
-                            }).toLocaleString(undefined, {
-                              maximumFractionDigits: 1,
-                            })}{' '}
-                            lost ·{' '}
-                          </strong>
-                        )}
-                        {averageSurvivors(result, side, f.item!).toLocaleString(
-                          undefined,
-                          {
-                            maximumFractionDigits: 1,
-                          },
-                        )}
-                        {side === 'attacker' ? ' surviving' : ''}
-                      </dd>
-                    </div>
-                  ))}
+                {combinedSimulationUnits(prepared.inputs, side).map((unit) => (
+                  <div key={`${unit.item.kind}:${unit.item.id}`}>
+                    <dt>{label(unit.item.id)}</dt>
+                    <dd>
+                      {side === 'attacker' && (
+                        <strong>
+                          {attackerLosses(result, unit).toLocaleString(
+                            undefined,
+                            { maximumFractionDigits: 1 },
+                          )}{' '}
+                          lost ·{' '}
+                        </strong>
+                      )}
+                      {averageSurvivors(result, side, unit.item).toLocaleString(
+                        undefined,
+                        { maximumFractionDigits: 1 },
+                      )}{' '}
+                      surviving
+                    </dd>
+                  </div>
+                ))}
               </dl>
             </div>
           ))}

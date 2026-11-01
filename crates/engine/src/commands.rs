@@ -103,6 +103,10 @@ pub enum ScheduledEvent {
     EmpireDeletionDue {
         player: PlayerId,
     },
+    AttackGroupDue {
+        group: OperationId,
+        generation: i64,
+    },
     AbandonedSlotDue {
         body: BodyId,
         coordinates: Coordinates,

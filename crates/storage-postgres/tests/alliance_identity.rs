@@ -134,6 +134,7 @@ async fn delayed_espionage_preserves_event_affiliation_through_rename_disband_an
     store.prepare_scoped_runtime(u, 100).await.unwrap();
     store.activate_scoped_runtime(u).await.unwrap();
     let intent = FleetIntent {
+        attack_group: None,
         hold_hours: None,
         origin,
         destination: MissionDestination::Body {

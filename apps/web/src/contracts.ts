@@ -6395,6 +6395,8 @@ export interface components {
             speed_percent: 10 | 20 | 30 | 40 | 50 | 60 | 70 | 80 | 90 | 100;
             /** @enum {integer} */
             hold_hours?: 0 | 1 | 2 | 4 | 8 | 16 | 32;
+            /** Format: uuid */
+            attack_group?: string;
         };
         FleetTerms4: {
             intent: components["schemas"]["FleetIntent4"];
@@ -6411,6 +6413,7 @@ export interface components {
             slot_limit: components["schemas"]["Decimal"];
             terms_hash: string;
             holding?: components["schemas"]["HoldingTerms4"];
+            group_revision?: number;
         };
         WorldAction4: {
             /** @constant */
@@ -6483,6 +6486,25 @@ export interface components {
             expected_terms_hash: string;
         } | {
             /** @constant */
+            type: "CreateAttackGroup";
+            /** Format: uuid */
+            fleet: string;
+        } | {
+            /** @constant */
+            type: "InviteAttackGroup";
+            /** Format: uuid */
+            group: string;
+            /** Format: uuid */
+            player: string;
+        } | {
+            /** @constant */
+            type: "RevokeAttackGroupInvitation";
+            /** Format: uuid */
+            group: string;
+            /** Format: uuid */
+            player: string;
+        } | {
+            /** @constant */
             type: "RequestEmpireDeletion";
         } | {
             /** @constant */
@@ -6515,7 +6537,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AttackGroupClosed" | "AttackGroupFull" | "AttackGroupTooLate" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -6646,6 +6668,8 @@ export interface components {
             duration_ms: number;
             paid_fuel: components["schemas"]["Decimal"];
             can_recall: boolean;
+            /** Format: uuid */
+            attack_group?: string;
         };
         IncomingMission4: {
             /** Format: uuid */
@@ -6661,6 +6685,8 @@ export interface components {
             mission: components["schemas"]["Mission4"];
             arrival_at: number;
             ships: components["schemas"]["IncomingShips4"];
+            /** Format: uuid */
+            attack_group?: string;
         };
         MissionView4: {
             fleets: components["schemas"]["OwnMission4"][];
@@ -6703,19 +6729,20 @@ export interface components {
             homeworld_id?: string;
             holdings?: components["schemas"]["HeldFleetView4"][];
             depots?: components["schemas"]["DepotView4"][];
+            attack_groups?: components["schemas"]["AttackGroup4"][];
             empire_deletion?: components["schemas"]["EmpireDeletionStatus4"];
             leads_alliance?: boolean;
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -7105,6 +7132,13 @@ export interface components {
              * @enum {string}
              */
             target_kind?: "Planet" | "Moon";
+            own_returns?: {
+                /** Format: uuid */
+                fleet: string;
+                origin: components["schemas"]["Coordinates"];
+                return_at: number;
+                loot: components["schemas"]["Resources"];
+            }[];
         };
         ContactLostPayload4: {
             /** @constant */
@@ -7574,6 +7608,8 @@ export interface components {
             defender: components["schemas"]["SimulationSide"];
             /** @description Historical report-observed resources in micro-units. Omission means unknown. */
             observed_resources?: components["schemas"]["Resources"];
+            attacking_allies?: components["schemas"]["SimulationSide"][];
+            defending_allies?: components["schemas"]["SimulationSide"][];
         };
         SimulationQuery: {
             context: components["schemas"]["QueryContext"];
@@ -8447,6 +8483,26 @@ export interface components {
             metal: string;
             crystal: string;
             deuterium: string;
+        };
+        AttackGroupMember4: {
+            /** Format: uuid */
+            owner: string;
+            ships: components["schemas"]["PublicShip4"][];
+            own_fleet: string | null;
+        };
+        AttackGroup4: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            initiator: string;
+            target: components["schemas"]["MissionDestination4"];
+            coordinates: components["schemas"]["Coordinates"];
+            arrival_at: number;
+            joining_open: boolean;
+            can_join: boolean;
+            members: components["schemas"]["AttackGroupMember4"][];
+            invitations?: string[];
+            revision: number;
         };
         EmpireDeletionStatus4: {
             /** @enum {string} */

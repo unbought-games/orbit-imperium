@@ -55,8 +55,9 @@ active host and visitor accounts, and no vacation restriction. A pending deletio
 for either player blocks new supply. Supply at the departure deadline is too late:
 due departures precede commands. Command retries never debit or extend twice.
 
-Planet abandonment rejects inbound and currently held allied fleets. Moon holding,
-moon supply and coordinated group attacks are not activated by this release.
+Planet abandonment rejects inbound and currently held allied fleets. Moon holding and
+moon supply are not activated by this release. Coordinated attacks are available
+through the separate [Alliance attacks](alliance-attacks.md) feature.
 
 ## Deployment and activation
 

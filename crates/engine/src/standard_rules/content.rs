@@ -324,5 +324,9 @@ pub(super) fn patches() -> Vec<Patch> {
             json!({"item":{"kind":"Missile","id":id},"cost":entry["cost"]}),
         ));
     }
+    out.push(Patch::field(
+        "/world/attack_groups",
+        json!("oi-group-attack-v1"),
+    ));
     out
 }

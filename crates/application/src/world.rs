@@ -82,6 +82,8 @@ pub struct BoundWorld<T> {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OwnMission {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_group: Option<OperationId>,
     pub id: FleetId,
     pub intent: FleetIntent,
     pub origin: Coordinates,
@@ -109,6 +111,8 @@ pub struct MissileFlightView {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IncomingMission {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_group: Option<OperationId>,
     pub sender: PlayerId,
     pub origin: Coordinates,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -141,11 +145,33 @@ pub struct DepotView {
     pub next_budget_release_at: Option<Timestamp>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AttackGroupMemberView {
+    pub owner: PlayerId,
+    pub ships: Vec<PublicShipStack>,
+    pub own_fleet: Option<FleetId>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AttackGroupView {
+    pub id: OperationId,
+    pub revision: i64,
+    pub initiator: PlayerId,
+    pub target: MissionDestination,
+    pub coordinates: Coordinates,
+    pub arrival_at: Timestamp,
+    pub joining_open: bool,
+    pub can_join: bool,
+    pub members: Vec<AttackGroupMemberView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invitations: Option<Vec<PlayerId>>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoundView4 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empire_deletion: Option<EmpireDeletionStatus>,
     #[serde(default)]
     pub leads_alliance: bool,
+    #[serde(default)]
+    pub attack_groups: Vec<AttackGroupView>,
     #[serde(default)]
     pub holdings: Vec<HeldFleetView>,
     #[serde(default)]
@@ -397,6 +423,13 @@ impl<S: GameStore> GameService<S> {
                     .map(|f| f.sender)
                     .chain(projected.facts.missiles.iter().map(|f| f.attacker))
                     .chain(projected.facts.holdings.iter().map(|f| f.owner))
+                    .chain(projected.facts.attack_groups.iter().flat_map(|g| {
+                        g.members
+                            .iter()
+                            .map(|m| m.owner)
+                            .chain([g.initiator])
+                            .chain(g.invitations.iter().flatten().copied())
+                    }))
                     .collect(),
             )
             .await?;

@@ -190,6 +190,12 @@ pub(crate) fn finalize(
             "foreign stationed ships lack a committed return origin",
         ));
     }
+    let removed_fleets: Vec<_> = w
+        .fleets
+        .values()
+        .filter(|f| f.owner == player && f.active())
+        .map(|f| f.id)
+        .collect();
     for f in w.fleets.values_mut().filter(|f| f.active()) {
         let hosted = f.leg == MissionLeg::Holding
             && matches!(f.intent.destination, MissionDestination::Body { id, .. } if bodies.contains(&id));
@@ -214,6 +220,30 @@ pub(crate) fn finalize(
         }
         c.affected_viewers.insert(f.owner);
         c.affected_viewers.extend(f.authorization.target_owner);
+    }
+    // A group retains its committed arrival for other owners. Losing its last
+    // outbound member closes the group and cancels the shared arrival event.
+    for fleet in removed_fleets {
+        crate::attack_groups::recalled(i, fleet, c, w)?;
+    }
+    for group in w
+        .attack_groups
+        .values_mut()
+        .filter(|g| g.resolved_at.is_none())
+    {
+        if group.invited.remove(&player) {
+            group.revision = group
+                .revision
+                .checked_add(1)
+                .ok_or(GameError::NumericRange)?;
+            c.affected_viewers.extend(group.invited.iter().copied());
+            c.affected_viewers.extend(
+                group
+                    .members
+                    .iter()
+                    .filter_map(|id| w.fleets.get(id).map(|f| f.owner)),
+            );
+        }
     }
     for f in w
         .missiles

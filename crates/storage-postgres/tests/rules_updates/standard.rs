@@ -91,7 +91,17 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
             .await
             .unwrap();
     let plan = service.prepare_upgrade(universe).await.unwrap();
-    assert_eq!(plan.release, "0.14.0");
+    assert_eq!(plan.release, "0.15.0");
+    assert!(
+        before
+            .rules
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .attack_groups
+            .is_none()
+    );
     assert!(!plan.diff.changes.is_empty());
     assert_eq!(
         plan.diff.initialize.add_research,
@@ -114,6 +124,17 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
         matches!(service.apply(&plan.document).await.unwrap(), RulesApplyOutcome::Applied { revision, .. } if revision == current_revision+1)
     );
     let (after, _) = store.bound_world(binding).await.unwrap().facts;
+    assert_eq!(
+        after
+            .rules
+            .artifact
+            .world
+            .as_ref()
+            .unwrap()
+            .attack_groups
+            .as_deref(),
+        Some("oi-group-attack-v1")
+    );
     let mut expected_research = before.state.research[&binding.player].levels.clone();
     expected_research.insert(ResearchId::PlasmaTechnology, 0);
     expected_research.insert(ResearchId::HyperspaceTechnology, 0);

@@ -47,6 +47,8 @@ export function dispatchSendLabel(
 ) {
   if (intent.mission === 'Transport' || intent.mission === 'Deploy')
     return `${intent.mission} to ${destination.name} [${coordinateText(destination.coordinates)}]`
+  if (intent.attack_group)
+    return `Join attack with ${shipManifest(intent.ships)}`
   const verb = {
     Hold: 'Defend',
     Attack: 'Attack',

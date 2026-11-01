@@ -156,9 +156,17 @@ export function combatReportModel(
   shared = false,
 ) {
   const participants = records(payload.participants)
-  const own = participants.find((p) => p.owner === viewer)
-  const side =
-    own?.side === 'Attacker' || own?.side === 'Defender' ? own.side : undefined
+  const ownSides = new Set(
+    participants.filter((p) => p.owner === viewer).map((p) => p.side),
+  )
+  const bothSides = ownSides.has('Attacker') && ownSides.has('Defender')
+  const side = bothSides
+    ? undefined
+    : ownSides.has('Attacker')
+      ? 'Attacker'
+      : ownSides.has('Defender')
+        ? 'Defender'
+        : undefined
   const name = (p: Observation) =>
     p.owner === viewer ? 'You' : playerLabel(p.owner, playerNames)
   const forces = participants.map((p) => ({
@@ -197,7 +205,7 @@ export function combatReportModel(
         (key !== 'loot' ||
           hasCombatLoot(
             payload.outcome,
-            shared ? 'Attacker' : side,
+            shared || ownSides.has('Attacker') ? 'Attacker' : side,
             payload.loot,
           )) &&
         (key !== 'own_cargo_loss' ||
@@ -219,11 +227,20 @@ export function combatReportModel(
   return {
     ...combatOutcome(payload.outcome, side),
     side,
+    bothSides,
     forces,
     rounds,
     resources,
+    ownReturns: records(payload.own_returns).map((r) => ({
+      fleet: String(r.fleet),
+      origin: readCoordinates(r.origin),
+      returnAt: Number(r.return_at),
+      loot: record(r.loot),
+    })),
     returnAt: typeof payload.return_at === 'number' ? payload.return_at : null,
-    noReturn: payload.return_at === null,
+    noReturn:
+      payload.return_at === null ||
+      (Array.isArray(payload.own_returns) && payload.own_returns.length === 0),
     espionage: payload.mission === 'Espionage',
   }
 }

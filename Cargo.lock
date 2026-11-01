@@ -1931,7 +1931,7 @@ checksum = "7e036b411754132fd6b74e94b74e9a13c5cf606fa93d1885c35860d3060820b1"
 
 [[package]]
 name = "orbit-application"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "argon2",
  "futures",
@@ -1948,7 +1948,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-engine"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "hex",
  "hmac",
@@ -1964,7 +1964,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-server"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "axum",
  "hex",
@@ -1984,7 +1984,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-storage-assets"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "axum",
  "object_store",
@@ -1995,7 +1995,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-storage-postgres"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "axum",
  "hex",
@@ -2019,7 +2019,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-transport-http"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "axum",
  "base64 0.22.1",

@@ -111,6 +111,7 @@ pub(crate) async fn load(
         )
         | Input::Event(
             ScheduledEvent::EmpireDeletionDue { .. }
+            | ScheduledEvent::AttackGroupDue { .. }
             | ScheduledEvent::MissileImpact { .. }
             | ScheduledEvent::FleetLegDue { .. }
             | ScheduledEvent::DebrisCleanupDue { .. }

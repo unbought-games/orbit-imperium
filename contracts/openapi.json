@@ -12127,6 +12127,10 @@
               16,
               32
             ]
+          },
+          "attack_group": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
@@ -12192,6 +12196,11 @@
           },
           "holding": {
             "$ref": "#/components/schemas/HoldingTerms4"
+          },
+          "group_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -12492,6 +12501,67 @@
             "type": "object",
             "properties": {
               "type": {
+                "const": "CreateAttackGroup"
+              },
+              "fleet": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "fleet"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "InviteAttackGroup"
+              },
+              "group": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "player": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "group",
+              "player"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "RevokeAttackGroupInvitation"
+              },
+              "group": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "player": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "group",
+              "player"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
                 "const": "RequestEmpireDeletion"
               }
             },
@@ -12656,6 +12726,9 @@
           "HoldingUnavailable",
           "DepotBudgetExceeded",
           "ExtensionTooSmall",
+          "AttackGroupClosed",
+          "AttackGroupFull",
+          "AttackGroupTooLate",
           "AllianceLeader",
           "DeletionDue",
           "ReauthenticationRequired"
@@ -13193,6 +13266,10 @@
           },
           "can_recall": {
             "type": "boolean"
+          },
+          "attack_group": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
@@ -13240,6 +13317,10 @@
           },
           "ships": {
             "$ref": "#/components/schemas/IncomingShips4"
+          },
+          "attack_group": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
@@ -13410,6 +13491,12 @@
               "$ref": "#/components/schemas/DepotView4"
             }
           },
+          "attack_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttackGroup4"
+            }
+          },
           "empire_deletion": {
             "$ref": "#/components/schemas/EmpireDeletionStatus4"
           },
@@ -13463,7 +13550,8 @@
                   "Colonize",
                   "Deploy",
                   "Missiles",
-                  "Hold"
+                  "Hold",
+                  "AllianceAttacks"
                 ]
               },
               "enabled": {
@@ -13500,7 +13588,8 @@
                   "Colonize",
                   "Deploy",
                   "Missiles",
-                  "Hold"
+                  "Hold",
+                  "AllianceAttacks"
                 ]
               },
               "enabled": {
@@ -15136,6 +15225,34 @@
               "Moon"
             ],
             "description": "Body kind observed at combat time. Older reports may omit it."
+          },
+          "own_returns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fleet": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "origin": {
+                  "$ref": "#/components/schemas/Coordinates"
+                },
+                "return_at": {
+                  "type": "integer"
+                },
+                "loot": {
+                  "$ref": "#/components/schemas/Resources"
+                }
+              },
+              "required": [
+                "fleet",
+                "origin",
+                "return_at",
+                "loot"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -17204,6 +17321,20 @@
           "observed_resources": {
             "$ref": "#/components/schemas/Resources",
             "description": "Historical report-observed resources in micro-units. Omission means unknown."
+          },
+          "attacking_allies": {
+            "type": "array",
+            "maxItems": 15,
+            "items": {
+              "$ref": "#/components/schemas/SimulationSide"
+            }
+          },
+          "defending_allies": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "$ref": "#/components/schemas/SimulationSide"
+            }
           }
         },
         "required": [
@@ -20851,6 +20982,97 @@
           "metal",
           "crystal",
           "deuterium"
+        ],
+        "additionalProperties": false
+      },
+      "AttackGroupMember4": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicShip4"
+            }
+          },
+          "own_fleet": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "owner",
+          "ships",
+          "own_fleet"
+        ],
+        "additionalProperties": false
+      },
+      "AttackGroup4": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initiator": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "target": {
+            "$ref": "#/components/schemas/MissionDestination4"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "arrival_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "joining_open": {
+            "type": "boolean"
+          },
+          "can_join": {
+            "type": "boolean"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttackGroupMember4"
+            }
+          },
+          "invitations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "initiator",
+          "target",
+          "coordinates",
+          "arrival_at",
+          "joining_open",
+          "can_join",
+          "members",
+          "revision"
         ],
         "additionalProperties": false
       },

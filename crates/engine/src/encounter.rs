@@ -38,6 +38,17 @@ pub fn settle_encounter(
     f: &MissionFleet,
     r: &Ruleset,
 ) -> Result<EncounterSettlement, InvariantError> {
+    settle_encounters(s, i, std::slice::from_ref(f), r)
+}
+fn settle_encounters(
+    s: &GameState,
+    i: &OrderedInput,
+    attackers: &[MissionFleet],
+    r: &Ruleset,
+) -> Result<EncounterSettlement, InvariantError> {
+    let f = attackers
+        .first()
+        .ok_or_else(|| InvariantError("empty attacking force".into()))?;
     let MissionDestination::Body {
         id, expected_owner, ..
     } = f.intent.destination
@@ -88,6 +99,24 @@ pub fn settle_encounter(
             },
         ],
     };
+    for attacker in attackers.iter().skip(1) {
+        if attacker.intent.destination != f.intent.destination
+            || !facts.covered_players.contains(&attacker.owner)
+        {
+            return Err(InvariantError("inconsistent attacking force".into()));
+        }
+        input.participants.push(BattleParticipant {
+            owner: attacker.owner,
+            origin: BattleOrigin::Fleet(attacker.id),
+            side: BattleSide::Attacker,
+            technology: technology(s, attacker.owner)?,
+            units: attacker
+                .ships
+                .iter()
+                .map(|v| (ManufacturedItem::Ship(v.ship_type), v.count))
+                .collect(),
+        });
+    }
     for held in facts.records.fleets.values().filter(|v| held_at(v, id)) {
         if !facts.covered_players.contains(&held.owner) {
             return Err(InvariantError("uncovered holding defender".into()));
@@ -353,6 +382,43 @@ fn combat_encounter(
     w: &mut WorldRecords,
     audits: &mut Vec<serde_json::Value>,
 ) -> Result<(), Fault> {
+    combat_encounters(s, i, std::slice::from_mut(f), r, c, w, audits)
+}
+pub(crate) fn attack_group_encounter(
+    s: &GameState,
+    i: &OrderedInput,
+    attackers: &mut [MissionFleet],
+    r: &Ruleset,
+    c: &mut ChangeSet,
+    w: &mut WorldRecords,
+    audits: &mut Vec<serde_json::Value>,
+) -> Result<(), Fault> {
+    let MissionDestination::Body { id, .. } = attackers[0].intent.destination else {
+        return Err(invariant("group target"));
+    };
+    let mut target = s
+        .bodies
+        .get(&id)
+        .ok_or_else(|| invariant("missing group target"))?
+        .clone();
+    target.checkpoint = settle_production(s, &target, i.at, r)?;
+    target.revision = target
+        .revision
+        .checked_add(1)
+        .ok_or(GameError::NumericRange)?;
+    c.bodies.push(target);
+    combat_encounters(s, i, attackers, r, c, w, audits)
+}
+fn combat_encounters(
+    s: &GameState,
+    i: &OrderedInput,
+    attackers: &mut [MissionFleet],
+    r: &Ruleset,
+    c: &mut ChangeSet,
+    w: &mut WorldRecords,
+    audits: &mut Vec<serde_json::Value>,
+) -> Result<(), Fault> {
+    let f = &attackers[0];
     let MissionDestination::Body {
         id, expected_owner, ..
     } = f.intent.destination
@@ -363,9 +429,11 @@ fn combat_encounter(
         .bodies
         .get(&id)
         .ok_or_else(|| invariant("missing combat target"))?;
-    let result = settle_encounter(s, i, f, r)?;
-    let before_cargo = f.cargo;
-    let before_ships = f.ships.clone();
+    let result = settle_encounters(s, i, attackers, r)?;
+    let before: BTreeMap<_, _> = attackers
+        .iter()
+        .map(|f| (f.id, (f.cargo, f.ships.clone())))
+        .collect();
     for (losses, recovered) in result.battle.destroyed.iter().zip(&result.recovery) {
         for &(unit, count) in &losses.units {
             let restored = recovered
@@ -468,33 +536,51 @@ fn combat_encounter(
                 .ok_or(GameError::NumericRange)?;
         }
     }
-    let survivors = result
-        .battle
-        .survivors
-        .iter()
-        .find(|p| p.origin == BattleOrigin::Fleet(f.id))
-        .ok_or_else(|| invariant("missing attacking result"))?;
-    f.ships = survivors
-        .units
-        .iter()
-        .filter_map(|(item, n)| {
-            if let ManufacturedItem::Ship(ship_type) = item {
-                Some(ShipStack {
+    let mut cargo_losses = visitor_cargo_losses;
+    let mut capacities = vec![];
+    for f in attackers.iter_mut() {
+        let survivors = result
+            .battle
+            .survivors
+            .iter()
+            .find(|p| p.origin == BattleOrigin::Fleet(f.id))
+            .ok_or_else(|| invariant("missing attacking result"))?;
+        f.ships = survivors
+            .units
+            .iter()
+            .filter_map(|(item, count)| match item {
+                ManufacturedItem::Ship(ship_type) if *count > 0 => Some(ShipStack {
                     owner: f.owner,
                     ship_type: *ship_type,
-                    count: *n,
-                })
-            } else {
-                None
-            }
-        })
-        .collect();
-    f.cargo = retain_cargo(f.cargo, payload_capacity(&f.ships, r)?)?;
-    let lost_cargo = Resources::from_values(std::array::from_fn(|idx| {
-        before_cargo.values()[idx] - f.cargo.values()[idx]
-    }));
+                    count: *count,
+                }),
+                _ => None,
+            })
+            .collect();
+        f.cargo = retain_cargo(f.cargo, payload_capacity(&f.ships, r)?)?;
+        add_cargo_loss(
+            cargo_losses.entry(f.owner).or_default(),
+            Resources::from_values(std::array::from_fn(|n| {
+                before[&f.id].0.values()[n] - f.cargo.values()[n]
+            })),
+        );
+        let used = f
+            .cargo
+            .values()
+            .into_iter()
+            .try_fold(0i64, |a, n| a.checked_add(n))
+            .ok_or(GameError::NumericRange)?;
+        capacities.push(LootCapacity {
+            owner: f.owner,
+            origin: BattleOrigin::Fleet(f.id),
+            free_capacity: payload_capacity(&f.ships, r)?
+                .checked_sub(used)
+                .ok_or(GameError::NumericRange)?,
+        });
+    }
     let mut loot = Resources::default();
-    if f.intent.mission == Mission::Attack
+    let mut shares = BTreeMap::new();
+    if attackers[0].intent.mission == Mission::Attack
         && result.battle.outcome == BattleOutcome::AttackerVictory
     {
         let settled = c
@@ -502,30 +588,16 @@ fn combat_encounter(
             .iter_mut()
             .find(|b| b.id == id)
             .ok_or_else(|| invariant("missing encounter economy settlement"))?;
-        let used = f
-            .cargo
-            .values()
-            .into_iter()
-            .try_fold(0i64, |a, n| a.checked_add(n))
-            .ok_or_else(|| invariant("cargo total overflow"))?;
-        let free = payload_capacity(&f.ships, r)?
-            .checked_sub(used)
-            .filter(|v| *v >= 0)
-            .ok_or_else(|| invariant("surviving cargo exceeds capacity"))?;
-        loot = raid_loot(settled.checkpoint.amounts, free)?;
-        // One pooled calculation/debit; this solo adapter uses the same multi-origin allocator.
-        let allocation = allocate_loot(
-            loot,
-            &[LootCapacity {
-                owner: f.owner,
-                origin: BattleOrigin::Fleet(f.id),
-                free_capacity: free,
-            }],
-        )?;
+        loot = raid_loot_for_fleets(settled.checkpoint.amounts, &capacities)?;
+        shares = allocate_loot(loot, &capacities)?.into_iter().collect();
         settled.checkpoint.amounts =
             crate::transition::resources(settled.checkpoint.amounts, loot, false)?;
-        f.cargo = crate::transition::resources(f.cargo, allocation[0].1, true)?;
+        for f in attackers.iter_mut() {
+            f.cargo =
+                crate::transition::resources(f.cargo, shares[&BattleOrigin::Fleet(f.id)], true)?;
+        }
     }
+    let f = &attackers[0];
     let debris = result.debris;
     if debris.metal > 0 || debris.crystal > 0 || debris.deuterium > 0 {
         let coords = target.coordinates;
@@ -607,71 +679,96 @@ fn combat_encounter(
     if r.attacks() {
         full["mission"] = json!(f.intent.mission);
     }
-    let mut observer = if f.ships.is_empty() && result.battle.rounds.len() == 1 {
-        json!({"kind":"ContactLost","at":i.at,"target":target.coordinates,"own_lost_ships":before_ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>()})
-    } else {
-        full.clone()
-    };
-    observer["own_cargo_loss"] = wire_resources(lost_cargo);
-    if r.attacks() && observer["kind"] == "Combat" {
-        observer["mission"] = json!(f.intent.mission);
-        observer["return_at"] = if f.ships.is_empty() {
-            serde_json::Value::Null
+    let mut recipients = BTreeMap::new();
+    let contact_lost =
+        attackers.iter().all(|f| f.ships.is_empty()) && result.battle.rounds.len() == 1;
+    let owners: std::collections::BTreeSet<_> = attackers
+        .iter()
+        .map(|f| f.owner)
+        .chain([expected_owner])
+        .chain(
+            result
+                .battle
+                .participants
+                .iter()
+                .filter(|p| p.side == BattleSide::Defender)
+                .map(|p| p.owner),
+        )
+        .collect();
+    for owner in owners {
+        let own: Vec<_> = attackers.iter().filter(|f| f.owner == owner).collect();
+        let defender = result
+            .battle
+            .participants
+            .iter()
+            .any(|p| p.owner == owner && p.side == BattleSide::Defender);
+        let mut payload = if contact_lost && !defender {
+            json!({"kind":"ContactLost","at":i.at,"target":target.coordinates,"own_lost_ships":own.iter().flat_map(|f| before[&f.id].1.iter()).map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>()})
         } else {
-            json!(deadline(i.at, f.terms.duration_ms)?)
+            full.clone()
         };
+        if let Some(loss) = cargo_losses.get(&owner) {
+            payload["own_cargo_loss"] = json!({"metal":loss[0].to_string(),"crystal":loss[1].to_string(),"deuterium":loss[2].to_string()});
+        }
+        if !own.is_empty() && payload["kind"] == "Combat" && r.attacks() {
+            let returns: Vec<_> = own.iter().filter(|f| !f.ships.is_empty()).map(|f| Ok(json!({"fleet":f.id,"origin":f.origin_coordinates,"return_at":deadline(i.at, f.terms.duration_ms)?,"loot":wire_resources(shares.get(&BattleOrigin::Fleet(f.id)).copied().unwrap_or_default())}))).collect::<Result<_, GameError>>()?;
+            if attackers.len() == 1 && !defender {
+                payload["return_at"] = returns
+                    .first()
+                    .map_or(serde_json::Value::Null, |v| v["return_at"].clone());
+            }
+            if attackers.len() > 1 {
+                payload["own_returns"] = json!(returns);
+            }
+        }
+        recipients.insert(owner, payload);
     }
-    if f.intent.mission == Mission::Attack {
-        let policy = w
-            .policies
-            .get(&expected_owner)
-            .ok_or_else(|| invariant("missing target presence"))?;
-        let presence = inactivity(policy.last_presence_at, i.at)?;
-        if presence == Inactivity::Active
-            && matches!(
-                result.battle.outcome,
-                BattleOutcome::AttackerVictory | BattleOutcome::Draw
-            )
-        {
-            let report = ReportId(derived_id(i.id, &format!("report:Combat:{}", f.id)));
-            audits.push(
-                serde_json::to_value(AttackEvidence {
-                    kind: "AttackEvidence".into(),
-                    schema: 1,
-                    universe: s.universe,
-                    epoch: s.epoch,
-                    battle_or_destruction_id: i.id,
-                    attacker: f.owner,
-                    fleet: f.id,
-                    target_body: id,
-                    target_owner: expected_owner,
-                    at_ms: i.at,
-                    contact_order: [i.phase as i64, i.sequence],
-                    outcome: result.battle.outcome.clone(),
-                    target_presence_class: presence,
-                    policy_hash: r.hash.clone(),
-                    report,
-                    debris_field: w
-                        .debris
-                        .values()
-                        .find(|d| d.coordinates == target.coordinates && d.marker_present)
-                        .map(|d| d.id),
-                })
-                .map_err(|_| invariant("attack evidence serialization"))?,
-            );
+    for f in attackers.iter() {
+        if f.intent.mission == Mission::Attack {
+            let policy = w
+                .policies
+                .get(&expected_owner)
+                .ok_or_else(|| invariant("missing target presence"))?;
+            let presence = inactivity(policy.last_presence_at, i.at)?;
+            if presence == Inactivity::Active
+                && matches!(
+                    result.battle.outcome,
+                    BattleOutcome::AttackerVictory | BattleOutcome::Draw
+                )
+            {
+                let report = ReportId(derived_id(
+                    i.id,
+                    &format!("report:Combat:{}", attackers[0].id),
+                ));
+                audits.push(
+                    serde_json::to_value(AttackEvidence {
+                        kind: "AttackEvidence".into(),
+                        schema: 1,
+                        universe: s.universe,
+                        epoch: s.epoch,
+                        battle_or_destruction_id: i.id,
+                        attacker: f.owner,
+                        fleet: f.id,
+                        target_body: id,
+                        target_owner: expected_owner,
+                        at_ms: i.at,
+                        contact_order: [i.phase as i64, i.sequence],
+                        outcome: result.battle.outcome.clone(),
+                        target_presence_class: presence,
+                        policy_hash: r.hash.clone(),
+                        report,
+                        debris_field: w
+                            .debris
+                            .values()
+                            .find(|d| d.coordinates == target.coordinates && d.marker_present)
+                            .map(|d| d.id),
+                    })
+                    .map_err(|_| invariant("attack evidence serialization"))?,
+                );
+            }
         }
     }
-    let mut recipients = BTreeMap::from([(f.owner, observer), (expected_owner, full.clone())]);
-    for (owner, mut loss) in visitor_cargo_losses {
-        // Defender entitlement wins when the same player also attacked.
-        if owner == f.owner {
-            add_cargo_loss(&mut loss, lost_cargo);
-        }
-        let mut report = full.clone();
-        report["own_cargo_loss"] = json!({"metal":loss[0].to_string(),"crystal":loss[1].to_string(),"deuterium":loss[2].to_string()});
-        recipients.insert(owner, report);
-    }
-    crate::missions::mission_report(w, i, f, "Combat", recipients);
+    crate::missions::mission_report(w, i, &attackers[0], "Combat", recipients);
     audits.push(json!({"kind":"Battle","battle_cursor":result.battle.rng_cursor,"recovery_cursor":result.recovery_cursor}));
     Ok(())
 }

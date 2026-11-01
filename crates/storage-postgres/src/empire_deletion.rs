@@ -47,6 +47,27 @@ pub(crate) async fn scopes(
             ScopeKey::Location(f.terms.target_coordinates),
         ]);
     }
+    let groups = crate::attack_groups::load(
+        tx,
+        u,
+        &Input::Event(ScheduledEvent::EmpireDeletionDue { player }),
+        &[player.0],
+        false,
+    )
+    .await?;
+    for group in groups {
+        scopes.extend(
+            crate::attack_groups::scopes(
+                tx,
+                u,
+                &Input::Event(ScheduledEvent::AttackGroupDue {
+                    group: group.id,
+                    generation: group.generation,
+                }),
+            )
+            .await?,
+        );
+    }
     let members: Vec<Uuid> = sqlx::query_scalar("SELECT m.player FROM alliance_memberships m JOIN alliances a ON a.id=m.alliance WHERE a.universe=$1 AND a.leader=$2")
         .bind(u.0).bind(player.0).fetch_all(&mut **tx).await.map_err(db_error)?;
     scopes.extend(members.into_iter().map(|p| ScopeKey::Player(PlayerId(p))));

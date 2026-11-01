@@ -1,3 +1,4 @@
+import { AttackGroups } from './attack-groups'
 import { AllianceDepot } from './alliance-depot'
 import { MissileFlight } from './missile-flight'
 import { incomingMovements, outgoingMovements } from './fleet-movements'
@@ -68,6 +69,7 @@ export function MissionFleets({
           />
         </div>
       </TaskHeader>
+      {!item && <AttackGroups model={model} view={view} />}
       {!movements.length && !launches.length && (
         <EmptyState
           icon={Rocket}

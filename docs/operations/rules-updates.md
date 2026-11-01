@@ -330,3 +330,7 @@ Process restarts do not need a gameplay audit or a caught-up simulation. Private
 
 [Battlecruisers](battlecruiser.md) use the same standard upgrade path, with existing
 Laser and Hyperspace research prerequisites and no inventory backfill.
+
+[Alliance attacks](alliance-attacks.md) adds coordinated attacking fleets through
+standard content bundle 0.15.0 and migration 0029. Deploy compatible processes
+before activation; existing holding and Depot commitments remain intact.

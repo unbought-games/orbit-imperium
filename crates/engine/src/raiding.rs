@@ -4,14 +4,32 @@ use std::collections::BTreeSet;
 
 /// Input/output are micro-resources; fractional stock never becomes loot.
 pub fn raid_loot(stock: Resources, free_capacity: i64) -> Result<Resources, InvariantError> {
+    raid_loot_wide(stock, i128::from(free_capacity))
+}
+/// Pooled capacity can exceed one fleet's resource range; spendable manifests cannot.
+pub fn raid_loot_for_fleets(
+    stock: Resources,
+    capacities: &[LootCapacity],
+) -> Result<Resources, InvariantError> {
+    let total = capacities.iter().try_fold(0i128, |sum, c| {
+        if c.free_capacity < 0 {
+            return Err(InvariantError("negative raid capacity".into()));
+        }
+        sum.checked_add(i128::from(c.free_capacity))
+            .ok_or_else(|| InvariantError("pooled capacity overflow".into()))
+    })?;
+    raid_loot_wide(stock, total)
+}
+fn raid_loot_wide(stock: Resources, free_capacity: i128) -> Result<Resources, InvariantError> {
     if free_capacity < 0 || stock.values().iter().any(|n| *n < 0) {
         return Err(InvariantError("negative raid resources".into()));
     }
     let mut caps = stock.values().map(|n| n / (2 * SCALE));
-    let mut free = free_capacity / SCALE;
+    let mut free = free_capacity / i128::from(SCALE);
     let mut loot = [0i64; 3];
     for (resource, divisor) in [(0, 3), (1, 2), (2, 1), (0, 2), (1, 1)] {
-        let taken = caps[resource].min(free / divisor);
+        let taken = i64::try_from(i128::from(caps[resource]).min(free / divisor))
+            .map_err(|_| InvariantError("loot overflow".into()))?;
         loot[resource] = loot[resource]
             .checked_add(taken)
             .ok_or_else(|| InvariantError("loot overflow".into()))?;
@@ -19,7 +37,7 @@ pub fn raid_loot(stock: Resources, free_capacity: i64) -> Result<Resources, Inva
             .checked_sub(taken)
             .ok_or_else(|| InvariantError("loot cap underflow".into()))?;
         free = free
-            .checked_sub(taken)
+            .checked_sub(i128::from(taken))
             .ok_or_else(|| InvariantError("loot capacity underflow".into()))?;
     }
     scale_loot(loot)
