@@ -109,6 +109,7 @@ fn setup() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
 }
 fn colony(p: PlayerId, b: BodyId, position: u32, ships: i64) -> FleetIntent {
     FleetIntent {
+        hold_hours: None,
         origin: b,
         mission: Mission::Colonize,
         destination: MissionDestination::EmptyPosition {

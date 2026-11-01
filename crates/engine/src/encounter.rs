@@ -62,7 +62,7 @@ pub fn settle_encounter(
         })
         .map(|x| (x.item, x.count))
         .collect();
-    let input = BattleInput {
+    let mut input = BattleInput {
         encounter_id: i.id,
         at: i.at,
         target: id,
@@ -88,6 +88,22 @@ pub fn settle_encounter(
             },
         ],
     };
+    for held in facts.records.fleets.values().filter(|v| held_at(v, id)) {
+        if !facts.covered_players.contains(&held.owner) {
+            return Err(InvariantError("uncovered holding defender".into()));
+        }
+        input.participants.push(BattleParticipant {
+            owner: held.owner,
+            origin: BattleOrigin::Fleet(held.id),
+            side: BattleSide::Defender,
+            technology: technology(s, held.owner)?,
+            units: held
+                .ships
+                .iter()
+                .map(|v| (ManufacturedItem::Ship(v.ship_type), v.count))
+                .collect(),
+        });
+    }
     let mut rng = RandomStream::new(&facts.secret, s.universe, s.epoch, i.id, "battle")?;
     let battle = resolve_battle(&input, rules, &mut rng)?;
     let mut recovery_rng = RandomStream::new(&facts.secret, s.universe, s.epoch, i.id, "recovery")?;
@@ -178,17 +194,30 @@ pub(crate) fn spy_encounter(
             .values()
             .map(|n| n / SCALE * SCALE),
     );
-    let stocks = s
+    let mut stocks = BTreeMap::<ManufacturedItem, i64>::new();
+    for stock in s
         .inventories
         .iter()
-        .filter(|x| x.body == id && x.count > 0)
-        .collect::<Vec<_>>();
+        .filter(|x| x.body == id && x.count > 0 && !matches!(x.item, ManufacturedItem::Missile(_)))
+    {
+        stocks.insert(stock.item, stock.count);
+    }
+    for held in w.fleets.values().filter(|v| held_at(v, id)) {
+        for ship in &held.ships {
+            let count = stocks
+                .entry(ManufacturedItem::Ship(ship.ship_type))
+                .or_default();
+            *count = count
+                .checked_add(ship.count)
+                .ok_or_else(|| invariant("held spy count overflow"))?;
+        }
+    }
     let local = |ships: bool| {
         json!(
             stocks
                 .iter()
-                .filter(|x| matches!(x.item, ManufacturedItem::Ship(_)) == ships)
-                .map(|x| json!({"item":x.item,"count":x.count.to_string()}))
+                .filter(|(item, _)| matches!(item, ManufacturedItem::Ship(_)) == ships)
+                .map(|(item, count)| json!({"item":item,"count":count.to_string()}))
                 .collect::<Vec<_>>()
         )
     };
@@ -203,8 +232,8 @@ pub(crate) fn spy_encounter(
     let defending = total(
         stocks
             .iter()
-            .filter(|x| matches!(x.item, ManufacturedItem::Ship(_)))
-            .map(|x| x.count)
+            .filter(|(item, _)| matches!(item, ManufacturedItem::Ship(_)))
+            .map(|(_, count)| *count)
             .collect(),
     )?;
     let mut rng = RandomStream::new(
@@ -337,6 +366,59 @@ fn combat_encounter(
                     ..old.clone()
                 });
             }
+        }
+    }
+    let mut visitor_cargo_losses = BTreeMap::<PlayerId, [i128; 3]>::new();
+    for survivor in result
+        .battle
+        .survivors
+        .iter()
+        .filter(|v| v.side == BattleSide::Defender)
+    {
+        let BattleOrigin::Fleet(fleet_id) = survivor.origin else {
+            continue;
+        };
+        let held = w
+            .fleets
+            .get_mut(&fleet_id)
+            .ok_or_else(|| invariant("missing held defender"))?;
+        let cargo_before = held.cargo;
+        held.ships = survivor
+            .units
+            .iter()
+            .filter_map(|(item, count)| match item {
+                ManufacturedItem::Ship(ship_type) if *count > 0 => Some(ShipStack {
+                    owner: held.owner,
+                    ship_type: *ship_type,
+                    count: *count,
+                }),
+                _ => None,
+            })
+            .collect();
+        held.cargo = retain_cargo(held.cargo, payload_capacity(&held.ships, r)?)?;
+        let loss = visitor_cargo_losses.entry(held.owner).or_default();
+        add_cargo_loss(
+            loss,
+            Resources::from_values(std::array::from_fn(|n| {
+                cargo_before.values()[n] - held.cargo.values()[n]
+            })),
+        );
+        held.revision = held
+            .revision
+            .checked_add(1)
+            .ok_or(GameError::NumericRange)?;
+        c.affected_viewers.insert(held.owner);
+        if held.ships.is_empty() {
+            c.cancelled_events.push(ScheduledEvent::FleetLegDue {
+                fleet: held.id,
+                generation: held.generation,
+                expected_leg: held.leg,
+            });
+            held.leg = MissionLeg::Destroyed;
+            held.generation = held
+                .generation
+                .checked_add(1)
+                .ok_or(GameError::NumericRange)?;
         }
     }
     let survivors = result
@@ -532,13 +614,36 @@ fn combat_encounter(
             );
         }
     }
-    crate::missions::mission_report(
-        w,
-        i,
-        f,
-        "Combat",
-        BTreeMap::from([(f.owner, observer), (expected_owner, full)]),
-    );
+    let mut recipients = BTreeMap::from([(f.owner, observer), (expected_owner, full.clone())]);
+    for (owner, mut loss) in visitor_cargo_losses {
+        // Defender entitlement wins when the same player also attacked.
+        if owner == f.owner {
+            add_cargo_loss(&mut loss, lost_cargo);
+        }
+        let mut report = full.clone();
+        report["own_cargo_loss"] = json!({"metal":loss[0].to_string(),"crystal":loss[1].to_string(),"deuterium":loss[2].to_string()});
+        recipients.insert(owner, report);
+    }
+    crate::missions::mission_report(w, i, f, "Combat", recipients);
     audits.push(json!({"kind":"Battle","battle_cursor":result.battle.rng_cursor,"recovery_cursor":result.recovery_cursor}));
     Ok(())
+}
+
+// A recipient can lose cargo in several fleets. These are observation totals,
+// not a spendable stock; the bounded encounter roster fits comfortably in i128.
+fn add_cargo_loss(total: &mut [i128; 3], loss: Resources) {
+    for (sum, amount) in total.iter_mut().zip(loss.values()) {
+        *sum += i128::from(amount);
+    }
+}
+#[cfg(test)]
+mod holding_tests {
+    use super::*;
+    #[test]
+    fn recipient_loss_totals_can_exceed_a_single_stock_limit() {
+        let mut total = [0; 3];
+        add_cargo_loss(&mut total, Resources::all(i64::MAX));
+        add_cargo_loss(&mut total, Resources::all(i64::MAX));
+        assert_eq!(total, [2 * i128::from(i64::MAX); 3]);
+    }
 }

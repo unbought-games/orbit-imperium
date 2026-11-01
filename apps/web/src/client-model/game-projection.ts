@@ -21,6 +21,7 @@ export type SubmittedQuote =
   | Quote
   | S['FleetTerms4']
   | S['MissileTerms4']
+  | S['DepotSupplyQuote4']
 // These are submission inputs and server facts, never a second resource balance.
 export type SubmittedIntent = S['SubmittedIntent']
 
@@ -47,6 +48,16 @@ export function nextWorkDelay(state: GameState) {
       ),
     )
   }
+  if (view.protocol === 4)
+    deadlines.push(
+      ...(view.depots ?? []).flatMap((d) =>
+        d.next_budget_release_at === null ? [] : [d.next_budget_release_at],
+      ),
+      ...(view.holdings ?? []).map((f) => f.departure_at),
+      ...view.missions.fleets
+        .filter((f) => f.leg === 'Holding')
+        .map((f) => f.due_at),
+    )
   return Math.min(...deadlines) - currentServerTime(state)
 }
 
@@ -65,6 +76,8 @@ export function activeAttempt(attempt: Attempt, view: BoundView | null) {
 }
 
 export function commandBody(command: Command, view: BoundView | null) {
+  if (command.type === 'World' && command.action.type === 'SupplyHoldingFleet')
+    return command.action.intent.source_planet
   if (command.type === 'World' && command.action.type === 'LaunchMissiles')
     return command.action.intent.origin
   if (command.type === 'World' && command.action.type === 'ScrapMissiles')
@@ -215,6 +228,23 @@ export function manufacturingPending(state: GameState, body: string) {
   )
 }
 
+export function availableDepotBudget(state: GameState, body: string): bigint {
+  if (state.view?.protocol !== 4) return 0n
+  let remaining = BigInt(
+    state.view.depots?.find((d) => d.body === body)?.remaining_budget ?? '0',
+  )
+  for (const { attempt } of submittedIntents(state)) {
+    const command = attempt.envelope.command
+    if (
+      command.type === 'World' &&
+      command.action.type === 'SupplyHoldingFleet' &&
+      command.action.intent.source_planet === body
+    )
+      remaining -= BigInt(command.action.intent.deuterium)
+  }
+  return remaining < 0n ? 0n : remaining
+}
+
 export function canSubmitIntent(
   state: GameState,
   command: Command,
@@ -223,6 +253,25 @@ export function canSubmitIntent(
   const view = projectGameView(state),
     cost = state.view ? payment(command, intent, state.view, state) : null
   if (!view) return false
+  if (
+    command.type === 'World' &&
+    command.action.type === 'SupplyHoldingFleet'
+  ) {
+    const supply = command.action.intent
+    if (
+      view.protocol !== 4 ||
+      !view.holdings?.some(
+        (f) =>
+          f.id === supply.fleet &&
+          f.target === supply.source_planet &&
+          f.can_supply &&
+          f.departure_at > currentServerTime(state),
+      ) ||
+      BigInt(supply.deuterium) >
+        availableDepotBudget(state, supply.source_planet)
+    )
+      return false
+  }
   if (cost && !cost.refund) {
     const body = view.bodies.find((body) => body.id === cost.body)
     if (!body || !canAfford(cost.delta, body.amounts)) return false
@@ -324,7 +373,8 @@ export function matchesQuote(
     return (
       command.type === 'World' &&
       (command.action.type === 'LaunchFleet' ||
-        command.action.type === 'LaunchMissiles') &&
+        command.action.type === 'LaunchMissiles' ||
+        command.action.type === 'SupplyHoldingFleet') &&
       command.action.expected_terms_hash === quote.terms_hash &&
       quote.profile_hash === view.profile_hash &&
       canonical(command.action.intent) === canonical(quote.intent)
@@ -609,6 +659,15 @@ function payment(
       : command.type === 'LaunchTransport'
         ? command
         : null
+  if (command.type === 'World' && command.action.type === 'SupplyHoldingFleet')
+    return {
+      body: command.action.intent.source_planet,
+      delta: {
+        metal: '0',
+        crystal: '0',
+        deuterium: command.action.intent.deuterium,
+      },
+    }
   if (!fleet) return null
   const fuel =
     intent.quote && 'fuel' in intent.quote

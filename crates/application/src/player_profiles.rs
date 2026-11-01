@@ -108,6 +108,7 @@ impl<S: GameStore> GameService<S> {
             ProfileSource::Incoming => {
                 let view = self.world_view(p, q.context).await?.facts;
                 players.extend(view.missions.incoming.into_iter().map(|f| f.sender));
+                players.extend(view.holdings.into_iter().map(|f| f.owner));
                 players.extend(
                     view.missiles
                         .into_iter()

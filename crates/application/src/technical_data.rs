@@ -166,6 +166,10 @@ fn building_data(data: &mut TechnicalData, building: Building, rules: &Ruleset) 
             data.storage_capacities = r.progression.as_ref().map(|p| p.storage_capacities.iter().map(ToString::to_string).collect());
             data.fact("Storage", "Production stops for this resource at capacity. Incoming deliveries can exceed capacity.");
         }
+        Building::AllianceDepot if holding_enabled(rules) => {
+            data.fact("Supply budget", "10,000 deuterium per completed level per rolling real hour. Idle time does not accumulate additional budget.");
+            data.fact("Holding extension", "Supplied fuel extends a visiting fleet’s departure using its surviving ships and committed launch consumption. Supply is immediate, cannot be refunded, and does not transfer cargo or ship control.");
+        }
         Building::NaniteFactory if rules.progression() => {
             data.fact("Construction and manufacturing time", "Raw duration is divided by 2^completed Nanite Factory level, in addition to Robotics or Shipyard acceleration. Building upgrades retain the universe’s construction adjustment; manufacturing rounds each unit down to whole seconds with a one-second minimum. Research is unaffected.");
             data.fact("Industrial lock", "Factory upgrades and demolition cannot overlap any unfinished manufacturing on this planet, including waiting ships, defenses and missiles. Self-upgrades use the old completed Nanite level.");
@@ -203,7 +207,7 @@ fn research_data(data: &mut TechnicalData, research: ResearchId, rules: &Ruleset
             }
             data.fact("Flight", "Bonuses add to base speed. Actual travel time and fuel depend on the slowest ship, route, universe speed and speed setting.");
         }
-        ComputerTechnology => data.fact("Fleet slots", format!("{} base slot + {} per completed level. Outbound and returning missions occupy slots.", fleet_slot_limit(0), fleet_slot_limit(1) - fleet_slot_limit(0))),
+        ComputerTechnology => data.fact("Fleet slots", format!("{} base slot + {} per completed level. Outbound, holding and returning missions occupy slots.", fleet_slot_limit(0), fleet_slot_limit(1) - fleet_slot_limit(0))),
         Astrophysics => {
             data.fact("Planet capacity", format!("{} homeworld + one colony at each odd completed level. Moons do not count; colony ships do not reserve a slot.", astrophysics_planet_capacity(0)));
             if rules.colonization() {

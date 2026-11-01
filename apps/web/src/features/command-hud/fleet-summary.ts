@@ -175,15 +175,18 @@ export function fleetFlight(row: FleetSummaryRow, now: number) {
         : 0
   const position = Math.max(0, Math.min(1, returning ? fraction : 1 - fraction))
   return {
-    position: unknownPosition ? null : position,
-    x: unknownPosition ? 160 : 16 + 288 * position,
+    position: row.leg === 'Holding' ? 1 : unknownPosition ? null : position,
+    x:
+      row.leg === 'Holding' ? 304 : unknownPosition ? 160 : 16 + 288 * position,
     y: 14,
     angle: returning ? 225 : 45,
     label:
       row.dueAt !== null && row.dueAt > now
-        ? row.leg === 'Returning'
-          ? 'Home in'
-          : 'Arrives in'
+        ? row.leg === 'Holding'
+          ? 'Departs in'
+          : row.leg === 'Returning'
+            ? 'Home in'
+            : 'Arrives in'
         : null,
     time: row.dueAt === null ? row.status : arrivalCountdown(row.dueAt, now),
   }

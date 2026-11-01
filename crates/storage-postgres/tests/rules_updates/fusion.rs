@@ -16,7 +16,8 @@ async fn fusion_activates_builds_consumes_fuel_and_restarts_in_both_runtimes() {
             vec![
                 Building::FusionReactor,
                 Building::NaniteFactory,
-                Building::MissileSilo
+                Building::MissileSilo,
+                Building::AllianceDepot
             ]
         );
         service.apply(&plan.document).await.unwrap();

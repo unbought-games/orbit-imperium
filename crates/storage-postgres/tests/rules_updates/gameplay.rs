@@ -20,6 +20,7 @@ pub(super) async fn drain(store: &PgStore, universe: UniverseId) {
 pub(super) async fn command(store: &PgStore, binding: Binding, command: Command) {
     let body = match &command {
         Command::StartUpgrade { body, .. }
+        | Command::StartDemolition { body, .. }
         | Command::SetProduction { body, .. }
         | Command::StartManufacture { body, .. } => *body,
         Command::StartResearch { host, .. } => *host,
@@ -78,6 +79,11 @@ pub(super) async fn complete(store: &PgStore, binding: Binding, request: QuoteRe
     let hash = quote.terms_hash.unwrap();
     let c = match request {
         QuoteRequest::Upgrade { body, building } => Command::StartUpgrade {
+            body,
+            building,
+            expected_terms_hash: hash,
+        },
+        QuoteRequest::Demolition { body, building } => Command::StartDemolition {
             body,
             building,
             expected_terms_hash: hash,

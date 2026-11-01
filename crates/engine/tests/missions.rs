@@ -137,6 +137,8 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         }
     }
     s.world = Some(WorldFacts {
+        holding_relationships: None,
+        covered_depot_sources: Default::default(),
         homeworlds: Default::default(),
         planet_slots: vec![],
         records: w,
@@ -154,6 +156,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
 }
 fn intent(s: &GameState, p: PlayerId, b: BodyId, t: BodyId) -> FleetIntent {
     FleetIntent {
+        hold_hours: None,
         origin: b,
         destination: MissionDestination::Body {
             id: t,
@@ -466,6 +469,7 @@ fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() 
         let loaded = Resources::from_values(loaded.map(|n| n * SCALE));
         let collected = Resources::from_values(expected.map(|n| n * SCALE));
         let intent = FleetIntent {
+            hold_hours: None,
             origin: b,
             destination: MissionDestination::Debris {
                 coordinates,
@@ -579,6 +583,7 @@ fn harvest_reference_survives_return_and_cleanup_records_loss() {
         },
     );
     let intent = FleetIntent {
+        hold_hours: None,
         origin: b,
         destination: MissionDestination::Debris {
             coordinates,
@@ -710,6 +715,7 @@ fn equal_time_collectors_serialize_and_empty_marker_remains_eligible() {
         },
     );
     let intent = FleetIntent {
+        hold_hours: None,
         origin: b,
         destination: MissionDestination::Debris {
             coordinates,
@@ -3259,3 +3265,6 @@ fn deuterium_activation_uses_arrival_rules_and_preserves_accepted_fuel_and_time(
         );
     }
 }
+
+#[path = "missions/holding.rs"]
+mod holding;

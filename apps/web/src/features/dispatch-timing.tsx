@@ -17,19 +17,21 @@ export function DispatchTiming({
   now,
   message,
   availableFuel,
+  holdingMs = 0,
 }: {
   terms?: Pick<components['schemas']['FleetTerms4'], 'duration_ms' | 'fuel'>
   mission: components['schemas']['Mission4']
   now: number
   message?: string
   availableFuel?: string
+  holdingMs?: number
 }) {
   const insufficientFuel =
     terms &&
     availableFuel !== undefined &&
     BigInt(terms.fuel) > BigInt(availableFuel)
   const schedule = terms
-    ? flightSchedule(terms.duration_ms, now, mission)
+    ? flightSchedule(terms.duration_ms, now, mission, holdingMs)
     : null
   return (
     <section
@@ -66,7 +68,7 @@ export function DispatchTiming({
           </div>
         )}
         <div>
-          <dt>Total flight</dt>
+          <dt>{mission === 'Hold' ? 'Total mission' : 'Total flight'}</dt>
           <dd>{schedule ? flightDuration(schedule.total) : '—'}</dd>
         </div>
         <div>

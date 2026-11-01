@@ -11,7 +11,7 @@ export type EmpireFlight = {
   item?: string
   sender?: string
   mission: string
-  leg: 'Incoming' | 'Outbound' | 'Returning'
+  leg: 'Incoming' | 'Outbound' | 'Returning' | 'Holding'
   from?: string
   to?: string
   route: string

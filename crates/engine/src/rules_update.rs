@@ -81,6 +81,9 @@ pub fn validate_rules_update(
     {
         return Err(RulesError::InvalidReference);
     }
+    if holding_enabled(current) && !holding_enabled(next) {
+        return Err(RulesError::InvalidReference);
+    }
     let before = current
         .artifact
         .progression

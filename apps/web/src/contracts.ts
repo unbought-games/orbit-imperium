@@ -6335,9 +6335,9 @@ export interface components {
             game_code: components["schemas"]["GameError3"];
         };
         /** @enum {string} */
-        Mission4: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize";
+        Mission4: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize" | "Hold";
         /** @enum {string} */
-        MissionLeg4: "Outbound" | "Returning" | "Returned" | "Destroyed" | "Colonized" | "Deployed";
+        MissionLeg4: "Outbound" | "Returning" | "Returned" | "Destroyed" | "Colonized" | "Deployed" | "Holding";
         MissionDestination4: {
             /** @constant */
             type: "Body";
@@ -6393,6 +6393,8 @@ export interface components {
             cargo: components["schemas"]["WholeResources"];
             /** @enum {integer} */
             speed_percent: 10 | 20 | 30 | 40 | 50 | 60 | 70 | 80 | 90 | 100;
+            /** @enum {integer} */
+            hold_hours?: 0 | 1 | 2 | 4 | 8 | 16 | 32;
         };
         FleetTerms4: {
             intent: components["schemas"]["FleetIntent4"];
@@ -6408,6 +6410,7 @@ export interface components {
             maximum_payload: components["schemas"]["Decimal"];
             slot_limit: components["schemas"]["Decimal"];
             terms_hash: string;
+            holding?: components["schemas"]["HoldingTerms4"];
         };
         WorldAction4: {
             /** @constant */
@@ -6473,6 +6476,11 @@ export interface components {
             /** Format: uuid */
             body: string;
             expected_terms_hash: string;
+        } | {
+            /** @constant */
+            type: "SupplyHoldingFleet";
+            intent: components["schemas"]["DepotSupplyIntent4"];
+            expected_terms_hash: string;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -6501,7 +6509,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -6624,7 +6632,7 @@ export interface components {
             origin: components["schemas"]["Coordinates"];
             destination: components["schemas"]["Coordinates"];
             /** @enum {string} */
-            leg: "Outbound" | "Returning";
+            leg: "Outbound" | "Returning" | "Holding";
             ships: components["schemas"]["PublicShip4"][];
             cargo: components["schemas"]["Resources"];
             due_at: number;
@@ -6687,17 +6695,19 @@ export interface components {
              * @description Viewer homeworld identity from the saved membership manifest; omitted when unknown.
              */
             homeworld_id?: string;
+            holdings?: components["schemas"]["HeldFleetView4"][];
+            depots?: components["schemas"]["DepotView4"][];
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -6777,6 +6787,10 @@ export interface components {
             type: "AbandonmentQuote";
             /** Format: uuid */
             body: string;
+        } | {
+            /** @constant */
+            type: "DepotSupplyQuote";
+            intent: components["schemas"]["DepotSupplyIntent4"];
         };
         WorldQuery4: {
             /** @constant */
@@ -6810,6 +6824,11 @@ export interface components {
             type: "AbandonmentQuote";
             /** Format: uuid */
             body: string;
+        } | {
+            /** @constant */
+            type: "DepotSupplyQuote";
+            intent: components["schemas"]["DepotSupplyIntent4"];
+            context: components["schemas"]["QueryContext"];
         };
         BoundWorld4: {
             /** @constant */
@@ -6820,7 +6839,7 @@ export interface components {
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;
-            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"] | components["schemas"]["AbandonmentQuote4"];
+            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"] | components["schemas"]["AbandonmentQuote4"] | components["schemas"]["DepotSupplyQuote4"];
             progress?: components["schemas"]["SnapshotProgress"];
         };
         ReportHeader4: {
@@ -6997,6 +7016,7 @@ export interface components {
             destination_coordinates?: components["schemas"]["Coordinates"];
             /** @description Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo. */
             harvested?: components["schemas"]["Resources"];
+            reason?: string;
         };
         BattleCounts4: {
             /** Format: uuid */
@@ -7058,7 +7078,7 @@ export interface components {
             recovered: components["schemas"]["BattleCounts4"][];
             debris: components["schemas"]["Resources"];
             loot: components["schemas"]["Resources"];
-            own_cargo_loss?: components["schemas"]["Resources"];
+            own_cargo_loss?: components["schemas"]["BattleResourceTotals4"];
             permanent_losses?: components["schemas"]["BattleCounts4"][];
             return_at?: number | null;
             /** @enum {unknown} */
@@ -7190,7 +7210,7 @@ export interface components {
             event: components["schemas"]["StreamEvent"];
         };
         SubmittedIntent: {
-            quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"];
+            quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["DepotSupplyQuote4"];
             submittedAt: number;
             baseRevision: components["schemas"]["Decimal"];
             /** Format: uuid */
@@ -8365,6 +8385,53 @@ export interface components {
             type: "about:blank";
             status: number;
             code: string;
+        };
+        HoldingTerms4: {
+            duration_ms: number;
+            rates: {
+                [key: string]: number;
+            };
+            fuel: components["schemas"]["Decimal"];
+        };
+        DepotSupplyIntent4: {
+            /** Format: uuid */
+            source_planet: string;
+            /** Format: uuid */
+            fleet: string;
+            deuterium: components["schemas"]["PositiveDecimal"];
+        };
+        DepotSupplyQuote4: {
+            intent: components["schemas"]["DepotSupplyIntent4"];
+            rate_micro_per_hour: components["schemas"]["Decimal"];
+            extension_ms: number;
+            departure_at: number;
+            remaining_budget: components["schemas"]["Decimal"];
+            available_deuterium: components["schemas"]["Decimal"];
+            next_budget_release_at: number | null;
+            terms_hash: string;
+            profile_hash: string;
+        };
+        HeldFleetView4: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            owner: string;
+            /** Format: uuid */
+            target: string;
+            ships: components["schemas"]["PublicShip4"][];
+            departure_at: number;
+            can_supply: boolean;
+        };
+        DepotView4: {
+            /** Format: uuid */
+            body: string;
+            remaining_budget: components["schemas"]["Decimal"];
+            next_budget_release_at: number | null;
+        };
+        BattleResourceTotals4: {
+            metal: string;
+            crystal: string;
+            deuterium: string;
         };
     };
     responses: never;

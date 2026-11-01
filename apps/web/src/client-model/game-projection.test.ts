@@ -1548,3 +1548,73 @@ it('includes only evidenced legacy launch reservations for owned bodies and acti
   launch.envelope.binding = { ...launch.envelope.binding, player: 'other' }
   expect(pendingFleetCargo(s)).toEqual([])
 })
+
+it('Depot supply uses planetary payment, quote identity, live holdings and the shared budget', () => {
+  const view = snapshot()
+  view.bodies[0].amounts.deuterium = '10000000000'
+  view.holdings = [
+    {
+      id: 'visitor',
+      owner: 'friend',
+      target: 'body',
+      ships: [{ ship_type: 'LightFighter', count: '1000' }],
+      departure_at: 10000,
+      can_supply: true,
+    },
+  ]
+  view.depots = [
+    {
+      body: 'body',
+      remaining_budget: '8000000000',
+      next_budget_release_at: 6000,
+    },
+  ]
+  const state = createGameStore().getState()
+  Object.assign(state, {
+    view,
+    binding: view.binding,
+    ready: true,
+    now: 1000,
+    receivedAt: 1000,
+  })
+  const quote: S['DepotSupplyQuote4'] = {
+    intent: {
+      source_planet: 'body',
+      fleet: 'visitor',
+      deuterium: '7000000000',
+    },
+    profile_hash: view.profile_hash,
+    terms_hash: 'supply',
+    rate_micro_per_hour: '2000000000',
+    extension_ms: 12600000,
+    departure_at: 12610000,
+    remaining_budget: '8000000000',
+    available_deuterium: '10000000000',
+    next_budget_release_at: 6000,
+  }
+  const command: Command = {
+    type: 'World',
+    action: {
+      type: 'SupplyHoldingFleet',
+      intent: quote.intent,
+      expected_terms_hash: quote.terms_hash,
+    },
+  }
+  expect(canSubmitQuote(state, command, quote)).toBe(true)
+  expect(nextWorkDelay(state)).toBe(5000)
+  expect(
+    matchesQuote(
+      command,
+      { ...quote, intent: { ...quote.intent, fleet: 'other' } },
+      view,
+    ),
+  ).toBe(false)
+  view.depots[0].remaining_budget = '6000000000'
+  expect(canSubmitQuote(state, command, quote)).toBe(false)
+  view.depots[0].remaining_budget = '8000000000'
+  view.holdings[0].can_supply = false
+  expect(canSubmitQuote(state, command, quote)).toBe(false)
+  view.holdings[0].can_supply = true
+  view.bodies[0].amounts.deuterium = '6000000000'
+  expect(canSubmitQuote(state, command, quote)).toBe(false)
+})

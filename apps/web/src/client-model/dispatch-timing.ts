@@ -44,8 +44,12 @@ export function flightSchedule(
   duration: number,
   departure: number,
   mission: S['FleetIntent4']['mission'],
+  holding = 0,
 ) {
-  const total = mission === 'Deploy' ? duration : 2 * duration
+  const total =
+    mission === 'Deploy'
+      ? duration
+      : 2 * duration + (mission === 'Hold' ? holding : 0)
   return {
     arrival: departure + duration,
     returnAt: mission === 'Deploy' ? null : departure + total,

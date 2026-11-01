@@ -46,8 +46,13 @@ export function incomingManifest(ships: S['IncomingShips4']) {
   }
 }
 export function recallEstimate(fleet: S['OwnMission4'], now: number) {
-  return fleet.can_recall && fleet.leg === 'Outbound' && now < fleet.due_at
-    ? now + Math.max(0, now - fleet.launched_at)
+  return fleet.can_recall &&
+    (fleet.leg === 'Outbound' || fleet.leg === 'Holding') &&
+    now < fleet.due_at
+    ? now +
+        (fleet.leg === 'Holding'
+          ? fleet.duration_ms
+          : Math.max(0, now - fleet.launched_at))
     : null
 }
 

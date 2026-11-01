@@ -252,3 +252,9 @@ it('preserves signed-64 limits on revisions without inspecting arbitrary strings
     }
   }
 })
+
+it('battle loss observations accept multi-fleet totals without widening spendable stocks', () => {
+  const totals = { metal: '18446744073709551614', crystal: '0', deuterium: '0' }
+  expect(validate('BattleResourceTotals4', totals)).toEqual(totals)
+  expect(() => validate('Resources', totals)).toThrow()
+})

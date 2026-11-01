@@ -45,7 +45,7 @@ pub struct InitialGameSnapshot {
 pub enum InitialGameView {
     V2(ReadSnapshot<BoundView>),
     V3(ReadSnapshot<BoundView3>),
-    V4(ReadSnapshot<BoundView4>),
+    V4(Box<ReadSnapshot<BoundView4>>),
 }
 impl InitialGameView {
     fn identity(&self) -> (i32, Binding, Uuid, &Hash, i32) {
@@ -129,7 +129,7 @@ impl<S: GameStore> GameService<S> {
             4 => {
                 let mut read = self.world_view(p, c.clone()).await?;
                 read.facts.progression.sampled_at = read.progress.sampled_at;
-                InitialGameView::V4(read)
+                InitialGameView::V4(Box::new(read))
             }
             _ => return Err(ServiceError::UnsupportedProtocol),
         };

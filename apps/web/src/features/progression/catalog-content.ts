@@ -15,6 +15,8 @@ const content: Record<string, string> = {
     'Automatically destroys one incoming Interplanetary Missile at impact. Built in the shared manufacturing queue and stored in the planetary silo.',
   InterplanetaryMissile:
     'Permanently destroys enemy defenses, bypassing shields. Range grows with Impulse Drive; Weapons Technology increases damage. Launch from the galaxy. Missiles cannot be recalled.',
+  AllianceDepot:
+    'Supply deuterium to allied fleets holding at this planet to extend their defense. Each level permits 10,000 deuterium per rolling hour. The fleet owner retains recall control.',
   NaniteFactory:
     'Nanite assemblers accelerate construction and manufacturing on this planet. Each completed level halves raw build time. Research is unaffected. Factory upgrades and demolition cannot overlap manufacturing.',
   RoboticsFactory: 'Robotic workers accelerate construction on this planet.',

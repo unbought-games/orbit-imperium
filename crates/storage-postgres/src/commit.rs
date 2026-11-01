@@ -70,6 +70,9 @@ impl PgStore {
             self.observe_event(RuntimeEvent::StaleCommit);
             return Ok(CommitOutcome::StaleClaim);
         }
+        if crate::holding::requires_lock(&i.payload) {
+            crate::holding::lock(&mut tx, i.universe, i.epoch).await?;
+        }
         // Sharing changes recipient protection outside the command stream. Hold
         // its row lock through fact revalidation and persistence, so no share can
         // slip between those steps and have its star overwritten by old facts.
@@ -370,6 +373,15 @@ pub(crate) async fn persist_changes(
     }
     if let Some(world) = &change.world {
         crate::world::save(tx, i, facts, world).await?;
+        for fleet in world.records.fleets.values().filter(|f| {
+            f.intent.mission == Mission::Hold
+                && !facts
+                    .world
+                    .as_ref()
+                    .is_some_and(|w| w.records.fleets.contains_key(&f.id))
+        }) {
+            crate::holding::extend_pending(tx, i, fleet).await?;
+        }
         result_ids.extend(
             world
                 .records

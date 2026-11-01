@@ -109,8 +109,10 @@ pub fn quote_abandonment(
             "An active fleet depends on this planet or its moon. Wait for it to finish.".into(),
         );
     }
-    // Current mission catalog has no Hold or moon fallback redirects. Keep the
-    // inventory-owner guard so foreign stationed assets can never be destroyed.
+    if w.records.fleets.values().any(|f| f.intent.mission == Mission::Hold && matches!(f.leg, MissionLeg::Outbound | MissionLeg::Holding) && matches!(f.intent.destination, MissionDestination::Body { id, .. } if ids.contains(&id))) {
+        blockers.push("Allied fleets are inbound or holding here.".into());
+    }
+    // Retain the inventory guard for imported foreign stationed assets.
     if s.inventories
         .iter()
         .any(|x| ids.contains(&x.body) && x.owner != owner && x.count > 0)

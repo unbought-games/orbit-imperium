@@ -1,6 +1,19 @@
-import { Eye, Flag, Globe2, Package, Recycle, Swords } from 'lucide-react'
+import {
+  Eye,
+  Flag,
+  Globe2,
+  Package,
+  Recycle,
+  Swords,
+  Shield,
+} from 'lucide-react'
 
 export const missionOptions = {
+  Hold: {
+    icon: Shield,
+    description:
+      'Defend an ally or friend, then return home. No Depot is needed to hold.',
+  },
   Transport: { icon: Package, description: 'Deliver cargo, then return home.' },
   Deploy: {
     icon: Flag,

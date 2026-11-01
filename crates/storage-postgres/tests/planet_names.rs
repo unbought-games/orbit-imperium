@@ -203,6 +203,7 @@ async fn planet_names_survive_restart_publish_to_other_players_and_retry_once() 
     .unwrap();
     pool.close().await;
     let intent = FleetIntent {
+        hold_hours: None,
         origin,
         destination: MissionDestination::Body {
             id: body.id,

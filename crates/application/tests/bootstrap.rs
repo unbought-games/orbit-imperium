@@ -149,6 +149,8 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
     };
     let world = GameState {
         world: Some(WorldFacts {
+            holding_relationships: None,
+            covered_depot_sources: Default::default(),
             homeworlds: Default::default(),
             planet_slots: vec![],
             records: WorldRecords::default(),

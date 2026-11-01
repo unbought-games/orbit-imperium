@@ -58,6 +58,8 @@ export function useDispatch({
           ? 'moon'
           : 'planet'),
     ),
+    [holdHours, setHoldHours] =
+      useState<NonNullable<S['FleetIntent4']['hold_hours']>>(1),
     [speed, setSpeed] = useState(draft?.speed ?? 100),
     [ships, setShips] = useState<Record<string, string>>(draft?.ships ?? {}),
     [cargo, setCargo] = useState(['0', '0', '0']),
@@ -151,6 +153,7 @@ export function useDispatch({
           intent: {
             origin: body.id,
             mission,
+            ...(mission === 'Hold' ? { hold_hours: holdHours } : {}),
             ships: timingShips,
             cargo: { metal: '0', crystal: '0', deuterium: '0' },
             speed_percent: speed as S['FleetIntent4']['speed_percent'],
@@ -313,6 +316,7 @@ export function useDispatch({
         origin: body.id,
         destination,
         mission,
+        ...(mission === 'Hold' ? { hold_hours: holdHours } : {}),
         ships: dispatchShips(types, ships, view.binding.player),
         cargo: {
           metal: (BigInt(cargoAmounts[0]) * 1000000n).toString(),
@@ -408,6 +412,8 @@ export function useDispatch({
     attackWarning,
     mission,
     setMission,
+    holdHours,
+    setHoldHours,
     galaxy,
     system,
     position,

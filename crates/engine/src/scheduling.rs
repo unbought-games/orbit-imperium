@@ -19,6 +19,7 @@ pub struct OrderKey {
 
 #[derive(Clone, Debug, Default)]
 pub struct ScopeReferences {
+    pub holding: BTreeSet<ScopeKey>,
     pub missiles: BTreeMap<OperationId, (PlayerId, PlayerId, Coordinates, Coordinates)>,
     pub bodies: BTreeMap<BodyId, (PlayerId, Coordinates)>,
     pub fleets: BTreeMap<FleetId, (PlayerId, Option<PlayerId>, Coordinates, Coordinates)>,
@@ -47,7 +48,14 @@ pub fn command_scopes(
     refs: &ScopeReferences,
 ) -> Result<BTreeSet<ScopeKey>, GameError> {
     let mut scopes = BTreeSet::from([ScopeKey::Player(actor)]);
+    scopes.extend(refs.holding.iter().cloned());
     match command {
+        Command::World {
+            action: WorldAction::SupplyHoldingFleet { intent, .. },
+        } => {
+            location(intent.source_planet, refs, &mut scopes);
+            scopes.extend(fleet_scopes(intent.fleet, refs).unwrap_or_default());
+        }
         Command::World {
             action: WorldAction::AbandonPlanet { body, .. },
         } => location(*body, refs, &mut scopes),
@@ -141,7 +149,10 @@ pub fn event_scopes(
             .get(field)
             .map(|coords| BTreeSet::from([ScopeKey::Location(*coords)])),
     };
-    scopes.ok_or_else(|| InvariantError("missing immutable scheduling reference".into()))
+    let mut scopes =
+        scopes.ok_or_else(|| InvariantError("missing immutable scheduling reference".into()))?;
+    scopes.extend(refs.holding.iter().cloned());
+    Ok(scopes)
 }
 pub fn validate_successor_scopes(
     parent: &BTreeSet<ScopeKey>,
