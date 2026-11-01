@@ -54,7 +54,14 @@ pub(super) fn parse_for_mode(
             positions_per_system: number(&mut values, "--positions-per-system", 15)?,
         };
         let policy = UniversePolicy {
-            bots: Default::default(),
+            bots: orbit_application::BotPolicy {
+                display: values
+                    .remove("--bot-display")
+                    .as_deref()
+                    .unwrap_or("visible")
+                    .parse()?,
+                ..Default::default()
+            },
             signup_enabled: boolean(
                 values
                     .remove("--signup-enabled")

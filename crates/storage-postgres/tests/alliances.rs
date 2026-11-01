@@ -825,6 +825,14 @@ async fn concurrent_applications_enforce_five_and_join_withdraws_everywhere() {
             .execute(&f.pool)
             .await
             .unwrap();
+        sqlx::query("INSERT INTO player_policies(universe,id,data) SELECT universe,$1,jsonb_set(data,'{player}',to_jsonb($1::text)) FROM player_policies WHERE id=$2")
+            .bind(player).bind(b.player.0).execute(&f.pool).await.unwrap();
+        sqlx::query("INSERT INTO viewer_heads(universe,player) VALUES($1,$2)")
+            .bind(b.universe.0)
+            .bind(player)
+            .execute(&f.pool)
+            .await
+            .unwrap();
         let leader = Binding {
             account: AccountId(account),
             player: PlayerId(player),
@@ -1004,4 +1012,125 @@ async fn delegated_access_is_revoked_immediately_and_stale_authority_cannot_muta
     let limited = f.detail(1, a).await;
     assert!(limited.members.is_none());
     assert!(limited.roles.is_none());
+}
+
+#[tokio::test]
+async fn leadership_changes_invalidate_deletion_guards_without_creating_presence() {
+    let f = Fixture::new().await;
+    let game = GameService::new(f.store.clone());
+    async fn leads(game: &GameService<PgStore>, b: Binding) -> bool {
+        game.world_view(
+            Principal {
+                account: b.account,
+                player: b.player,
+                universe: b.universe,
+            },
+            QueryContext {
+                binding: b,
+                request_id: Uuid::new_v4(),
+            },
+        )
+        .await
+        .unwrap()
+        .leads_alliance
+    }
+    let mut cursors = vec![];
+    for &b in &f.bindings[..3] {
+        assert!(!leads(&game, b).await);
+        cursors.push(
+            f.store.read_updates(b, None, 128).await.unwrap().items[0]
+                .cursor
+                .clone()
+                .unwrap(),
+        );
+    }
+    f.store.set_test_time(5000).await.unwrap();
+    let create = f.request(
+        0,
+        AllianceAction::Create {
+            name: "View invalidations".into(),
+            tag: "VIV".into(),
+        },
+        None,
+    );
+    let alliance = f
+        .store
+        .alliance_command(create.clone())
+        .await
+        .unwrap()
+        .alliance
+        .unwrap();
+    assert!(leads(&game, f.bindings[0]).await);
+    let updates = f
+        .store
+        .read_updates(f.bindings[0], Some(&cursors[0]), 128)
+        .await
+        .unwrap();
+    assert_eq!(updates.items.len(), 1);
+    assert!(
+        matches!(&updates.items[0].event,StreamEvent::Invalidate {minimum_viewer_revision} if minimum_viewer_revision=="1")
+    );
+    cursors[0] = updates.items[0].cursor.clone().unwrap();
+    f.store.alliance_command(create).await.unwrap();
+    assert!(
+        f.store
+            .read_updates(f.bindings[0], Some(&cursors[0]), 128)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    f.update(0, alliance, AllianceRecruitment::Open).await;
+    f.command(1, AllianceAction::Join { alliance }, None).await;
+    let revision = f.detail(0, alliance).await.revision;
+    f.command(
+        0,
+        AllianceAction::Transfer {
+            alliance,
+            player: f.bindings[1].player,
+        },
+        Some(revision),
+    )
+    .await;
+    assert!(!leads(&game, f.bindings[0]).await);
+    assert!(leads(&game, f.bindings[1]).await);
+    for (n, expected) in [(0, "2"), (1, "1")] {
+        let updates = f
+            .store
+            .read_updates(f.bindings[n], Some(&cursors[n]), 128)
+            .await
+            .unwrap();
+        assert_eq!(updates.items.len(), 1);
+        assert!(
+            matches!(&updates.items[0].event,StreamEvent::Invalidate {minimum_viewer_revision} if minimum_viewer_revision==expected)
+        );
+        cursors[n] = updates.items[0].cursor.clone().unwrap();
+    }
+    let revision = f.detail(1, alliance).await.revision;
+    f.command(1, AllianceAction::Disband { alliance }, Some(revision))
+        .await;
+    assert!(!leads(&game, f.bindings[1]).await);
+    let updates = f
+        .store
+        .read_updates(f.bindings[1], Some(&cursors[1]), 128)
+        .await
+        .unwrap();
+    assert!(
+        matches!(&updates.items[0].event,StreamEvent::Invalidate {minimum_viewer_revision} if minimum_viewer_revision=="2")
+    );
+    assert!(
+        f.store
+            .read_updates(f.bindings[2], Some(&cursors[2]), 128)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    for b in &f.bindings[..3] {
+        let (snap, _) = f.store.bound_world(*b).await.unwrap().facts;
+        assert_eq!(
+            snap.state.world.unwrap().records.policies[&b.player].last_presence_at,
+            1000
+        );
+    }
 }

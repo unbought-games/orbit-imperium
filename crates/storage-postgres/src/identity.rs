@@ -29,6 +29,10 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn recent_authentication(&self, digest: &str) -> Result<bool, StoreError> {
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM sessions WHERE digest=$1 AND authenticated_at>0 AND authenticated_at>=floor(extract(epoch FROM clock_timestamp())*1000)::bigint-300000 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint)")
+            .bind(digest).fetch_one(&self.pool).await.map_err(db_error)
+    }
     async fn insignia_library(&self, b: Binding) -> Result<InsigniaLibrary, StoreError> {
         self.read_insignia_library(b).await
     }
@@ -69,11 +73,11 @@ impl IdentityStore for PgStore {
         universe: UniverseId,
         players: Vec<PlayerId>,
     ) -> Result<Vec<PlayerIdentity>, StoreError> {
-        sqlx::query("SELECT m.player,a.name,i.issuer,i.subject,EXISTS(SELECT 1 FROM bot_participation b WHERE b.universe=m.universe AND b.player=m.player) AS bot FROM universe_memberships m JOIN accounts a ON a.id=m.account LEFT JOIN oidc_identity i ON i.account=a.id WHERE m.universe=$1 AND m.player=ANY($2)")
+        sqlx::query("SELECT m.player,a.name,i.issuer,i.subject,COALESCE(p.bots->'display','\"visible\"'::jsonb) AS bot_display,EXISTS(SELECT 1 FROM bot_participation b WHERE b.universe=m.universe AND b.player=m.player) AS bot FROM universe_memberships m JOIN accounts a ON a.id=m.account LEFT JOIN oidc_identity i ON i.account=a.id LEFT JOIN universe_policies_v2 p ON p.universe=m.universe WHERE m.universe=$1 AND m.player=ANY($2)")
             .bind(universe.0).bind(players.iter().map(|p|p.0).collect::<Vec<_>>())
             .fetch_all(self.read_pool()?).await.map_err(db_error)?
             .into_iter().map(|row| Ok(PlayerIdentity {
-                kind: if row.try_get::<bool,_>("bot").map_err(db_error)? {PlayerKind::Bot}else{PlayerKind::Human},
+                kind: row.try_get::<sqlx::types::Json<BotDisplay>,_>("bot_display").map_err(db_error)?.0.public_kind(if row.try_get::<bool,_>("bot").map_err(db_error)? {PlayerKind::Bot}else{PlayerKind::Human}),
                 player: PlayerId(row.try_get("player").map_err(db_error)?),
                 username: row.try_get("name").map_err(db_error)?,
                 issuer: row.try_get("issuer").map_err(db_error)?,
@@ -220,7 +224,7 @@ impl IdentityStore for PgStore {
                 .await
                 .map_err(db_error)?;
         }
-        let expires:i64=sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000) RETURNING expires_at").bind(digest).bind(account.0).bind(csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
+        let expires:i64=sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at,authenticated_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000,floor(extract(epoch FROM clock_timestamp())*1000)::bigint) RETURNING expires_at").bind(digest).bind(account.0).bind(csrf).fetch_one(&mut *tx).await.map_err(db_error)?;
         tx.commit().await.map_err(db_error)?;
         let mut connection = self.acquire_pool(self.read_pool()?).await?;
         Ok(AuthenticatedSession {

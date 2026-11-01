@@ -117,7 +117,8 @@ fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fa
             | Command::StartManufacture { .. },
         ) => return Err(GameError::UnavailableContent.into()),
         Input::Event(
-            ScheduledEvent::AttackGroupDue { .. }
+            ScheduledEvent::EmpireDeletionDue { .. }
+            | ScheduledEvent::AttackGroupDue { .. }
             | ScheduledEvent::MissileImpact { .. }
             | ScheduledEvent::FleetLegDue { .. }
             | ScheduledEvent::DebrisCleanupDue { .. }

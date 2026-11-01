@@ -4,6 +4,7 @@ use crate::PlayerId;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use uuid::Uuid;
+mod deletion;
 mod policy;
 #[cfg(test)]
 mod tests;

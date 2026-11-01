@@ -488,3 +488,76 @@ fn same_time_group_recall_returns_inline_and_cancels_its_only_event() {
     );
     validate_asset_lineage(&s).unwrap();
 }
+
+#[test]
+fn empire_removal_cancels_a_group_with_no_remaining_attackers() {
+    let (mut s, r, p, b, t) = ready();
+    s.world
+        .as_mut()
+        .unwrap()
+        .records
+        .policies
+        .get_mut(&p)
+        .unwrap()
+        .deletion_requested_at = Some(0);
+    let cutoff = DELETION_GRACE_MS;
+    let first = launch(&mut s, &r, p, b, t, (cutoff - 1000, 9800), None);
+    command(
+        &mut s,
+        &r,
+        p,
+        b,
+        cutoff - 999,
+        9801,
+        WorldAction::CreateAttackGroup { fleet: first },
+    );
+    let group = *s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .attack_groups
+        .keys()
+        .next()
+        .unwrap();
+    launch(&mut s, &r, p, b, t, (cutoff - 998, 9802), Some(group));
+    let before = s.world.as_ref().unwrap().records.attack_groups[&group].clone();
+    assert!(before.arrival_at > cutoff);
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        cutoff,
+        9803,
+        Input::Event(ScheduledEvent::EmpireDeletionDue { player: p }),
+    );
+    let changes = apply(&mut s, result);
+    assert_eq!(
+        s.world.as_ref().unwrap().records.attack_groups[&group].resolved_at,
+        Some(cutoff)
+    );
+    assert!(
+        changes
+            .cancelled_events
+            .contains(&ScheduledEvent::AttackGroupDue {
+                group,
+                generation: before.generation
+            })
+    );
+    validate_attack_group_records(&s.world.as_ref().unwrap().records).unwrap();
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        before.arrival_at,
+        9804,
+        Input::Event(ScheduledEvent::AttackGroupDue {
+            group,
+            generation: before.generation,
+        }),
+    );
+    let stale = apply(&mut s, result);
+    assert!(stale.events.is_empty());
+}

@@ -10,9 +10,28 @@ does not relax the OIDC library’s HTTPS/loopback requirements for issuers and 
 URLs at the accounts service. Its verification-return URL is
 `ORBIT_ORIGIN/api/auth/login?verify=true`.
 
+Homepage account links use `/api/auth/entry` (`?signup=true` for registration).
+Only the configured origin `https://orbitimperium.com` together with the official
+Accounts issuer starts authentication immediately. Community installations keep
+their existing `/login` and `/signup` screens, including installations using OIDC.
+The hosted registration request adds `prompt=create` to the normal authorization
+request so Accounts opens its registration page. No Accounts release is required.
+
+The hosted entry stores `/join/<universe UUID>` as the authentication return path,
+using the API's existing signup universe binding (selected with `ORBIT_UNIVERSE_ID`
+when multiple universes exist). After authentication, existing members enter the
+game without another enrollment request. The verified authentication callback
+enrolls other players through the same admission service as the ordinary CSRF-protected enrollment endpoint, rechecking
+current policy and capacity. A recovery-page GET never enrolls a player; retries
+require an explicit click and use the CSRF-protected endpoint. Closed, full,
+rate-limited or unavailable universes leave the account signed in and offer retry or universe selection. A missing or changed
+binding falls back to the ordinary home/universe-selection flow. Direct login,
+verification, deep-link returns and local sign-out retain their existing behavior.
+
 Players choose their shared username centrally. OIDC maps `(issuer, subject)` to
-an immutable local account, then the player explicitly joins a universe. Multiple
-universes and simultaneous enrollment remain supported. New memberships obey
+an immutable local account, then the player joins a universe (automatically after
+the hosted homepage invitation). Multiple universes and simultaneous enrollment
+remain supported. New memberships obey
 the live universe signup rate limit; retries for existing memberships succeed
 even after admissions close. OIDC display names may overlap stale claims or local
 credential names without changing identity ownership. Unverified accounts may

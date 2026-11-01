@@ -6,6 +6,7 @@ mod bootstrap_html;
 mod bots;
 mod bound_api;
 mod home_seo;
+mod hosted_auth;
 mod location_card;
 mod location_preview;
 mod oidc;
@@ -212,6 +213,7 @@ where
         )
         .route("/api/auth/config", get(oidc::configuration::<S>))
         .route("/api/auth/login", get(oidc::login::<S>))
+        .route("/api/auth/entry", get(oidc::entry::<S>))
         .route("/api/auth/login-journey", post(oidc::login_journey::<S>))
         .route("/api/auth/callback", get(oidc::callback::<S>))
         .route("/api/auth/identity", get(oidc::identity::<S>))

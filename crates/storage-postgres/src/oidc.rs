@@ -50,7 +50,7 @@ impl PgStore {
                 .map_err(db_error)?;
         }
         let expires_at = (unbought_auth::now() + i64::from(SESSION_IDLE_SECONDS)) * 1000;
-        sqlx::query("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,$4)")
+        sqlx::query("INSERT INTO sessions(digest,account,csrf,expires_at,authenticated_at) VALUES($1,$2,$3,$4,floor(extract(epoch FROM clock_timestamp())*1000)::bigint)")
             .bind(digest)
             .bind(account)
             .bind(csrf)

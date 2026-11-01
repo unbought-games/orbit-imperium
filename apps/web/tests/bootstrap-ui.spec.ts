@@ -47,6 +47,16 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/config', (route) =>
     route.fulfill({ json: { mode: 'local', universes: [] } }),
   )
+  await page.route('**/api/auth/entry*', (route) =>
+    route.fulfill({
+      status: 303,
+      headers: {
+        location: new URL(route.request().url()).searchParams.get('signup') === 'true'
+          ? '/signup'
+          : '/login',
+      },
+    }),
+  )
 })
 
 for (const blocked of [
@@ -955,10 +965,50 @@ test('homepage centers policies and highlights news, GitHub, and Discord', async
     expect(await news.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
       .toBeGreaterThan(await policies.evaluate(element => parseFloat(getComputedStyle(element).fontSize)))
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    if (width === 1440 || width === 390)
+    if (width === 1440 || width === 390) {
       await diagnosticScreenshot(page, { path: `test-results/homepage-${width}.png`, fullPage: true })
+      await community.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/homepage-community-${width}x1000.png` })
+    }
   }
 })
+
+for (const width of [1440, 390]) {
+  test.describe(`settings community at ${width}px`, () => {
+    test.use({ viewport: { width, height: 900 }, hasTouch: width === 390 })
+
+    test('Discord matches the homepage and supports keyboard or touch navigation', async ({ page }) => {
+      await shellFixture(page)
+      await page.goto(`/u/andromeda/settings?body=${body.id}`)
+      const community = page.getByRole('region', { name: 'Community', exact: true })
+      const discord = community.getByRole('link', { name: 'Join Discord', exact: true })
+      await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
+      await expect(discord).toBeInViewport({ ratio: 1 })
+      await expect(discord.locator('img')).toHaveAttribute('src', '/brand/discord-symbol-white.svg')
+      await expect(discord.locator('img')).toBeVisible()
+      await expect(discord).toHaveCSS('background-color', 'rgb(88, 101, 242)')
+      await expect(discord).toHaveCSS('color', 'rgb(255, 255, 255)')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await diagnosticScreenshot(page, { path: `test-results/settings-community-${width}x900.png` })
+      // The global mobile stylesheet suppresses focus rings; verify keyboard
+      // focus on desktop and the touch interaction on mobile.
+      if (width === 1440) {
+        await discord.focus()
+        await page.keyboard.press('Tab')
+        await page.keyboard.press('Shift+Tab')
+        await expect(discord).toBeFocused()
+        await expect(discord).toHaveCSS('outline-style', 'solid')
+        await expect(discord).toHaveCSS('outline-width', '3px')
+        await diagnosticScreenshot(page, { path: `test-results/settings-community-focused-${width}x900.png` })
+      }
+      // Exercise the external navigation without contacting Discord.
+      await page.route('https://discord.gg/AVMHp7jUcw', route => route.fulfill({ body: 'Discord invite' }))
+      if (width === 390) await discord.tap()
+      else await discord.press('Enter')
+      await expect(page).toHaveURL('https://discord.gg/AVMHp7jUcw')
+    })
+  })
+}
 
 test('open beta notice appears before public enrollment with approved policy links', async ({ page }) => {
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {

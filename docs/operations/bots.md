@@ -1,10 +1,32 @@
 # Identified machine players (S1)
 
-Bots are publicly identified players. Their local accounts have no password or
+Bots are publicly identified players by default. Their local accounts have no password or
 external Accounts identity. They enroll through the same placement, player ceiling,
 starting grants, engine, costs, queues, combat, visibility and protection rules as
 human players. Explicitly marking an existing player preserves its account,
 memberships, assets, command IDs and receipts. Names never determine identity.
+
+## Bot display
+
+Each universe controls bot indicators with `policy.bots.display`: `"visible"`
+(the default) or `"hidden"`. This is a string, not a boolean. Use the ordinary
+config export/diff/apply workflow below to change it live. Creation and repeatable
+setup also accept `--bot-display visible|hidden`; omitted setup options preserve
+saved settings.
+
+`visible` shows the Bot label in player names and profile details. `hidden`
+suppresses bot indicators in rankings, galaxy views, fleets, reports, shared
+reports and location/link previews. Public identity responses present hidden bots
+as ordinary players (`kind: "human"`); this public classification is not a source
+of truth for machine participation. Authentication, limits, rest periods and
+retirement still use the original participation records. Names are unchanged.
+
+Existing universes and older documents without `display` default to `visible`.
+Exports include the resolved setting. No data migration is needed. Deploy the
+supporting binary to every serving and operator process before using this field;
+older binaries reject it. Fresh reads, including previously shared report links,
+use the current setting. Open game screens update when public profiles refresh
+(or on reload); externally cached link previews can retain their previous text.
 
 ## Upgrade and compatibility
 
@@ -35,7 +57,7 @@ policy table back or remove ledger entries on an active world.
 All new universes default to this policy extension:
 
 ```json
-"bots": {"version": 1, "enabled": false, "max_active": 0, "action_units_per_24h": null}
+"bots": {"display": "visible", "version": 1, "enabled": false, "max_active": 0, "action_units_per_24h": null}
 ```
 
 Use ordinary revision-checked policy export/diff/apply:

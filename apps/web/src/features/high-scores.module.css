@@ -87,10 +87,10 @@
 }
 .rank {
   color: var(--champagne-light);
-  white-space: nowrap;
+  white-space: normal;
 }
 .rank .movement {
-  display: inline;
+  display: inline-block;
 }
 .player {
   max-width: 100%;
@@ -162,6 +162,9 @@
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 480px) {
+  .table th:first-child {
+    width: 4rem;
+  }
   .points {
     font-size: 0.8125rem;
     white-space: nowrap;

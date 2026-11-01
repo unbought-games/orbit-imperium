@@ -196,12 +196,22 @@ pub(crate) async fn append_report_share_update(
     b: Binding,
     revision: i64,
 ) -> Result<(), StoreError> {
+    append_view_invalidation(tx, b.universe, b.epoch, b.player, revision).await
+}
+/// Publish a source change outside the gameplay command stream to every tab.
+pub(crate) async fn append_view_invalidation(
+    tx: &mut Tx<'_>,
+    universe: UniverseId,
+    epoch: Epoch,
+    player: PlayerId,
+    revision: i64,
+) -> Result<(), StoreError> {
     sqlx::query("INSERT INTO game_update_heads(universe,epoch,player) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
-        .bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).execute(&mut **tx).await.map_err(db_error)?;
+        .bind(universe.0).bind(epoch.0).bind(player.0).execute(&mut **tx).await.map_err(db_error)?;
     sqlx::query("WITH published AS (UPDATE game_update_heads SET position=position+1 WHERE universe=$1 AND epoch=$2 AND player=$3 RETURNING position) INSERT INTO game_updates(universe,epoch,player,position,input_id,kind,minimum_revision) SELECT $1,$2,$3,position,$4,'invalidate',$5 FROM published")
-        .bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(uuid::Uuid::new_v4()).bind(revision).execute(&mut **tx).await.map_err(db_error)?;
+        .bind(universe.0).bind(epoch.0).bind(player.0).bind(uuid::Uuid::new_v4()).bind(revision).execute(&mut **tx).await.map_err(db_error)?;
     sqlx::query("SELECT pg_notify('orbit_game_updates',$1)")
-        .bind(format!("{}.{}.{}", b.universe, b.epoch, b.player))
+        .bind(format!("{}.{}.{}", universe, epoch, player))
         .execute(&mut **tx)
         .await
         .map_err(db_error)?;

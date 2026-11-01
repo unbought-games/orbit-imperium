@@ -15,6 +15,7 @@ Prints JSON with status, universe UUID, name, and configuration.
   --galaxies INTEGER           Default: 1
   --systems-per-galaxy INTEGER Default: 100
   --positions-per-system 15    Exactly 15
+  --bot-display visible|hidden Default: visible
   --signup-enabled true|false  Default: true
   --max-players INTEGER        Default: geometric capacity
   --signup-per-minute INTEGER  Default: 5
@@ -72,6 +73,10 @@ pub fn parse(
         max_players,
         signup_per_minute,
         commands_per_minute,
+        bot_display: values
+            .remove("--bot-display")
+            .map(|v| v.parse())
+            .transpose()?,
         signup_enabled: values
             .remove("--signup-enabled")
             .map(|v| boolean(&v, "--signup-enabled"))
@@ -125,6 +130,20 @@ mod tests {
         assert_eq!(request.speed, Some(3));
         assert!(request.universe.is_none());
         assert!(request.signup_enabled.is_none());
+        assert!(request.bot_display.is_none());
+        let hidden = parse(&args(&["--bot-display", "hidden"]), |_| None).unwrap();
+        assert_eq!(
+            hidden.bot_display,
+            Some(orbit_application::BotDisplay::Hidden)
+        );
+        assert_eq!(
+            hidden
+                .creation(id("00000000-0000-4000-8000-000000000001").unwrap())
+                .policy
+                .bots
+                .display,
+            orbit_application::BotDisplay::Hidden
+        );
         for words in [
             vec!["--speed", "0"],
             vec!["--speed", "101"],
@@ -135,6 +154,7 @@ mod tests {
             vec!["--universe", "00000000-0000-0000-0000-000000000000"],
             vec!["--name", " Friends"],
             vec!["--signup-enabled", "yes"],
+            vec!["--bot-display", "false"],
             vec!["--max-players", "0"],
         ] {
             assert!(parse(&args(&words), |_| None).is_err(), "{words:?}");

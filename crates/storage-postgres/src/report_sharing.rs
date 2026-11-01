@@ -140,7 +140,7 @@ impl PgStore {
         &self,
         token: uuid::Uuid,
     ) -> Result<SharedReport, StoreError> {
-        let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch LEFT JOIN mission_report_alliances ai ON ai.report=r.id WHERE s.token=$1")
+        let row = sqlx::query("SELECT s.report,s.options,s.names_at_publication,r.at_ms,COALESCE(up.bots->'display','\"visible\"'::jsonb) AS bot_display,COALESCE(ai.identities,'{}'::jsonb) AS alliance_identities,r.data->'payloads'->(s.recipient::text) AS payload FROM mission_report_shares s JOIN mission_report_recipients p ON p.report=s.report AND p.recipient=s.recipient JOIN mission_reports r ON r.id=s.report JOIN universes u ON u.id=r.universe AND u.epoch=s.epoch LEFT JOIN mission_report_alliances ai ON ai.report=r.id LEFT JOIN universe_policies_v2 up ON up.universe=r.universe WHERE s.token=$1")
             .bind(token).fetch_optional(self.read_pool()?).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let names = row
             .try_get::<sqlx::types::Json<PublicPlayerNames>, _>("names_at_publication")
@@ -149,16 +149,20 @@ impl PgStore {
         let players: Vec<_> = names.keys().map(|p| p.0).collect();
         let report = ReportId(row.try_get("report").map_err(db_error)?);
         let bots:Vec<uuid::Uuid>=sqlx::query_scalar("SELECT b.player FROM bot_participation b JOIN mission_reports r ON r.universe=b.universe WHERE r.id=$1 AND b.player=ANY($2)").bind(report.0).bind(players).fetch_all(self.read_pool()?).await.map_err(db_error)?;
+        let display = row
+            .try_get::<sqlx::types::Json<BotDisplay>, _>("bot_display")
+            .map_err(db_error)?
+            .0;
         let kinds = names
             .keys()
             .map(|p| {
                 (
                     *p,
-                    if bots.contains(&p.0) {
+                    display.public_kind(if bots.contains(&p.0) {
                         PlayerKind::Bot
                     } else {
                         PlayerKind::Human
-                    },
+                    }),
                 )
             })
             .collect();

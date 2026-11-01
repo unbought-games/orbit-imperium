@@ -144,3 +144,29 @@ fn update_accepts_arbitrary_names_and_rejects_missing_or_invalid_fields() {
     assert!(command(&["--name", &"x".repeat(81)]).is_err());
     assert!(command(&["--name", &"宇".repeat(80)]).is_ok());
 }
+
+#[test]
+fn creation_accepts_bot_display_strings() {
+    for (value, expected) in [
+        ("visible", orbit_application::BotDisplay::Visible),
+        ("hidden", orbit_application::BotDisplay::Hidden),
+    ] {
+        let UniverseCli::Create(c) = parse_for_mode(
+            &args(&["orbit", "universe", "create", "--bot-display", value]),
+            |_| None,
+            false,
+        )
+        .unwrap() else {
+            panic!()
+        };
+        assert_eq!(c.policy.bots.display, expected);
+    }
+    assert!(
+        parse_for_mode(
+            &args(&["orbit", "universe", "create", "--bot-display", "false"]),
+            |_| None,
+            false
+        )
+        .is_err()
+    );
+}

@@ -12,9 +12,38 @@ pub enum PlayerKind {
     Bot,
 }
 
+/// Public presentation only; machine admission and accounting use participation records.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BotDisplay {
+    #[default]
+    Visible,
+    Hidden,
+}
+impl BotDisplay {
+    pub fn public_kind(self, kind: PlayerKind) -> PlayerKind {
+        match self {
+            Self::Visible => kind,
+            Self::Hidden => PlayerKind::Human,
+        }
+    }
+}
+impl std::str::FromStr for BotDisplay {
+    type Err = String;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "visible" => Ok(Self::Visible),
+            "hidden" => Ok(Self::Hidden),
+            _ => Err("bot display must be visible or hidden".into()),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BotPolicy {
+    #[serde(default)]
+    pub display: BotDisplay,
     pub version: u32,
     pub enabled: bool,
     pub max_active: u32,
@@ -24,6 +53,7 @@ pub struct BotPolicy {
 impl Default for BotPolicy {
     fn default() -> Self {
         Self {
+            display: BotDisplay::Visible,
             version: 1,
             enabled: false,
             max_active: 0,

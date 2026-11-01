@@ -674,3 +674,157 @@ async fn returned_recalls_remain_loadable_for_later_joins_and_group_visibility()
         pool.close().await;
     }
 }
+
+#[tokio::test]
+async fn empire_deletion_preserves_foreign_group_members_and_closes_empty_groups() {
+    let url = std::env::var("TEST_DATABASE_URL").unwrap();
+    let store = PgStore::connect(&url).await.unwrap();
+    store.migrate().await.unwrap();
+    for remove_joiner in [false, true] {
+        let at = 1_790_000_000_000;
+        store.set_test_time(at).await.unwrap();
+        let u = UniverseId(Uuid::new_v4());
+        let names = [
+            format!("delete-lead-{u}"),
+            format!("delete-join-{u}"),
+            format!("delete-target-{u}"),
+        ];
+        let mut edits = vec![];
+        for (name, coords) in names.iter().zip(["1:50:8", "1:50:9", "1:51:8"]) {
+            edits
+                .push(json!({"op":"add-player","user":name,"password":"password","planet":coords}));
+            edits.push(json!({"op":"set","user":name,"planet":coords,"research":{"ComputerTechnology":4},"ships":{"Cruiser":20},"resources":{"metal":1000000,"crystal":1000000,"deuterium":1000000}}));
+        }
+        let doc: WorldScenario =
+            serde_json::from_value(json!({"version":1,"edits":edits})).unwrap();
+        store
+            .apply_world_scenario(u, &doc, ScenarioMode::Create, Uuid::new_v4())
+            .await
+            .unwrap();
+        let a = binding(&store, &names[0]).await;
+        let b = binding(&store, &names[1]).await;
+        let target = binding(&store, &names[2]).await;
+        let mut bodies = vec![];
+        for player in [a, b, target] {
+            bodies.push(
+                store
+                    .bound_world(player)
+                    .await
+                    .unwrap()
+                    .facts
+                    .0
+                    .state
+                    .bodies
+                    .values()
+                    .find(|body| body.owner == player.player)
+                    .unwrap()
+                    .id,
+            );
+        }
+        store.prepare_scoped_runtime(u, 100).await.unwrap();
+        store.activate_scoped_runtime(u).await.unwrap();
+        order(&store, a, None, WorldAction::RequestEmpireDeletion, true).await;
+        if remove_joiner {
+            order(&store, b, None, WorldAction::RequestEmpireDeletion, true).await;
+        }
+        let cutoff = at + DELETION_GRACE_MS;
+        store.set_test_time(cutoff - 1000).await.unwrap();
+        let first = launch(&store, a, bodies[0], (target, bodies[2]), None, 10, true).await;
+        order(
+            &store,
+            a,
+            None,
+            WorldAction::CreateAttackGroup { fleet: first.id },
+            true,
+        )
+        .await;
+        let group = *store
+            .bound_world(a)
+            .await
+            .unwrap()
+            .facts
+            .0
+            .state
+            .world
+            .unwrap()
+            .records
+            .attack_groups
+            .keys()
+            .next()
+            .unwrap();
+        order(
+            &store,
+            a,
+            None,
+            WorldAction::InviteAttackGroup {
+                group,
+                player: b.player,
+            },
+            true,
+        )
+        .await;
+        let second = launch(
+            &store,
+            b,
+            bodies[1],
+            (target, bodies[2]),
+            Some(group),
+            10,
+            true,
+        )
+        .await;
+        let records = store
+            .bound_world(a)
+            .await
+            .unwrap()
+            .facts
+            .0
+            .state
+            .world
+            .unwrap()
+            .records;
+        let arrival = records.attack_groups[&group].arrival_at;
+        assert!(arrival > cutoff);
+        store.set_test_time(cutoff).await.unwrap();
+        drain(&store, u, true).await;
+        store.audit_universe(u).await.unwrap();
+        let pool = sqlx::PgPool::connect(&url).await.unwrap();
+        let group_after: sqlx::types::Json<AttackGroup> =
+            sqlx::query_scalar("SELECT data FROM attack_groups WHERE id=$1")
+                .bind(group.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let removed: sqlx::types::Json<MissionFleet> =
+            sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
+                .bind(first.id.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(removed.leg, MissionLeg::Destroyed);
+        assert!(removed.ships.is_empty());
+        assert_eq!(group_after.arrival_at, arrival);
+        assert_eq!(group_after.resolved_at.is_some(), remove_joiner);
+        if !remove_joiner {
+            let surviving: sqlx::types::Json<MissionFleet> =
+                sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
+                    .bind(second.id.0)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(surviving.0, second);
+            assert!(!group_after.invited.contains(&a.player));
+        }
+        store.set_test_time(arrival).await.unwrap();
+        drain(&store, u, true).await;
+        store.audit_universe(u).await.unwrap();
+        let terminal: sqlx::types::Json<AttackGroup> =
+            sqlx::query_scalar("SELECT data FROM attack_groups WHERE id=$1")
+                .bind(group.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(terminal.resolved_at.is_some());
+        pool.close().await;
+    }
+}

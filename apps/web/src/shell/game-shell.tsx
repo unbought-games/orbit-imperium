@@ -1,3 +1,4 @@
+import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
 import { useStore } from 'zustand'
 import { hasUnreadReports } from '../client-model/report-state'
@@ -357,6 +358,12 @@ function GameShellContent() {
             className={styles['work-area']}
           >
             <ErrorBannerSlot model={model} />
+            {view.protocol === 4 && (
+              <EmpireDeletionNotice
+                deletion={view.empire_deletion}
+                universeName={universeName}
+              />
+            )}
             <div
               className={
                 hideRouteHeading ? styles.routeHeading : styles['page-heading']

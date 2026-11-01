@@ -155,14 +155,47 @@ impl PgStore {
                     .and_then(|w| w.colonization.as_ref())
                     .is_none()
             {
-                homeworlds(&secret, u, manifest.epoch, manifest.members.len() + 1)
-                    .map_err(|_| StoreError::UniverseFull)?
-                    .pop()
-                    .ok_or(StoreError::CorruptData)?
+                let occupied: Vec<(i32, i32, i32)> = sqlx::query_as(
+                    "SELECT galaxy,system,position FROM bodies WHERE universe=$1 AND kind='Planet'",
+                )
+                .bind(u.0)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(db_error)?;
+                // The historical signup ordinal grows even when an empire is removed.
+                // Reuse a vacant slot from the same immutable legacy placement pool.
+                homeworlds(
+                    &secret,
+                    u,
+                    manifest.epoch,
+                    profile
+                        .homeworld_capacity()
+                        .map_err(|_| StoreError::CorruptData)? as usize,
+                )
+                .map_err(|_| StoreError::CorruptData)?
+                .into_iter()
+                .find(|home| {
+                    !occupied.contains(&(
+                        home.coordinates.galaxy as i32,
+                        home.coordinates.system as i32,
+                        home.coordinates.position as i32,
+                    ))
+                })
+                .ok_or(StoreError::UniverseFull)?
             } else {
+                let live: std::collections::BTreeSet<Uuid> = sqlx::query_scalar::<_, Uuid>(
+                    "SELECT player FROM universe_memberships WHERE universe=$1",
+                )
+                .bind(u.0)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(db_error)?
+                .into_iter()
+                .collect();
                 let homes: Vec<_> = manifest
                     .members
                     .iter()
+                    .filter(|m| live.contains(&m.player))
                     .map(|m| m.homeworld.coordinates)
                     .collect();
                 let slots: Vec<(i32, i32, i32)> = sqlx::query_as(
@@ -256,7 +289,13 @@ impl PgStore {
             } else {
                 admission_policy(u, profile, Some(policy.max_players))?.max_players
             };
-            if manifest.members.len() >= max_players as usize {
+            let active_members: i64 =
+                sqlx::query_scalar("SELECT count(*) FROM universe_memberships WHERE universe=$1")
+                    .bind(u.0)
+                    .fetch_one(&mut *tx)
+                    .await
+                    .map_err(db_error)?;
+            if active_members >= i64::from(max_players) {
                 return Err(StoreError::UniverseFull);
             }
             insert_member(&mut tx, u, &member, &password_hash, at, &rules).await?;
@@ -306,7 +345,7 @@ impl PgStore {
             let expires_at: i64 = if machine_sleep.is_some() {
                 0
             } else {
-                sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000) RETURNING expires_at")
+                sqlx::query_scalar("INSERT INTO sessions(digest,account,csrf,expires_at,authenticated_at) VALUES($1,$2,$3,floor(extract(epoch FROM clock_timestamp())*1000)::bigint+2592000000,floor(extract(epoch FROM clock_timestamp())*1000)::bigint) RETURNING expires_at")
             .bind(digest).bind(account.0).bind(&csrf).fetch_one(&mut *tx).await.map_err(db_error)?
             };
             let universe_name = sqlx::query_scalar("SELECT name FROM universes WHERE id=$1")

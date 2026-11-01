@@ -1,5 +1,5 @@
 use super::*;
-fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
+pub(super) fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     let (mut s, _, p, b, t) = fixture();
     let r = upgrade_standard_rules(&Ruleset::mvp_raids().unwrap()).unwrap();
     s.profile_hash = r.hash.clone();
@@ -30,7 +30,7 @@ fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     w.covered_depot_sources = s.bodies.keys().copied().collect();
     (s, r, p, b, t)
 }
-fn hold(s: &GameState, p: PlayerId, b: BodyId, t: BodyId, hours: u32) -> FleetIntent {
+pub(super) fn hold(s: &GameState, p: PlayerId, b: BodyId, t: BodyId, hours: u32) -> FleetIntent {
     FleetIntent {
         attack_group: None,
         mission: Mission::Hold,

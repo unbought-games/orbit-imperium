@@ -444,6 +444,9 @@ pub(crate) async fn persist_changes(
         }
     }
     for new_event in &change.events {
+        if let ScheduledEvent::EmpireDeletionDue { player } = new_event.event {
+            crate::empire_deletion::cancel_checks(tx, i.universe, player, i.id).await?;
+        }
         if new_event.at <= i.at {
             return Err(StoreError::CorruptData);
         }
@@ -476,6 +479,7 @@ pub(crate) async fn persist_changes(
             crate::admission::register(tx, &next, &scopes).await?;
         }
     }
+    crate::empire_deletion::refresh_checks(tx, i.universe, &change.affected_viewers, i.id).await?;
     for viewer in &change.affected_viewers {
         let updated=sqlx::query("UPDATE viewer_heads SET revision=revision+1,changed_at=$3,changed_at_generation=$4 WHERE universe=$1 AND player=$2").bind(i.universe.0).bind(viewer.0).bind(i.at).bind(rt.try_get::<i64,_>("mode_generation").map_err(db_error)?).execute(&mut **tx).await.map_err(db_error)?;
         if updated.rows_affected() != 1 {

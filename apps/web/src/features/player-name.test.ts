@@ -22,37 +22,40 @@ it('never infers identity from a player name', () => {
   expect(markup).not.toContain('aria-label="Bot"')
 })
 
-it('uses bot identity from the authenticated public profile source', async () => {
-  const { PlayerProfilesController } = await import(
-    '../client-model/player-profiles'
-  )
-  const { PlayerProfilesContext } = await import(
-    '../shell/player-profiles-context'
-  )
-  const profiles = new PlayerProfilesController(async () => {
-    throw Error('No network')
-  })
-  profiles.store.setState({
-    now: 0,
-    players: {
-      machine: {
-        player: 'machine',
-        username: 'Harvester',
-        kind: 'bot',
-        observed_at: 0,
-        expires_at: 100,
+it.each(['bot', 'human'] as const)(
+  'uses the public %s projection without revealing a hidden bot',
+  async (kind) => {
+    const { PlayerProfilesController } = await import(
+      '../client-model/player-profiles'
+    )
+    const { PlayerProfilesContext } = await import(
+      '../shell/player-profiles-context'
+    )
+    const profiles = new PlayerProfilesController(async () => {
+      throw Error('No network')
+    })
+    profiles.store.setState({
+      now: 0,
+      players: {
+        machine: {
+          player: 'machine',
+          username: 'Harvester',
+          kind,
+          observed_at: 0,
+          expires_at: 100,
+        },
       },
-    },
-  })
-  // React SSR reads the store's initial snapshot; hydrate this fixture explicitly.
-  profiles.store.getInitialState = profiles.store.getState
-  const markup = renderToStaticMarkup(
-    createElement(
-      PlayerProfilesContext.Provider,
-      { value: profiles },
-      createElement(PlayerName, { player: 'machine' }),
-    ),
-  )
-  expect(markup).toContain('Harvester')
-  expect(markup).toContain('aria-label="Bot"')
-})
+    })
+    // React SSR reads the store's initial snapshot; hydrate this fixture explicitly.
+    profiles.store.getInitialState = profiles.store.getState
+    const markup = renderToStaticMarkup(
+      createElement(
+        PlayerProfilesContext.Provider,
+        { value: profiles },
+        createElement(PlayerName, { player: 'machine' }),
+      ),
+    )
+    expect(markup).toContain('Harvester')
+    expect(markup.includes('aria-label="Bot"')).toBe(kind === 'bot')
+  },
+)

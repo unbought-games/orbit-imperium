@@ -17,6 +17,7 @@ async fn galaxy_one_exhaustion_is_atomic_for_bots_and_signups_with_other_galaxie
             },
             policy: UniversePolicy {
                 bots: BotPolicy {
+                    display: BotDisplay::Visible,
                     enabled: true,
                     max_active: 20,
                     action_units_per_24h: Some(100),

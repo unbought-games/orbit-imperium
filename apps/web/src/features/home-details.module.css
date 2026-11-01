@@ -185,37 +185,6 @@
 .eternalAction {
   margin: 24px 0;
 }
-.details .discordButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  min-height: 56px;
-  padding: 14px 24px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: #5865f2;
-  color: #fff;
-  font-size: 1.125rem;
-  font-weight: 650;
-  line-height: 1.4;
-  text-decoration: none;
-  touch-action: manipulation;
-}
-.discordButton img {
-  flex-shrink: 0;
-}
-.details .discordButton:hover {
-  color: #fff;
-  box-shadow: inset 0 0 0 100px #0002;
-}
-.details .discordButton:active {
-  box-shadow: inset 0 2px 6px #0006;
-}
-.details .discordButton:focus-visible {
-  outline: 3px solid #e0e3ff;
-  outline-offset: 4px;
-}
 .details .developmentNote {
   font-size: var(--font-size-sm);
   margin-bottom: 0;
@@ -332,7 +301,7 @@
   .joinAction a {
     width: 100%;
   }
-  .eternalAction .discordButton {
+  .eternalDiscord {
     width: 100%;
   }
 }

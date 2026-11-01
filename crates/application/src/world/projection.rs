@@ -62,7 +62,7 @@ pub(super) fn world_projection(
                         .records
                         .policies
                         .get(p)
-                        .is_some_and(|p| p.lifecycle == PlayerLifecycle::Active && !p.vacation)
+                        .is_some_and(|p| !p.deletion_pending(snapshot.at) && !p.vacation)
                 });
             Some(HeldFleetView {
                 id: fleet.id,
@@ -101,6 +101,17 @@ pub(super) fn world_projection(
         }
     }
     Ok(BoundView4 {
+        empire_deletion: world
+            .records
+            .policies
+            .get(&viewer)
+            .ok_or(ServiceError::InvariantFailure)?
+            .deletion_status(snapshot.at)
+            .map_err(ServiceError::GameRejected)?,
+        leads_alliance: world
+            .alliance_leaders
+            .as_ref()
+            .is_some_and(|leaders| leaders.contains(&viewer)),
         attack_groups: attack_group_views(
             &world.records,
             viewer,

@@ -33,6 +33,14 @@ export function actionLabel(command: Command): string {
 }
 export function actionMessage(a: Attempt): string {
   const command = a.envelope.command
+  if (a.status === 'rejected' && a.receipt?.status === 'Rejected') {
+    if (a.receipt.code === 'ReauthenticationRequired')
+      return 'Sign out and sign in again, then retry this action within five minutes.'
+    if (a.receipt.code === 'AllianceLeader')
+      return 'Transfer alliance leadership or disband your alliance before requesting deletion.'
+    if (a.receipt.code === 'DeletionDue')
+      return 'The deletion deadline has passed.'
+  }
   if (command.type === 'StartManufacture' && a.status === 'committed')
     return a.reconciled
       ? 'Order confirmed. Costs shown are for a new order.'

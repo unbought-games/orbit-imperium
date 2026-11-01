@@ -51,6 +51,8 @@ pub(super) struct LoginQuery {
     return_to: Option<String>,
     #[serde(default)]
     verify: bool,
+    #[serde(default)]
+    signup: bool,
 }
 pub(super) async fn configuration<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -72,8 +74,39 @@ pub(super) async fn configuration<S: IdentityStore>(
                     .is_some_and(|binding| binding.universe == universe.universe)
         })
         .collect();
-    Ok(([(header::CACHE_CONTROL, "no-store")], Json(serde_json::json!({"mode":if s.oidc.is_some(){"oidc"}else{"local"},"universes":universes,"client_id":s.oidc.as_ref().map(|r|r.configuration().client_id.as_str()),"accounts_url":s.oidc.as_ref().map(|r|r.configuration().issuer.trim_end_matches("/api/auth"))}))).into_response())
+    Ok(([(header::CACHE_CONTROL, "no-store")], Json(serde_json::json!({"mode":if s.oidc.is_some(){"oidc"}else{"local"},"universes":universes,"client_id":s.oidc.as_ref().map(|r|r.configuration().client_id.as_str()),"hosted_universe":hosted_auth::universe(&s).map(|id| id.0),"accounts_url":s.oidc.as_ref().map(|r|r.configuration().issuer.trim_end_matches("/api/auth"))}))).into_response())
 }
+#[derive(Default, Deserialize)]
+pub(super) struct EntryQuery {
+    #[serde(default)]
+    signup: bool,
+}
+
+pub(super) async fn entry<S: IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Query(q): Query<EntryQuery>,
+) -> Result<Response, Problem> {
+    if !hosted_auth::enabled(&s) {
+        return Ok((
+            [(header::CACHE_CONTROL, "no-store")],
+            Redirect::to(if q.signup { "/signup" } else { "/login" }),
+        )
+            .into_response());
+    }
+    let return_to = hosted_auth::return_path(hosted_auth::universe(&s));
+    login(
+        State(s),
+        h,
+        Query(LoginQuery {
+            return_to: Some(return_to),
+            verify: false,
+            signup: q.signup,
+        }),
+    )
+    .await
+}
+
 pub(super) async fn login<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     h: HeaderMap,
@@ -106,6 +139,7 @@ pub(super) async fn login<S: IdentityStore>(
         )
         .await
         .map_err(provider_error)?;
+    let url = hosted_auth::authorization_url(url, hosted_auth::enabled(&s), q.signup && !q.verify);
     let cookie = s.config.session_cookie("orbit_oidc", &secret, 600);
     Ok((
         [
@@ -126,6 +160,7 @@ pub(super) async fn callback<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     h: HeaderMap,
     Query(q): Query<Callback>,
+    peer: Option<Extension<ConnectInfo<SocketAddr>>>,
 ) -> Result<Response, Problem> {
     let rp = s.oidc.as_ref().ok_or(ServiceError::Forbidden)?;
     let (tokens, path) = rp
@@ -144,7 +179,8 @@ pub(super) async fn callback<S: IdentityStore>(
     if let Some(profiles) = &s.profiles {
         profiles.signed_in(&tokens.identity);
     }
-    s.updates
+    let session = s
+        .updates
         .complete_oidc_login(
             tokens,
             &token_digest(&secret),
@@ -153,6 +189,11 @@ pub(super) async fn callback<S: IdentityStore>(
         )
         .await
         .map_err(ServiceError::from)?;
+    let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
+    let path = hosted_auth::finish_entry(path, hosted_auth::universe(&s), |universe| {
+        oidc_enrollment::enroll(&s, session, universe, source)
+    })
+    .await;
     Ok((
         [
             (
@@ -270,7 +311,13 @@ pub(super) async fn enroll<S: IdentityStore>(
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     ApiJson(body): ApiJson<Enrollment>,
 ) -> Result<Response, Problem> {
-    if s.oidc.is_none() {
+    // Local accounts can rejoin their configured universe after empire removal.
+    // Shared Accounts logins retain the existing multi-universe enrollment path.
+    if s.oidc.is_none()
+        && s.config
+            .signup
+            .is_none_or(|policy| policy.universe.0 != body.universe)
+    {
         return Err(ServiceError::Forbidden.into());
     }
     let session = authenticate(&s, &h, true).await?;
@@ -309,6 +356,10 @@ pub(super) struct JourneyLogin {
     #[serde(default)]
     verify: bool,
     handoff: String,
+    #[serde(default)]
+    entry: bool,
+    #[serde(default)]
+    signup: bool,
 }
 pub(super) async fn login_journey<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -325,15 +376,27 @@ pub(super) async fn login_journey<S: IdentityStore>(
     {
         return Err(ServiceError::Forbidden.into());
     }
-    let response = login(
-        State(s),
-        h,
-        Query(LoginQuery {
-            return_to: body.return_to,
-            verify: body.verify,
-        }),
-    )
-    .await?;
+    let response = if body.entry {
+        entry(
+            State(s),
+            h,
+            Query(EntryQuery {
+                signup: body.signup,
+            }),
+        )
+        .await?
+    } else {
+        login(
+            State(s),
+            h,
+            Query(LoginQuery {
+                return_to: body.return_to,
+                verify: body.verify,
+                signup: body.signup,
+            }),
+        )
+        .await?
+    };
     let mut headers = response.headers().clone();
     let url = headers
         .get(header::LOCATION)
