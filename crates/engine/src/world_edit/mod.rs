@@ -370,11 +370,12 @@ pub fn edit_world(
     for body in next.bodies.values() {
         validate_body(&next, body.id, rules).map_err(|e| e.to_string())?;
         let used: u64 = body.levels.values().map(|n| u64::from(*n)).sum();
-        if used > u64::from(body.fields) {
+        let capacity = body_field_capacity(body, rules).map_err(|e| e.to_string())?;
+        if used > u64::from(capacity) {
             return Err(format!(
                 "{}: buildings use {used} fields, planet has {}",
                 coordinate_label(body.coordinates),
-                body.fields
+                capacity
             ));
         }
     }

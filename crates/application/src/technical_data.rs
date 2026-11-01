@@ -166,6 +166,11 @@ fn building_data(data: &mut TechnicalData, building: Building, rules: &Ruleset) 
             data.storage_capacities = r.progression.as_ref().map(|p| p.storage_capacities.iter().map(ToString::to_string).collect());
             data.fact("Storage", "Production stops for this resource at capacity. Incoming deliveries can exceed capacity.");
         }
+        Building::Terraformer if rules.progression() => {
+            data.fact("Planet fields", format!("Adds {} fields per completed level, with no even-level bonus. Each level occupies one field, leaving four additional free fields. One free field is required to start.", TERRAFORMER_FIELDS_PER_LEVEL));
+            data.fact("Construction energy", format!("{} × 2^(target level − 1) gross energy at saved production settings and current fuel availability. Checked before payment at construction start; energy is neither consumed nor reserved. Later power loss does not cancel construction.", TERRAFORMER_BASE_ENERGY));
+            data.fact("Demolition", "Terraformer cannot be demolished. Fields are added only on completion; canceling construction refunds its paid resources without adding capacity.");
+        }
         Building::NaniteFactory if rules.progression() => {
             data.fact("Construction and manufacturing time", "Raw duration is divided by 2^completed Nanite Factory level, in addition to Robotics or Shipyard acceleration. Building upgrades retain the universe’s construction adjustment; manufacturing rounds each unit down to whole seconds with a one-second minimum. Research is unaffected.");
             data.fact("Industrial lock", "Factory upgrades and demolition cannot overlap any unfinished manufacturing on this planet, including waiting ships, defenses and missiles. Self-upgrades use the old completed Nanite level.");
@@ -474,6 +479,16 @@ mod tests {
                 .storage_capacities
                 .len()
         );
+    }
+    #[test]
+    fn terraformer_technical_data_matches_the_client_fixture() {
+        let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+        let data = data(&r, CatalogKey::Building(Building::Terraformer));
+        let fixture: serde_json::Value = serde_json::from_slice(include_bytes!(
+            "../../../contracts/fixtures/terraformer-technical-data.json"
+        ))
+        .unwrap();
+        assert_eq!(serde_json::to_value(&data).unwrap(), fixture);
     }
     #[test]
     fn nanite_technical_data_explains_timing_and_industrial_exclusion() {

@@ -16063,7 +16063,7 @@
       },
       "BuildingBenefit": {
         "type": "object",
-        "description": "Current and target benefits at 100% output with sufficient energy, excluding base income. Derived from active rules.",
+        "description": "Current and target benefits derived from active rules. FieldCapacity uses whole planet fields; other values use micro-units at full output, excluding base income.",
         "required": [
           "kind",
           "current",
@@ -16079,7 +16079,8 @@
               "Energy",
               "MetalCapacity",
               "CrystalCapacity",
-              "DeuteriumCapacity"
+              "DeuteriumCapacity",
+              "FieldCapacity"
             ]
           },
           "current": {

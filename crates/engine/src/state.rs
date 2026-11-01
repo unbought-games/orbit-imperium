@@ -18,6 +18,7 @@ pub struct Body {
     pub owner: PlayerId,
     pub kind: BodyKind,
     pub coordinates: Coordinates,
+    /// Original body capacity; completed Terraformer levels add derived planet fields.
     pub fields: u32,
     pub max_temperature: i32,
     /// Protocol 1/2 capacity is authoritative (those profiles have no storage levels).

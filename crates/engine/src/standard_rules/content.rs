@@ -259,6 +259,17 @@ pub(super) fn patches() -> Vec<Patch> {
         false,
         nanite["requirements"].clone(),
     ));
+    let terraformer = read(include_bytes!("../../../../rules/content/terraformer.json"));
+    out.push(Patch::field(
+        "/buildings/Terraformer",
+        terraformer["building"].clone(),
+    ));
+    out.push(catalog(
+        "Building",
+        "Terraformer",
+        false,
+        terraformer["requirements"].clone(),
+    ));
     let fusion = read(include_bytes!(
         "../../../../rules/content/fusion-reactor.json"
     ));

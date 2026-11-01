@@ -759,3 +759,29 @@ it('explains an occupied manufacturing queue and identifies active Nanite work',
     'Nanite Factory level 1',
   )
 })
+
+it('shows Terraformer capacity as whole fields and gross energy independently of surplus', () => {
+  const { view, body, proposal } = fixture()
+  proposal.building_energy = {
+    current_consumption: '0',
+    target_consumption: '0',
+  }
+  proposal.building_benefit = {
+    kind: 'FieldCapacity',
+    current: '100',
+    target: '105',
+  }
+  view.progression.production[0].energy_supply = micro(1000)
+  view.progression.production[0].energy_demand = micro(2500)
+  const insight = buildingInsights(view, body, 'Terraformer', proposal)
+  expect(insight.benefit).toMatchObject({
+    kind: 'FieldCapacity',
+    current: '100',
+    target: '105',
+    planetTotal: false,
+  })
+  expect(insight.benefit?.qualifier).toContain('this level occupies one')
+  expect(insight.energy.grossSupply).toBe(micro(1000))
+  expect(insight.energy.current).toBe(micro(-1500))
+  expect(insight.energy.show).toBe(false)
+})

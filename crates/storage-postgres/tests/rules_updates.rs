@@ -17,6 +17,8 @@ mod nanite;
 mod plasma_turret;
 #[path = "rules_updates/standard.rs"]
 mod standard;
+#[path = "rules_updates/terraformer.rs"]
+mod terraformer;
 
 #[tokio::test]
 async fn custom_saved_catalog_survives_startup_and_initializes_signup() {

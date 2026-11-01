@@ -445,7 +445,8 @@ pub(crate) fn progression_projection(
                 .map_err(|_| ServiceError::InvariantFailure)?
                 .into(),
             levels: b.levels.clone(),
-            fields: b.fields,
+            fields: orbit_engine::body_field_capacity(b, &facts.rules)
+                .map_err(|_| ServiceError::InvariantFailure)?,
             fields_used: b
                 .levels
                 .values()

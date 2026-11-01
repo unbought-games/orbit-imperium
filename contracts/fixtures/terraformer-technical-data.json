@@ -1,0 +1,27 @@
+{
+  "facts": [
+    {
+      "label": "Cost scaling",
+      "value": "Base cost × 2^(target level − 1), each resource rounded down to whole units.",
+      "subject": null
+    },
+    {
+      "label": "Planet fields",
+      "value": "Adds 5 fields per completed level, with no even-level bonus. Each level occupies one field, leaving four additional free fields. One free field is required to start.",
+      "subject": null
+    },
+    {
+      "label": "Construction energy",
+      "value": "1000 × 2^(target level − 1) gross energy at saved production settings and current fuel availability. Checked before payment at construction start; energy is neither consumed nor reserved. Later power loss does not cancel construction.",
+      "subject": null
+    },
+    {
+      "label": "Demolition",
+      "value": "Terraformer cannot be demolished. Fields are added only on completion; canceling construction refunds its paid resources without adding capacity.",
+      "subject": null
+    }
+  ],
+  "bonuses": [],
+  "combat": null,
+  "storage_capacities": null
+}

@@ -195,6 +195,13 @@ async fn nanite_activation_preserves_batches_and_builds_with_durable_acceleratio
             .find(|e| e.key == CatalogKey::Building(Building::NaniteFactory))
             .unwrap()
             .enabled = false;
+        disabled
+            .artifact
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == CatalogKey::Building(Building::Terraformer))
+            .unwrap()
+            .enabled = false;
         service.apply(&disabled).await.unwrap();
         let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
             .await

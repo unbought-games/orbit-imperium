@@ -102,6 +102,7 @@ export function BuildingDetails({
       footer={
         !work &&
         !unavailable &&
+        building.id !== 'Terraformer' &&
         (level > 0 || action === 'Demolition') && (
           <Button
             variant={action === 'Upgrade' ? 'destructive' : 'secondary'}
@@ -253,14 +254,26 @@ export function BuildingDetails({
                   <DurationValue milliseconds={terms.duration_ms} />
                 </DetailRow>
                 {BigInt(terms.required_energy) > 0n && (
-                  <DetailRow label="Construction energy required">
+                  <DetailRow label="Gross energy required">
                     <ResourceQuantity
                       resource="energy"
                       value={terms.required_energy}
                     />
+                    {' · '}
+                    <ResourceQuantity
+                      resource="energy"
+                      value={insight.energy.grossSupply}
+                    />
+                    {' available'}
                   </DetailRow>
                 )}
               </dl>
+              {BigInt(terms.required_energy) > 0n && (
+                <p className={styles.note}>
+                  Required at the start only; energy is not consumed or
+                  reserved.
+                </p>
+              )}
               {insight.benefit?.qualifier &&
                 (!firstBuild || !insight.benefit.planetTotal) && (
                   <p className={styles.note}>{insight.benefit.qualifier}.</p>

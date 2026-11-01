@@ -382,6 +382,9 @@ pub fn building_terms(
     rules: &Ruleset,
 ) -> Result<ProgressionMaterial, GameError> {
     enabled(rules, CatalogKey::Building(building))?;
+    if building == Building::Terraformer && action == BuildingAction::Demolition {
+        return Err(GameError::NotDemolishable);
+    }
     let source = level(body, building)?;
     let target = match action {
         BuildingAction::Upgrade => source.checked_add(1).ok_or(GameError::NumericRange)?,
@@ -389,6 +392,7 @@ pub fn building_terms(
     };
     let mut future = body.clone();
     future.levels.insert(building, target);
+    body_field_capacity(&future, rules)?;
     production_rates(&future, rules)?;
     energy_stats(&future, rules)?;
     if matches!(
@@ -447,7 +451,11 @@ pub fn building_terms(
                 level: robotics,
             },
         ],
-        required_energy: 0,
+        required_energy: if building == Building::Terraformer {
+            terraformer_required_energy(target)?
+        } else {
+            0
+        },
         reserve_fields: u32::from(action == BuildingAction::Upgrade),
     })
 }

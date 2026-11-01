@@ -15,6 +15,8 @@ const content: Record<string, string> = {
     'Automatically destroys one incoming Interplanetary Missile at impact. Built in the shared manufacturing queue and stored in the planetary silo.',
   InterplanetaryMissile:
     'Permanently destroys enemy defenses, bypassing shields. Range grows with Impulse Drive; Weapons Technology increases damage. Launch from the galaxy. Missiles cannot be recalled.',
+  Terraformer:
+    'Transforms uninhabitable terrain into room for development. Each completed level adds five planet fields and occupies one. Construction requires one free field and enough gross energy at the start. Terraformer cannot be demolished.',
   NaniteFactory:
     'Nanite assemblers accelerate construction and manufacturing on this planet. Each completed level halves raw build time. Research is unaffected. Factory upgrades and demolition cannot overlap manufacturing.',
   RoboticsFactory: 'Robotic workers accelerate construction on this planet.',

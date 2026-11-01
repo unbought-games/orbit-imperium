@@ -403,11 +403,12 @@ pub fn inspect_progression(
     } = &terms
     {
         out.building_benefit = building_benefit(b, *building, *source_level, *target_level, r)?;
-        if fusion_rule(r).is_some()
-            && (*building == Building::FusionReactor
-                || b.levels
-                    .get(&Building::FusionReactor)
-                    .is_some_and(|level| *level > 0))
+        if *building == Building::Terraformer
+            || (fusion_rule(r).is_some()
+                && (*building == Building::FusionReactor
+                    || b.levels
+                        .get(&Building::FusionReactor)
+                        .is_some_and(|level| *level > 0)))
         {
             let mut preview = b.clone();
             preview.checkpoint = settle_production(s, b, at, r)?;
@@ -462,6 +463,22 @@ pub fn inspect_progression(
             x.actual = Some(actual.to_string());
             x.unit = Some(BlockerUnit::Level);
             out.blockers.push(x)
+        }
+    }
+    if let ProgressionMaterial::Building {
+        required_energy, ..
+    } = &terms
+        && *required_energy > 0
+    {
+        let mut settled = b.clone();
+        settled.checkpoint = settle_production(s, b, at, r)?;
+        let actual = body_economy(s, &settled, r)?.energy.supply;
+        if actual < *required_energy {
+            let mut blocker = block(GameError::EnergyRequired);
+            blocker.required = Some(required_energy.to_string());
+            blocker.actual = Some(actual.to_string());
+            blocker.unit = Some(BlockerUnit::MicroEnergy);
+            out.blockers.push(blocker);
         }
     }
     let construction = s
@@ -542,7 +559,7 @@ pub fn inspect_progression(
                     .ok_or_else(|| bad("field overflow"))?
                     .checked_add(reserved_fields(s, id)?)
                     .ok_or_else(|| bad("field reservation overflow"))?
-                    >= b.fields
+                    >= body_field_capacity(b, r)?
             {
                 out.blockers.push(block(GameError::NoFreeField))
             }

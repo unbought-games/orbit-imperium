@@ -26,8 +26,10 @@ file. `--universe UUID` selects an existing world. Without it, the command uses
 Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
 --help` works without a database. An empty database needs `orbit setup` first.
 
-The bundled content release is currently **0.12.0**. This is the content bundle's
+The bundled content release is currently **0.13.0**. This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
+[Terraformer](terraformer.md) adds planetary fields and requires Nanite Factory 1,
+Energy Technology 12 and a start-time gross-energy threshold.
 The bundle contains the earlier Impulse Drive, Astrophysics/colonization, Heavy
 Fighter, Laser/Light Laser, Ion, Cruiser and Ion Cannon additions, followed by
 Large Cargo, Solar Satellite, Heavy Laser, Gauss Cannon, Large Shield Dome and

@@ -169,7 +169,10 @@ impl Ruleset {
                 !Building::MVP.contains(k)
                     && (!matches!(
                         k,
-                        Building::FusionReactor | Building::MissileSilo | Building::NaniteFactory
+                        Building::FusionReactor
+                            | Building::MissileSilo
+                            | Building::NaniteFactory
+                            | Building::Terraformer
                     ) || artifact.progression.is_none())
             })
         {

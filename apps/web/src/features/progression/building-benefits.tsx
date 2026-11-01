@@ -41,7 +41,9 @@ export function BuildingBenefits({
             <BenefitValue insight={insight.benefit} target potential />
           </DetailRow>
         )}
-      {(insight.energy.show || insight.energy.constructionBlocked) && (
+      {(insight.energy.show ||
+        (insight.energy.constructionBlocked &&
+          building.id !== 'Terraformer')) && (
         <EnergyComparison
           energy={insight.energy}
           balanceLabel={

@@ -7314,10 +7314,10 @@ export interface components {
             request_id: string;
             players: components["schemas"]["PlayerDisplay"][];
         };
-        /** @description Current and target benefits at 100% output with sufficient energy, excluding base income. Derived from active rules. */
+        /** @description Current and target benefits derived from active rules. FieldCapacity uses whole planet fields; other values use micro-units at full output, excluding base income. */
         BuildingBenefit: {
             /** @enum {string} */
-            kind: "MetalPerHour" | "CrystalPerHour" | "DeuteriumPerHour" | "Energy" | "MetalCapacity" | "CrystalCapacity" | "DeuteriumCapacity";
+            kind: "MetalPerHour" | "CrystalPerHour" | "DeuteriumPerHour" | "Energy" | "MetalCapacity" | "CrystalCapacity" | "DeuteriumCapacity" | "FieldCapacity";
             current: components["schemas"]["Decimal"];
             target: components["schemas"]["Decimal"];
         };

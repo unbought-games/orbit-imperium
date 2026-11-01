@@ -302,3 +302,14 @@ test-deuterium-debris:
 test-deuterium-debris-db:
 	sh scripts/test-db.sh rules_updates 'test(impact::) | test(compatibility::)'
 	sh scripts/test-db.sh world_edit 'test(editable_export_round_trips_planets_valuation_and_activity)'
+
+.PHONY: test-terraformer test-terraformer-db
+test-terraformer:
+	cargo nextest run -p orbit-engine --lib --test progression -E 'test(terraformer)'
+	cargo nextest run -p orbit-application --lib -E 'test(terraformer)'
+	npm test -- apps/web/src/features/progression/detail-insights.test.ts
+	npm run test:ui -- terraformer.spec.ts
+
+test-terraformer-db:
+	sh scripts/test-db.sh rules_updates 'test(terraformer)'
+	sh scripts/test-db.sh world_edit 'test(terraformer)'

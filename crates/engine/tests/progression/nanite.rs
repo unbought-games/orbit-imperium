@@ -37,6 +37,7 @@ fn nanite_exact_costs_self_facilities_demolition_and_research() {
     let (s, _, p, b) = nanite_fixture();
     let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
     let mut body = s.bodies[&b].clone();
+    body.levels.insert(Building::Terraformer, 0);
     for (source, cost) in [
         (0, [1_000_000, 500_000, 100_000]),
         (1, [2_000_000, 1_000_000, 200_000]),
@@ -85,6 +86,7 @@ fn nanite_divides_before_building_threshold_and_unit_rounding_for_every_manufact
     let (s, _, _, b) = nanite_fixture();
     let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
     let mut body = s.bodies[&b].clone();
+    body.levels.insert(Building::Terraformer, 0);
     body.levels.insert(Building::RoboticsFactory, 0);
     body.levels.insert(Building::NaniteFactory, 1);
     for (metal, seconds) in [(138, 99), (139, 10), (141, 11), (1, 1)] {

@@ -7,6 +7,8 @@ mod types;
 pub use state::*;
 pub use types::*;
 mod construction;
+mod terraformer;
+pub use terraformer::*;
 mod economy;
 mod solar_satellite;
 pub use solar_satellite::*;

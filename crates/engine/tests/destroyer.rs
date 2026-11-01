@@ -130,6 +130,7 @@ fn destroyer_manufacturing_charges_all_resources_but_times_only_metal_and_crysta
     let (state, _, _, body) = common::fixture();
     let mut planet = state.bodies[&body].clone();
     planet.levels.insert(Building::NaniteFactory, 0);
+    planet.levels.insert(Building::Terraformer, 0);
     planet.levels.insert(Building::Shipyard, 9);
     for (speed, seconds) in [(1, 15840), (5, 3168), (7, 2262), (10, 1584)] {
         let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), speed).unwrap();

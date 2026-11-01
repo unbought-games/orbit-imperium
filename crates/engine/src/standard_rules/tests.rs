@@ -60,6 +60,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
         for key in [
             CatalogKey::Building(Building::FusionReactor),
             CatalogKey::Building(Building::NaniteFactory),
+            CatalogKey::Building(Building::Terraformer),
             CatalogKey::Ship(ShipType::LargeCargo),
             CatalogKey::Ship(ShipType::Bomber),
             CatalogKey::Ship(ShipType::Battlecruiser),
@@ -126,6 +127,7 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
         vec![
             Building::FusionReactor,
             Building::NaniteFactory,
+            Building::Terraformer,
             Building::MissileSilo
         ]
     );
@@ -861,6 +863,14 @@ fn nanite_bundle_is_planet_only_exact_and_conflict_safe() {
                 .unwrap()
                 .enabled = false;
         }
+        if !customized_cost {
+            artifact
+                .catalog
+                .iter_mut()
+                .find(|e| e.key == CatalogKey::Building(Building::Terraformer))
+                .unwrap()
+                .enabled = false;
+        }
         let custom = Ruleset::from_artifact(artifact, 3).unwrap();
         assert!(matches!(
             upgrade_standard_rules(&custom),
@@ -884,6 +894,68 @@ fn nanite_bundle_is_planet_only_exact_and_conflict_safe() {
     assert!(Ruleset::from_artifact(missing, 3).is_err());
     let mut removed = next.artifact.clone();
     removed.buildings.remove(&Building::NaniteFactory);
+    removed
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == key)
+        .unwrap()
+        .enabled = false;
+    removed
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::Terraformer))
+        .unwrap()
+        .enabled = false;
+    assert!(validate_rules_update(&next, &Ruleset::from_artifact(removed, 3).unwrap()).is_err());
+}
+
+#[test]
+fn terraformer_bundle_is_exact_planet_only_and_conflict_safe() {
+    let old = retained(include_bytes!("../../../../rules/mvp-v1-slice-11.json"));
+    let next = upgrade_standard_rules(&old).unwrap();
+    let key = CatalogKey::Building(Building::Terraformer);
+    assert_eq!(
+        next.artifact.buildings[&Building::Terraformer],
+        BuildingRule {
+            base: [0, 50_000, 100_000],
+            growth: [2, 1]
+        }
+    );
+    let entry = next.artifact.catalog.iter().find(|e| e.key == key).unwrap();
+    assert!(entry.enabled);
+    assert_eq!(
+        entry.body_kinds,
+        std::collections::BTreeSet::from([BodyKind::Planet])
+    );
+    assert_eq!(
+        entry.requirements,
+        vec![
+            Requirement::BodyBuilding {
+                building: Building::NaniteFactory,
+                level: 1
+            },
+            Requirement::PlayerResearch {
+                research: ResearchId::EnergyTechnology,
+                level: 12
+            },
+        ]
+    );
+    for custom_cost in [false, true] {
+        let mut a = next.artifact.clone();
+        if custom_cost {
+            a.buildings.get_mut(&Building::Terraformer).unwrap().base[1] += 1;
+        } else {
+            a.catalog.iter_mut().find(|e| e.key == key).unwrap().enabled = false;
+        }
+        let custom = Ruleset::from_artifact(a, 3).unwrap();
+        assert!(matches!(
+            upgrade_standard_rules(&custom),
+            Err(StandardRulesError::Conflicts(_))
+        ));
+    }
+    let mut removed = next.artifact.clone();
+    removed.buildings.remove(&Building::Terraformer);
+    assert!(Ruleset::from_artifact(removed.clone(), 3).is_err());
     removed
         .catalog
         .iter_mut()
