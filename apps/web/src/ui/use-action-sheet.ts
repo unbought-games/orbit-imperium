@@ -291,9 +291,7 @@ export function useActionSheet(options: ActionSheetOptions) {
     if (!(target instanceof HTMLElement)) return
     // Native select pickers display outside the sheet; focusing a visible
     // dropdown must not replace the user's chosen height with the maximum.
-    const editable = target.matches(
-      'input, textarea, [contenteditable="true"]',
-    )
+    const editable = target.matches('input, textarea, [contenteditable="true"]')
     const rect = target.getBoundingClientRect()
     const bounds = scroll.current?.getBoundingClientRect()
     if (
