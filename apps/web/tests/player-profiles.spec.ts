@@ -341,7 +341,7 @@ for (const width of [1440, 390]) {
     for (const display of ['visible', 'hidden'] as const) {
       kind = display === 'visible' ? 'bot' : 'human'
       for (const [screen, path] of [
-        ['rankings', 'high-scores'], ['galaxy', 'galaxy'],
+        ['rankings', 'high-scores'], ['galaxy', 'galaxy?galaxy=1&system=1'],
         ['empire', `b/${body.id}/overview`], ['fleets', `b/${body.id}/fleets`],
         ['report', `b/${body.id}/reports/${id(80)}`],
       ]) {
