@@ -1700,10 +1700,12 @@ for (const width of [1440, 390]) {
     await expect(entries).toHaveCount(20)
     let release!: () => void
     let held = false
+    let refreshes = 0
     const gate = new Promise<void>(resolve => {release = resolve})
     await page.route('**/api/**/reports', async route => {
       if (!route.request().postDataJSON().cursor) {
         held = true
+        refreshes++
         await gate
         if (failRefresh) return route.fulfill({status: 503, json: {code: 'Unavailable'}})
       }
@@ -1712,6 +1714,8 @@ for (const width of [1440, 390]) {
     try {
       await page.clock.runFor(15000)
       await expect.poll(() => held).toBe(true)
+      // Queue another passive refresh while the first owns the inbox.
+      await page.clock.runFor(15000)
       await expect(more).toBeEnabled()
       await more.focus()
       await expect(more).toBeFocused()
@@ -1731,6 +1735,7 @@ for (const width of [1440, 390]) {
       await diagnosticScreenshot(page, {path: `test-results/background-hud-queued-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
     } finally {release()}
     await expect(entries).toHaveCount(120)
+    await expect.poll(() => refreshes).toBe(2)
     expect(f.reportQueries.filter(cursor => cursor === id(4099))).toHaveLength(1)
     await expect(list).toHaveAttribute('aria-busy', 'false')
   })

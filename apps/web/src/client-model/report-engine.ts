@@ -64,7 +64,21 @@ export class ReportEngine {
     const state = this.store.getState()
     const scope = reportRequestScope(state)
     if (!state.ready || !state.binding) return Promise.resolve()
-    if (this.inboxWork?.scope === scope) return this.inboxWork.promise
+    if (this.inboxWork?.scope === scope) {
+      const pending = this.inboxWork.promise
+      if (more && state.reportInboxLoad?.kind === 'refresh')
+        // A refresh cannot satisfy explicit pagination. Re-enter after its full
+        // cleanup so another refresh started by a subscriber is waited out too.
+        return pending
+          .catch(() => {})
+          .then(() => {
+            const binding = this.store.getState().binding
+            if (!binding || bindingKey(binding) !== bindingKey(state.binding!))
+              return
+            return this.refreshInbox(true)
+          })
+      return pending
+    }
     // Preferences project immediately. Keep membership stable until the command
     // settles; an uncached inbox remains readable during recovery.
     if (

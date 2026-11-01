@@ -47,15 +47,7 @@ export function useHudInbox(
     let active = true
     void (async () => {
       try {
-        try {
-          await model.reports.refreshInbox(true)
-        } catch (error) {
-          if (reportLoad(model.store.getState()).kind !== 'refresh') throw error
-        }
-        // A passive refresh may already own the shared request. Wait for its
-        // promise (including failure cleanup), then fetch the requested page.
-        if (active && reportLoad(model.store.getState()).kind === 'refresh')
-          await model.reports.refreshInbox(true)
+        await model.reports.refreshInbox(true)
         if (active) setLimit((value) => Math.max(value, pageIntent))
       } catch {
         /* Shared request state supplies retry in both surfaces. */
