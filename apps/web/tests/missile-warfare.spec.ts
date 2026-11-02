@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { test, expect } from './fixtures/test'
 import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { withGalaxyResponse } from './fixtures/galaxy'
 import type { components } from '../src/contracts'
 type S = components['schemas']
 const content = JSON.parse(
@@ -612,7 +613,9 @@ test('missile action columns preserve exact row edges across tablet breakpoints'
   page,
 }) => {
   await setup(page)
-  await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+  await withGalaxyResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/galaxy`),
+  )
   for (const width of [390, 600, 767, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     const rows = page

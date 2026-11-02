@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { withGalaxyResponse } from './fixtures/galaxy'
 import {
   shellFixture,
   binding,
@@ -233,7 +234,9 @@ for (const width of [1440, 390]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
+    await withGalaxyResponse(page, () =>
+      page.goto(`/u/andromeda/galaxy?body=${body.id}`),
+    )
     const card = page
       .getByRole('listitem')
       .filter({ hasText: 'Aurelia' })
