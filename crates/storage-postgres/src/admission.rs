@@ -40,8 +40,18 @@ impl PgStore {
         &self,
         u: UniverseId,
     ) -> Result<(Tx<'_>, bool), StoreError> {
+        self.begin_ordered(self.admission_pool()?, u).await
+    }
+
+    /// Coordinate ordered work using its own workload reservation. Worker startup
+    /// must preserve these locks without borrowing the disabled admission pool.
+    pub(crate) async fn begin_ordered(
+        &self,
+        pool: &PgPool,
+        u: UniverseId,
+    ) -> Result<(Tx<'_>, bool), StoreError> {
         loop {
-            let mut tx = self.begin_tx(self.admission_pool()?).await?;
+            let mut tx = self.begin_tx(pool).await?;
             let scoped = is_scoped(&mut tx, u).await?;
             if !scoped {
                 gate(&mut tx, u).await?;

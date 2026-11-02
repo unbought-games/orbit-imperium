@@ -13,6 +13,9 @@ struct Fixture {
 }
 impl Fixture {
     async fn new() -> Self {
+        Self::with_scoped_runtime(true).await
+    }
+    async fn with_scoped_runtime(scoped: bool) -> Self {
         let url = std::env::var("TEST_DATABASE_URL").unwrap();
         let store = PgStore::connect(&url).await.unwrap();
         store.migrate().await.unwrap();
@@ -35,8 +38,10 @@ impl Fixture {
             .await
             .unwrap()
             .0;
-        store.prepare_scoped_runtime(u, 100).await.unwrap();
-        store.activate_scoped_runtime(u).await.unwrap();
+        if scoped {
+            store.prepare_scoped_runtime(u, 100).await.unwrap();
+            store.activate_scoped_runtime(u).await.unwrap();
+        }
         let pool = PgPool::connect(&url).await.unwrap();
         let others: Vec<Uuid> =
             sqlx::query_scalar("SELECT id FROM players WHERE universe=$1 AND id<>$2 ORDER BY id")
@@ -1129,4 +1134,52 @@ async fn operator_vacation_flag_alone_does_not_fabricate_foreground_presence() {
             .await,
         Err(StoreError::NotFound)
     ));
+}
+
+#[tokio::test]
+async fn retained_world_cleanup_uses_worker_pool_and_is_idempotent() {
+    for scoped in [false, true] {
+        retained_world_cleanup(scoped).await;
+    }
+}
+
+async fn retained_world_cleanup(scoped: bool) {
+    let f = Fixture::with_scoped_runtime(scoped).await;
+    let u = f.binding.universe;
+    // Simulate an existing world created before deletion checks were introduced.
+    sqlx::query(
+        "DELETE FROM scheduled_events WHERE universe=$1 AND event->>'type'='EmpireDeletionDue'",
+    )
+    .bind(u.0)
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    let worker = PgStore::connect_with_limits(
+        &std::env::var("TEST_DATABASE_URL").unwrap(),
+        orbit_storage_postgres::PoolLimits {
+            admission: 0,
+            reads: 0,
+            worker: 2,
+            control: 2,
+            refresh: 0,
+        },
+    )
+    .await
+    .unwrap();
+    worker.ensure_empire_cleanup().await.unwrap();
+    let checks: Vec<(Uuid, i64, i64)> = sqlx::query_as("SELECT id,at_ms,sequence FROM scheduled_events WHERE universe=$1 AND event->>'type'='EmpireDeletionDue' AND NOT done AND NOT cancelled ORDER BY id")
+        .bind(u.0).fetch_all(&f.pool).await.unwrap();
+    assert_eq!(checks.len(), f.others.len() + 1);
+    assert!(checks.iter().all(|(_, at, _)| *at > 1000));
+    worker.ensure_empire_cleanup().await.unwrap();
+    let repeated: Vec<(Uuid, i64, i64)> = sqlx::query_as("SELECT id,at_ms,sequence FROM scheduled_events WHERE universe=$1 AND event->>'type'='EmpireDeletionDue' AND NOT done AND NOT cancelled ORDER BY id")
+        .bind(u.0).fetch_all(&f.pool).await.unwrap();
+    assert_eq!(checks, repeated);
+    let memberships: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM universe_memberships WHERE universe=$1")
+            .bind(u.0)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(memberships, checks.len() as i64);
 }
