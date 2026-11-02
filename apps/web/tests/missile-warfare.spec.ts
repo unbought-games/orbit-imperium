@@ -393,14 +393,16 @@ for (const width of [1440, 390])
     await page.setViewportSize({ width, height: 900 })
     const { commands } = await setup(page)
     const capture = async (name: string) => {
-      await page.evaluate(() =>
-        window.scrollTo({ top: 0, behavior: 'instant' }),
-      )
+      // Layout coverage stays active even when evidence preparation is disabled.
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true)
+      if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+      await page.evaluate(() =>
+        window.scrollTo({ top: 0, behavior: 'instant' }),
+      )
       mkdirSync('test-results/missile-screenshots', { recursive: true })
       await diagnosticScreenshot(page, {
         path: resolve(

@@ -277,6 +277,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     const options = await setup(page)
     const capture = async (state: string) => {
+      if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
       await page.evaluate(() =>
         window.scrollTo({ top: 0, behavior: 'instant' }),
       )

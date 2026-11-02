@@ -7,10 +7,16 @@ import { shellFixture, body, binding, id } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
 type S = components['schemas']
-async function capture(
+async function expectLayoutAndCapture(
   page: Page,
   options: Parameters<typeof diagnosticScreenshot>[1],
 ) {
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
   await page.locator('main img').evaluateAll((images) => {
     for (const image of images) (image as HTMLImageElement).loading = 'eager'
   })
@@ -21,11 +27,6 @@ async function capture(
     )
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(0)
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true)
   await diagnosticScreenshot(page, options)
 }
 const item = { kind: 'Ship', id: 'Battleship' } as const
@@ -239,7 +240,7 @@ for (const width of [390, 1440]) {
         pane.getByRole('button', { name: 'Build', exact: true }),
       ).toBeDisabled()
       await expect(pane.getByLabel('Action blockers')).toContainText(label)
-      await capture(page, {
+      await expectLayoutAndCapture(page, {
         path: testInfo.outputPath(
           `battleship-locked-${label}-${width}x900.png`,
         ),
@@ -289,7 +290,7 @@ for (const width of [390, 1440]) {
     await expect(
       page.getByRole('link', { name: 'Build Battleship', exact: true }),
     ).toBeVisible()
-    await capture(page, {
+    await expectLayoutAndCapture(page, {
       path: testInfo.outputPath(`shipyard-catalog-${width}x900.png`),
       fullPage: true,
     })
@@ -321,7 +322,7 @@ for (const width of [390, 1440]) {
     await expect(
       pane.getByRole('button', { name: 'Deuterium details' }),
     ).toHaveCount(0)
-    await capture(page, {
+    await expectLayoutAndCapture(page, {
       path: testInfo.outputPath(`battleship-detail-${width}x900.png`),
       fullPage: true,
     })
@@ -337,7 +338,7 @@ for (const width of [390, 1440]) {
     const result = pane.getByRole('group', { name: 'Latest action result' })
     await expect(result).toContainText('Last submitted: 2 × Battleship')
     await expect(result).toContainText('Order confirmed')
-    await capture(page, {
+    await expectLayoutAndCapture(page, {
       path: testInfo.outputPath(`battleship-confirmed-${width}x900.png`),
       fullPage: true,
     })
@@ -430,7 +431,7 @@ for (const width of [390, 1440]) {
         .getByRole('list', { name: 'Ship composition' })
         .getByRole('listitem'),
     ).toHaveText(['Battleship 2'])
-    await capture(page, {
+    await expectLayoutAndCapture(page, {
       path: testInfo.outputPath(`battleship-dispatch-${width}x900.png`),
       fullPage: true,
     })

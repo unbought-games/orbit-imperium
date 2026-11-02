@@ -16,6 +16,7 @@ async function shot(
   name: string,
   width: number,
 ) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
   mkdirSync('test-results/depot', { recursive: true })
   if (name.startsWith('fleets-supply')) {
     await page

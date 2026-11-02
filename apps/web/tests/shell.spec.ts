@@ -717,6 +717,7 @@ for (const width of [320, 390, 1440]) {
       )
     }
     const captureState = async (state: string) => {
+      if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
       // Tall narrow queues exceed a viewport; capture the document so sticky
       // navigation does not obscure the top of a scrolled locator capture.
       if (state === 'long-queue' && width === 320) {
@@ -1355,14 +1356,16 @@ test('overview preserves rich work, exact inventory, incoming visibility and res
   ).toHaveAttribute('datetime', /T/)
   for (const width of [1672, 390, 430]) {
     await page.setViewportSize({ width, height: width === 1672 ? 1100 : 844 })
-    await page.locator('main img').evaluateAll(async (images) => {
-      // Screenshot preparation also loads art inside the collapsed map.
-      await Promise.all(images.map((image) => {
-        const img = image as HTMLImageElement
-        img.loading = 'eager'
-        return img.decode().catch(() => {})
-      }))
-    })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await page.locator('main img').evaluateAll(async (images) => {
+        // Screenshot preparation also loads art inside the collapsed map.
+        await Promise.all(images.map((image) => {
+          const img = image as HTMLImageElement
+          img.loading = 'eager'
+          return img.decode().catch(() => {})
+        }))
+      })
+    }
 
     expect(
       await page.evaluate(

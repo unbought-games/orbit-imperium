@@ -24,7 +24,7 @@ const resources = (m: number, c: number, d = 0) => ({
 })
 for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espionage']) {
   test(`capture current ${size} combat report`, async ({ page }) => {
-    mkdirSync(output, { recursive: true })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') mkdirSync(output, { recursive: true })
     await page.setViewportSize({ width: 1440, height: 1000 })
     await page.clock.setFixedTime(new Date('2026-10-22T18:00:00Z'))
     await shellFixture(page, {
