@@ -61,7 +61,11 @@ test('incompatible report data offers an explicit reload instead of blaming perm
   await expect(page.getByRole('alert')).toContainText('data this version cannot read')
   await expect(page.getByRole('button', { name: 'Retry reports' })).toHaveCount(0)
   fixed = true
-  await page.getByRole('button', { name: 'Reload app' }).click()
+  // A full reload must fetch the report again before its content is asserted.
+  await Promise.all([
+    page.waitForResponse(response => response.url().endsWith(`/reports/${id(62)}`) && response.request().method() === 'POST'),
+    page.getByRole('button', { name: 'Reload app' }).click(),
+  ])
   await expect(page.getByRole('region', { name: 'Report observation' })).toContainText('Astrophysics')
 })
 
