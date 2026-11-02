@@ -176,7 +176,7 @@ impl PgStore {
             .fetch_all(self.worker_pool()?).await.map_err(db_error)?;
         for (universe, player) in rows {
             let u = UniverseId(universe);
-            let (mut tx, scoped) = self.begin_admission(u).await?;
+            let (mut tx, scoped) = self.begin_ordered(self.worker_pool()?, u).await?;
             let epoch = Epoch(
                 sqlx::query_scalar("SELECT epoch FROM universes WHERE id=$1")
                     .bind(universe)
