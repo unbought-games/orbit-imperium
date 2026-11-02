@@ -13,5 +13,6 @@
   "compile": 900,
   "web-build": 300,
   "database-start": 180,
-  "cleanup": 180
+  "cleanup": 180,
+  "runtime-qualification": 5400
 }

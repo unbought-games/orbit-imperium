@@ -323,4 +323,4 @@ test-terraformer-db:
 # QUALIFY_MIN_COMMAND_ROWS_PER_MINUTE from the qualification plan. Never runs in CI.
 .PHONY: qualify-runtime
 qualify-runtime:
-	sh scripts/qualify-runtime.sh
+	$(TIMEOUT) runtime-qualification sh scripts/qualify-runtime.sh
