@@ -317,3 +317,9 @@ test-terraformer:
 test-terraformer-db:
 	sh scripts/test-db.sh rules_updates 'test(terraformer)'
 	sh scripts/test-db.sh world_edit 'test(terraformer)'
+
+# Explicit only: set QUALIFY_AUTH_MANIFEST, QUALIFY_BOTS, QUALIFY_SECONDS and
+# QUALIFY_HISTORY_ROWS from the current qualification plan. Never runs in CI.
+.PHONY: qualify-runtime
+qualify-runtime:
+	sh scripts/qualify-runtime.sh
