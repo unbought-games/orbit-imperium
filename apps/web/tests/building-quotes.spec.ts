@@ -864,13 +864,29 @@ test('quick build prevents competing row commands before the first receipt', asy
   }
 })
 
+// These tests exercise touch/keyboard activation, not initial network latency.
+// Wait for the actual catalog response before asserting the hydrated control.
+async function openQuickBuildCatalog(page: Page) {
+  const loaded = page.waitForResponse((response) => {
+    if (!/\/progression-options(?:\/bulk)?$/.test(response.url())) return false
+    const payload = response.request().postDataJSON()
+    return (payload.requests ?? [payload.request]).some(
+      (request: { building?: string }) => request.building === 'MetalMine',
+    )
+  })
+  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  const response = await loaded
+  expect(response.ok()).toBe(true)
+  expect(await response.finished()).toBeNull()
+}
+
 test.describe('touch quick build', () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
   test('tap the row for details and its ghost button to build', async ({
     page,
   }) => {
     const fixture = await quickBuildFixture(page)
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await openQuickBuildCatalog(page)
     const build = page.getByRole('button', { name: 'Build Metal Mine level 2' })
     await expect(build).toBeEnabled()
     await page
@@ -890,7 +906,7 @@ test.describe('touch quick build', () => {
 
 test('keyboard activation builds from the catalog', async ({ page }) => {
   const fixture = await quickBuildFixture(page)
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await openQuickBuildCatalog(page)
   const build = page.getByRole('button', { name: 'Build Metal Mine level 2' })
   await expect(build).toBeEnabled()
   await build.focus()
