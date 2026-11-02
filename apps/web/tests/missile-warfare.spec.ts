@@ -468,7 +468,7 @@ for (const width of [1440, 390])
       page.getByRole('region', { name: 'Missile silo capacity' }),
     ).toBeVisible()
     await capture('silo-details')
-    await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
     const actions = page.getByRole('button', {
       name: 'Actions for [1:371:3]', exact: true,
     })
@@ -652,7 +652,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const fixture = await setup(page)
-    await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
     const actions = page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true })
     const dialog = page.getByRole('dialog', { name: 'Launch missiles', exact: true })
     for (const patch of [{ id: id(90) }, { expected_owner: id(91) }, target]) {

@@ -1,3 +1,4 @@
+import { withGalaxyResponse } from './fixtures/galaxy'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
@@ -107,7 +108,7 @@ for (const width of [1280, 390, 320]) {
   test(`selected galaxy location retains its outline with focus inside at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
     await setup(page)
-    await page.goto(path('galaxy?galaxy=1&system=5&position=12'))
+    await withGalaxyResponse(page, () => page.goto(path('galaxy?galaxy=1&system=5&position=12')))
     const selected = page.locator('li[aria-current="location"]')
     await expect(selected).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')
@@ -215,7 +216,7 @@ test('context-free direct links preserve coordinates and invalid locations are s
   page,
 }) => {
   const requests = await setup(page)
-  await page.goto('/u/andromeda-prime/galaxy?galaxy=1&system=5&position=12')
+  await withGalaxyResponse(page, () => page.goto('/u/andromeda-prime/galaxy?galaxy=1&system=5&position=12'))
   await assertLocation(page, 5, 12)
   requests.length = 0
   await page.goto(path('galaxy?galaxy=1&system=500&position=12'))

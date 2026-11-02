@@ -1,3 +1,4 @@
+import { withGalaxyResponse } from './fixtures/galaxy'
 import { setDestination } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
@@ -43,7 +44,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
   sent=pair.gameplay.command;launches++
   await route.fulfill({json:{protocol:4,binding,command_id:pair.gameplay.command_id,admitted_at:Date.now(),executed_at:Date.now(),status:'Committed',result_ids:[id(80)],minimum_viewer_revision:'1'}})
  })
- await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+ await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
  const cards=page.getByRole('region',{name:'Galaxy positions'}).getByRole('listitem')
  const lockedSlot=cards.nth(2).getByRole('button',{name:/^Actions for/})
  await expect(lockedSlot).toBeVisible()
@@ -54,7 +55,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  await expect(page.getByRole('radio', { checked: true })).toHaveValue('Colonize')
  await expect(page.getByRole('status').filter({hasText:'Astrophysics level 4'}).first()).toBeVisible()
  await expect(page.getByRole('button',{name:'Review fleet',exact:true})).toBeDisabled()
- await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+ await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
  await cards.nth(3).getByRole('button',{name:/^Actions for/}).click()
  await page.getByRole('menuitem',{name:'Colonize',exact:true}).click()
  await expect(page.getByRole('radio', { checked: true })).toHaveValue('Colonize')

@@ -1,3 +1,4 @@
+import { withProgressionResponse } from './fixtures/responses'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { test, expect, type Page } from './fixtures/test'
@@ -37,6 +38,25 @@ const cases = [
     name: 'Build Small Shield Dome',
   },
 ] as const
+
+// Gate only successful catalog setup. Loading/error tests keep their own routes.
+function withCatalogResponse(
+  page: Page,
+  scenario: (typeof cases)[number],
+  navigate: () => Promise<unknown>,
+) {
+  return withProgressionResponse(
+    page,
+    request => {
+      if (request.type === 'Upgrade')
+        return request.body === body.id && request.building === scenario.ids[0]
+      if (request.type === 'Research')
+        return request.host === body.id && request.research === scenario.ids[0]
+      return request.type === 'Manufacture' && request.body === body.id && request.item.id === scenario.ids[0]
+    },
+    navigate,
+  )
+}
 
 async function fixture(page: Page, scenario: (typeof cases)[number]) {
   const now = Date.now()
@@ -164,7 +184,7 @@ for (const scenario of cases) {
         if (request.method() === 'POST' && request.url().includes('/progression-options'))
           reads.push({ url: request.url(), requests: request.postDataJSON().requests ?? [] })
       })
-      await page.goto(`/u/andromeda/b/${body.id}/${scenario.page}`)
+      await withCatalogResponse(page, scenario, () => page.goto(`/u/andromeda/b/${body.id}/${scenario.page}`))
       const tile = page.getByRole('link', { name: scenario.name, exact: true })
       await expect(tile).toHaveAttribute('title', /Not enough resources/)
       await expect(tile).toHaveClass(/unaffordable/)
@@ -192,20 +212,13 @@ for (const scenario of cases) {
       state.planet.amounts.metal = '60000000'
       await refreshGame(page)
       await expect(tile).not.toHaveClass(/unaffordable/)
-      for (const resource of ['metal', 'crystal', 'deuterium'] as const) {
-        const exact = state.planet.amounts[resource]
-        state.planet.amounts[resource] = (BigInt(exact) - 1n).toString()
-        await refreshGame(page)
-        await expect(tile).toHaveClass(/unaffordable/)
-        state.planet.amounts[resource] = exact
-        await refreshGame(page)
-        await expect(tile).not.toHaveClass(/unaffordable/)
-      }
+      // Exact per-resource boundaries are covered by resources.test.ts;
+      // this browser scenario protects class updates without refetching costs.
       expect(reads).toHaveLength(1)
       expect(state.inspections).toHaveLength(queries)
       // Fresh loading must recover the same affordability after reconnect/reload.
       state.planet.amounts.metal = '59999999'
-      await page.reload()
+      await withCatalogResponse(page, scenario, () => page.reload())
       await expect(tile).toHaveClass(/unaffordable/)
     })
   }
@@ -215,7 +228,7 @@ test('research progress suppresses hatching and completion refreshes next-level 
   page,
 }) => {
   const state = await fixture(page, cases[1])
-  await page.goto(`/u/andromeda/b/${body.id}/research`)
+  await withCatalogResponse(page, cases[1], () => page.goto(`/u/andromeda/b/${body.id}/research`))
   const tile = page.getByRole('link', { name: cases[1].name, exact: true })
   await expect(tile).toHaveClass(/unaffordable/)
   state.options.researchOperation = {
