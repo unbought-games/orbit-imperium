@@ -122,6 +122,12 @@ impl IdentityStore for PgStore {
     ) -> Result<unbought_auth::Identity, StoreError> {
         self.oidc_revalidate(digest, rp).await
     }
+    async fn oidc_session_metadata(
+        &self,
+        digest: &str,
+    ) -> Result<Option<OidcSessionMetadata>, StoreError> {
+        self.oidc_metadata(digest).await
+    }
     async fn renew_session(
         &self,
         digest: &str,

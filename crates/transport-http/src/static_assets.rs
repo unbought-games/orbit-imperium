@@ -264,6 +264,7 @@ mod tests {
                     code: BootstrapError::Unavailable,
                 },
                 BootstrapResult::Authenticated {
+                    authentication: None,
                     session: AuthenticatedSession {
                         account: AccountId(uuid::Uuid::nil()),
                         csrf: "csrf".into(),

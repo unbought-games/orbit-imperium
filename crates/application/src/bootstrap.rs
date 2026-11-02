@@ -17,6 +17,8 @@ pub enum BootstrapResult {
     },
     Authenticated {
         session: AuthenticatedSession,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        authentication: Option<OidcSessionMetadata>,
         game: BootstrapGame,
     },
 }
@@ -153,4 +155,13 @@ impl<S: GameStore> GameService<S> {
             settings,
         })
     }
+}
+
+/// Nonsecret evidence for an authenticated caller's own identity lifetime.
+#[derive(Clone, Debug, Serialize)]
+pub struct OidcSessionMetadata {
+    /// Unix seconds; verified identity expiry, not the Orbit cookie idle deadline.
+    pub identity_valid_until: i64,
+    /// Random generation changed only by a durably committed rotation or login.
+    pub refresh_generation: String,
 }

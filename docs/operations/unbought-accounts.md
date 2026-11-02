@@ -50,8 +50,44 @@ per API process) and never occupy admission/read capacity while waiting on
 Accounts. A per-session PostgreSQL advisory lock serializes token rotation across
 replicas; logout can still revoke the session during a refresh. See the
 [connection budget](concurrent-runtime.md#configuration-and-connection-budget).
-If a remote token rotation succeeds but its response or local transaction is
-lost, the current provider contract may require the player to sign in again.
+Before any rotation request, Orbit commits a claim that removes the stored refresh
+token and invalidates its cached validation time. The provider call has a two-second
+sub-budget inside a four-second revalidation budget; bootstrap retains its existing
+five-second budget. A committed response replaces only the matching claim on a live
+session. If the response or local commit is lost, cancellation leaves the claim
+intact. Peers return unavailable while the claim deadline is live, then require a
+new sign-in. No recovery path restores or retries the old token, including rollback
+to the previous binary. Other browser sessions remain untouched and the provider's
+replay-attack defenses remain enabled. Logout and session expiry always win.
+
+The private metrics listener exports `orbit_auth_seconds` with fixed `phase`
+(`read`, `claim`, `provider`, `persist`, `bootstrap_auth`, `bootstrap_game`) and
+`outcome` (`success`, `unavailable`, `signin_required`, `cancelled`) labels.
+`orbit_bootstrap_total` distinguishes `authenticated`, `anonymous`,
+`auth_unavailable` and `game_unavailable`, even when bootstrap returns HTTP 200.
+No user, session, token or request identifiers appear in these metrics.
+
+A non-privileged authenticated observer can request `GET /api/v1/bootstrap` with
+`X-Orbit-Auth-Metadata: 1`. Only authenticated OIDC cookie responses may contain
+`result.authentication.identity_valid_until` (Unix seconds, the current verified
+identity expiry, distinct from the idle cookie deadline) and
+`result.authentication.refresh_generation` (an opaque random generation changed
+only on successful persisted rotation or fresh sign-in). The same generation must
+survive ordinary cached reads and nonrotating activity. Old rows without a generation
+omit metadata until their next rotation. Anonymous, unavailable, machine and local
+sessions omit it. A metadata read failure or exhausted bootstrap budget also omits
+it while preserving the authenticated game response; observers must treat missing
+opted-in metadata as unavailable telemetry. Keep the observer's cookie private; use generation and expiry to
+prove the same retained session crosses an identity-expiry boundary. This opt-in
+preserves compatibility with older clients' strict bootstrap schemas.
+
+Run `make test-db DB_SUITES=oidc` for deterministic storage/cancellation coverage.
+Explicit cross-service acceptance uses `make test-oidc-provider` with
+`ORBIT_OIDC_PROVIDER_FIXTURE` pointing to a private manifest from the companion
+Accounts disposable provider fixture. Use a fresh fixture for each invocation;
+never share its single-use grants between concurrent test runs. Optional
+`ORBIT_AUTH_EVIDENCE` retains sanitized phase timings and request counts. This suite
+is deliberately excluded from routine CI and never uses production credentials.
 
 Self-hosted installations can use `ORBIT_AUTH_MODE=local` (the default) or their own
 OIDC configuration. The official origin refuses local authentication. No old

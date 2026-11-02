@@ -318,6 +318,12 @@ test-terraformer-db:
 	sh scripts/test-db.sh rules_updates 'test(terraformer)'
 	sh scripts/test-db.sh world_edit 'test(terraformer)'
 
+# Explicit cross-service acceptance; the fixture manifest contains synthetic secrets.
+.PHONY: test-oidc-provider
+test-oidc-provider:
+	test -n "$(ORBIT_OIDC_PROVIDER_FIXTURE)"
+	sh scripts/test-db.sh oidc 'test(real_provider_commit_cutpoints)' --run-ignored only --success-output immediate
+
 # Explicit only: set QUALIFY_AUTH_MANIFEST, QUALIFY_BOTS, QUALIFY_SECONDS and
 # QUALIFY_HISTORY_ROWS, QUALIFY_ACTION_UNITS, QUALIFY_COMMAND_INTERVAL_MS and
 # QUALIFY_MIN_COMMAND_ROWS_PER_MINUTE from the qualification plan. Never runs in CI.
