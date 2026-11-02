@@ -104,7 +104,7 @@ async fn real_provider_commit_cutpoints_never_replay() {
         // Cross a real identity-expiry boundary in the retained Orbit payload;
         // the provider grant remains live and must issue a verified replacement.
         tokens.identity.expires_at = unbought_auth::now() - 1;
-        let cookie = Uuid::new_v4().to_string();
+        let cookie = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
         let digest = orbit_application::token_digest(&cookie);
         cookies.push(cookie);
         store
