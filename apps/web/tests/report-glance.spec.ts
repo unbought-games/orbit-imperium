@@ -376,8 +376,8 @@ for (const width of [1280, 390]) {
     else await expect(selection).toContainText('0 selected')
 
     await page.getByRole('button', {name: 'More report actions'}).click()
-    await page.getByRole('menuitem', {name: /^Archive( older reports)?…$/}).click()
-    const cleanup = page.getByRole('dialog', {name: /^Archive( older)? reports$/})
+    await page.getByRole('menuitem', {name: 'Archive…', exact: true}).click()
+    const cleanup = page.getByRole('dialog', {name: 'Archive reports', exact: true})
     await expect(cleanup.getByRole('button', {name: 'Archive 1 report', exact: true})).toBeEnabled()
     await expect(cleanup).toContainText('Entire Inbox · Starred reports stay.')
     await diagnosticScreenshot(page, {path: `test-results/report-tools-cleanup-${width}x900.png`})

@@ -216,7 +216,7 @@ export function ReportTriageControls({
                     }}
                   >
                     <Archive size={16} aria-hidden="true" />
-                    {allowSelectionMode ? 'Archive older reports…' : 'Archive…'}
+                    Archive…
                   </Menu.Item>
                 )}
               </Menu.Popup>
@@ -233,7 +233,7 @@ export function ReportTriageControls({
         {filterForm}
       </ReportControlPanel>
       <ReportControlPanel
-        title={allowSelectionMode ? 'Archive older reports' : 'Archive reports'}
+        title="Archive reports"
         open={panel === 'cleanup'}
         onClose={() => close('cleanup')}
         anchor={moreTrigger}
@@ -247,14 +247,12 @@ export function ReportTriageControls({
           age={age}
           change={setAge}
         >
-          {!allowSelectionMode && (
-            <ReportArchiveAll
-              reports={reports}
-              cleanup={cleanup}
-              complete={complete}
-              disabled={disabled}
-            />
-          )}
+          <ReportArchiveAll
+            reports={reports}
+            cleanup={cleanup}
+            complete={complete}
+            disabled={disabled}
+          />
         </ReportAgeCleanup>
       </ReportControlPanel>
     </>
