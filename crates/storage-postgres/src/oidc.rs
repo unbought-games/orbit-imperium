@@ -1,7 +1,26 @@
 use crate::*;
 use orbit_application::*;
 use unbought_auth::{Identity, LoginTransaction, Logout, RelyingParty, Tokens};
+
+// Finish before the HTTP bootstrap's five-second deadline. A durable claim
+// protects the provider commit boundary even if any caller cancels earlier.
+const REVALIDATION_BUDGET: std::time::Duration = std::time::Duration::from_secs(4);
+const PROVIDER_BUDGET: std::time::Duration = std::time::Duration::from_secs(2);
 impl PgStore {
+    pub(crate) async fn oidc_metadata(
+        &self,
+        digest: &str,
+    ) -> Result<Option<OidcSessionMetadata>, StoreError> {
+        let row: Option<(i64, String)> = sqlx::query_as("SELECT (o.payload->'identity'->>'expires_at')::bigint, o.payload->>'refresh_generation' FROM oidc_session o JOIN sessions s USING(digest) WHERE o.digest=$1 AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint AND NOT o.payload ? 'rotation_claim_id' AND o.payload->>'refresh_generation' IS NOT NULL")
+            .bind(digest).fetch_optional(self.read_pool()?).await.map_err(db_error)?;
+        Ok(row.map(
+            |(identity_valid_until, refresh_generation)| OidcSessionMetadata {
+                identity_valid_until,
+                refresh_generation,
+            },
+        ))
+    }
+
     pub(crate) async fn oidc_save_login(&self, t: LoginTransaction) -> Result<(), StoreError> {
         sqlx::query("INSERT INTO oidc_login(issuer,client_id,state_hash,browser_hash,expires_at,payload) VALUES($1,$2,$3,$4,$5,$6)").bind(&t.issuer).bind(&t.client_id).bind(&t.state_hash).bind(&t.browser_hash).bind(t.expires_at).bind(sqlx::types::Json(&t)).execute(self.admission_pool()?).await.map_err(db_error)?;
         Ok(())
@@ -60,7 +79,7 @@ impl PgStore {
             .map_err(db_error)?;
         // The transaction supplies the configured client ID, not a token-controlled value.
         let client_id = tokens.client_id.clone();
-        sqlx::query("INSERT INTO oidc_session(digest,issuer,client_id,sid,subject,payload) VALUES($1,$2,$3,$4,$5,$6)").bind(digest).bind(&identity.issuer).bind(client_id).bind(&identity.session_id).bind(&identity.subject).bind(sqlx::types::Json(&tokens)).execute(&mut *tx).await.map_err(db_error)?;
+        sqlx::query("INSERT INTO oidc_session(digest,issuer,client_id,sid,subject,payload) VALUES($1,$2,$3,$4,$5,$6 || jsonb_build_object('refresh_generation',$7::text))").bind(digest).bind(&identity.issuer).bind(client_id).bind(&identity.session_id).bind(&identity.subject).bind(sqlx::types::Json(&tokens)).bind(uuid::Uuid::new_v4().to_string()).execute(&mut *tx).await.map_err(db_error)?;
         tx.commit().await.map_err(db_error)?;
         self.lookup_session(digest)
             .await?
@@ -93,38 +112,69 @@ impl PgStore {
         F: FnOnce(Tokens) -> Fut + Send,
         Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
     {
-        let tokens = read_tokens(self.read_pool()?, digest, issuer, client).await?;
-        if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
-            return Ok(tokens.identity);
-        }
-        // Only refresh capacity waits on the IdP. This deadline includes pool
-        // acquisition, serialization, network work and persistence.
-        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        tokio::time::timeout(REVALIDATION_BUDGET, async {
+            let tokens = observe_auth_store(self.observer.clone(), AuthPhase::Read,
+                read_tokens(self.read_pool()?, digest, issuer, client)).await?;
+            if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
+                return Ok(tokens.identity);
+            }
+            // Only the reserved refresh pool waits on the provider. The claim
+            // transaction commits BEFORE remote work, never after it.
+            let (tokens, claim, tx) = observe_auth_store(self.observer.clone(), AuthPhase::Claim, async {
             let mut tx = self.begin_tx(self.refresh_pool()?).await?;
             let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,901324))")
                 .bind(digest).fetch_one(&mut *tx).await.map_err(db_error)?;
-            if !acquired { return Err(StoreError::Unavailable); }
-            // A peer may have already rotated the token since our initial read.
+            if !acquired {
+                return Err(StoreError::Unavailable);
+            }
             let tokens = read_tokens(&mut *tx, digest, issuer, client).await?;
             if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
                 tx.commit().await.map_err(db_error)?;
-                return Ok(tokens.identity);
+                return Ok((tokens, None, None));
             }
-            let (fresh, renewed_until) = refresh(tokens).await.map_err(revalidation_error)?;
-            if let Some(expires) = renewed_until {
-                // UPDATE only: logout/expiry always wins over a late renewal.
-                sqlx::query("UPDATE sessions SET expires_at=$2 WHERE digest=$1 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
-                    .bind(digest).bind(expires * 1000).execute(&mut *tx).await.map_err(db_error)?;
+            let claim = if activity { None } else { Some(uuid::Uuid::new_v4().to_string()) };
+            if let Some(claim) = &claim {
+                // Remove the capability, not just an advisory flag: even an old
+                // binary cannot replay this refresh token after a rollback.
+                let claimed = sqlx::query("UPDATE oidc_session o SET payload=(o.payload - 'refresh_token') || jsonb_build_object('validated_at',0,'rotation_claim_id',$2::text,'rotation_deadline_ms',floor(extract(epoch FROM clock_timestamp())*1000)::bigint+$3) FROM sessions s WHERE o.digest=$1 AND s.digest=o.digest AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
+                    .bind(digest).bind(claim).bind(REVALIDATION_BUDGET.as_millis() as i64)
+                    .execute(&mut *tx).await.map_err(db_error)?;
+                if claimed.rows_affected() != 1 { return Err(StoreError::Conflict); }
+                tx.commit().await.map_err(db_error)?;
+                // Retain refresh-pool capacity during the provider call. There
+                // are no token-row locks, so logout can still complete promptly.
+                tx = self.begin_tx(self.refresh_pool()?).await?;
             }
-            // The advisory lock serializes refreshers, not logout. A revoked or
-            // expired session must never be recreated by a late IdP response.
-            let account: Option<uuid::Uuid> = sqlx::query_scalar("UPDATE oidc_session o SET payload=$2 FROM sessions s WHERE o.digest=$1 AND s.digest=o.digest AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint RETURNING s.account")
-                .bind(digest).bind(sqlx::types::Json(&fresh)).fetch_optional(&mut *tx).await.map_err(db_error)?;
-            let account = account.ok_or(StoreError::Conflict)?;
-            sqlx::query("UPDATE accounts SET name=$2 WHERE id=$1")
-                .bind(account).bind(&fresh.identity.username).execute(&mut *tx).await.map_err(db_error)?;
-            tx.commit().await.map_err(db_error)?;
-            Ok(fresh.identity)
+            Ok((tokens, claim, Some(tx)))
+            }).await?;
+            let Some(mut tx) = tx else { return Ok(tokens.identity); };
+            let remote = observe_auth_store(self.observer.clone(), AuthPhase::Provider, async {
+                tokio::time::timeout(PROVIDER_BUDGET, refresh(tokens)).await
+                    .map_err(|_| StoreError::Unavailable)?
+                    .map_err(revalidation_error)
+            }).await;
+            let (fresh, renewed_until) = match remote {
+                Ok(fresh) => fresh,
+                // Rotation might have committed. A new sign-in is conclusive;
+                // restoring or retrying the consumed capability is never safe.
+                Err(_) if claim.is_some() => return Err(StoreError::Conflict),
+                Err(error) => return Err(error),
+            };
+            observe_auth_store(self.observer.clone(), AuthPhase::Persist, async {
+                if let Some(expires) = renewed_until {
+                    sqlx::query("UPDATE sessions SET expires_at=$2 WHERE digest=$1 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
+                        .bind(digest).bind(expires * 1000).execute(&mut *tx).await.map_err(db_error)?;
+                }
+                // UPDATE only and compare the durable attempt. Logout/expiry
+                // wins; no late response can recreate a session or a claim.
+                let account: Option<uuid::Uuid> = sqlx::query_scalar("UPDATE oidc_session o SET payload=$2 || jsonb_build_object('refresh_generation',COALESCE($3::text,o.payload->>'refresh_generation')) FROM sessions s WHERE o.digest=$1 AND s.digest=o.digest AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint AND ($3::text IS NULL OR o.payload->>'rotation_claim_id'=$3) RETURNING s.account")
+                    .bind(digest).bind(sqlx::types::Json(&fresh)).bind(claim.as_deref()).fetch_optional(&mut *tx).await.map_err(db_error)?;
+                let account = account.ok_or(StoreError::Conflict)?;
+                sqlx::query("UPDATE accounts SET name=$2 WHERE id=$1")
+                    .bind(account).bind(&fresh.identity.username).execute(&mut *tx).await.map_err(db_error)?;
+                tx.commit().await.map_err(db_error)?;
+                Ok(fresh.identity)
+            }).await
         }).await.map_err(|_| StoreError::Unavailable)?
     }
 
@@ -141,7 +191,7 @@ impl PgStore {
             |tokens| async move { rp.revalidate(&tokens).await },
             |tokens| async move {
                 let client = reqwest::Client::builder()
-                    .timeout(std::time::Duration::from_secs(5))
+                    .timeout(PROVIDER_BUDGET)
                     .redirect(reqwest::redirect::Policy::none())
                     .build()
                     .map_err(|_| unbought_auth::Error::Unavailable)?;
@@ -303,9 +353,23 @@ async fn read_tokens<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
     issuer: &str,
     client: &str,
 ) -> Result<Tokens, StoreError> {
-    let value: Option<serde_json::Value> = sqlx::query_scalar("SELECT o.payload FROM oidc_session o JOIN sessions s USING(digest) WHERE digest=$1 AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint AND o.issuer=$2 AND o.client_id=$3")
+    let row: Option<(serde_json::Value, i64)> = sqlx::query_as("SELECT o.payload, floor(extract(epoch FROM clock_timestamp())*1000)::bigint FROM oidc_session o JOIN sessions s USING(digest) WHERE digest=$1 AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint AND o.issuer=$2 AND o.client_id=$3")
         .bind(digest).bind(issuer).bind(client).fetch_optional(executor).await.map_err(db_error)?;
-    serde_json::from_value(value.ok_or(StoreError::Conflict)?).map_err(|_| StoreError::CorruptData)
+    let (value, now_ms) = row.ok_or(StoreError::Conflict)?;
+    if value.get("rotation_claim_id").is_some() {
+        return Err(
+            if value
+                .get("rotation_deadline_ms")
+                .and_then(serde_json::Value::as_i64)
+                .is_some_and(|deadline| now_ms < deadline)
+            {
+                StoreError::Unavailable
+            } else {
+                StoreError::Conflict
+            },
+        );
+    }
+    serde_json::from_value(value).map_err(|_| StoreError::CorruptData)
 }
 
 // Match the pinned unbought-auth revalidation contract without starting network

@@ -548,26 +548,35 @@ async fn logout_wins_over_a_late_refresh_and_cancelled_refresh_releases_its_lock
         if cancel {
             running.abort();
             assert!(running.await.unwrap_err().is_cancelled());
-            // Reacquiring the owner's connection also completes SQLx's queued rollback.
-            first
-                .revalidate_oidc_for_test(
-                    &digest,
-                    &tokens.identity.issuer,
-                    "orbit",
-                    |mut tokens| async move {
-                        assert_eq!(tokens.refresh_token.as_deref(), Some("old-refresh"));
-                        tokens.validated_at = unbought_auth::now();
-                        Ok(tokens)
-                    },
-                )
-                .await
-                .unwrap();
-            second
-                .revalidate_oidc_for_test(&digest, &tokens.identity.issuer, "orbit", |_| async {
-                    panic!("the recovered result is visible across replicas")
-                })
-                .await
-                .unwrap();
+            let pool = sqlx::PgPool::connect(&url).await.unwrap();
+            let saved: serde_json::Value =
+                sqlx::query_scalar("SELECT payload FROM oidc_session WHERE digest=$1")
+                    .bind(&digest)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            // The pinned old consumer also cannot recover the consumed token.
+            let old_consumer: unbought_auth::Tokens = serde_json::from_value(saved).unwrap();
+            assert!(old_consumer.refresh_token.is_none());
+            assert_eq!(old_consumer.validated_at, 0);
+            // Move the persisted deadline, rather than sleep for expiry.
+            sqlx::query("UPDATE oidc_session SET payload=jsonb_set(payload,'{rotation_deadline_ms}','0') WHERE digest=$1")
+                .bind(&digest).execute(&pool).await.unwrap();
+            for store in [&first, &second] {
+                assert!(matches!(
+                    store
+                        .revalidate_oidc_for_test(
+                            &digest,
+                            &tokens.identity.issuer,
+                            "orbit",
+                            |_| async {
+                                panic!("cancelled rotation must never replay the old token")
+                            }
+                        )
+                        .await,
+                    Err(orbit_application::StoreError::Conflict)
+                ));
+            }
         } else {
             responsive(second.revoke_session(&digest)).await.unwrap();
             assert!(first.lookup_session(&digest).await.unwrap().is_none());
@@ -813,4 +822,284 @@ async fn interrupted_activity_preserves_committed_rotation_and_retries_with_late
             deadline * 1000
         );
     }
+}
+
+#[tokio::test]
+async fn ambiguous_rotation_never_replays_and_preserves_other_sessions() {
+    use orbit_application::StoreError;
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = refresh_store(&url).await;
+    store.migrate().await.unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    for persistence_failure in [false, true] {
+        let tokens = refresh_fixture();
+        let digest = Uuid::new_v4().to_string();
+        let sibling = Uuid::new_v4().to_string();
+        store
+            .complete_oidc_login(tokens.clone(), &digest, "csrf", None)
+            .await
+            .unwrap();
+        let mut sibling_tokens = tokens.clone();
+        sibling_tokens.refresh_token = Some("unrelated-session-refresh".into());
+        store
+            .complete_oidc_login(sibling_tokens, &sibling, "csrf", None)
+            .await
+            .unwrap();
+        if persistence_failure {
+            sqlx::raw_sql("CREATE FUNCTION fail_rotation_commit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.payload->>'refresh_token' = 'provider-committed-rotation' THEN RAISE EXCEPTION 'controlled rotation commit failure' USING ERRCODE='23514'; END IF; RETURN NEW; END $$; CREATE CONSTRAINT TRIGGER fail_rotation_commit AFTER UPDATE ON oidc_session DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION fail_rotation_commit();")
+                .execute(&pool).await.unwrap();
+        }
+        let result = store
+            .revalidate_oidc_for_test(
+                &digest,
+                &tokens.identity.issuer,
+                "orbit",
+                |mut fresh| async move {
+                    // The provider has committed here. Either its response is lost or
+                    // Orbit's later account update makes the local transaction fail.
+                    fresh.refresh_token = Some("provider-committed-rotation".into());
+                    fresh.validated_at = unbought_auth::now();
+                    if persistence_failure {
+                        Ok(fresh)
+                    } else {
+                        Err(unbought_auth::Error::Unavailable)
+                    }
+                },
+            )
+            .await;
+        if persistence_failure {
+            assert!(matches!(result, Err(StoreError::Unavailable)));
+            sqlx::raw_sql("DROP TRIGGER fail_rotation_commit ON oidc_session; DROP FUNCTION fail_rotation_commit();")
+                .execute(&pool).await.unwrap();
+        } else {
+            assert!(matches!(result, Err(StoreError::Conflict)));
+        }
+        let saved: serde_json::Value =
+            sqlx::query_scalar("SELECT payload FROM oidc_session WHERE digest=$1")
+                .bind(&digest)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(
+            saved.get("refresh_token").is_none(),
+            "failed persistence must retain the committed claim"
+        );
+        assert!(saved.get("rotation_claim_id").is_some());
+        let old_consumer: unbought_auth::Tokens = serde_json::from_value(saved).unwrap();
+        assert!(
+            old_consumer.refresh_token.is_none(),
+            "rollback cannot restore replay capability"
+        );
+        assert_eq!(old_consumer.validated_at, 0);
+        sqlx::query("UPDATE oidc_session SET payload=jsonb_set(payload,'{rotation_deadline_ms}','0') WHERE digest=$1")
+            .bind(&digest).execute(&pool).await.unwrap();
+        for _ in 0..3 {
+            assert!(matches!(
+                store
+                    .revalidate_oidc_for_test(
+                        &digest,
+                        &tokens.identity.issuer,
+                        "orbit",
+                        |_| async {
+                            panic!("ambiguous rotation must never send a repeated provider request")
+                        }
+                    )
+                    .await,
+                Err(StoreError::Conflict)
+            ));
+        }
+        store
+            .revalidate_oidc_for_test(
+                &sibling,
+                &tokens.identity.issuer,
+                "orbit",
+                |mut fresh| async move {
+                    assert_eq!(
+                        fresh.refresh_token.as_deref(),
+                        Some("unrelated-session-refresh")
+                    );
+                    fresh.validated_at = unbought_auth::now();
+                    Ok(fresh)
+                },
+            )
+            .await
+            .unwrap();
+        assert!(store.lookup_session(&sibling).await.unwrap().is_some());
+    }
+}
+
+#[tokio::test]
+async fn blocked_provider_does_not_starve_game_reads_admission_or_worker_commits() {
+    use orbit_application::*;
+    use orbit_engine::Building;
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = PgStore::connect_with_limits(
+        &url,
+        orbit_storage_postgres::PoolLimits {
+            admission: 1,
+            reads: 1,
+            refresh: 1,
+            worker: 1,
+            control: 2,
+        },
+    )
+    .await
+    .unwrap();
+    store.migrate().await.unwrap();
+    let universe = Uuid::new_v4().into();
+    let passwords = [Uuid::new_v4().to_string(), Uuid::new_v4().to_string()];
+    store
+        .seed(universe, 1_000_000, 1, &passwords)
+        .await
+        .unwrap();
+    store.set_test_time(1_000_000).await.unwrap();
+    let login = SessionService::new(store.clone())
+        .login("alpha", &passwords[0], None)
+        .await
+        .unwrap();
+    let actor = Actor::Player(login.session.memberships[0].player);
+    let game = GameService::new(store.clone());
+    let tokens = refresh_fixture();
+    let digest = Uuid::new_v4().to_string();
+    store
+        .complete_oidc_login(tokens.clone(), &digest, "csrf", None)
+        .await
+        .unwrap();
+    let (entered, started) = tokio::sync::oneshot::channel();
+    let (release, held) = tokio::sync::oneshot::channel();
+    let running = {
+        let store = store.clone();
+        tokio::spawn(async move {
+            store
+                .revalidate_oidc_for_test(
+                    &digest,
+                    &tokens.identity.issuer,
+                    "orbit",
+                    |mut fresh| async move {
+                        entered.send(()).unwrap();
+                        held.await.unwrap();
+                        fresh.validated_at = unbought_auth::now();
+                        Ok(fresh)
+                    },
+                )
+                .await
+        })
+    };
+    started.await.unwrap();
+    responsive(async {
+        let snapshot = game
+            .initial_game(&login.session, Uuid::new_v4())
+            .await
+            .unwrap();
+        assert!(snapshot.is_some());
+        let view = game.view(actor, universe).await.unwrap();
+        let body = view.bodies[0].id;
+        let quote = game
+            .quote(
+                actor,
+                universe,
+                QuoteRequest::Upgrade {
+                    body,
+                    building: Building::MetalMine,
+                },
+            )
+            .await
+            .unwrap();
+        let receipt = game
+            .submit(
+                actor,
+                universe,
+                CommandEnvelope {
+                    command_id: Uuid::new_v4().into(),
+                    epoch: view.epoch,
+                    protocol: 2,
+                    command: Command::StartUpgrade {
+                        body,
+                        building: Building::MetalMine,
+                        expected_terms_hash: quote.terms_hash,
+                    },
+                },
+            )
+            .await
+            .unwrap();
+        assert!(matches!(receipt.status, ReceiptStatus::Pending));
+        let claim = store
+            .claim_next(universe, Uuid::new_v4().into())
+            .await
+            .unwrap()
+            .unwrap();
+        let facts = store.load_claim(&claim).await.unwrap().state;
+        let rules = store.load_rules(universe).await.unwrap();
+        let result = orbit_engine::transition(&facts, &claim.input, &rules);
+        assert!(matches!(
+            store.commit_claim(&claim, result).await.unwrap(),
+            CommitOutcome::Committed { .. }
+        ));
+    })
+    .await;
+    release.send(()).unwrap();
+    running.await.unwrap().unwrap();
+}
+
+#[path = "support/oidc_provider.rs"]
+mod provider_cases;
+
+#[tokio::test]
+async fn observer_metadata_changes_only_on_persisted_rotation_and_disappears_on_logout() {
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = refresh_store(&url).await;
+    store.migrate().await.unwrap();
+    let tokens = refresh_fixture();
+    let digest = Uuid::new_v4().to_string();
+    store
+        .complete_oidc_login(tokens.clone(), &digest, "csrf", None)
+        .await
+        .unwrap();
+    let initial = store.oidc_session_metadata(&digest).await.unwrap().unwrap();
+    assert_eq!(initial.identity_valid_until, tokens.identity.expires_at);
+    store
+        .revalidate_oidc_for_test(
+            &digest,
+            &tokens.identity.issuer,
+            "orbit",
+            |mut fresh| async move {
+                fresh.validated_at = unbought_auth::now();
+                fresh.identity.expires_at += 60;
+                Ok(fresh)
+            },
+        )
+        .await
+        .unwrap();
+    let rotated = store.oidc_session_metadata(&digest).await.unwrap().unwrap();
+    assert_ne!(rotated.refresh_generation, initial.refresh_generation);
+    assert_eq!(
+        rotated.identity_valid_until,
+        initial.identity_valid_until + 60
+    );
+    store
+        .renew_oidc_for_test(
+            &digest,
+            &tokens.identity.issuer,
+            "orbit",
+            |fresh| async move { Ok((fresh, Some(unbought_auth::now() + 300))) },
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .oidc_session_metadata(&digest)
+            .await
+            .unwrap()
+            .unwrap()
+            .refresh_generation,
+        rotated.refresh_generation
+    );
+    store.revoke_session(&digest).await.unwrap();
+    assert!(
+        store
+            .oidc_session_metadata(&digest)
+            .await
+            .unwrap()
+            .is_none()
+    );
 }

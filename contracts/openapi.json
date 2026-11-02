@@ -4356,7 +4356,21 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Orbit-Auth-Metadata",
+            "in": "header",
+            "required": false,
+            "description": "Opt in to nonsecret identity expiry and refresh generation for the authenticated OIDC cookie session.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ]
       }
     },
     "/api/v4/universes/{universe}/updates": {
@@ -15580,6 +15594,25 @@
                   },
                   "game": {
                     "$ref": "#/components/schemas/BootstrapGame"
+                  },
+                  "authentication": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "Returned only for authenticated OIDC cookie requests opting in with X-Orbit-Auth-Metadata: 1. Contains no credentials or identity identifiers.",
+                    "properties": {
+                      "identity_valid_until": {
+                        "type": "integer",
+                        "description": "Unix seconds when the currently verified identity expires; distinct from the cookie idle deadline."
+                      },
+                      "refresh_generation": {
+                        "type": "string",
+                        "description": "Opaque random generation, replaced only on successfully persisted rotation or fresh login."
+                      }
+                    },
+                    "required": [
+                      "identity_valid_until",
+                      "refresh_generation"
+                    ]
                   }
                 },
                 "required": [

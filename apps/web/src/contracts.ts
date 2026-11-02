@@ -3606,7 +3606,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Opt in to nonsecret identity expiry and refresh generation for the authenticated OIDC cookie session. */
+                    "X-Orbit-Auth-Metadata"?: "1";
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -7210,6 +7213,13 @@ export interface components {
                 status: "authenticated";
                 session: components["schemas"]["Session"];
                 game: components["schemas"]["BootstrapGame"];
+                /** @description Returned only for authenticated OIDC cookie requests opting in with X-Orbit-Auth-Metadata: 1. Contains no credentials or identity identifiers. */
+                authentication?: {
+                    /** @description Unix seconds when the currently verified identity expires; distinct from the cookie idle deadline. */
+                    identity_valid_until: number;
+                    /** @description Opaque random generation, replaced only on successfully persisted rotation or fresh login. */
+                    refresh_generation: string;
+                };
             };
         };
         OrderKey: {

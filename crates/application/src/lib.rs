@@ -176,3 +176,6 @@ fn test_rules(draft: &orbit_engine::RulesData) -> orbit_engine::Ruleset {
     wire["hash"] = serde_json::json!(orbit_engine::hash(&(&wire["artifact"], &wire["speed"])));
     serde_json::from_value(wire).unwrap()
 }
+
+mod auth_observation;
+pub use auth_observation::*;

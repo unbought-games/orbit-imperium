@@ -97,6 +97,13 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<unbought_auth::Identity, StoreError>> + Send {
         async { Err(StoreError::Unavailable) }
     }
+    fn oidc_session_metadata(
+        &self,
+        _digest: &str,
+    ) -> impl std::future::Future<Output = Result<Option<OidcSessionMetadata>, StoreError>> + Send
+    {
+        async { Ok(None) }
+    }
     fn revoke_oidc(
         &self,
         _issuer: &str,

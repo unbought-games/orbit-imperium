@@ -38,6 +38,7 @@ mod tests {
                     expires_at: 0,
                     memberships: vec![],
                 },
+                authentication: None,
                 game: BootstrapGame::NoMembership,
             },
         };

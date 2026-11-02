@@ -11,6 +11,8 @@ export TEST_DATABASE_URL="postgres://orbit:$(node -p 'encodeURIComponent(process
 suite="$1"
 shift
 if [ "$#" -gt 0 ]; then
-    set -- -E "$1"
+    filter="$1"
+    shift
+    set -- -E "$filter" "$@"
 fi
 cargo nextest run -p orbit-storage-postgres --features test-support --test "$suite" --test-threads=1 "$@"

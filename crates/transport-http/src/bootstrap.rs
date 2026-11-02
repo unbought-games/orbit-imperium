@@ -10,14 +10,48 @@ pub(super) struct BootstrapQuery {
     pub bootstrap: bool,
 }
 
+#[cfg(test)]
 async fn assemble<A, G, F>(signup_enabled: bool, auth: A, game: G, deadline: Deadline) -> Bootstrap
 where
     A: Future<Output = Result<AuthenticatedSession, ServiceError>>,
     G: FnOnce(AuthenticatedSession) -> F,
     F: Future<Output = Result<Option<InitialGameSnapshot>, ServiceError>>,
 {
-    let result = match timeout_at(deadline, auth).await {
-        Ok(Ok(session)) => {
+    assemble_observed(
+        signup_enabled,
+        async { auth.await.map(|session| (session, None)) },
+        game,
+        deadline,
+        std::sync::Arc::new(NoopRuntimeObserver),
+    )
+    .await
+}
+
+async fn assemble_observed<A, G, F>(
+    signup_enabled: bool,
+    auth: A,
+    game: G,
+    deadline: Deadline,
+    observer: std::sync::Arc<dyn RuntimeObserver>,
+) -> Bootstrap
+where
+    A: Future<Output = Result<(AuthenticatedSession, Option<OidcSessionMetadata>), ServiceError>>,
+    G: FnOnce(AuthenticatedSession) -> F,
+    F: Future<Output = Result<Option<InitialGameSnapshot>, ServiceError>>,
+{
+    let auth_result = {
+        let mut timer = AuthTimer::new(observer.clone(), AuthPhase::BootstrapAuth);
+        let result = timeout_at(deadline, auth).await;
+        timer.finish(match &result {
+            Ok(Ok(_)) => AuthOutcome::Success,
+            Ok(Err(ServiceError::Unauthenticated)) => AuthOutcome::SigninRequired,
+            _ => AuthOutcome::Unavailable,
+        });
+        result
+    };
+    let result = match auth_result {
+        Ok(Ok((session, authentication))) => {
+            let mut timer = AuthTimer::new(observer.clone(), AuthPhase::BootstrapGame);
             let game = match timeout_at(deadline, game(session.clone())).await {
                 Ok(Ok(Some(snapshot))) => BootstrapGame::Ready {
                     snapshot: Box::new(snapshot),
@@ -35,13 +69,31 @@ where
                     },
                 },
             };
-            BootstrapResult::Authenticated { session, game }
+            timer.finish(if matches!(game, BootstrapGame::Unavailable { .. }) {
+                AuthOutcome::Unavailable
+            } else {
+                AuthOutcome::Success
+            });
+            BootstrapResult::Authenticated {
+                session,
+                authentication,
+                game,
+            }
         }
         Ok(Err(ServiceError::Unauthenticated)) => BootstrapResult::Anonymous,
         _ => BootstrapResult::Unavailable {
             code: BootstrapError::Unavailable,
         },
     };
+    observer.bootstrap(match &result {
+        BootstrapResult::Anonymous => BootstrapOutcome::Anonymous,
+        BootstrapResult::Unavailable { .. } => BootstrapOutcome::AuthUnavailable,
+        BootstrapResult::Authenticated {
+            game: BootstrapGame::Unavailable { .. },
+            ..
+        } => BootstrapOutcome::GameUnavailable,
+        BootstrapResult::Authenticated { .. } => BootstrapOutcome::Authenticated,
+    });
     Bootstrap {
         version: 1,
         signup_enabled,
@@ -73,14 +125,34 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
     h: &HeaderMap,
 ) -> Bootstrap {
     let (mut result, enabled) = tokio::join!(
-        assemble(
+        assemble_observed(
             false,
-            async { authenticate(s, h, false).await.map_err(|e| e.0) },
+            async {
+                let session = authenticate(s, h, false).await.map_err(|e| e.0)?;
+                let authentication = if s.oidc.is_some()
+                    && !h.contains_key(header::AUTHORIZATION)
+                    && h.get("x-orbit-auth-metadata").and_then(|h| h.to_str().ok()) == Some("1")
+                {
+                    s.updates
+                        .oidc_session_metadata(&token_digest(
+                            token(h).ok_or(ServiceError::Unauthenticated)?,
+                        ))
+                        .await
+                        .map_err(ServiceError::from)?
+                } else {
+                    None
+                };
+                Ok((session, authentication))
+            },
             |session| async move {
                 read_game_when_available(|| s.game.initial_game(&session, uuid::Uuid::new_v4()))
                     .await
             },
             Deadline::now() + BUDGET,
+            s.config
+                .observer
+                .clone()
+                .unwrap_or_else(|| std::sync::Arc::new(NoopRuntimeObserver)),
         ),
         signup_config::enabled(s)
     );
@@ -92,14 +164,18 @@ pub(super) async fn prepare_authenticated_bootstrap<S: GameStore + IdentityStore
     session: AuthenticatedSession,
 ) -> Bootstrap {
     let (mut result, enabled) = tokio::join!(
-        assemble(
+        assemble_observed(
             false,
-            async { Ok(session) },
+            async { Ok((session, None)) },
             |session| async move {
                 read_game_when_available(|| s.game.initial_game(&session, uuid::Uuid::new_v4()))
                     .await
             },
             Deadline::now() + BUDGET,
+            s.config
+                .observer
+                .clone()
+                .unwrap_or_else(|| std::sync::Arc::new(NoopRuntimeObserver)),
         ),
         signup_config::enabled(s)
     );
@@ -111,6 +187,16 @@ pub(super) fn private_response(headers: &HeaderMap, value: impl serde::Serialize
         Ok(value) => value,
         Err(_) => return Problem(ServiceError::InvariantFailure).into_response(),
     };
+    if headers
+        .get("x-orbit-auth-metadata")
+        .and_then(|h| h.to_str().ok())
+        != Some("1")
+        && let Some(result) = value
+            .get_mut("result")
+            .and_then(|value| value.as_object_mut())
+    {
+        result.remove("authentication");
+    }
     if headers
         .get("x-orbit-view-metadata")
         .and_then(|h| h.to_str().ok())
@@ -147,6 +233,72 @@ pub(super) fn query(
 mod tests {
     use super::*;
     use std::future::pending;
+    #[derive(Default)]
+    struct Observer(std::sync::Mutex<Vec<&'static str>>);
+    impl RuntimeObserver for Observer {
+        fn duration(&self, _: RuntimeStage, _: Duration) {}
+        fn event(&self, _: RuntimeEvent) {}
+        fn bootstrap(&self, outcome: BootstrapOutcome) {
+            self.0.lock().unwrap().push(outcome.name());
+        }
+    }
+    #[tokio::test]
+    async fn unavailable_http_200_is_observed_as_auth_failure() {
+        let observer = std::sync::Arc::new(Observer::default());
+        let bootstrap = assemble_observed(
+            false,
+            async { Err(ServiceError::Unavailable) },
+            |_| async { Ok(None) },
+            Deadline::now() + BUDGET,
+            observer.clone(),
+        )
+        .await;
+        let response = private_response(&HeaderMap::new(), bootstrap);
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 65536)
+            .await
+            .unwrap();
+        let value: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(value["result"]["status"], "unavailable");
+        assert_eq!(*observer.0.lock().unwrap(), vec!["auth_unavailable"]);
+    }
+    #[tokio::test]
+    async fn identity_expiry_metadata_requires_opt_in_and_excludes_credentials() {
+        for enabled in [false, true] {
+            let mut headers = HeaderMap::new();
+            if enabled {
+                headers.insert("x-orbit-auth-metadata", "1".parse().unwrap());
+            }
+            let bootstrap = assemble_observed(
+                false,
+                async {
+                    Ok((
+                        session(),
+                        Some(OidcSessionMetadata {
+                            identity_valid_until: 123,
+                            refresh_generation: "opaque-generation".into(),
+                        }),
+                    ))
+                },
+                |_| async { Ok(None) },
+                Deadline::now() + BUDGET,
+                std::sync::Arc::new(NoopRuntimeObserver),
+            )
+            .await;
+            let body =
+                axum::body::to_bytes(private_response(&headers, bootstrap).into_body(), 65536)
+                    .await
+                    .unwrap();
+            let value: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            let metadata = value["result"].get("authentication");
+            assert_eq!(metadata.is_some(), enabled);
+            if let Some(metadata) = metadata {
+                assert_eq!(metadata.as_object().unwrap().len(), 2);
+                assert_eq!(metadata["identity_valid_until"], 123);
+                assert_eq!(metadata["refresh_generation"], "opaque-generation");
+            }
+        }
+    }
     #[tokio::test]
     async fn json_bootstrap_progress_requires_opt_in() {
         for metadata in [false, true] {

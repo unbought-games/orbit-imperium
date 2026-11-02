@@ -97,6 +97,8 @@ impl RuntimeEvent {
 pub trait RuntimeObserver: Send + Sync {
     fn duration(&self, stage: RuntimeStage, elapsed: Duration);
     fn event(&self, event: RuntimeEvent);
+    fn auth_duration(&self, _: crate::AuthPhase, _: crate::AuthOutcome, _: Duration) {}
+    fn bootstrap(&self, _: crate::BootstrapOutcome) {}
 }
 pub struct NoopRuntimeObserver;
 impl RuntimeObserver for NoopRuntimeObserver {

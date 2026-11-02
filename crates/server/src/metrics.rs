@@ -59,6 +59,8 @@ pub struct RuntimeMetrics {
     publication_scan_failures: AtomicU64,
     durations: [Histogram; 10],
     events: [AtomicU64; 8],
+    auth: [[Histogram; 4]; 6],
+    bootstrap: [AtomicU64; 4],
 }
 impl RuntimeMetrics {
     pub fn new() -> Self {
@@ -67,6 +69,8 @@ impl RuntimeMetrics {
             publication_scan_failures: AtomicU64::new(0),
             durations: std::array::from_fn(|_| Histogram::default()),
             events: std::array::from_fn(|_| AtomicU64::new(0)),
+            auth: std::array::from_fn(|_| std::array::from_fn(|_| Histogram::default())),
+            bootstrap: std::array::from_fn(|_| AtomicU64::new(0)),
         }
     }
     pub fn publication_scan_failed(&self) {
@@ -117,6 +121,44 @@ impl RuntimeMetrics {
             )
             .unwrap();
         }
+        text.push_str(
+            "# TYPE orbit_auth_seconds histogram\n# TYPE orbit_bootstrap_total counter\n",
+        );
+        for phase in orbit_application::AuthPhase::ALL {
+            for outcome in orbit_application::AuthOutcome::ALL {
+                let histogram = &self.auth[phase as usize][outcome as usize];
+                let labels = format!("phase=\"{}\",outcome=\"{}\"", phase.name(), outcome.name());
+                for ((_, bound), counter) in BUCKETS.iter().zip(&histogram.buckets) {
+                    writeln!(
+                        text,
+                        "orbit_auth_seconds_bucket{{{labels},le=\"{bound}\"}} {}",
+                        counter.load(Ordering::Relaxed)
+                    )
+                    .unwrap();
+                }
+                writeln!(
+                    text,
+                    "orbit_auth_seconds_sum{{{labels}}} {}",
+                    histogram.sum_micros.load(Ordering::Relaxed) as f64 / 1000000.0
+                )
+                .unwrap();
+                writeln!(
+                    text,
+                    "orbit_auth_seconds_count{{{labels}}} {}",
+                    histogram.buckets[10].load(Ordering::Relaxed)
+                )
+                .unwrap();
+            }
+        }
+        for outcome in orbit_application::BootstrapOutcome::ALL {
+            writeln!(
+                text,
+                "orbit_bootstrap_total{{outcome=\"{}\"}} {}",
+                outcome.name(),
+                self.bootstrap[outcome as usize].load(Ordering::Relaxed)
+            )
+            .unwrap();
+        }
         text.push_str("# TYPE orbit_runtime_events_total counter\n");
         for event in RuntimeEvent::ALL {
             writeln!(
@@ -148,6 +190,25 @@ impl RuntimeMetrics {
     }
 }
 impl RuntimeObserver for RuntimeMetrics {
+    fn auth_duration(
+        &self,
+        phase: orbit_application::AuthPhase,
+        outcome: orbit_application::AuthOutcome,
+        elapsed: Duration,
+    ) {
+        let micros = u64::try_from(elapsed.as_micros()).unwrap_or(u64::MAX);
+        let histogram = &self.auth[phase as usize][outcome as usize];
+        histogram.sum_micros.fetch_add(micros, Ordering::Relaxed);
+        for ((bound, _), counter) in BUCKETS.iter().zip(&histogram.buckets) {
+            if micros <= *bound {
+                counter.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    }
+    fn bootstrap(&self, outcome: orbit_application::BootstrapOutcome) {
+        self.bootstrap[outcome as usize].fetch_add(1, Ordering::Relaxed);
+    }
+
     fn duration(&self, stage: RuntimeStage, elapsed: Duration) {
         let micros = u64::try_from(elapsed.as_micros()).unwrap_or(u64::MAX);
         let histogram = &self.durations[stage as usize];
@@ -286,6 +347,36 @@ pub async fn serve(
 mod tests {
     use super::*;
     use orbit_application::{RuntimeEvent, RuntimeObserver, RuntimeStage};
+    #[test]
+    fn authentication_failures_and_semantic_bootstrap_results_are_exported() {
+        use orbit_application::{AuthOutcome, AuthPhase, BootstrapOutcome};
+        let metrics = RuntimeMetrics::new();
+        metrics.auth_duration(
+            AuthPhase::Provider,
+            AuthOutcome::Unavailable,
+            Duration::from_millis(12),
+        );
+        metrics.auth_duration(
+            AuthPhase::Persist,
+            AuthOutcome::Cancelled,
+            Duration::from_millis(5),
+        );
+        metrics.bootstrap(BootstrapOutcome::AuthUnavailable);
+        let text = metrics.render();
+        assert!(text.contains(
+            "orbit_auth_seconds_bucket{phase=\"provider\",outcome=\"unavailable\",le=\"0.05\"} 1"
+        ));
+        assert!(
+            text.contains("orbit_auth_seconds_count{phase=\"persist\",outcome=\"cancelled\"} 1")
+        );
+        assert!(text.contains("orbit_bootstrap_total{outcome=\"auth_unavailable\"} 1"));
+        assert_eq!(
+            text.lines()
+                .filter(|line| line.starts_with("orbit_auth_seconds_count{"))
+                .count(),
+            24
+        );
+    }
     #[test]
     fn exposition_has_bounded_labels_and_cumulative_duration_buckets() {
         let metrics = RuntimeMetrics::new();
