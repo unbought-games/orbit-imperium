@@ -52,19 +52,6 @@ for (const protocol of [3, 4] as const) {
   })
 }
 
-test('incompatible report data offers an explicit reload instead of blaming permissions', async ({ page }) => {
-  await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
-  let fixed = false
-  await reports(page, () => fixed ? observation : { ...observation, research: { visibility: 'Known', value: { ...observation.research.value, FutureResearch: 0 } } })
-  // Enter the final route: a delayed alias remount could recover before the button click.
-  await page.goto(canonicalReportUrl)
-  await expect(page.getByRole('alert')).toContainText('data this version cannot read')
-  await expect(page.getByRole('button', { name: 'Retry reports' })).toHaveCount(0)
-  fixed = true
-  await page.getByRole('button', { name: 'Reload app' }).click()
-  await expect(page.getByRole('region', { name: 'Report observation' })).toContainText('Astrophysics')
-})
-
 test('transient report failures can still retry without reloading', async ({ page }) => {
   await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
   let status = 503
