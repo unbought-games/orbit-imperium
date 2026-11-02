@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -21,7 +21,7 @@ const fallback = {
 test.use({ hasTouch: true })
 
 type Design = components['schemas']['InsigniaDesign']
-async function fixture(page: Page) {
+async function fixture(page: Page, layered = false) {
   await shellFixture(page, {
     protocol: 4,
     missions: {
@@ -31,7 +31,7 @@ async function fixture(page: Page) {
       fleet_slots: '1',
     },
   })
-  const catalog = ['compass', 'wings', 'spire', 'test-star'].map((id, index) => {
+  const catalog: Array<{id:string;name:string;supporter:boolean;asset_url:string;bytes:Buffer;group?:'legacy'|'center'|'stripes'|'accents'}> = ['compass', 'wings', 'spire', 'test-star'].map((id, index) => {
     const bytes = readFileSync(
       id === 'test-star' ? 'crates/storage-postgres/tests/fixtures/cosmetics/test-star.svg' : `crates/application/assets/insignias/${id}.svg`,
     )
@@ -43,6 +43,18 @@ async function fixture(page: Page) {
       bytes,
     }
   })
+  if(layered){
+    for(const file of readdirSync('crates/application/assets/insignias').filter(f=>f.startsWith('forge-'))){
+      const id=file.slice(0,-4),bytes=readFileSync(`crates/application/assets/insignias/${file}`)
+      const centers=['wayfinder','starwing','ascendant','anvil','helix','quarter-moon','full-circle','triforce']
+      catalog.push({id,name:id.slice(6),group:centers.includes(id.slice(6))?'center':'accents',supporter:false,asset_url:`/api/media/insignias/${id}/${createHash('sha256').update(bytes).digest('hex')}.svg`,bytes})
+    }
+    // Independently authored fixtures; no official supporter originals in public tests.
+    for(const [id,group] of [['test-center','center'],['test-accent','accents'],['test-stripe-a','stripes'],['test-stripe-b','stripes'],['test-stripe-c','stripes']] as const){
+      const bytes=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 108"><path fill="white" d="M40 10h20v88H40Z"/></svg>')
+      catalog.push({id,name:id,group,supporter:true,asset_url:`/api/media/insignias/${id}/${createHash('sha256').update(bytes).digest('hex')}.svg`,bytes})
+    }
+  }
   for (const item of catalog)
     await page.route(`**${item.asset_url}`, (r) =>
       r.fulfill({ contentType: 'image/svg+xml', body: item.bytes }),
@@ -57,14 +69,15 @@ async function fixture(page: Page) {
     fail: false,
   }
   const available = (symbol: string) =>
-    symbol !== 'test-star' ||
+    !symbol.startsWith('test-') ||
     (state.installed && (state.permanent || (state.supporter && !state.unknown)))
   const appearance = () => {
     const selected = state.designs.find((d) => d.id === state.equipped)?.recipe
     if (!selected) return null
-    const recipe = selected && available(selected.symbol) ? selected : fallback
+    const recipe = available(selected.symbol) && (selected.layers??[]).every(l=>available(l.symbol)) ? selected : fallback
     return {
       recipe,
+      ...(recipe.version===2?{layers:[...(recipe.layers??[])].sort((a,b)=>['stripes','center','accents'].indexOf(catalog.find(e=>e.id===a.symbol)!.group!)-['stripes','center','accents'].indexOf(catalog.find(e=>e.id===b.symbol)!.group!)).map(l=>({...l,asset_url:catalog.find(e=>e.id===l.symbol)!.asset_url}))}:{}),
       asset_url: catalog.find((s) => s.id === recipe.symbol)!.asset_url,
     }
   }
@@ -102,6 +115,7 @@ async function fixture(page: Page) {
           permanent_symbols: state.permanent ? ['test-star'] : [],
         },
         policy: 'supporter',
+        composition_access: state.unknown?'unavailable':state.supporter?'available':'supporter_required',
         catalog: catalog.filter((item) => state.installed || item.id !== 'test-star').map(({ bytes: _bytes, ...item }) => ({
           ...item,
           access: available(item.id)
@@ -516,5 +530,100 @@ for (const width of [1440, 390]) {
     await panel.getByRole('button', { name: 'Save & equip' }).click()
     await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
     expect(state.designs[0].recipe.symbol).toBe('compass')
+  })
+}
+
+for(const width of [1440,390]){
+ test(`layered composer saves colors and slots at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:1000})
+  const {state}=await fixture(page,true)
+  await page.goto('/u/andromeda/settings')
+  const panel=page.getByRole('region',{name:'Empire insignia'})
+  await panel.getByRole('button',{name:'New design'}).click()
+  await expect(panel.getByRole('button',{name:'test-center',exact:true})).toBeDisabled()
+  await panel.getByRole('button',{name:'triforce',exact:true}).click()
+  await panel.getByRole('button',{name:'mini-stripes',exact:true}).click()
+  await panel.getByLabel('Element color',{exact:true}).fill('#aabbcc')
+  await panel.getByRole('button',{name:'Hexagon',exact:true}).click()
+  await panel.getByRole('button',{name:'Save & equip'}).click()
+  await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
+  expect(state.designs[0].recipe.version).toBe(2)
+  expect(state.designs[0].recipe.shape).toBe('hexagon')
+  expect(state.designs[0].recipe.layers).toHaveLength(2)
+  expect(state.designs[0].recipe.layers?.every(l=>l.color==='#aabbcc')).toBe(true)
+  await panel.evaluate(el=>window.scrollBy(0,el.getBoundingClientRect().top-72))
+  await diagnosticScreenshot(page,{path:`test-results/composer-free-${width}x1000.png`,fullPage:true})
+  state.supporter=true;await page.reload()
+  for(const id of ['test-stripe-a','test-stripe-b','test-stripe-c'])await panel.getByRole('button',{name:id,exact:true}).click()
+  await panel.getByLabel('Accent color',{exact:true}).fill('#ffeeaa')
+  await panel.getByRole('button',{name:'Save & equip'}).click()
+  await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
+  expect(state.designs[0].recipe.layers).toHaveLength(4)
+  expect(state.designs[0].recipe.layers?.some(l=>l.symbol==='test-stripe-a')).toBe(false)
+  await page.reload()
+  await expect(panel.getByRole('button',{name:'test-stripe-c',exact:true})).toHaveAttribute('aria-pressed','true')
+  await panel.evaluate(el=>window.scrollBy(0,el.getBoundingClientRect().top-72))
+  await diagnosticScreenshot(page,{path:`test-results/composer-supporter-${width}x1000.png`,fullPage:true})
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+ })
+}
+
+for (const width of [1440, 390]) {
+  test(`empty color groups and background shape persistence at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { state } = await fixture(page, true)
+    state.supporter = true
+    await page.goto('/u/andromeda/settings')
+    const panel = page.getByRole('region', { name: 'Empire insignia' })
+    await panel.getByRole('button', { name: 'New design' }).click()
+    const accent = panel.getByLabel('Accent color', { exact: true })
+    await expect(accent).toBeDisabled()
+    await expect(accent).toHaveAccessibleDescription('Select an element to set its color.')
+    await panel.getByRole('button', { name: 'crown', exact: true }).click()
+    await accent.fill('#22cc88')
+    await panel.getByRole('button', { name: 'moons', exact: true }).click()
+    await expect(accent).toHaveValue('#22cc88')
+    await panel.getByRole('button', { name: 'moons', exact: true }).click()
+    await expect(accent).toBeDisabled()
+    await panel.getByRole('button', { name: 'crown', exact: true }).click()
+    await accent.fill('#22cc88')
+    const stripe = panel.getByLabel('Stripe color', { exact: true })
+    await expect(stripe).toBeDisabled()
+    await panel.getByRole('button', { name: 'test-stripe-a', exact: true }).click()
+    await stripe.fill('#8866cc')
+    await panel.getByRole('button', { name: 'test-stripe-b', exact: true }).click()
+    await panel.getByRole('button', { name: 'test-stripe-c', exact: true }).click()
+    await expect(stripe).toHaveValue('#8866cc')
+    const preview = panel.getByRole('img', { name: 'Insignia preview' })
+    for (const [shape, name] of [['shield', 'Shield'], ['circle', 'Circle'], ['rounded_square', 'Rounded square'], ['diamond', 'Diamond'], ['hexagon', 'Hexagon']]) {
+      const choice = panel.getByRole('button', { name, exact: true })
+      await choice.focus()
+      await choice.press('Space')
+      await expect(choice).toHaveAttribute('aria-pressed', 'true')
+      await expect(preview).toHaveAttribute('data-shape', shape)
+      if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+        await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 80))
+        await diagnosticScreenshot(page, { path: `test-results/composer-${shape}-${width}x1000.png` })
+      }
+    }
+    await panel.getByRole('button', { name: 'Save & equip' }).click()
+    await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
+    expect(state.designs[0].recipe.shape).toBe('hexagon')
+    expect(state.designs[0].recipe.layers?.filter(l => l.symbol.startsWith('test-stripe')).map(l => l.color)).toEqual(['#8866cc', '#8866cc'])
+    await page.reload()
+    await expect(preview).toHaveAttribute('data-shape', 'hexagon')
+    await expect(accent).toHaveValue('#22cc88')
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 80))
+      await diagnosticScreenshot(page, { path: `test-results/composer-saved-${width}x1000.png` })
+    }
+    await panel.getByRole('button', { name: 'Clear elements' }).click()
+    for (const label of ['Center color', 'Stripe color', 'Accent color']) await expect(panel.getByLabel(label, { exact: true })).toBeDisabled()
+    await expect(preview).toHaveAttribute('data-shape', 'hexagon')
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await panel.getByLabel('Accent color', { exact: true }).scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/composer-empty-colors-${width}x1000.png` })
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
