@@ -166,6 +166,7 @@ for (const width of [390, 1440]) {
       })
     })
     const capture = async (state: string) => {
+      if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
       await page.evaluate(() => {
         window.scrollTo(0, 0)
         for (const element of document.querySelectorAll('*'))

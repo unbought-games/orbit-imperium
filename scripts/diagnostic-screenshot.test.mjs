@@ -1,3 +1,5 @@
+import { runInNewContext } from 'node:vm'
+import { captureCatalog } from '../apps/web/tests/fixtures/catalog-capture.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
@@ -148,5 +150,76 @@ test('browser diagnostics stay gated and all specs use the failure-only fixture'
   assert.deepEqual(directCaptures, [
     'fixtures/diagnostic-screenshot.ts',
     'fixtures/diagnostic-screenshot.ts',
+  ])
+})
+
+test('disabled catalog evidence never touches the page, including image preparation', async (t) => {
+  const original = process.env.ORBIT_TEST_SCREENSHOTS
+  t.after(() => {
+    if (original === undefined) delete process.env.ORBIT_TEST_SCREENSHOTS
+    else process.env.ORBIT_TEST_SCREENSHOTS = original
+  })
+  const page = new Proxy(
+    {},
+    {
+      get(_, property) {
+        assert.fail(`disabled capture touched page.${String(property)}`)
+      },
+    },
+  )
+  for (const value of [undefined, '', '0', 'false']) {
+    if (value === undefined) delete process.env.ORBIT_TEST_SCREENSHOTS
+    else process.env.ORBIT_TEST_SCREENSHOTS = value
+    await captureCatalog(page, 'catalog.png')
+  }
+})
+
+test('enabled catalog evidence prepares images, captures both views and restores scroll', async (t) => {
+  const original = process.env.ORBIT_TEST_SCREENSHOTS
+  t.after(() => {
+    if (original === undefined) delete process.env.ORBIT_TEST_SCREENSHOTS
+    else process.env.ORBIT_TEST_SCREENSHOTS = original
+  })
+  process.env.ORBIT_TEST_SCREENSHOTS = '1'
+  const calls = []
+  const images = [
+    {
+      complete: true,
+      naturalWidth: 64,
+      loading: 'lazy',
+      async decode() {
+        assert.equal(this.loading, 'eager')
+        calls.push('decode')
+      },
+    },
+  ]
+  const page = {
+    async evaluate(callback, argument) {
+      return runInNewContext(`(${callback.toString()})(argument)`, {
+        argument,
+        scrollX: 7,
+        scrollY: 23,
+        document: { documentElement: { scrollHeight: 2000 } },
+        window: {
+          scrollTo: (options) =>
+            calls.push(JSON.parse(JSON.stringify(options))),
+        },
+      })
+    },
+    locator(selector) {
+      assert.equal(selector, 'main img')
+      return { evaluateAll: async (callback) => callback(images) }
+    },
+    async screenshot(options) {
+      calls.push(options)
+    },
+  }
+  await captureCatalog(page, 'catalog.png')
+  assert.deepEqual(calls, [
+    { top: 2000, behavior: 'instant' },
+    'decode',
+    { path: 'catalog-catalog-viewport.png' },
+    { path: 'catalog.png', fullPage: true },
+    { left: 7, top: 23, behavior: 'instant' },
   ])
 })

@@ -404,19 +404,21 @@ for (const width of [390, 1440]) {
     })
     await expect(stats).toContainText('At Hyperspace Drive level 8')
     await expect(stats).toContainText('5,000')
-    await page
-      .locator('main img')
-      .evaluateAll((images) =>
-        Promise.all(
-          images.map((image) => (image as HTMLImageElement).decode()),
-        ),
-      )
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
-    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0)
-    await diagnosticScreenshot(page, {
-      path: testInfo.outputPath(`bomber-upgrade-${width}x900.png`),
-      fullPage: true,
-    })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await page
+        .locator('main img')
+        .evaluateAll((images) =>
+          Promise.all(
+            images.map((image) => (image as HTMLImageElement).decode()),
+          ),
+        )
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(0)
+      await diagnosticScreenshot(page, {
+        path: testInfo.outputPath(`bomber-upgrade-${width}x900.png`),
+        fullPage: true,
+      })
+    }
     await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
     await page.locator('summary').filter({ hasText: 'Compare ships' }).click()
     await page

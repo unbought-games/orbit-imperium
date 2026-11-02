@@ -79,7 +79,7 @@ test('scout report → attack with lost acknowledgement → incoming → combat 
   await expect(page.getByRole('region',{name:'Fleet quote'})).toBeVisible()
   await expect(page.getByRole('region',{name:'Fleet quote'})).toBeFocused()
   const screenshots = `${process.env.ORBIT_TEST_OUTPUT_DIR ?? 'test-results/browser-raiding'}/screenshots`
-  mkdirSync(screenshots,{recursive:true})
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') mkdirSync(screenshots,{recursive:true})
   for(const [width,height] of [[320,800],[360,800],[390,844],[768,1024],[1440,900],[844,390]]){
     await page.setViewportSize({width,height})
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)

@@ -166,19 +166,21 @@ for (const width of [390, 1440]) {
         await page.keyboard.press('Escape')
         await expect(cancel).toBeFocused()
       }
-      await summary
-        .locator('img')
-        .evaluateAll((images) =>
-          Promise.all(
-            images.map((image) => (image as HTMLImageElement).decode()),
-          ),
-        )
-      await diagnosticScreenshot(page, {
-        path: `test-results/active-${screen}-${width}x${height}.png`,
-      })
-      await diagnosticScreenshot(summary, {
-        path: `test-results/aligned-${screen}-${width}x${height}.png`,
-      })
+      if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+        await summary
+          .locator('img')
+          .evaluateAll((images) =>
+            Promise.all(
+              images.map((image) => (image as HTMLImageElement).decode()),
+            ),
+          )
+        await diagnosticScreenshot(page, {
+          path: `test-results/active-${screen}-${width}x${height}.png`,
+        })
+        await diagnosticScreenshot(summary, {
+          path: `test-results/aligned-${screen}-${width}x${height}.png`,
+        })
+      }
       await page.emulateMedia({ reducedMotion: 'reduce' })
       expect(
         await fill.evaluate(

@@ -138,6 +138,7 @@ const bound = (request_id: string, data: unknown) => ({
 })
 
 async function capture(page: Parameters<typeof shellFixture>[0], path: string) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
   await page
     .locator('main img')
     .evaluateAll((images) =>
@@ -431,13 +432,6 @@ for (const width of [390, 1440]) {
     await expect(
       pane.getByRole('button', { name: 'Deuterium details' }),
     ).toContainText('30,000')
-    await page
-      .locator('main img')
-      .evaluateAll((images) =>
-        Promise.all(
-          images.map((image) => (image as HTMLImageElement).decode()),
-        ),
-      )
     await capture(
       page,
       testInfo.outputPath(`battlecruiser-details-${width}x900.png`),
@@ -592,13 +586,6 @@ for (const width of [390, 1440]) {
       await expect(
         pane.getByRole('link', { name: /Battlecruiser/ }),
       ).toBeVisible()
-      await page
-        .locator('main img')
-        .evaluateAll((images) =>
-          Promise.all(
-            images.map((image) => (image as HTMLImageElement).decode()),
-          ),
-        )
       await capture(
         page,
         testInfo.outputPath(`${slug}-battlecruiser-unlock-${width}x900.png`),

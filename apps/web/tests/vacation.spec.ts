@@ -7,6 +7,7 @@ import { productionFixture } from '../src/test-support/production'
 type Vacation = components['schemas']['VacationView4']
 const minimum = 48 * 60 * 60 * 1000
 async function capture(page: Page, target: Page | Locator, options: Parameters<Page['screenshot']>[0]) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
   // Dismiss transient notifications through their keyboard control; the persistent
   // hostile-fleet indicator stays visible and usable throughout vacation.
   const toasts = page.getByTestId('swipeable-toast')
@@ -180,7 +181,7 @@ for (const width of [1280, 390]) {
   })
 }
 
-test('capture dismisses a replacement notification even when the count stays constant', async ({ page }) => {
+test('capture only dismisses replacement notifications when evidence is enabled', async ({ page }) => {
   await page.setContent('<main><output aria-label="Dismissed notifications">0</output></main>')
   await page.evaluate(() => {
     let dismissed = 0
@@ -200,7 +201,18 @@ test('capture dismisses a replacement notification even when the count stays con
     }
     addToast(true)
   })
-  await capture(page, page, { path: 'test-results/vacation-capture-helper.png' })
-  await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
-  await expect(page.getByLabel('Dismissed notifications')).toHaveText('2')
+  const original = process.env.ORBIT_TEST_SCREENSHOTS
+  try {
+    delete process.env.ORBIT_TEST_SCREENSHOTS
+    await capture(page, page, { path: 'test-results/vacation-capture-helper.png' })
+    await expect(page.getByTestId('swipeable-toast')).toHaveCount(1)
+    await expect(page.getByLabel('Dismissed notifications')).toHaveText('0')
+    process.env.ORBIT_TEST_SCREENSHOTS = '1'
+    await capture(page, page, { path: 'test-results/vacation-capture-helper.png' })
+    await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
+    await expect(page.getByLabel('Dismissed notifications')).toHaveText('2')
+  } finally {
+    if (original === undefined) delete process.env.ORBIT_TEST_SCREENSHOTS
+    else process.env.ORBIT_TEST_SCREENSHOTS = original
+  }
 })

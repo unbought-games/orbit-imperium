@@ -432,14 +432,16 @@ test('desktop and phone command views keep all information readable without hori
   for (const width of [1672, 1024, 768, 430, 390, 320]) {
     await page.setViewportSize({ width, height: width > 767 ? 1100 : 844 })
     await page.evaluate(() => window.scrollTo(0, 0))
-    await page.locator('main img').evaluateAll(async (images) => {
-      // Screenshot preparation also loads art inside the collapsed map.
-      await Promise.all(images.map((image) => {
-        const img = image as HTMLImageElement
-        img.loading = 'eager'
-        return img.decode().catch(() => {})
-      }))
-    })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await page.locator('main img').evaluateAll(async (images) => {
+        // Screenshot preparation also loads art inside the collapsed map.
+        await Promise.all(images.map((image) => {
+          const img = image as HTMLImageElement
+          img.loading = 'eager'
+          return img.decode().catch(() => {})
+        }))
+      })
+    }
 
     expect(
       await page.evaluate(

@@ -8,11 +8,12 @@ const now = 1793486400000
 const target: S['MissionDestination4']={type:'Body',id:id(90),expected_owner:id(91),expected_kind:'Planet'}
 const coordinates={galaxy:1,system:2,position:8}
 const catalog:S['CatalogEntry3'][]=JSON.parse(readFileSync('rules/mvp-v1-slice-13.json','utf8')).catalog
-async function shot(page:Parameters<typeof installGameFixture>[0],name:string,width:number) {
+async function expectLayoutAndCapture(page:Parameters<typeof installGameFixture>[0],name:string,width:number) {
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
  mkdirSync('test-results/alliance-attacks',{recursive:true})
  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}))
  await diagnosticScreenshot(page,{path:`test-results/alliance-attacks/${name}-${width}x900.png`,fullPage:true})
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
 }
 for(const width of [390,1440]) test(`create invite join and recall group ${width}`,async({page})=>{
  await page.setViewportSize({width,height:900});await page.clock.setFixedTime(now);await page.emulateMedia({reducedMotion:'reduce'})
@@ -40,7 +41,7 @@ for(const width of [390,1440]) test(`create invite join and recall group ${width
  })
  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
  await expect(page.getByRole('button',{name:'Create attack group'})).toBeVisible()
- await shot(page,'fleet-create',width)
+ await expectLayoutAndCapture(page,'fleet-create',width)
  await page.getByRole('button',{name:'Create attack group'}).click()
  await expect(page.getByRole('region',{name:'Alliance attacks'})).toContainText('1/5 players')
  await page.getByRole('button',{name:'Invite players',exact:true}).click()
@@ -48,16 +49,16 @@ for(const width of [390,1440]) test(`create invite join and recall group ${width
  await expect(page.getByRole('button',{name:'Invite Cassiopeia'})).toBeVisible()
  await page.getByRole('button',{name:'Invite Cassiopeia'}).click()
  await expect(page.getByText('Invited',{exact:true})).toBeVisible()
- await shot(page,'group-invitations',width)
+ await expectLayoutAndCapture(page,'group-invitations',width)
  await page.getByRole('button',{name:'Join attack',exact:true}).click()
  await expect(page.getByRole('textbox',{name:'Small Cargo · 2 available',exact:true})).toBeVisible()
  await page.getByRole('textbox',{name:'Small Cargo · 2 available',exact:true}).fill('1')
  await expect(page.getByRole('textbox',{name:'Destination coordinates'})).toHaveCount(0)
- await shot(page,'join-dispatch',width)
+ await expectLayoutAndCapture(page,'join-dispatch',width)
  await expect(page.getByRole('button',{name:'Review fleet',exact:true})).toBeEnabled()
  await page.getByRole('button',{name:'Review fleet',exact:true}).click()
  await expect(page.getByRole('region',{name:'Fleet quote'})).toContainText('Shared group arrival')
- await shot(page,'join-review',width)
+ await expectLayoutAndCapture(page,'join-review',width)
  groups[0].revision++;groups[0].arrival_at+=10000;revision++
  await refreshGame(page)
  await expect(page.getByRole('region',{name:'Fleet quote'})).toHaveCount(0)
@@ -65,7 +66,7 @@ for(const width of [390,1440]) test(`create invite join and recall group ${width
  await expect(page.getByRole('textbox',{name:'Small Cargo · 2 available',exact:true})).toHaveValue('1')
  await page.getByRole('button',{name:'Review fleet',exact:true}).click()
  await expect(page.getByRole('region',{name:'Fleet quote'})).toBeVisible()
- await shot(page,'join-review',width)
+ await expectLayoutAndCapture(page,'join-review',width)
  await expect(page.getByRole('button',{name:/Join attack with/})).toBeEnabled()
  await page.getByRole('button',{name:/Join attack with/}).click()
  await expect.poll(()=>actions.filter(a=>a==='LaunchFleet').length).toBe(1)
@@ -73,10 +74,10 @@ for(const width of [390,1440]) test(`create invite join and recall group ${width
  await expect(page.getByRole('region',{name:'Alliance attacks'})).toContainText('2/16 fleets')
  await page.getByRole('button',{name:'Review recall'}).first().click()
  await expect(page.getByRole('region',{name:'Review recall'})).toContainText('including group delays')
- await shot(page,'group-recall',width)
+ await expectLayoutAndCapture(page,'group-recall',width)
  await page.getByRole('button',{name:'Recall fleet',exact:true}).click()
  await expect(page.getByRole('region',{name:'Alliance attacks'})).toContainText('Joining closed')
- await shot(page,'group-closed',width)
+ await expectLayoutAndCapture(page,'group-closed',width)
 })
 
 for (const width of [390,1440]) test(`allied simulation preserves separate technologies ${width}`,async({page})=>{
@@ -95,11 +96,11 @@ for (const width of [390,1440]) test(`allied simulation preserves separate techn
  await ally.getByLabel('Attacker Shielding Technology',{exact:true}).fill('8')
  await ally.getByLabel('Attacker Armour Technology',{exact:true}).fill('7')
  await ally.getByLabel('Attacker Light Fighter',{exact:true}).fill('3')
- await shot(page,'simulator-contingents',width)
+ await expectLayoutAndCapture(page,'simulator-contingents',width)
  await page.getByRole('button',{name:'Run 10 battles'}).click()
  await expect(page.getByRole('region',{name:'Simulation results'})).toBeVisible()
  expect(submitted?.attacker.technology).toEqual([0,0,0]);expect(submitted?.attacking_allies?.[0].technology).toEqual([9,8,7])
- await shot(page,'simulator-results',width)
+ await expectLayoutAndCapture(page,'simulator-results',width)
  await ally.getByLabel('Attacker Weapons Technology',{exact:true}).fill('10')
  await expect(page.getByRole('region',{name:'Simulation results'})).toHaveCount(0)
 })
@@ -114,7 +115,7 @@ for (const width of [390,1440]) test(`group combat reports show individual retur
  await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
  await expect(page.getByText(/Your fleet to \[1:371:12\] returns/)).toBeVisible()
  await expect(page.getByText(/Your fleet to \[1:8:9\] returns/)).toBeVisible()
- await shot(page,'combat-returns',width)
+ await expectLayoutAndCapture(page,'combat-returns',width)
 })
 
 for(const width of [390,1440]) test(`invitation and hostile group visibility ${width}`,async({page})=>{
@@ -128,8 +129,8 @@ for(const width of [390,1440]) test(`invitation and hostile group visibility ${w
  const incoming=page.getByRole('article',{name:'Incoming attack fleet'})
  await expect(incoming).toContainText('Alliance attack')
  await expect(incoming).toContainText('Ship composition unknown')
- await shot(page,'invitation-and-incoming',width)
+ await expectLayoutAndCapture(page,'invitation-and-incoming',width)
  await page.getByTestId('command-orb').click()
  await expect(page.getByRole('link',{name:'Alliance attack invitations'})).toBeVisible()
- await shot(page,'invitation-hud',width)
+ await expectLayoutAndCapture(page,'invitation-hud',width)
 })
