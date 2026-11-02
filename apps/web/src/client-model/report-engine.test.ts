@@ -313,6 +313,35 @@ it('keeps detail failures scoped to their report and rejects a mismatched respon
   expect(reportLoad(h.store.getState(), 'b').error).toBeNull()
 })
 
+it('recovers a failed detail with one shared retry and clears its error', async () => {
+  const h = fixture()
+  const failure = new Error('Unavailable')
+  const first = h.engine.detail('a')
+  h.details[0].reject(failure)
+  await expect(first).rejects.toBe(failure)
+  expect(projectedReportDetail(h.store.getState(), 'a')).toBeNull()
+  expect(reportLoad(h.store.getState(), 'a')).toMatchObject({
+    pending: false,
+    error: failure,
+  })
+  expect(h.details).toHaveLength(1)
+
+  const retry = h.engine.detail('a', true)
+  expect(h.engine.detail('a', true)).toBe(retry)
+  expect(h.details).toHaveLength(2)
+  const response = h.detail('a')
+  const expected = { ...response.data, report: 'a' }
+  h.details[1].resolve(response)
+  await expect(retry).resolves.toEqual(expected)
+  expect(reportLoad(h.store.getState(), 'a')).toMatchObject({
+    pending: false,
+    error: null,
+  })
+  expect(projectedReportDetail(h.store.getState(), 'a')).toEqual(expected)
+  await expect(h.engine.detail('a')).resolves.toEqual(expected)
+  expect(h.details).toHaveLength(2)
+})
+
 for (const fail of [false, true]) {
   it(`rejects a stale detail ${fail ? 'failure' : 'success'} after the viewer revision changes`, async () => {
     const h = fixture()

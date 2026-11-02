@@ -18,6 +18,24 @@ const render = (payload: Record<string, unknown>) =>
     ),
   ).replace(/<[^>]+>/g, '')
 
+it('distinguishes observed zero resources, an empty fleet and unrevealed defenses', () => {
+  const text = render({
+    kind: 'Espionage',
+    resources: {
+      visibility: 'Known',
+      value: { metal: '0', crystal: '120000000', deuterium: '0' },
+    },
+    fleet: { visibility: 'Known', value: [] },
+    defenses: { visibility: 'Unknown' },
+  })
+  expect(text).toContain('Resources01200Stationed ships')
+  expect(text).toContain('No stationed ships')
+  expect(text).toContain(
+    'DefensesUnknown — this observation did not reveal this section.',
+  )
+  expect(text).not.toContain('No defenses')
+})
+
 it('floors combat points and resource observations while preserving unknown data', () => {
   const text = render({
     kind: 'Combat',
