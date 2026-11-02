@@ -1103,3 +1103,82 @@ async fn observer_metadata_changes_only_on_persisted_rotation_and_disappears_on_
             .is_none()
     );
 }
+
+#[derive(Default)]
+struct RefreshQueueObserver(tokio::sync::Notify);
+impl orbit_application::RuntimeObserver for RefreshQueueObserver {
+    fn duration(&self, stage: orbit_application::RuntimeStage, _: std::time::Duration) {
+        if matches!(stage, orbit_application::RuntimeStage::PoolWait) {
+            self.0.notify_one();
+        }
+    }
+    fn event(&self, _: orbit_application::RuntimeEvent) {}
+}
+
+#[tokio::test]
+async fn committed_rotation_claim_keeps_its_slot_ahead_of_a_queued_refresh() {
+    use std::{future::Future, task::Poll};
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = refresh_store(&url).await;
+    store.migrate().await.unwrap();
+    let tokens = refresh_fixture();
+    let digest = Uuid::new_v4().to_string();
+    store
+        .complete_oidc_login(tokens.clone(), &digest, "csrf", None)
+        .await
+        .unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let mut held = pool.begin().await.unwrap();
+    // The owner checks out the single refresh slot, then blocks writing its
+    // durable claim. Queue a peer before allowing that claim to commit.
+    sqlx::query("SELECT digest FROM oidc_session WHERE digest=$1 FOR UPDATE")
+        .bind(&digest)
+        .fetch_one(&mut *held)
+        .await
+        .unwrap();
+    let observer = std::sync::Arc::new(RefreshQueueObserver::default());
+    let refresh_pool = store.oidc_refresh_pool_for_test().unwrap();
+    let owner = store.with_observer(observer.clone());
+    let (entered, mut started) = tokio::sync::oneshot::channel();
+    let (release, blocked) = tokio::sync::oneshot::channel();
+    let running = tokio::spawn(async move {
+        owner
+            .revalidate_oidc_for_test(
+                &digest,
+                &tokens.identity.issuer,
+                "orbit",
+                |mut fresh| async move {
+                    entered.send(()).unwrap();
+                    blocked.await.unwrap();
+                    fresh.validated_at = unbought_auth::now();
+                    Ok(fresh)
+                },
+            )
+            .await
+    });
+    observer.0.notified().await;
+    // Poll the acquisition to Pending with cooperative yielding disabled: the
+    // single slot is held, so this installs the fair pool's queued waiter. It
+    // models another request reserving the slot, without a scheduler race.
+    let mut peer = Box::pin(tokio::task::unconstrained(refresh_pool.acquire()));
+    std::future::poll_fn(|cx| {
+        assert!(peer.as_mut().poll(cx).is_pending());
+        Poll::Ready(())
+    })
+    .await;
+    held.commit().await.unwrap();
+    responsive(async {
+        tokio::select! {
+            result = &mut started => result.unwrap(),
+            result = &mut peer => {
+                let _slot = result.unwrap();
+                panic!("claim commit returned its reserved slot to a queued peer");
+            },
+        }
+    })
+    .await;
+    release.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    // The queued request receives capacity after the owner's durable result.
+    let _peer_slot = responsive(peer).await.unwrap();
+}

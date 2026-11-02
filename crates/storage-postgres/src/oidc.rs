@@ -120,47 +120,68 @@ impl PgStore {
             }
             // Only the reserved refresh pool waits on the provider. The claim
             // transaction commits BEFORE remote work, never after it.
-            let (tokens, claim, tx) = observe_auth_store(self.observer.clone(), AuthPhase::Claim, async {
-            let mut tx = self.begin_tx(self.refresh_pool()?).await?;
-            let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,901324))")
-                .bind(digest).fetch_one(&mut *tx).await.map_err(db_error)?;
-            if !acquired {
-                return Err(StoreError::Unavailable);
-            }
-            let tokens = read_tokens(&mut *tx, digest, issuer, client).await?;
-            if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
-                tx.commit().await.map_err(db_error)?;
-                return Ok((tokens, None, None));
-            }
-            let claim = if activity { None } else { Some(uuid::Uuid::new_v4().to_string()) };
-            if let Some(claim) = &claim {
+            let mut claim_timer = Some(AuthTimer::new(self.observer.clone(), AuthPhase::Claim));
+            let result = async {
+                // Both transactions borrow one reserved slot. A queued peer
+                // cannot consume it between the durable claim and remote work.
+                let mut connection = self.acquire_pool(self.refresh_pool()?).await?;
+                let mut tx = begin_refresh_transaction(&mut connection).await?;
+                let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,901324))")
+                    .bind(digest).fetch_one(&mut *tx).await.map_err(db_error)?;
+                if !acquired { return Err(StoreError::Unavailable); }
+                let tokens = read_tokens(&mut *tx, digest, issuer, client).await?;
+                if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
+                    tx.commit().await.map_err(db_error)?;
+                    return Ok(tokens.identity);
+                }
+                if activity {
+                    if let Some(mut timer) = claim_timer.take() { timer.finish(AuthOutcome::Success); }
+                    return self.finish_oidc_refresh(digest, tx, None, refresh(tokens)).await;
+                }
+                let claim = uuid::Uuid::new_v4().to_string();
                 // Remove the capability, not just an advisory flag: even an old
                 // binary cannot replay this refresh token after a rollback.
                 let claimed = sqlx::query("UPDATE oidc_session o SET payload=(o.payload - 'refresh_token') || jsonb_build_object('validated_at',0,'rotation_claim_id',$2::text,'rotation_deadline_ms',floor(extract(epoch FROM clock_timestamp())*1000)::bigint+$3) FROM sessions s WHERE o.digest=$1 AND s.digest=o.digest AND s.expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
-                    .bind(digest).bind(claim).bind(REVALIDATION_BUDGET.as_millis() as i64)
+                    .bind(digest).bind(&claim).bind(REVALIDATION_BUDGET.as_millis() as i64)
                     .execute(&mut *tx).await.map_err(db_error)?;
                 if claimed.rows_affected() != 1 { return Err(StoreError::Conflict); }
                 tx.commit().await.map_err(db_error)?;
-                // Retain refresh-pool capacity during the provider call. There
-                // are no token-row locks, so logout can still complete promptly.
-                tx = self.begin_tx(self.refresh_pool()?).await?;
-            }
-            Ok((tokens, claim, Some(tx)))
-            }).await?;
-            let Some(mut tx) = tx else { return Ok(tokens.identity); };
-            let remote = observe_auth_store(self.observer.clone(), AuthPhase::Provider, async {
-                tokio::time::timeout(PROVIDER_BUDGET, refresh(tokens)).await
-                    .map_err(|_| StoreError::Unavailable)?
-                    .map_err(revalidation_error)
-            }).await;
-            let (fresh, renewed_until) = match remote {
-                Ok(fresh) => fresh,
-                // Rotation might have committed. A new sign-in is conclusive;
-                // restoring or retrying the consumed capability is never safe.
-                Err(_) if claim.is_some() => return Err(StoreError::Conflict),
-                Err(error) => return Err(error),
-            };
-            observe_auth_store(self.observer.clone(), AuthPhase::Persist, async {
+                // Committing a borrowed transaction retains the checked-out
+                // connection. No token-row lock survives to delay logout.
+                let tx = begin_refresh_transaction(&mut connection).await?;
+                if let Some(mut timer) = claim_timer.take() { timer.finish(AuthOutcome::Success); }
+                self.finish_oidc_refresh(digest, tx, Some(claim), refresh(tokens)).await
+            }.await;
+            if let Some(mut timer) = claim_timer { timer.finish(AuthOutcome::from_store(&result)); }
+            result
+        }).await.map_err(|_| StoreError::Unavailable)?
+    }
+
+    async fn finish_oidc_refresh<Fut>(
+        &self,
+        digest: &str,
+        mut tx: sqlx::Transaction<'_, sqlx::Postgres>,
+        claim: Option<String>,
+        refresh: Fut,
+    ) -> Result<Identity, StoreError>
+    where
+        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+    {
+        let remote = observe_auth_store(self.observer.clone(), AuthPhase::Provider, async {
+            tokio::time::timeout(PROVIDER_BUDGET, refresh)
+                .await
+                .map_err(|_| StoreError::Unavailable)?
+                .map_err(revalidation_error)
+        })
+        .await;
+        let (fresh, renewed_until) = match remote {
+            Ok(fresh) => fresh,
+            // Rotation might have committed. A new sign-in is conclusive;
+            // restoring or retrying the consumed capability is never safe.
+            Err(_) if claim.is_some() => return Err(StoreError::Conflict),
+            Err(error) => return Err(error),
+        };
+        observe_auth_store(self.observer.clone(), AuthPhase::Persist, async {
                 if let Some(expires) = renewed_until {
                     sqlx::query("UPDATE sessions SET expires_at=$2 WHERE digest=$1 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
                         .bind(digest).bind(expires * 1000).execute(&mut *tx).await.map_err(db_error)?;
@@ -175,7 +196,6 @@ impl PgStore {
                 tx.commit().await.map_err(db_error)?;
                 Ok(fresh.identity)
             }).await
-        }).await.map_err(|_| StoreError::Unavailable)?
     }
 
     pub(crate) async fn oidc_renew(
@@ -306,6 +326,12 @@ impl PgStore {
             .await
     }
 
+    /// Controlled pool queue boundary for deterministic reservation tests.
+    #[cfg(feature = "test-support")]
+    pub fn oidc_refresh_pool_for_test(&self) -> Result<sqlx::PgPool, StoreError> {
+        Ok(self.refresh_pool()?.clone())
+    }
+
     /// Controlled remote boundary for deterministic storage/concurrency tests.
     #[cfg(feature = "test-support")]
     pub async fn revalidate_oidc_for_test<F, Fut>(
@@ -338,6 +364,18 @@ impl PgStore {
         tx.commit().await.map_err(db_error)?;
         Ok(())
     }
+}
+
+// Borrow the already reserved connection so a durable claim commit cannot put
+// its owner behind queued refresh work. Preserve the ordinary world-edit gate.
+async fn begin_refresh_transaction(
+    connection: &mut sqlx::PgConnection,
+) -> Result<sqlx::Transaction<'_, sqlx::Postgres>, StoreError> {
+    let mut tx = sqlx::Connection::begin(connection)
+        .await
+        .map_err(db_error)?;
+    crate::pools::world_edit_gate(&mut tx, false).await?;
+    Ok(tx)
 }
 
 fn revalidation_error(error: unbought_auth::Error) -> StoreError {
