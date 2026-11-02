@@ -392,7 +392,8 @@ for (const width of [1440, 390])
   }) => {
     await page.setViewportSize({ width, height: 900 })
     const { commands } = await setup(page)
-    const expectLayoutAndCapture = async (name: string) => {
+    const capture = async (name: string) => {
+      // Layout coverage stays active even when evidence preparation is disabled.
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -414,7 +415,7 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole('region', { name: 'Fleet movements' }),
     ).toContainText('Missile attack')
-    await expectLayoutAndCapture('empire-warning')
+    await capture('empire-warning')
     await page.goto(`/u/andromeda/b/${body.id}/defense`)
     await expect(
       page.getByRole('region', { name: 'Missile silo capacity' }),
@@ -422,7 +423,7 @@ for (const width of [1440, 390])
     await expect(
       page.getByText('Interplanetary Missile', { exact: true }).first(),
     ).toBeVisible()
-    await expectLayoutAndCapture('defense-catalog')
+    await capture('defense-catalog')
     for (const slug of ['anti-ballistic-missile', 'interplanetary-missile']) {
       await page.goto(`/u/andromeda/b/${body.id}/defense/${slug}`)
       const pane = page.getByRole('region', { name: 'Progression quote' })
@@ -436,7 +437,7 @@ for (const width of [1440, 390])
       await expect(
         pane.getByRole('button', { name: 'Build', exact: true }),
       ).toBeEnabled()
-      await expectLayoutAndCapture(slug)
+      await capture(slug)
       if (slug === 'interplanetary-missile') {
         await page.getByLabel('Defenses quantity').fill('20')
         await expect(
@@ -468,7 +469,7 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole('region', { name: 'Missile silo capacity' }),
     ).toBeVisible()
-    await expectLayoutAndCapture('silo-details')
+    await capture('silo-details')
     await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
     const actions = page.getByRole('button', {
       name: 'Actions for [1:371:3]', exact: true,
@@ -509,7 +510,7 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole('button', { name: 'Launch missiles — no recall' }),
     ).toBeEnabled()
-    await expectLayoutAndCapture('launch-review')
+    await capture('launch-review')
     await page
       .getByRole('button', { name: 'Launch missiles — no recall' })
       .click()
@@ -579,7 +580,7 @@ for (const width of [1440, 390])
     await expect(
       page.locator('main').getByRole('button', { name: 'Fleet slots: 1 used / 1 total', exact: true }),
     ).toBeVisible()
-    await expectLayoutAndCapture('incoming-missiles')
+    await capture('incoming-missiles')
     const outgoing = page.getByRole('article', {
       name: 'Outgoing missile attack',
     })
@@ -596,10 +597,10 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole('region', { name: 'Incoming fleets' }),
     ).toHaveCount(0)
-    await expectLayoutAndCapture('missile-mission-details')
+    await capture('missile-mission-details')
     await page.goto(`/u/andromeda/b/${body.id}/reports`)
     await expect(page.getByText('6 intercepted · 2 penetrated')).toBeVisible()
-    await expectLayoutAndCapture('report-list')
+    await capture('report-list')
     await page.goto(`/u/andromeda/b/${body.id}/reports/${id(70)}`)
     await expect(
       page.getByRole('region', { name: 'Missile impact report' }),
@@ -607,7 +608,7 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole('region', { name: 'Missile impact report' }),
     ).toContainText('Your interceptors remaining')
-    await expectLayoutAndCapture('impact-report')
+    await capture('impact-report')
   })
 
 test('missile action columns preserve exact row edges across tablet breakpoints', async ({
