@@ -45,14 +45,23 @@ pub struct ServerGuard {
 impl ServerGuard {
     /// A failed retained session means reset protection is lost: the process must stop.
     pub async fn check(&mut self) -> Result<(), StoreError> {
-        tokio::time::timeout(
+        let held: bool = tokio::time::timeout(
             Duration::from_secs(1),
-            sqlx::query("SELECT 1").execute(&mut *self.connection),
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype='advisory' AND pid=pg_backend_pid() AND database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND classid=0 AND objid=901321 AND objsubid=1 AND mode='ShareLock' AND granted)")
+                .fetch_one(&mut *self.connection),
         )
         .await
         .map_err(|_| StoreError::Unavailable)?
         .map_err(db_error)?;
+        if !held {
+            return Err(StoreError::Unavailable);
+        }
         Ok(())
+    }
+    /// Fault injection is available only in disposable test builds.
+    #[cfg(feature = "test-support")]
+    pub fn test_connection(&mut self) -> &mut sqlx::PgConnection {
+        &mut self.connection
     }
     pub async fn monitor(&mut self) -> Result<(), StoreError> {
         loop {

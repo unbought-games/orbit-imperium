@@ -224,13 +224,16 @@ async fn supervise(
     grace: Duration,
 ) -> ServeResult {
     tokio::pin!(guard);
-    tokio::select! {
-        _=shutdown=>{},
-        result=http_result(&mut server)=>{server=None; result??;},
-        result=worker_result(&mut scheduler)=>{result?.map_err(|e| format!("scheduler stopped: {e}"))?; return Err("scheduler stopped unexpectedly".into());},
-        result=&mut guard=>{result.map_err(|e| format!("operator guard check failed: {e}"))?;return Err("operator guard monitor stopped unexpectedly".into());},
-    }
+    let stopped: ServeResult = tokio::select! {
+        _=shutdown=>Ok(()),
+        result=http_result(&mut server)=>{server=None; result.map_err(Into::into).and_then(|r| r.map_err(Into::into))},
+        result=worker_result(&mut scheduler)=>Err(format!("scheduler stopped: {result:?}").into()),
+        result=&mut guard=>Err(format!("operator guard stopped: {result:?}").into()),
+    };
+    // Publish unready before cancelling tasks, including on guard loss. Never
+    // gracefully continue uncertain writers after a retained fence fails.
     drain.send_replace(true);
+    stopped?;
     let finish = async {
         if server.is_some() {
             http_result(&mut server).await??;
@@ -282,7 +285,7 @@ mod tests {
             let http = HttpTask(tokio::spawn(std::future::pending()));
             let handle = http.0.abort_handle();
             let worker = combined.then(|| Scheduler(tokio::spawn(std::future::pending())));
-            let (drain, _) = watch::channel(false);
+            let (drain, readiness) = watch::channel(false);
             assert!(
                 supervise(
                     Some(http),
@@ -295,6 +298,7 @@ mod tests {
                 .await
                 .is_err()
             );
+            assert!(*readiness.borrow(), "fence failure must publish unready");
             tokio::task::yield_now().await;
             assert!(handle.is_finished());
         }

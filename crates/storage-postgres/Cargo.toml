@@ -145,3 +145,7 @@ required-features = ["test-support"]
 [[test]]
 name = "public_universe"
 required-features = ["test-support"]
+
+[[test]]
+name = "server_guard"
+required-features = ["test-support"]
