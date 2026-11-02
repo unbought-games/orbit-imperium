@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/test'
 import { body, binding, id, shellFixture } from './fixtures/game'
+import { withGalaxyResponse } from './fixtures/galaxy'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
 
@@ -76,7 +77,9 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('article', { name: 'Terra [1:371:12] dossier' })).toBeVisible()
     await page.getByRole('article', { name: 'Terra [1:371:12] dossier' }).scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/abandon-removed-${width}x900.png` })
-    await page.goto(`/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=371&position=8`)
+    await withGalaxyResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=371&position=8`),
+    )
     await expect(page.getByText('Abandoned planet', { exact: true })).toBeVisible()
     const abandoned = page.getByText('Abandoned planet', { exact: true }).locator('xpath=ancestor::article')
     await expect(abandoned).not.toContainText('Available')
