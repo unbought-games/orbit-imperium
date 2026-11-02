@@ -79,17 +79,18 @@ impl PgStore {
                 .fetch_one(&mut *tx)
                 .await
                 .map_err(db_error)?;
-        let authorize =
-            |symbol: &str| match insignia_access(catalog, symbol, policy, &grants, evidence, now) {
-                InsigniaAccess::Available => Ok(()),
-                InsigniaAccess::SupporterRequired => Err(ServiceError::Forbidden),
-                InsigniaAccess::Unavailable => Err(ServiceError::Unavailable),
-                InsigniaAccess::NotInstalled => Err(ServiceError::NotFound),
-            };
+        let authorize = |recipe: &InsigniaRecipe| match recipe_access(
+            catalog, recipe, policy, &grants, evidence, now,
+        ) {
+            InsigniaAccess::Available => Ok(()),
+            InsigniaAccess::SupporterRequired => Err(ServiceError::Forbidden),
+            InsigniaAccess::Unavailable => Err(ServiceError::Unavailable),
+            InsigniaAccess::NotInstalled => Err(ServiceError::NotFound),
+        };
         let equip = match action {
             InsigniaAction::Load => None,
             InsigniaAction::Save { design, equip } => {
-                authorize(&design.recipe.symbol)?;
+                authorize(&design.recipe)?;
                 if design.revision == 0 {
                     let count: i64 = sqlx::query_scalar(
                         "SELECT count(*) FROM insignia_designs WHERE account=$1",
@@ -123,7 +124,7 @@ impl PgStore {
                     .await
                     .map_err(db_error)?
                     .ok_or(StoreError::NotFound)?;
-                    authorize(&recipe.symbol)?;
+                    authorize(&recipe)?;
                 }
                 Some(design_id)
             }

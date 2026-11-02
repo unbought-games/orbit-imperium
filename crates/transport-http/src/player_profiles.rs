@@ -280,7 +280,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
     };
     let include_insignia = h
         .get("x-orbit-insignia")
-        .is_some_and(|value| value == "1" || value == "2");
+        .is_some_and(|value| value == "1" || value == "2" || value == "3" || value == "4");
     let equipped = if include_insignia && s.customization.is_some() {
         s.updates
             .equipped_insignias(universe, players.iter().map(|p| p.player).collect())
@@ -304,15 +304,10 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
                 )
             });
             player.insignia = recipe.map(|r| {
-                c.appearance(
-                    if h.get("x-orbit-insignia").is_some_and(|v| v == "1")
-                        && !legacy_insignia_id(&r.symbol)
-                    {
-                        InsigniaRecipe::default()
-                    } else {
-                        r
-                    },
-                )
+                c.appearance(crate::insignias::profile_recipe(
+                    r,
+                    h.get("x-orbit-insignia").and_then(|v| v.to_str().ok()),
+                ))
             });
         }
         player.alliance = alliances.remove(&player.player);

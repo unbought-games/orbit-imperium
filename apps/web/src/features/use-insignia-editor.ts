@@ -6,6 +6,7 @@ import {
   selectedInsigniaDesign,
   symbolAccess,
 } from '../client-model/insignias'
+import { recipeAccess, layeredRecipe } from '../client-model/insignia-composer'
 import type { InsigniaDesign } from '../adapters/insignias'
 
 export function useInsigniaEditor() {
@@ -26,14 +27,16 @@ export function useInsigniaEditor() {
     ![...design.name].some(
       (c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127,
     ) &&
-    access(design.recipe.symbol) === 'available'
+    !!snapshot &&
+    recipeAccess(snapshot, design.recipe, state.now) === 'available'
   return {
     ...state,
     snapshot,
     currentAppearance:
       snapshot?.library.equipped &&
       snapshot.appearance &&
-      (access(snapshot.appearance.recipe.symbol) === 'available'
+      (recipeAccess(snapshot, snapshot.appearance.recipe, state.now) ===
+      'available'
         ? snapshot.appearance
         : {
             recipe: defaultInsignia,
@@ -44,6 +47,10 @@ export function useInsigniaEditor() {
     design,
     draft,
     access,
+    recipeAccess: () =>
+      snapshot && design
+        ? recipeAccess(snapshot, design.recipe, state.now)
+        : 'unavailable',
     canSave: !!draft && valid && !state.busy,
     select: (id: string) => {
       setSelectedId(id)
@@ -54,7 +61,9 @@ export function useInsigniaEditor() {
       setDraft({
         id: crypto.randomUUID(),
         name: 'My insignia',
-        recipe: { ...defaultInsignia },
+        recipe: snapshot?.catalog.some((e) => e.group === 'center')
+          ? layeredRecipe(defaultInsignia)
+          : { ...defaultInsignia },
         revision: 0,
       })
     },

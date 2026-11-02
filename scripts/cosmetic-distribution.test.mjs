@@ -5,7 +5,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
 test('community source contains only the approved bundled insignias and no legacy hosted original', () => {
-  assert.deepEqual(readdirSync('crates/application/assets/insignias').filter(name => name.endsWith('.svg')).sort(), ['compass.svg', 'spire.svg', 'wings.svg'])
+  assert.deepEqual(readdirSync('crates/application/assets/insignias').filter(name => name.endsWith('.svg')).sort(), ['compass.svg', 'forge-anvil.svg', 'forge-ascendant.svg', 'forge-crown.svg', 'forge-diagonal-circles.svg', 'forge-diagonal-stars.svg', 'forge-diamonds.svg', 'forge-full-circle.svg', 'forge-helix.svg', 'forge-mini-stripes.svg', 'forge-moons.svg', 'forge-quarter-moon.svg', 'forge-starwing.svg', 'forge-triads.svg', 'forge-triforce.svg', 'forge-wayfinder.svg', 'forge-zigzags.svg', 'spire.svg', 'wings.svg'])
+  for (const restricted of ['forge-nova.svg','forge-nine-star.svg','forge-laurel.svg','forge-dashed-ring.svg','forge-rails.svg']) assert.equal(existsSync(`crates/application/assets/insignias/${restricted}`),false)
   // Fingerprint only: the previously public original must not be reintroduced
   // under a different filename. Actual hosted artwork stays out of test fixtures.
   const legacyHostedHash = 'd24d05c01821b0ddab6e33bda58c6bc3f065b038c4afac0ae80cb93a5b63cedd'

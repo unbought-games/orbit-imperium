@@ -186,3 +186,43 @@ configuration. Publication does not restart or release Orbit. Publish verified
 content before activating its pin in a controlled application release. An old
 binary ignores the new setting and can be used for application rollback without
 deleting assets or changing database selections.
+
+## Layered insignias
+
+The editor supports recipe version 2 alongside unchanged version-1 designs.
+A layered design contains `layers: [{symbol, color}]` and the existing
+`foreground` / `background` colors. The legacy `symbol` remains `compass` for
+fallback. Layer geometry comes only from the installed catalog, never from player
+SVG input. Rendering order is stripes, center, accents, regardless of click order.
+The server permits one center, one accent and two distinct stripes. Free accounts
+use one shared element color and no stripes. Fresh supporter evidence (or an
+unrestricted self-hosted policy) enables stripes and up to three group colors.
+Permanent symbol grants unlock those symbols, not membership-only composition
+features. Expiry and removed catalogs preserve saved recipes and derive the
+normal free fallback.
+
+New catalog entries add `group: "center" | "stripes" | "accents"`; omitted group
+means `legacy`, preserving old installed catalogs. Community distribution includes
+16 independently authored free elements as well as the three legacy originals.
+Additional supporter elements and stripes are installed separately using the same
+immutable manifest/object flow above. Existing manifests remain valid. No database
+migration is needed; recipes are already stored as JSONB. Do not delete old assets.
+
+Deploy the API and new frontend together using the compatibility headers below.
+
+### Layered recipes and background shapes
+
+Version-2 recipes compose installed stripes, a center and an accent. Basic
+backgrounds (shield, circle, rounded square, diamond and hexagon) are free for
+every player. The optional `shape` field stores the authored choice; recipes
+without it retain the original shield. Version-1 recipes remain unchanged.
+Shapes do not grant access to restricted elements, stripe slots or group colors.
+Empty element groups have no color to edit; selecting an element enables the
+color control. Replacing an element retains that group's color, including both
+stripe slots. Removing the last element removes its color along with it.
+
+Current editors send `X-Orbit-Catalog: 3`. Earlier editors receive 409 rather
+than loading a library they cannot faithfully edit. Profile clients send
+`X-Orbit-Insignia: 4` to receive shapes; version 3 still receives unshaped layered
+recipes, and earlier clients receive compatible free fallbacks. Saved recipes
+and grants remain unchanged by fallback projection.

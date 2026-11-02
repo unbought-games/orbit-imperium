@@ -16,6 +16,7 @@ fn catalog() -> InsigniaCatalog {
     InsigniaCatalog::with_manifest(InsigniaManifest {
         version: 1,
         insignias: vec![InsigniaSymbol {
+            group: InsigniaGroup::Legacy,
             id: "test-star".into(),
             name: "Test star".into(),
             supporter: true,
@@ -39,9 +40,9 @@ async fn call(
         .header("origin", "https://game.test")
         .header("cookie", format!("orbit_session={}", login.token))
         .header("content-type", "application/json")
-        .header("x-orbit-catalog", "1");
+        .header("x-orbit-catalog", "3");
     if endpoint == "player-profiles" {
-        request = request.header("x-orbit-insignia", "2");
+        request = request.header("x-orbit-insignia", "4");
     }
     if csrf {
         request = request.header("x-csrf-token", &login.session.csrf);
@@ -157,7 +158,10 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
     );
     let (status, initial) = call(&app, b, &login, true, "insignias", load).await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(initial["catalog"].as_array().unwrap().len(), 4);
+    assert_eq!(
+        initial["catalog"].as_array().unwrap().len(),
+        FREE_INSIGNIAS.len() + 1
+    );
     assert!(initial["appearance"].is_null());
     let (_, unequipped) = call(
         &app,
@@ -199,7 +203,9 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
             .to_bytes()
             .starts_with(b"<svg")
     );
-    let hosted_asset = initial["catalog"][3]["asset_url"].as_str().unwrap();
+    let hosted_asset = initial["catalog"][FREE_INSIGNIAS.len()]["asset_url"]
+        .as_str()
+        .unwrap();
     let anonymous = app
         .clone()
         .oneshot(Request::get(hosted_asset).body(Body::empty()).unwrap())
@@ -554,7 +560,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         )
         .await
         .1;
-        assert_eq!(loaded["catalog"][3]["access"], expected);
+        assert_eq!(loaded["catalog"][FREE_INSIGNIAS.len()]["access"], expected);
         assert_eq!(
             loaded["library"]["designs"][0]["recipe"]["symbol"],
             "test-star"
@@ -589,7 +595,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
             json!({"action":{"type":"Load"}})
         )
         .await
-        .1["catalog"][3]["access"],
+        .1["catalog"][FREE_INSIGNIAS.len()]["access"],
         "available"
     );
     assert_eq!(
@@ -707,7 +713,10 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         json!({"action":{"type":"Load"}}),
     )
     .await;
-    assert_eq!(loaded["catalog"].as_array().unwrap().len(), 3);
+    assert_eq!(
+        loaded["catalog"].as_array().unwrap().len(),
+        FREE_INSIGNIAS.len()
+    );
     assert_eq!(
         loaded["library"]["designs"][0]["recipe"]["symbol"],
         "test-star"
@@ -775,6 +784,75 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         serde_json::to_value(after).unwrap(),
         "cosmetics never change simulation state"
     );
+    for shape in [
+        None,
+        Some(InsigniaShape::Shield),
+        Some(InsigniaShape::Circle),
+        Some(InsigniaShape::RoundedSquare),
+        Some(InsigniaShape::Diamond),
+        Some(InsigniaShape::Hexagon),
+    ] {
+        let shaped = InsigniaDesign {
+            id: Uuid::new_v4(),
+            name: "Layered shape".into(),
+            revision: 0,
+            recipe: InsigniaRecipe {
+                version: 2,
+                shape,
+                layers: Some(vec![InsigniaLayer {
+                    symbol: "forge-wayfinder".into(),
+                    color: "#cbb68d".into(),
+                }]),
+                ..Default::default()
+            },
+        };
+        let (status, saved) = call(
+            &missing,
+            b,
+            &login,
+            true,
+            "insignias",
+            json!({"action":{"type":"Save","design":shaped,"equip":true}}),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            saved["appearance"]["recipe"],
+            serde_json::to_value(&shaped.recipe).unwrap()
+        );
+        let reconnected = PgStore::connect(&url).await.unwrap();
+        assert_eq!(
+            reconnected.insignia_library(b).await.unwrap().designs[0].recipe,
+            shaped.recipe
+        );
+        let (status, profile) = call(
+            &missing,
+            b,
+            &login,
+            true,
+            "player-profiles",
+            json!({"source":{"type":"SelfAccount"}}),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            profile["players"][0]["insignia"]["recipe"],
+            serde_json::to_value(&shaped.recipe).unwrap()
+        );
+        assert_eq!(
+            call(
+                &missing,
+                b,
+                &login,
+                true,
+                "insignias",
+                json!({"action":{"type":"Delete","design_id":shaped.id}})
+            )
+            .await
+            .0,
+            StatusCode::OK
+        );
+    }
     sqlx::query("INSERT INTO insignia_designs(account,id,name,recipe,revision) SELECT $1,md5('insignia-limit-'||i)::uuid,'Limit '||i,$2,1 FROM generate_series(1,32) i")
         .bind(b.account.0).bind(sqlx::types::Json(InsigniaRecipe::default())).execute(&pool).await.unwrap();
     let extra = InsigniaDesign {

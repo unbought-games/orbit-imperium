@@ -28,6 +28,10 @@ pub enum CosmeticPolicy {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InsigniaRecipe {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<InsigniaShape>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layers: Option<Vec<InsigniaLayer>>,
     pub version: u8,
     pub symbol: String,
     pub foreground: String,
@@ -36,6 +40,8 @@ pub struct InsigniaRecipe {
 impl Default for InsigniaRecipe {
     fn default() -> Self {
         Self {
+            shape: None,
+            layers: None,
             version: 1,
             symbol: "compass".into(),
             foreground: "#cbb68d".into(),
@@ -43,6 +49,33 @@ impl Default for InsigniaRecipe {
         }
     }
 }
+/// Basic backgrounds are free recipe choices, independent of catalog entitlements.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InsigniaShape {
+    Shield,
+    Circle,
+    RoundedSquare,
+    Diamond,
+    Hexagon,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InsigniaLayer {
+    pub symbol: String,
+    pub color: String,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InsigniaGroup {
+    #[default]
+    Legacy,
+    Center,
+    Stripes,
+    Accents,
+}
+
 /// Only freely distributed originals belong in the public binary.
 pub const FREE_INSIGNIAS: &[(&str, &str, &[u8])] = &[
     (
@@ -60,11 +93,93 @@ pub const FREE_INSIGNIAS: &[(&str, &str, &[u8])] = &[
         "Ascendant",
         include_bytes!("../assets/insignias/spire.svg"),
     ),
+    (
+        "forge-wayfinder",
+        "Wayfinder",
+        include_bytes!("../assets/insignias/forge-wayfinder.svg"),
+    ),
+    (
+        "forge-starwing",
+        "Starwing",
+        include_bytes!("../assets/insignias/forge-starwing.svg"),
+    ),
+    (
+        "forge-ascendant",
+        "Ascendant",
+        include_bytes!("../assets/insignias/forge-ascendant.svg"),
+    ),
+    (
+        "forge-anvil",
+        "Anvil",
+        include_bytes!("../assets/insignias/forge-anvil.svg"),
+    ),
+    (
+        "forge-helix",
+        "Ringed planet",
+        include_bytes!("../assets/insignias/forge-helix.svg"),
+    ),
+    (
+        "forge-quarter-moon",
+        "Quarter moon",
+        include_bytes!("../assets/insignias/forge-quarter-moon.svg"),
+    ),
+    (
+        "forge-full-circle",
+        "Full circle",
+        include_bytes!("../assets/insignias/forge-full-circle.svg"),
+    ),
+    (
+        "forge-triforce",
+        "Triforce",
+        include_bytes!("../assets/insignias/forge-triforce.svg"),
+    ),
+    (
+        "forge-triads",
+        "Corner sparks",
+        include_bytes!("../assets/insignias/forge-triads.svg"),
+    ),
+    (
+        "forge-crown",
+        "Crown",
+        include_bytes!("../assets/insignias/forge-crown.svg"),
+    ),
+    (
+        "forge-moons",
+        "Twin moons",
+        include_bytes!("../assets/insignias/forge-moons.svg"),
+    ),
+    (
+        "forge-diamonds",
+        "Diamonds",
+        include_bytes!("../assets/insignias/forge-diamonds.svg"),
+    ),
+    (
+        "forge-diagonal-stars",
+        "Diagonal stars",
+        include_bytes!("../assets/insignias/forge-diagonal-stars.svg"),
+    ),
+    (
+        "forge-diagonal-circles",
+        "Diagonal circles",
+        include_bytes!("../assets/insignias/forge-diagonal-circles.svg"),
+    ),
+    (
+        "forge-zigzags",
+        "Twin zigzags",
+        include_bytes!("../assets/insignias/forge-zigzags.svg"),
+    ),
+    (
+        "forge-mini-stripes",
+        "Mini stripes",
+        include_bytes!("../assets/insignias/forge-mini-stripes.svg"),
+    ),
 ];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InsigniaSymbol {
+    #[serde(default)]
+    pub group: InsigniaGroup,
     pub id: String,
     pub name: String,
     pub supporter: bool,
@@ -98,6 +213,7 @@ impl Default for InsigniaCatalog {
             symbols: FREE_INSIGNIAS
                 .iter()
                 .map(|(id, name, bytes)| InsigniaSymbol {
+                    group: bundled_group(id),
                     id: (*id).into(),
                     name: (*name).into(),
                     supporter: false,
@@ -107,6 +223,28 @@ impl Default for InsigniaCatalog {
         }
     }
 }
+fn bundled_group(id: &str) -> InsigniaGroup {
+    match id {
+        "forge-wayfinder" => InsigniaGroup::Center,
+        "forge-starwing" => InsigniaGroup::Center,
+        "forge-ascendant" => InsigniaGroup::Center,
+        "forge-anvil" => InsigniaGroup::Center,
+        "forge-helix" => InsigniaGroup::Center,
+        "forge-quarter-moon" => InsigniaGroup::Center,
+        "forge-full-circle" => InsigniaGroup::Center,
+        "forge-triforce" => InsigniaGroup::Center,
+        "forge-triads" => InsigniaGroup::Accents,
+        "forge-crown" => InsigniaGroup::Accents,
+        "forge-moons" => InsigniaGroup::Accents,
+        "forge-diamonds" => InsigniaGroup::Accents,
+        "forge-diagonal-stars" => InsigniaGroup::Accents,
+        "forge-diagonal-circles" => InsigniaGroup::Accents,
+        "forge-zigzags" => InsigniaGroup::Accents,
+        "forge-mini-stripes" => InsigniaGroup::Accents,
+        _ => InsigniaGroup::Legacy,
+    }
+}
+
 impl InsigniaCatalog {
     pub fn symbols(&self) -> &[InsigniaSymbol] {
         &self.symbols
@@ -157,10 +295,22 @@ pub fn valid_insignia(recipe: &InsigniaRecipe) -> bool {
     fn color(s: &str) -> bool {
         s.len() == 7 && s.starts_with('#') && s.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
     }
-    recipe.version == 1
-        && valid_symbol_id(&recipe.symbol)
+    valid_symbol_id(&recipe.symbol)
         && color(&recipe.foreground)
         && color(&recipe.background)
+        && match (&recipe.layers, recipe.version) {
+            (None, 1) => recipe.shape.is_none(),
+            (Some(layers), 2) => {
+                recipe.symbol == "compass"
+                    && layers.len() <= 4
+                    && layers.iter().enumerate().all(|(i, l)| {
+                        valid_symbol_id(&l.symbol)
+                            && color(&l.color)
+                            && !layers[..i].iter().any(|p| p.symbol == l.symbol)
+                    })
+            }
+            _ => false,
+        }
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -216,6 +366,22 @@ pub enum InsigniaAccess {
     Unavailable,
     NotInstalled,
 }
+pub fn composition_access(
+    policy: CosmeticPolicy,
+    evidence: SupporterEvidence,
+    now: i64,
+) -> InsigniaAccess {
+    if policy == CosmeticPolicy::Unrestricted {
+        InsigniaAccess::Available
+    } else if !evidence.known || evidence.expires_at <= now {
+        InsigniaAccess::Unavailable
+    } else if evidence.active {
+        InsigniaAccess::Available
+    } else {
+        InsigniaAccess::SupporterRequired
+    }
+}
+
 pub fn insignia_access(
     catalog: &InsigniaCatalog,
     symbol: &str,
@@ -242,6 +408,57 @@ pub fn insignia_access(
         InsigniaAccess::SupporterRequired
     }
 }
+/// Membership and color/slot checks are enforced on save, equip and profile reads.
+pub fn recipe_access(
+    catalog: &InsigniaCatalog,
+    recipe: &InsigniaRecipe,
+    policy: CosmeticPolicy,
+    grants: &[String],
+    evidence: SupporterEvidence,
+    now: i64,
+) -> InsigniaAccess {
+    if !valid_insignia(recipe) {
+        return InsigniaAccess::NotInstalled;
+    }
+    let Some(layers) = &recipe.layers else {
+        return insignia_access(catalog, &recipe.symbol, policy, grants, evidence, now);
+    };
+    let mut counts = [0; 3];
+    for layer in layers {
+        let Some(item) = catalog.get(&layer.symbol) else {
+            return InsigniaAccess::NotInstalled;
+        };
+        let group = match item.group {
+            InsigniaGroup::Center => 0,
+            InsigniaGroup::Stripes => 1,
+            InsigniaGroup::Accents => 2,
+            InsigniaGroup::Legacy => return InsigniaAccess::NotInstalled,
+        };
+        counts[group] += 1;
+        if counts[group] > if group == 1 { 2 } else { 1 } {
+            return InsigniaAccess::NotInstalled;
+        }
+        let access = insignia_access(catalog, &layer.symbol, policy, grants, evidence, now);
+        if access != InsigniaAccess::Available {
+            return access;
+        }
+    }
+    // Each group has one color, including both stripe slots.
+    for (i, l) in layers.iter().enumerate() {
+        for r in &layers[..i] {
+            if catalog.get(&l.symbol).unwrap().group == catalog.get(&r.symbol).unwrap().group
+                && l.color != r.color
+            {
+                return InsigniaAccess::NotInstalled;
+            }
+        }
+    }
+    let advanced = counts[1] > 0 || layers.iter().any(|l| l.color != recipe.foreground);
+    if advanced {
+        return composition_access(policy, evidence, now);
+    }
+    InsigniaAccess::Available
+}
 pub fn effective_insignia(
     catalog: &InsigniaCatalog,
     recipe: &InsigniaRecipe,
@@ -251,7 +468,7 @@ pub fn effective_insignia(
     now: i64,
 ) -> InsigniaRecipe {
     if valid_insignia(recipe)
-        && insignia_access(catalog, &recipe.symbol, policy, grants, evidence, now)
+        && recipe_access(catalog, recipe, policy, grants, evidence, now)
             == InsigniaAccess::Available
     {
         recipe.clone()
@@ -273,6 +490,7 @@ mod tests {
         InsigniaCatalog::with_manifest(InsigniaManifest {
             version: 1,
             insignias: vec![InsigniaSymbol {
+                group: InsigniaGroup::Legacy,
                 id: "test-star".into(),
                 name: "Test star".into(),
                 supporter: true,
@@ -284,7 +502,7 @@ mod tests {
     #[test]
     fn missing_content_is_not_granted_by_policy_membership_or_permanent_ownership() {
         let c = InsigniaCatalog::default();
-        assert_eq!(c.symbols().len(), 3);
+        assert_eq!(c.symbols().len(), FREE_INSIGNIAS.len());
         assert!(c.symbols().iter().all(|s| !s.supporter));
         let recipe = InsigniaRecipe {
             symbol: "test-star".into(),
@@ -330,6 +548,7 @@ mod tests {
     fn manifests_reject_unknown_versions_duplicates_invalid_ids_and_hashes() {
         for id in ["compass", "../escape", "", "UPPER"] {
             let item = InsigniaSymbol {
+                group: InsigniaGroup::Legacy,
                 id: id.into(),
                 name: "Example".into(),
                 supporter: true,
@@ -500,5 +719,165 @@ mod tests {
             version: 2,
             ..Default::default()
         }));
+    }
+    #[test]
+    fn layered_recipes_enforce_group_limits_membership_and_preserve_missing_choices() {
+        let c = InsigniaCatalog::default();
+        let layer = |symbol: &str, color: &str| InsigniaLayer {
+            symbol: symbol.into(),
+            color: color.into(),
+        };
+        let mut r = InsigniaRecipe {
+            version: 2,
+            layers: Some(vec![
+                layer("forge-wayfinder", "#cbb68d"),
+                layer("forge-crown", "#cbb68d"),
+            ]),
+            ..Default::default()
+        };
+        let free = SupporterEvidence {
+            known: true,
+            active: false,
+            expires_at: 100,
+        };
+        let active = SupporterEvidence {
+            active: true,
+            ..free
+        };
+        let access =
+            |r: &InsigniaRecipe, e| recipe_access(&c, r, CosmeticPolicy::Supporter, &[], e, 1);
+        assert!(valid_insignia(&r));
+        assert_eq!(access(&r, free), InsigniaAccess::Available);
+        r.layers.as_mut().unwrap()[0].color = "#abcdef".into();
+        assert_eq!(access(&r, free), InsigniaAccess::SupporterRequired);
+        assert_eq!(access(&r, active), InsigniaAccess::Available);
+        r.layers
+            .as_mut()
+            .unwrap()
+            .push(layer("forge-full-circle", "#abcdef"));
+        assert_ne!(access(&r, active), InsigniaAccess::Available);
+        r.layers = Some(vec![layer("missing-center", "#cbb68d")]);
+        assert_eq!(access(&r, active), InsigniaAccess::NotInstalled);
+        assert_eq!(
+            effective_insignia(&c, &r, CosmeticPolicy::Supporter, &[], active, 1),
+            InsigniaRecipe::default()
+        );
+        assert_eq!(r.layers.unwrap()[0].symbol, "missing-center");
+    }
+    #[test]
+    fn shapes_roundtrip_are_free_and_do_not_change_legacy_recipes() {
+        let base = InsigniaRecipe {
+            version: 2,
+            layers: Some(vec![]),
+            ..Default::default()
+        };
+        let old = serde_json::to_value(&base).unwrap();
+        assert!(old.get("shape").is_none());
+        assert_eq!(serde_json::from_value::<InsigniaRecipe>(old).unwrap(), base);
+        for shape in [
+            InsigniaShape::Shield,
+            InsigniaShape::Circle,
+            InsigniaShape::RoundedSquare,
+            InsigniaShape::Diamond,
+            InsigniaShape::Hexagon,
+        ] {
+            let r = InsigniaRecipe {
+                shape: Some(shape),
+                ..base.clone()
+            };
+            assert_eq!(
+                recipe_access(
+                    &InsigniaCatalog::default(),
+                    &r,
+                    CosmeticPolicy::Supporter,
+                    &[],
+                    SupporterEvidence::default(),
+                    100
+                ),
+                InsigniaAccess::Available
+            );
+            assert_eq!(
+                serde_json::from_value::<InsigniaRecipe>(serde_json::to_value(&r).unwrap())
+                    .unwrap(),
+                r
+            );
+            assert!(!valid_insignia(&InsigniaRecipe {
+                shape: Some(shape),
+                ..Default::default()
+            }));
+        }
+        let mut invalid = serde_json::to_value(base).unwrap();
+        invalid["shape"] = serde_json::json!("arbitrary-css");
+        assert!(serde_json::from_value::<InsigniaRecipe>(invalid).is_err());
+    }
+
+    #[test]
+    fn legacy_recipe_roundtrips_without_new_fields() {
+        let value = serde_json::to_value(InsigniaRecipe::default()).unwrap();
+        assert!(value.get("layers").is_none());
+        assert_eq!(
+            serde_json::from_value::<InsigniaRecipe>(value).unwrap(),
+            InsigniaRecipe::default()
+        );
+    }
+
+    #[test]
+    fn stripe_slots_and_group_colors_are_not_client_assertions() {
+        let c = InsigniaCatalog::with_manifest(InsigniaManifest {
+            version: 1,
+            insignias: ["sample-a", "sample-b", "sample-c"]
+                .into_iter()
+                .map(|id| InsigniaSymbol {
+                    group: InsigniaGroup::Stripes,
+                    id: id.into(),
+                    name: id.into(),
+                    supporter: false,
+                    sha256: "a".repeat(64),
+                })
+                .collect(),
+        })
+        .unwrap();
+        let mut r = InsigniaRecipe {
+            version: 2,
+            layers: Some(
+                ["sample-a", "sample-b"]
+                    .into_iter()
+                    .map(|id| InsigniaLayer {
+                        symbol: id.into(),
+                        color: "#cbb68d".into(),
+                    })
+                    .collect(),
+            ),
+            ..Default::default()
+        };
+        let evidence = SupporterEvidence {
+            known: true,
+            active: true,
+            expires_at: 100,
+        };
+        let access =
+            |r: &InsigniaRecipe, e| recipe_access(&c, r, CosmeticPolicy::Supporter, &[], e, 1);
+        assert_eq!(access(&r, evidence), InsigniaAccess::Available);
+        assert_eq!(
+            access(
+                &r,
+                SupporterEvidence {
+                    active: false,
+                    ..evidence
+                }
+            ),
+            InsigniaAccess::SupporterRequired
+        );
+        r.layers.as_mut().unwrap()[1].color = "#abcdef".into();
+        assert_ne!(access(&r, evidence), InsigniaAccess::Available);
+        r.layers.as_mut().unwrap()[1].color = "#cbb68d".into();
+        r.layers.as_mut().unwrap().push(InsigniaLayer {
+            symbol: "sample-c".into(),
+            color: "#cbb68d".into(),
+        });
+        assert_ne!(access(&r, evidence), InsigniaAccess::Available);
+        r.layers = Some(vec![]);
+        r.symbol = "uninstalled".into();
+        assert!(!valid_insignia(&r));
     }
 }

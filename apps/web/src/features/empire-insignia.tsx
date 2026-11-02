@@ -13,6 +13,7 @@ export function EmpireInsignia({
   return (
     <span
       className={`${styles.insignia} ${styles[size]}`}
+      data-shape={appearance.recipe.shape ?? 'shield'}
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
@@ -24,7 +25,20 @@ export function EmpireInsignia({
         } as CSSProperties
       }
     >
-      <span />
+      {appearance.layers ? (
+        appearance.layers.map((layer) => (
+          <span
+            key={layer.symbol}
+            className={styles.layer}
+            style={{
+              background: layer.color,
+              mask: `url("${layer.asset_url}") center / 100% 100% no-repeat`,
+            }}
+          />
+        ))
+      ) : (
+        <span />
+      )}
     </span>
   )
 }
