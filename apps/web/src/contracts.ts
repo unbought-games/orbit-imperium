@@ -8337,10 +8337,13 @@ export interface components {
         };
         InsigniaRecipe: {
             /** @enum {integer} */
-            version: 1;
+            version: 1 | 2;
             symbol: string;
             foreground: string;
             background: string;
+            layers?: components["schemas"]["InsigniaLayer"][];
+            /** @enum {string} */
+            shape?: "shield" | "circle" | "rounded_square" | "diamond" | "hexagon";
         };
         InsigniaDesign: {
             /** Format: uuid */
@@ -8352,6 +8355,7 @@ export interface components {
         InsigniaAppearance: {
             recipe: components["schemas"]["InsigniaRecipe"];
             asset_url: string;
+            layers?: components["schemas"]["InsigniaAppearanceLayer"][];
         };
         /** @enum {string} */
         InsigniaAccess: "available" | "supporter_required" | "unavailable" | "not_installed";
@@ -8367,6 +8371,8 @@ export interface components {
             supporter: boolean;
             asset_url: string;
             access: components["schemas"]["InsigniaAccess"];
+            /** @enum {string} */
+            group?: "legacy" | "center" | "stripes" | "accents";
         };
         InsigniaState: {
             binding: components["schemas"]["Binding"];
@@ -8378,6 +8384,7 @@ export interface components {
             policy: "unrestricted" | "supporter";
             appearance: components["schemas"]["InsigniaAppearance"] | null;
             expires_at: number;
+            composition_access?: components["schemas"]["InsigniaAccess"];
         };
         InsigniaAction: {
             /** @enum {string} */
@@ -8534,6 +8541,15 @@ export interface components {
             /** @enum {string} */
             reason: "Requested" | "Inactivity";
             due_at: number;
+        };
+        InsigniaLayer: {
+            symbol: string;
+            color: string;
+        };
+        InsigniaAppearanceLayer: {
+            symbol: string;
+            color: string;
+            asset_url: string;
         };
         VacationView4: {
             active: boolean;

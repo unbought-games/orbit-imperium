@@ -323,3 +323,9 @@ test-terraformer-db:
 test-oidc-provider:
 	test -n "$(ORBIT_OIDC_PROVIDER_FIXTURE)"
 	sh scripts/test-db.sh oidc 'test(real_provider_commit_cutpoints)' --run-ignored only --success-output immediate
+
+# Explicit only: set QUALIFY_AUTH_MANIFEST, QUALIFY_BOTS, QUALIFY_SECONDS and
+# QUALIFY_HISTORY_ROWS from the current qualification plan. Never runs in CI.
+.PHONY: qualify-runtime
+qualify-runtime:
+	sh scripts/qualify-runtime.sh

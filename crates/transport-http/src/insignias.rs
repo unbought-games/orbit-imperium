@@ -135,11 +135,39 @@ fn valid_original(bytes: &[u8]) -> bool {
 
 #[derive(Clone, Serialize)]
 pub(super) struct InsigniaAppearance {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub layers: Option<Vec<AppearanceLayer>>,
     pub recipe: InsigniaRecipe,
     pub asset_url: String,
 }
+#[derive(Clone, Serialize)]
+pub(super) struct AppearanceLayer {
+    pub symbol: String,
+    pub color: String,
+    pub asset_url: String,
+}
 fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppearance {
+    let layers = recipe.layers.as_ref().map(|layers| {
+        [
+            InsigniaGroup::Stripes,
+            InsigniaGroup::Center,
+            InsigniaGroup::Accents,
+        ]
+        .into_iter()
+        .flat_map(|group| {
+            layers
+                .iter()
+                .filter(move |l| catalog.get(&l.symbol).is_some_and(|s| s.group == group))
+        })
+        .map(|l| AppearanceLayer {
+            symbol: l.symbol.clone(),
+            color: l.color.clone(),
+            asset_url: catalog.get(&l.symbol).unwrap().asset_url(),
+        })
+        .collect()
+    });
     InsigniaAppearance {
+        layers,
         asset_url: catalog
             .get(&recipe.symbol)
             .expect("resolved installed symbol")
@@ -149,6 +177,7 @@ fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppe
 }
 #[derive(Serialize)]
 struct Symbol {
+    group: InsigniaGroup,
     id: String,
     name: String,
     supporter: bool,
@@ -157,6 +186,7 @@ struct Symbol {
 }
 #[derive(Serialize)]
 struct InsigniaState {
+    composition_access: InsigniaAccess,
     binding: Binding,
     request_id: uuid::Uuid,
     library: InsigniaLibrary,
@@ -206,16 +236,16 @@ pub(super) async fn handle<S: GameStore + IdentityStore>(
         .map_err(ServiceError::from)?;
     // Old clients enumerate the initial symbols. Ask them to refresh their app
     // before editing a catalog/library they cannot faithfully represent.
-    if headers.get("x-orbit-catalog").is_none_or(|v| v != "1")
+    if headers.get("x-orbit-catalog").is_none_or(|v| v != "3")
         && (customization
             .catalog
             .symbols()
             .iter()
-            .any(|item| !legacy_insignia_id(&item.id))
+            .any(|item| item.group != InsigniaGroup::Legacy || !legacy_insignia_id(&item.id))
             || current_library
                 .designs
                 .iter()
-                .any(|d| !legacy_insignia_id(&d.recipe.symbol)))
+                .any(|d| d.recipe.version != 1 || !legacy_insignia_id(&d.recipe.symbol)))
     {
         return Err(ServiceError::Conflict.into());
     }
@@ -272,6 +302,7 @@ fn project_state(
         .symbols()
         .iter()
         .map(|item| Symbol {
+            group: item.group,
             id: item.id.clone(),
             name: item.name.clone(),
             supporter: item.supporter,
@@ -297,10 +328,23 @@ fn project_state(
         library,
         catalog,
         policy,
+        composition_access: composition_access(policy, evidence, now),
         appearance: recipe.map(|r| appearance(installed, r)),
         expires_at,
     }
 }
+/// Do not send authored fields to clients whose strict schemas cannot represent them.
+pub(super) fn profile_recipe(recipe: InsigniaRecipe, version: Option<&str>) -> InsigniaRecipe {
+    if (recipe.shape.is_some() && version != Some("4"))
+        || (recipe.version == 2 && !matches!(version, Some("3" | "4")))
+        || (version == Some("1") && !legacy_insignia_id(&recipe.symbol))
+    {
+        InsigniaRecipe::default()
+    } else {
+        recipe
+    }
+}
+
 pub(super) async fn media<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     Path((symbol, version)): Path<(String, String)>,
@@ -444,6 +488,107 @@ mod tests {
         assert!(removed.appearance.is_none());
         assert_eq!(removed.library.designs.len(), 1);
     }
+    #[test]
+    fn state_projects_composition_access_from_fresh_evidence_and_policy() {
+        let id = uuid::Uuid::nil();
+        let binding = Binding {
+            account: AccountId(id),
+            player: PlayerId(id),
+            universe: UniverseId(id),
+            epoch: Epoch(id),
+        };
+        let fresh = SupporterEvidence {
+            known: true,
+            active: true,
+            expires_at: 101,
+        };
+        for (evidence, expected) in [
+            (fresh, InsigniaAccess::Available),
+            (
+                SupporterEvidence {
+                    active: false,
+                    ..fresh
+                },
+                InsigniaAccess::SupporterRequired,
+            ),
+            (
+                SupporterEvidence {
+                    known: false,
+                    ..fresh
+                },
+                InsigniaAccess::Unavailable,
+            ),
+            (
+                SupporterEvidence {
+                    expires_at: 100,
+                    ..fresh
+                },
+                InsigniaAccess::Unavailable,
+            ),
+            (SupporterEvidence::default(), InsigniaAccess::Unavailable),
+        ] {
+            for policy in [CosmeticPolicy::Supporter, CosmeticPolicy::Unrestricted] {
+                let state = project_state(
+                    binding,
+                    id,
+                    InsigniaLibrary {
+                        designs: vec![],
+                        equipped: None,
+                        permanent_symbols: vec!["compass".into()],
+                    },
+                    &InsigniaCatalog::default(),
+                    policy,
+                    evidence,
+                    100,
+                );
+                assert_eq!(
+                    state.composition_access,
+                    if policy == CosmeticPolicy::Unrestricted {
+                        InsigniaAccess::Available
+                    } else {
+                        expected
+                    }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn profile_negotiation_preserves_legacy_and_layered_clients_without_losing_shapes() {
+        let legacy = InsigniaRecipe {
+            symbol: "wings".into(),
+            ..Default::default()
+        };
+        let layered = InsigniaRecipe {
+            version: 2,
+            layers: Some(vec![]),
+            ..Default::default()
+        };
+        for version in ["1", "2", "3", "4"] {
+            assert_eq!(profile_recipe(legacy.clone(), Some(version)), legacy);
+            assert_eq!(
+                profile_recipe(layered.clone(), Some(version)),
+                if matches!(version, "3" | "4") {
+                    layered.clone()
+                } else {
+                    InsigniaRecipe::default()
+                }
+            );
+            let shaped = InsigniaRecipe {
+                shape: Some(InsigniaShape::Diamond),
+                ..layered.clone()
+            };
+            assert_eq!(
+                profile_recipe(shaped.clone(), Some(version)),
+                if version == "4" {
+                    shaped
+                } else {
+                    InsigniaRecipe::default()
+                }
+            );
+        }
+    }
+
     #[tokio::test]
     async fn publication_does_not_require_permission_to_inspect_missing_keys() {
         let c = Customization {
@@ -480,6 +625,7 @@ mod tests {
         let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>";
         let hash = hex::encode(Sha256::digest(svg));
         let item = InsigniaSymbol {
+            group: InsigniaGroup::Legacy,
             id: "operator-circle".into(),
             name: "Operator circle".into(),
             supporter: true,
@@ -502,12 +648,12 @@ mod tests {
         let community = Customization::load(CosmeticPolicy::Unrestricted, store.clone(), None)
             .await
             .unwrap();
-        assert_eq!(community.catalog.symbols().len(), 3);
+        assert_eq!(community.catalog.symbols().len(), FREE_INSIGNIAS.len());
         assert!(community.catalog.get(&item.id).is_none());
         let installed = Customization::load(CosmeticPolicy::Supporter, store.clone(), Some(&key))
             .await
             .unwrap();
-        assert_eq!(installed.catalog.symbols().len(), 4);
+        assert_eq!(installed.catalog.symbols().len(), FREE_INSIGNIAS.len() + 1);
         assert_eq!(
             installed.catalog.get(&item.id).unwrap().asset_url(),
             item.asset_url()

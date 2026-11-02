@@ -1,3 +1,8 @@
+import { InsigniaComposer } from './insignia-composer'
+import {
+  compositionAppearance,
+  layeredRecipe,
+} from '../client-model/insignia-composer'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
 import { Button } from '../ui/button'
@@ -100,10 +105,10 @@ export function InsigniaEditor() {
                 <div className={styles.preview}>
                   {previewSymbol && (
                     <EmpireInsignia
-                      appearance={{
-                        recipe: symbol ? design.recipe : defaultInsignia,
-                        asset_url: previewSymbol.asset_url,
-                      }}
+                      appearance={compositionAppearance(
+                        snapshot,
+                        symbol ? design.recipe : defaultInsignia,
+                      )}
                       size="large"
                       label="Insignia preview"
                     />
@@ -113,7 +118,7 @@ export function InsigniaEditor() {
                     {editor.draft
                       ? 'Preview · Unsaved changes'
                       : design.id === snapshot.library.equipped
-                        ? editor.access(design.recipe.symbol) === 'available'
+                        ? editor.recipeAccess() === 'available'
                           ? 'Equipped in this universe'
                           : 'Selected · Using the default for now'
                         : 'Saved in your collection'}
@@ -129,114 +134,152 @@ export function InsigniaEditor() {
                       onChange={(e) => editor.edit({ name: e.target.value })}
                     />
                   </label>
-                  <fieldset disabled={editor.busy}>
-                    <legend>Choose a symbol</legend>
-                    <div className={styles.symbols}>
-                      {snapshot.catalog.map((item) => {
-                        const access = editor.access(item.id)
-                        const permanent =
-                          snapshot.library.permanent_symbols.includes(item.id)
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            aria-pressed={design.recipe.symbol === item.id}
-                            aria-label={`${item.name}${access === 'available' ? '' : ' · Supporter access required'}`}
-                            disabled={access !== 'available'}
-                            onClick={() =>
+                  {design.recipe.version === 2 ? (
+                    <InsigniaComposer
+                      snapshot={snapshot}
+                      recipe={design.recipe}
+                      now={editor.now}
+                      busy={editor.busy}
+                      onChange={(recipe) => editor.edit({ recipe })}
+                    />
+                  ) : (
+                    <>
+                      {snapshot.catalog.some((e) => e.group === 'center') && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={editor.busy}
+                          onClick={() =>
+                            editor.edit({
+                              recipe: layeredRecipe(design.recipe),
+                            })
+                          }
+                        >
+                          Build a layered insignia
+                        </Button>
+                      )}
+                      <fieldset disabled={editor.busy}>
+                        <legend>Choose a symbol</legend>
+                        <div className={styles.symbols}>
+                          {snapshot.catalog
+                            .filter(
+                              (item) => !item.group || item.group === 'legacy',
+                            )
+                            .map((item) => {
+                              const access = editor.access(item.id)
+                              const permanent =
+                                snapshot.library.permanent_symbols.includes(
+                                  item.id,
+                                )
+                              return (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  aria-pressed={
+                                    design.recipe.symbol === item.id
+                                  }
+                                  aria-label={`${item.name}${access === 'available' ? '' : ' · Supporter access required'}`}
+                                  disabled={access !== 'available'}
+                                  onClick={() =>
+                                    editor.edit({
+                                      recipe: {
+                                        ...design.recipe,
+                                        symbol:
+                                          item.id as typeof design.recipe.symbol,
+                                      },
+                                    })
+                                  }
+                                >
+                                  <EmpireInsignia
+                                    appearance={{
+                                      recipe: {
+                                        ...design.recipe,
+                                        symbol:
+                                          item.id as typeof design.recipe.symbol,
+                                      },
+                                      asset_url: item.asset_url,
+                                    }}
+                                    size="medium"
+                                  />
+                                  <span>{item.name}</span>
+                                  <small
+                                    title={
+                                      permanent
+                                        ? 'Permanently unlocked'
+                                        : undefined
+                                    }
+                                    aria-label={
+                                      permanent
+                                        ? 'Permanently unlocked'
+                                        : undefined
+                                    }
+                                  >
+                                    {permanent
+                                      ? 'Unlocked'
+                                      : item.supporter
+                                        ? snapshot.policy === 'unrestricted'
+                                          ? 'Included'
+                                          : 'Supporter'
+                                        : 'Free'}
+                                  </small>
+                                </button>
+                              )
+                            })}
+                        </div>
+                      </fieldset>
+                      {snapshot.policy === 'supporter' &&
+                        snapshot.catalog.some((item) => item.supporter) && (
+                          <Text>
+                            {snapshot.catalog.some(
+                              (item) =>
+                                item.supporter &&
+                                editor.access(item.id) === 'unavailable',
+                            )
+                              ? 'Supporter verification is temporarily unavailable. Free and permanently unlocked symbols remain available.'
+                              : 'Supporters can use additional symbols. Permanent unlocks remain yours after membership ends.'}
+                          </Text>
+                        )}
+                      <div className={styles.colors}>
+                        <label>
+                          Symbol color
+                          <input
+                            type="color"
+                            aria-label="Symbol color"
+                            value={design.recipe.foreground}
+                            disabled={editor.busy}
+                            onChange={(e) =>
                               editor.edit({
                                 recipe: {
                                   ...design.recipe,
-                                  symbol:
-                                    item.id as typeof design.recipe.symbol,
+                                  foreground: e.target.value,
                                 },
                               })
                             }
-                          >
-                            <EmpireInsignia
-                              appearance={{
+                          />
+                        </label>
+                        <label>
+                          Background color
+                          <input
+                            type="color"
+                            aria-label="Background color"
+                            value={design.recipe.background}
+                            disabled={editor.busy}
+                            onChange={(e) =>
+                              editor.edit({
                                 recipe: {
                                   ...design.recipe,
-                                  symbol:
-                                    item.id as typeof design.recipe.symbol,
+                                  background: e.target.value,
                                 },
-                                asset_url: item.asset_url,
-                              }}
-                              size="medium"
-                            />
-                            <span>{item.name}</span>
-                            <small
-                              title={
-                                permanent ? 'Permanently unlocked' : undefined
-                              }
-                              aria-label={
-                                permanent ? 'Permanently unlocked' : undefined
-                              }
-                            >
-                              {permanent
-                                ? 'Unlocked'
-                                : item.supporter
-                                  ? snapshot.policy === 'unrestricted'
-                                    ? 'Included'
-                                    : 'Supporter'
-                                  : 'Free'}
-                            </small>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </fieldset>
-                  {snapshot.policy === 'supporter' &&
-                    snapshot.catalog.some((item) => item.supporter) && (
-                      <Text>
-                        {snapshot.catalog.some(
-                          (item) =>
-                            item.supporter &&
-                            editor.access(item.id) === 'unavailable',
-                        )
-                          ? 'Supporter verification is temporarily unavailable. Free and permanently unlocked symbols remain available.'
-                          : 'Supporters can use additional symbols. Permanent unlocks remain yours after membership ends.'}
-                      </Text>
-                    )}
-                  <div className={styles.colors}>
-                    <label>
-                      Symbol color
-                      <input
-                        type="color"
-                        aria-label="Symbol color"
-                        value={design.recipe.foreground}
-                        disabled={editor.busy}
-                        onChange={(e) =>
-                          editor.edit({
-                            recipe: {
-                              ...design.recipe,
-                              foreground: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Background color
-                      <input
-                        type="color"
-                        aria-label="Background color"
-                        value={design.recipe.background}
-                        disabled={editor.busy}
-                        onChange={(e) =>
-                          editor.edit({
-                            recipe: {
-                              ...design.recipe,
-                              background: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-              {editor.access(design.recipe.symbol) !== 'available' && (
+              {editor.recipeAccess() !== 'available' && (
                 <Text>
                   {editor.access(design.recipe.symbol) === 'not_installed'
                     ? 'This symbol is not installed on this server. Your saved design is preserved. Choose an available symbol or ask your server operator about the missing content.'
@@ -264,7 +307,7 @@ export function InsigniaEditor() {
                       disabled={
                         editor.busy ||
                         design.id === snapshot.library.equipped ||
-                        editor.access(design.recipe.symbol) !== 'available'
+                        editor.recipeAccess() !== 'available'
                       }
                       onClick={() => void editor.equip()}
                     >

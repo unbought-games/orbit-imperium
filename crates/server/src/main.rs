@@ -7,6 +7,7 @@ mod engine_executor;
 mod lab_support;
 mod metrics;
 mod public_universe;
+mod restart;
 mod rules_cli;
 mod runtime;
 mod runtime_cli;
@@ -29,10 +30,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
+    let serving = command(&env::args().collect::<Vec<_>>()).is_ok_and(|name| name == "serve");
     let result = runtime.block_on(run_main());
     // Blocking engine jobs cannot be aborted. Durable fencing makes their late
     // results harmless; process exit must not wait indefinitely for their CPU.
     runtime.shutdown_timeout(std::time::Duration::from_secs(1));
+    if serving && result.is_err() {
+        // All async writers/listeners are stopped before delaying process exit.
+        // Container restart backoff may reset after a brief healthy interval;
+        // this floor also bounds repeated fail/serve/fail cycles.
+        let delay = restart::delay(uuid::Uuid::new_v4().as_u128());
+        eprintln!(
+            "{}",
+            serde_json::json!({"level":"warn", "event":"serve_restart_backoff", "duration_ms":delay.as_millis()})
+        );
+        std::thread::sleep(delay);
+    }
     result
 }
 async fn run_main() -> Result<(), Box<dyn Error>> {

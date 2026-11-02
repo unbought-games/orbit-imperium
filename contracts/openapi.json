@@ -20322,7 +20322,8 @@
           "version": {
             "type": "integer",
             "enum": [
-              1
+              1,
+              2
             ]
           },
           "symbol": {
@@ -20336,6 +20337,23 @@
           "background": {
             "type": "string",
             "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "layers": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/InsigniaLayer"
+            }
+          },
+          "shape": {
+            "type": "string",
+            "enum": [
+              "shield",
+              "circle",
+              "rounded_square",
+              "diamond",
+              "hexagon"
+            ]
           }
         },
         "required": [
@@ -20383,6 +20401,13 @@
           "asset_url": {
             "type": "string",
             "pattern": "^/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg$"
+          },
+          "layers": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/InsigniaAppearanceLayer"
+            }
           }
         },
         "required": [
@@ -20449,6 +20474,15 @@
           },
           "access": {
             "$ref": "#/components/schemas/InsigniaAccess"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "legacy",
+              "center",
+              "stripes",
+              "accents"
+            ]
           }
         },
         "required": [
@@ -20499,6 +20533,9 @@
           "expires_at": {
             "type": "integer",
             "minimum": 0
+          },
+          "composition_access": {
+            "$ref": "#/components/schemas/InsigniaAccess"
           }
         },
         "required": [
@@ -21169,6 +21206,47 @@
           "due_at"
         ],
         "additionalProperties": false
+      },
+      "InsigniaLayer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
+        "required": [
+          "symbol",
+          "color"
+        ]
+      },
+      "InsigniaAppearanceLayer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "asset_url": {
+            "type": "string",
+            "pattern": "^/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg$"
+          }
+        },
+        "required": [
+          "symbol",
+          "color",
+          "asset_url"
+        ]
       },
       "VacationView4": {
         "type": "object",
