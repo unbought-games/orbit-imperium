@@ -258,3 +258,78 @@ request preservation, and raw flag-only removal without fabricated foreground
 presence. Disposable Compose project `orbit-vacation-operator` on localhost port
 55438 and its volume were removed after all suites completed. UI and gameplay
 entry/exit behavior are unchanged, so existing screenshots remain current.
+
+## Queue Galaxy-readiness repair — 2026-11-01
+
+Merge-group run `41360443615` on `d2d9f989c6b27511c76aa165283616eb60f76aae`
+failed browser shards 5/6/7, one Galaxy assertion each: an alliance badge at 390px,
+initial debris contents, and a renamed public planet after reload at 390px. Native,
+database and the other browser shards passed, including Vacation Mode. Downloaded
+the three failure artifacts and inspected their error contexts. Each contained the
+expected data immediately after the rendering assertion timed out; the assertions
+started after document load, before the Galaxy/profile response boundary.
+
+Merged main `bf3f60d1510738ca017da5a8645f7f3a01eb2ed2` to reproduce the exact queue
+integration. Before the repair, its tree was
+`9cf30625c7d9ec1c47b9a88a74aaf6f02d47b5a6`, identical to the failed merge-group tree.
+Added a small test-fixture helper that waits for the real Galaxy response (and
+Galaxy profile response for alliance assertions), verifies HTTP 200 and body
+completion, then runs the original rendering assertions. The renamed-planet
+fixture also pins its intended 1:371 query coordinates. Domain assertions and
+all assertion/network/suite timeout settings remain unchanged; no production UI
+or gameplay code was changed by this repair.
+
+The five affected viewport cases passed three times each (15 executions, 21.8s;
+module preparation 1.611s). The full Galaxy-card, planet-name and player-profile
+suites passed all 73 tests in 65.386s (module preparation 1.331s), including main's
+bot-display coverage. `make _static`, TypeScript and production build passed
+(Vite 7.44s, prerender 0.785s). Final tested tree before this note:
+`9f7768dad97709fcdddb4e21e955ba52d3b1a9b0`. Browser runners closed their servers
+and contexts. No database resources were created. Existing Vacation Mode
+screenshots remain current. The failed queue entry was removed by GitHub; the
+repaired head must pass fresh checks before requeueing.
+
+## Read-model and passive-holding review follow-up — 2026-11-01
+
+Evaluated Bugbot threads `PRRT_kwDOVRgPYs6yftH0` / 4437883082 (migration rates with
+old checkpoints) and `PRRT_kwDOVRgPYs6yftH5` / 4437883088 (visitor facts). Both are
+false positives against the actual consumers; no production behavior changed.
+
+For rates, `progression_projection` first calls `orbit_engine::project`, which
+settles a copy of each body to the observation time. Rates, energy and satellite
+output are then calculated from those projected bodies, not the stored checkpoint.
+The checkpoint-time condition is necessary when calculating the pre-vacation
+segment of an interval-only migration; ignoring it would erase earned production.
+Added a PostgreSQL/read-model regression with productive mines, a fueled fusion
+reactor and two normally manufactured satellites. It writes only a vacation
+interval while keeping the old body checkpoint, then observes an hour later.
+The actual authenticated view reports base-only income, zero energy/fusion fuel/
+satellite supply, correct pre-entry plus vacation balances, and unchanged saved
+settings. A fresh raw snapshot confirms the original checkpoint and revision were
+never persisted forward by the read.
+
+For holding, ordinary host-only commands need the visiting fleet's presence, not
+its owner's private policy/economy. Fact coverage deliberately remains limited to
+the declared participants; valuation includes active fleets only for covered
+owners. Extended the real serial/scoped holding regression to change host
+production while a visitor is holding. The scoped execution snapshot contains the
+fleet but explicitly lacks visitor policy/owner coverage, validates lineage and
+commits safely without changing visitor ships/cargo. EnterVacation still rejects
+with HostedFleet; existing view, Depot supply, combat, return and retry assertions
+continue to pass. Operations that act on visitors declare their full participant
+scopes; the incoming viewer path separately loads the policies needed to display
+supply eligibility. Loading extra unscoped private facts for an unrelated host
+command is unnecessary.
+
+Tested parent `866c1466ceab71b9b8da2c92cbe104cefd782ccf` plus
+`crates/storage-postgres/tests/holding.rs`, SHA-256
+`32debacefb65cf4904b61965bc671ca91d33ab4c47a1124d162337b2192cb9b4`.
+`make test-db DB_SUITES=holding` passed both tests (including both executor modes)
+in 10.349s, after 2.91s compilation. Targeted Clippy with warnings denied passed in
+10.41s; formatting and diff checks passed. Initial fixture wiring incorrectly
+compared independent scheduler input IDs with command IDs, then tried granting
+stationary satellites through the mobile-ship authoring field. Corrected the ID
+lookup and manufactured satellites through normal commands; no assertions or
+catalog restrictions were weakened. Disposable Compose project
+`orbit-vacation-snapshots`, its network and volume were removed after validation.
+Existing UI captures remain current because no production/UI code changed.
