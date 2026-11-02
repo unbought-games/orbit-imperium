@@ -91,7 +91,11 @@ pub fn quote_abandonment(
         .collect();
     let ids: Vec<_> = bodies.iter().map(|b| b.id).collect();
     let mut blockers = Vec::new();
-    if w.records.policies.get(&owner).is_some_and(|p| p.vacation) {
+    if w.records
+        .policies
+        .get(&owner)
+        .is_some_and(|p| p.vacation.is_active())
+    {
         blockers.push("Leave vacation mode before abandoning a planet.".into());
     }
     if *home == id {

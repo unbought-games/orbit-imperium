@@ -23,6 +23,8 @@ patterns unless the user provides guidance to do so.
   desktop and mobile. Compact actions use the shared 24px ghost button with 4px
   padding per side. Do not introduce screen-specific size overrides; navigation
   and decorative illustrations may use larger icons when their role warrants it.
+  Use the shared `icon-touch` size for compact actions that need a 44px target
+  on mobile and touch devices while retaining their desktop size and 16px icon.
 - Use the shared palette and spacing. Glows should have a clear focal point,
   fade smoothly, and remain secondary to readable content.
 

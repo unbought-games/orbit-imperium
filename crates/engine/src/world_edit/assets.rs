@@ -53,16 +53,7 @@ pub(super) fn edit_body(
     give: bool,
 ) -> EditResult<()> {
     let mut b = s.bodies[&id].clone();
-    let satellites = solar_satellite_count(s, &b, r).map_err(error)?;
-    b.checkpoint = settle_rules_boundary(
-        &b,
-        &s.production_settings[&id].settings,
-        satellites,
-        s.research[&b.owner].levels[&ResearchId::EnergyTechnology],
-        i.at,
-        r,
-    )
-    .map_err(error)?;
+    b.checkpoint = settle_production(s, &b, i.at, r).map_err(error)?;
     if let Some(stock) = e.stock {
         if stock.values().iter().any(|n| *n < 0) {
             return Err("negative stock".into());

@@ -165,6 +165,8 @@ impl MissionFleet {
 pub enum WorldAction {
     RequestEmpireDeletion,
     CancelEmpireDeletion,
+    EnterVacation,
+    ExitVacation,
     CreateAttackGroup {
         fleet: FleetId,
     },
@@ -285,6 +287,9 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    /// Complete own missiles and foreign holding fleets, including covered absence.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub covered_vacation_players: BTreeSet<PlayerId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alliance_leaders: Option<BTreeSet<PlayerId>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

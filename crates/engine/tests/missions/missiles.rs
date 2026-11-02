@@ -18,7 +18,7 @@ pub(super) fn edit(s: &mut GameState, r: &Ruleset, b: BodyId, n: u128, value: se
     let c = world_edit::edit_world(s, r, &i, &e, Some(owner)).unwrap();
     c.apply_to(s).unwrap();
 }
-fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
+pub(super) fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     let (mut s, _, p, b, t) = fixture();
     let old = Ruleset::mvp_raids().unwrap();
     let r = upgrade_standard_rules(&old).unwrap();

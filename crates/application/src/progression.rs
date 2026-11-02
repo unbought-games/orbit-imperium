@@ -477,7 +477,8 @@ pub(crate) fn progression_projection(
                         .to_string(),
                     energy_supply: solar_satellite_energy(
                         b,
-                        &settings.settings,
+                        &effective_production_settings(s, b)
+                            .map_err(|_| ServiceError::InvariantFailure)?,
                         satellites,
                         &facts.rules,
                     )

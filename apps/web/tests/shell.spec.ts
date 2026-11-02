@@ -1761,6 +1761,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
       },
     })
   })
+  console.info(`Report observation: opening ${reportMode} inbox`)
   await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(
     page.getByRole('link', { name: 'Espionage', exact: true }),
@@ -1782,6 +1783,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     path: 'test-results/reports-list-phone.png',
     fullPage: true,
   })
+  console.info('Report observation: opening report from mobile row')
   await page.getByRole('link', { name: 'Espionage', exact: true }).click()
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('No stationed ships')
@@ -1806,6 +1808,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   await expect(page.getByRole('button', { name: 'Mark read', exact: true })).toHaveCount(0)
   await expect(unreadAlert).toHaveCount(0)
   await expect.poll(() => header.read).toBe(true)
+  console.info('Report observation: opening attack draft')
   await page
     .getByRole('button', { name: 'Attack', exact: true })
     .click()
@@ -1817,6 +1820,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
     fullPage: true,
   })
   reportMode = 'empty'
+  console.info(`Report observation: opening ${reportMode} inbox`)
   await page.goto(`/u/andromeda/b/${body.id}/reports`)
   await expect(page.getByText('No reports to show.', { exact: true })).toBeVisible()
   await diagnosticScreenshot(page, {
@@ -1827,6 +1831,7 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   // scenario on the final route so a redirect cannot consume its recovery.
   reportDetailRequests = 0
   reportMode = 'failed'
+  console.info('Report observation: opening unavailable report')
   await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
   await expect(
     page.getByRole('button', { name: 'Retry reports', exact: true }),
@@ -1840,11 +1845,13 @@ test('reports distinguish zero, known empty and unrevealed historical observatio
   })
   expect(reportDetailRequests).toBe(1)
   reportMode = 'populated'
+  console.info('Report observation: retrying unavailable report')
   await page.getByRole('button', { name: 'Retry reports', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Report observation' }),
   ).toContainText('No stationed ships')
   expect(reportDetailRequests).toBe(2)
+  console.info('Report observation: recovery verified')
 })
 
 test('secondary pages retain empty, unavailable and settings states at phone width', async ({

@@ -27,8 +27,14 @@ export function Production({
     <Section aria-label="Production controls" className={styles.production}>
       <div className={styles.factor}>
         <strong>
-          Production factor:{' '}
-          <NumberValue value={production.utilization} divisor={10000} />%
+          {view.protocol === 4 && view.vacation?.active ? (
+            'Vacation mode · Base income only'
+          ) : (
+            <>
+              Production factor:{' '}
+              <NumberValue value={production.utilization} divisor={10000} />%
+            </>
+          )}
         </strong>
       </div>
       <div className={styles.totals}>
@@ -86,7 +92,11 @@ export function Production({
             <tr>
               <th scope="col">Producer</th>
               <th scope="col">Level / quantity</th>
-              <th scope="col">Output</th>
+              <th scope="col">
+                {view.protocol === 4 && view.vacation?.active
+                  ? 'Saved setting'
+                  : 'Output'}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -113,6 +123,9 @@ export function Production({
                   <td>
                     <div className={styles.slider}>
                       <input
+                        disabled={
+                          view.protocol === 4 && !!view.vacation?.active
+                        }
                         type="range"
                         min={0}
                         max={100}
@@ -202,7 +215,11 @@ export function Production({
               </div>
             </ErrorBannerMessage>
           ) : (
-            <span role="status">{autosave.status}</span>
+            <span role="status">
+              {view.protocol === 4 && view.vacation?.active
+                ? 'These saved settings resume when you leave vacation mode.'
+                : autosave.status}
+            </span>
           )}
         </div>
       </div>

@@ -6509,6 +6509,12 @@ export interface components {
         } | {
             /** @constant */
             type: "CancelEmpireDeletion";
+        } | {
+            /** @constant */
+            type: "EnterVacation";
+        } | {
+            /** @constant */
+            type: "ExitVacation";
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -6537,7 +6543,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AttackGroupClosed" | "AttackGroupFull" | "AttackGroupTooLate" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AttackGroupClosed" | "AttackGroupFull" | "AttackGroupTooLate" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired" | "VacationBlocked" | "VacationMinimum";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -6732,6 +6738,7 @@ export interface components {
             attack_groups?: components["schemas"]["AttackGroup4"][];
             empire_deletion?: components["schemas"]["EmpireDeletionStatus4"];
             leads_alliance?: boolean;
+            vacation?: components["schemas"]["VacationView4"];
         };
         CapabilityState4: {
             /** @enum {unknown} */
@@ -8517,6 +8524,17 @@ export interface components {
             /** @enum {string} */
             reason: "Requested" | "Inactivity";
             due_at: number;
+        };
+        VacationView4: {
+            active: boolean;
+            entered_at: number | null;
+            earliest_exit_at: number | null;
+            blockers: {
+                /** @enum {unknown} */
+                kind: "Fleet" | "Missile" | "Construction" | "Research" | "Manufacturing" | "HostedFleet";
+                /** Format: uuid */
+                body: string | null;
+            }[];
         };
     };
     responses: never;

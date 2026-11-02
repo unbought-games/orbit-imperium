@@ -683,11 +683,12 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                         | WorldAction::SetReportStarred { .. }
                 }
             ) {
-                if p.vacation
+                if p.vacation.is_active()
                     && !matches!(
                         command,
                         Command::World {
                             action: WorldAction::RenamePlanet { .. }
+                                | WorldAction::ExitVacation
                                 | WorldAction::RequestEmpireDeletion
                                 | WorldAction::CancelEmpireDeletion
                         }
@@ -712,6 +713,18 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action: action @ (WorldAction::EnterVacation | WorldAction::ExitVacation),
+        }) => {
+            crate::vacation::change(
+                s,
+                i,
+                r,
+                &mut w,
+                &mut c,
+                matches!(action, WorldAction::EnterVacation),
+            )?;
+        }
         Input::Command(Command::World {
             action: WorldAction::RequestEmpireDeletion | WorldAction::CancelEmpireDeletion,
         }) => {

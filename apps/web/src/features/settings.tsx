@@ -1,3 +1,4 @@
+import { VacationSettings } from './vacation'
 import { EmpireDeletion } from './empire-deletion'
 import { InsigniaEditor } from './insignia-editor'
 import { useGameScreen } from '../shell/screen-context'
@@ -18,6 +19,7 @@ export function SettingsScreen() {
     <Section className={styles.screen}>
       <TaskHeader title="Settings" />
       <BetaNotice />
+      <VacationSettings />
       <Section aria-label="Community">
         <Heading level={2}>Community</Heading>
         <Text>

@@ -1,3 +1,4 @@
+import { VacationNotice } from '../features/vacation'
 import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
 import { useStore } from 'zustand'
@@ -413,6 +414,10 @@ function GameShellContent() {
                     Dispatch Fleet
                   </ButtonLink>
                 )}
+                <VacationNotice
+                  vacation={view.protocol === 4 ? view.vacation : undefined}
+                  universeName={universeName}
+                />
                 <Outlet />
               </ScreenContext.Provider>
             )}

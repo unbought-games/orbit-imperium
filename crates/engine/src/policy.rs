@@ -28,7 +28,7 @@ pub struct PlayerPolicy {
     pub deletion_requested_at: Option<Timestamp>,
     pub player: PlayerId,
     pub last_presence_at: Timestamp,
-    pub vacation: bool,
+    pub vacation: VacationState,
     pub lifecycle: PlayerLifecycle,
     pub policy_hash: Hash,
     pub revision: i64,
@@ -43,6 +43,7 @@ pub struct BodyActivity {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActivityCause {
     Foreground,
+    Vacation,
     Launch,
     Contact,
     Return,
@@ -161,7 +162,7 @@ fn check_action_policy(
         .get(&actor)
         .filter(|_| w.covered_players.contains(&actor))
         .ok_or(GameError::PolicyUnavailable)?;
-    if p.vacation {
+    if p.vacation.is_active() {
         return Err(GameError::ActorVacation);
     }
     if matches!(
@@ -180,7 +181,7 @@ fn check_action_policy(
             .get(&target)
             .filter(|_| w.covered_players.contains(&target))
             .ok_or(GameError::PolicyUnavailable)?;
-        if t.vacation {
+        if t.vacation.is_active() {
             return Err(GameError::TargetVacation);
         }
         if t.lifecycle == PlayerLifecycle::Removed {

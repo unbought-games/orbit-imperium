@@ -145,10 +145,13 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
     let coverage = FactCoverage {
         research_players: [player].into(),
         fleet_owners: [player].into(),
+        owned_body_players: [player].into(),
+        research_slot_players: [player].into(),
         ..Default::default()
     };
     let world = GameState {
         world: Some(WorldFacts {
+            covered_vacation_players: [player].into_iter().collect(),
             alliance_leaders: Some(Default::default()),
             holding_relationships: None,
             covered_depot_sources: Default::default(),
@@ -160,7 +163,7 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
                     PlayerPolicy {
                         player,
                         last_presence_at: 0,
-                        vacation: false,
+                        vacation: VacationState::default(),
                         lifecycle: PlayerLifecycle::Active,
                         deletion_requested_at: None,
                         policy_hash: rules.hash.clone(),
@@ -171,7 +174,7 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
                 ..Default::default()
             },
             secret: [0; 32],
-            covered_players: Default::default(),
+            covered_players: [player].into_iter().collect(),
             covered_coordinates: Default::default(),
             covered_reports: Default::default(),
             requested_pair: None,
@@ -371,6 +374,7 @@ fn planet_temperature_comes_from_body_state_without_colony_metadata() {
                 };
                 facts.coverage.bodies.insert(body.id);
                 facts.coverage.construction_bodies.insert(body.id);
+                facts.coverage.manufacturing_bodies.insert(body.id);
                 facts.coverage.production_bodies.insert(body.id);
                 facts
                     .coverage

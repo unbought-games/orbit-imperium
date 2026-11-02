@@ -163,8 +163,8 @@ test('report glances expose historical mission facts in compact rows on desktop 
     const icon = (await remove.locator('svg').boundingBox())!
     const age = (await rows.first().locator('time').boundingBox())!
     expect(Math.abs(icon.y + icon.height / 2 - age.y - age.height / 2)).toBeLessThanOrEqual(1)
-    expect((await remove.boundingBox())!.height).toBe(24)
-    expect((await remove.boundingBox())!.width).toBe(24)
+    expect((await remove.boundingBox())!.height).toBe(width < 768 ? 44 : 24)
+    expect((await remove.boundingBox())!.width).toBe(width < 768 ? 44 : 24)
     expect((await remove.locator('svg').boundingBox())!.width).toBe(16)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await diagnosticScreenshot(page, { path: `test-results/report-glance-${width}.png` })

@@ -74,7 +74,9 @@ pub(crate) async fn scopes(
     Ok(scopes)
 }
 
-/// A future deletion must also depend on bodies, fleets and members acquired after scheduling.
+/// Empire-wide checks and admitted lifecycle commands depend on bodies, fleets and
+/// members acquired after admission. Shared player scopes prevent a later command
+/// from being claimed while these dependencies are extended by its predecessor.
 /// Called inside the source mutation transaction, while its causal player scopes are held.
 pub(crate) async fn refresh_checks(
     tx: &mut Tx<'_>,
@@ -83,8 +85,12 @@ pub(crate) async fn refresh_checks(
     except: InputId,
 ) -> Result<(), StoreError> {
     for player in players {
-        let events: Vec<serde_json::Value> = sqlx::query_scalar("SELECT input FROM scheduled_events WHERE universe=$1 AND event->>'type'='EmpireDeletionDue' AND event->>'player'=$2 AND NOT done AND NOT cancelled")
-            .bind(u.0).bind(player.to_string()).fetch_all(&mut **tx).await.map_err(db_error)?;
+        let events: Vec<serde_json::Value> = sqlx::query_scalar(
+            "SELECT input FROM scheduled_events WHERE universe=$1 AND event->>'type'='EmpireDeletionDue' AND event->>'player'=$2 AND NOT done AND NOT cancelled
+             UNION ALL
+             SELECT input FROM commands WHERE universe=$1 AND actor=$3 AND NOT done AND input->'payload'->'Command'->'action'->>'type' IN ('EnterVacation','ExitVacation','RequestEmpireDeletion','CancelEmpireDeletion')"
+        ).bind(u.0).bind(player.to_string()).bind(player.0)
+            .fetch_all(&mut **tx).await.map_err(db_error)?;
         if events.is_empty() {
             continue;
         }

@@ -146,7 +146,7 @@ pub fn galaxy_system(
                 .map_err(|_| GameError::InvalidInput)?,
                 inactivity: inactivity(p.last_presence_at, at)
                     .map_err(|_| GameError::InvalidInput)?,
-                vacation: p.vacation,
+                vacation: p.vacation.is_active(),
                 attack_blocker: check_mission_eligibility(
                     s,
                     viewer,

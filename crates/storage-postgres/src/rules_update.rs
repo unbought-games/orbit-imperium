@@ -129,22 +129,14 @@ async fn settle_and_initialize(
     delta: &RulesCatalogDelta,
     at: Timestamp,
 ) -> Result<(), StoreError> {
-    let satellite_counts = state
+    let checkpoints = state
         .bodies
         .values()
-        .map(|body| solar_satellite_count(state, body, current).map(|count| (body.id, count)))
+        .map(|body| settle_production(state, body, at, current).map(|cp| (body.id, cp)))
         .collect::<Result<std::collections::BTreeMap<_, _>, _>>()
         .map_err(|_| StoreError::CorruptData)?;
     for body in state.bodies.values_mut() {
-        body.checkpoint = settle_rules_boundary(
-            body,
-            &state.production_settings[&body.id].settings,
-            satellite_counts[&body.id],
-            state.research[&body.owner].levels[&ResearchId::EnergyTechnology],
-            at,
-            current,
-        )
-        .map_err(|_| StoreError::CorruptData)?;
+        body.checkpoint = checkpoints[&body.id].clone();
         body.revision = body
             .revision
             .checked_add(1)
@@ -168,15 +160,7 @@ async fn settle_and_initialize(
             }
         }
         // Validate new production/capacity terms before publishing the profile.
-        settle_rules_boundary(
-            body,
-            &state.production_settings[&body.id].settings,
-            satellite_counts[&body.id],
-            state.research[&body.owner].levels[&ResearchId::EnergyTechnology],
-            at,
-            next,
-        )
-        .map_err(|_| StoreError::CorruptData)?;
+        settle_production(state, body, at, next).map_err(|_| StoreError::CorruptData)?;
         let count=sqlx::query("UPDATE bodies SET amounts=$2,carry=$3,checkpoint_at=$4,revision=$5 WHERE id=$1 AND revision=$6")
             .bind(body.id.0).bind(sqlx::types::Json(body.checkpoint.amounts)).bind(sqlx::types::Json(body.checkpoint.carry))
             .bind(at).bind(body.revision).bind(body.revision-1).execute(&mut **tx).await.map_err(db_error)?;

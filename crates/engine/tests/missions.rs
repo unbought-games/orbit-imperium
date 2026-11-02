@@ -90,7 +90,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
                 deletion_requested_at: None,
                 player: body.owner,
                 last_presence_at: 0,
-                vacation: false,
+                vacation: VacationState::default(),
                 lifecycle: PlayerLifecycle::Active,
                 policy_hash: r.hash.clone(),
                 revision: 0,
@@ -138,6 +138,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         }
     }
     s.world = Some(WorldFacts {
+        covered_vacation_players: s.players.keys().copied().collect(),
         alliance_leaders: Some(Default::default()),
         holding_relationships: None,
         covered_depot_sources: Default::default(),
@@ -212,7 +213,9 @@ fn run(
                 body: if matches!(
                     i.payload,
                     Input::Command(Command::World {
-                        action: WorldAction::CreateAttackGroup { .. }
+                        action: WorldAction::EnterVacation
+                            | WorldAction::ExitVacation
+                            | WorldAction::CreateAttackGroup { .. }
                             | WorldAction::InviteAttackGroup { .. }
                             | WorldAction::RevokeAttackGroupInvitation { .. }
                             | WorldAction::SetReportHidden { .. }
@@ -990,7 +993,7 @@ fn galaxy_attack_blocker_uses_current_policy_and_matches_quote() {
         .policies
         .get_mut(&other)
         .unwrap()
-        .vacation = true;
+        .vacation = VacationState::Legacy(true);
     assert_eq!(blocker(&s), Some(GameError::TargetVacation));
 }
 
@@ -2702,7 +2705,7 @@ fn planet_renaming_is_public_free_repeatable_and_owner_only() {
         .policies
         .get_mut(&p)
         .unwrap()
-        .vacation = true;
+        .vacation = VacationState::Legacy(true);
     for (n, name) in [(5000, "  Terra 🪐  "), (5001, "世界"), (5002, "世界")] {
         let result = run(&mut s, &r, p, b, 1000, n, rename(b, name));
         let change = apply(&mut s, result);
@@ -3324,3 +3327,6 @@ mod holding;
 mod attack_groups;
 #[path = "missions/empire_deletion.rs"]
 mod empire_deletion;
+
+#[path = "missions/vacation.rs"]
+mod vacation;

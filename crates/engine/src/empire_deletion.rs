@@ -29,7 +29,7 @@ impl PlayerPolicy {
         }
         let source = if let Some(at) = self.deletion_requested_at {
             Some((at, DELETION_GRACE_MS))
-        } else if !self.vacation {
+        } else if !self.vacation.is_active() {
             Some((self.last_presence_at, INACTIVITY_DELETION_MS))
         } else {
             None
@@ -73,7 +73,8 @@ impl PlayerPolicy {
     pub fn deletion_pending(&self, at: Timestamp) -> bool {
         self.lifecycle != PlayerLifecycle::Active
             || self.deletion_requested_at.is_some()
-            || (!self.vacation && at.saturating_sub(self.last_presence_at) >= INACTIVITY_WARNING_MS)
+            || (!self.vacation.is_active()
+                && at.saturating_sub(self.last_presence_at) >= INACTIVITY_WARNING_MS)
     }
 }
 

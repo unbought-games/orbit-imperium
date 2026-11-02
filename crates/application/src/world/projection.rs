@@ -58,11 +58,9 @@ pub(super) fn world_projection(
             }
             let eligible = can_hold(state, fleet.owner, viewer).is_ok()
                 && [viewer, fleet.owner].iter().all(|p| {
-                    world
-                        .records
-                        .policies
-                        .get(p)
-                        .is_some_and(|p| !p.deletion_pending(snapshot.at) && !p.vacation)
+                    world.records.policies.get(p).is_some_and(|p| {
+                        !p.deletion_pending(snapshot.at) && !p.vacation.is_active()
+                    })
                 });
             Some(HeldFleetView {
                 id: fleet.id,
@@ -101,6 +99,7 @@ pub(super) fn world_projection(
         }
     }
     Ok(BoundView4 {
+        vacation: vacation_view(state, viewer).map_err(|_| ServiceError::InvariantFailure)?,
         empire_deletion: world
             .records
             .policies

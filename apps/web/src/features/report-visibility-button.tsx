@@ -33,7 +33,7 @@ export function ReportVisibilityButton({
     <div className={compact ? styles.compactVisibility : undefined}>
       <Button
         variant={compact ? 'ghost' : 'secondary'}
-        size={compact ? 'icon' : undefined}
+        size={compact ? 'icon-touch' : undefined}
         aria-label={hidden ? 'Move to inbox' : 'Archive report'}
         disabled={disabled || visibility.disabled || (!hidden && !!starred)}
         title={

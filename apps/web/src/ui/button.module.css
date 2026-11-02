@@ -92,7 +92,7 @@
   padding: var(--button-padding, 12px 22px);
   font-size: var(--font-size-lg);
 }
-:where(.icon, .icon-small) {
+:where(.icon, .icon-small, .icon-touch) {
   flex-shrink: 0;
   width: var(--button-min-size, var(--control-size));
   height: var(--button-min-size, var(--control-size));
@@ -101,6 +101,11 @@
 :where(.icon-small) {
   --button-inset: 4px;
   --button-cut: 6px;
+}
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  :where(.icon-touch) {
+    --button-min-size: var(--control-size);
+  }
 }
 :where(.padding-compact) {
   --button-padding: 2px;

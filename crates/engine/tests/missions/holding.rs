@@ -415,7 +415,7 @@ fn depot_rounding_uses_survivors_and_deletion_blocks_new_supply() {
                 .get_mut(&owner)
                 .unwrap();
             policy.lifecycle = PlayerLifecycle::Active;
-            policy.vacation = false;
+            policy.vacation = VacationState::default();
         }
         let policy = s
             .world
@@ -426,7 +426,7 @@ fn depot_rounding_uses_survivors_and_deletion_blocks_new_supply() {
             .get_mut(&player)
             .unwrap();
         policy.lifecycle = lifecycle;
-        policy.vacation = vacation;
+        policy.vacation = VacationState::Legacy(vacation);
         assert_eq!(
             quote_depot_supply(&s, host, &request, event.at, &r),
             Err(expected)

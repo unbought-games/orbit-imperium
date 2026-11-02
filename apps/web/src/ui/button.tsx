@@ -11,6 +11,7 @@ export type ButtonSize =
   | 'large'
   | 'icon'
   | 'icon-small'
+  | 'icon-touch'
 export type ButtonPadding = 'default' | 'compact' | 'none'
 export type ButtonAppearance = {
   variant?: ButtonVariant

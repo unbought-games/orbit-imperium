@@ -33,6 +33,22 @@ export function actionLabel(command: Command): string {
 }
 export function actionMessage(a: Attempt): string {
   const command = a.envelope.command
+  if (
+    command.type === 'World' &&
+    (command.action.type === 'EnterVacation' ||
+      command.action.type === 'ExitVacation')
+  ) {
+    if (a.status === 'committed' && a.reconciled)
+      return command.action.type === 'EnterVacation'
+        ? 'Vacation mode is active.'
+        : 'Vacation mode ended. Your production settings have resumed.'
+    if (a.receipt?.status === 'Rejected') {
+      if (a.receipt.code === 'VacationMinimum')
+        return 'The 48-hour minimum has not elapsed yet.'
+      if (a.receipt.code === 'VacationBlocked')
+        return 'Vacation could not start. Review your current fleets and unfinished work.'
+    }
+  }
   if (a.status === 'rejected' && a.receipt?.status === 'Rejected') {
     if (a.receipt.code === 'ReauthenticationRequired')
       return 'Sign out and sign in again, then retry this action within five minutes.'

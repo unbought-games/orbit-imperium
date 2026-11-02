@@ -12581,6 +12581,30 @@
               "type"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "EnterVacation"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "ExitVacation"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12731,7 +12755,9 @@
           "AttackGroupTooLate",
           "AllianceLeader",
           "DeletionDue",
-          "ReauthenticationRequired"
+          "ReauthenticationRequired",
+          "VacationBlocked",
+          "VacationMinimum"
         ]
       },
       "BoundReceipt4": {
@@ -13502,6 +13528,9 @@
           },
           "leads_alliance": {
             "type": "boolean"
+          },
+          "vacation": {
+            "$ref": "#/components/schemas/VacationView4"
           }
         },
         "required": [
@@ -21105,6 +21134,67 @@
         "required": [
           "reason",
           "due_at"
+        ],
+        "additionalProperties": false
+      },
+      "VacationView4": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "entered_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "earliest_exit_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "Fleet",
+                    "Missile",
+                    "Construction",
+                    "Research",
+                    "Manufacturing",
+                    "HostedFleet"
+                  ]
+                },
+                "body": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "kind",
+                "body"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "active",
+          "entered_at",
+          "earliest_exit_at",
+          "blockers"
         ],
         "additionalProperties": false
       }

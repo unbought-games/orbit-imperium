@@ -184,6 +184,59 @@ async function reportsFixture(page: Page, quiet = false, count = 2) {
   }
 }
 
+for (const width of [320, 390, 800, 1440]) {
+  test.describe(`archive target at ${width}px`, () => {
+    test.use({ hasTouch: width < 1440 })
+
+    test('archive and restore respond at the target edge without opening the row', async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      const fixture = await reportsFixture(page, true)
+      const rows = page.locator('main article')
+      const inboxUrl = page.url()
+      const targetSize = width < 1440 ? 44 : 24
+      const activateEdge = async (name: string) => {
+        const button = page.getByRole('button', { name, exact: true }).last()
+        const box = (await button.boundingBox())!
+        expect(box.width).toBe(targetSize)
+        expect(box.height).toBe(targetSize)
+        expect(box.x + box.width).toBeLessThanOrEqual(width)
+        expect((await button.locator('svg').boundingBox())!.width).toBe(16)
+        // This point is outside the old 24px target on touch devices.
+        const x = box.x + 2
+        const y = box.y + box.height / 2
+        if (width < 1440) await page.touchscreen.tap(x, y)
+        else await page.mouse.click(x, y)
+      }
+      await diagnosticScreenshot(page, { path: `test-results/archive-target-list-${width}x900.png` })
+      await activateEdge('Archive report')
+      await expect.poll(() => fixture.headers[1].hidden).toBe(true)
+      await expect(rows).toHaveCount(1)
+      await expect(page).toHaveURL(inboxUrl)
+      await page.getByRole('button', { name: 'Archived', exact: true }).click()
+      await expect(rows).toHaveCount(1)
+      await activateEdge('Move to inbox')
+      await expect.poll(() => fixture.headers[1].hidden).toBe(false)
+      await expect(rows).toHaveCount(0)
+      await page.getByRole('button', { name: 'Inbox', exact: true }).click()
+      await rows.first().getByRole('link', { name: 'Espionage', exact: true }).click()
+      await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+      const archive = page.getByRole('button', { name: 'Archive report', exact: true })
+      const share = page.getByRole('button', { name: 'Share report', exact: true })
+      const shareBox = (await share.boundingBox())!
+      const archiveBox = (await archive.boundingBox())!
+      expect(archiveBox.x).toBeGreaterThanOrEqual(shareBox.x + shareBox.width)
+      expect(archiveBox.x + archiveBox.width).toBeLessThanOrEqual(width)
+      await archive.focus()
+      await diagnosticScreenshot(page, { path: `test-results/archive-target-detail-${width}x900.png` })
+      await activateEdge('Archive report')
+      await expect(page).toHaveURL(inboxUrl)
+      await expect(rows).toHaveCount(1)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    })
+  })
+}
+
 for (const width of [1440, 390]) {
   test(`delete and restore reports persist across list, detail and reload at ${width}px`, async ({
     page,
@@ -665,13 +718,13 @@ test.describe('report touch actions', () => {
       await expect(row.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
       await expect(remove).toBeEnabled()
       const box = (await remove.boundingBox())!
-      expect(box.width).toBe(24)
-      expect(box.height).toBe(24)
+      expect(box.width).toBe(44)
+      expect(box.height).toBe(44)
       expect((await remove.locator('svg').boundingBox())!.width).toBe(16)
 
-      // Tap the compact button corners, outside the glyph.
+      // Tap the expanded button corners, outside the glyph.
       fixture.setMode('rejected')
-      for (const [x, y] of [[2, 2], [22, 2], [2, 22], [22, 22]]) {
+      for (const [x, y] of [[2, 2], [42, 2], [2, 42], [42, 42]]) {
         const submitted = fixture.submitted()
         await remove.tap({ position: { x, y } })
         await expect.poll(fixture.submitted).toBe(submitted + 1)
@@ -693,7 +746,7 @@ test.describe('report touch actions', () => {
       await expect(remove).toBeDisabled()
       await remove.scrollIntoViewIfNeeded()
       const disabledBox = (await remove.boundingBox())!
-      for (const [x, y] of [[2, 2], [22, 2], [2, 22], [22, 22]]) {
+      for (const [x, y] of [[2, 2], [42, 2], [2, 42], [42, 42]]) {
         await page.touchscreen.tap(disabledBox.x + x, disabledBox.y + y)
         await expect(page).toHaveURL(inbox)
         expect(fixture.submitted()).toBe(4)
@@ -717,7 +770,7 @@ test.describe('report touch actions', () => {
       await expect(remove).toBeEnabled()
       fixture.setMode('success')
       // Recheck target size after detail navigation before tapping its padding.
-      expect((await remove.boundingBox())!.height).toBe(24)
+      expect((await remove.boundingBox())!.height).toBe(44)
       await remove.tap({ position: { x: 2, y: 22 } })
       await expect.poll(() => fixture.headers[0].hidden).toBe(true)
       await expect(page).toHaveURL(inbox)
