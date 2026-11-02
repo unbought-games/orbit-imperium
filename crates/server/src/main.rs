@@ -41,8 +41,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         // this floor also bounds repeated fail/serve/fail cycles.
         let delay = restart::delay(uuid::Uuid::new_v4().as_u128());
         eprintln!(
-            "level=warn event=serve_restart_backoff delay_ms={}",
-            delay.as_millis()
+            "{}",
+            serde_json::json!({"level":"warn", "event":"serve_restart_backoff", "duration_ms":delay.as_millis()})
         );
         std::thread::sleep(delay);
     }
