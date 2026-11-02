@@ -120,35 +120,40 @@ where
         }
     }
 }
+// Observer metadata must not turn an already authenticated game response into
+// an auth failure. Missing opted-in metadata is a separate observer health signal.
+async fn attach_metadata<F>(bootstrap: &mut Bootstrap, metadata: F, deadline: Deadline)
+where
+    F: Future<Output = Result<Option<OidcSessionMetadata>, StoreError>>,
+{
+    if let BootstrapResult::Authenticated { authentication, .. } = &mut bootstrap.result {
+        *authentication = timeout_at(deadline, metadata)
+            .await
+            .ok()
+            .and_then(Result::ok)
+            .flatten();
+    }
+}
+
 pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
     s: &HttpState<S>,
     h: &HeaderMap,
 ) -> Bootstrap {
+    let deadline = Deadline::now() + BUDGET;
     let (mut result, enabled) = tokio::join!(
         assemble_observed(
             false,
             async {
-                let session = authenticate(s, h, false).await.map_err(|e| e.0)?;
-                let authentication = if s.oidc.is_some()
-                    && !h.contains_key(header::AUTHORIZATION)
-                    && h.get("x-orbit-auth-metadata").and_then(|h| h.to_str().ok()) == Some("1")
-                {
-                    s.updates
-                        .oidc_session_metadata(&token_digest(
-                            token(h).ok_or(ServiceError::Unauthenticated)?,
-                        ))
-                        .await
-                        .map_err(ServiceError::from)?
-                } else {
-                    None
-                };
-                Ok((session, authentication))
+                authenticate(s, h, false)
+                    .await
+                    .map(|session| (session, None))
+                    .map_err(|e| e.0)
             },
             |session| async move {
                 read_game_when_available(|| s.game.initial_game(&session, uuid::Uuid::new_v4()))
                     .await
             },
-            Deadline::now() + BUDGET,
+            deadline,
             s.config
                 .observer
                 .clone()
@@ -157,6 +162,18 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
         signup_config::enabled(s)
     );
     result.signup_enabled = enabled;
+    if s.oidc.is_some()
+        && !h.contains_key(header::AUTHORIZATION)
+        && h.get("x-orbit-auth-metadata").and_then(|h| h.to_str().ok()) == Some("1")
+        && let Some(token) = token(h)
+    {
+        attach_metadata(
+            &mut result,
+            s.updates.oidc_session_metadata(&token_digest(token)),
+            deadline,
+        )
+        .await;
+    }
     result
 }
 pub(super) async fn prepare_authenticated_bootstrap<S: GameStore + IdentityStore>(
@@ -261,6 +278,51 @@ mod tests {
         let value: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(value["result"]["status"], "unavailable");
         assert_eq!(*observer.0.lock().unwrap(), vec!["auth_unavailable"]);
+    }
+    #[tokio::test(start_paused = true)]
+    async fn optional_metadata_failure_or_timeout_preserves_authenticated_bootstrap() {
+        for slow in [false, true] {
+            let mut bootstrap = assemble(
+                false,
+                async { Ok(session()) },
+                |_| async { Ok(None) },
+                Deadline::now() + BUDGET,
+            )
+            .await;
+            attach_metadata(
+                &mut bootstrap,
+                async {
+                    if slow {
+                        std::future::pending::<()>().await;
+                    }
+                    Err(StoreError::Unavailable)
+                },
+                Deadline::now() + Duration::from_millis(2),
+            )
+            .await;
+            assert!(matches!(
+                bootstrap.result,
+                BootstrapResult::Authenticated {
+                    authentication: None,
+                    game: BootstrapGame::NoMembership,
+                    ..
+                }
+            ));
+        }
+        let mut bootstrap = assemble(
+            false,
+            async { Err(ServiceError::Unauthenticated) },
+            |_| async { Ok(None) },
+            Deadline::now() + BUDGET,
+        )
+        .await;
+        attach_metadata(
+            &mut bootstrap,
+            async { panic!("anonymous callers cannot load observer metadata") },
+            Deadline::now() + BUDGET,
+        )
+        .await;
+        assert!(matches!(bootstrap.result, BootstrapResult::Anonymous));
     }
     #[tokio::test]
     async fn identity_expiry_metadata_requires_opt_in_and_excludes_credentials() {

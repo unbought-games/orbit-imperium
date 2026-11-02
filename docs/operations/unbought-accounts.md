@@ -75,7 +75,9 @@ identity expiry, distinct from the idle cookie deadline) and
 only on successful persisted rotation or fresh sign-in). The same generation must
 survive ordinary cached reads and nonrotating activity. Old rows without a generation
 omit metadata until their next rotation. Anonymous, unavailable, machine and local
-sessions omit it. Keep the observer's cookie private; use generation and expiry to
+sessions omit it. A metadata read failure or exhausted bootstrap budget also omits
+it while preserving the authenticated game response; observers must treat missing
+opted-in metadata as unavailable telemetry. Keep the observer's cookie private; use generation and expiry to
 prove the same retained session crosses an identity-expiry boundary. This opt-in
 preserves compatibility with older clients' strict bootstrap schemas.
 
