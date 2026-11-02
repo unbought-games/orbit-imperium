@@ -1453,48 +1453,46 @@ async function setAppHidden(page: Page, hidden: boolean) {
   }, hidden)
 }
 
-test('return refresh waits for success after five minutes and plays once with accessible reduced motion', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  await page.emulateMedia({reducedMotion:'reduce'})
+test('foreground refresh confirms an accepted response with accessible reduced motion', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.clock.install()
-  await page.addInitScript(()=>{Math.random=()=>0})
+  await page.addInitScript(() => { Math.random = () => 0 })
   await intelligenceFixture(page)
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   const caption = page.getByTestId('orb-caption')
+  const pulse = page.getByTestId('orb-refresh-pulse')
   await expect(caption).toHaveText('Systems Online')
   await page.clock.fastForward(6000)
-  const initial = await page.evaluate(()=>Date.now())
-  await setAppHidden(page, true)
-  await page.clock.setSystemTime(initial + 4*60*1000)
-  await setAppHidden(page, false)
-  await page.clock.runFor(300)
-  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
-
-  let failed = 0
-  await page.route('**/api/**/overview', async route => {
-    failed++
-    await route.fulfill({status:503,json:{code:'Unavailable'}})
-  })
-  await setAppHidden(page, true)
-  await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 5*60*1000)
-  await setAppHidden(page, false)
-  await page.clock.runFor(300)
-  await expect.poll(()=>failed).toBeGreaterThan(0)
-  await expect(caption).toHaveText('Connection lost.')
-  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
-  await page.unroute('**/api/**/overview')
-  await page.clock.fastForward(6000)
-  await refreshGame(page)
-  await page.clock.runFor(300)
-  await expect(caption).toHaveText('Updated')
-  await expect(page.getByRole('status').filter({hasText:'Updated'})).toBeVisible()
-  await expect(page.getByTestId('orb-refresh-pulse').locator('span').first()).toHaveCSS('animation-name','none')
-  await diagnosticScreenshot(page,{path:`${output}/updated-reduced-motion-390x844.png`})
-  await page.clock.fastForward(6000)
-  await refreshGame(page)
-  await page.clock.runFor(300)
-  await expect(page.getByTestId('orb-refresh-pulse')).toHaveCount(0)
   await expect(caption).toHaveCount(0)
+
+  // The threshold, failure/recovery ordering and one-shot policy are unit tested.
+  // Keep one browser boundary: visibility -> held HTTP response -> accessible UI.
+  let release!: () => void
+  const responseGate = new Promise<void>(resolve => { release = resolve })
+  let requested = false
+  await page.route('**/api/**/overview', async route => {
+    requested = true
+    await responseGate
+    await route.fallback()
+  })
+  try {
+    await setAppHidden(page, true)
+    await page.clock.setSystemTime((await page.evaluate(() => Date.now())) + 5 * 60 * 1000)
+    await setAppHidden(page, false)
+    await page.clock.runFor(300)
+    await expect.poll(() => requested).toBe(true)
+    await expect(pulse).toHaveCount(0)
+    await expect(caption).toHaveCount(0)
+    release()
+    await expect(caption).toHaveText('Updated')
+    await expect(page.getByRole('status').filter({ hasText: 'Updated' })).toBeVisible()
+    await expect(pulse.locator('span').first()).toHaveCSS('animation-name', 'none')
+    await diagnosticScreenshot(page, { path: `${output}/updated-reduced-motion-390x844.png` })
+  } finally {
+    release()
+    await page.unrouteAll({ behavior: 'wait' })
+  }
 })
 
 test('return refresh animation preview at mobile and desktop sizes', async ({page}) => {

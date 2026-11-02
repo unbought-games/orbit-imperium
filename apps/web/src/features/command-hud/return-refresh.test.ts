@@ -1,7 +1,9 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { bootstrapFixture } from '../../test-support/bootstrap'
 import { createGameStore } from '../../client-model/game-store'
 import { createReturnRefresh, returnRefreshDelayMs } from './return-refresh'
+import { captionEvents } from './caption-events'
+import { createCaptionEngine } from './caption-engine'
 
 function fixture() {
   let now = 0
@@ -52,6 +54,39 @@ it('waits through failure and the snapshot/stale recovery updates', () => {
   const fresh = { ...state, view: { ...state.view! } }
   expect(tracker.observe({ ...fresh, stale: true })).toEqual([])
   expect(tracker.observe(fresh)).toHaveLength(1)
+})
+it('recovery confirms once, outranks reconnection, then expires without replay', () => {
+  vi.useFakeTimers()
+  try {
+    const { tracker, state, advance } = fixture()
+    const engine = createCaptionEngine({ random: () => 0 })
+    let previous = state
+    const accept = (next: typeof state) => {
+      engine.handle([
+        ...captionEvents(previous, next),
+        ...tracker.observe(next),
+      ])
+      previous = next
+    }
+    tracker.visibility(true, state)
+    advance(returnRefreshDelayMs)
+    tracker.visibility(false, state)
+    accept({ ...state, stale: true, connectionInterrupted: true })
+    expect(engine.snapshot()?.text).toBe('Connection lost.')
+    // Coordinator publishes the snapshot before clearing connection flags.
+    const fresh = { ...previous, view: { ...state.view! } }
+    accept(fresh)
+    expect(engine.snapshot()?.text).toBe('Connection lost.')
+    accept({ ...fresh, stale: false, connectionInterrupted: false })
+    expect(engine.snapshot()?.text).toBe('Updated')
+    expect(engine.snapshot()?.category).toBe('updated')
+    vi.advanceTimersByTime(engine.snapshot()!.lifetimeMs)
+    expect(engine.snapshot()).toBeNull()
+    accept({ ...previous, view: { ...state.view! } })
+    expect(engine.snapshot()).toBeNull()
+  } finally {
+    vi.useRealTimers()
+  }
 })
 it('uses wall time across sleep, keeps the first hidden timestamp, and cancels on another hide or session loss', () => {
   const { tracker, state, advance } = fixture()
