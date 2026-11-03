@@ -237,6 +237,30 @@ test('database groups reuse trusted native dependencies and isolate Compose clea
   assert.match(cleanup.run, /docker compose down --volumes --remove-orphans/)
 })
 
+test('Rust CI avoids full dependency debug data before cache restore and throughout builds', () => {
+  const checked = []
+  for (const { file, workflow } of workflows) {
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      const cache = job.steps.find(step => step.uses?.startsWith('Swatinem/rust-cache@'))
+      if (!cache) continue
+      checked.push(`${file}:${name}`)
+      // A late step-only override would restore large incompatible artifacts first.
+      const builds = job.steps.filter(step => /make (check|test-db-|test-explicit)/.test(step.run ?? ''))
+      assert.ok(builds.length > 0, `${file}:${name}`)
+      for (const step of [cache, ...builds]) {
+        const env = { ...workflow.env, ...job.env, ...step.env }
+        for (const profile of ['DEV', 'TEST'])
+          assert.equal(env[`CARGO_PROFILE_${profile}_DEBUG`], 'line-tables-only', `${file}:${name}:${profile}`)
+        assert.equal(env.CARGO_INCREMENTAL, '0')
+      }
+      // rust-cache hashes CARGO* into both its exact and fallback keys by default.
+      assert.notEqual(cache.with['add-rust-environment-hash-key'], false)
+      assert.notEqual(cache.with['add-rust-environment-hash-key'], 'false')
+    }
+  }
+  assert.deepEqual(checked.sort(), ['ci.yml:database', 'ci.yml:native', 'explicit-tests.yml:explicit'])
+})
+
 test('browser shards run independently and Make forwards their native Playwright selector', () => {
   const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
   assert.equal(browser.strategy['fail-fast'], false)

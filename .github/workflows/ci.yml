@@ -19,6 +19,10 @@ env:
   CI: 'true'
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: '0'
+  # Keep source backtraces without duplicating dependency type/variable debug data
+  # in every test binary. These CARGO values also partition the Rust cache.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  CARGO_PROFILE_TEST_DEBUG: line-tables-only
 
 jobs:
   scope:
@@ -78,7 +82,7 @@ jobs:
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
         with:
-          # Reuse the existing main dependency cache across native and DB jobs.
+          # Share main dependencies built with the same debug profile.
           shared-key: check-native
           cache-bin: false
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -88,6 +92,13 @@ jobs:
           tool: cargo-nextest@0.9.114
       - name: Run checks
         run: make check
+      - name: Report Rust build disk usage
+        if: always()
+        run: |
+          df -h .
+          for path in target "$HOME/.cargo"; do
+            if [ -d "$path" ]; then du -sh "$path"; fi
+          done
       - name: Verify lockfiles remain unchanged
         if: always()
         run: git diff --exit-code -- Cargo.lock package-lock.json
@@ -116,7 +127,7 @@ jobs:
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
         with:
-          # Reuse the existing main dependency cache across native and DB jobs.
+          # Share main dependencies built with the same debug profile.
           shared-key: check-native
           cache-bin: false
           save-if: false
@@ -132,6 +143,13 @@ jobs:
       # Make runs isolated database binaries with its bounded parallelism.
       - name: Run PostgreSQL integration tests
         run: make test-db-${{ matrix.group }}
+      - name: Report Rust build disk usage
+        if: always()
+        run: |
+          df -h .
+          for path in target "$HOME/.cargo"; do
+            if [ -d "$path" ]; then du -sh "$path"; fi
+          done
       - name: Remove disposable database and test files
         if: always()
         run: |

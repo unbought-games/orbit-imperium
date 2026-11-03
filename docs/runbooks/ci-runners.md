@@ -17,8 +17,10 @@ Make limits database execution to four isolated binaries at a time;
 `make test-db DB_JOBS=2` can lower that bound on smaller hosts. Tests within each
 binary remain serial, and each binary retains its own disposable database.
 Compose project names include the matrix group. The Rust jobs restore the same
-trusted-main dependency cache (`shared-key: check-native`, retaining the old
-native job's cache namespace); only native checks on main write it.
+trusted-main dependency cache (`shared-key: check-native`); only native checks
+on main write it. The cache's environment hash includes both Cargo debug-profile
+overrides, so neither exact nor fallback restoration mixes full-debug artifacts
+with the smaller CI artifacts.
 
 The existing `Build, lint and unit tests` check is an always-run aggregate gate:
 scope selection and native checks must succeed, and every selected browser shard
@@ -41,11 +43,19 @@ application startup while retaining every viewport and control assertion.
 Countdown tests exercise a normal one-second tick before fast-forwarding to
 expiry; they do not replay every animation frame over several simulated minutes.
 
-Rust's test profile emits line tables for workspace crates, retaining source
-locations in failure backtraces without full type and variable debug information.
-Third-party dependencies keep their existing full debug profile, so previously
-cached dependency artifacts remain usable. Development and release profiles are
-unchanged.
+Routine and explicit CI set `CARGO_PROFILE_DEV_DEBUG` and
+`CARGO_PROFILE_TEST_DEBUG` to `line-tables-only` before restoring the Rust cache.
+This retains filenames and line numbers in failure backtraces while avoiding
+full dependency type and variable information in every linked test binary.
+Both profiles use the same setting so development builds used by explicit suites
+and test builds can reuse artifacts. Optimizations, debug assertions, overflow
+checks and test selection are unchanged. These workflow-only overrides do not
+change local debugging defaults or release builds.
+
+Rust jobs report remaining disk space and Cargo/target sizes after execution.
+When investigating disk exhaustion, preserve the failing attempt and compare
+cache keys, runner images and actual extracted/build sizes. A compressed cache
+size or a passing retry alone does not identify the cause or prove a repair.
 
 Browser screenshots are diagnostic, not snapshot assertions. Routine runs skip
 named captures and the shared test fixture captures open pages after an unexpected
