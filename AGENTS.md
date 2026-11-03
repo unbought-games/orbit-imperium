@@ -29,6 +29,16 @@ implementation details are needed.
 
 All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests are squash-merged, so the PR title becomes the commit title. Verify the title before creating or updating a PR.
 
+## Contributor credit
+
+Credit every external contributor in the release notes for their included work,
+including coauthors and documentation, testing, artwork, translation, and verified
+reports or reviews that led to a change. Preserve attribution when integrating or
+squashing their work. Add credit to the relevant build note and unreleased
+changelog entry when the contribution lands, then carry it into the numbered
+release. Follow the [contributor credit process](docs/operations/open-source-releases.md#contributor-credit)
+when preparing or refreshing notes; editorial filtering must not drop contributors.
+
 ## UI screenshots
 
 For every user interface change, capture and inspect the final running
