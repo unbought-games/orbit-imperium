@@ -1415,10 +1415,11 @@ fn first_round_loss(lunar: bool) {
     let observer = &report.payloads[&p];
     assert_eq!(observer["kind"], "ContactLost");
     // Endpoint kind is already bound by the launch, not defender intelligence.
-    assert_eq!(
-        observer["target_kind"],
-        if lunar { "Moon" } else { "Planet" }
-    );
+    if lunar {
+        assert_eq!(observer["target_kind"], "Moon");
+    } else {
+        assert!(observer.get("target_kind").is_none());
+    }
     for key in [
         "participants",
         "rounds",

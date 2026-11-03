@@ -54,7 +54,7 @@ const foreign: S['GalaxyPosition4'] = {
   },
   debris: null,
 }
-async function fixture(page: Page) {
+async function fixture(page: Page, attackBlocker?: S['GameError4']) {
   await page.clock.setFixedTime(now)
   const launches: S['FleetIntent4'][] = []
   const supplies: S['DepotSupplyIntent4'][] = []
@@ -124,10 +124,17 @@ async function fixture(page: Page) {
         galaxy: q.galaxy,
         system: q.system,
         observed_at: now,
-        player_names: {[id(130)]: 'Artemis'},
+        player_names: { [id(130)]: 'Artemis' },
         positions: Array.from({ length: 15 }, (_, index) =>
           index === 8
-            ? foreign
+            ? {
+                ...foreign,
+                body: {
+                  ...foreign.body!,
+                  attack_blocker: attackBlocker,
+                  espionage_eligible: !attackBlocker,
+                },
+              }
             : {
                 coordinates: { ...body.coordinates, position: index + 1 },
                 body: null,
@@ -476,6 +483,37 @@ for (const width of [1440, 390]) {
       await diagnosticScreenshot(page, {
         path: `test-results/moon-spy-error-${width}x900.png`,
       })
+    })
+    test('moon dispatch shows observed attack and espionage protection before review', async ({
+      page,
+    }) => {
+      const state = await fixture(page, 'BeginnerProtected')
+      await page.goto(
+        `/u/andromeda/b/${moon.id}/dispatch?galaxy=1&system=371&position=9&target=moon&mission=Attack`,
+      )
+      await page
+        .getByRole('button', { name: /Hostile fleet inbound/ })
+        .press('Escape')
+      await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
+      await expect(page.getByLabel('Destination preview')).toContainText(
+        'Selene',
+      )
+      await expect(
+        page
+          .getByRole('status')
+          .filter({ hasText: 'Beginner protection prevents this mission' }),
+      ).toBeVisible()
+      await diagnosticScreenshot(page, {
+        path: `test-results/moon-dispatch-protection-${width}x900.png`,
+        fullPage: true,
+      })
+      await page.getByRole('radio', { name: 'Espionage', exact: true }).check()
+      await expect(
+        page
+          .getByRole('status')
+          .filter({ hasText: 'Beginner protection prevents this mission' }),
+      ).toBeVisible()
+      expect(state.launches).toEqual([])
     })
   })
 }

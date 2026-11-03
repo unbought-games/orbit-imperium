@@ -15,3 +15,16 @@ export function publicMoonBody(
     activity: moon.activity ?? { type: 'None' },
   }
 }
+
+/** Find exactly the observed body; a moon's owner policy comes from its parent. */
+export function observedBody(
+  observation: S['GalaxySystem4'] | undefined,
+  id: string | undefined,
+): S['PublicBody4'] | undefined {
+  if (!id) return undefined
+  for (const position of observation?.positions ?? []) {
+    if (position.body?.id === id) return position.body
+    if (position.moon?.id === id) return publicMoonBody(position)
+  }
+  return undefined
+}

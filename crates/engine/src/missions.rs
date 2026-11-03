@@ -515,13 +515,42 @@ pub(crate) fn mission_report(
         },
     );
 }
+/// Planet-only payloads retain their historical bytes for journal replay.
+/// Moon operations add only the endpoint facts that legacy readers could not infer.
+pub(crate) fn with_moon_endpoints(
+    s: &GameState,
+    f: &MissionFleet,
+    mut payload: serde_json::Value,
+) -> serde_json::Value {
+    if s.bodies
+        .get(&f.intent.origin)
+        .is_some_and(|b| b.kind == BodyKind::Moon)
+    {
+        payload["origin_kind"] = json!(BodyKind::Moon);
+    }
+    if matches!(
+        f.intent.destination,
+        MissionDestination::Body {
+            expected_kind: BodyKind::Moon,
+            ..
+        }
+    ) {
+        payload["target_kind"] = json!(BodyKind::Moon);
+    }
+    payload
+}
+
 fn own_report_payload(
     s: &GameState,
     i: &OrderedInput,
     f: &MissionFleet,
     kind: &str,
 ) -> serde_json::Value {
-    json!({"kind":kind,"fleet":f.id,"origin":f.intent.origin,"origin_kind":s.bodies.get(&f.intent.origin).map(|b|b.kind),"destination":f.intent.destination,"target_kind":match f.intent.destination { MissionDestination::Body {expected_kind,..} => Some(expected_kind), _ => None },"origin_coordinates":f.origin_coordinates,"destination_coordinates":f.destination_coordinates,"cargo":wire_resources(f.cargo),"ships":f.ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>(),"at":i.at})
+    with_moon_endpoints(
+        s,
+        f,
+        json!({"kind":kind,"fleet":f.id,"origin":f.intent.origin,"destination":f.intent.destination,"origin_coordinates":f.origin_coordinates,"destination_coordinates":f.destination_coordinates,"cargo":wire_resources(f.cargo),"ships":f.ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>(),"at":i.at}),
+    )
 }
 pub(crate) fn own_report(
     s: &GameState,
@@ -1098,10 +1127,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                             payload[key] = json!(name);
                                         }
                                     }
-                                    payload["target_kind"] = json!(s.bodies[&id].kind);
-                                    if let Some(origin) = s.bodies.get(&f.intent.origin) {
-                                        payload["origin_kind"] = json!(origin.kind);
-                                    }
+                                    let payload = with_moon_endpoints(s, &f, payload);
                                     payloads.insert(owner, payload);
                                 }
                                 mission_report(&mut w, i, &f, "Delivered", payloads);

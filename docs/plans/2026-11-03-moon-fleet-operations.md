@@ -225,3 +225,9 @@ Inspected fresh rendered desktop (1440×900) and mobile (390×900) captures of E
 Disposable PostgreSQL project `orbit-moon-fleets` used port 55439. Each suite removed its isolated database through the existing runner; the project container, network, and volume were removed with scoped Compose cleanup. Browser runners closed their Vite servers and browsers. No full-system acceptance, process-recovery, production-container, signup, or deployment validation was run.
 
 Environment: Rust 1.99.0; local Node 24.14.0/npm 11.9.0. npm reported the repository's higher pinned Node/npm engine versions during installation; the client tests, browser tests, static checks, and production build completed successfully in this environment.
+
+### PR #323 follow-through
+
+The first PR head, `30ab553b5f4d793f3594a8329eaca2bbe5996869`, exposed a historical journal hash regression in routine CI. Optional endpoint metadata is now emitted only for moon endpoints; old planet-only reports retain their original serialized bytes. The existing historical replay hashes were preserved, not regenerated. `make test-server` then passed 675 workspace tests (24.606s), 46 configuration-bridge tests (0.787s), and 7 storage-library tests (0.029s).
+
+Review thread `PRRT_kwDOVRgPYs6zHfZ7` correctly identified that dispatch observation warnings looked up only planet IDs. A shared pure lookup now resolves an observed moon by its own ID and applies its parent's public eligibility policy. Focused client coverage passed 108 tests; the two new desktop/mobile browser cases passed in 2.5s after correcting the test's overly broad live-region locator. The other eight moon browser cases passed in the preceding run. Fresh protection-warning screenshots were inspected at 1440×900 and 390×900. Static checks, TypeScript, and engine Clippy passed after these repairs.
