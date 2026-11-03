@@ -550,3 +550,11 @@ local API connections during fixture teardown without failing assertions. Deskto
 and displayed in the implementation chat. Each runner closed its Vite server,
 browsers and port lease; no database or Docker setup was used. Remote CI and queue
 verification are tracked on the PR, separately from these local timings.
+
+PR #320 review follow-up closes the portaled account menu when the sidebar's
+1024px breakpoint is crossed, restoring focus to the visible mobile Menu button.
+Settings now composes `Menu.LinkItem` with the router link and only records an
+ordinary unmodified navigation as a visit. Five focused browser cases passed,
+including both resize directions, Settings activation, keyboard focus and refreshed
+identity captures (1.875s preparation, 5.1s runner time). No failed attempts in this
+repair round; canonical lint/format, TypeScript and whitespace checks passed.

@@ -231,3 +231,23 @@ for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
+
+test('shrinking the desktop account menu closes its portal and focuses the mobile menu', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await shellFixture(page)
+  const account = page.getByRole('button', { name: 'Account menu', exact: true })
+  await account.click()
+  const popup = page.getByRole('menu', { name: 'Account menu', exact: true })
+  await expect(popup).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 900 })
+  await expect(popup).toBeHidden()
+  const mobileMenu = page.getByRole('button', { name: 'Menu', exact: true })
+  await expect(mobileMenu).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog', { name: 'Navigation', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(account).toHaveAttribute('aria-expanded', 'false')
+  await account.click()
+  await expect(popup).toBeVisible()
+})

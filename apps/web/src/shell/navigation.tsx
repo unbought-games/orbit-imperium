@@ -23,6 +23,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
   type ReactNode,
   type FocusEvent,
 } from 'react'
@@ -64,12 +65,18 @@ export function Navigation({
   const universeName = useUniverseName()
   const dialog = useRef<HTMLDialogElement>(null)
   const sidebar = useRef<HTMLElement>(null)
+  const mobileMenu = useRef<HTMLButtonElement>(null)
+  const [accountOpen, setAccountOpen] = useState(false)
   const opener = useRef<HTMLElement | null>(null)
   const menuId = useId()
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 1024px)')
-    const closeOnDesktop = () => {
-      if (!desktop.matches || !dialog.current?.open) return
+    const closeHiddenNavigation = () => {
+      if (!desktop.matches) {
+        setAccountOpen(false)
+        return
+      }
+      if (!dialog.current?.open) return
       // The menu button disappears at this breakpoint. Restore focus to the
       // equivalent visible navigation instead of its now-hidden opener.
       opener.current =
@@ -78,8 +85,8 @@ export function Navigation({
         ) ?? null
       dialog.current.close()
     }
-    desktop.addEventListener('change', closeOnDesktop)
-    return () => desktop.removeEventListener('change', closeOnDesktop)
+    desktop.addEventListener('change', closeHiddenNavigation)
+    return () => desktop.removeEventListener('change', closeHiddenNavigation)
   }, [])
   const close = () => dialog.current?.close()
   const selected = navigationAnchor(page)
@@ -175,6 +182,7 @@ export function Navigation({
       {destination('galaxy', 'Galaxy', Telescope, true)}
       {destination('fleets', 'Fleets', Radar, true)}
       <Button
+        ref={mobileMenu}
         variant="ghost"
         type="button"
         aria-label="Menu"
@@ -238,7 +246,7 @@ export function Navigation({
           {destination('high-scores')}
         </nav>
         <div className={styles.sidebarAccount}>
-          <AccountMenu.Root>
+          <AccountMenu.Root open={accountOpen} onOpenChange={setAccountOpen}>
             <AccountMenu.Trigger
               render={
                 <Button variant="ghost" className={styles.sidebarPlayer} />
@@ -267,17 +275,32 @@ export function Navigation({
                 <AccountMenu.Popup
                   className={styles.accountMenu}
                   aria-label="Account menu"
+                  finalFocus={() =>
+                    window.matchMedia('(min-width: 1024px)').matches
+                      ? true
+                      : mobileMenu.current
+                  }
                 >
-                  <AccountMenu.Item
+                  <AccountMenu.LinkItem
+                    closeOnClick
                     render={
                       <Link {...routeTarget(universeName, 'settings', body)} />
                     }
                     className={styles.accountMenuItem}
                     data-analytics="navigate_settings"
-                    onClick={() => onVisit?.('settings')}
+                    onClick={(event) => {
+                      if (
+                        event.button === 0 &&
+                        !event.metaKey &&
+                        !event.ctrlKey &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      )
+                        onVisit?.('settings')
+                    }}
                   >
                     <Settings size={16} aria-hidden="true" /> Settings
-                  </AccountMenu.Item>
+                  </AccountMenu.LinkItem>
                   <AccountMenu.Item
                     className={styles.accountMenuItem}
                     onClick={onLogout}
