@@ -278,6 +278,9 @@ pub fn project_shared_report_with_identity(
             }
         }
         "ContactLost" => {
+            if let Some(kind) = source.get("target_kind") {
+                payload["target_kind"] = kind.clone();
+            }
             payload["own_lost_ships"] = units(&source["own_lost_ships"]);
             payload["own_cargo_loss"] = resources(&source["own_cargo_loss"]);
         }
@@ -637,7 +640,7 @@ mod tests {
     }
     #[test]
     fn contact_lost_never_gains_defender_facts_even_when_publishing_everything() {
-        let source = json!({"kind":"ContactLost","at":1000,"target":{"galaxy":1,"system":2,"position":3,"owner":"SECRET"},"participants":[{"owner":"SECRET"}],"outcome":"SECRET","own_lost_ships":[{"ship_type":"SmallCargo","count":"2","owner":"SECRET"}],"own_cargo_loss":{"metal":"100"}});
+        let source = json!({"kind":"ContactLost","at":1000,"target_kind":"Moon","target":{"galaxy":1,"system":2,"position":3,"owner":"SECRET"},"participants":[{"owner":"SECRET"}],"outcome":"SECRET","own_lost_ships":[{"ship_type":"SmallCargo","count":"2","owner":"SECRET"}],"own_cargo_loss":{"metal":"100"}});
         let report = project_shared_report(
             ReportId::default(),
             1000,
@@ -651,6 +654,7 @@ mod tests {
         .unwrap();
         assert!(!serde_json::to_string(&report).unwrap().contains("SECRET"));
         assert!(report.payload.get("outcome").is_none());
+        assert_eq!(report.payload["target_kind"], "Moon");
         assert_eq!(report.payload["own_lost_ships"][0]["count"], "2");
         assert!(
             project_shared_report(

@@ -594,8 +594,8 @@ function PlanetDossier({
       </header>
       {body.kind === 'Moon' && (
         <p>
-          Moon operations are not available yet. Buildings are available to
-          inspect.
+          Fleet operations are available. Moon construction is not available
+          yet.
         </p>
       )}
       <dl className={styles.resources} aria-label={`${body.kind} resources`}>

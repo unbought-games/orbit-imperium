@@ -158,7 +158,7 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
             : {
                 type: 'Body',
                 id: own ? colony.id : id(20),
-                expected_kind: 'Planet',
+                expected_kind: query.selection.kind,
                 expected_owner: own ? binding.player : id(30),
               })
     } else {
@@ -225,7 +225,7 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
 }
 
 async function selectDestinationPlanet(page: Page, id: string) {
-  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  const picker = page.getByRole('combobox', { name: 'Your planets and moons' })
   await picker.click()
   await page.getByRole('option').and(page.locator(`[data-value="${id}"]`)).click()
   await expect(picker).toHaveAttribute('data-value', id)
@@ -1446,11 +1446,11 @@ for (const width of [320, 390, 1440]) {
   test(`destination picker and coordinates converge on one preview at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await setup(page)
-    const picker = page.getByRole('combobox', { name: 'Your other planets' })
+    const picker = page.getByRole('combobox', { name: 'Your planets and moons' })
     const preview = page.getByLabel('Destination preview')
     const input = page.getByLabel('Destination coordinates', { exact: true })
     await picker.click()
-    await expect(page.getByRole('listbox', { name: 'Your other planets' }).getByRole('option')).toHaveText(['Haven Colony[1:1:2]'])
+    await expect(page.getByRole('listbox', { name: 'Your planets and moons' }).getByRole('option')).toHaveText(['Haven ColonyPlanet · [1:1:2]'])
     await diagnosticScreenshot(page, { path: `test-results/destination-options-${width}.png` })
     await picker.press('Escape')
     await selectDestinationPlanet(page, id(6))
@@ -1526,14 +1526,15 @@ test('late destination lookup cannot replace a selected colony and failures are 
   await setDestination(page, { system: '3', position: '1' })
   await expect(preview).toContainText('Destination unavailable')
   await expect(preview.locator('img')).toHaveCount(0)
-  await expect(page.getByRole('combobox', { name: 'Your other planets' })).not.toHaveAttribute('data-value')
+  await expect(page.getByRole('combobox', { name: 'Your planets and moons' })).not.toHaveAttribute('data-value')
 })
 
-test('destination picker excludes origin and moons and handles a one-planet empire', async ({ page }) => {
+test('destination picker includes a same-coordinate moon and excludes the origin', async ({ page }) => {
   await shellFixture(page, { protocol: 4, bodies: [{ ...body, name: 'Home' }, { ...body, id: id(90), kind: 'Moon', name: 'Home moon' }], extraCapabilities: ['Deploy'] })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
-  await expect(page.getByRole('combobox', { name: 'Your other planets' })).toBeDisabled()
-  await expect(page.getByRole('combobox', { name: 'Your other planets' })).toHaveAttribute('title', /No other planets yet/)
+  await page.getByRole('combobox', { name: 'Your planets and moons' }).click()
+  await page.getByRole('option', {name: /Home moon/}).click()
+  await expect(page.getByLabel('Destination preview')).toContainText('Moon · Your moon')
   await expect(page.getByLabel('Destination coordinates', { exact: true })).toBeEnabled()
 })
 
@@ -1545,7 +1546,7 @@ test('planet renames, removal and origin changes update the picker and preview f
   let revision = 1
   await shellFixture(page, { protocol: 4, bodies, viewerRevision: () => String(revision), extraCapabilities: ['Deploy'] })
   await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
-  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  const picker = page.getByRole('combobox', { name: 'Your planets and moons' })
   const preview = page.getByLabel('Destination preview')
   await selectDestinationPlanet(page, colony.id)
   await expect(preview).toContainText('Colony')
@@ -1556,7 +1557,7 @@ test('planet renames, removal and origin changes update the picker and preview f
   await expect(picker).toContainText(colony.name)
   await selectBody(page, colony.id)
   await picker.click()
-  await expect(page.getByRole('listbox', { name: 'Your other planets' }).getByRole('option')).toHaveText(['Home[1:371:12]'])
+  await expect(page.getByRole('listbox', { name: 'Your planets and moons' }).getByRole('option')).toHaveText(['HomePlanet · [1:371:12]'])
   await picker.press('Escape')
   await selectDestinationPlanet(page, home.id)
   await expect(preview).toContainText('Home')
@@ -1645,7 +1646,7 @@ test('a retained observation of a former colony is explicitly marked as historic
   state.advanceRevision()
   await refreshGame(page)
   await expect.poll(() => held).toBe(true)
-  await expect(page.getByRole('combobox', { name: 'Your other planets' })).toBeDisabled()
+  await expect(page.getByRole('combobox', { name: 'Your planets and moons' })).toBeDisabled()
   await expect(preview).toContainText('Haven Colony')
   await expect(preview).toContainText('Last observed · Review verifies destination.')
   await expect(preview).toContainText('You (last observed)')
@@ -1661,11 +1662,11 @@ test('a retained observation of a former colony is explicitly marked as historic
 
 test('unified destination supports keyboard planet selection, dismissal and coordinate advancement', async ({ page }) => {
   await setup(page)
-  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  const picker = page.getByRole('combobox', { name: 'Your planets and moons' })
   const input = page.getByLabel('Destination coordinates', { exact: true })
   await picker.focus()
   await picker.press('ArrowDown')
-  await expect(page.getByRole('listbox', { name: 'Your other planets' })).toBeVisible()
+  await expect(page.getByRole('listbox', { name: 'Your planets and moons' })).toBeVisible()
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await expect(input).toHaveValue('1:1:2')
@@ -1715,11 +1716,12 @@ test('explicit moon links retain their body intent through coordinate edits and 
   await input.pressSequentially('1 3')
   await expect(input).toHaveValue('1:1:3')
   await expect(preview).toContainText('Moon not observed')
-  await expect(review(page)).toBeDisabled()
-  await expect(page.getByRole('region', { name: 'Flight timing' })).toContainText('Moon fleet operations are not available yet.')
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(state.quotes).toBe(0)
+  await expect(review(page)).toBeEnabled()
+  await review(page).click()
+  await expect(page.getByRole('region', {name: 'Fleet quote'})).toBeVisible()
+  expect(state.quotes).toBe(1)
   expect(state.launches).toBe(0)
+  await page.getByRole('button', {name: 'Back to edit mission', exact: true}).click()
   await selectDestinationPlanet(page, id(6))
   await expect(preview).toContainText('Planet · Your colony')
 })
@@ -1732,9 +1734,9 @@ test('long planet names remain readable in the narrow destination list', async (
   state.bodies[1].name = name
   state.advanceRevision()
   await refreshGame(page)
-  const picker = page.getByRole('combobox', { name: 'Your other planets' })
+  const picker = page.getByRole('combobox', { name: 'Your planets and moons' })
   await picker.click()
-  const list = page.getByRole('listbox', { name: 'Your other planets' })
+  const list = page.getByRole('listbox', { name: 'Your planets and moons' })
   await expect(list).toContainText(name)
   expect(await list.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
   await page.getByRole('option').and(page.locator(`[data-value="${id(6)}"]`)).click()
@@ -1768,16 +1770,15 @@ test('choosing a planet clears a rejected paste notice without changing coordina
 
 test('background flight estimates preserve an explicit moon destination', async ({ page }) => {
   const state = await setup(page)
-  // Creation-only moons retain their identity without scheduling an estimate.
+  // Background estimates must preserve the selected lunar endpoint.
   await page.getByLabel('Destination coordinates', { exact: true }).evaluate(element => {
     const data = new DataTransfer()
     data.setData('text/plain', `${location.origin}/u/andromeda/location/1:1:3?target=moon`)
     element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   })
   await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
-  await expect(page.getByRole('region', { name: 'Flight timing' })).toContainText('Moon fleet operations are not available yet.')
-  await expect(review(page)).toBeDisabled()
-  expect(state.estimates).toBe(0)
+  await expect.poll(() => state.estimates).toBeGreaterThan(0)
+  await expect(review(page)).toBeEnabled()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   expect(state.launches).toBe(0)
 })
@@ -2001,8 +2002,8 @@ for (const width of [390, 1440]) {
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: `test-results/dispatch-origin-card-${width}x1000.png`, fullPage: width >= 768 })
     await diagnosticScreenshot(origin, { path: `test-results/origin-card-detail-${width}x1000.png` })
-    await page.getByRole('combobox', { name: 'Your other planets' }).click()
-    await expect(page.getByRole('listbox', { name: 'Your other planets' })).toBeVisible()
+    await page.getByRole('combobox', { name: 'Your planets and moons' }).click()
+    await expect(page.getByRole('listbox', { name: 'Your planets and moons' })).toBeVisible()
     await diagnosticScreenshot(page, { path: `test-results/dispatch-origin-picker-${width}x1000.png` })
     await page.keyboard.press('Escape')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

@@ -336,7 +336,11 @@ pub(crate) fn spy_encounter(
         "SpyContact",
         BTreeMap::from([(
             expected_owner,
-            json!({"kind":"SpyContact","sender":f.owner,"origin":f.origin_coordinates,"target":target.coordinates,"at":i.at,"probability_ppm":detection.probability_ppm,"detected":detection.detected}),
+            crate::missions::with_moon_endpoints(
+                s,
+                f,
+                json!({"kind":"SpyContact","sender":f.owner,"origin":f.origin_coordinates,"target":target.coordinates,"at":i.at,"probability_ppm":detection.probability_ppm,"detected":detection.detected}),
+            ),
         )]),
     );
     audits.push(json!({"kind":"EspionageRisk","result":detection}));
@@ -712,6 +716,9 @@ fn combat_encounters(
         } else {
             full.clone()
         };
+        if payload["kind"] == "ContactLost" && target.kind == BodyKind::Moon {
+            payload["target_kind"] = json!(BodyKind::Moon);
+        }
         if let Some(loss) = cargo_losses.get(&owner) {
             payload["own_cargo_loss"] = json!({"metal":loss[0].to_string(),"crystal":loss[1].to_string(),"deuterium":loss[2].to_string()});
         }

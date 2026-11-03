@@ -1,3 +1,4 @@
+import { observedBody } from './galaxy-body'
 import { useDispatchDestination } from './use-dispatch-destination'
 import { coordinateFields } from '../ui/coordinate-input-model'
 import { coordinateText, type LocationKind } from '../shell/location-address'
@@ -90,13 +91,11 @@ export function useDispatch({
     mission,
   )
   const { target, observation } = destination
-  const observedTarget = observation?.positions.find(
-    (candidate) => candidate.body?.id === target?.id,
-  )?.body
+  const observedTarget = observedBody(observation, target?.id)
   const colony = colonizationStatus(view, Number(position))
   const localTargetProblem =
-    body.kind === 'Moon' || targetKind === 'moon'
-      ? 'Moon fleet operations are not available yet.'
+    targetKind === 'moon' && (mission === 'Colonize' || mission === 'Harvest')
+      ? 'Choose a planet position for colonization or debris for harvesting.'
       : targetKind === 'debris' && mission !== 'Harvest'
         ? 'Choose Harvest for a debris field.'
         : mission === 'Colonize' && colony.reason

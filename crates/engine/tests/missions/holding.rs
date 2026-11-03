@@ -478,6 +478,13 @@ fn capacity_counts_host_and_distinct_owners_at_arrival() {
 
 #[test]
 fn same_player_on_both_sides_receives_defender_report_and_keeps_held_assets() {
+    held_combat(false);
+}
+#[test]
+fn lunar_stationed_and_holding_defenders_fight_together_with_separate_ownership() {
+    held_combat(true);
+}
+fn held_combat(lunar: bool) {
     let (mut s, r, p, b, t) = ready();
     for (n, body) in [b, t].into_iter().enumerate() {
         missiles::edit(
@@ -488,6 +495,19 @@ fn same_player_on_both_sides_receives_defender_report_and_keeps_held_assets() {
             serde_json::json!({"op":"set","ships":{"Battleship":10},"research":{"ComputerTechnology":4}}),
         );
     }
+    let t = if lunar {
+        let moon = moons::add_moon(&mut s, t, 29200);
+        set_units(
+            &mut s,
+            &r,
+            moon,
+            ManufacturedItem::Ship(ShipType::Battleship),
+            10,
+        );
+        moon
+    } else {
+        t
+    };
     let hold = hold(&s, p, b, t, 1);
     let arrival = launch_raid(&mut s, &r, p, b, hold, 1000, 200);
     arrive(&mut s, &r, p, b, &arrival, 201);
@@ -619,4 +639,111 @@ fn holding_arithmetic_rejects_overflow_and_sub_millisecond_supply_without_debit(
         Err(GameError::ExtensionTooSmall)
     );
     assert_eq!(s, before);
+}
+
+#[test]
+fn lunar_hold_uses_its_parent_depot_budget_and_keeps_body_inventories_separate() {
+    let (mut s, r, p, b, t) = ready();
+    missiles::edit(
+        &mut s,
+        &r,
+        b,
+        28699,
+        serde_json::json!({"op":"set","research":{"ComputerTechnology":4}}),
+    );
+    let mb = moons::add_moon(&mut s, b, 28700);
+    let mt = moons::add_moon(&mut s, t, 28701);
+    s.bodies.get_mut(&mb).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+    set_units(
+        &mut s,
+        &r,
+        mb,
+        ManufacturedItem::Ship(ShipType::SmallCargo),
+        1,
+    );
+    let moon_request = hold(&s, p, mb, mt, 1);
+    let planet_request = hold(&s, p, b, t, 1);
+    let a = launch_raid(&mut s, &r, p, mb, moon_request, 1000, 28702);
+    let a2 = launch_raid(&mut s, &r, p, b, planet_request, 1001, 28703);
+    let host = s.bodies[&t].owner;
+    s.world
+        .as_mut()
+        .unwrap()
+        .homeworlds
+        .extend([(p, b), (host, t)]);
+    let parent_abandonment = quote_abandonment(&s, host, t, 1001, &r).unwrap();
+    assert!(
+        parent_abandonment
+            .blockers
+            .iter()
+            .any(|b| b == "Allied fleets are inbound or holding here.")
+    );
+    let origin_abandonment = quote_abandonment(&s, p, b, 1001, &r).unwrap();
+    assert!(
+        origin_abandonment
+            .blockers
+            .iter()
+            .any(|b| b.contains("active fleet depends"))
+    );
+    arrive(&mut s, &r, p, mb, &a, 28704);
+    arrive(&mut s, &r, p, b, &a2, 28705);
+    let w = &s.world.as_ref().unwrap().records;
+    let lunar = w.fleets.values().find(|f| held_at(f, mt)).unwrap().id;
+    let planetary = w.fleets.values().find(|f| held_at(f, t)).unwrap().id;
+    assert_ne!(lunar, planetary);
+    assert!(!s.inventories.iter().any(|x| x.body == mt && x.count > 0));
+    let moon_before = s.bodies[&mt].clone();
+    let parent_before = settle_production(&s, &s.bodies[&t], a2.at, &r)
+        .unwrap()
+        .amounts;
+    supply(&mut s, &r, t, lunar, a2.at, 4000, 28706);
+    supply(&mut s, &r, t, planetary, a2.at, 6000, 28707);
+    assert_eq!(s.bodies[&mt], moon_before);
+    assert_eq!(
+        s.bodies[&t].checkpoint.amounts.deuterium,
+        parent_before.deuterium - 10_000 * SCALE
+    );
+    let host = s.bodies[&t].owner;
+    let request = DepotSupplyIntent {
+        source_planet: t,
+        fleet: lunar,
+        deuterium: SCALE,
+    };
+    assert_eq!(
+        quote_depot_supply(&s, host, &request, a2.at, &r),
+        Err(GameError::DepotBudgetExceeded)
+    );
+    assert_eq!(depot_source_for_body(&s, mt).unwrap(), t);
+    s.coverage.bodies.remove(&t);
+    assert_eq!(
+        depot_source_for_body(&s, mt),
+        Err(GameError::PolicyUnavailable)
+    );
+    s.coverage.bodies.insert(t);
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        mb,
+        a2.at + 1,
+        28708,
+        Input::Command(Command::World {
+            action: WorldAction::RecallMission { fleet: lunar },
+        }),
+    );
+    let recalled = apply(&mut s, result);
+    arrive(&mut s, &r, p, mb, &recalled.events[0], 28709);
+    assert_eq!(
+        s.inventories
+            .iter()
+            .filter(|x| x.body == mb && x.item == ManufacturedItem::Ship(ShipType::SmallCargo))
+            .map(|x| x.count)
+            .sum::<i64>(),
+        1
+    );
+    assert!(held_at(
+        &s.world.as_ref().unwrap().records.fleets[&planetary],
+        t
+    ));
+    validate_asset_lineage(&s).unwrap();
 }

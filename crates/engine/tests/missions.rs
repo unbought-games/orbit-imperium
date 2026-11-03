@@ -164,7 +164,7 @@ fn intent(s: &GameState, p: PlayerId, b: BodyId, t: BodyId) -> FleetIntent {
         origin: b,
         destination: MissionDestination::Body {
             id: t,
-            expected_kind: BodyKind::Planet,
+            expected_kind: s.bodies[&t].kind,
             expected_owner: s.bodies[&t].owner,
         },
         mission: Mission::Transport,
@@ -448,6 +448,13 @@ fn absent_lineage_and_unpaired_gameplay_fail_closed() {
 }
 #[test]
 fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() {
+    harvest_reports(false);
+}
+#[test]
+fn moon_harvest_returns_to_lunar_inventory_with_correct_reports() {
+    harvest_reports(true);
+}
+fn harvest_reports(lunar: bool) {
     // Full collection, recycler-limited, free-space-limited, and an
     // exhausted field. Every flight carries all three resources before launch.
     for (loaded, debris, expected) in [
@@ -459,7 +466,28 @@ fn harvest_report_records_collection_without_changing_loaded_cargo_or_returns() 
         ([9000, 9000, 6000], [1000, 1000, 1000], [334, 333, 333]),
         ([100, 200, 300], [0, 0, 500], [0, 0, 500]),
     ] {
-        let (mut s, r, p, b, _) = fixture();
+        let (mut s, r, p, planet, _) = fixture();
+        let b = if lunar {
+            let moon = moons::add_moon(&mut s, planet, 29000);
+            s.bodies.get_mut(&moon).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+            set_units(
+                &mut s,
+                &r,
+                moon,
+                ManufacturedItem::Ship(ShipType::Recycler),
+                1,
+            );
+            set_units(
+                &mut s,
+                &r,
+                moon,
+                ManufacturedItem::Ship(ShipType::SmallCargo),
+                1,
+            );
+            moon
+        } else {
+            planet
+        };
         let field_id = OperationId(Uuid::from_u128(900));
         let coordinates = s.bodies[&b].coordinates;
         s.world.as_mut().unwrap().records.debris.insert(
@@ -1340,7 +1368,23 @@ fn probe_attack_empty_victory_has_zero_loot_and_qualifies_but_inactive_does_not(
 }
 #[test]
 fn total_first_round_loss_is_terminal_private_and_never_loots() {
-    let (mut s, r, p, b, t) = raid_fixture();
+    first_round_loss(false);
+}
+#[test]
+fn lunar_defenders_destroy_attacker_without_leaking_intelligence_or_creating_a_moon() {
+    first_round_loss(true);
+}
+fn first_round_loss(lunar: bool) {
+    let (mut s, r, p, b, parent) = if lunar {
+        holding::ready()
+    } else {
+        raid_fixture()
+    };
+    let t = if lunar {
+        moons::add_moon(&mut s, parent, 29300)
+    } else {
+        parent
+    };
     s.bodies.get_mut(&t).unwrap().name = Some("Hidden defender name".into());
     let mut intent = intent(&s, p, b, t);
     intent.mission = Mission::Attack;
@@ -1370,6 +1414,12 @@ fn total_first_round_loss_is_terminal_private_and_never_loots() {
     let report = w.reports.values().find(|v| v.kind == "Combat").unwrap();
     let observer = &report.payloads[&p];
     assert_eq!(observer["kind"], "ContactLost");
+    // Endpoint kind is already bound by the launch, not defender intelligence.
+    if lunar {
+        assert_eq!(observer["target_kind"], "Moon");
+    } else {
+        assert!(observer.get("target_kind").is_none());
+    }
     for key in [
         "participants",
         "rounds",
@@ -1380,7 +1430,6 @@ fn total_first_round_loss_is_terminal_private_and_never_loots() {
         "outcome",
         "return_at",
         "target_name",
-        "target_kind",
     ] {
         assert!(observer.get(key).is_none(), "{key}");
     }

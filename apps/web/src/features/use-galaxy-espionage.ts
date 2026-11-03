@@ -3,7 +3,7 @@ import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import type { components } from '../contracts'
 import { sendGalaxyProbe } from '../client-model/send-galaxy-probe'
-import { probeAvailability } from '../client-model/galaxy-fleets'
+import { pendingProbe, probeAvailability } from '../client-model/galaxy-fleets'
 import { attemptKey } from '../client-model/commands'
 import { dispatchFailure } from '../client-model/dispatch-validation'
 
@@ -84,5 +84,18 @@ export function useGalaxyEspionage(model: Coordinator, origin: string) {
     localError: error,
     reason: probeAvailability(state, origin),
     send,
+    forTarget: (
+      target: NonNullable<components['schemas']['GalaxyPosition4']['body']>,
+    ) => ({
+      send: () => void send(target),
+      paused: state.rateLimited,
+      busy: sending === target.id || pendingProbe(state, origin, target.id),
+      reason: sending ? 'Sending a probe…' : probeAvailability(state, origin),
+      error:
+        (rejection ?? error)?.target === target.id
+          ? (rejection ?? error)!.message
+          : null,
+      notice: error?.target === target.id ? error.message : null,
+    }),
   }
 }

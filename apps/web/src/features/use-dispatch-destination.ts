@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import type { LocationKind } from '../shell/location-address'
-import {
-  destinationBody,
-  ownedDestinationPlanets,
-} from './dispatch-destination'
+import { destinationBody, ownedDestinationBodies } from './dispatch-destination'
 type S = components['schemas']
 
 /** Tag advisory reads with their source; never render a previous request as current. */
@@ -70,14 +67,14 @@ export function useDispatchDestination(
           ? 'This position is occupied. Choose an empty position.'
           : ''
       : ''
-  const planets = ownedDestinationPlanets(view.bodies, origin)
-  const selectedPlanet = planets.find((planet) => planet.id === target?.id)
+  const bodies = ownedDestinationBodies(view.bodies, origin)
+  const selectedBody = bodies.find((planet) => planet.id === target?.id)
   return {
     target,
     observation,
     problem,
-    planets,
-    selectedPlanet,
+    bodies,
+    selectedBody,
     lookup: currentRead
       ? observation
         ? ('ready' as const)

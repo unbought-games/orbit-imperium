@@ -1,3 +1,4 @@
+import { depotSourceBody } from '../client-model/depot-source'
 import { useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -120,8 +121,9 @@ export function AllianceDepot({
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   const fleets = (view.holdings ?? []).filter((f) => f.target === body.id)
-  const depot = view.depots?.find((d) => d.body === body.id)
-  const level = body.levels.AllianceDepot ?? 0
+  const source = depotSourceBody(view.bodies, body.id)
+  const depot = view.depots?.find((d) => d.body === source?.id)
+  const level = source?.levels.AllianceDepot ?? 0
   const enabled = view.catalog.some(
     (e) =>
       e.key.kind === 'Building' && e.key.id === 'AllianceDepot' && e.enabled,
@@ -132,8 +134,16 @@ export function AllianceDepot({
       <Heading level={2}>Allied defense</Heading>
       <Text>
         {bodyName(body)} ·{' '}
-        {level > 0 ? `Alliance Depot level ${level}` : 'No Alliance Depot'}
+        {level > 0
+          ? `Alliance Depot level ${level}${body.kind === 'Moon' && source ? ` on ${bodyName(source)}` : ''}`
+          : 'No Alliance Depot'}
       </Text>
+      {body.kind === 'Moon' && source && (
+        <Text>
+          Supply comes from {bodyName(source)} on the parent planet, using its
+          deuterium and shared hourly budget.
+        </Text>
+      )}
       {depot && level > 0 && (
         <Text>
           Available this rolling hour:{' '}
@@ -166,9 +176,10 @@ export function AllianceDepot({
                 <span>Departs {exactTime(fleet.departure_at)}</span>
               </header>
               <ShipComposition ships={fleet.ships} />
-              {!enabled || level === 0 ? (
+              {!enabled || level === 0 || !source ? (
                 <Text>
-                  Build an Alliance Depot to extend this fleet’s defense.
+                  Build an Alliance Depot on the planet to extend this fleet’s
+                  defense.
                 </Text>
               ) : !fleet.can_supply ? (
                 <Text>
@@ -179,7 +190,7 @@ export function AllianceDepot({
                 <SupplyForm
                   key={fleet.id}
                   model={model}
-                  body={body.id}
+                  body={source.id}
                   fleet={fleet.id}
                 />
               ) : (

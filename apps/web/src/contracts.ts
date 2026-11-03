@@ -7031,6 +7031,10 @@ export interface components {
             at: number;
             probability_ppm: number;
             detected: boolean;
+            /** @enum {unknown} */
+            origin_kind?: "Planet" | "Moon" | null;
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
         };
         DeliveredPayload4: {
             /** @constant */
@@ -7047,6 +7051,10 @@ export interface components {
             origin_name?: string;
             /** @description Planet name observed at delivery; absent on older reports. */
             target_name?: string;
+            /** @enum {unknown} */
+            origin_kind?: "Planet" | "Moon" | null;
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
         };
         MissionOutcomePayload4: {
             /** @enum {unknown} */
@@ -7064,6 +7072,10 @@ export interface components {
             /** @description Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo. */
             harvested?: components["schemas"]["Resources"];
             reason?: string;
+            /** @enum {unknown} */
+            origin_kind?: "Planet" | "Moon" | null;
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
         };
         BattleCounts4: {
             /** Format: uuid */
@@ -7160,6 +7172,8 @@ export interface components {
             target: components["schemas"]["Coordinates"];
             own_lost_ships: components["schemas"]["PublicShip4"][];
             own_cargo_loss: components["schemas"]["Resources"];
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
         };
         ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"];
         Problem4: {
@@ -7464,6 +7478,10 @@ export interface components {
             origin?: components["schemas"]["Coordinates"];
             target?: components["schemas"]["Coordinates"];
             detected?: boolean;
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
+            /** @enum {unknown} */
+            origin_kind?: "Planet" | "Moon" | null;
         } | {
             /** @constant */
             kind: "Delivered";
@@ -7474,6 +7492,10 @@ export interface components {
             origin_name?: string;
             /** @description Planet name observed at delivery; absent on older reports. */
             target_name?: string;
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
+            /** @enum {unknown} */
+            origin_kind?: "Planet" | "Moon" | null;
         } | {
             /** @enum {unknown} */
             kind: "Returned" | "Recalled" | "Harvested" | "MissionFailed" | "Deployed";
@@ -7483,6 +7505,10 @@ export interface components {
             ships?: components["schemas"]["PublicShip4"][];
             /** @description Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo. */
             harvested?: components["schemas"]["Resources"];
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
+            /** @enum {unknown} */
+            origin_kind?: "Planet" | "Moon" | null;
         } | {
             /** @constant */
             kind: "Combat";
@@ -7512,6 +7538,8 @@ export interface components {
             target?: components["schemas"]["Coordinates"];
             own_lost_ships?: components["schemas"]["PublicShip4"][];
             own_cargo_loss?: components["schemas"]["Resources"];
+            /** @enum {unknown} */
+            target_kind?: "Planet" | "Moon" | null;
         } | {
             /** @constant */
             kind: "Colonized";
@@ -8579,6 +8607,8 @@ export interface components {
             /** Format: uuid */
             id: string;
             diameter_km: number;
+            name?: string;
+            activity?: components["schemas"]["PublicActivity4"];
         };
         MoonCreation4: {
             chance_percent: number;

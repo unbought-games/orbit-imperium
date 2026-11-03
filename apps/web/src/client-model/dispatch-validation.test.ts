@@ -414,3 +414,21 @@ it('does not apply disabled attack rules to eligible espionage', () => {
     observedMissionWarning('Espionage', { espionage_eligible: false }),
   ).toContain('current observation')
 })
+
+it('allows allied holding on moons but rejects holding at an owned moon', () => {
+  const destination: components['schemas']['MissionDestination4'] = {
+    type: 'Body',
+    id: 'moon',
+    expected_kind: 'Moon',
+    expected_owner: 'friend',
+  }
+  expect(destinationError('Hold', destination, 'me', 'origin')).toBe('')
+  expect(
+    destinationError(
+      'Hold',
+      { ...destination, expected_owner: 'me' },
+      'me',
+      'origin',
+    ),
+  ).toContain('another player')
+})

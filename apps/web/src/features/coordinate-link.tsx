@@ -124,7 +124,6 @@ export function CoordinateLink({
       )}
       {context &&
         body &&
-        context.view.bodies.find((b) => b.id === body)?.kind !== 'Moon' &&
         coordinateMissions(context.view, location, target, known).map(
           (mission) => (
             <Menu.LinkItem

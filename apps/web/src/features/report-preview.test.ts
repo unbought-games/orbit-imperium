@@ -327,3 +327,31 @@ it('uses a compact fleet glance for mission reports and contact losses', () => {
     reportPreview({ kind: 'ContactLost', own_lost_ships: ships }).facts,
   ).toEqual(['Lost: 25.5M ships'])
 })
+
+it('preserves lunar endpoints in delivery, contact, deployment and return previews', () => {
+  for (const kind of ['Delivered', 'SpyContact', 'ContactLost'] as const) {
+    expect(reportPreview({ kind, target_kind: 'Moon' }).targetKind).toBe('moon')
+    expect(reportPreview({ kind }).targetKind).toBeUndefined()
+  }
+  expect(
+    reportPreview({
+      kind: 'Deployed',
+      origin_kind: 'Planet',
+      target_kind: 'Moon',
+    }).targetKind,
+  ).toBe('moon')
+  expect(
+    reportPreview({
+      kind: 'Returned',
+      origin_kind: 'Moon',
+      target_kind: 'Planet',
+    }).targetKind,
+  ).toBe('moon')
+  expect(
+    reportPreview({
+      kind: 'Returned',
+      origin_kind: 'Planet',
+      target_kind: 'Moon',
+    }).targetKind,
+  ).toBeUndefined()
+})

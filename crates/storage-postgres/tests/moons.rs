@@ -18,8 +18,8 @@ async fn simultaneous_battles_create_one_moon_with_atomic_restart_and_view_deliv
     let document: WorldScenario = serde_json::from_value(json!({"version":1,"edits":[
         {"op":"add-player","user":"moon-attacker","password":"password","planet":"1:1:8"},
         {"op":"add-player","user":"moon-owner","password":"password","planet":"1:1:9"},
-        {"op":"set","user":"moon-attacker","planet":"1:1:8","ships":{"EspionageProbe":4000}},
-        {"op":"set","user":"moon-owner","planet":"1:1:9","defenses":{"RocketLauncher":2000}},
+        {"op":"set","user":"moon-attacker","planet":"1:1:8","ships":{"EspionageProbe":4000,"SmallCargo":3},"resources":{"metal":1000000,"crystal":1000000,"deuterium":1000000}},
+        {"op":"set","user":"moon-owner","planet":"1:1:9","buildings":{"AllianceDepot":1},"defenses":{"RocketLauncher":2000},"ships":{"SmallCargo":3},"resources":{"metal":1000000,"crystal":1000000,"deuterium":1000000}},
         {"op":"attack","user":"moon-attacker","from":"1:1:8","planet":"1:1:9","ships":{"EspionageProbe":2000},"arrives_in":"1s"},
         {"op":"attack","user":"moon-attacker","from":"1:1:8","planet":"1:1:9","ships":{"EspionageProbe":2000},"arrives_in":"1s"}
     ]})).unwrap();
@@ -221,5 +221,345 @@ async fn simultaneous_battles_create_one_moon_with_atomic_restart_and_view_deliv
     assert_eq!(m.amounts.metal, "0");
     assert_eq!(m.amounts.crystal, "0");
     assert_eq!(m.amounts.deuterium, "0");
+    // Keep the large staged journey futures off the enclosing test future.
+    // Nesting them inline overflows the Linux test thread's stack in debug builds.
+    Box::pin(exercise_moon_fleets(
+        &reopened,
+        binding,
+        parent,
+        moon,
+        now + 86_400_001,
+    ))
+    .await;
     reopened.audit_universe(u).await.unwrap();
+}
+
+fn fleet_pair(binding: Binding, body: BodyId, action: WorldAction) -> ForegroundAction {
+    let id = CommandId(Uuid::new_v4());
+    ForegroundAction {
+        gameplay: CommandEnvelopeV4 {
+            protocol: 4,
+            binding,
+            command_id: id,
+            command: CommandDto3::Progression(Command::World { action }),
+        },
+        presence: CommandEnvelopeV4 {
+            protocol: 4,
+            binding,
+            command_id: CommandId(Uuid::new_v4()),
+            command: CommandDto3::Progression(Command::World {
+                action: WorldAction::RecordForegroundPresence {
+                    body: Some(body),
+                    cause: PresenceCause::GameplayGesture,
+                    paired_command_id: Some(id),
+                },
+            }),
+        },
+    }
+}
+async fn drain_fleets(store: &PgStore, universe: UniverseId) {
+    let game = GameService::new(store.clone());
+    for _ in 0..100 {
+        if matches!(
+            game.step_scoped(universe, WorkerId(Uuid::new_v4()), &InlineEngine)
+                .await
+                .unwrap(),
+            StepOutcome::Idle
+        ) {
+            return;
+        }
+    }
+    panic!("moon fleet fixture did not drain");
+}
+async fn quoted_launch(store: &PgStore, binding: Binding, intent: FleetIntent) -> ForegroundAction {
+    let snap = store
+        .bound_world_query(
+            binding,
+            WorldQueryKind::FleetQuote {
+                intent: intent.clone(),
+            },
+        )
+        .await
+        .unwrap()
+        .facts
+        .0;
+    let q = quote_fleet(&snap.state, binding.player, &intent, snap.at, &snap.rules).unwrap();
+    fleet_pair(
+        binding,
+        intent.origin,
+        WorldAction::LaunchFleet {
+            intent,
+            expected_terms_hash: q.terms_hash.clone(),
+        },
+    )
+}
+async fn exercise_moon_fleets(
+    store: &PgStore,
+    binding: Binding,
+    parent: BodyId,
+    moon: BodyId,
+    at: i64,
+) {
+    store.set_test_time(at).await.unwrap();
+    let deploy = FleetIntent {
+        origin: parent,
+        destination: MissionDestination::Body {
+            id: moon,
+            expected_kind: BodyKind::Moon,
+            expected_owner: binding.player,
+        },
+        mission: Mission::Deploy,
+        ships: vec![ManifestStack {
+            owner: binding.player,
+            ship_type: ShipType::SmallCargo,
+            count: 1,
+        }],
+        cargo: Resources::from_values([1000 * SCALE, 0, 1000 * SCALE]),
+        speed_percent: 100,
+        attack_group: None,
+        hold_hours: None,
+    };
+    let order = quoted_launch(store, binding, deploy).await;
+    store.bound_admit4(order.clone()).await.unwrap();
+    store.bound_admit4(order).await.unwrap();
+    drain_fleets(store, binding.universe).await;
+    let before = store.bound_world(binding).await.unwrap().facts.0;
+    let fleet = before
+        .state
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .values()
+        .find(|f| f.intent.mission == Mission::Deploy)
+        .unwrap();
+    let arrival = fleet.due_at;
+    store.set_test_time(arrival).await.unwrap();
+    drain_fleets(store, binding.universe).await;
+    let state = store.bound_world(binding).await.unwrap().facts.0.state;
+    assert_eq!(state.bodies[&moon].checkpoint.amounts.metal, 1000 * SCALE);
+    let stationed = |s: &GameState| {
+        s.inventories
+            .iter()
+            .filter(|x| x.body == moon && x.item == ManufacturedItem::Ship(ShipType::SmallCargo))
+            .map(|x| x.count)
+            .sum::<i64>()
+    };
+    assert_eq!(stationed(&state), 1);
+    let transport = FleetIntent {
+        origin: moon,
+        destination: MissionDestination::Body {
+            id: parent,
+            expected_kind: BodyKind::Planet,
+            expected_owner: binding.player,
+        },
+        mission: Mission::Transport,
+        ships: vec![ManifestStack {
+            owner: binding.player,
+            ship_type: ShipType::SmallCargo,
+            count: 1,
+        }],
+        cargo: Resources::from_values([100 * SCALE, 0, 0]),
+        speed_percent: 100,
+        attack_group: None,
+        hold_hours: None,
+    };
+    let first = quoted_launch(store, binding, transport.clone()).await;
+    let second = quoted_launch(store, binding, transport).await;
+    let (one, two) = tokio::join!(store.bound_admit4(first), store.bound_admit4(second));
+    one.unwrap();
+    two.unwrap();
+    drain_fleets(store, binding.universe).await;
+    let snapshot = store.bound_world(binding).await.unwrap().facts.0;
+    assert_eq!(stationed(&snapshot.state), 0);
+    let active: Vec<_> = snapshot
+        .state
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .values()
+        .filter(|f| f.intent.origin == moon && f.active())
+        .collect();
+    assert_eq!(active.len(), 1, "the same lunar ship cannot launch twice");
+    let arriving = active[0].due_at;
+    let returning = arriving + active[0].terms.duration_ms;
+    store.set_test_time(arriving).await.unwrap();
+    drain_fleets(store, binding.universe).await;
+    store.set_test_time(returning).await.unwrap();
+    drain_fleets(store, binding.universe).await;
+    drain_fleets(store, binding.universe).await;
+    let state = store.bound_world(binding).await.unwrap().facts.0.state;
+    assert_eq!(stationed(&state), 1);
+    assert_eq!(state.bodies[&moon].checkpoint.amounts.metal, 900 * SCALE);
+    assert!(
+        !state
+            .world
+            .as_ref()
+            .unwrap()
+            .records
+            .fleets
+            .values()
+            .any(|f| f.intent.origin == moon && f.active())
+    );
+    validate_asset_lineage(&state).unwrap();
+    Box::pin(exercise_lunar_holding(store, binding, parent, moon)).await;
+}
+
+async fn exercise_lunar_holding(store: &PgStore, host: Binding, parent: BodyId, moon: BodyId) {
+    let login = SessionService::new(store.clone())
+        .login("moon-attacker", "password", None)
+        .await
+        .unwrap();
+    let visitor = GameService::new(store.clone())
+        .current_binding(login.session.account, host.universe, Uuid::new_v4())
+        .await
+        .unwrap()
+        .binding;
+    let context = |binding| QueryContext {
+        binding,
+        request_id: Uuid::new_v4(),
+    };
+    store
+        .social_command(SocialCommandRequest {
+            context: context(visitor),
+            command_id: Uuid::new_v4(),
+            action: SocialAction::RequestFriend {
+                player: host.player,
+            },
+        })
+        .await
+        .unwrap();
+    let request = store
+        .social_query(SocialQueryRequest {
+            context: context(host),
+            query: SocialQuery::Contacts {
+                kind: ContactKind::Requests,
+                cursor: None,
+                limit: 20,
+            },
+        })
+        .await
+        .unwrap()
+        .contacts[0]
+        .request
+        .unwrap();
+    store
+        .social_command(SocialCommandRequest {
+            context: context(host),
+            command_id: Uuid::new_v4(),
+            action: SocialAction::AcceptFriend {
+                player: visitor.player,
+                request,
+            },
+        })
+        .await
+        .unwrap();
+    let snap = store.bound_world(visitor).await.unwrap().facts.0;
+    let origin = snap
+        .state
+        .bodies
+        .values()
+        .find(|b| b.owner == visitor.player && b.kind == BodyKind::Planet)
+        .unwrap()
+        .id;
+    let intent = FleetIntent {
+        origin,
+        destination: MissionDestination::Body {
+            id: moon,
+            expected_kind: BodyKind::Moon,
+            expected_owner: host.player,
+        },
+        mission: Mission::Hold,
+        ships: vec![ManifestStack {
+            owner: visitor.player,
+            ship_type: ShipType::SmallCargo,
+            count: 1,
+        }],
+        cargo: Resources::default(),
+        speed_percent: 100,
+        attack_group: None,
+        hold_hours: Some(1),
+    };
+    let order = quoted_launch(store, visitor, intent).await;
+    store.bound_admit4(order).await.unwrap();
+    drain_fleets(store, host.universe).await;
+    let snap = store.bound_world(visitor).await.unwrap().facts.0;
+    let fleet = snap
+        .state
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .values()
+        .find(|f| f.intent.mission == Mission::Hold)
+        .unwrap()
+        .clone();
+    store.set_test_time(fleet.due_at).await.unwrap();
+    drain_fleets(store, host.universe).await;
+    let intent = DepotSupplyIntent {
+        source_planet: parent,
+        fleet: fleet.id,
+        deuterium: 1000 * SCALE,
+    };
+    let snap = store
+        .bound_world_query(
+            host,
+            WorldQueryKind::DepotSupplyQuote {
+                intent: intent.clone(),
+            },
+        )
+        .await
+        .unwrap()
+        .facts
+        .0;
+    assert!(held_at(
+        &snap.state.world.as_ref().unwrap().records.fleets[&fleet.id],
+        moon
+    ));
+    let q = quote_depot_supply(&snap.state, host.player, &intent, snap.at, &snap.rules).unwrap();
+    let lunar_stock = snap.state.bodies[&moon].checkpoint.amounts;
+    let parent_stock = settle_production(
+        &snap.state,
+        &snap.state.bodies[&parent],
+        snap.at,
+        &snap.rules,
+    )
+    .unwrap()
+    .amounts;
+    let order = fleet_pair(
+        host,
+        parent,
+        WorldAction::SupplyHoldingFleet {
+            intent,
+            expected_terms_hash: q.terms_hash.clone(),
+        },
+    );
+    store.bound_admit4(order.clone()).await.unwrap();
+    store.bound_admit4(order).await.unwrap();
+    drain_fleets(store, host.universe).await;
+    let after = store.bound_world(host).await.unwrap().facts.0.state;
+    assert_eq!(after.bodies[&moon].checkpoint.amounts, lunar_stock);
+    assert_eq!(
+        after.bodies[&parent].checkpoint.amounts.deuterium,
+        parent_stock.deuterium - 1000 * SCALE
+    );
+    assert_eq!(
+        after.world.as_ref().unwrap().records.fleets[&fleet.id].due_at,
+        q.departure_at
+    );
+    assert_eq!(
+        depot_budget(
+            1,
+            parent,
+            snap.at,
+            &after.world.as_ref().unwrap().records.depot_supplies
+        )
+        .unwrap()
+        .0,
+        9000 * SCALE
+    );
 }

@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readyFixture } from '../test-support/bootstrap'
 import type { components } from '../contracts'
-import {
-  destinationBody,
-  ownedDestinationPlanets,
-} from './dispatch-destination'
+import { destinationBody, ownedDestinationBodies } from './dispatch-destination'
 type S = components['schemas']
 const coordinates = { galaxy: 1, system: 2, position: 3 }
 const view = readyFixture(4).snapshot.view as S['BoundView4']
@@ -32,9 +29,9 @@ const observation = {
 } as S['GalaxySystem4']
 
 describe('dispatch destination identity', () => {
-  it('derives choices from live planets and excludes the current origin and moons', () => {
-    expect(ownedDestinationPlanets([planet, moon], planet.id)).toEqual([])
-    expect(ownedDestinationPlanets([planet, moon], moon.id)).toEqual([planet])
+  it('derives choices from live bodies and excludes only the current origin', () => {
+    expect(ownedDestinationBodies([planet, moon], planet.id)).toEqual([moon])
+    expect(ownedDestinationBodies([planet, moon], moon.id)).toEqual([planet])
   })
   it('uses current empire names before advisory observations', () => {
     expect(
@@ -132,4 +129,34 @@ it('uses the saved homeworld ID, not names or ordering, and leaves missing ident
   expect(
     destinationBody({ ...view, bodies: [moon] }, coordinates, 'moon'),
   ).toMatchObject({ homeworld: false })
+})
+
+it('resolves a foreign moon with its own identity and activity and its owner policy', () => {
+  const publicSystem = {
+    ...observation,
+    positions: [
+      {
+        ...observation.positions[0],
+        moon: {
+          id: 'foreign-moon',
+          diameter_km: 8366,
+          activity: { type: 'Recent' as const },
+        },
+        debris: null,
+      },
+    ],
+  }
+  expect(
+    destinationBody({ ...view, bodies: [] }, coordinates, 'moon', publicSystem),
+  ).toMatchObject({
+    id: 'foreign-moon',
+    kind: 'Moon',
+    owner: view.binding.player,
+    activity: { type: 'Recent' },
+    source: 'observation',
+  })
+  expect(
+    destinationBody({ ...view, bodies: [] }, coordinates, 'moon', publicSystem)
+      ?.name,
+  ).toBeUndefined()
 })

@@ -1601,6 +1601,19 @@ it('Depot supply uses planetary payment, quote identity, live holdings and the s
     },
   }
   expect(canSubmitQuote(state, command, quote)).toBe(true)
+  const lunar = {
+    ...view.bodies[0],
+    id: 'moon',
+    kind: 'Moon' as const,
+    moon: { parent: 'body', created_at: 0 },
+  }
+  view.bodies.push(lunar)
+  view.holdings[0].target = lunar.id
+  expect(canSubmitQuote(state, command, quote)).toBe(true)
+  lunar.moon.parent = 'unrelated'
+  expect(canSubmitQuote(state, command, quote)).toBe(false)
+  lunar.moon.parent = 'body'
+  view.holdings[0].target = 'body'
   expect(nextWorkDelay(state)).toBe(5000)
   expect(
     matchesQuote(

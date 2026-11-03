@@ -184,7 +184,7 @@ fn battle_creates_one_empty_owned_moon_atomically_and_replay_cannot_reroll() {
 }
 
 #[test]
-fn existing_moon_skips_roll_but_not_debris_and_all_moon_actions_are_rejected() {
+fn existing_moon_skips_roll_but_not_debris_and_progression_stays_unavailable() {
     let (mut s, r, p, b, t, event) = prepared(Mission::Attack);
     let mut moon = s.bodies[&t].clone();
     moon.id = BodyId(Uuid::from_u128(1)); // Sorts before the planet: galaxy must still show both correctly.
@@ -212,34 +212,6 @@ fn existing_moon_skips_roll_but_not_debris_and_all_moon_actions_are_rejected() {
             .audits
             .iter()
             .any(|a| a["kind"] == "MoonCreation")
-    );
-    let mut request = intent(&s, p, b, id);
-    request.destination = MissionDestination::Body {
-        id,
-        expected_kind: BodyKind::Moon,
-        expected_owner: moon.owner,
-    };
-    for mission in [
-        Mission::Attack,
-        Mission::Espionage,
-        Mission::Transport,
-        Mission::Deploy,
-        Mission::Hold,
-    ] {
-        request.mission = mission;
-        assert_eq!(
-            quote_fleet(&s, p, &request, event.at, &r),
-            Err(GameError::UnavailableContent)
-        );
-        assert!(matches!(
-            estimate_fleet(&s, p, &request, &r),
-            Err(GameError::UnavailableContent)
-        ));
-    }
-    request.origin = id;
-    assert_eq!(
-        quote_fleet(&s, moon.owner, &request, event.at, &r),
-        Err(GameError::UnavailableContent)
     );
     for request in [
         QuoteRequest::Upgrade {
@@ -348,4 +320,340 @@ fn detected_espionage_creates_a_moon_for_the_planet_owner_without_loot() {
         report["loot"],
         serde_json::json!({"metal":"0", "crystal":"0", "deuterium":"0"})
     );
+}
+
+/// Empty, valid lunar body with complete facts, independent of its parent's stock.
+pub(super) fn add_moon(s: &mut GameState, parent: BodyId, n: u128) -> BodyId {
+    let input = InputId(Uuid::from_u128(n));
+    let id = BodyId(derived_id(input, "moon:0"));
+    let mut moon = s.bodies[&parent].clone();
+    moon.id = id;
+    moon.kind = BodyKind::Moon;
+    moon.name = None;
+    moon.fields = 1;
+    moon.max_temperature = 0;
+    moon.levels.values_mut().for_each(|v| *v = 0);
+    moon.checkpoint.amounts = Resources::default();
+    moon.checkpoint.carry = Resources::default();
+    moon.revision = 0;
+    s.coverage.bodies.insert(id);
+    s.coverage.production_bodies.insert(id);
+    s.coverage.inventory_owners.insert((id, moon.owner));
+    s.coverage.construction_bodies.insert(id);
+    s.coverage.manufacturing_bodies.insert(id);
+    s.coverage.reservation_bodies.insert(id);
+    s.production_settings.insert(
+        id,
+        ProductionSettingsRecord {
+            body: id,
+            settings: ProductionSettings::default(),
+            revision: 0,
+        },
+    );
+    s.progression_reservations.insert(
+        id,
+        ProgressionReservations {
+            body: id,
+            field_operation: None,
+            small_dome_operation: None,
+            large_dome_operation: None,
+            missile_slots: 0,
+            revision: 0,
+        },
+    );
+    for collection in [
+        "production",
+        "constructions",
+        "manufacturing",
+        "progression-reservations",
+    ] {
+        s.collection_revisions
+            .insert(format!("{collection}:{id}"), 0);
+    }
+    s.world.as_mut().unwrap().records.moons.insert(
+        id,
+        MoonGenesis {
+            body: id,
+            parent,
+            diameter_km: 8366,
+            created_at: 0,
+            input,
+            profile: MOON_PROFILE.into(),
+        },
+    );
+    s.bodies.insert(id, moon);
+    id
+}
+fn lunar_intent(
+    s: &GameState,
+    p: PlayerId,
+    origin: BodyId,
+    target: BodyId,
+    mission: Mission,
+) -> FleetIntent {
+    let mut request = intent(s, p, origin, target);
+    request.mission = mission;
+    request.destination = MissionDestination::Body {
+        id: target,
+        expected_kind: s.bodies[&target].kind,
+        expected_owner: s.bodies[&target].owner,
+    };
+    request
+}
+fn due(
+    s: &mut GameState,
+    r: &Ruleset,
+    p: PlayerId,
+    b: BodyId,
+    event: &NewEvent,
+    n: u128,
+) -> ChangeSet {
+    let result = run(s, r, p, b, event.at, n, Input::Event(event.event.clone()));
+    apply(s, result)
+}
+fn ships(s: &GameState, body: BodyId, ship: ShipType) -> i64 {
+    s.inventories
+        .iter()
+        .filter(|x| x.body == body && x.item == ManufacturedItem::Ship(ship))
+        .map(|x| x.count)
+        .sum()
+}
+
+#[test]
+fn lunar_transport_all_body_pairs_preserve_stock_lineage_and_return_once() {
+    for pair in 0..5 {
+        let (mut s, r, p, b, t) = holding::ready();
+        let mb = add_moon(&mut s, b, 28001);
+        let mt = add_moon(&mut s, t, 28002);
+        let (origin, target) = [(b, mt), (mb, t), (mb, mt), (b, mb), (mb, b)][pair];
+        s.bodies.get_mut(&origin).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+        set_units(
+            &mut s,
+            &r,
+            origin,
+            ManufacturedItem::Ship(ShipType::LargeCargo),
+            1,
+        );
+        let mut request = lunar_intent(&s, p, origin, target, Mission::Transport);
+        request.ships[0].ship_type = ShipType::LargeCargo;
+        request.cargo = Resources::from_values([20_000 * SCALE, 0, 0]);
+        validate_asset_lineage(&s).unwrap();
+        let q = quote_fleet(&s, p, &request, 1000, &r).unwrap();
+        assert!(estimate_fleet(&s, p, &request, &r).is_ok());
+        assert!(q.duration_ms > 0);
+        let arrival = launch_raid(&mut s, &r, p, origin, request, 1000, 28100);
+        let before = settle_production(&s, &s.bodies[&target], arrival.at, &r)
+            .unwrap()
+            .amounts;
+        let parent_before = s.bodies[&b].clone();
+        let change = due(&mut s, &r, p, origin, &arrival, 28101);
+        assert_eq!(
+            s.bodies[&target].checkpoint.amounts.metal,
+            before.metal + 20_000 * SCALE
+        );
+        if origin == mb && target != b {
+            assert_eq!(s.bodies[&b], parent_before);
+        }
+        assert_eq!(ships(&s, origin, ShipType::LargeCargo), 0);
+        let target_stock = s.bodies[&target].checkpoint.clone();
+        due(&mut s, &r, p, origin, &arrival, 28102);
+        assert_eq!(s.bodies[&target].checkpoint, target_stock);
+        let returning = &change.events[0];
+        assert_eq!(returning.at - arrival.at, q.duration_ms);
+        due(&mut s, &r, p, origin, returning, 28103);
+        due(&mut s, &r, p, origin, returning, 28104);
+        assert_eq!(ships(&s, origin, ShipType::LargeCargo), 1);
+        validate_asset_lineage(&s).unwrap();
+        validate_moons(&s).unwrap();
+        if s.bodies[&target].kind == BodyKind::Moon {
+            assert_eq!(
+                settle_production(&s, &s.bodies[&target], returning.at + 86_400_000, &r)
+                    .unwrap()
+                    .amounts,
+                target_stock.amounts
+            );
+        }
+    }
+}
+
+#[test]
+fn lunar_deploy_stations_without_shipyard_and_credits_fuel_once() {
+    for pair in 0..3 {
+        let (mut s, r, p, b, t) = holding::ready();
+        clear_units(&mut s, t);
+        s.bodies
+            .get_mut(&t)
+            .unwrap()
+            .levels
+            .values_mut()
+            .for_each(|level| *level = 0);
+        s.bodies.get_mut(&t).unwrap().owner = p;
+        for lot in &mut s.world.as_mut().unwrap().records.lots {
+            if lot.location == AssetLocation::Body(t) {
+                lot.owner = p;
+            }
+        }
+        s.coverage.inventory_owners.insert((t, p));
+        let mb = add_moon(&mut s, b, 28201);
+        let mt = add_moon(&mut s, t, 28202);
+        let (origin, target) = [(b, mb), (mb, b), (mb, mt)][pair];
+        s.bodies.get_mut(&origin).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+        set_units(
+            &mut s,
+            &r,
+            origin,
+            ManufacturedItem::Ship(ShipType::SmallCargo),
+            1,
+        );
+        let request = lunar_intent(&s, p, origin, target, Mission::Deploy);
+        validate_asset_lineage(&s).unwrap();
+        let q = quote_fleet(&s, p, &request, 1000, &r).unwrap();
+        let event = launch_raid(&mut s, &r, p, origin, request, 1000, 28300);
+        let before = settle_production(&s, &s.bodies[&target], event.at, &r)
+            .unwrap()
+            .amounts;
+        let previous_ships = ships(&s, target, ShipType::SmallCargo);
+        let change = due(&mut s, &r, p, origin, &event, 28301);
+        assert!(change.events.is_empty());
+        assert_eq!(ships(&s, target, ShipType::SmallCargo), previous_ships + 1);
+        assert_eq!(
+            s.bodies[&target].checkpoint.amounts.deuterium,
+            before.deuterium + q.fuel / SCALE / 2 * SCALE
+        );
+        let stock = s.bodies[&target].checkpoint.clone();
+        due(&mut s, &r, p, origin, &event, 28302);
+        assert_eq!(s.bodies[&target].checkpoint, stock);
+        assert_eq!(ships(&s, target, ShipType::SmallCargo), previous_ships + 1);
+        assert!(
+            !s.world
+                .as_ref()
+                .unwrap()
+                .records
+                .fleets
+                .values()
+                .any(|f| f.active())
+        );
+        validate_asset_lineage(&s).unwrap();
+    }
+}
+
+#[test]
+fn lunar_launch_requires_local_fuel_and_recall_restores_only_its_moon() {
+    let (mut s, r, p, b, t) = holding::ready();
+    let moon = add_moon(&mut s, b, 28400);
+    set_units(
+        &mut s,
+        &r,
+        moon,
+        ManufacturedItem::Ship(ShipType::SmallCargo),
+        1,
+    );
+    let request = lunar_intent(&s, p, moon, t, Mission::Transport);
+    assert!(quote_fleet(&s, p, &request, 1000, &r).is_err());
+    s.bodies.get_mut(&moon).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+    let event = launch_raid(&mut s, &r, p, moon, request, 1000, 28401);
+    let fleet = *s
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .keys()
+        .next()
+        .unwrap();
+    let parent = s.bodies[&b].clone();
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        moon,
+        2000,
+        28402,
+        Input::Command(Command::World {
+            action: WorldAction::RecallMission { fleet },
+        }),
+    );
+    let recall = apply(&mut s, result);
+    assert_eq!(recall.events[0].at, 3000);
+    due(&mut s, &r, p, moon, &recall.events[0], 28403);
+    due(&mut s, &r, p, moon, &event, 28404);
+    assert_eq!(ships(&s, moon, ShipType::SmallCargo), 1);
+    assert_eq!(s.bodies[&b], parent);
+    assert!(
+        quote_fleet(
+            &s,
+            p,
+            &lunar_intent(&s, p, moon, moon, Mission::Transport),
+            event.at,
+            &r
+        )
+        .is_err()
+    );
+    for mission in [Mission::Colonize, Mission::Harvest] {
+        assert!(quote_fleet(&s, p, &lunar_intent(&s, p, moon, t, mission), event.at, &r).is_err());
+    }
+}
+
+#[test]
+fn lunar_attack_and_spy_ignore_parent_defenders_and_never_create_a_moon() {
+    for mission in [Mission::Attack, Mission::Espionage] {
+        let (mut s, r, p, b, t) = holding::ready();
+        let mb = add_moon(&mut s, b, 28500);
+        let mt = add_moon(&mut s, t, 28501);
+        s.bodies.get_mut(&mb).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+        s.bodies.get_mut(&mt).unwrap().checkpoint.amounts = Resources::all(1000 * SCALE);
+        let ship = if mission == Mission::Attack {
+            ShipType::SmallCargo
+        } else {
+            ShipType::EspionageProbe
+        };
+        set_units(&mut s, &r, mb, ManufacturedItem::Ship(ship), 1);
+        let mut request = lunar_intent(&s, p, mb, mt, mission);
+        request.ships[0].ship_type = ship;
+        request.cargo = Resources::default();
+        let arrival = launch_raid(&mut s, &r, p, mb, request, 1000, 28502);
+        set_units(
+            &mut s,
+            &r,
+            t,
+            ManufacturedItem::Defense(DefenseId::RocketLauncher),
+            100_000,
+        );
+        let parent = s.bodies[&t].clone();
+        let c = due(&mut s, &r, p, mb, &arrival, 28503);
+        assert_eq!(s.bodies[&t], parent);
+        let w = &s.world.as_ref().unwrap().records;
+        assert_eq!(w.moons.len(), 2);
+        assert!(
+            !c.world
+                .as_ref()
+                .unwrap()
+                .audits
+                .iter()
+                .any(|a| a["kind"] == "MoonCreation")
+        );
+        let report = w
+            .reports
+            .values()
+            .find(|v| {
+                v.kind
+                    == if mission == Mission::Attack {
+                        "Combat"
+                    } else {
+                        "Espionage"
+                    }
+            })
+            .unwrap();
+        let payload = &report.payloads[&p];
+        if mission == Mission::Attack {
+            assert_eq!(payload["target_kind"], "Moon");
+            assert_eq!(payload["outcome"], "AttackerVictory");
+            assert!(s.bodies[&mt].checkpoint.amounts.metal < 1000 * SCALE);
+        } else {
+            assert_eq!(payload["target"]["kind"], "Moon");
+            assert_eq!(payload["resources"]["value"]["metal"], "1000000000");
+        }
+        due(&mut s, &r, p, mb, &c.events[0], 28504);
+        assert_eq!(ships(&s, mb, ship), 1);
+    }
 }

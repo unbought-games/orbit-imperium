@@ -13,6 +13,9 @@ pub struct GalaxyPosition {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicMoon {
     pub id: BodyId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub activity: PublicActivity,
     pub diameter_km: u32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -196,16 +199,27 @@ pub fn galaxy_system(
                 crystal: (f.crystal / SCALE).to_string(),
                 deuterium: (f.deuterium / SCALE).to_string(),
             });
-        let moon = body.as_ref().and_then(|parent| {
-            w.records
-                .moons
-                .values()
-                .find(|m| m.parent == parent.id && s.bodies.contains_key(&m.body))
-                .map(|m| PublicMoon {
-                    id: m.body,
-                    diameter_km: m.diameter_km,
-                })
-        });
+        let moon = body
+            .as_ref()
+            .and_then(|parent| {
+                w.records
+                    .moons
+                    .values()
+                    .find(|m| m.parent == parent.id && s.bodies.contains_key(&m.body))
+                    .map(|m| {
+                        Ok(PublicMoon {
+                            id: m.body,
+                            diameter_km: m.diameter_km,
+                            name: s.bodies[&m.body].name.clone(),
+                            activity: public_activity(
+                                w.records.activity.get(&m.body).map(|a| a.last_signal_at),
+                                at,
+                            )
+                            .map_err(|_| GameError::PolicyUnavailable)?,
+                        })
+                    })
+            })
+            .transpose()?;
         positions.push(GalaxyPosition {
             moon,
             coordinates,

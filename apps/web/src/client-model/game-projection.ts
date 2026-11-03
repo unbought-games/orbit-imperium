@@ -1,3 +1,4 @@
+import { depotSourceBody } from './depot-source'
 import type { components } from '../contracts'
 import {
   canonical,
@@ -303,7 +304,7 @@ export function canSubmitIntent(
       !view.holdings?.some(
         (f) =>
           f.id === supply.fleet &&
-          f.target === supply.source_planet &&
+          depotSourceBody(view.bodies, f.target)?.id === supply.source_planet &&
           f.can_supply &&
           f.departure_at > currentServerTime(state),
       ) ||

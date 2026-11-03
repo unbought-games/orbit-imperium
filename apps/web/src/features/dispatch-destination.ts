@@ -1,9 +1,10 @@
+import { publicMoonBody } from './galaxy-body'
 import type { components } from '../contracts'
 import type { LocationKind } from '../shell/location-address'
 type S = components['schemas']
 
-export function ownedDestinationPlanets(bodies: S['BodyV3'][], origin: string) {
-  return bodies.filter((body) => body.kind === 'Planet' && body.id !== origin)
+export function ownedDestinationBodies(bodies: S['BodyV3'][], origin: string) {
+  return bodies.filter((body) => body.id !== origin)
 }
 
 export function destinationBody(
@@ -32,9 +33,11 @@ export function destinationBody(
     observation.system !== coordinates.system
   )
     return undefined
-  const body = observation.positions.find(
+  const position = observation.positions.find(
     (position) => position.coordinates.position === coordinates.position,
-  )?.body
+  )
+  const body =
+    kind === 'moon' && position ? publicMoonBody(position) : position?.body
   return body?.kind.toLowerCase() === kind
     ? { ...body, source: 'observation' as const }
     : undefined

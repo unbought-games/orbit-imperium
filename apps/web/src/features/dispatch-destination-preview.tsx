@@ -30,10 +30,10 @@ export function DispatchDestinationPreview({
   value,
   universe,
   error,
-  planets,
-  selectedPlanet,
+  bodies,
+  selectedBody,
   onChange,
-  onSelectPlanet,
+  onSelectBody,
 }: {
   readOnly?: boolean
   coordinates: components['schemas']['Coordinates'] | null
@@ -45,10 +45,10 @@ export function DispatchDestinationPreview({
   value: string
   universe: string
   error?: string
-  planets?: components['schemas']['BodyV3'][]
-  selectedPlanet?: string
+  bodies?: components['schemas']['BodyV3'][]
+  selectedBody?: string
   onChange: (text: string, kind?: LocationKind) => void
-  onSelectPlanet: (id: string) => void
+  onSelectBody: (id: string) => void
 }) {
   const field = useRef<HTMLDivElement>(null)
   const title = !coordinates
@@ -67,7 +67,7 @@ export function DispatchDestinationPreview({
               ? 'Moon not observed'
               : 'Empty position'
   const detail = !coordinates
-    ? 'Enter valid coordinates or choose one of your planets.'
+    ? 'Enter valid coordinates or choose one of your planets or moons.'
     : target
       ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? (target.kind === 'Moon' ? 'Your moon' : target.homeworld ? 'Your Homeworld' : target.colony ? 'Your colony' : 'Your planet') : 'You (last observed)') : playerLabel(target.owner, playerNames)}`
       : kind === 'debris'
@@ -109,23 +109,23 @@ export function DispatchDestinationPreview({
         )}
       </LocationSummaryMedia>
       <LocationSummaryContent>
-        {planets ? (
+        {bodies ? (
           <RichSelect
-            label="Your other planets"
+            label="Your planets and moons"
             anchor={field}
             title={
-              planets.length
-                ? 'Choose one of your planets'
-                : 'No other planets yet. Enter destination coordinates.'
+              bodies.length
+                ? 'Choose one of your planets or moons'
+                : 'No other destinations yet. Enter destination coordinates.'
             }
-            value={selectedPlanet}
-            disabled={!planets.length}
+            value={selectedBody}
+            disabled={!bodies.length}
             className={styles.destinationChooser}
             popupClassName={styles.destinationOptions}
-            onValueChange={onSelectPlanet}
-            options={planets.map((planet) => ({
+            onValueChange={onSelectBody}
+            options={bodies.map((planet) => ({
               value: planet.id,
-              label: `${bodyName(planet)} [${coordinateText(planet.coordinates)}]`,
+              label: `${bodyName(planet)} · ${planet.kind} [${coordinateText(planet.coordinates)}]`,
               content: (
                 <span className={styles.destinationOption}>
                   <BodyIllustration
@@ -135,7 +135,9 @@ export function DispatchDestinationPreview({
                   />
                   <span>
                     <strong>{bodyName(planet)}</strong>
-                    <small>[{coordinateText(planet.coordinates)}]</small>
+                    <small>
+                      {planet.kind} · [{coordinateText(planet.coordinates)}]
+                    </small>
                   </span>
                 </span>
               ),

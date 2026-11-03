@@ -175,7 +175,7 @@ pub(crate) fn create_moon(
     Ok(Some(outcome))
 }
 
-/// Temporary release boundary: selection and inspection work; mutation does not.
+/// Lunar progression remains unavailable; fleet operations use their own mission guards.
 pub fn require_operational_body(body: &Body) -> Result<(), GameError> {
     if body.kind == BodyKind::Moon {
         Err(GameError::UnavailableContent)
