@@ -1935,7 +1935,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expect(bounds.noticeBottom).toBeLessThanOrEqual(bounds.introTop)
     for (const control of [
       page.getByRole('combobox', { name: 'Selected body' }),
-      width >= 1024 ? page.getByRole('link', { name: 'Settings', exact: true }) : page.getByRole('button', { name: 'Menu', exact: true }),
+      width >= 1024 ? page.getByRole('button', { name: 'Account menu', exact: true }) : page.getByRole('button', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleets', exact: true }),
     ]) {
       await expect(control).toBeInViewport()

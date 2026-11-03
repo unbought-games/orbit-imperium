@@ -449,7 +449,7 @@ test('ghost controls share default, hover, focus, pressed and disabled styles', 
     cancel,
     copy,
     menu,
-    page.getByRole('button', { name: 'Sign out', exact: true }),
+    page.getByRole('button', { name: 'Account menu', exact: true }),
   ]) {
     await page.mouse.move(0, 0)
     await control.blur()

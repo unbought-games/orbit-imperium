@@ -558,3 +558,17 @@ ordinary unmodified navigation as a visit. Five focused browser cases passed,
 including both resize directions, Settings activation, keyboard focus and refreshed
 identity captures (1.875s preparation, 5.1s runner time). No failed attempts in this
 repair round; canonical lint/format, TypeScript and whitespace checks passed.
+
+Full CI exposed two stale account-control selectors outside the initial focused
+set: the shared ghost-style check still targeted desktop Sign out, and the dispatch
+recovery layout check still targeted the standalone Settings link. Update those
+references to Account menu while retaining every style, focus, hit-testing and
+layout assertion. Remove the account button's redundant foreground override so
+shared ghost hover/focus styles apply. The selector audit found the other direct
+Settings/Sign out references are mobile dialogs or connection-error actions and
+remain valid. Stopped the obsolete CI run after six browser shards and native
+checks passed; the two remaining shards were still running. This is a product-
+change selector update, not a timeout/retry repair. Four focused cases passed
+(7.163s preparation, 12.6s runner time), including both affected checks and refreshed
+desktop/mobile identity captures. Canonical lint/format, TypeScript and whitespace
+checks passed; no test was removed and no assertion weakened.
