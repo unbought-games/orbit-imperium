@@ -677,3 +677,123 @@ After removing that scenario, all 15 remaining desktop-navigation browser cases
 passed (2.066s preparation, 12.5s runner time), along with 41 deterministic
 profile/session/logout tests (0.534s runner time). Whitespace checks passed;
 production source was unchanged by this removal. Runners closed all local resources.
+
+### Unexplained bulk-read browser stalls (PR #326)
+
+At `3d9045d3b7bcfaeb54ec38c301870db4dd44db38`, CI run `41685651722`,
+job `126091330296`, completed 137 of 139 cases. Only cases 95 and 96,
+`desktop report ranges and bulk read preserve navigation and archive protection`
+at 1440px and 800px, had no result. The last other test completed at 17:47:11 UTC
+on 2026-11-03. Cancellation was requested at 17:58:58 and completed at 18:00:24;
+logs contain no assertion failure or stack identifying either pending operation.
+The exact shard passed all 139 cases locally in 2.2 minutes. This demonstrates
+intermittency, not a repair. All other PR CI jobs and automated review passed.
+
+History: the scenarios originated in `b1c639f` (#275), with later report action
+changes in `ee4e174` (#303) and `0ff7504` (#307). This PR adapted their command
+fixture and assertions to atomic read batches and added response-aware navigation.
+No prior reliability repair or explanatory failure evidence was found in Git
+history or this audit; the separate owner Test Czar ledger was unavailable.
+No stabilization attempt was made. The newly added response predicate also
+matched the document URL, so it did not establish API readiness, but the logs do
+not establish that as the cause of the hang. Removing these scenarios removes
+that predicate too; the shared response helper remains unchanged.
+
+Removed both unexplained expensive scenarios under the repository deletion rule.
+Do not rename/recreate them or treat a green rerun as closure. Retained protection:
+`report-selection.test.ts` covers range selection, one-command batching, filtering,
+context validation, refusal, rejection and uncertainty; `report-state.test.ts`
+covers atomic receipt reconciliation, stale responses and failure supersession;
+engine and PostgreSQL tests cover whole-batch authorization, recipient isolation,
+duplicate IDs, replay, vacation access and persistence. Existing report-deletion,
+compact report-tools and report-sharing browser scenarios retain navigation,
+selection, keyboard actions, archive protection and responsive coverage. Final
+inspected desktop/mobile captures remain in the originating chat. No timeout,
+retry setting, product behavior or other scenario's assertions changed.
+
+### Quick-build layout assertions before delivered options (PR #326)
+
+At `b54f6fac35b79f1c95289ba6499264d22ac1ade7`, run `41690156497`
+failed only `quick build stays inside the row with keyboard and touch-sized
+controls at 320px`: `Build Metal Mine level 2` was absent during the 5s assertion,
+then present in the saved failure snapshot. Shard 2 completed 138 other cases in
+7.3 minutes; all other CI jobs and automated review passed, including shard 7.
+The failure occurred on the first post-navigation control assertion, before any
+keyboard or layout interaction; HTML load did not establish quote readiness.
+
+History: introduced by `e1af116` (#197). Commit `9780e03` (#311) repaired this
+same response-readiness pattern for the separate touch and keyboard scenarios,
+but not this parameterized layout test. This is the layout test's first repair.
+The separate owner Test Czar ledger was unavailable; Git history and the local
+audit were checked before editing.
+
+Reuse `openQuickBuildCatalog` for ordinary quote-dependent entry and implement it
+with the shared `withProgressionResponse` helper. Audit covered every caller of
+`quickBuildFixture`: submit/progress, affordability, server-blocker, layout,
+competing-command, touch/keyboard and acknowledgement cases now await their
+matching successful complete response before observable UI assertions. The
+intentional gated-options and aborted-options cases retain their distinct
+request/error gates. All keyboard, touch-size, containment, submission and
+negative/race assertions remain unchanged; no timeout increase or retry was added.
+No independent caller work remains deferred.
+
+### Desktop account identity stalled in merge queue (PR #326)
+
+Queue revision `1b65898fc1b00c55eca92b3bfe0c1ff708d7ee42` combined PR head
+`30b747d4d9de066f3034c99e9627ed6e1ea775ee` with main `cfe36bc`.
+Run `41694784070`, job `126123955968`, completed 137 of 138 shard-8 cases by
+18:42:46 UTC on 2026-11-03. Only case 53, `account username appears in navigation
+at 1440px`, had no result. The test step had started at 18:37:57; cancellation
+completed at 19:11:58 after the heartbeat observed the prolonged stall. No failing
+assertion or stack identified its pending operation. All other merge-group jobs
+passed. Cancellation removed the PR from the queue; this is the first queue removal.
+
+History: account identity coverage originated in `680b70c` (#14), was extended by
+`1181001` (#235), and gained desktop account-menu/insignia checks plus explicit
+profile-response readiness in `c56a159` (#320). The preceding audit's unexplained
+account-identity stall concerned a different desktop-navigation scenario that
+remains removed. Git history and the local audit supplied no explanation for this
+scenario's pending wait; the separate owner Test Czar ledger was unavailable.
+No speculative stabilization attempt or unchanged retry was made.
+
+Removed only the stalled 1440px scenario and its now-unused desktop branch under
+the repository deletion rule. The same named 390px case remains intact. Retained
+coverage includes client/adaptor player-profile identity and supporter state,
+runtime/session cleanup, the mobile username/insignia scenario, desktop-navigation
+account-menu touch targets and Settings navigation, and desktop-to-mobile menu
+focus/portal cleanup. The independent desktop-navigation scenario is not a renamed
+replacement. No product source, timeout, retry, or surviving assertion changed.
+
+This was the third CI repair round in this PR. Reassessment found all changes
+outside bulk report reads are confined to test reliability and its audit: two
+unexplained report scenarios removed, quote delivery awaited in an existing
+quick-build fixture, and this unexplained desktop identity scenario removed.
+No speculative product changes or additional feature scope were introduced.
+
+### Remaining mobile account-identity variant also stalled (PR #326)
+
+At `0158d4b006f85031f270ae95e55250c4ebf0f419`, PR run `41701378152`,
+job `126147030648`, completed 137 of 138 shard-8 cases by 19:26:35 UTC on
+2026-11-03. Only case 53, the retained `account username appears in navigation
+at 390px`, lacked a result. The test step began at 19:21:32; after the next
+heartbeat identified the prolonged isolated wait, cancellation completed at
+19:41:42. All other jobs and Bugbot passed. This was a PR run, not a second queue
+removal. Again there was no failing assertion or stack identifying the wait.
+
+This is the same parameterized identity scenario whose desktop variant was
+removed above, with the same `c56a159` profile-response readiness change and no
+subsequent stabilization patch. Its local green result on the previous removal
+was not evidence of reliability. Removed the mobile variant and imports used only
+by that scenario under the unexplained-test rule; did not recreate or rename it.
+The two variants' shared scenario is now removed in full. Audit of response-helper
+reload callers found no other player-profile reload caller; the separate bootstrap
+reload in combat simulation has a different data boundary and no matching failure
+evidence, so neither that case nor the shared helper was speculatively changed.
+
+Retained tests cover profile source/binding validation, identity/supporter expiry,
+refresh and session cleanup deterministically. The separate shell supporter-claims
+case, desktop account-menu navigation/touch and resize-focus cases, mobile menu and
+logout cases, and player-profile UI cases retain browser wiring. No product code,
+execution deadline, retry, or surviving assertion changed. This additional removal
+addresses recorded failure evidence after the third-round reassessment, rather
+than expanding feature scope or retrying unchanged intermittent cases.

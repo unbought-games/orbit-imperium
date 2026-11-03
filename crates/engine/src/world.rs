@@ -229,6 +229,9 @@ pub enum WorldAction {
     MarkReportRead {
         report: ReportId,
     },
+    MarkReportsRead {
+        reports: Vec<ReportId>,
+    },
     SetReportStarred {
         report: ReportId,
         starred: bool,
@@ -249,7 +252,7 @@ impl WorldAction {
             Self::MarkReportRead { report }
             | Self::SetReportHidden { report, .. }
             | Self::SetReportStarred { report, .. } => vec![*report],
-            Self::SetReportsHidden { reports, .. } => reports
+            Self::MarkReportsRead { reports } | Self::SetReportsHidden { reports, .. } => reports
                 .iter()
                 .copied()
                 .collect::<BTreeSet<_>>()

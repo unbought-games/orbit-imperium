@@ -124,3 +124,10 @@ assert.ok(phalanx(withRow(missileRow)));
 assert.equal(phalanx(withRow({...missileRow,private_fleet_id:id})),false);
 assert.equal(phalanx(withRow({...missileRow,deadline:{kind:'Impact',at:2000,return_at:3000}})),false);
 console.log('Paid phalanx commands bind stable IDs and versioned reports reject extra private fields.');
+const reportAction = ajv.compile({components:schema.components,$ref:'#/components/schemas/WorldAction4'});
+assert.ok(reportAction({type:'MarkReportsRead',reports:[id,id]}));
+assert.ok(reportAction({type:'MarkReportRead',report:id}), 'existing clients retain single-report reads');
+for (const reports of [[], ['invalid'], [id, 123]])
+ assert.equal(reportAction({type:'MarkReportsRead',reports}),false);
+assert.equal(reportAction({type:'MarkReportsRead',report:id}),false);
+console.log('Bulk read commands require report IDs and retain single-report compatibility.');

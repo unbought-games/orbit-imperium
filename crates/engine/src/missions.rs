@@ -728,6 +728,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 command,
                 Command::World {
                     action: WorldAction::MarkReportRead { .. }
+                        | WorldAction::MarkReportsRead { .. }
                         | WorldAction::SetReportHidden { .. }
                         | WorldAction::SetReportsHidden { .. }
                         | WorldAction::SetReportStarred { .. }
@@ -1280,6 +1281,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         Input::Command(Command::World {
             action:
                 action @ (WorldAction::MarkReportRead { .. }
+                | WorldAction::MarkReportsRead { .. }
                 | WorldAction::SetReportHidden { .. }
                 | WorldAction::SetReportsHidden { .. }
                 | WorldAction::SetReportStarred { .. }),

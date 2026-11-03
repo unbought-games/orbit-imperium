@@ -318,6 +318,77 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
     .execute(&pool)
     .await
     .unwrap();
+    // Bulk reads use one durable receipt and persist only this recipient's rows.
+    // Reject a mixed authorized/unauthorized selection without marking its valid
+    // member; retries (including repeated command IDs) cannot change other flags.
+    for (actor, reports, expected_error) in [
+        (b, vec![id, second], Some(GameError::NotFound)),
+        (
+            a,
+            vec![second, ReportId(Uuid::new_v4())],
+            Some(GameError::NotFound),
+        ),
+        (a, vec![second, id, second], None),
+        (a, vec![second, id], None),
+    ] {
+        let command_id = CommandId(Uuid::new_v4());
+        let envelope = |id, action| CommandEnvelopeV4 {
+            protocol: 4,
+            binding: actor,
+            command_id: id,
+            command: CommandDto3::Progression(Command::World { action }),
+        };
+        let pair = ForegroundAction {
+            gameplay: envelope(command_id, WorldAction::MarkReportsRead { reports }),
+            presence: envelope(
+                CommandId(Uuid::new_v4()),
+                WorldAction::RecordForegroundPresence {
+                    body: None,
+                    cause: PresenceCause::GameplayGesture,
+                    paired_command_id: Some(command_id),
+                },
+            ),
+        };
+        game.world_submit(principal(actor), pair.clone())
+            .await
+            .unwrap();
+        for _ in 0..8 {
+            game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+        }
+        let receipt = game
+            .bound_receipt(principal(actor), actor, command_id)
+            .await
+            .unwrap();
+        if let Some(code) = expected_error.clone() {
+            assert_eq!(receipt.status, ReceiptStatus::Rejected { code });
+        } else {
+            assert!(matches!(receipt.status, ReceiptStatus::Committed { .. }));
+            game.world_submit(principal(actor), pair).await.unwrap();
+            assert_eq!(
+                serde_json::to_value(
+                    game.bound_receipt(principal(actor), actor, command_id)
+                        .await
+                        .unwrap()
+                )
+                .unwrap(),
+                serde_json::to_value(receipt).unwrap()
+            );
+        }
+        assert_eq!(
+            store
+                .world_report(a, second)
+                .await
+                .unwrap()
+                .facts
+                .0
+                .header
+                .read,
+            expected_error.is_none()
+        );
+        assert!(!store.world_report(b, id).await.unwrap().facts.0.header.read);
+        let first = store.world_report(a, id).await.unwrap().facts.0.header;
+        assert!(first.read && first.starred && first.shared && !first.hidden);
+    }
     // Stars protect against accidental archiving. Archiving/restoration preserve
     // active links, and neither action resurrects a previously revoked token.
     for (action, rejected, link_present) in [

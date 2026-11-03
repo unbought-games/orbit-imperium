@@ -1,3 +1,4 @@
+import { withProgressionResponse } from './fixtures/responses'
 import { routeProgressionOptions, unrouteProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { selectBody } from './fixtures/body-selector'
@@ -532,7 +533,7 @@ for (const [catalog, building] of [
       }),
     )
     try {
-      await page.goto(`/u/andromeda/b/${body.id}/${catalog}`)
+      await openQuickBuildCatalog(page, catalog, building.replaceAll(' ', '') as S['BuildingId3'])
       const build = page.getByRole('button', {
         name: new RegExp(`^Build ${building} level`),
       })
@@ -620,7 +621,7 @@ test(`quick build follows live affordability without requerying and confirmed co
     if (request.url().endsWith('/progression-options')) singles.push(request.url())
   })
   fixture.planets[0].amounts.metal = '59999999'
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await openQuickBuildCatalog(page)
   const build = page.getByRole('button', {
     name: 'Build Metal Mine level 2',
     exact: true,
@@ -688,7 +689,7 @@ for (const code of [
       resource: null,
       unit: null,
     })
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await openQuickBuildCatalog(page)
     await expect(
       page.getByRole('button', { name: 'Build Metal Mine level 2' }),
     ).toBeDisabled()
@@ -782,7 +783,7 @@ for (const width of [320, 390, 1440]) {
   }) => {
     const fixture = await quickBuildFixture(page)
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await openQuickBuildCatalog(page)
     const row = page.getByRole('link', {
       name: 'Upgrade Metal Mine',
       exact: true,
@@ -841,7 +842,7 @@ test('quick build prevents competing row commands before the first receipt', asy
     }),
   )
   try {
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await openQuickBuildCatalog(page)
     const first = page.getByRole('button', { name: 'Build Metal Mine level 2' })
     const second = page.getByRole('button', {
       name: 'Build Crystal Mine level 2',
@@ -866,18 +867,16 @@ test('quick build prevents competing row commands before the first receipt', asy
 
 // These tests exercise touch/keyboard activation, not initial network latency.
 // Wait for the actual catalog response before asserting the hydrated control.
-async function openQuickBuildCatalog(page: Page) {
-  const loaded = page.waitForResponse((response) => {
-    if (!/\/progression-options(?:\/bulk)?$/.test(response.url())) return false
-    const payload = response.request().postDataJSON()
-    return (payload.requests ?? [payload.request]).some(
-      (request: { building?: string }) => request.building === 'MetalMine',
-    )
-  })
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
-  const response = await loaded
-  expect(response.ok()).toBe(true)
-  expect(await response.finished()).toBeNull()
+async function openQuickBuildCatalog(
+  page: Page,
+  catalog: 'resources' | 'facilities' = 'resources',
+  building: S['BuildingId3'] = 'MetalMine',
+) {
+  await withProgressionResponse(
+    page,
+    request => 'building' in request && request.building === building,
+    () => page.goto(`/u/andromeda/b/${body.id}/${catalog}`),
+  )
 }
 
 test.describe('touch quick build', () => {
@@ -930,7 +929,7 @@ for (const response of ['early', 'late', 'rejected'] as const) {
     )
     if (response === 'rejected') fixture.reject()
     try {
-      await page.goto(`/u/andromeda/b/${body.id}/resources`)
+      await openQuickBuildCatalog(page, 'resources', 'SolarPlant')
       const build = page.getByRole('button', {
         name: 'Build Solar Plant level 2',
         exact: true,

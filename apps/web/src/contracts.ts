@@ -6443,6 +6443,10 @@ export interface components {
             report: string;
         } | {
             /** @constant */
+            type: "MarkReportsRead";
+            reports: string[];
+        } | {
+            /** @constant */
             type: "SetReportHidden";
             /** Format: uuid */
             report: string;

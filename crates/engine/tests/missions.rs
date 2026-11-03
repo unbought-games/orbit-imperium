@@ -223,6 +223,7 @@ fn run(
                             | WorldAction::SetReportHidden { .. }
                             | WorldAction::SetReportsHidden { .. }
                             | WorldAction::MarkReportRead { .. }
+                            | WorldAction::MarkReportsRead { .. }
                             | WorldAction::SetReportStarred { .. }
                     })
                 ) {
@@ -3423,3 +3424,97 @@ mod moons;
 
 #[path = "missions/phalanx_command.rs"]
 mod phalanx_command;
+#[test]
+fn bulk_report_reads_are_atomic_recipient_scoped_and_idempotent() {
+    let (mut s, r, p, b, t) = fixture();
+    let other = s.bodies[&t].owner;
+    let shared = ReportId(Uuid::from_u128(8900));
+    let private = ReportId(Uuid::from_u128(8901));
+    let missing = ReportId(Uuid::from_u128(8902));
+    for (id, recipients) in [(shared, vec![p, other]), (private, vec![p])] {
+        let w = s.world.as_mut().unwrap();
+        w.covered_reports.insert(id);
+        w.records.reports.insert(
+            id,
+            MissionReport {
+                id,
+                event: InputId(Uuid::from_u128(8903)),
+                kind: "Combat".into(),
+                at: 1000,
+                fleet: None,
+                rules_hash: r.hash.clone(),
+                payloads: recipients
+                    .into_iter()
+                    .map(|owner| (owner, serde_json::json!({"evidence":"retained"})))
+                    .collect(),
+            },
+        );
+    }
+    s.world
+        .as_mut()
+        .unwrap()
+        .records
+        .report_states
+        .push(RecipientReportState {
+            report: private,
+            recipient: p,
+            read: false,
+            hidden: true,
+            starred: true,
+        });
+    let evidence = s.world.as_ref().unwrap().records.reports.clone();
+    let action = |reports| {
+        Input::Command(Command::World {
+            action: WorldAction::MarkReportsRead { reports },
+        })
+    };
+    let before = s.world.as_ref().unwrap().records.report_states.clone();
+    for (n, owner, body, reports, error) in [
+        (8910, p, b, vec![], GameError::InvalidInput),
+        (8911, p, b, vec![shared, missing], GameError::NotFound),
+        (8912, other, t, vec![shared, private], GameError::NotFound),
+    ] {
+        assert_eq!(
+            run(&mut s, &r, owner, body, 1000, n, action(reports)),
+            TransitionResult::Rejected(error)
+        );
+        assert_eq!(s.world.as_ref().unwrap().records.report_states, before);
+    }
+    // Recipient preferences remain available while on vacation.
+    s.world
+        .as_mut()
+        .unwrap()
+        .records
+        .policies
+        .get_mut(&p)
+        .unwrap()
+        .vacation = VacationState::Legacy(true);
+    for n in [8913, 8914] {
+        let result = run(
+            &mut s,
+            &r,
+            p,
+            b,
+            1000,
+            n,
+            action(vec![private, shared, private]),
+        );
+        let changes = apply(&mut s, result);
+        assert_eq!(changes.affected_viewers, BTreeSet::from([p]));
+        let records = &s.world.as_ref().unwrap().records;
+        assert_eq!(records.reports, evidence);
+        assert_eq!(records.report_states.len(), 2);
+        assert!(
+            records
+                .report_states
+                .iter()
+                .all(|state| state.recipient == p && state.read)
+        );
+        let archived = records
+            .report_states
+            .iter()
+            .find(|state| state.report == private)
+            .unwrap();
+        assert!(archived.hidden && archived.starred);
+    }
+}

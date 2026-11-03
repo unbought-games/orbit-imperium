@@ -37,7 +37,8 @@ export function reportPreference(command: Command) {
     action.type === 'SetReportHidden' ||
     action.type === 'SetReportsHidden' ||
     action.type === 'SetReportStarred' ||
-    action.type === 'MarkReportRead'
+    action.type === 'MarkReportRead' ||
+    action.type === 'MarkReportsRead'
   )
     return action
 }
@@ -45,7 +46,9 @@ export function reportPreference(command: Command) {
 export function preferenceReports(
   action: NonNullable<ReturnType<typeof reportPreference>>,
 ) {
-  return action.type === 'SetReportsHidden' ? action.reports : [action.report]
+  return action.type === 'SetReportsHidden' || action.type === 'MarkReportsRead'
+    ? action.reports
+    : [action.report]
 }
 
 // A committed receipt is authoritative for every preference in the batch.
@@ -63,7 +66,7 @@ export function acceptReportVisibility(
     if (!previous) continue
     updated.push({
       ...previous.header,
-      ...(action.type === 'MarkReportRead'
+      ...(action.type === 'MarkReportRead' || action.type === 'MarkReportsRead'
         ? { read: true }
         : action.type === 'SetReportStarred'
           ? { starred: action.starred }
@@ -91,6 +94,7 @@ export function projectedReportHeader(
     if (
       !action ||
       action.type === 'MarkReportRead' ||
+      action.type === 'MarkReportsRead' ||
       !preferenceReports(action).includes(report)
     )
       continue
@@ -117,8 +121,13 @@ export function supersededReportFailures(
   const confirmed = new Set<string>()
   return [...attempts].reverse().filter(([, attempt]) => {
     const action = reportPreference(attempt.envelope.command)
-    if (!action || action.type === 'MarkReportRead') return false
-    const kind = action.type === 'SetReportStarred' ? 'starred' : 'hidden'
+    if (!action) return false
+    const kind =
+      action.type === 'MarkReportRead' || action.type === 'MarkReportsRead'
+        ? 'read'
+        : action.type === 'SetReportStarred'
+          ? 'starred'
+          : 'hidden'
     const preferences = preferenceReports(action).map(
       (report) => `${kind}:${report}`,
     )
@@ -137,6 +146,7 @@ export function pendingReportPreferences(attempts: Iterable<Attempt>) {
     return (
       action &&
       action.type !== 'MarkReportRead' &&
+      action.type !== 'MarkReportsRead' &&
       attempt.status !== 'rejected' &&
       attempt.status !== 'committed'
     )

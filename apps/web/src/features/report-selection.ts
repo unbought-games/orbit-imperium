@@ -1,5 +1,4 @@
 import type { Coordinator } from '../client-model/coordinator'
-import { bindingKey } from '../client-model/commands'
 import { projectedReportHeader } from '../client-model/report-state'
 
 /** Apply a range in display order, retaining selections outside that range. */
@@ -24,36 +23,30 @@ export function toggleReportSelection(
   return next
 }
 
-/** Use durable read commands, stopping on failure so the remaining selection can retry. */
+/** Submit all eligible unread reports as one durable, atomic action. */
 export async function markReportSelectionRead(
   model: Pick<Coordinator, 'store' | 'send'>,
   reports: string[],
 ) {
-  const binding = model.store.getState().binding
-  if (!binding) throw new Error('Report context changed')
-  for (const report of new Set(reports)) {
-    const state = model.store.getState()
-    if (
-      !state.ready ||
-      !state.binding ||
-      bindingKey(state.binding) !== bindingKey(binding)
-    )
-      throw new Error('Report context changed')
+  const state = model.store.getState()
+  if (!state.binding || !state.ready) throw new Error('Report context changed')
+  const eligible = [...new Set(reports)].filter((report) => {
     const current = projectedReportHeader(
       state.reportHeaders,
       state.attempts.values(),
       report,
     )
-    if (!current || current.read) continue
-    const submitted = await model.send({
-      type: 'World',
-      action: { type: 'MarkReportRead', report },
-    })
-    if (!submitted) throw new Error('Read change was not submitted')
-    const attempt = [...model.store.getState().attempts.values()].find(
-      (a) => a.envelope.command_id === submitted,
-    )
-    if (attempt?.status === 'uncertain' || attempt?.status === 'rejected')
-      throw new Error('Read change was not confirmed')
-  }
+    return current && !current.read
+  })
+  if (!eligible.length) return
+  const submitted = await model.send({
+    type: 'World',
+    action: { type: 'MarkReportsRead', reports: eligible },
+  })
+  if (!submitted) throw new Error('Read change was not submitted')
+  const attempt = [...model.store.getState().attempts.values()].find(
+    (a) => a.envelope.command_id === submitted,
+  )
+  if (attempt?.status === 'uncertain' || attempt?.status === 'rejected')
+    throw new Error('Read change was not confirmed')
 }
