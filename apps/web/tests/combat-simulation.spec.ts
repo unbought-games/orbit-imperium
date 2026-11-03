@@ -105,12 +105,12 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await expect(trigger).toBeFocused()
 })
 
-test('prepares an editable observed-moon attack with advisory hypothetical estimates and authoritative launch validation', async ({ page }) => {
+test('prepares an editable observed-planet attack with advisory hypothetical estimates and authoritative launch validation', async ({ page }) => {
   let revision = 1
   await installGameFixture(page, { protocol: 4, viewerRevision: () => String(revision), catalog,
     bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }],
     extraCapabilities: ['Reports', 'Attack'] })
-  const report = { ...observation, observed_at: Date.now() - 7200000, target: { ...observation.target, kind: 'Moon' } }
+  const report = { ...observation, observed_at: Date.now() - 7200000, target: { ...observation.target, kind: 'Planet' } }
   const header = { id: id(63), kind: 'Espionage', observed_at: 6000, read: true, hidden: false }
   await page.route('**/api/**/reports/**', async route => {
     const context = route.request().postDataJSON()
@@ -122,12 +122,12 @@ test('prepares an editable observed-moon attack with advisory hypothetical estim
   let release: (() => void) | undefined
   let blocked = ''
   let changedTarget = false
-  const destination = { type: 'Body', id: report.target.body, expected_kind: 'Moon', expected_owner: report.target.owner }
+  const destination = { type: 'Body', id: report.target.body, expected_kind: 'Planet', expected_owner: report.target.owner }
   await page.route('**/world', async route => {
     const request = route.request().postDataJSON()
     let data: any
     if (request.type === 'ResolveDestination') {
-      expect(request.selection.kind).toBe('Moon')
+      expect(request.selection.kind).toBe('Planet')
       data = { ...destination, id: changedTarget ? id(91) : destination.id }
     } else if (request.type === 'Galaxy') {
       data = { galaxy: 1, system: 1, observed_at: 1000, player_names: {}, positions: Array.from({ length: 15 }, (_, i) => ({ coordinates: { galaxy: 1, system: 1, position: i + 1 }, body: null, debris: null })) }
@@ -217,7 +217,7 @@ test('prepares an editable observed-moon attack with advisory hypothetical estim
   }
   await prepare.click()
   await expect(page.locator('main h1')).toHaveText('Dispatch')
-  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch.*mission=Attack.*target=moon`))
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch.*mission=Attack.*target=planet`))
   await expect(page.getByLabel('Light Fighter · 3 available')).toHaveValue('3')
   await expect(page.getByLabel('Speed', { exact: true })).toHaveValue('60')
   await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue('1:1:9')

@@ -67,6 +67,10 @@ for (const width of [1440, 390]) {
           await diagnosticScreenshot(page, {path: `test-results/moon-${destination}-${width}x900.png`, fullPage: true})
         }
       }
+      // An owned planet must also be unable to send a fleet to its moon.
+      await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${body.id}/dispatch?galaxy=1&system=371&position=12&target=moon&mission=Attack`))
+      await expect(page.getByRole('region', {name: 'Flight timing'})).toContainText('Moon fleet operations are not available yet.')
+      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeDisabled()
       expect(mutations).toEqual([])
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     })

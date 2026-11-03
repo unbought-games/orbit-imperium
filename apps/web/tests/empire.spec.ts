@@ -453,8 +453,8 @@ test('desktop and phone command views keep all information readable without hori
     else await expect(disclosure).toBeVisible()
     const bodies = page.getByRole('article')
     await expect(bodies).toHaveCount(4)
-    for (const dossier of await bodies.all()) {
-      await expect(dossier.getByLabel('Planet resources')).toBeVisible()
+    for (const [index, dossier] of (await bodies.all()).entries()) {
+      await expect(dossier.getByLabel(`${options.bodies[index].kind} resources`, { exact: true })).toBeVisible()
       expect(
         await dossier.evaluate((el) => el.scrollWidth <= el.clientWidth),
       ).toBe(true)

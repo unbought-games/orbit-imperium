@@ -1715,12 +1715,11 @@ test('explicit moon links retain their body intent through coordinate edits and 
   await input.pressSequentially('1 3')
   await expect(input).toHaveValue('1:1:3')
   await expect(preview).toContainText('Moon not observed')
-  state.destination = { type: 'Body', id: id(91), expected_owner: id(30), expected_kind: 'Moon' }
-  const resolved = page.waitForRequest(r => r.url().endsWith('/world') && r.postDataJSON().type === 'ResolveDestination')
-  await review(page).click()
-  expect((await resolved).postDataJSON().selection).toEqual({ type: 'BodyAt', coordinates: { galaxy: 1, system: 1, position: 3 }, kind: 'Moon' })
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Unknown moon')
-  await page.getByRole('button', { name: 'Back to edit mission' }).click()
+  await expect(review(page)).toBeDisabled()
+  await expect(page.getByRole('region', { name: 'Flight timing' })).toContainText('Moon fleet operations are not available yet.')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect(state.quotes).toBe(0)
+  expect(state.launches).toBe(0)
   await selectDestinationPlanet(page, id(6))
   await expect(preview).toContainText('Planet · Your colony')
 })
@@ -1769,18 +1768,16 @@ test('choosing a planet clears a rejected paste notice without changing coordina
 
 test('background flight estimates preserve an explicit moon destination', async ({ page }) => {
   const state = await setup(page)
-  state.destination = { type: 'Body', id: id(91), expected_owner: id(30), expected_kind: 'Moon' }
-  const resolved = page.waitForRequest(request => {
-    if (!request.url().endsWith('/world')) return false
-    const query = request.postDataJSON()
-    return query.type === 'ResolveDestination' && query.selection.coordinates.position === 3
-  })
+  // Creation-only moons retain their identity without scheduling an estimate.
   await page.getByLabel('Destination coordinates', { exact: true }).evaluate(element => {
     const data = new DataTransfer()
     data.setData('text/plain', `${location.origin}/u/andromeda/location/1:1:3?target=moon`)
     element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   })
-  expect((await resolved).postDataJSON().selection).toEqual({ type: 'BodyAt', coordinates: { galaxy: 1, system: 1, position: 3 }, kind: 'Moon' })
+  await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
+  await expect(page.getByRole('region', { name: 'Flight timing' })).toContainText('Moon fleet operations are not available yet.')
+  await expect(review(page)).toBeDisabled()
+  expect(state.estimates).toBe(0)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   expect(state.launches).toBe(0)
 })

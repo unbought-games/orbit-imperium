@@ -231,6 +231,10 @@ fn existing_moon_skips_roll_but_not_debris_and_all_moon_actions_are_rejected() {
             quote_fleet(&s, p, &request, event.at, &r),
             Err(GameError::UnavailableContent)
         );
+        assert!(matches!(
+            estimate_fleet(&s, p, &request, &r),
+            Err(GameError::UnavailableContent)
+        ));
     }
     request.origin = id;
     assert_eq!(
