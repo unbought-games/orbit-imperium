@@ -572,3 +572,37 @@ change selector update, not a timeout/retry repair. Four focused cases passed
 (7.163s preparation, 12.6s runner time), including both affected checks and refreshed
 desktop/mobile identity captures. Canonical lint/format, TypeScript and whitespace
 checks passed; no test was removed and no assertion weakened.
+
+### Unexplained account-identity browser stall
+
+At `609af48f1ac4af1861b31463e3d497d0e909a220`, CI run `41569110377`
+job `125697932668` completed 136 of its 137 cases by 03:03:43 UTC on
+2026-11-03. Only case 134, `sidebar account identity wraps inside its full-width
+menu trigger`, had no result. Cancellation completed at 03:17:19 UTC; the logs
+contain no failing assertion or stack for its pending wait. The exact shard
+passed all 137 cases locally (1.859s preparation, 2.3m runner time), which shows
+intermittency and is not a repair. All other PR jobs and automated review passed.
+
+History: introduced in `1181001` (#235), then adapted to player dossiers in
+`906e18a` (#256). This PR updated its obsolete Sign out selector, containment
+assertion and profile-response readiness in `669a9ef`. No explanatory failure
+stack or prior reliability repair was found in that history or the repository
+performance audit; the separate owner Test Czar ledger was not available in the
+local workspace/automation inventory. The earlier local failed combined scenario
+recorded above was a different, newly authored case and remains removed.
+
+Removed this unexplained expensive scenario under the repository's deletion rule.
+Do not rename/recreate it or treat its local green run as closure. Retained coverage:
+`player-profiles.test.ts` deterministically checks authoritative identity/tier
+refresh and expiry; `runtime-controller.test.ts` and `optional-services.test.ts`
+check logout and session cleanup; shell account-identity cases check shield and
+supporter containment and keyboard access; desktop touch and breakpoint cases
+check menu Settings navigation/focus; mobile logout and explicit login/routing
+suites retain session/browser wiring. The inspected 1024×600 long-name image stays
+in this chat's local evidence. No timeout, retry, product authorization, or other
+case's assertion changed.
+
+After removing that scenario, all 15 remaining desktop-navigation browser cases
+passed (2.066s preparation, 12.5s runner time), along with 41 deterministic
+profile/session/logout tests (0.534s runner time). Whitespace checks passed;
+production source was unchanged by this removal. Runners closed all local resources.

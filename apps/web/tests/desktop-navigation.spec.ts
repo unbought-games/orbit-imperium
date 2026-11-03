@@ -1,8 +1,7 @@
 import { expect, test } from './fixtures/test'
 import { body, binding, id, playerProfilesFixture, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
-import { openNavigation, signOut } from './fixtures/navigation'
-import { withFixtureResponse } from './fixtures/responses'
+import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440, 700, 2], [2560, 1100, 1]]) {
@@ -85,28 +84,6 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
     await diagnosticScreenshot(page, { path: `test-results/desktop-navigation/reports-${width}x${height}-${textScale}.png` })
   })
 }
-
-test('sidebar account identity wraps inside its full-width menu trigger', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 600 })
-  await shellFixture(page)
-  await playerProfilesFixture(page, () => [{ player: binding.player, username: 'CommanderWithAnExceptionallyLongName', supporter_tier: 2 }])
-  await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), () => page.reload())
-  const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
-  const username = sidebar.getByLabel('Username', { exact: true })
-  await expect(username).toContainText('CommanderWithAnExceptionallyLongName')
-  await expect(username.getByRole('img', { name: /Supporter/ })).toBeVisible()
-  const exit = sidebar.getByRole('button', { name: 'Account menu', exact: true })
-  await exit.scrollIntoViewIfNeeded()
-  await expect(exit).toBeInViewport({ ratio: 1 })
-  const name = (await username.boundingBox())!, button = (await exit.boundingBox())!
-  expect(name.x).toBeGreaterThanOrEqual(button.x)
-  expect(name.x + name.width).toBeLessThanOrEqual(button.x + button.width)
-  await diagnosticScreenshot(page, { path: 'test-results/account-long-name-1024x600.png' })
-  expect(await sidebar.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-  await signOut(page)
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
-  await expect(sidebar).toHaveCount(0)
-})
 
 test('sidebar uses full touch targets on a large touch viewport', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, hasTouch: true })
