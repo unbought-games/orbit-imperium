@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures/test'
 import { body, binding, id, playerProfilesFixture, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
-import { openNavigation, signOut } from './fixtures/navigation'
+import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440, 700, 2], [2560, 1100, 1]]) {
@@ -60,7 +60,7 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
     expect((await sidebar.boundingBox())!.y).toBe(0)
     expect((await world.boundingBox())!.y).toBe(0)
-    const settings = sidebar.getByRole('link', { name: 'Settings', exact: true })
+    const settings = sidebar.getByRole('button', { name: 'Account menu', exact: true })
     await settings.scrollIntoViewIfNeeded()
     await expect(settings).toBeInViewport({ ratio: 1 })
     await settings.focus()
@@ -85,26 +85,6 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
   })
 }
 
-test('sidebar account identity wraps without moving sign out outside the viewport', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 600 })
-  await shellFixture(page)
-  await playerProfilesFixture(page, () => [{ player: binding.player, username: 'CommanderWithAnExceptionallyLongName', supporter_tier: 2 }])
-  await page.reload()
-  const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
-  const username = sidebar.getByLabel('Username', { exact: true })
-  await expect(username).toContainText('CommanderWithAnExceptionallyLongName')
-  await expect(username.getByRole('img', { name: /Supporter/ })).toBeVisible()
-  const exit = sidebar.getByRole('button', { name: 'Sign out', exact: true })
-  await exit.scrollIntoViewIfNeeded()
-  await expect(exit).toBeInViewport({ ratio: 1 })
-  const name = (await username.boundingBox())!, button = (await exit.boundingBox())!
-  expect(name.x + name.width).toBeLessThanOrEqual(button.x)
-  expect(await sidebar.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-  await signOut(page)
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
-  await expect(sidebar).toHaveCount(0)
-})
-
 test('sidebar uses full touch targets on a large touch viewport', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, hasTouch: true })
   const page = await context.newPage()
@@ -113,10 +93,16 @@ test('sidebar uses full touch targets on a large touch viewport', async ({ brows
     const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
     const small = await sidebar.locator('a, button').evaluateAll(nodes => nodes.filter(node => node.getBoundingClientRect().height < 44).map(node => node.textContent))
     expect(small).toEqual([])
-    await sidebar.getByRole('button', {name: 'Commander profile details'}).tap()
-    await expect(page.getByRole('dialog', {name: 'Commander profile'})).toBeVisible()
-    await diagnosticScreenshot(page, {path: 'test-results/profile-sidebar-touch-1024x900.png'})
-    await page.keyboard.press('Escape')
+    await sidebar.getByRole('button', {name: 'Account menu', exact: true}).tap()
+    const accountMenu = page.getByRole('menu', {name: 'Account menu', exact: true})
+    await expect(accountMenu).toBeVisible()
+    await expect(accountMenu.getByRole('menuitem')).toHaveText(['Settings', 'Logout'])
+    for (const item of await accountMenu.getByRole('menuitem').all())
+      expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await diagnosticScreenshot(page, {path: 'test-results/account-sidebar-touch-1024x900.png'})
+    await accountMenu.getByRole('menuitem', { name: 'Settings', exact: true }).tap()
+    await expect(page.getByRole('heading', { name: 'Universe settings', exact: true })).toBeVisible()
+    await expect(accountMenu).toBeHidden()
     await sidebar.getByRole('link', { name: 'Facilities', exact: true }).tap()
     await expect(page.locator('main h1')).toHaveText('Facilities')
   } finally { await context.close() }
@@ -171,6 +157,7 @@ test('mobile navigation keeps the player dossier inside the modal top layer', as
   await playerProfilesFixture(page, () => [{player:binding.player, username:'Aurelia', alliance:{id:id(90),universe:binding.universe,name:'Astral Accord',tag:'ASTRA'}}])
   await page.reload()
   const menu = await openNavigation(page)
+  await diagnosticScreenshot(page, {path:'test-results/account-navigation-mobile-390x1000.png'})
   await menu.getByRole('button', {name:'Aurelia profile details'}).click()
   const popup = menu.getByRole('dialog', {name:'Aurelia profile'})
   await expect(popup).toBeVisible()
@@ -221,3 +208,23 @@ for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
+
+test('shrinking the desktop account menu closes its portal and focuses the mobile menu', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await shellFixture(page)
+  const account = page.getByRole('button', { name: 'Account menu', exact: true })
+  await account.click()
+  const popup = page.getByRole('menu', { name: 'Account menu', exact: true })
+  await expect(popup).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 900 })
+  await expect(popup).toBeHidden()
+  const mobileMenu = page.getByRole('button', { name: 'Menu', exact: true })
+  await expect(mobileMenu).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog', { name: 'Navigation', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(account).toHaveAttribute('aria-expanded', 'false')
+  await account.click()
+  await expect(popup).toBeVisible()
+})

@@ -3187,6 +3187,42 @@ mod missiles;
 mod battleship;
 
 #[test]
+fn hypothetical_flight_estimate_does_not_bypass_stationed_inventory_at_launch() {
+    let (mut s, r, p, b, t) = fixture();
+    let mut request = intent(&s, p, b, t);
+    request.cargo = Resources::default();
+    let legal = quote_fleet(&s, p, &request, 0, &r).unwrap();
+    // The hypothetical selection exceeds the two stationed cargo ships.
+    request.ships[0].count = 15;
+    let estimate = estimate_fleet(&s, p, &request, &r).unwrap();
+    assert_eq!(estimate.duration_ms, legal.duration_ms);
+    assert!(estimate.fuel > legal.fuel);
+    assert_eq!(estimate.intent.ships[0].count, 15);
+    assert_eq!(
+        quote_fleet(&s, p, &request, 0, &r),
+        Err(GameError::InsufficientShips)
+    );
+    let result = run(
+        &mut s,
+        &r,
+        p,
+        b,
+        0,
+        99002,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: request,
+                expected_terms_hash: legal.terms_hash.clone(),
+            },
+        }),
+    );
+    assert!(matches!(
+        result,
+        TransitionResult::Rejected(GameError::InsufficientShips)
+    ));
+}
+
+#[test]
 fn flight_estimate_retains_fuel_without_resources_and_cannot_authorize_launch() {
     let (mut s, r, p, b, t) = fixture();
     let mut request = intent(&s, p, b, t);

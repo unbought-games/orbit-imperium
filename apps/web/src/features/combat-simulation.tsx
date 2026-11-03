@@ -361,20 +361,19 @@ function SimulationForm({
         {report && (
           <p>
             Prepare attack opens an editable Dispatch draft. Flight estimates
-            use your current research and stationed ships. Dispatch checks the
-            target, protection, fuel and fleet slots before launch.
+            use your current research, including for hypothetical ships.
+            Dispatch checks the target, protection, fuel and fleet slots before
+            launch.
           </p>
         )}
       </details>
-      {report && onClose && (
-        <SimulationFlight
-          model={model}
-          report={report}
-          fields={fields}
-          edits={edits}
-          onClose={onClose}
-        />
-      )}
+      <SimulationFlight
+        model={model}
+        report={report}
+        fields={fields}
+        edits={edits}
+        onClose={onClose}
+      />
     </div>
   )
 }
