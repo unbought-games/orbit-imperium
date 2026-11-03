@@ -127,3 +127,21 @@ The retained `holding` database binary passed locally (one test, 1.947s executio
 6.82s wall); focused all-warning Clippy passed in 15.00s wall. This repair reused
 only the dedicated disposable Compose project and cleaned it up afterward. A
 new PR revision must pass CI; the earlier group's partial result is not success.
+
+Automated review comment `4460565900` identified a real rescan interaction defect:
+the latest rejected/pending attempt replaced the receipt used by the saved-report
+link. Commit `8245be69e6cdd9d885475f86b47bcaecf9408b58` derives the latest attempt
+and most recent committed observation separately from the existing attempt ledger.
+No second report or resource state is stored. Pending, uncertain and rejected
+rescans retain the previous paid report link; a successful new observation replaces
+it. Insufficient-resource feedback now describes local scan fuel rather than
+unrelated fleet cargo.
+
+Five focused client tests passed, TypeScript passed, and the desktop/mobile browser
+flow now submits a rejected rescan before opening and freely reloading the original
+report. Both browser cases passed; final execution 5.2s, wall 7.68s. Static checks
+passed in 10.30s and final lint/format/whitespace checks passed after the copy fix.
+All existing captures were refreshed and the additional rejected-rescan state was
+captured and inspected at both viewport sizes. No validation attempt failed during
+this UI repair. The original review thread is resolved only after the fix is pushed
+and the remote revision verified.
