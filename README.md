@@ -28,10 +28,9 @@ _Build the economy behind your next fleet. Screenshots show a local demo univers
 3. Scout your neighbors, expand to new planets, and find allies. Planning,
    timing, and cooperation matter as much as the size of your fleet.
 
-Orbit is in **active open beta**. The community is small, development is ongoing,
-and the official universe may be reset before the full public launch. Come help
-shape it: [Discord](https://discord.gg/AVMHp7jUcw) is where we talk strategy,
-answer questions, and work through player feedback.
+Orbit is in **active open beta**. The community is small and development is ongoing.
+Come help shape it: [Discord](https://discord.gg/AVMHp7jUcw) is where we talk
+strategy, answer questions, and work through player feedback.
 
 ## What you can do
 
