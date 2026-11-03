@@ -6,14 +6,17 @@ fn read(bytes: &[u8]) -> Value {
     serde_json::from_slice(bytes).expect("bundled content is tested JSON")
 }
 fn catalog(kind: &str, id: &str, mobile: bool, requirements: Value) -> Patch {
-    Patch::entry(
-        "/catalog",
-        "key",
-        json!({
-            "key": {"kind":kind,"id":id}, "body_kinds":["Planet"],
-            "enabled":true,"mobile":mobile,"requirements":requirements,
-        }),
-    )
+    let previous = json!({
+        "key": {"kind":kind,"id":id}, "body_kinds":["Planet"],
+        "enabled":true,"mobile":mobile,"requirements":requirements,
+    });
+    let mut current = previous.clone();
+    if matches!(kind, "Ship" | "Defense")
+        || (kind == "Building" && matches!(id, "RoboticsFactory" | "Shipyard"))
+    {
+        current["body_kinds"] = json!(["Planet", "Moon"]);
+    }
+    Patch::entry("/catalog", "key", current).with_previous(previous)
 }
 fn research(out: &mut Vec<Patch>, id: &str, definition: Value, requirements: Value) {
     out.push(Patch::field(
@@ -61,6 +64,24 @@ fn unit(out: &mut Vec<Patch>, kind: &str, id: &str, content: &Value) {
 pub(super) fn patches() -> Vec<Patch> {
     let mut out = Vec::new();
     out.push(Patch::field("/world/moons", json!(true)));
+    // Base facilities and units predate the release content files. Reuse their
+    // exact released prerequisites; do not infer them from customized live rules.
+    let baseline = read(include_bytes!("../../../../rules/mvp-v1-slice-5.json"));
+    for entry in baseline["catalog"].as_array().expect("catalog array") {
+        let kind = entry["key"]["kind"].as_str().expect("catalog kind");
+        let id = entry["key"]["id"].as_str().expect("catalog id");
+        if entry["enabled"] == true
+            && (matches!(kind, "Ship" | "Defense")
+                || (kind == "Building" && matches!(id, "RoboticsFactory" | "Shipyard")))
+        {
+            out.push(catalog(
+                kind,
+                id,
+                entry["mobile"] == true,
+                entry["requirements"].clone(),
+            ));
+        }
+    }
     let lunar_base = read(include_bytes!("../../../../rules/content/lunar-base.json"));
     out.push(Patch::field(
         "/buildings/LunarBase",

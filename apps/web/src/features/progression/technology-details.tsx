@@ -65,10 +65,7 @@ export function TechnologyDetails({
   onTechnology: () => void
 }) {
   const { coordinator: model, body, page, view } = props
-  const unavailable =
-    body.kind === 'Moon' ||
-    !entry.enabled ||
-    !entry.body_kinds.includes(body.kind)
+  const unavailable = !entry.enabled || !entry.body_kinds.includes(body.kind)
   const state = model.store.getState()
   const research = researchProgress(state)
   const activeResearch =

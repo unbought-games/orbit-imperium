@@ -26,7 +26,7 @@ export function buildingUnavailableReason(
   body: Pick<S['BodyV3'], 'kind' | 'levels'>,
   buildingId: string | undefined = entry?.key.id,
 ): string | undefined {
-  if (body.kind === 'Moon' && buildingId !== 'LunarBase')
+  if (body.kind === 'Moon' && !entry)
     return 'This building is not available on moons yet.'
   if (entry && !entry.enabled) return 'Unavailable in this universe.'
   if (entry && !entry.body_kinds.includes(body.kind))

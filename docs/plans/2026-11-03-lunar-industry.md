@@ -1,0 +1,45 @@
+# Lunar Robotics Factory and Shipyard
+
+Implemented on top of `20eb9293be48ccbed60c1af4a5ee357eebd766b2`. This increment enables lunar Robotics Factory, Shipyard, and the existing enabled ship/ordinary-defense manufacturing catalog. Release, deployment, and applying rules to a retained universe remain separate operations.
+
+## Delivered behavior
+
+- Robotics Factory uses existing costs and `BuildingRedesign2011` timing, with completed local Robotics applied to construction, including self-upgrades. Shipyard requires local Robotics 2 and uses the existing manufacturing timing. Neither borrows parent facilities or resources. Account research supplies technology prerequisites.
+- Construction, demolition, cancellation/refunds, field reservations, and the paid serial manufacturing queue reuse existing body-based machinery. Robotics may change during manufacturing; Shipyard upgrades/demolition and unfinished manufacturing exclude each other. Planet and moon queues are independent.
+- Enabled ships, all eight ordinary defense types, and stationary Solar Satellites gain lunar eligibility. Satellites produce zero lunar energy under the selected Orbit rule; this is an explicit approximation, not a claim of verified current OGame behavior. Missile production, storage construction, Nanite Factory, local research, Phalanx, Jump Gates, destruction and abandonment are not enabled by this change. Independently disabled ship content stays disabled.
+- Fresh standard worlds receive the catalog changes. Standard rules upgrades recognize the exact prior planet-only catalog entries and preserve customizations through the existing conflict mechanism. Retained rule artifacts are not rewritten. The original moon rejection remains under old rules, and accepted work continues to use its commitments. No API schema or database migration was needed; existing moons already have the relevant zero levels.
+- Facilities, Shipyard and Defense use server catalog eligibility. Existing controls expose local jobs, queue orders, costs and blockers. Lunar construction warns when an ordinary facility would consume the last free field. Robotics/ship/defense copy and satellite/dome technical information now account for moons.
+
+## Validation
+
+Validation uses the working-tree changes over the revision above; the final source digest below excludes this record. Node 24.18.0 and Rust 1.99.0 were available. Cargo used `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, and `CARGO_INCREMENTAL=0` to keep preparation artifacts small.
+
+| Check | Result | Measured phases |
+| --- | --- | --- |
+| `make test-lunar-industry`, engine/application all targets | 564 passed before the final additional independent-parent test | Successful incremental build 1.05s; execution 7.555s; earlier initial application build 18.86s |
+| Final focused lunar industry engine checks | 4 passed, including the added independent-parent regression | Build 1.43s; execution 0.064s |
+| Same Make target, client unit tests | 1,310 passed across 135 files | Vitest total 5.39s |
+| Final retained browser suites: moons and industrial buildings | 8 passed | Module preparation 2.302s; browser runner 15.0s |
+| `make test-lunar-industry-db`, lunar database journey | Passed | Initial storage build 37.53s; execution 11.368s |
+| Same target, rules-update database suite | 40 passed | Build 2.86s; execution 390.088s |
+| Clippy, engine/application/storage, all targets with test support and warnings denied | Passed | Initial check 20.84s; final changed engine test check 5.76s |
+| TypeScript, ESLint, Prettier, Rust formatting, contracts, boundaries, whitespace | Passed | Separate phase timings not captured |
+| Production web build | Passed | Vite 4.32s; prerender SSR build 353ms; whole npm command timing not captured |
+
+The database journey starts under retained pre-Lunar-Base and planet-only manufacturing rules, creates a moon, exercises fleet/holding behavior, applies the standard upgrade, and constructs Robotics 1/2, Base 2 and Shipyard 1/2. Duplicate manufacturing submissions debit once and create one batch per intent. Reloaded paid satellite and defense queues complete with correct lunar inventory, zero production/energy, unchanged parent state, and correct projected fields. It ends with a universe audit. The deterministic engine layer additionally verifies account-research gating, unauthorized access, no parent resource/facility borrowing, independent simultaneous queues, paid FIFO locks, field exhaustion and demolition recovery, cancellation refunds, stale completions, and excluded content.
+
+Visual review used the running React app with HTTP fixtures at 1440×900 and 390×900. Captures cover Facilities, Robotics ready/active/cancellation review, Shipyard last-field/active/locked states, demolition review, ship catalog/order/queue, Defense catalog/order, and lunar satellites. Costs in final captures come from the retained catalog definitions. Four labeled review sheets combine the 28 final full-page captures without hiding states. These validate presentation; authoritative behavior is verified separately by engine/application/database tests. No full-system acceptance, process-recovery, production-container, deployment, or production rules application was run.
+
+## Failure and repair record
+
+- Initial engine compilation omitted the path attribute for the new progression submodule. Corrected the module path before tests could run.
+- The first client check caught a changed generic industrial-lock message. Kept the existing planetary wording and made only the body label dynamic, so lunar blockers say moon. The test history points to the existing Nanite/field-feature tests; the assertion remains intact and the full client suite passed.
+- Two standard-content tests and later two ship integration tests reconstructed old placeholders by disabling current catalog entries without restoring their historical planet-only body kinds. The new upgrader correctly treated those hybrids as custom conflicts. Repaired the shared prior-content helper and audited all `requirements.clear()` placeholder reconstruction sites, including Bomber, Battleship, Battlecruiser, Destroyer and Plasma Turret. Restored the exact historical body-kind field; preserved all conflict and equality assertions. All 564 Rust tests then passed. No production relaxation was used to make fixtures pass.
+- The new lightweight lunar engine fixture initially stripped world rules from a standard artifact that still contained satellites/missiles, which validation correctly rejects. Repaired it by extending the established progression-only lunar fixture. Satellite completion stays in the full database journey; the deterministic test also verifies zero satellite energy with standard rules. All new lunar tests passed after this repair.
+- Docker preparation failed because its predefined address pools were exhausted. Created an explicit nonoverlapping `10.231.41.0/24` network only for disposable Compose project `orbit-lunar-industry`, published on local port 55441. Existing projects/networks were not changed.
+- New `lunar-industry.spec.ts` mobile flow initially hung at navigation after submission: it could observe an earlier progression response while navigating before the command-triggered overview completed. Interrupted after roughly 1.3 minutes and inspected the stack/failure screenshot. The single repair awaited the committed overview and stopped requiring a below-fold tile quote for catalog readiness. Both widths passed, including the broader browser run. A subsequent screenshot-fixture cost cleanup introduced a missing `buildingCost` helper; both scenarios then failed before their first screen. Per the one-repair policy, removed the new automated scenarios and their runner registration. They were not renamed or replaced in the suite. Existing moon and industrial UI coverage remains, plus deterministic engine/client/database coverage. Final screenshots were captured separately from explicit state fixtures in a temporary visual-inspection script, not reported as an automated behavioral test pass.
+- The removed scenarios had no prior Git history. The repository's existing performance audit and lunar-base implementation record document the same unavailable external Test Czar ledger; this record is the local repair record. The historical-placeholder caller audit is complete. The browser navigation issue was in the new caller, not the response-aware helper; no shared helper behavior or intentional negative/race coverage was changed.
+
+Cleanup: the disposable database was dropped by the runner; the `orbit-lunar-industry` container, network and volume were removed. Browser runners and temporary preview servers stopped. Ignored visual-review scripts and images remain in `test-results`. No PR, queue enrollment, merge, or deployment occurred; merge delay is not applicable.
+
+Final source digest (sorted changed/new paths and contents, NUL-separated): `67f414b7904ad6d7286bddef1cd4d83842fcca959dc8eb34fc2edf506a2bd6b8`.

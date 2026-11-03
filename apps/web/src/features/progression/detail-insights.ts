@@ -360,7 +360,7 @@ export function blockerExplanation(
   if (blocker.code === 'NoFreeField')
     return `Free a field by demolishing an eligible building. ${body.kind === 'Moon' ? 'Lunar Base' : 'Terraformer'} also needs one free field to start.`
   if (blocker.code === 'YardLocked')
-    return 'Finish all manufacturing on this planet before upgrading or demolishing the factory.'
+    return `Finish all manufacturing on this ${body.kind.toLowerCase()} before upgrading or demolishing the factory.`
   if (blocker.code === 'QueueCapacity') {
     const queue = view.progression.manufacturing.filter(
       (batch) => batch.body === body.id,

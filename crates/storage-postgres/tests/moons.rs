@@ -233,6 +233,7 @@ async fn simultaneous_battles_create_one_moon_with_atomic_restart_and_view_deliv
     ))
     .await;
     Box::pin(exercise_lunar_base(&reopened, &pool, binding, parent, moon)).await;
+    Box::pin(exercise_lunar_industry(&reopened, binding, parent, moon)).await;
     reopened.audit_universe(u).await.unwrap();
 }
 
@@ -732,6 +733,13 @@ fn lunar_construction_pair(binding: Binding, moon: BodyId, command: Command) -> 
 fn prior_lunar_rules() -> Ruleset {
     let current = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
     let mut old = current.artifact.clone();
+    for entry in old
+        .catalog
+        .iter_mut()
+        .filter(|e| e.enabled && e.key != CatalogKey::Building(Building::LunarBase))
+    {
+        entry.body_kinds = [BodyKind::Planet].into();
+    }
     old.buildings.remove(&Building::LunarBase);
     old.catalog
         .iter_mut()
@@ -739,4 +747,192 @@ fn prior_lunar_rules() -> Ruleset {
         .unwrap()
         .enabled = false;
     Ruleset::from_artifact(old, 1).unwrap()
+}
+
+// Regression: enabling lunar catalog rows must reach the same durable queues,
+// receipts and inventories as planetary work, without borrowing parent assets.
+async fn exercise_lunar_industry(store: &PgStore, binding: Binding, parent: BodyId, moon: BodyId) {
+    for building in [
+        Building::RoboticsFactory,
+        Building::RoboticsFactory,
+        Building::LunarBase,
+        Building::Shipyard,
+        Building::Shipyard,
+    ] {
+        let before = store.bound_world(binding).await.unwrap().facts.0;
+        let parent_before = before.state.bodies[&parent].clone();
+        let request = QuoteRequest::Upgrade {
+            body: moon,
+            building,
+        };
+        let quote = inspect_progression(
+            &before.state,
+            Actor::Player(binding.player),
+            &request,
+            before.at,
+            &before.rules,
+        )
+        .unwrap();
+        assert!(quote.blockers.is_empty(), "{:?}", quote.blockers);
+        let command = Command::StartUpgrade {
+            body: moon,
+            building,
+            expected_terms_hash: quote.terms_hash.unwrap(),
+        };
+        store
+            .bound_admit4(lunar_construction_pair(binding, moon, command))
+            .await
+            .unwrap();
+        drain_fleets(store, binding.universe).await;
+        let started = store.bound_world(binding).await.unwrap().facts.0;
+        assert_eq!(started.state.bodies[&parent], parent_before);
+        let due = started
+            .state
+            .constructions
+            .values()
+            .find(|c| c.body == moon && c.status == ConstructionStatus::Active)
+            .unwrap()
+            .due_at;
+        store.set_test_time(due).await.unwrap();
+        drain_fleets(store, binding.universe).await;
+    }
+    let before = store.bound_world(binding).await.unwrap().facts.0;
+    let parent_before = before.state.bodies[&parent].clone();
+    let initial = before.state.bodies[&moon].checkpoint.amounts;
+    let mut total = Resources::default();
+    for item in [
+        ManufacturedItem::Ship(ShipType::SolarSatellite),
+        ManufacturedItem::Defense(DefenseId::RocketLauncher),
+    ] {
+        let before = store.bound_world(binding).await.unwrap().facts.0;
+        let quote = inspect_progression(
+            &before.state,
+            Actor::Player(binding.player),
+            &QuoteRequest::Manufacture {
+                body: moon,
+                item,
+                quantity: 2,
+            },
+            before.at,
+            &before.rules,
+        )
+        .unwrap();
+        assert!(quote.blockers.is_empty(), "{:?}", quote.blockers);
+        let paid = quote.terms.unwrap().paid();
+        total = Resources::from_values(std::array::from_fn(|i| {
+            total.values()[i] + paid.values()[i]
+        }));
+        let pair = lunar_construction_pair(
+            binding,
+            moon,
+            Command::StartManufacture {
+                body: moon,
+                item,
+                quantity: 2,
+                expected_terms_hash: quote.terms_hash.unwrap(),
+            },
+        );
+        store.bound_admit4(pair.clone()).await.unwrap();
+        store.bound_admit4(pair).await.unwrap();
+        drain_fleets(store, binding.universe).await;
+    }
+    let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    let pending = reopened.bound_world(binding).await.unwrap().facts.0;
+    assert_eq!(pending.state.bodies[&parent], parent_before);
+    assert_eq!(
+        pending.state.bodies[&moon].checkpoint.amounts,
+        Resources::from_values(std::array::from_fn(
+            |i| initial.values()[i] - total.values()[i]
+        ))
+    );
+    let queue: Vec<_> = pending
+        .state
+        .manufacturing_batches
+        .values()
+        .filter(|b| b.body == moon && b.status == ManufacturingStatus::Active)
+        .collect();
+    assert_eq!(
+        queue.len(),
+        2,
+        "duplicate commands must not charge or append twice"
+    );
+    let end = queue.iter().map(|b| b.final_due_at).max().unwrap();
+    let locked = inspect_progression(
+        &pending.state,
+        Actor::Player(binding.player),
+        &QuoteRequest::Demolition {
+            body: moon,
+            building: Building::Shipyard,
+        },
+        pending.at,
+        &pending.rules,
+    )
+    .unwrap();
+    assert!(
+        locked
+            .blockers
+            .iter()
+            .any(|b| b.code == GameError::YardLocked)
+    );
+    reopened.set_test_time(end).await.unwrap();
+    drain_fleets(&reopened, binding.universe).await;
+    let completed = reopened.bound_world(binding).await.unwrap().facts.0;
+    for item in [
+        ManufacturedItem::Ship(ShipType::SolarSatellite),
+        ManufacturedItem::Defense(DefenseId::RocketLauncher),
+    ] {
+        assert_eq!(
+            completed
+                .state
+                .inventories
+                .iter()
+                .find(|s| s.body == moon && s.item == item)
+                .unwrap()
+                .count,
+            2
+        );
+    }
+    assert_eq!(
+        completed.state.bodies[&moon].checkpoint.amounts,
+        pending.state.bodies[&moon].checkpoint.amounts
+    );
+    assert_eq!(completed.state.bodies[&parent], parent_before);
+    assert_eq!(
+        energy_stats(&completed.state.bodies[&moon], &completed.rules)
+            .unwrap()
+            .supply,
+        0
+    );
+    assert_eq!(
+        body_production_rates(
+            &completed.state,
+            &completed.state.bodies[&moon],
+            &completed.rules
+        )
+        .unwrap(),
+        Resources::default()
+    );
+    let view = GameService::new(reopened)
+        .world_view(
+            Principal {
+                account: binding.account,
+                player: binding.player,
+                universe: binding.universe,
+            },
+            QueryContext {
+                binding,
+                request_id: Uuid::new_v4(),
+            },
+        )
+        .await
+        .unwrap();
+    let lunar = view
+        .progression
+        .bodies
+        .iter()
+        .find(|b| b.id == moon)
+        .unwrap();
+    assert_eq!((lunar.fields_used, lunar.fields), (6, 7));
 }

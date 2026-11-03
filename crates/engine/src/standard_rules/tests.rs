@@ -406,6 +406,7 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     let turret = ManufacturedItem::Defense(DefenseId::PlasmaTurret);
     artifact
         .progression
@@ -427,6 +428,7 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     artifact
         .progression
         .as_mut()
@@ -440,6 +442,7 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     let previous = Ruleset::from_artifact(artifact, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);
@@ -467,6 +470,7 @@ fn plasma_upgrade_adds_research_and_turrets_and_preserves_custom_or_disabled_con
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     let mut without_turrets = without_native_hyperspace_ships(artifact);
     assert_eq!(previous.artifact.ships, without_turrets.ships);
     without_turrets
@@ -661,6 +665,7 @@ fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizati
     let entry = artifact.catalog.iter_mut().find(|e| e.key == key).unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     artifact
         .progression
         .as_mut()
@@ -1023,7 +1028,7 @@ fn depot_bundle_is_planet_only_idempotent_and_preserves_custom_content() {
 }
 
 #[test]
-fn lunar_base_upgrades_the_released_placeholder_without_unlocking_other_lunar_content() {
+fn lunar_base_upgrades_the_released_placeholder_without_unlocking_future_lunar_buildings() {
     let current = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
     let mut artifact = current.artifact.clone();
     artifact.buildings.remove(&Building::LunarBase);
@@ -1053,7 +1058,13 @@ fn lunar_base_upgrades_the_released_placeholder_without_unlocking_other_lunar_co
         .iter()
         .filter(|e| e.enabled && e.body_kinds.contains(&BodyKind::Moon))
     {
-        assert_eq!(entry.key, CatalogKey::Building(Building::LunarBase));
+        assert!(matches!(
+            entry.key,
+            CatalogKey::Building(
+                Building::LunarBase | Building::RoboticsFactory | Building::Shipyard
+            ) | CatalogKey::Ship(_)
+                | CatalogKey::Defense(_)
+        ));
     }
     let mut illegal = next.artifact.clone();
     illegal
@@ -1070,4 +1081,74 @@ fn lunar_base_upgrades_the_released_placeholder_without_unlocking_other_lunar_co
         upgrade_standard_rules(&custom),
         Err(StandardRulesError::Conflicts(_))
     ));
+}
+
+#[test]
+fn lunar_industry_upgrade_recognizes_released_planet_catalog_and_preserves_customizations() {
+    let current = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
+    let mut prior = current.artifact.clone();
+    for entry in &mut prior.catalog {
+        if entry.key != CatalogKey::Building(Building::LunarBase) && entry.enabled {
+            entry.body_kinds = [BodyKind::Planet].into();
+        }
+    }
+    let old = Ruleset::from_artifact(prior.clone(), 1).unwrap();
+    assert_eq!(upgrade_standard_rules(&old).unwrap(), current);
+    assert_eq!(upgrade_standard_rules(&current).unwrap(), current);
+    assert!(
+        validate_rules_update(&old, &current)
+            .unwrap()
+            .add_buildings
+            .is_empty()
+    );
+    for entry in current.artifact.catalog.iter().filter(|e| e.enabled) {
+        let lunar = matches!(
+            entry.key,
+            CatalogKey::Building(
+                Building::LunarBase | Building::RoboticsFactory | Building::Shipyard
+            ) | CatalogKey::Ship(_)
+                | CatalogKey::Defense(_)
+        );
+        assert_eq!(
+            entry.body_kinds.contains(&BodyKind::Moon),
+            lunar,
+            "{:?}",
+            entry.key
+        );
+    }
+    // A custom prerequisite must never silently become the standard prerequisite.
+    prior
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::Shipyard))
+        .unwrap()
+        .requirements = vec![Requirement::BodyBuilding {
+        building: Building::RoboticsFactory,
+        level: 3,
+    }];
+    let custom = Ruleset::from_artifact(prior, 1).unwrap();
+    assert!(matches!(
+        upgrade_standard_rules(&custom),
+        Err(StandardRulesError::Conflicts(_))
+    ));
+    for key in [
+        CatalogKey::Building(Building::MetalStorage),
+        CatalogKey::Building(Building::MetalMine),
+        CatalogKey::Building(Building::NaniteFactory),
+        CatalogKey::Building(Building::ResearchLab),
+        CatalogKey::Building(Building::MissileSilo),
+        CatalogKey::Building(Building::AllianceDepot),
+        CatalogKey::Research(ResearchId::EnergyTechnology),
+        CatalogKey::Missile(MissileId::AntiBallisticMissile),
+    ] {
+        let mut illegal = current.artifact.clone();
+        illegal
+            .catalog
+            .iter_mut()
+            .find(|e| e.key == key)
+            .unwrap()
+            .body_kinds
+            .insert(BodyKind::Moon);
+        assert!(Ruleset::from_artifact(illegal, 1).is_err(), "{key:?}");
+    }
 }

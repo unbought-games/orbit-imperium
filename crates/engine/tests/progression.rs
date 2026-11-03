@@ -3561,3 +3561,6 @@ mod terraformer;
 
 #[path = "progression/lunar_base.rs"]
 mod lunar_base;
+
+#[path = "progression/lunar_industry.rs"]
+mod lunar_industry;

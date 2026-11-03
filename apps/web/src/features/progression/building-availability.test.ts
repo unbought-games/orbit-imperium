@@ -30,7 +30,7 @@ describe('building inspection availability', () => {
       'Unavailable in this universe.',
     )
     expect(buildingUnavailableReason(entry, { ...body, kind: 'Moon' })).toBe(
-      'This building is not available on moons yet.',
+      'Unavailable on this moon.',
     )
     expect(buildingUnavailableReason(entry, { ...body, levels: {} })).toBe(
       'Building level unavailable on this body.',
@@ -113,4 +113,25 @@ it('allows Lunar Base only on moons with an enabled catalog entry and known leve
   expect(buildingUnavailableReason(lunar, { ...moon, kind: 'Planet' })).toBe(
     'Unavailable on this planet.',
   )
+})
+
+it('uses lunar catalog eligibility for Robotics and Shipyard without inventing base prerequisites', () => {
+  for (const id of ['RoboticsFactory', 'Shipyard'] as const) {
+    const lunar = {
+      ...entry,
+      key: { kind: 'Building' as const, id },
+      body_kinds: ['Planet', 'Moon'] as S['CatalogEntry3']['body_kinds'],
+    }
+    const moon = {
+      kind: 'Moon' as const,
+      levels: { RoboticsFactory: 0, Shipyard: 0, LunarBase: 0 },
+    }
+    expect(buildingUnavailableReason(lunar, moon)).toBeUndefined()
+    expect(buildingUnavailableReason({ ...lunar, enabled: false }, moon)).toBe(
+      'Unavailable in this universe.',
+    )
+    expect(buildingUnavailableReason(entry, moon)).toBe(
+      'Unavailable on this moon.',
+    )
+  }
 })
