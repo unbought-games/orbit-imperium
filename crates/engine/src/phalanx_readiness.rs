@@ -4,37 +4,28 @@ use thiserror::Error;
 
 /// Private operational diagnostics, with fixed messages safe for operator output.
 /// Do not turn these into fleet-dependent public scan rejection details.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Error)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Error, serde::Serialize, serde::Deserialize)]
 pub enum PhalanxReadinessError {
-    #[error("finish rolling deployment and exclude legacy writers before activating scans")]
-    LegacyWritersMayWrite,
     #[error(
         "load complete active fleet membership under the activation barrier before activating scans"
     )]
     IncompleteFleetCoverage,
     #[error(
-        "an active deployment return has no proven cause; explicitly classify it from conclusive journal evidence or let it settle before activating scans"
+        "an active deployment return has no proven cause; keep workers running until it settles, then retry rules activation"
     )]
     UnknownDeploymentReturn,
     #[error("repair inconsistent fleet return facts before activating scans")]
     InvalidReturnFacts,
 }
 
-/// Supplied proofs are derived by the future activation coordinator, never saved
-/// readiness flags. In particular, a new process running does not prove exclusion
-/// of old workers, admissions, editors or rollback binaries.
-///
-/// Part 2 must call this under the rules-activation barrier with complete universe
-/// membership, and enforce the same return-fact check on each complete scan load.
-/// This function performs no I/O, activation, historical traversal or mutation.
+/// Validate complete current active membership under the rules publication barrier.
+/// Binary rollout is the deployment/operator responsibility, as for every rules
+/// upgrade; this data validator does not attest process versions or write access.
+/// It performs no I/O, historical traversal or mutation.
 pub fn validate_phalanx_scan_readiness<'a>(
-    legacy_writers_excluded: bool,
     complete_active_fleet_coverage: bool,
     fleets: impl IntoIterator<Item = &'a MissionFleet>,
 ) -> Result<(), PhalanxReadinessError> {
-    if !legacy_writers_excluded {
-        return Err(PhalanxReadinessError::LegacyWritersMayWrite);
-    }
     if !complete_active_fleet_coverage {
         return Err(PhalanxReadinessError::IncompleteFleetCoverage);
     }

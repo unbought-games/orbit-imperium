@@ -120,12 +120,8 @@ async fn rolling_startup_and_legacy_full_record_writes_accept_unknown_causes_wit
     reopened.migrate().await.unwrap();
     assert_eq!(read(&pool, f.id).await, serde_json::to_value(f).unwrap());
     assert_eq!(
-        validate_phalanx_scan_readiness(true, true, [f]),
+        validate_phalanx_scan_readiness(true, [f]),
         Err(PhalanxReadinessError::UnknownDeploymentReturn)
-    );
-    assert_eq!(
-        validate_phalanx_scan_readiness(false, true, [f]),
-        Err(PhalanxReadinessError::LegacyWritersMayWrite)
     );
 
     // A new writer emits the causal field using the same JSON persistence format.
@@ -167,10 +163,7 @@ async fn rolling_startup_and_legacy_full_record_writes_accept_unknown_causes_wit
     );
     let terminal: MissionFleet = serde_json::from_value(rewritten).unwrap();
     assert_eq!(terminal.terms, known.terms);
-    assert_eq!(
-        validate_phalanx_scan_readiness(true, true, [&terminal]),
-        Ok(())
-    );
+    assert_eq!(validate_phalanx_scan_readiness(true, [&terminal]), Ok(()));
 
     // Old outbound recall persists an active unknown return without schema failure.
     let mut outbound = before.clone();
@@ -191,7 +184,7 @@ async fn rolling_startup_and_legacy_full_record_writes_accept_unknown_causes_wit
     let unknown: MissionFleet = serde_json::from_value(read(&pool, f.id).await).unwrap();
     assert_eq!(unknown.return_reason, None);
     assert_eq!(
-        validate_phalanx_scan_readiness(true, true, [&unknown]),
+        validate_phalanx_scan_readiness(true, [&unknown]),
         Err(PhalanxReadinessError::UnknownDeploymentReturn)
     );
     store.migrate().await.unwrap();

@@ -143,11 +143,6 @@ impl<S: RulesStore> RulesService<S> {
                 actual_revision: current.revision,
             });
         }
-        if phalanx_enabled(&next) && !phalanx_enabled(&current.rules) {
-            return Err(RulesUpdateError::PhalanxActivationBlocked(
-                PhalanxReadinessError::LegacyWritersMayWrite,
-            ));
-        }
         let plan = plan_rules_update(&current.rules, &next)?;
         let mut changes = vec![];
         difference(

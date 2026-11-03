@@ -1,81 +1,104 @@
 # Sensor Phalanx deployment and activation
 
-The command backend is implemented, but live activation is blocked. Standard
-rules omit `world.phalanx`, and standard Sensor Phalanx construction remains
-disabled. New scan admission rejects while disabled, so ordinary mixed-version
-workers never receive this new command vocabulary. Historical receipt recovery
-runs before that admission gate. This release can be deployed through the ordinary rolling process.
-It requires no fleet drain, historical journal scan, return-cause backfill, or
-classification of unknown active deployment returns.
+Sensor Phalanx follows the existing [rules rollout](rules-updates.md#official-production-rollout):
+deploy the image to every API, worker and operator process, then run that image's
+normal rules upgrade. Deployment tooling/operator owns rollout completion. Orbit
+does not detect replica versions or require a capability registry, attestation,
+credential change, override flag or separate phalanx preparation command.
 
-Migration `0034_phalanx_endpoint_indexes` adds candidate indexes for active ship
-origins, ship destinations, and missile destinations. It adds no data constraint
-and changes no fleet JSON. Index creation uses the normal transactional migration
-path; schedule schema preparation with the usual write-lock allowance. Its
-production build time has not been measured. The unpublished causal migration 0033 remains absent; its number is not reused.
+The backend supports activation now. Standard `world.phalanx` and construction
+remain disabled until part 3 adds the standard content and UI. Until then, custom
+rules and tests use the ordinary rules export/diff/apply interface with
+`world.phalanx: "sensor-phalanx-v1"`. Scenario create/replace also accepts enabled rules and validates the final active
+return facts after all edits in its existing exclusive transaction. Enabled
+scenario exports can be loaded normally, subject to existing export limitations. Once
+bundled in the standard release, the normal commands are:
 
-Old full-record fleet writers remain compatible while scans are disabled. They
-can erase `return_reason` or create unknown returns. New workers settle these
-returns at their existing deadlines; terminal unknown returns need no repair.
+```sh
+orbit rules upgrade --dry-run
+orbit rules upgrade
+```
 
-## Why activation currently refuses
+Ordinary deployment with scans disabled needs no fleet drain, journal traversal,
+return-cause backfill or legacy-return classification. Old full-record writers
+remain compatible while disabled: they can erase `return_reason` or create
+unknown returns. New workers settle those returns at their committed deadlines;
+terminal unknowns need no repair. New scan admission rejects while disabled, so
+mixed-version workers do not receive the new command vocabulary. Historical
+receipt recovery runs before that admission gate.
 
-The existing universe gate, scoped claims, runtime generation, world-edit gate,
-and durable rules barriers order work and fence claims. They cannot prove that
-all incompatible admission/API processes, editors, tools, and rollback binaries
-have lost database write access or cannot reacquire work. No process registry,
-operator checkbox, or stored derived readiness flag has been introduced.
+## Activation and transient data blockers
 
-Rules preparation reports `PhalanxActivationBlocked(LegacyWritersMayWrite)`.
-Serial apply independently checks at the publication boundary. Scoped apply
-refuses before creating an unfulfillable barrier; queued barrier publication also
-independently checks. The publication check loads complete active fleet membership
-under the existing boundary and invokes the readiness validator with writer
-exclusion **unproven**. A healthy worker or an empty fleet collection does not
-change this result. Scenario rules installation cannot bypass the boundary.
+Preview validates the proposal; it does not certify current fleet readiness or
+approve a later snapshot. Serial apply checks complete active fleet membership
+under its existing universe publication fence. Scoped apply checks before queuing
+and independently rechecks at the ordered publication boundary after earlier
+work has finished. Stale rule revisions reject normally.
 
-An enforceable writer-exclusion contract is therefore an explicit integration
-blocker before enabling standard rules. Do not enable the feature with direct
-SQL or edited startup data. Disposable tests install custom rules directly to
-exercise the command; that fixture technique is not an operator activation path.
+An active returning Deploy without a proven cause rejects activation with an
+operator message to keep workers running until it settles, then retry the usual
+rules command. No charge, rules change, backfill or retiming occurs. If an earlier
+input creates that blocker after a scoped proposal was queued, publication saves
+a rejected outcome and retires that boundary without activating it. This lets
+later return events settle normally; it does not strand gameplay behind a failed
+activation. Retry normal rules apply/upgrade after settlement. Only confirmed
+`Applied` or `AlreadyActive` completes activation; a `Pending` ID means keep
+workers running and retry the same command as described in the rules runbook.
 
-When exclusion is enforceable, activation must still rederive complete membership
-under the apply barrier, wait for/fence outstanding claims using existing runtime
-controls, and check every active deployment return. Unknown returns block
-activation until natural settlement, or a separately authorized repair with
-conclusive Applied journal evidence. The existing pure classifier is read-only;
-this release adds no repair service and performs no automatic history traversal.
-Prepare output is advisory and must never replace the apply-time check.
+The pure readiness validator checks coverage and current return facts, not
+process versions. There is no stored readiness bit. The read-only evidence
+classifier remains available for a separately authorized repair, but the default
+rollout uses natural settlement and needs no historical backfill.
+
+## Schema preparation
+
+Migration `0034_phalanx_endpoint_indexes` uses the ordinary transactional index
+pattern. It adds candidate indexes for active ship origins/destinations and
+in-flight missile destinations, without changing fleet JSON or adding a data
+constraint. The removed causal migration 0033 remains absent.
+
+The existing preparation bounds apply unchanged: 10 seconds overall, 5 seconds
+per statement and a 1-second DDL lock timeout (migration coordination can wait
+up to 5 seconds within the overall bound). There is no new manual index script,
+required prebuilt-index check or timeout override. Normal `orbit db-init` may
+prepare the schema before rollout under those same bounds. A timeout fails
+preparation and grants no readiness; it is not a successful deployment.
+
+Fixture tests cover populated-table migration and selective lookup, not production
+build duration. Index construction scans the retained tables and takes normal
+transactional index locks. Very large or busy deployments may exceed the existing
+bounds; production volume and timings have not been measured. Such a failure
+requires diagnosis through the existing schema/deployment process, not a phalanx
+credential or history-repair workflow.
 
 ## Deactivation and rollback
 
-Remove `world.phalanx` through the existing rules export/prepare/apply workflow.
-Wait for the actual `Applied` outcome (a durable pending barrier is not success),
-and verify the active rules revision. A scan ordered before deactivation may
-complete and charge normally. Admission refuses new scans as soon as a
-deactivation barrier is queued, and reads active/queued rules atomically to close
-the publication race; later scans reject without charging. The boundary
-must complete and old claims must be fenced before incompatible writers or tools
-are admitted. Rolling back while scans are enabled is unsupported even if the
-older binary can read other saved JSON. Keep historical reports and receipts;
-deactivation does not reinterpret or delete them.
+Remove `world.phalanx` through normal rules export/diff/apply before a rollback to
+incompatible writers. Confirm the actual applied revision. A prior admitted scan
+can complete and charge before the boundary. Admission refuses new scans as soon
+as deactivation is queued; its atomic active/pending-rules read closes the
+publication race. Existing IDs retain their historical receipt recovery.
+
+The normal [rollback boundaries](rules-updates.md#deployment-and-rollback-boundaries)
+still apply: deactivation does not certify that an older binary understands every
+retained rules/report format, and it does not authorize a runtime-mode downgrade.
+Keep reports and receipts; deactivation never deletes or reinterprets history.
 
 ## Paid observation contract
 
 Clients submit `WorldAction::ScanPlanet { source_moon, target_planet }` through the
-protocol-4 foreground command pair, with the presence body bound to the source
-moon. IDs are stable body identities; coordinates do not resolve or replace them.
-There is no live scan query and navigation or report refresh never scans.
+protocol-4 foreground command pair, binding presence to the owned source moon.
+Stable body IDs never rebind by coordinates. Navigation and report refresh do
+not scan; no live scan query exists.
 
-A committed receipt has exactly one `result_ids` entry: the recipient-only report
-ID. Fetch it through the existing authenticated report-detail API. An uncertain
-submission recovers that same receipt by command ID. Reopening it is free and
-historical; a new paid observation requires a new command ID. Pagination,
-retention, read/hide/star preferences, and recipient authorization use the existing
-report store. Scan payload sharing is unsupported. Names in observation rows are
-historical snapshots and are not enriched from current account names on reopen.
+A committed receipt's sole `result_ids` entry is the recipient-only report ID.
+Fetch it through the authenticated report-detail API. Uncertain delivery recovers
+the original receipt by command ID. Reopening is free and historical; another
+observation uses a new paid command ID. Existing pagination, retention and
+read/hide/star actions apply. Scan sharing is unsupported. Observed owner names
+remain historical snapshots.
 
-Relevant unknown return facts reject the complete scan as `UnavailableContent`,
-without a debit, report, partial rows, or fleet-dependent player diagnostic.
-Operators can inspect the private retained facts with existing tools; do not
-publish those facts or infer a return cause from timing or reports.
+Every scan independently rejects relevant unknown return facts before any debit
+or report as generic `UnavailableContent`. It returns no partial rows or
+fleet-dependent player diagnostic. Operator diagnostics remain private; do not
+infer causes from timing or reports.

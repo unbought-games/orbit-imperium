@@ -163,10 +163,8 @@ pub(crate) async fn load(
     Ok(state)
 }
 
-/// There is no binary/credential exclusion proof in the current runtime. Its
-/// generation fences outstanding claims, not old API/editor/rollback writers.
-/// Refuse activation until that external boundary has an enforceable contract;
-/// neither a clean fleet sample nor an operator boolean is a substitute.
+/// Deployment completes the binary rollout before invoking normal rules apply.
+/// Re-read authoritative active membership here; a preview is never readiness.
 pub(crate) async fn activation(
     tx: &mut Tx<'_>,
     u: UniverseId,
@@ -176,9 +174,18 @@ pub(crate) async fn activation(
     if !phalanx_enabled(next) || phalanx_enabled(current) {
         return Ok(());
     }
+    readiness(tx, u).await
+}
+
+/// Complete final data validation shared by rules publication and the exclusive
+/// world-edit transaction after all scenario edits have been applied.
+pub(crate) async fn readiness(
+    tx: &mut Tx<'_>,
+    u: UniverseId,
+) -> Result<(), orbit_application::RulesUpdateError> {
     let fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>("SELECT data FROM mission_fleets WHERE universe=$1 AND data->>'leg' IN ('Outbound','Holding','Returning') ORDER BY id")
         .bind(u.0).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode_supported).collect::<Result<_,_>>()?;
-    validate_phalanx_scan_readiness(false, true, &fleets)
+    validate_phalanx_scan_readiness(true, &fleets)
         .map_err(orbit_application::RulesUpdateError::PhalanxActivationBlocked)
 }
 

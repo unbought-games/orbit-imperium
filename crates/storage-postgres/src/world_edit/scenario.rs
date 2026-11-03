@@ -67,9 +67,6 @@ pub(super) async fn remove_world(tx: &mut Tx<'_>, u: UniverseId) -> Result<()> {
 }
 pub(super) async fn install_rules(tx: &mut Tx<'_>, u: UniverseId, r: &Ruleset) -> Result<()> {
     r.validate()?;
-    if phalanx_enabled(r) {
-        return Err("sensor phalanx requires coordinated rules activation; scenario installation cannot exclude incompatible writers".into());
-    }
     let current = crate::facts::rules(tx, u).await?;
     if current.artifact.universe != r.artifact.universe || current.speed != r.speed {
         return Err(

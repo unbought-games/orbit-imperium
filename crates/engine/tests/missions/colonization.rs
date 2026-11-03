@@ -1249,7 +1249,7 @@ fn deployment_return_causes_survive_restart_and_legacy_journal_replay_without_re
             assert_eq!(legacy_fleets[&f.id].leg, MissionLeg::Returned);
             assert_eq!(legacy_fleets[&f.id].return_reason, None);
             assert_eq!(
-                validate_phalanx_scan_readiness(true, true, legacy_fleets.values()),
+                validate_phalanx_scan_readiness(true, legacy_fleets.values()),
                 Ok(())
             );
             validate_asset_lineage(&legacy_state).unwrap();

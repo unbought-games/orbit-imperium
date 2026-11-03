@@ -1,5 +1,8 @@
 # Sensor Phalanx command backend — 2026-11-03
 
+> Historical validation record for `5e0b4b8`. Its writer-exclusion blocker and
+> scenario restriction are superseded by the [activation repair](sensor-phalanx-activation-repair.md).
+
 Base: `af52565b4e334e2dde3ef63aa36f69d002ad4e63`.
 Local branch: `emick/sensor-phalanx-command`.
 Final source SHA-256:

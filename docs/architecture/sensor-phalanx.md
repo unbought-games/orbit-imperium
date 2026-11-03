@@ -2,9 +2,10 @@
 
 Part 1 supplies pure eligibility, observation rules and causal fleet return facts.
 Part 2 adds the ordered paid command, endpoint loader, historical report storage
-and API contracts. Live activation remains blocked on writer exclusion, and
-standard rules, construction and player UI remain disabled. `sensor-phalanx-v1` fixes range to
-`level² - 1` and cost to 5,000,000,000 local deuterium micro-units.
+and API contracts. Activation follows normal rules prepare/apply after deployment
+to all processes; standard rules, construction and player UI remain disabled
+until part 3. `sensor-phalanx-v1` fixes range to `level² - 1` and cost to
+5,000,000,000 local deuterium micro-units.
 
 ## Integration contract
 
@@ -107,66 +108,51 @@ replacement loses the cause. Unchanged fleets are skipped by the old equality
 check, so simply reading a fleet does not erase it. In particular, old workers can
 complete new returning fleets and write terminal records without the cause, and
 can create unknown active returns themselves. Neither write is a schema error.
-Do not treat an observed cause, a momentary lack of unknown fleets, or one new
-process reporting healthy as proof that the rolling upgrade is complete.
+Deployment tooling/operator completes rollout to every API, worker and operator
+process before invoking the same image's normal rules upgrade. This follows
+[rules operations](../operations/rules-updates.md#official-production-rollout)
+and [concurrent runtime operations](../operations/concurrent-runtime.md).
+Orbit does not detect replica versions or attest database credential exclusion.
 
 ### Explicit activation boundary for parts 2 and 3
 
-The building and scan capability remain disabled. `validate_phalanx_scan_readiness`
-is a pure validator, not an exclusion proof or a saved readiness flag. The
-coordinator must satisfy the following contract before part 3 enables the
-feature; the part 2 fail-closed implementation and remaining blocker are below:
+1. Complete binary rollout using the existing deployment process, then use normal
+   rules prepare/apply. Standard upgrade will enable phalanx only when part 3 adds
+   it to the standard content bundle; custom fixture rules can activate it now.
+   No registry, checkbox, override flag or new orchestration service is required.
+2. Preview is advisory. Both serial and scoped publication recheck complete current
+   active fleet membership under their existing barriers and commit fences.
+   `validate_phalanx_scan_readiness` validates coverage and return facts; it has no
+   writer-version parameter and no saved readiness flag. An index count or a
+   viewer-scoped collection is not complete membership.
+   Scenario create/replace accepts enabled artifacts and checks the final active
+   collection after all edits under the exclusive world-edit transaction. Existing
+   scenario export limitations remain; rules need not be disabled to round-trip.
+3. Unknown active returning Deploy blocks activation until its existing terminal
+   deadline settles through ordinary gameplay. Keep workers running and retry the
+   usual rules command. Terminal unknowns need no classification. Outbound legacy
+   fleets acquire causes at their next new-writer transition. No startup history
+   traversal, automatic backfill, retiming, guessed cause or silent omission occurs.
+4. Scoped preflight rejects a current blocker without queuing a boundary. If earlier
+   work creates a blocker after queuing, publication records the rejection and
+   retires the boundary with active rules unchanged. Later fleet settlement can
+   proceed, so retry after natural settlement can activate normally. Existing
+   pending/stale/retry semantics remain; publication never trusts a saved preview.
+5. Any separately authorized repair must use conclusive Applied journal evidence
+   and compare-and-set the exact inspected fleet under the operational barrier.
+   The read-only `classify_legacy_deployment_return` helper validates supplied
+   Outbound-to-Returning evidence; it does not query, mutate or certify provenance.
+   Preserve terms, hashes, deadlines, revisions and journal bytes. Missing/stale/
+   conflicting evidence stays unknown. No repair service ships in this increment.
+6. Every scan independently checks all relevant return facts on its complete ordered
+   snapshot before debit/report creation. Unknowns refuse the whole observation,
+   including hidden-only candidates, with generic `UnavailableContent` for players.
+   Deactivate through the normal ordered rules boundary before incompatible-writer
+   rollback. Existing deployment/rollback compatibility responsibilities remain;
+   the game does not certify that an older binary understands retained history.
 
-1. Finish the ordinary rolling deployment. Establish that every writer that can
-   commit to this universe understands return causes (workers, admission/API,
-   editors, tools and rollback binaries). Drain/fence old claims and prevent old
-   binaries from reacquiring work. This operational exclusion is an activation
-   prerequisite; current rules revisions alone do not attest binary versions.
-2. Extend the existing rules prepare/apply paths, including both serial
-   `apply_rules` and `apply_scoped_rules`, to gate scan-capability activation.
-   Prepare may report blockers, but the apply path must recheck under its universe
-   barrier and commit fencing. Load complete active fleet membership with covered
-   absence. Do not reuse a stale preparation snapshot, a count from an index, or
-   the viewer's scoped fleet collection as readiness proof.
-3. Call `validate_phalanx_scan_readiness` with derived writer-exclusion and coverage
-   proofs and that complete collection. Unknown active returning Deploy blocks
-   activation. Either let it reach its already committed terminal deadline through
-   ordinary gameplay, or explicitly classify and repair it from authoritative
-   evidence. Never guess from timing/reports, discard the fleet, retime it, assume
-   recall, show it, or silently omit it. Terminal unknowns need no classification.
-   Outbound legacy fleets acquire a cause at their next new-writer transition.
-4. If classification is chosen, run an explicitly requested operational job with
-   bounded batches outside ordinary schema preparation. A trusted loader must
-   establish successful Applied journal provenance and complete candidate
-   evidence. `classify_legacy_deployment_return` consumes that supplied evidence
-   without querying or mutating anything. It requires an Outbound-to-Returning
-   transition matching the retained fleet and checks the actual RecallMission or
-   outbound FleetLegDue input. Known causes in newer journals must agree. Missing,
-   stale, invalid or conflicting evidence returns typed fixed-message diagnostics;
-   no raw SQL/driver error data is surfaced. The helper does not certify loader
-   completeness or grant readiness. The operational loader/writer is not shipped
-   in part 1; unresolved evidence is a real activation blocker until natural
-   settlement or a reviewed repair.
-5. Any future explicit backfill must compare-and-set the exact inspected fleet
-   under the operational barrier, adding only the proven cause. Preserve terms,
-   hashes, deadlines, revisions and historical journal bytes. Handle old-writer
-   field loss and concurrent settlement by reloading, not overwriting newer facts.
-   Recheck complete readiness in the activation transaction before publishing the
-   versioned scan rules/capability through the existing rules-activation mechanism.
-6. Every accepted scan must also check all relevant return facts on its complete
-   ordered scan snapshot before charge/report storage. Unknown causes refuse the
-   whole scan, including hidden-only candidate collections; do not publish partial
-   rows. Keep detailed readiness/evidence diagnostics private to operators, using
-   a generic unavailable capability response for players. If legacy writers are
-   reintroduced, disable scans through the same coordinated activation boundary
-   before admitting them. Rollback while scans are enabled is not supported merely
-   because the JSON schema remains readable.
-
-Part 1 supplied the deterministic readiness and classification checks. Part 2
-adds the gate, loader and API handling described below, but cannot establish the
-missing process-version exclusion proof and supplies no operational backfill. Production evidence and volume have not been
-inspected. Their absence cannot block this disabled-feature deployment; proving
-those activation prerequisites is required work for part 2.
+Production evidence and volume have not been inspected. The backend implements
+this activation contract without requiring new operational infrastructure.
 
 For journals produced before causal returns, explicitly select
 `replay_legacy_mission_transition` by producing release. It reproduces the old
@@ -225,24 +211,19 @@ sharing allowlist rejects Phalanx. Generated client contracts include the paid
 action, `ScanPlanet` capability for enabled custom rules, report envelope, and
 single `{ kind, at }` deadline representation. No UI implementation is included.
 
-The explicit activation boundary above remains binding. The current runtime has
-**no enforceable proof excluding incompatible writers**. Prepare refuses that
-proposal, serial/scoped apply independently refuses it, and scenario installation
-cannot bypass it. Admission rejects new scan commands while disabled or while a
-deactivation barrier is pending, after checking original receipt recovery. A
-single active/queued-rules read prevents publication races from admitting new
-command vocabulary to a rollback worker. Publication loads complete active membership but supplies no
-invented exclusion proof to `validate_phalanx_scan_readiness`. Scoped preflight
-avoids leaving a blocked barrier that would prevent natural legacy settlement.
-This is an explicit blocker, not a claim that production activation is ready.
-There is no startup history gate, data constraint, backfill, process registry, or
-saved readiness bit. See the [operator guide](../operations/sensor-phalanx.md).
+The activation boundary above uses the existing deploy-everywhere → normal rules
+upgrade flow. Complete current return membership is revalidated at publication,
+and unknown active deployment returns are transient data blockers. There is no
+writer-attestation requirement, startup history gate, data constraint, backfill,
+process registry or stored readiness bit. Admission refuses new scans while
+disabled or while deactivation is pending, after original receipt recovery; active
+and queued rules are read atomically. See the [operator guide](../operations/sensor-phalanx.md).
 
-Before part 3 enables standard construction and scan rules, integration must
-establish the missing writer-exclusion boundary and revalidate readiness under
-apply. Part 3 then owns lunar catalog enablement, Facilities/Galaxy UI, immutable
-report rendering, and desktop/mobile visual validation. Use the receipt's report
-ID directly; do not race an inbox refresh or turn route loading into a command.
-Keep retry on the original ID and make another observation an explicit new paid
-action. Moon removal/fallback, jump gates, expeditions and sharing remain separate
-work. No production acceptance or deployment claim is made by this increment.
+Part 3 owns standard lunar catalog/rules enablement, Facilities/Galaxy UI,
+immutable report rendering and desktop/mobile visual validation. The backend
+activation path is usable now through normal custom-rules apply. Use the
+receipt's report ID directly; do not race an inbox refresh or turn route loading
+into a command. Retry uncertain delivery on the original ID; another observation
+is an explicit new paid action. Moon removal/fallback, jump gates, expeditions
+and sharing remain separate work. No production acceptance/deployment claim is
+made by this increment.

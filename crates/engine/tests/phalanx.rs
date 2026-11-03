@@ -584,19 +584,15 @@ fn return_deadline_overflow_is_an_invariant_error_and_hidden_rows_need_no_predic
 }
 
 #[test]
-fn scan_readiness_requires_writer_exclusion_complete_membership_and_proven_active_returns() {
+fn scan_readiness_requires_complete_membership_and_proven_active_returns() {
     let mut f = fleet(Mission::Deploy);
     f.leg = MissionLeg::Returning;
     assert_eq!(
-        validate_phalanx_scan_readiness(false, true, [&f]),
-        Err(PhalanxReadinessError::LegacyWritersMayWrite)
-    );
-    assert_eq!(
-        validate_phalanx_scan_readiness(true, false, [&f]),
+        validate_phalanx_scan_readiness(false, [&f]),
         Err(PhalanxReadinessError::IncompleteFleetCoverage)
     );
     assert_eq!(
-        validate_phalanx_scan_readiness(true, true, [&f]),
+        validate_phalanx_scan_readiness(true, [&f]),
         Err(PhalanxReadinessError::UnknownDeploymentReturn)
     );
     // No hidden-only shortcut: unknown deployments cannot be silently excluded.
@@ -607,16 +603,12 @@ fn scan_readiness_requires_writer_exclusion_complete_membership_and_proven_activ
         MissionReturnReason::InvalidTarget,
     ] {
         f.return_reason = Some(reason);
-        assert_eq!(validate_phalanx_scan_readiness(true, true, [&f]), Ok(()));
+        assert_eq!(validate_phalanx_scan_readiness(true, [&f]), Ok(()));
     }
     f.return_reason = None;
     f.leg = MissionLeg::Returned;
-    assert_eq!(validate_phalanx_scan_readiness(true, true, [&f]), Ok(()));
-    assert_eq!(
-        validate_phalanx_scan_readiness(false, true, []),
-        Err(PhalanxReadinessError::LegacyWritersMayWrite)
-    );
-    assert_eq!(validate_phalanx_scan_readiness(true, true, []), Ok(()));
+    assert_eq!(validate_phalanx_scan_readiness(true, [&f]), Ok(()));
+    assert_eq!(validate_phalanx_scan_readiness(true, []), Ok(()));
 }
 
 #[test]

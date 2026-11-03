@@ -76,8 +76,8 @@ async fn setup(scoped: bool, fuel: i64) -> Fixture {
             .await
             .unwrap(),
     );
-    // Explicit test-only fixture installation; operator activation cannot assert
-    // writer exclusion and is tested separately below. No runtime bypass flag.
+    // Activate custom fixture rules through the same operator prepare/apply path.
+    // Moon/asset fabrication below is fixture data, not an activation bypass.
     let old = store.load_rules(u).await.unwrap();
     let mut artifact = old.artifact.clone();
     artifact.world.as_mut().unwrap().phalanx = Some(PHALANX_PROFILE_V1.into());
@@ -89,20 +89,18 @@ async fn setup(scoped: bool, fuel: i64) -> Fixture {
         },
     );
     let rules = Ruleset::from_artifact(artifact, old.speed).unwrap();
-    sqlx::query("INSERT INTO rulesets(hash,id,profile) VALUES($1,$2,$3)")
-        .bind(&rules.hash.0)
-        .bind(&rules.artifact.id)
-        .bind(sqlx::types::Json(&rules))
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE universes SET profile_hash=$2 WHERE id=$1")
-        .bind(u.0)
-        .bind(&rules.hash.0)
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO building_levels(body,building,level) SELECT id,'SensorPhalanx',0 FROM bodies WHERE universe=$1").bind(u.0).execute(&pool).await.unwrap();
+    if scoped {
+        store.prepare_scoped_runtime(u, 100).await.unwrap();
+        store.activate_scoped_runtime(u).await.unwrap();
+    }
+    let service = RulesService::new(store.clone());
+    let mut document = service.export(u).await.unwrap();
+    document.artifact = rules.artifact.clone();
+    service.diff(&document).await.unwrap();
+    assert!(matches!(
+        service.apply(&document).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
     let input = InputId(Uuid::new_v4());
     let moon = BodyId(derived_id(input, "moon:0"));
     sqlx::query("INSERT INTO bodies(id,universe,owner,kind,galaxy,system,position,fields,max_temperature,amounts,carry,checkpoint_at,revision) SELECT $2,universe,owner,'Moon',galaxy,system,position,1,0,$3,carry,checkpoint_at,0 FROM bodies WHERE id=$1")
@@ -159,10 +157,6 @@ async fn setup(scoped: bool, fuel: i64) -> Fixture {
         .execute(&pool)
         .await
         .unwrap();
-    if scoped {
-        store.prepare_scoped_runtime(u, 100).await.unwrap();
-        store.activate_scoped_runtime(u).await.unwrap();
-    }
     Fixture {
         store,
         pool,
@@ -539,69 +533,186 @@ async fn unknown_hidden_deploy_returns_reject_whole_scan_and_hidden_matches_empt
     assert_eq!(fuel(&f).await, 5000 * SCALE);
 }
 
+async fn disable(f: &Fixture) -> RulesDocument {
+    let service = RulesService::new(f.store.clone());
+    let mut doc = service.export(f.u).await.unwrap();
+    doc.artifact.world.as_mut().unwrap().phalanx = None;
+    service.apply(&doc).await.unwrap();
+    let mut activation = service.export(f.u).await.unwrap();
+    activation.artifact.world.as_mut().unwrap().phalanx = Some(PHALANX_PROFILE_V1.into());
+    activation
+}
+async fn deployment_recall(f: &Fixture) -> (MissionFleet, ForegroundAction) {
+    let mut fleet: MissionFleet = serde_json::from_value(
+        sqlx::query_scalar("SELECT data FROM mission_fleets WHERE universe=$1 LIMIT 1")
+            .bind(f.u.0)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    fleet.intent.mission = Mission::Deploy;
+    let mut terms = (*fleet.terms).clone();
+    terms.intent = fleet.intent.clone();
+    fleet.terms = terms.seal();
+    sqlx::query("UPDATE mission_fleets SET data=$2 WHERE id=$1")
+        .bind(fleet.id.0)
+        .bind(sqlx::types::Json(&fleet))
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    f.store.set_test_time(AT + 1000).await.unwrap();
+    let owner = binding(&f.store, "remote", f.u).await;
+    let pair = action(
+        owner,
+        fleet.intent.origin,
+        WorldAction::RecallMission { fleet: fleet.id },
+    );
+    GameService::new(f.store.clone())
+        .world_submit(principal(owner), pair.clone())
+        .await
+        .unwrap();
+    (fleet, pair)
+}
+async fn erase_return_cause(f: &Fixture, id: FleetId) -> MissionFleet {
+    // The exact field loss of a legacy full-record writer while disabled.
+    let data: Value = sqlx::query_scalar(
+        "UPDATE mission_fleets SET data=data-'return_reason' WHERE id=$1 RETURNING data",
+    )
+    .bind(id.0)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    let fleet: MissionFleet = serde_json::from_value(data).unwrap();
+    assert_eq!(fleet.leg, MissionLeg::Returning);
+    assert!(fleet.return_reason.is_none());
+    fleet
+}
 #[tokio::test]
-async fn activation_fails_closed_in_serial_scoped_prepare_apply_and_scenario_paths() {
+async fn serial_and_scoped_activation_succeeds_after_unknown_returns_settle_naturally() {
     for scoped in [false, true] {
         let f = setup(scoped, 10000 * SCALE).await;
-        let mut artifact = f.rules.artifact.clone();
-        artifact.world.as_mut().unwrap().phalanx = None;
-        let disabled = Ruleset::from_artifact(artifact, f.rules.speed).unwrap();
-        let active = f.store.current_rules(f.u).await.unwrap();
-        f.store
-            .apply_rules(f.u, active.revision, &disabled)
-            .await
-            .unwrap();
-        let current = f.store.current_rules(f.u).await.unwrap();
-        let doc = RulesDocument {
-            universe: f.u,
-            base_revision: current.revision,
-            artifact: f.rules.artifact.clone(),
-            speed: f.rules.speed,
-        };
+        let doc = disable(&f).await;
+        let service = RulesService::new(f.store.clone());
+        service.diff(&doc).await.unwrap();
+        let (original, _) = deployment_recall(&f).await;
+        drain(&f, scoped).await;
+        let unknown = erase_return_cause(&f, original.id).await;
+        f.store.migrate().await.unwrap();
         assert!(matches!(
-            RulesService::new(f.store.clone()).diff(&doc).await,
+            service.apply(&doc).await,
             Err(RulesUpdateError::PhalanxActivationBlocked(
-                PhalanxReadinessError::LegacyWritersMayWrite
-            ))
-        ));
-        assert!(matches!(
-            f.store.apply_rules(f.u, current.revision, &f.rules).await,
-            Err(RulesUpdateError::PhalanxActivationBlocked(
-                PhalanxReadinessError::LegacyWritersMayWrite
+                PhalanxReadinessError::UnknownDeploymentReturn
             ))
         ));
         assert!(!phalanx_enabled(&f.store.load_rules(f.u).await.unwrap()));
-        let count: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM runtime_barriers WHERE universe=$1 AND NOT done",
-        )
-        .bind(f.u.0)
-        .fetch_one(&f.pool)
-        .await
-        .unwrap();
         assert_eq!(
-            count, 0,
-            "blocked activation cannot stop natural legacy settlement"
+            sqlx::query_scalar::<_, i64>(
+                "SELECT count(*) FROM runtime_barriers WHERE universe=$1 AND NOT done"
+            )
+            .bind(f.u.0)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+            0
         );
-        let mut scenario: WorldScenario =
-            serde_json::from_value(json!({"version":1,"edits":[]})).unwrap();
-        scenario.rules = Some(f.rules.clone());
-        assert!(
-            f.store
-                .apply_world_scenario(f.u, &scenario, ScenarioMode::Patch, Uuid::new_v4())
-                .await
-                .is_err()
-        );
-        f.store.migrate().await.unwrap();
-        let pair = scan(&f);
         assert!(matches!(
             GameService::new(f.store.clone())
-                .world_submit(principal(f.b), pair)
+                .world_submit(principal(f.b), scan(&f))
                 .await,
             Err(ServiceError::GameRejected(GameError::UnavailableContent))
         ));
-        assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM commands WHERE input->'payload'->'Command'->'action'->>'type'='ScanPlanet'").fetch_one(&f.pool).await.unwrap(),0);
-        assert_eq!(fuel(&f).await, 10000 * SCALE);
+        f.store.set_test_time(unknown.due_at).await.unwrap();
+        drain(&f, scoped).await;
+        let terminal: MissionFleet = serde_json::from_value(
+            sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
+                .bind(original.id.0)
+                .fetch_one(&f.pool)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(terminal.leg, MissionLeg::Returned);
+        assert_eq!(terminal.due_at, unknown.due_at);
+        assert_eq!(terminal.terms, original.terms);
+        assert!(terminal.return_reason.is_none());
+        assert!(matches!(
+            service.apply(&doc).await.unwrap(),
+            RulesApplyOutcome::Applied { .. }
+        ));
+        assert!(matches!(
+            service.apply(&doc).await.unwrap(),
+            RulesApplyOutcome::AlreadyActive { .. }
+        ));
+        let pair = scan(&f);
+        GameService::new(f.store.clone())
+            .world_submit(principal(f.b), pair.clone())
+            .await
+            .unwrap();
+        drain(&f, scoped).await;
+        report(&receipt(&f, &pair).await);
+        assert_eq!(fuel(&f).await, 5000 * SCALE);
     }
+}
+#[tokio::test]
+async fn serial_and_scoped_activation_reject_stale_preparation_without_overwriting_rules() {
+    for scoped in [false, true] {
+        let f = setup(scoped, 10000 * SCALE).await;
+        let doc = disable(&f).await;
+        let service = RulesService::new(f.store.clone());
+        service.diff(&doc).await.unwrap();
+        let mut competing = service.export(f.u).await.unwrap();
+        competing
+            .artifact
+            .world
+            .as_mut()
+            .unwrap()
+            .beginner_protection_multiplier += 1;
+        service.apply(&competing).await.unwrap();
+        assert!(matches!(
+            service.apply(&doc).await,
+            Err(RulesUpdateError::Stale { .. })
+        ));
+        assert!(!phalanx_enabled(&f.store.load_rules(f.u).await.unwrap()));
+    }
+}
+#[tokio::test]
+async fn scoped_publication_rechecks_returns_and_retires_rejected_barrier_for_natural_settlement() {
+    let f = setup(true, 10000 * SCALE).await;
+    let doc = disable(&f).await;
+    let service = RulesService::new(f.store.clone());
+    service.diff(&doc).await.unwrap();
+    let (original, _) = deployment_recall(&f).await;
+    let id = match service.apply(&doc).await {
+        Err(RulesUpdateError::Pending { id }) => id,
+        other => panic!("{other:?}"),
+    };
+    drain(&f, true).await;
+    let unknown = erase_return_cause(&f, original.id).await;
+    assert!(f.store.process_runtime_barrier(f.u).await.unwrap());
+    let outcome: Value =
+        sqlx::query_scalar("SELECT outcome FROM runtime_barriers WHERE id=$1 AND done")
+            .bind(id)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        outcome,
+        json!({"status":"PhalanxRejected","reason":"UnknownDeploymentReturn"})
+    );
+    assert!(!phalanx_enabled(&f.store.load_rules(f.u).await.unwrap()));
+    assert!(matches!(
+        service.apply(&doc).await,
+        Err(RulesUpdateError::PhalanxActivationBlocked(
+            PhalanxReadinessError::UnknownDeploymentReturn
+        ))
+    ));
+    f.store.set_test_time(unknown.due_at).await.unwrap();
+    drain(&f, true).await;
+    assert!(matches!(
+        service.apply(&doc).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
 }
 
 #[tokio::test]
@@ -1188,4 +1299,80 @@ async fn same_time_missile_impact_settles_before_scan_without_a_missile_row_or_t
         "Impacted"
     );
     assert_eq!(fuel(&f).await, 0);
+}
+
+#[tokio::test]
+async fn enabled_scenario_fresh_create_export_and_replace_preserve_rules_and_assets() {
+    let f = setup(false, 10000 * SCALE).await;
+    // Moon export is deliberately unsupported. A planet-only world exercises
+    // enabled-rule round trips without changing that existing format boundary.
+    let u = UniverseId(Uuid::new_v4());
+    let mut document:WorldScenario=serde_json::from_value(json!({"version":1,"edits":[
+        {"op":"add-player","user":"phalanx-roundtrip","password":"password","planet":"1:3:8"},
+        {"op":"set","user":"phalanx-roundtrip","planet":"1:3:8","ships":{"SmallCargo":3},"resources":{"metal":1234}}
+    ]})).unwrap();
+    document.rules = Some(f.rules.clone());
+    f.store
+        .apply_world_scenario(u, &document, ScenarioMode::Create, Uuid::new_v4())
+        .await
+        .unwrap();
+    assert!(phalanx_enabled(&f.store.load_rules(u).await.unwrap()));
+    let saved = f.store.export_world_scenario(u).await.unwrap();
+    assert!(phalanx_enabled(saved.rules.as_ref().unwrap()));
+    f.store
+        .apply_world_scenario(u, &saved, ScenarioMode::Replace, Uuid::new_v4())
+        .await
+        .unwrap();
+    let restored = f.store.export_world_scenario(u).await.unwrap();
+    assert_eq!(saved.rules, restored.rules);
+    assert_eq!(
+        serde_json::to_value(saved.edits).unwrap(),
+        serde_json::to_value(restored.edits).unwrap()
+    );
+}
+
+#[tokio::test]
+async fn enabled_scenario_final_return_check_rolls_back_all_edits_on_unknown_return() {
+    let f = setup(true, 10000 * SCALE).await;
+    let (original, _) = deployment_recall(&f).await;
+    drain(&f, true).await;
+    let unknown = erase_return_cause(&f, original.id).await;
+    // Add-player is a real scenario write without invoking the existing
+    // resource editor's planet-count restriction on this lunar fixture.
+    let document:WorldScenario=serde_json::from_value(json!({"version":1,"edits":[{"op":"add-player","user":"phalanx-rollback","password":"password","planet":"1:3:8"}]})).unwrap();
+    let operation = Uuid::new_v4();
+    let error = f
+        .store
+        .apply_world_scenario(f.u, &document, ScenarioMode::Patch, operation)
+        .await
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("keep workers running until it settles"),
+        "{error}"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM accounts WHERE name='phalanx-rollback'")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM world_edit_receipts WHERE operation_id=$1"
+        )
+        .bind(operation)
+        .fetch_one(&f.pool)
+        .await
+        .unwrap(),
+        0
+    );
+    f.store.set_test_time(unknown.due_at).await.unwrap();
+    drain(&f, true).await;
+    f.store
+        .apply_world_scenario(f.u, &document, ScenarioMode::Patch, operation)
+        .await
+        .unwrap();
 }

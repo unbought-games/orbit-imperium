@@ -192,6 +192,11 @@ impl PgStore {
                     .map_err(|e| format!("edits[{index}]: {e}"))?;
                 results.push(result);
             }
+            // Creation/replacement may import enabled rules. Validate the final
+            // world, not the empty intermediate state before scenario edits.
+            if phalanx_enabled(&rules) {
+                crate::phalanx::readiness(&mut tx, u).await?;
+            }
             let result = json!({"universe":u,"operation_id":operation,"edits":results});
             sqlx::query("INSERT INTO world_edit_receipts(universe,operation_id,request_hash,result,applied_at) VALUES($1,$2,$3,$4,$5)").bind(u.0).bind(operation).bind(request_hash).bind(&result).bind(at).execute(&mut *tx).await?;
             tx.commit().await?;
