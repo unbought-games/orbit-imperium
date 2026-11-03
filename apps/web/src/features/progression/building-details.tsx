@@ -103,7 +103,7 @@ export function BuildingDetails({
       footer={
         !work &&
         !unavailable &&
-        building.id !== 'Terraformer' &&
+        !['Terraformer', 'LunarBase'].includes(building.id) &&
         (level > 0 || action === 'Demolition') && (
           <Button
             variant={action === 'Upgrade' ? 'destructive' : 'secondary'}
@@ -132,7 +132,7 @@ export function BuildingDetails({
           <div className={styles.stats}>
             <DetailStat label="Current level">Level {level}</DetailStat>
             {insight.benefit && (
-              <DetailStat label={benefitLabel(insight.benefit)}>
+              <DetailStat label={benefitLabel(insight.benefit, body.kind)}>
                 <span className={styles.productionValue}>
                   <BenefitValue insight={insight.benefit} />
                   {insight.productionPaused && (

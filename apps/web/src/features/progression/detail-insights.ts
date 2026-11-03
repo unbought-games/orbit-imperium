@@ -223,7 +223,9 @@ export function buildingInsights(
                 : 'Planet total at saved settings, including base production'
               : 'Mine potential at 100% output and full power; planet estimate unavailable'
             : benefit.kind === 'FieldCapacity'
-              ? 'Five fields added; this level occupies one, leaving four more free fields'
+              ? id === 'LunarBase'
+                ? 'Three fields added; this level occupies one, leaving two more free fields'
+                : 'Five fields added; this level occupies one, leaving four more free fields'
               : benefit.kind === 'Energy'
                 ? id === 'FusionReactor' && projected
                   ? 'At saved settings and current fuel availability'
@@ -257,7 +259,7 @@ function minePlanetOutput(
 
 export type AffordabilityBlocker = {
   resource: Resource
-  reason: 'capacity' | 'unknown' | 'no-production' | 'draining'
+  reason: 'capacity' | 'unknown' | 'no-production' | 'draining' | 'delivery'
   capacity: string
 }
 
@@ -278,17 +280,19 @@ export function affordabilityForecast(
     const rate = rates ? BigInt(rates[resource]) : null
     const ms = rate === null ? null : durationFor(missing, rate)
     const reason =
-      BigInt(cost[resource]) > BigInt(capacity)
-        ? 'capacity'
-        : rate === null
-          ? 'unknown'
-          : rate < 0n
-            ? 'draining'
-            : rate === 0n
-              ? 'no-production'
-              : ms === null
-                ? 'unknown'
-                : null
+      body.kind === 'Moon'
+        ? 'delivery'
+        : BigInt(cost[resource]) > BigInt(capacity)
+          ? 'capacity'
+          : rate === null
+            ? 'unknown'
+            : rate < 0n
+              ? 'draining'
+              : rate === 0n
+                ? 'no-production'
+                : ms === null
+                  ? 'unknown'
+                  : null
     if (reason) blockers.push({ resource, reason, capacity })
     else wait = Math.max(wait, ms!)
   }
@@ -306,6 +310,8 @@ export function affordabilityTime(
 export function affordabilitySummary(
   forecast: ReturnType<typeof affordabilityForecast>,
 ) {
+  if (forecast.blockers.some((blocker) => blocker.reason === 'delivery'))
+    return 'Deliver resources by fleet'
   if (forecast.blockers.some((blocker) => blocker.reason === 'capacity'))
     return 'Cost exceeds storage capacity'
   if (forecast.blockers.some((blocker) => blocker.reason === 'unknown'))
@@ -352,7 +358,7 @@ export function blockerExplanation(
   if (blocker.code === 'NotDemolishable')
     return 'This building cannot be demolished.'
   if (blocker.code === 'NoFreeField')
-    return 'Free a field by demolishing an eligible building. Terraformer also needs one free field to start.'
+    return `Free a field by demolishing an eligible building. ${body.kind === 'Moon' ? 'Lunar Base' : 'Terraformer'} also needs one free field to start.`
   if (blocker.code === 'YardLocked')
     return 'Finish all manufacturing on this planet before upgrading or demolishing the factory.'
   if (blocker.code === 'QueueCapacity') {

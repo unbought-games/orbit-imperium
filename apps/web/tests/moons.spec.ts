@@ -52,7 +52,7 @@ for (const width of [1440, 390]) {
       await diagnosticScreenshot(page, {path: `test-results/moon-buildings-${width}x900.png`, fullPage: true})
       await tile.click()
       const detail = page.getByRole('region', {name: 'Progression quote'})
-      await expect(detail).toContainText('Moon construction is not available yet.')
+      await expect(detail).toContainText('Unavailable in this universe.')
       await expect(detail.getByRole('button', {name: /Confirm upgrade/})).toHaveCount(0)
       await diagnosticScreenshot(page, {path: `test-results/moon-building-detail-${width}x900.png`, fullPage: true})
       await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${moon.id}/dispatch`))
@@ -65,7 +65,7 @@ for (const width of [1440, 390]) {
       if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
         for (const destination of ['resources', 'research', 'shipyard', 'defense', 'resource-settings']) {
           await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${moon.id}/${destination}`))
-          await expect(page.locator('main')).toContainText(destination === 'resource-settings' ? 'Moons have no resource production.' : 'not available yet')
+          await expect(page.locator('main')).toContainText(destination === 'resource-settings' ? 'Moons have no resource production.' : destination === 'research' ? 'Research cannot be conducted on moons.' : 'not available yet')
           await diagnosticScreenshot(page, {path: `test-results/moon-${destination}-${width}x900.png`, fullPage: true})
         }
       }

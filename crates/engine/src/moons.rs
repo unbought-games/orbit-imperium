@@ -1,4 +1,4 @@
-//! Battle-created moons. Lunar operations will follow in a later increment.
+//! Battle-created moons with independent inventories and immutable genesis.
 use crate::*;
 use serde::{Deserialize, Serialize};
 
@@ -175,7 +175,8 @@ pub(crate) fn create_moon(
     Ok(Some(outcome))
 }
 
-/// Lunar progression remains unavailable; fleet operations use their own mission guards.
+/// Planet-only progression and production settings. Lunar Base construction
+/// uses its explicit catalog eligibility; fleet operations have separate guards.
 pub fn require_operational_body(body: &Body) -> Result<(), GameError> {
     if body.kind == BodyKind::Moon {
         Err(GameError::UnavailableContent)

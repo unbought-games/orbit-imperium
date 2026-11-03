@@ -3558,3 +3558,6 @@ mod nanite;
 
 #[path = "progression/terraformer.rs"]
 mod terraformer;
+
+#[path = "progression/lunar_base.rs"]
+mod lunar_base;

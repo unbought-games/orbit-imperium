@@ -580,7 +580,7 @@ function PlanetDossier({
         <Destination
           view={view}
           body={body.id}
-          page="resources"
+          page={body.kind === 'Moon' ? 'facilities' : 'resources'}
           className={styles.openPlanet}
         >
           <ArrowUpRight size={20} />
@@ -594,8 +594,14 @@ function PlanetDossier({
       </header>
       {body.kind === 'Moon' && (
         <p>
-          Fleet operations are available. Moon construction is not available
-          yet.
+          {view.catalog.some(
+            (entry) =>
+              entry.key.id === 'LunarBase' &&
+              entry.enabled &&
+              entry.body_kinds.includes('Moon'),
+          )
+            ? 'Build a Lunar Base to expand this moon’s fields. Deliver resources by fleet; moons have no resource production.'
+            : 'Fleet operations are available. Lunar Base construction is unavailable in this universe.'}
         </p>
       )}
       <dl className={styles.resources} aria-label={`${body.kind} resources`}>

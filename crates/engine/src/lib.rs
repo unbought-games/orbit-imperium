@@ -11,6 +11,8 @@ pub use types::*;
 mod construction;
 mod terraformer;
 pub use terraformer::*;
+mod lunar_base;
+pub use lunar_base::*;
 mod economy;
 mod solar_satellite;
 pub use solar_satellite::*;

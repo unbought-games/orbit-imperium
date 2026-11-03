@@ -785,3 +785,51 @@ it('shows Terraformer capacity as whole fields and gross energy independently of
   expect(insight.energy.current).toBe(micro(-1500))
   expect(insight.energy.show).toBe(false)
 })
+
+it('describes Lunar Base fields without the Terraformer bonus', () => {
+  const { view, body, proposal } = fixture()
+  body.kind = 'Moon'
+  proposal.building_benefit = {
+    kind: 'FieldCapacity',
+    current: '1',
+    target: '4',
+  }
+  const insight = buildingInsights(view, body, 'LunarBase', proposal)
+  expect(insight.benefit).toMatchObject({
+    current: '1',
+    target: '4',
+    planetTotal: false,
+  })
+  expect(insight.benefit?.qualifier).toBe(
+    'Three fields added; this level occupies one, leaving two more free fields',
+  )
+})
+
+it('requires delivery for lunar shortfalls and accepts imported stock above storage', () => {
+  const { view, body } = fixture()
+  body.kind = 'Moon'
+  body.amounts = { metal: '0', crystal: '0', deuterium: '0' }
+  body.capacity = {
+    metal: micro(10000),
+    crystal: micro(10000),
+    deuterium: micro(10000),
+  }
+  const cost = {
+    metal: micro(20000),
+    crystal: micro(40000),
+    deuterium: micro(20000),
+  }
+  const missing = affordabilityForecast(view, body, cost)
+  expect(missing.wait).toBeNull()
+  expect(missing.blockers.map((b) => b.reason)).toEqual([
+    'delivery',
+    'delivery',
+    'delivery',
+  ])
+  expect(affordabilitySummary(missing)).toBe('Deliver resources by fleet')
+  body.amounts = cost
+  expect(affordabilityForecast(view, body, cost)).toEqual({
+    wait: 0,
+    blockers: [],
+  })
+})

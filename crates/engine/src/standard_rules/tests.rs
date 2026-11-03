@@ -95,7 +95,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
                 .iter()
                 .find(|entry| entry.key == CatalogKey::Building(id))
                 .unwrap();
-            assert!(!entry.enabled);
+            assert_eq!(entry.enabled, id == Building::LunarBase);
             assert_eq!(entry.body_kinds, [BodyKind::Moon].into());
         }
         assert!(
@@ -144,7 +144,8 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
             Building::NaniteFactory,
             Building::Terraformer,
             Building::MissileSilo,
-            Building::AllianceDepot
+            Building::AllianceDepot,
+            Building::LunarBase
         ]
     );
     assert_eq!(
@@ -1019,4 +1020,54 @@ fn depot_bundle_is_planet_only_idempotent_and_preserves_custom_content() {
         validate_rules_update(&next, &Ruleset::from_artifact(removed, next.speed).unwrap())
             .is_err()
     );
+}
+
+#[test]
+fn lunar_base_upgrades_the_released_placeholder_without_unlocking_other_lunar_content() {
+    let current = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
+    let mut artifact = current.artifact.clone();
+    artifact.buildings.remove(&Building::LunarBase);
+    artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::LunarBase))
+        .unwrap()
+        .enabled = false;
+    let old = Ruleset::from_artifact(artifact, 1).unwrap();
+    let next = upgrade_standard_rules(&old).unwrap();
+    assert_eq!(next, current);
+    assert_eq!(
+        validate_rules_update(&old, &next).unwrap().add_buildings,
+        vec![Building::LunarBase]
+    );
+    assert_eq!(
+        next.artifact.buildings[&Building::LunarBase],
+        BuildingRule {
+            base: [20000, 40000, 20000],
+            growth: [2, 1]
+        }
+    );
+    for entry in next
+        .artifact
+        .catalog
+        .iter()
+        .filter(|e| e.enabled && e.body_kinds.contains(&BodyKind::Moon))
+    {
+        assert_eq!(entry.key, CatalogKey::Building(Building::LunarBase));
+    }
+    let mut illegal = next.artifact.clone();
+    illegal
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::LunarBase))
+        .unwrap()
+        .body_kinds = [BodyKind::Planet].into();
+    assert!(Ruleset::from_artifact(illegal, 1).is_err());
+    let mut custom = next.artifact.clone();
+    custom.buildings.get_mut(&Building::LunarBase).unwrap().base[0] += 1;
+    let custom = Ruleset::from_artifact(custom, 1).unwrap();
+    assert!(matches!(
+        upgrade_standard_rules(&custom),
+        Err(StandardRulesError::Conflicts(_))
+    ));
 }

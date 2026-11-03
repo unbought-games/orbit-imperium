@@ -174,6 +174,7 @@ impl Ruleset {
                             | Building::NaniteFactory
                             | Building::AllianceDepot
                             | Building::Terraformer
+                            | Building::LunarBase
                     ) || artifact.progression.is_none())
             })
         {

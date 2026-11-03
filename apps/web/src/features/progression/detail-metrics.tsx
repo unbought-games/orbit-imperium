@@ -37,7 +37,11 @@ const benefitLabels = {
   DeuteriumCapacity: 'Deuterium capacity',
   FieldCapacity: 'Planet field capacity',
 } as const
-export function benefitLabel(insight: NonNullable<Insight['benefit']>) {
+export function benefitLabel(
+  insight: NonNullable<Insight['benefit']>,
+  bodyKind: 'Planet' | 'Moon' = 'Planet',
+) {
+  if (insight.kind === 'FieldCapacity') return `${bodyKind} field capacity`
   return insight.planetTotal
     ? 'Planet output'
     : insight.kind.endsWith('PerHour')
@@ -362,7 +366,9 @@ export function DecisionCostAvailability({
           {forecast.blockers.map(({ resource, reason, capacity }) => (
             <p key={resource}>
               {label(resource)}:{' '}
-              {reason === 'capacity' ? (
+              {reason === 'delivery' ? (
+                'Deliver the missing resources by fleet. Moons have no resource production; deliveries can exceed storage capacity.'
+              ) : reason === 'capacity' ? (
                 <>
                   cost exceeds storage capacity of{' '}
                   <DetailResourceValue resource={resource}>

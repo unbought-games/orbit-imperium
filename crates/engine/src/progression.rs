@@ -376,7 +376,9 @@ pub fn inspect_progression(
         out.blockers.push(block(GameError::NotOwned));
         return Ok(out);
     }
-    if let Err(error) = require_operational_body(b) {
+    if key != CatalogKey::Building(Building::LunarBase)
+        && let Err(error) = require_operational_body(b)
+    {
         out.blockers.push(block(error));
         return Ok(out);
     }

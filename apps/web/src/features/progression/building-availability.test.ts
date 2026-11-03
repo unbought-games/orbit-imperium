@@ -30,7 +30,7 @@ describe('building inspection availability', () => {
       'Unavailable in this universe.',
     )
     expect(buildingUnavailableReason(entry, { ...body, kind: 'Moon' })).toBe(
-      'Moon construction is not available yet.',
+      'This building is not available on moons yet.',
     )
     expect(buildingUnavailableReason(entry, { ...body, levels: {} })).toBe(
       'Building level unavailable on this body.',
@@ -93,4 +93,24 @@ it('retains server-defined body support when a placeholder becomes enabled', () 
   expect(
     visibleFacility({ ...enabled, body_kinds: ['Moon'] }, { kind: 'Planet' }),
   ).toBe(false)
+})
+
+it('allows Lunar Base only on moons with an enabled catalog entry and known level', () => {
+  const lunar = {
+    ...entry,
+    key: { kind: 'Building', id: 'LunarBase' },
+    body_kinds: ['Moon'],
+    requirements: [],
+  } satisfies S['CatalogEntry3']
+  const moon = { kind: 'Moon', levels: { LunarBase: 0 } } as const
+  expect(buildingUnavailableReason(lunar, moon)).toBeUndefined()
+  expect(buildingUnavailableReason({ ...lunar, enabled: false }, moon)).toBe(
+    'Unavailable in this universe.',
+  )
+  expect(buildingUnavailableReason(lunar, { ...moon, levels: {} })).toBe(
+    'Building level unavailable on this body.',
+  )
+  expect(buildingUnavailableReason(lunar, { ...moon, kind: 'Planet' })).toBe(
+    'Unavailable on this planet.',
+  )
 })

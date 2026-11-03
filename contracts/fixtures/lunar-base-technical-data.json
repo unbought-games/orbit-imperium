@@ -1,0 +1,27 @@
+{
+  "facts": [
+    {
+      "label": "Cost scaling",
+      "value": "Base cost × 2^(target level − 1), each resource rounded down to whole units.",
+      "subject": null
+    },
+    {
+      "label": "Moon field capacity",
+      "value": "1 + 3 × completed Lunar Base level, with no diameter cap. Each building level, including the base itself, occupies one field.",
+      "subject": null
+    },
+    {
+      "label": "Construction",
+      "value": "An upgrade needs and reserves one free field. Additional capacity becomes available only on completion. Use resources delivered to the moon; moons have no passive resource production.",
+      "subject": null
+    },
+    {
+      "label": "Demolition",
+      "value": "Lunar Base cannot be demolished. Canceling construction refunds its paid resources without adding capacity.",
+      "subject": null
+    }
+  ],
+  "bonuses": [],
+  "combat": null,
+  "storage_capacities": null
+}
