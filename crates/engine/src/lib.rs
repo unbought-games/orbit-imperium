@@ -121,3 +121,14 @@ pub use attack_groups::*;
 
 mod vacation;
 pub use vacation::*;
+
+mod phalanx;
+pub use phalanx::*;
+mod mission_replay;
+pub use mission_replay::*;
+
+mod phalanx_readiness;
+pub use phalanx_readiness::*;
+
+mod phalanx_command;
+pub use phalanx_command::*;

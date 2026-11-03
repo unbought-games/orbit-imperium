@@ -49,6 +49,9 @@ impl PgStore {
             });
         }
         validate_rules_update(&current.rules, next)?;
+        // Do not enqueue an unfulfillable barrier that would prevent ordinary
+        // legacy settlement. Execution independently rechecks in publish().
+        crate::phalanx::activation(&mut tx, u, &current.rules, next).await?;
         let pending = sqlx::query("SELECT id,expected_revision,rules FROM runtime_barriers WHERE universe=$1 AND NOT done")
             .bind(u.0).fetch_optional(&mut *tx).await.map_err(db_error)?;
         let id = if let Some(pending) = pending {
@@ -95,6 +98,9 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
         match outcome {
+            Some(value) if value["status"] == "PhalanxRejected" => Err(
+                RulesUpdateError::PhalanxActivationBlocked(decode(value["reason"].clone())?),
+            ),
             Some(value) => Ok(decode(value)?),
             None => Err(RulesUpdateError::Pending { id }),
         }
@@ -159,7 +165,17 @@ impl PgStore {
                 sequence,
             },
         )
-        .await?;
+        .await;
+        // A newly discovered data blocker must not strand later fleet settlement
+        // behind this boundary. Preserve the rejected outcome and leave rules
+        // unchanged; the operator retries normal apply after natural settlement.
+        let outcome = match outcome {
+            Ok(outcome) => serde_json::to_value(outcome).map_err(|_| StoreError::CorruptData)?,
+            Err(RulesUpdateError::PhalanxActivationBlocked(reason)) => {
+                serde_json::json!({"status":"PhalanxRejected", "reason":reason})
+            }
+            Err(error) => return Err(error),
+        };
         sqlx::query("UPDATE runtime_barriers SET done=true,outcome=$2 WHERE id=$1")
             .bind(row.try_get::<Uuid, _>("id").map_err(db_error)?)
             .bind(sqlx::types::Json(outcome))

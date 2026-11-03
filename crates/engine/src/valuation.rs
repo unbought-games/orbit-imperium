@@ -140,6 +140,7 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
         }
     }
     for fleet in w.records.fleets.values() {
+        validate_mission_return_reason(fleet)?;
         if fleet.owner != fleet.authorization.actor
             || fleet.intent != fleet.terms.intent
             || fleet.terms.duration_ms <= 0

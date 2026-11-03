@@ -216,3 +216,5 @@ mod rules_update;
 mod world_edit;
 
 mod attack_groups;
+
+mod phalanx;

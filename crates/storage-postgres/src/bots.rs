@@ -549,6 +549,7 @@ pub(crate) async fn participation_body(
     match c {
         Command::SetProduction{body,..}|Command::StartUpgrade{body,..}|Command::StartDemolition{body,..}|Command::StartManufacture{body,..}=>Ok(Some(*body)),
         Command::StartResearch{host,..}=>Ok(Some(*host)),
+        Command::World{action:WorldAction::ScanPlanet{source_moon,..}}=>Ok(Some(*source_moon)),
         Command::World{action:WorldAction::SupplyHoldingFleet{intent,..}}=>Ok(Some(intent.source_planet)),
         Command::World{action:WorldAction::LaunchMissiles{intent,..}}=>Ok(Some(intent.origin)),
         Command::World{action:WorldAction::ScrapMissiles{body,..}}=>Ok(Some(*body)),

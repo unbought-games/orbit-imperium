@@ -63,5 +63,6 @@ pub fn replay_legacy_debris_transition(
             }
         }
     }
+    crate::mission_replay::strip_mission_return_reasons(&mut serialized);
     Ok(serialized)
 }

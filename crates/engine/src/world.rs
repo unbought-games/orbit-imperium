@@ -135,8 +135,18 @@ pub struct MissionAuthorization {
     pub input: InputId,
     pub policy_hash: Hash,
 }
+/// Causal transition evidence, independent of reports and timing. Missing means
+/// historical unknown, never an inferred recall or natural return.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MissionReturnReason {
+    VoluntaryRecall,
+    InvalidTarget,
+    MissionComplete,
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissionFleet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_reason: Option<MissionReturnReason>,
     pub id: FleetId,
     pub owner: PlayerId,
     pub intent: FleetIntent,
@@ -163,6 +173,10 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    ScanPlanet {
+        source_moon: BodyId,
+        target_planet: BodyId,
+    },
     RequestEmpireDeletion,
     CancelEmpireDeletion,
     EnterVacation,
@@ -292,6 +306,8 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phalanx: Option<PhalanxScanFacts>,
     /// Complete own missiles and foreign holding fleets, including covered absence.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub covered_vacation_players: BTreeSet<PlayerId>,
@@ -323,6 +339,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phalanx: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attack_groups: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub holding: Option<String>,
@@ -347,6 +365,13 @@ fn default_beginner_protection_multiplier() -> u32 {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if self
+            .phalanx
+            .as_deref()
+            .is_some_and(|p| p != PHALANX_PROFILE_V1)
+        {
+            return Err(RulesError::Unsupported);
+        }
         if self
             .attack_groups
             .as_deref()
@@ -423,4 +448,24 @@ pub fn world_facts(s: &GameState) -> Result<&WorldFacts, InvariantError> {
     s.world
         .as_ref()
         .ok_or_else(|| InvariantError("missing mandatory R3 facts".into()))
+}
+
+/// None is retained historical unknown and is compatible with legacy writers.
+/// Explicit scan readiness rejects unknown deployment returns; ordinary gameplay
+/// and schema deployment must still accept them while scans are disabled.
+pub fn validate_mission_return_reason(f: &MissionFleet) -> Result<(), InvariantError> {
+    if f.return_reason.is_some()
+        && matches!(
+            f.leg,
+            MissionLeg::Outbound
+                | MissionLeg::Holding
+                | MissionLeg::Deployed
+                | MissionLeg::Colonized
+        )
+        || f.intent.mission == Mission::Deploy
+            && f.return_reason == Some(MissionReturnReason::MissionComplete)
+    {
+        return Err(InvariantError("inconsistent mission return reason".into()));
+    }
+    Ok(())
 }

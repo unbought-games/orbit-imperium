@@ -175,6 +175,10 @@ pub(super) fn mission(
     w.fleets.insert(
         id,
         MissionFleet {
+            return_reason: e.returning.then(|| {
+                e.return_reason
+                    .unwrap_or(MissionReturnReason::MissionComplete)
+            }),
             id,
             owner: origin.owner,
             intent: intent.clone(),

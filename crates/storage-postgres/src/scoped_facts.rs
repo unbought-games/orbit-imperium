@@ -234,6 +234,18 @@ pub(crate) async fn load_execution_with_rules(
         .await?;
         return Ok(state);
     }
+    if crate::phalanx::target(&input.payload).is_some() {
+        return crate::phalanx::load(
+            tx,
+            input.universe,
+            input.epoch,
+            rules,
+            input.actor,
+            &input.payload,
+            Some(input.id),
+        )
+        .await;
+    }
     let state = crate::world::load_selected(
         tx,
         input.universe,

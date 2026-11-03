@@ -138,6 +138,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         }
     }
     s.world = Some(WorldFacts {
+        phalanx: None,
         covered_vacation_players: s.players.keys().copied().collect(),
         alliance_leaders: Some(Default::default()),
         holding_relationships: None,
@@ -3421,6 +3422,8 @@ mod vacation;
 #[path = "missions/moons.rs"]
 mod moons;
 
+#[path = "missions/phalanx_command.rs"]
+mod phalanx_command;
 #[test]
 fn bulk_report_reads_are_atomic_recipient_scoped_and_idempotent() {
     let (mut s, r, p, b, t) = fixture();

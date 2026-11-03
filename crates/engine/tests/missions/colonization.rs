@@ -1132,3 +1132,133 @@ fn abandonment_destroys_stationed_assets_and_moon_terminalizes_queues_and_preser
     }
     validate_asset_lineage(&s).unwrap();
 }
+
+#[test]
+fn deployment_return_causes_survive_restart_and_legacy_journal_replay_without_retiming() {
+    let (mut initial, r, p, b, _) = setup();
+    let colony_fleet = launch(&mut initial, &r, p, b, colony(p, b, 8, 1), 1000, 9601);
+    let created = arrive(&mut initial, &r, &colony_fleet, 9602);
+    let target = created.bodies[0].id;
+    for (mode, expected) in [
+        (0, MissionReturnReason::VoluntaryRecall),
+        (1, MissionReturnReason::VoluntaryRecall),
+        (2, MissionReturnReason::InvalidTarget),
+    ] {
+        let mut s = initial.clone();
+        let mut request = super::intent(&s, p, b, target);
+        request.mission = Mission::Deploy;
+        let launched = launch(&mut s, &r, p, b, request, colony_fleet.due_at + 1, 9603);
+        let terms = serde_json::to_value(&launched.terms).unwrap();
+        let (at, payload) = if mode < 2 {
+            (
+                launched.launched_at + if mode == 0 { 0 } else { 100 },
+                Input::Command(Command::World {
+                    action: WorldAction::RecallMission { fleet: launched.id },
+                }),
+            )
+        } else {
+            clear_units(&mut s, target);
+            s.bodies.remove(&target);
+            let w = s.world.as_mut().unwrap();
+            w.records.colonies.remove(&target);
+            for slot in &mut w.planet_slots {
+                if slot.occupant == Some(target) {
+                    slot.occupant = None;
+                }
+            }
+            (
+                launched.due_at,
+                Input::Event(ScheduledEvent::FleetLegDue {
+                    fleet: launched.id,
+                    generation: launched.generation,
+                    expected_leg: MissionLeg::Outbound,
+                }),
+            )
+        };
+        let outcome = run(&mut s, &r, p, b, at, 9604, payload.clone());
+        let mut input = common::input(
+            &s,
+            &r,
+            if mode < 2 {
+                Actor::Player(p)
+            } else {
+                Actor::Scheduler
+            },
+            at,
+            9604,
+            payload,
+        );
+        input.schema_version = 4;
+        input.protocol = 4;
+        let facts = serde_json::to_value(&s).unwrap();
+        let mut expected_legacy = serde_json::to_value(&outcome).unwrap();
+        expected_legacy["Applied"]["world"]["records"]["fleets"][launched.id.to_string()]
+            .as_object_mut()
+            .unwrap()
+            .remove("return_reason");
+        assert_eq!(
+            expected_legacy["Applied"]["expected_facts_hash"],
+            serde_json::to_value(hash(&facts)).unwrap()
+        );
+        assert_eq!(
+            replay_legacy_mission_transition(&facts, &input, &r).unwrap(),
+            expected_legacy
+        );
+        let c = apply(&mut s, outcome);
+        s = serde_json::from_value(serde_json::to_value(&s).unwrap()).unwrap();
+        let f = s.world.as_ref().unwrap().records.fleets[&launched.id].clone();
+        assert_eq!(f.return_reason, Some(expected));
+        assert_eq!(serde_json::to_value(&f.terms).unwrap(), terms);
+        if mode == 0 {
+            assert_eq!(f.leg, MissionLeg::Returned);
+            assert!(c.events.is_empty());
+        } else {
+            assert_eq!(f.leg, MissionLeg::Returning);
+            assert_eq!(
+                f.due_at,
+                if mode == 1 {
+                    launched.launched_at + 200
+                } else {
+                    launched.due_at + launched.terms.duration_ms
+                }
+            );
+            let mut unknown = f.clone();
+            unknown.return_reason = None;
+            assert_eq!(
+                classify_legacy_deployment_return(
+                    &unknown,
+                    &[AppliedMissionReturnEvidence {
+                        input: &input,
+                        before: &launched,
+                        after: &f,
+                    }]
+                ),
+                Ok(expected),
+                "explicit classification agrees with the real applied engine transition"
+            );
+            let mut legacy_state = s.clone();
+            legacy_state
+                .world
+                .as_mut()
+                .unwrap()
+                .records
+                .fleets
+                .insert(f.id, unknown.clone());
+            arrive(&mut legacy_state, &r, &unknown, 9605);
+            let legacy_fleets = &legacy_state.world.as_ref().unwrap().records.fleets;
+            assert_eq!(legacy_fleets[&f.id].leg, MissionLeg::Returned);
+            assert_eq!(legacy_fleets[&f.id].return_reason, None);
+            assert_eq!(
+                validate_phalanx_scan_readiness(true, legacy_fleets.values()),
+                Ok(())
+            );
+            validate_asset_lineage(&legacy_state).unwrap();
+            arrive(&mut s, &r, &f, 9605);
+            assert_eq!(
+                s.world.as_ref().unwrap().records.fleets[&f.id].return_reason,
+                Some(expected)
+            );
+        }
+        validate_asset_lineage(&s).unwrap();
+    }
+}

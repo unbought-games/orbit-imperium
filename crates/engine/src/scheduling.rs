@@ -55,6 +55,19 @@ pub fn command_scopes(
     scopes.extend(refs.attack_groups.iter().cloned());
     match command {
         Command::World {
+            action:
+                WorldAction::ScanPlanet {
+                    source_moon,
+                    target_planet,
+                },
+        } => {
+            location(*source_moon, refs, &mut scopes);
+            location(*target_planet, refs, &mut scopes);
+            if let Some((owner, _)) = refs.bodies.get(target_planet) {
+                scopes.insert(ScopeKey::Player(*owner));
+            }
+        }
+        Command::World {
             action: WorldAction::CreateAttackGroup { fleet },
         } => {
             scopes.extend(fleet_scopes(*fleet, refs).unwrap_or_default());

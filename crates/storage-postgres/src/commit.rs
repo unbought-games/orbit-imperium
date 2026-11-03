@@ -378,6 +378,21 @@ pub(crate) async fn persist_changes(
     }
     if let Some(world) = &change.world {
         crate::world::save(tx, i, facts, world).await?;
+        if crate::phalanx::target(&i.payload).is_some() {
+            result_ids.extend(
+                world
+                    .records
+                    .reports
+                    .keys()
+                    .filter(|id| {
+                        !facts
+                            .world
+                            .as_ref()
+                            .is_some_and(|w| w.records.reports.contains_key(id))
+                    })
+                    .map(ToString::to_string),
+            );
+        }
         for fleet in world.records.fleets.values().filter(|f| {
             f.intent.mission == Mission::Hold
                 && !facts

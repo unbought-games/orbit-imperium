@@ -78,6 +78,8 @@ export function activeAttempt(attempt: Attempt, view: BoundView | null) {
 }
 
 export function commandBody(command: Command, view: BoundView | null) {
+  if (command.type === 'World' && command.action.type === 'ScanPlanet')
+    return command.action.source_moon
   if (command.type === 'World' && command.action.type === 'SupplyHoldingFleet')
     return command.action.intent.source_planet
   if (command.type === 'World' && command.action.type === 'LaunchMissiles')

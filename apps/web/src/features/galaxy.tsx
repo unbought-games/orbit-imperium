@@ -1,3 +1,4 @@
+import { PhalanxAction } from './phalanx-action'
 import { publicMoonBody } from './galaxy-body'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
@@ -245,6 +246,23 @@ export function Galaxy({
                 )}
                 <GalaxyPosition
                   position={position}
+                  scanAction={
+                    model.view?.bodies.find((b) => b.id === origin)?.kind ===
+                      'Moon' &&
+                    position.body?.kind === 'Planet' &&
+                    position.body.owner !== model.binding?.player &&
+                    model.view?.capabilities.some(
+                      (c) => c.capability === 'ScanPlanet' && c.enabled,
+                    ) ? (
+                      <PhalanxAction
+                        key={`${origin}:${position.body.id}`}
+                        model={model}
+                        origin={origin}
+                        position={position}
+                        universe={universe}
+                      />
+                    ) : undefined
+                  }
                   missileAction={
                     model.view?.bodies.find((b) => b.id === origin)?.kind ===
                       'Planet' &&

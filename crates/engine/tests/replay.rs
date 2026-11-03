@@ -211,9 +211,13 @@ fn historical_capacity_journals_preserve_recorded_outcomes_and_current_gameplay(
         let mut historical_state = facts.clone();
         recorded.apply_to(&mut historical_state).unwrap();
 
-        // Current transitions no longer emit the redundant reservation updates.
-        // Every other historical effect, including capacity and paid terms, is exact.
-        let result = transition(&facts, &input, &rules);
+        // This archive predates causal return facts. Select its replay adapter
+        // explicitly, preserving the recorded format while executing current rules.
+        // Current transitions also omit redundant reservation updates.
+        let result: TransitionResult = serde_json::from_value(
+            replay_legacy_mission_transition(&record["facts"], &input, &rules).unwrap(),
+        )
+        .unwrap();
         let mut expected = record["outcome"].clone();
         expected["Applied"]
             .as_object_mut()

@@ -86,6 +86,9 @@ pub(crate) async fn load(
     input: &Input,
     input_id: Option<InputId>,
 ) -> Result<GameState, StoreError> {
+    if rules.world() && crate::phalanx::target(input).is_some() {
+        return crate::phalanx::load(tx, u, epoch, rules, actor, input, input_id).await;
+    }
     if rules.world() {
         let selected = crate::scoped_facts::select(tx, u, actor, input).await?;
         return crate::world::load_selected(tx, u, epoch, rules, input, input_id, selected).await;

@@ -55,6 +55,8 @@ pub enum RulesApplyOutcome {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum RulesUpdateError {
+    #[error("sensor phalanx activation blocked: {0}")]
+    PhalanxActivationBlocked(PhalanxReadinessError),
     #[error(transparent)]
     StandardContent(#[from] StandardRulesError),
     #[error("invalid rules update: {reason}")]

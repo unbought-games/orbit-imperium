@@ -26,6 +26,7 @@ fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> Mission
         speed_percent: 100,
     };
     MissionFleet {
+        return_reason: None,
         id: FleetId(Uuid::from_u128(n)),
         owner,
         intent: intent.clone(),
@@ -309,6 +310,7 @@ fn snapshot() -> ViewerSnapshot {
     coverage.research_slot_players.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            phalanx: None,
             covered_vacation_players: [research.owner].into_iter().collect(),
             alliance_leaders: Some(Default::default()),
             holding_relationships: None,

@@ -601,6 +601,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     .await
     .map_err(db_error)?;
     s.world = Some(WorldFacts {
+        phalanx: None,
         covered_vacation_players: owners.iter().copied().map(PlayerId).collect(),
         alliance_leaders: Some(alliance_leaders.into_iter().map(PlayerId).collect()),
         holding_relationships,
@@ -976,6 +977,14 @@ impl PgStore {
         let pair_hash = hash(&pair);
         if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
             return Ok(receipt);
+        }
+        if matches!(
+            &g,
+            Command::World {
+                action: WorldAction::ScanPlanet { .. }
+            }
+        ) {
+            crate::phalanx::admit(&mut tx, b.universe).await?;
         }
         if machine {
             let body = crate::bots::participation_body(&mut tx, b, &g).await?;

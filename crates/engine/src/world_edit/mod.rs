@@ -25,6 +25,8 @@ pub struct WorldEdit {
     #[serde(default)]
     pub returning: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_reason: Option<MissionReturnReason>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colony: Option<GeneratedColony>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stock: Option<Resources>,

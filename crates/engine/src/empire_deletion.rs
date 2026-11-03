@@ -216,6 +216,7 @@ pub(crate) fn finalize(
             f.leg = MissionLeg::Destroyed;
         } else {
             f.leg = MissionLeg::Returning;
+            f.return_reason = Some(MissionReturnReason::InvalidTarget);
             f.due_at = deadline(i.at, f.terms.duration_ms)?;
             crate::missions::schedule(c, i, f);
         }
