@@ -15,7 +15,7 @@ async fn simultaneous_battles_create_one_moon_with_atomic_restart_and_view_deliv
     let u = UniverseId(Uuid::new_v4());
     let now = 1_790_000_000_000;
     store.set_test_time(now).await.unwrap();
-    let document: WorldScenario = serde_json::from_value(json!({"version":1,"edits":[
+    let mut document: WorldScenario = serde_json::from_value(json!({"version":1,"edits":[
         {"op":"add-player","user":"moon-attacker","password":"password","planet":"1:1:8"},
         {"op":"add-player","user":"moon-owner","password":"password","planet":"1:1:9"},
         {"op":"set","user":"moon-attacker","planet":"1:1:8","ships":{"EspionageProbe":4000,"SmallCargo":3},"resources":{"metal":1000000,"crystal":1000000,"deuterium":1000000}},
@@ -23,6 +23,7 @@ async fn simultaneous_battles_create_one_moon_with_atomic_restart_and_view_deliv
         {"op":"attack","user":"moon-attacker","from":"1:1:8","planet":"1:1:9","ships":{"EspionageProbe":2000},"arrives_in":"1s"},
         {"op":"attack","user":"moon-attacker","from":"1:1:8","planet":"1:1:9","ships":{"EspionageProbe":2000},"arrives_in":"1s"}
     ]})).unwrap();
+    document.rules = Some(prior_lunar_rules());
     store
         .apply_world_scenario(u, &document, ScenarioMode::Create, Uuid::new_v4())
         .await
@@ -231,6 +232,7 @@ async fn simultaneous_battles_create_one_moon_with_atomic_restart_and_view_deliv
         now + 86_400_001,
     ))
     .await;
+    Box::pin(exercise_lunar_base(&reopened, &pool, binding, parent, moon)).await;
     reopened.audit_universe(u).await.unwrap();
 }
 
@@ -562,4 +564,179 @@ async fn exercise_lunar_holding(store: &PgStore, host: Binding, parent: BodyId, 
         .0,
         9000 * SCALE
     );
+}
+
+// Regression: scoped construction must load a real moon, reserve its only field,
+// and persist completion/cancellation without rewriting genesis or parent state.
+async fn exercise_lunar_base(
+    store: &PgStore,
+    pool: &sqlx::PgPool,
+    binding: Binding,
+    parent: BodyId,
+    moon: BodyId,
+) {
+    let before_upgrade = store.bound_world(binding).await.unwrap().facts.0;
+    assert!(
+        !before_upgrade.state.bodies[&moon]
+            .levels
+            .contains_key(&Building::LunarBase)
+    );
+    let rules = RulesService::new(store.clone());
+    let preview = Box::pin(rules.prepare_upgrade(binding.universe))
+        .await
+        .unwrap();
+    assert_eq!(
+        preview.diff.initialize.add_buildings,
+        vec![Building::LunarBase]
+    );
+    Box::pin(rules.apply(&preview.document)).await.unwrap();
+    let upgraded = store.bound_world(binding).await.unwrap().facts.0;
+    assert_eq!(upgraded.state.bodies[&moon].levels[&Building::LunarBase], 0);
+    assert_eq!(
+        upgraded.state.world.as_ref().unwrap().records.moons,
+        before_upgrade.state.world.as_ref().unwrap().records.moons
+    );
+    sqlx::query("UPDATE bodies SET amounts=$2,revision=revision+1 WHERE id=$1")
+        .bind(moon.0)
+        .bind(sqlx::types::Json(Resources::all(1_000_000 * SCALE)))
+        .execute(pool)
+        .await
+        .unwrap();
+    let request = QuoteRequest::Upgrade {
+        body: moon,
+        building: Building::LunarBase,
+    };
+    let snapshot = store.bound_world(binding).await.unwrap().facts.0;
+    let parent_before = snapshot.state.bodies[&parent].clone();
+    let initial = snapshot.state.bodies[&moon].checkpoint.amounts;
+    for cancel in [true, false] {
+        let snapshot = store.bound_world(binding).await.unwrap().facts.0;
+        let quote = inspect_progression(
+            &snapshot.state,
+            Actor::Player(binding.player),
+            &request,
+            snapshot.at,
+            &snapshot.rules,
+        )
+        .unwrap();
+        assert!(quote.blockers.is_empty(), "{:?}", quote.blockers);
+        let start = Command::StartUpgrade {
+            body: moon,
+            building: Building::LunarBase,
+            expected_terms_hash: quote.terms_hash.unwrap(),
+        };
+        let competing = lunar_construction_pair(binding, moon, start.clone());
+        let pair = lunar_construction_pair(binding, moon, start);
+        let duplicate = pair.clone();
+        store.bound_admit4(pair).await.unwrap();
+        store.bound_admit4(duplicate).await.unwrap();
+        store.bound_admit4(competing).await.unwrap();
+        drain_fleets(store, binding.universe).await;
+        let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap();
+        let pending = reopened.bound_world(binding).await.unwrap().facts.0;
+        assert_eq!(pending.state.bodies[&parent], parent_before);
+        assert_eq!(
+            pending.state.bodies[&moon].checkpoint.amounts,
+            Resources::from_values([980000, 960000, 980000].map(|n| n * SCALE))
+        );
+        assert_eq!(
+            body_field_capacity(&pending.state.bodies[&moon], &pending.rules).unwrap(),
+            1
+        );
+        assert_eq!(reserved_fields(&pending.state, moon).unwrap(), 1);
+        let active: Vec<_> = pending
+            .state
+            .constructions
+            .values()
+            .filter(|c| c.body == moon && c.status == ConstructionStatus::Active)
+            .collect();
+        assert_eq!(active.len(), 1);
+        let operation = active[0].id;
+        let due = active[0].due_at;
+        if cancel {
+            store
+                .bound_admit4(lunar_construction_pair(
+                    binding,
+                    moon,
+                    Command::CancelConstruction { operation },
+                ))
+                .await
+                .unwrap();
+            drain_fleets(store, binding.universe).await;
+            let cancelled = store.bound_world(binding).await.unwrap().facts.0;
+            assert_eq!(cancelled.state.bodies[&moon].checkpoint.amounts, initial);
+            assert_eq!(reserved_fields(&cancelled.state, moon).unwrap(), 0);
+        } else {
+            store.set_test_time(due).await.unwrap();
+            drain_fleets(store, binding.universe).await;
+            let principal = Principal {
+                account: binding.account,
+                player: binding.player,
+                universe: binding.universe,
+            };
+            let view = GameService::new(reopened)
+                .world_view(
+                    principal,
+                    QueryContext {
+                        binding,
+                        request_id: Uuid::new_v4(),
+                    },
+                )
+                .await
+                .unwrap();
+            let moon_view = view
+                .progression
+                .bodies
+                .iter()
+                .find(|b| b.id == moon)
+                .unwrap();
+            assert_eq!(moon_view.fields, 4);
+            assert_eq!(moon_view.fields_used, 1);
+            assert_eq!(moon_view.fields_reserved, 0);
+            let completed = store.bound_world(binding).await.unwrap().facts.0;
+            assert_eq!(completed.state.bodies[&moon].fields, 1);
+            assert_eq!(
+                completed.state.bodies[&moon].levels[&Building::LunarBase],
+                1
+            );
+            validate_moons(&completed.state).unwrap();
+        }
+    }
+}
+fn lunar_construction_pair(binding: Binding, moon: BodyId, command: Command) -> ForegroundAction {
+    let id = CommandId(Uuid::new_v4());
+    ForegroundAction {
+        gameplay: CommandEnvelopeV4 {
+            protocol: 4,
+            binding,
+            command_id: id,
+            command: CommandDto3::Progression(command),
+        },
+        presence: CommandEnvelopeV4 {
+            protocol: 4,
+            binding,
+            command_id: CommandId(Uuid::new_v4()),
+            command: CommandDto3::Progression(Command::World {
+                action: WorldAction::RecordForegroundPresence {
+                    body: Some(moon),
+                    cause: PresenceCause::GameplayGesture,
+                    paired_command_id: Some(id),
+                },
+            }),
+        },
+    }
+}
+
+fn prior_lunar_rules() -> Ruleset {
+    let current = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
+    let mut old = current.artifact.clone();
+    old.buildings.remove(&Building::LunarBase);
+    old.catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::LunarBase))
+        .unwrap()
+        .enabled = false;
+    Ruleset::from_artifact(old, 1).unwrap()
 }

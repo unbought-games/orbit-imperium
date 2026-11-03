@@ -37,11 +37,12 @@ pub fn building_benefit(
         Building::MetalStorage => MetalCapacity,
         Building::CrystalStorage => CrystalCapacity,
         Building::DeuteriumTank => DeuteriumCapacity,
-        Building::Terraformer => FieldCapacity,
+        Building::Terraformer | Building::LunarBase => FieldCapacity,
         _ => return Ok(None),
     };
     let value = |level| match building {
         Building::Terraformer => terraformer_field_capacity(body.fields, level).map(i64::from),
+        Building::LunarBase => lunar_base_field_capacity(level).map(i64::from),
         Building::MetalStorage | Building::CrystalStorage | Building::DeuteriumTank => {
             storage_capacity(level, rules)
         }

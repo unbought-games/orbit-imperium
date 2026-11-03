@@ -41,8 +41,8 @@ export function ResourcesPage(props: ProgressionProps) {
     <>
       {body.kind === 'Moon' && (
         <p role="status">
-          Moon construction is not available yet. You can inspect building
-          details.
+          Moons have no resource production. Storage construction on moons is
+          not available yet.
         </p>
       )}
       <WorkSummaries

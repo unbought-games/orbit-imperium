@@ -382,7 +382,9 @@ pub fn building_terms(
     rules: &Ruleset,
 ) -> Result<ProgressionMaterial, GameError> {
     enabled(rules, CatalogKey::Building(building))?;
-    if building == Building::Terraformer && action == BuildingAction::Demolition {
+    if matches!(building, Building::Terraformer | Building::LunarBase)
+        && action == BuildingAction::Demolition
+    {
         return Err(GameError::NotDemolishable);
     }
     let source = level(body, building)?;

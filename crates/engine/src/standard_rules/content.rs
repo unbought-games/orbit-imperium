@@ -61,7 +61,26 @@ fn unit(out: &mut Vec<Patch>, kind: &str, id: &str, content: &Value) {
 pub(super) fn patches() -> Vec<Patch> {
     let mut out = Vec::new();
     out.push(Patch::field("/world/moons", json!(true)));
-    for id in ["LunarBase", "SensorPhalanx", "JumpGate"] {
+    let lunar_base = read(include_bytes!("../../../../rules/content/lunar-base.json"));
+    out.push(Patch::field(
+        "/buildings/LunarBase",
+        lunar_base["building"].clone(),
+    ));
+    out.push(
+        Patch::entry(
+            "/catalog",
+            "key",
+            json!({
+                "key":{"kind":"Building","id":"LunarBase"}, "body_kinds":["Moon"],
+                "enabled":true, "mobile":false, "requirements":lunar_base["requirements"]
+            }),
+        )
+        .with_previous(json!({
+            "key":{"kind":"Building","id":"LunarBase"}, "body_kinds":["Moon"],
+            "enabled":false, "mobile":false, "requirements":[]
+        })),
+    );
+    for id in ["SensorPhalanx", "JumpGate"] {
         out.push(Patch::entry(
             "/catalog",
             "key",

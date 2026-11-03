@@ -24,7 +24,7 @@ export function BuildingBenefits({
   return (
     <>
       {insight.benefit && (
-        <DetailRow label={benefitLabel(insight.benefit)}>
+        <DetailRow label={benefitLabel(insight.benefit, body.kind)}>
           <span title={isMine ? 'Current output' : 'Change'}>
             <BenefitValue insight={insight.benefit} change={!isMine} />
           </span>{' '}

@@ -1,0 +1,4 @@
+{
+  "building": { "base": [20000, 40000, 20000], "growth": [2, 1] },
+  "requirements": []
+}

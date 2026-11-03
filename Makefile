@@ -337,3 +337,13 @@ test-moon-fleets:
 	cargo nextest run -p orbit-engine --test missions
 	cargo nextest run -p orbit-application --lib
 	npm test
+
+# Lunar construction uses the shared progression and persistence machinery.
+.PHONY: test-lunar-base test-lunar-base-db
+test-lunar-base:
+	cargo nextest run -p orbit-engine -p orbit-application --all-targets
+	npm test
+	npm run test:ui -- moons.spec.ts terraformer.spec.ts
+
+test-lunar-base-db:
+	sh scripts/test-db.sh moons

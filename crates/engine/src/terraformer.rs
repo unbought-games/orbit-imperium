@@ -1,11 +1,18 @@
-//! Terraformer effects depend only on completed levels, never on catalog availability.
+//! Body field capacity derives from completed facilities, never catalog availability.
 use crate::*;
 
 pub const TERRAFORMER_FIELDS_PER_LEVEL: u32 = 5;
 pub const TERRAFORMER_BASE_ENERGY: i64 = 1000;
 
-/// Stored fields are the original planet capacity. Do not persist this total.
+/// Stored fields are the original body capacity. Do not persist this total.
 pub fn body_field_capacity(body: &Body, rules: &Ruleset) -> Result<u32, GameError> {
+    if body.kind == BodyKind::Moon && rules.artifact.buildings.contains_key(&Building::LunarBase) {
+        let level = body
+            .levels
+            .get(&Building::LunarBase)
+            .ok_or(GameError::InvalidInput)?;
+        return lunar_base_field_capacity(*level);
+    }
     if body.kind != BodyKind::Planet
         || !rules
             .artifact

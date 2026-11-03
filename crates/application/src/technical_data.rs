@@ -161,6 +161,11 @@ fn building_data(data: &mut TechnicalData, building: Building, rules: &Ruleset) 
         }
     }
     match building {
+        Building::LunarBase if rules.progression() => {
+            data.fact("Moon field capacity", "1 + 3 × completed Lunar Base level, with no diameter cap. Each building level, including the base itself, occupies one field.");
+            data.fact("Construction", "An upgrade needs and reserves one free field. Additional capacity becomes available only on completion. Use resources delivered to the moon; moons have no passive resource production.");
+            data.fact("Demolition", "Lunar Base cannot be demolished. Canceling construction refunds its paid resources without adding capacity.");
+        },
         Building::MissileSilo => { if let Some(m) = missile_rules(rules) { data.fact("Silo capacity",format!("{} slots per completed level. Anti-Ballistic Missiles use {} slot(s); Interplanetary Missiles use {}. Queued missiles reserve capacity immediately.",m.slots_per_level,m.abm_weight,m.ipm_weight)); data.fact("Interception", "Interceptors defend automatically at impact. A planetary silo also supplies its future moon; moons cannot build silos."); } },
         Building::MetalStorage | Building::CrystalStorage | Building::DeuteriumTank => {
             data.storage_capacities = r.progression.as_ref().map(|p| p.storage_capacities.iter().map(ToString::to_string).collect());
@@ -483,6 +488,16 @@ mod tests {
                 .storage_capacities
                 .len()
         );
+    }
+    #[test]
+    fn lunar_base_technical_data_matches_the_client_fixture() {
+        let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
+        let data = data(&r, CatalogKey::Building(Building::LunarBase));
+        let fixture: serde_json::Value = serde_json::from_slice(include_bytes!(
+            "../../../contracts/fixtures/lunar-base-technical-data.json"
+        ))
+        .unwrap();
+        assert_eq!(serde_json::to_value(&data).unwrap(), fixture);
     }
     #[test]
     fn terraformer_technical_data_matches_the_client_fixture() {
