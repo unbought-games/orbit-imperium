@@ -561,3 +561,93 @@ fixture-browser cases in 24 files; 37 spec files use the failure fixture and
 The benchmark tables above describe their recorded pre-integration snapshots.
 They are not measurements of the integrated PR revision; its validation and CI
 results are tracked separately on the PR.
+
+## Desktop account menu validation — 2026-11-02
+
+The sidebar account-menu change updates existing navigation coverage for Settings,
+logout, keyboard focus, touch targets, long names, and supporter/insignia identity.
+The first local command could not start because this checkout had no dependencies;
+`npm ci --no-audit --no-fund` completed in 3s.
+
+A newly authored combined scenario, `desktop account menu supports keyboard settings
+navigation, dismissal and logout`, was interrupted after 40.1s when it tried to click
+the visually hidden route H1 underneath the sticky HUD. Its one repair clicked
+visible content. The next run was interrupted after 40.4s when the absolute-positioned
+popup detached during scrolling. Removed that new scenario rather than stabilizing
+it again. Fixed the product popup to use fixed positioning, matching its sidebar
+anchor. Existing touch navigation, long-name/logout, and account-identity keyboard
+checks retain the browser wiring protection. No existing test was deleted, assertion
+weakened, timeout increased, or retry added.
+
+Adding the insignia fixture initially failed both account-identity viewport cases
+(7.4s each): its asset URL did not match the contract's content-hash URL pattern.
+The single repair uses the actual bundled free asset's SHA-256 URL. Both cases passed
+(2.5s/2.9s; 1.821s module preparation; 3.9s runner time). Profile reloads subscribe to
+successful complete responses before checking identity. Screenshot-only scrolling
+remains gated by `ORBIT_TEST_SCREENSHOTS`.
+
+Final pre-publication verification on base `d3dab11936a8d9767e41d6673c646aaf2fcac9ea`
+plus this change: 18 focused browser checks passed (2.148s module preparation,
+15.6s runner time); 18 navigation unit tests passed (0.704s runner time); TypeScript,
+canonical lint/format and whitespace checks passed. The browser run logged refused
+local API connections during fixture teardown without failing assertions. Desktop
+1440×900 and mobile 390×900 captures, plus touch and long-name states, were inspected
+and displayed in the implementation chat. Each runner closed its Vite server,
+browsers and port lease; no database or Docker setup was used. Remote CI and queue
+verification are tracked on the PR, separately from these local timings.
+
+PR #320 review follow-up closes the portaled account menu when the sidebar's
+1024px breakpoint is crossed, restoring focus to the visible mobile Menu button.
+Settings now composes `Menu.LinkItem` with the router link and only records an
+ordinary unmodified navigation as a visit. Five focused browser cases passed,
+including both resize directions, Settings activation, keyboard focus and refreshed
+identity captures (1.875s preparation, 5.1s runner time). No failed attempts in this
+repair round; canonical lint/format, TypeScript and whitespace checks passed.
+
+Full CI exposed two stale account-control selectors outside the initial focused
+set: the shared ghost-style check still targeted desktop Sign out, and the dispatch
+recovery layout check still targeted the standalone Settings link. Update those
+references to Account menu while retaining every style, focus, hit-testing and
+layout assertion. Remove the account button's redundant foreground override so
+shared ghost hover/focus styles apply. The selector audit found the other direct
+Settings/Sign out references are mobile dialogs or connection-error actions and
+remain valid. Stopped the obsolete CI run after six browser shards and native
+checks passed; the two remaining shards were still running. This is a product-
+change selector update, not a timeout/retry repair. Four focused cases passed
+(7.163s preparation, 12.6s runner time), including both affected checks and refreshed
+desktop/mobile identity captures. Canonical lint/format, TypeScript and whitespace
+checks passed; no test was removed and no assertion weakened.
+
+### Unexplained account-identity browser stall
+
+At `609af48f1ac4af1861b31463e3d497d0e909a220`, CI run `41569110377`
+job `125697932668` completed 136 of its 137 cases by 03:03:43 UTC on
+2026-11-03. Only case 134, `sidebar account identity wraps inside its full-width
+menu trigger`, had no result. Cancellation completed at 03:17:19 UTC; the logs
+contain no failing assertion or stack for its pending wait. The exact shard
+passed all 137 cases locally (1.859s preparation, 2.3m runner time), which shows
+intermittency and is not a repair. All other PR jobs and automated review passed.
+
+History: introduced in `1181001` (#235), then adapted to player dossiers in
+`906e18a` (#256). This PR updated its obsolete Sign out selector, containment
+assertion and profile-response readiness in `669a9ef`. No explanatory failure
+stack or prior reliability repair was found in that history or the repository
+performance audit; the separate owner Test Czar ledger was not available in the
+local workspace/automation inventory. The earlier local failed combined scenario
+recorded above was a different, newly authored case and remains removed.
+
+Removed this unexplained expensive scenario under the repository's deletion rule.
+Do not rename/recreate it or treat its local green run as closure. Retained coverage:
+`player-profiles.test.ts` deterministically checks authoritative identity/tier
+refresh and expiry; `runtime-controller.test.ts` and `optional-services.test.ts`
+check logout and session cleanup; shell account-identity cases check shield and
+supporter containment and keyboard access; desktop touch and breakpoint cases
+check menu Settings navigation/focus; mobile logout and explicit login/routing
+suites retain session/browser wiring. The inspected 1024×600 long-name image stays
+in this chat's local evidence. No timeout, retry, product authorization, or other
+case's assertion changed.
+
+After removing that scenario, all 15 remaining desktop-navigation browser cases
+passed (2.066s preparation, 12.5s runner time), along with 41 deterministic
+profile/session/logout tests (0.534s runner time). Whitespace checks passed;
+production source was unchanged by this removal. Runners closed all local resources.

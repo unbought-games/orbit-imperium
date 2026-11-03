@@ -16,6 +16,10 @@ export async function menuDestination(page: Page, name: string) {
   const navigation = await openNavigation(page)
   const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
   if (await sidebar.isVisible()) {
+    if (name === 'Settings') {
+      await sidebar.getByRole('button', { name: 'Account menu', exact: true }).click()
+      return page.getByRole('menuitem', { name: 'Settings', exact: true })
+    }
     if (name === 'Resource settings')
       return page.getByRole('link', { name: 'Energy — resource settings', exact: true })
     if (name === 'Dispatch') {
@@ -44,7 +48,14 @@ export async function navigate(page: Page, name: string) {
 }
 
 export async function signOut(page: Page) {
-  await (await openNavigation(page)).getByRole('button', { name: 'Sign out', exact: true }).click()
+  const navigation = await openNavigation(page)
+  const account = navigation.getByRole('button', { name: 'Account menu', exact: true })
+  if (await account.isVisible()) {
+    await account.click()
+    await page.getByRole('menuitem', { name: 'Logout', exact: true }).click()
+  } else {
+    await navigation.getByRole('button', { name: 'Sign out', exact: true }).click()
+  }
 }
 
 // Healthy delivery is event-driven. Explicit foregrounding exercises its public
