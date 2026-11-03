@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { menuDestination } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
@@ -30,7 +31,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     if (hidden && attempts++ === 0) { await route.fulfill({ status: 503, json: { code: 'Unavailable' } }); return }
     await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, surviving_cargo_capacity: '400000000', estimated_loot: hidden ? null : { metal: '133000000', crystal: '133000000', deuterium: '134000000' }, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
+  await withFixtureResponse(page, r => r.url().endsWith(`/reports/${header.id}`), () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
   const trigger = page.getByRole('button', { name: 'Simulate combat', exact: true })
   await trigger.click()
   const dialog = page.getByRole('dialog', { name: 'Combat simulation' })
@@ -104,7 +105,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await expect(trigger).toBeFocused()
 })
 
-test('prepares an editable observed-moon attack with authoritative, race-safe flight quotes', async ({ page }) => {
+test('prepares an editable observed-moon attack with advisory hypothetical estimates and authoritative launch validation', async ({ page }) => {
   let revision = 1
   await installGameFixture(page, { protocol: 4, viewerRevision: () => String(revision), catalog,
     bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }],
@@ -131,6 +132,7 @@ test('prepares an editable observed-moon attack with authoritative, race-safe fl
     } else if (request.type === 'Galaxy') {
       data = { galaxy: 1, system: 1, observed_at: 1000, player_names: {}, positions: Array.from({ length: 15 }, (_, i) => ({ coordinates: { galaxy: 1, system: 1, position: i + 1 }, body: null, debris: null })) }
     } else {
+      if (!page.url().includes('/dispatch')) expect(request.type).toBe('FleetEstimate')
       quotes.push(request.intent)
       if (hold) { hold = false; await new Promise<void>(resolve => { release = resolve }) }
       if (blocked) return route.fulfill({ status: 422, json: { code: 'GameRejected', game_code: blocked } })
@@ -140,7 +142,7 @@ test('prepares an editable observed-moon attack with authoritative, race-safe fl
     await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: String(revision), sampled_at: Date.now(), as_of_ms: Date.now(), data } })
   })
   page.on('request', request => { if (request.url().endsWith('/commands')) launches++ })
-  await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
+  await withFixtureResponse(page, r => r.url().endsWith(`/reports/${header.id}`), () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
   await page.getByRole('button', { name: 'Simulate combat', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Combat simulation' })
   const ship = dialog.getByLabel('Attacker Light Fighter', { exact: true })
@@ -151,9 +153,19 @@ test('prepares an editable observed-moon attack with authoritative, race-safe fl
   await ship.fill('4')
   await expect(plan).toContainText('4 selected, 3 stationed')
   await expect(prepare).toBeDisabled()
+  await expect(timing).toContainText('1m 40s')
+  expect(quotes.at(-1).ships[0].count).toBe('4')
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 })
+      await plan.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/simulation-hypothetical-report-${width}.png` })
+    }
+  }
   await dialog.getByRole('button', { name: 'Use all 3 available Light Fighter' }).click()
   await expect(timing).toContainText('1m 40s')
   await expect(timing.getByRole('img', { name: 'Deuterium', exact: true })).toBeVisible()
+  await expect.poll(() => quotes.at(-1)?.ships[0].count).toBe('3')
   expect(quotes.at(-1)).toMatchObject({ origin: body.id, mission: 'Attack', ships: [{ owner: binding.player, ship_type: 'LightFighter', count: '3' }], destination, speed_percent: 100 })
   await dialog.getByLabel('Attacker Weapons Technology', { exact: true }).fill('100')
   // A delayed quote must not replace a more recent speed selection.
@@ -161,6 +173,13 @@ test('prepares an editable observed-moon attack with authoritative, race-safe fl
   await dialog.getByLabel('Simulator flight speed').selectOption('50')
   await expect.poll(() => release !== undefined).toBe(true)
   await expect(timing).not.toContainText('1m 40s')
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 })
+      await plan.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/simulation-report-pending-${width}.png` })
+    }
+  }
   await dialog.getByLabel('Simulator flight speed').selectOption('20')
   await expect(timing).toContainText('8m 20s')
   const delayed = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().intent?.speed_percent === 50)
@@ -238,7 +257,7 @@ for (const width of [1440, 390]) test(`opens standalone simulation without repor
         surviving_cargo_capacity: '400000000', estimated_loot: null,
         attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }], defender: [] })) } })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await withFixtureResponse(page, r => r.url().endsWith('/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
   const entry = await menuDestination(page, 'Combat Simulator')
   await expect(entry).toBeVisible()
   await diagnosticScreenshot(page, { path: `test-results/simulation-menu-${width}.png` })
@@ -274,8 +293,74 @@ for (const width of [1440, 390]) test(`opens standalone simulation without repor
   await diagnosticScreenshot(page, { path: `test-results/simulation-standalone-help-${width}.png` })
   await page.getByLabel('Attacker Light Fighter', { exact: true }).fill('11')
   await expect(results).toHaveCount(0)
-  await page.reload()
+  await withFixtureResponse(page, r => r.url().endsWith('/bootstrap'), () => page.reload())
   await expect(page.getByLabel('Defender Light Fighter', { exact: true })).toHaveValue('')
   expect(reportRequests).toBe(0)
+  expect(launches).toBe(0)
+})
+
+// Regression: manual simulator coordinates must reach the estimate API even
+// with no stationed fleet; input changes must never display a superseded result.
+test('estimates manual hypothetical flights at 390px', async ({ page }) => {
+  const width = 390
+  await page.setViewportSize({ width, height: 1000 })
+  const second = { ...body, id: id(6), name: 'Outpost', coordinates: { galaxy: 2, system: 1, position: 3 }, inventories: [] }
+  await installGameFixture(page, { protocol: 4, catalog, bodies: [{ ...body, inventories: [] }, second], missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' } })
+  let unavailable = false
+  const estimates: any[] = []
+  const selections: any[] = []
+  let launches = 0
+  page.on('request', r => { if (r.url().endsWith('/commands')) launches++ })
+  await page.route('**/world', async route => {
+    const request = route.request().postDataJSON()
+    let data: any
+    if (request.type === 'ResolveDestination') {
+      selections.push(request.selection)
+      if (unavailable) return route.fulfill({ status: 422, json: { code: 'GameRejected', game_code: 'NotFound' } })
+      data = { type: 'Body', id: id(request.selection.coordinates.position + 80), expected_owner: id(90), expected_kind: request.selection.kind }
+    } else {
+      expect(request.type).toBe('FleetEstimate')
+      estimates.push(request.intent)
+      data = { estimate: true, intent: request.intent, profile_hash: 'a'.repeat(64), duration_ms: 120000, fuel: '2000000', capacity: '5000000000', maximum_payload: '4998000000' }
+    }
+    await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data } })
+  })
+  await withFixtureResponse(page, r => r.url().endsWith('/bootstrap'), () => page.goto(`/u/andromeda/combat-simulator`))
+  const plan = page.getByRole('region', { name: 'Attack planning', exact: true })
+  const timing = plan.getByRole('region', { name: 'Flight timing' })
+  async function capturePlan(state: string) {
+    if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+    for (const captureWidth of [1440, 390]) {
+      await page.setViewportSize({ width: captureWidth, height: 1000 })
+      await page.mouse.move(0, 0)
+      await plan.evaluate(el => el.scrollIntoView({ block: 'start' }))
+      await page.evaluate(() => window.scrollBy(0, -72))
+      await diagnosticScreenshot(page, { path: `test-results/simulation-manual-${state}-${captureWidth}.png` })
+    }
+  }
+  const coordinates = plan.getByLabel('Destination coordinates', { exact: true })
+  const ship = page.getByLabel('Attacker Light Fighter', { exact: true })
+  await ship.fill('15')
+  await expect(timing).toContainText('Enter destination coordinates')
+  await coordinates.fill('1:1:16')
+  await expect(coordinates).toHaveAttribute('aria-invalid', 'true')
+  await expect(timing).toContainText('Enter a position number')
+  await capturePlan('invalid')
+  await coordinates.fill('1:1:9')
+  await expect(timing).toContainText('2m')
+  await expect(timing.getByRole('img', { name: 'Deuterium', exact: true })).toBeVisible()
+  expect(estimates.at(-1)).toMatchObject({ origin: body.id, ships: [{ count: '15', owner: binding.player, ship_type: 'LightFighter' }], speed_percent: 100 })
+  await plan.getByLabel('Destination type').selectOption('Moon')
+  await expect.poll(() => estimates.at(-1)?.destination.expected_kind).toBe('Moon')
+  await expect(timing).toContainText('4m')
+  expect(selections.at(-1)).toMatchObject({ coordinates: { galaxy: 1, system: 1, position: 9 }, kind: 'Moon' })
+  await plan.scrollIntoViewIfNeeded()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await capturePlan('hypothetical')
+  unavailable = true
+  await plan.getByLabel('Destination type').selectOption('Planet')
+  await expect(timing).toContainText('The destination is no longer available')
+  await expect(timing).not.toContainText('2m')
+  await capturePlan('unavailable')
   expect(launches).toBe(0)
 })

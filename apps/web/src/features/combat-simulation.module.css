@@ -130,3 +130,16 @@
 .alliedActions {
   margin-block: 16px;
 }
+
+.flightDestination {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(100px, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin-block: 16px;
+}
+@media (max-width: 620px) {
+  .flightDestination {
+    grid-template-columns: 1fr;
+  }
+}
