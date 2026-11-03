@@ -42,3 +42,9 @@ Visual review used the running React application with HTTP fixtures at 1440×900
 Cleanup: the disposable Compose project `orbit-lunar-base` used port 55439. Its test database was removed by the runner; the project container/network/volume were removed after validation. Browser runners and the local preview server were stopped. Generated Cargo artifacts were cleared to restore disk space; source changes and screenshots remain. Merge/queue delay: not applicable; no PR or queue activity.
 
 Source digest (sorted changed/new paths and contents, NUL-separated): `9de350fb02d169095cf3d3c141cae15936c2847b5939fd159675fe11c2c8334f`.
+
+## PR #324 follow-through
+
+The initial PR head `f82d4e3b73cd69f2aad8a6389fcf347c67d059b5` failed the rules-update database group because the Fusion Reactor activation test's exact `add_buildings` expectation omitted Lunar Base. CI showed the correct six-building delta against the stale five-building list. Its Git history shows catalog additions updating this same assertion; no matching reliability repair was found in the repository audit. The expectation now includes Lunar Base while retaining exact equality. Auditing the remaining `add_buildings` assertions found no other stale full-catalog lists; targeted update tests correctly retain empty deltas and facility-specific assertions.
+
+`make test-db-rules` passed all 40 tests against the initial head plus this expectation correction: build 35.68s, runner preparation build 0.19s, execution 231.456s. Rust formatting and whitespace checks passed. The disposable `orbit-lunar-pr` PostgreSQL project used port 55439 and was removed after validation. This repair changes no production code or UI, so the displayed screenshots remain current. No queue enrollment or removal occurred before this repair.
