@@ -109,3 +109,11 @@ for (const metal of ['0', '9007199254740993']) {
 assert.equal(missionOutcome({ ...harvestReport, harvested: null }), false);
 assert.equal(reportPreview({ kind: 'Harvested', harvested: { metal: '-1', crystal: '0', deuterium: '0' } }), false);
 console.log('Harvest reports preserve historical cargo and optionally record exact newly collected resources.');
+
+const reportAction = ajv.compile({components:schema.components,$ref:'#/components/schemas/WorldAction4'});
+assert.ok(reportAction({type:'MarkReportsRead',reports:[id,id]}));
+assert.ok(reportAction({type:'MarkReportRead',report:id}), 'existing clients retain single-report reads');
+for (const reports of [[], ['invalid'], [id, 123]])
+ assert.equal(reportAction({type:'MarkReportsRead',reports}),false);
+assert.equal(reportAction({type:'MarkReportsRead',report:id}),false);
+console.log('Bulk read commands require report IDs and retain single-report compatibility.');
