@@ -710,3 +710,29 @@ compact report-tools and report-sharing browser scenarios retain navigation,
 selection, keyboard actions, archive protection and responsive coverage. Final
 inspected desktop/mobile captures remain in the originating chat. No timeout,
 retry setting, product behavior or other scenario's assertions changed.
+
+### Quick-build layout assertions before delivered options (PR #326)
+
+At `b54f6fac35b79f1c95289ba6499264d22ac1ade7`, run `41690156497`
+failed only `quick build stays inside the row with keyboard and touch-sized
+controls at 320px`: `Build Metal Mine level 2` was absent during the 5s assertion,
+then present in the saved failure snapshot. Shard 2 completed 138 other cases in
+7.3 minutes; all other CI jobs and automated review passed, including shard 7.
+The failure occurred on the first post-navigation control assertion, before any
+keyboard or layout interaction; HTML load did not establish quote readiness.
+
+History: introduced by `e1af116` (#197). Commit `9780e03` (#311) repaired this
+same response-readiness pattern for the separate touch and keyboard scenarios,
+but not this parameterized layout test. This is the layout test's first repair.
+The separate owner Test Czar ledger was unavailable; Git history and the local
+audit were checked before editing.
+
+Reuse `openQuickBuildCatalog` for ordinary quote-dependent entry and implement it
+with the shared `withProgressionResponse` helper. Audit covered every caller of
+`quickBuildFixture`: submit/progress, affordability, server-blocker, layout,
+competing-command, touch/keyboard and acknowledgement cases now await their
+matching successful complete response before observable UI assertions. The
+intentional gated-options and aborted-options cases retain their distinct
+request/error gates. All keyboard, touch-size, containment, submission and
+negative/race assertions remain unchanged; no timeout increase or retry was added.
+No independent caller work remains deferred.
