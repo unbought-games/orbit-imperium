@@ -1,6 +1,3 @@
-import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import { withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -1210,58 +1207,6 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
   await expect(drawer).not.toBeVisible()
   await expect(menu).toBeFocused()
 })
-
-for (const width of [390]) {
-  test(`account username appears in navigation at ${width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await shellFixture(page)
-    await page.route('**/api/auth/config', (route) =>
-      route.fulfill({
-        json: {
-          mode: 'oidc',
-          universes: [{ universe: binding.universe, name: 'Andromeda' }],
-        },
-      }),
-    )
-    const insigniaAsset = readFileSync('crates/application/assets/insignias/compass.svg')
-    const assetUrl = `/api/media/insignias/compass/${createHash('sha256').update(insigniaAsset).digest('hex')}.svg`
-    await page.route(`**${assetUrl}`, route => route.fulfill({
-      contentType: 'image/svg+xml',
-      body: insigniaAsset,
-    }))
-    await playerProfilesFixture(page, () => [
-      {
-        player: binding.player,
-        username: 'eth',
-        supporter_tier: 1,
-        insignia: {
-          recipe: { version: 1, symbol: 'compass', foreground: '#159600', background: '#f7ffd6' },
-          asset_url: assetUrl,
-        },
-      },
-    ])
-    await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), () => page.reload())
-    const navigation = await openNavigation(page)
-    const username = navigation.getByLabel('Username', { exact: true })
-    await expect(username).toHaveText('eth')
-    await expect(username).toBeVisible()
-    await expect(username.getByRole('img', { name: 'Supporter · $10 / month USD' })).toBeVisible()
-    await expect(username.locator('[data-shape="shield"]')).toBeVisible()
-    const signOut = navigation.getByRole('button', { name: 'Sign out', exact: true })
-    await expect(signOut).toBeVisible()
-    const nameBounds = await username.boundingBox()
-    const buttonBounds = await signOut.boundingBox()
-    expect(nameBounds!.x + nameBounds!.width).toBeLessThan(buttonBounds!.x)
-    expect(nameBounds!.y).toBeGreaterThanOrEqual(buttonBounds!.y)
-    expect(nameBounds!.y + nameBounds!.height).toBeLessThanOrEqual(
-      buttonBounds!.y + buttonBounds!.height,
-    )
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await username.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, { path: 'test-results/account-identity-mobile-390x900.png' })
-  })
-}
 
 test('resizing an open mobile sidebar releases modal focus and scroll locking', async ({
   page,

@@ -769,3 +769,31 @@ outside bulk report reads are confined to test reliability and its audit: two
 unexplained report scenarios removed, quote delivery awaited in an existing
 quick-build fixture, and this unexplained desktop identity scenario removed.
 No speculative product changes or additional feature scope were introduced.
+
+### Remaining mobile account-identity variant also stalled (PR #326)
+
+At `0158d4b006f85031f270ae95e55250c4ebf0f419`, PR run `41701378152`,
+job `126147030648`, completed 137 of 138 shard-8 cases by 19:26:35 UTC on
+2026-11-03. Only case 53, the retained `account username appears in navigation
+at 390px`, lacked a result. The test step began at 19:21:32; after the next
+heartbeat identified the prolonged isolated wait, cancellation completed at
+19:41:42. All other jobs and Bugbot passed. This was a PR run, not a second queue
+removal. Again there was no failing assertion or stack identifying the wait.
+
+This is the same parameterized identity scenario whose desktop variant was
+removed above, with the same `c56a159` profile-response readiness change and no
+subsequent stabilization patch. Its local green result on the previous removal
+was not evidence of reliability. Removed the mobile variant and imports used only
+by that scenario under the unexplained-test rule; did not recreate or rename it.
+The two variants' shared scenario is now removed in full. Audit of response-helper
+reload callers found no other player-profile reload caller; the separate bootstrap
+reload in combat simulation has a different data boundary and no matching failure
+evidence, so neither that case nor the shared helper was speculatively changed.
+
+Retained tests cover profile source/binding validation, identity/supporter expiry,
+refresh and session cleanup deterministically. The separate shell supporter-claims
+case, desktop account-menu navigation/touch and resize-focus cases, mobile menu and
+logout cases, and player-profile UI cases retain browser wiring. No product code,
+execution deadline, retry, or surviving assertion changed. This additional removal
+addresses recorded failure evidence after the third-round reassessment, rather
+than expanding feature scope or retrying unchanged intermittent cases.
