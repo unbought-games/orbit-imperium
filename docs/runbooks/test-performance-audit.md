@@ -1,5 +1,50 @@
 # PR and main test performance audit
 
+## November 2, 2026: startup lock-isolation checks
+
+PR #319 merge-group run 41563892537 failed
+`restart_checks_metadata_without_gameplay_locks_or_reads` at
+`bootstrap.rs:235` with `startup waited for gameplay data/locks: Elapsed(())`.
+The test wrapped three successful-path startup operations in one 500 ms budget
+while four database binaries ran concurrently. Its prior PR-head run passed.
+History shows no earlier repair (introduced in `88a55aa`; the later `7e578e6`
+change only added enrollment assertions elsewhere in the file).
+
+This is the test's one repair attempt: retain the exclusive gameplay table locks,
+universe row lock and successful startup assertions, but remove the aggregate
+wall-clock cutoff. Each production operation already bounds lock acquisition,
+so forbidden reads or provisioning gates still reject while the locks are held.
+No functional lock/statement/network timeout was increased or removed.
+
+Audited neighboring startup checks for the same pattern. Removed redundant
+outer deadlines from the explicit-audit gate check in `bootstrap.rs` and the
+current-schema migration/readiness check in `migrations.rs`; both retain held
+locks and their existing production bounds. Intentional migration cancellation,
+coordination, timeout and corruption tests remain unchanged. This PR owns the
+repair and focused bootstrap/migrations validation; no independent follow-up is
+left unassigned. If the repaired test fails again, remove it under AGENTS.md and
+retain the useful deterministic protection at a cheaper layer.
+
+## November 2, 2026: simulator flight fixture authoring
+
+Removed the newly authored `estimates manual hypothetical flights at 1440px`
+case after its single repair attempt. The first attempt navigated to a nonexistent
+body-scoped simulator route and was interrupted while waiting for a ship input.
+After correcting the route to the universe-scoped simulator, its duration
+assertion expected `2m 0s`; the actual shared formatter displays `2m`.
+No execution timeout or retry was added. The mobile case encountered only the
+format assertion failure and passed after that correction.
+
+Retained coverage: the mobile browser case exercises manual planet/moon
+coordinates, absent ships, invalid input and unavailable destinations; deterministic
+simulation-flight-model tests cover origin/speed changes, coordinate bounds and
+stationed-inventory gating; the existing report case covers late responses,
+research isolation, report destinations and Dispatch validation. Engine mission
+tests prove a hypothetical estimate cannot bypass inventory or fuel at launch.
+Desktop appearance is captured during optional visual review without duplicating
+the mobile behavior scenario. All new screenshot-only viewport preparation is
+inactive when captures are disabled.
+
 ## October 31, 2026: independent database groups and eight browser shards
 
 Baseline checkout: `906e18a8d78b49f68f5cd50970407d23f5645551`.

@@ -7,9 +7,16 @@ import { currentServerTime } from '../client-model/game-projection'
 import { dispatchShips } from '../client-model/dispatch-timing'
 import { Button } from '../ui/button'
 import { Select } from '../ui/form'
+import { CoordinateInput } from '../ui/coordinate-input'
+import { coordinateText } from '../shell/location-address'
+import styles from './combat-simulation.module.css'
 import { bodyName, coordinates } from '../ui/format'
 import type { Espionage, SimulationField } from './combat-simulation-model'
-import { simulationAttackDraft } from './simulation-flight-model'
+import {
+  simulationFlightDraft,
+  simulationAttackProblem,
+  simulationDestination,
+} from './simulation-flight-model'
 import { useDispatchTiming } from './use-dispatch-timing'
 import { DispatchTiming } from './dispatch-timing'
 
@@ -21,27 +28,37 @@ export function SimulationFlight({
   onClose,
 }: {
   model: Coordinator
-  report: Espionage
+  report?: Espionage
   fields: SimulationField[]
   edits: Record<string, string>
-  onClose: () => void
+  onClose?: () => void
 }) {
-  const { body, view, prepareDispatch } = useGameScreen()
+  const { body, view, prepareDispatch, universeName } = useGameScreen()
   const [speed, setSpeed] = useState(100)
+  const [destinationText, setDestinationText] = useState('')
+  const [kind, setKind] = useState<'Planet' | 'Moon'>('Planet')
+  const destination = simulationDestination(destinationText, model.settings)
   const now = useStore(model.store, currentServerTime)
   const stale = useStore(model.store, (s) => s.stale)
-  const { draft, problem } = simulationAttackDraft(
+  const { draft, problem } = simulationFlightDraft(
     report,
     fields,
     edits,
     body ?? undefined,
     speed,
+    destination.coordinates
+      ? { coordinates: destination.coordinates, kind }
+      : undefined,
   )
+  const attackProblem =
+    draft && body ? simulationAttackProblem(draft, body) : problem
+  const inputProblem =
+    !report && destination.problem ? destination.problem : problem
   const timing = useDispatchTiming(
     model,
     draft && !stale
       ? {
-          kind: report.target.kind,
+          kind: draft.targetKind === 'moon' ? 'Moon' : 'Planet',
           coordinates: draft.coordinates,
           observation: draft,
           intent: {
@@ -62,15 +79,49 @@ export function SimulationFlight({
       : null,
     view.viewer_revision,
     !stale,
+    true,
   )
   return (
     <section aria-label="Attack planning">
-      <h3>Attack planning</h3>
+      <h3>Flight planning</h3>
       <p>
         Origin:{' '}
         {body ? `${bodyName(body)} ${coordinates(body)}` : 'No planet selected'}
         .
       </p>
+      <p>
+        Advisory round trip using your current drive research and universe
+        rules, including for hypothetical ships. Combat edits and allied fleets
+        do not change these estimates.
+      </p>
+      {report ? (
+        <p>
+          Report destination: {report.target.kind} [
+          {coordinateText(report.target.coordinates)}].
+        </p>
+      ) : (
+        <div className={styles.flightDestination}>
+          <CoordinateInput
+            value={destinationText}
+            universe={universeName}
+            onChange={(text, target) => {
+              setDestinationText(text)
+              if (target) setKind(target === 'moon' ? 'Moon' : 'Planet')
+            }}
+            error={destinationText ? destination.problem : undefined}
+          />
+          <label>
+            Destination type
+            <Select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as 'Planet' | 'Moon')}
+            >
+              <option value="Planet">Planet</option>
+              <option value="Moon">Moon</option>
+            </Select>
+          </label>
+        </div>
+      )}
       <label>
         Flight speed{' '}
         <Select
@@ -92,21 +143,30 @@ export function SimulationFlight({
         message={
           stale
             ? 'Reconnect to check current ship availability and flight estimates.'
-            : problem || timing?.error
+            : inputProblem || timing?.error
         }
       />
-      <Button
-        type="button"
-        disabled={!draft || stale}
-        onClick={() => {
-          if (draft) {
-            onClose()
-            prepareDispatch(draft)
-          }
-        }}
-      >
-        Prepare attack
-      </Button>
+      {report && onClose && (
+        <>
+          <p>
+            Estimates do not authorize a launch. Dispatch checks the target,
+            protection, stationed ships, fuel and fleet slots.
+          </p>
+          {attackProblem && <p>{attackProblem}</p>}
+          <Button
+            type="button"
+            disabled={!draft || !!attackProblem || stale}
+            onClick={() => {
+              if (draft && !attackProblem) {
+                onClose()
+                prepareDispatch(draft)
+              }
+            }}
+          >
+            Prepare attack
+          </Button>
+        </>
+      )}
     </section>
   )
 }

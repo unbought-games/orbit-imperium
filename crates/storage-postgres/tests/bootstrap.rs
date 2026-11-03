@@ -203,7 +203,6 @@ async fn atomic_five_player_bootstrap_rerun_and_restart() {
 #[tokio::test]
 async fn restart_checks_metadata_without_gameplay_locks_or_reads() {
     use orbit_engine::UniverseOptions;
-    use std::time::Duration;
     let url = std::env::var("TEST_DATABASE_URL").unwrap();
     let store = PgStore::connect(&url).await.unwrap();
     store.migrate().await.unwrap();
@@ -220,21 +219,19 @@ async fn restart_checks_metadata_without_gameplay_locks_or_reads() {
         .await
         .unwrap();
     sqlx::raw_sql("LOCK TABLE players, bodies, inventories, commands, scheduled_events, asset_lots, transition_journal IN ACCESS EXCLUSIVE MODE").execute(&mut *tx).await.unwrap();
-    let result = tokio::time::timeout(Duration::from_millis(500), async {
+    // Held locks prove isolation; production lock timeouts reject forbidden access.
+    // Do not impose an aggregate wall-clock budget on otherwise successful queries.
+    let result = async {
         let guard = store.server_guard_config(None).await?;
         store
             .ensure_signup_universe(Some(u), UniverseOptions::default(), None)
             .await?;
         store.ready().await?;
         Ok::<_, StoreError>(guard)
-    })
+    }
     .await;
     tx.rollback().await.unwrap();
-    drop(
-        result
-            .expect("startup waited for gameplay data/locks")
-            .unwrap(),
-    );
+    drop(result.expect("startup accessed locked gameplay state"));
 }
 
 #[tokio::test]
@@ -338,10 +335,12 @@ async fn explicit_audit_finds_latent_corruption_without_gameplay_lock_or_repair(
         .execute(&mut *tx)
         .await
         .unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(1), store.audit_universe(u))
+    // The audit has its own database lock timeout; success while the gate is
+    // held proves it does not take that gate, independent of runner speed.
+    store
+        .audit_universe(u)
         .await
-        .expect("audit took gameplay gate")
-        .unwrap();
+        .expect("audit took gameplay gate");
     tx.rollback().await.unwrap();
     sqlx::query("DELETE FROM collection_heads WHERE universe=$1 AND kind='production'")
         .bind(u.0)

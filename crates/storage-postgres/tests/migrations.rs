@@ -376,21 +376,19 @@ async fn concurrent_starters_apply_once_and_aborted_lock_holder_releases_connect
 async fn readiness_accepts_later_migrations_without_taking_migration_lock() {
     use orbit_application::GameStore;
     use sqlx::migrate::Migrate;
-    use std::time::Duration;
     let (store, pool) = fresh().await;
     assert!(store.ready().await.is_err());
     store.migrate().await.unwrap();
     let mut gate = pool.acquire().await.unwrap();
     gate.lock().await.unwrap();
     // Restarting an already prepared schema must not wait for a migrator.
-    tokio::time::timeout(Duration::from_millis(500), store.migrate())
+    // Production migration/readiness bounds already reject lock waits. Keep
+    // the held-lock assertion without a runner-speed-dependent test deadline.
+    store
+        .migrate()
         .await
-        .expect("current schema startup waited for migration lock")
-        .unwrap();
-    tokio::time::timeout(Duration::from_secs(2), store.ready())
-        .await
-        .unwrap()
-        .unwrap();
+        .expect("current schema startup waited for migration lock");
+    store.ready().await.unwrap();
     gate.unlock().await.unwrap();
     store
         .migrate_with_for_test(&future_bundle(include_str!(
