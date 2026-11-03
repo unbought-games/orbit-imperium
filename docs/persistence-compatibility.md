@@ -96,8 +96,11 @@ up its own disposable database.
 ## Mission return causes
 
 Causal `MissionFleet.return_reason` facts are independent of accepted terms.
-Migration 0033 proves active returning deployment causes from exact successful
-transition journals and refuses unclassifiable history. Old journals remain
-unchanged and use an explicit legacy replay adapter. See the
-[Sensor Phalanx compatibility contract](architecture/sensor-phalanx.md#causal-returns-and-compatibility)
-for upgrade ordering, omitted legacy fields and replay selection.
+Omitted causes remain unknown and readable/writable by mixed-version workers
+while scans are disabled. There is no automatic migration/backfill or strict
+cause constraint. Old full-record writers can erase newly added causes; scan
+activation must separately exclude those writers and establish complete fleet
+readiness. Old journals remain unchanged and use an explicit legacy replay
+adapter. See the [Sensor Phalanx compatibility contract](architecture/sensor-phalanx.md#causal-returns-and-compatibility)
+for rolling deployment, explicit evidence classification and the activation gate
+required in part 2.

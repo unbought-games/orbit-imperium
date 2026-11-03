@@ -1222,6 +1222,37 @@ fn deployment_return_causes_survive_restart_and_legacy_journal_replay_without_re
                     launched.due_at + launched.terms.duration_ms
                 }
             );
+            let mut unknown = f.clone();
+            unknown.return_reason = None;
+            assert_eq!(
+                classify_legacy_deployment_return(
+                    &unknown,
+                    &[AppliedMissionReturnEvidence {
+                        input: &input,
+                        before: &launched,
+                        after: &f,
+                    }]
+                ),
+                Ok(expected),
+                "explicit classification agrees with the real applied engine transition"
+            );
+            let mut legacy_state = s.clone();
+            legacy_state
+                .world
+                .as_mut()
+                .unwrap()
+                .records
+                .fleets
+                .insert(f.id, unknown.clone());
+            arrive(&mut legacy_state, &r, &unknown, 9605);
+            let legacy_fleets = &legacy_state.world.as_ref().unwrap().records.fleets;
+            assert_eq!(legacy_fleets[&f.id].leg, MissionLeg::Returned);
+            assert_eq!(legacy_fleets[&f.id].return_reason, None);
+            assert_eq!(
+                validate_phalanx_scan_readiness(true, true, legacy_fleets.values()),
+                Ok(())
+            );
+            validate_asset_lineage(&legacy_state).unwrap();
             arrive(&mut s, &r, &f, 9605);
             assert_eq!(
                 s.world.as_ref().unwrap().records.fleets[&f.id].return_reason,

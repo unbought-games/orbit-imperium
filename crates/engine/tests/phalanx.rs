@@ -582,3 +582,156 @@ fn return_deadline_overflow_is_an_invariant_error_and_hidden_rows_need_no_predic
         None
     );
 }
+
+#[test]
+fn scan_readiness_requires_writer_exclusion_complete_membership_and_proven_active_returns() {
+    let mut f = fleet(Mission::Deploy);
+    f.leg = MissionLeg::Returning;
+    assert_eq!(
+        validate_phalanx_scan_readiness(false, true, [&f]),
+        Err(PhalanxReadinessError::LegacyWritersMayWrite)
+    );
+    assert_eq!(
+        validate_phalanx_scan_readiness(true, false, [&f]),
+        Err(PhalanxReadinessError::IncompleteFleetCoverage)
+    );
+    assert_eq!(
+        validate_phalanx_scan_readiness(true, true, [&f]),
+        Err(PhalanxReadinessError::UnknownDeploymentReturn)
+    );
+    // No hidden-only shortcut: unknown deployments cannot be silently excluded.
+    let ep = endpoints(PhalanxEndpointKind::Moon, PhalanxEndpointKind::Moon);
+    assert!(project_phalanx_fleet(id(30), &WorldRecords::default(), &f, &ep, &owners()).is_err());
+    for reason in [
+        MissionReturnReason::VoluntaryRecall,
+        MissionReturnReason::InvalidTarget,
+    ] {
+        f.return_reason = Some(reason);
+        assert_eq!(validate_phalanx_scan_readiness(true, true, [&f]), Ok(()));
+    }
+    f.return_reason = None;
+    f.leg = MissionLeg::Returned;
+    assert_eq!(validate_phalanx_scan_readiness(true, true, [&f]), Ok(()));
+    assert_eq!(
+        validate_phalanx_scan_readiness(false, true, []),
+        Err(PhalanxReadinessError::LegacyWritersMayWrite)
+    );
+    assert_eq!(validate_phalanx_scan_readiness(true, true, []), Ok(()));
+}
+
+#[test]
+fn explicit_return_classification_requires_conclusive_applied_evidence_without_mutating_history() {
+    let before = fleet(Mission::Deploy);
+    let mut after = before.clone();
+    after.leg = MissionLeg::Returning;
+    after.generation += 1;
+    after.revision += 1;
+    after.due_at = 1500;
+    let (s, r, _, _) = common::fixture();
+    let recall = common::input(
+        &s,
+        &r,
+        Actor::Player(before.owner),
+        800,
+        800,
+        Input::Command(Command::World {
+            action: WorldAction::RecallMission { fleet: before.id },
+        }),
+    );
+    let arrival = common::input(
+        &s,
+        &r,
+        Actor::Scheduler,
+        before.due_at,
+        801,
+        Input::Event(ScheduledEvent::FleetLegDue {
+            fleet: before.id,
+            generation: before.generation,
+            expected_leg: MissionLeg::Outbound,
+        }),
+    );
+    let proof = |input| AppliedMissionReturnEvidence {
+        input,
+        before: &before,
+        after: &after,
+    };
+    let snapshot = serde_json::to_value((&before, &after, &recall, &arrival)).unwrap();
+    for (input, reason) in [
+        (&recall, MissionReturnReason::VoluntaryRecall),
+        (&arrival, MissionReturnReason::InvalidTarget),
+    ] {
+        assert_eq!(
+            classify_legacy_deployment_return(&after, &[proof(input)]),
+            Ok(reason)
+        );
+    }
+    assert_eq!(
+        classify_legacy_deployment_return(&after, &[]),
+        Err(MissionReturnEvidenceError::MissingEvidence)
+    );
+    assert_eq!(
+        classify_legacy_deployment_return(&after, &[proof(&recall), proof(&arrival)]),
+        Err(MissionReturnEvidenceError::ConflictingEvidence)
+    );
+    let mut stale = after.clone();
+    stale.revision += 1;
+    assert_eq!(
+        classify_legacy_deployment_return(&stale, &[proof(&recall)]),
+        Err(MissionReturnEvidenceError::StaleEvidence)
+    );
+    let mut wrong_actor = recall.clone();
+    wrong_actor.actor = Actor::Scheduler;
+    assert_eq!(
+        classify_legacy_deployment_return(&after, &[proof(&wrong_actor)]),
+        Err(MissionReturnEvidenceError::InvalidEvidence)
+    );
+    assert_eq!(
+        serde_json::to_value((&before, &after, &recall, &arrival)).unwrap(),
+        snapshot
+    );
+
+    let mut unrelated_before = before.clone();
+    unrelated_before.cargo.metal += 1;
+    assert_eq!(
+        classify_legacy_deployment_return(
+            &after,
+            &[AppliedMissionReturnEvidence {
+                input: &recall,
+                before: &unrelated_before,
+                after: &after,
+            }]
+        ),
+        Err(MissionReturnEvidenceError::InvalidEvidence)
+    );
+    // A new transition's recorded cause can survive in the journal even when an
+    // old writer erased it in current storage. Contradictory evidence is refused.
+    let mut recorded = after.clone();
+    recorded.return_reason = Some(MissionReturnReason::VoluntaryRecall);
+    assert_eq!(
+        classify_legacy_deployment_return(
+            &after,
+            &[AppliedMissionReturnEvidence {
+                input: &recall,
+                before: &before,
+                after: &recorded
+            }]
+        ),
+        Ok(MissionReturnReason::VoluntaryRecall)
+    );
+    recorded.return_reason = Some(MissionReturnReason::InvalidTarget);
+    assert_eq!(
+        classify_legacy_deployment_return(
+            &after,
+            &[AppliedMissionReturnEvidence {
+                input: &recall,
+                before: &before,
+                after: &recorded
+            }]
+        ),
+        Err(MissionReturnEvidenceError::ConflictingEvidence)
+    );
+    // Fixed actionable operator messages cannot leak the contents of driver errors.
+    let diagnostic = MissionReturnEvidenceError::MissingEvidence.to_string();
+    assert!(diagnostic.contains("authoritative journal evidence"));
+    assert!(!diagnostic.contains(&after.id.to_string()));
+}

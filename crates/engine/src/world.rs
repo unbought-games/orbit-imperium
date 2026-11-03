@@ -432,8 +432,9 @@ pub fn world_facts(s: &GameState) -> Result<&WorldFacts, InvariantError> {
         .ok_or_else(|| InvariantError("missing mandatory R3 facts".into()))
 }
 
-/// None is retained historical unknown. Live storage migration resolves active
-/// returning Deploy before admission; scans must never guess this category.
+/// None is retained historical unknown and is compatible with legacy writers.
+/// Explicit scan readiness rejects unknown deployment returns; ordinary gameplay
+/// and schema deployment must still accept them while scans are disabled.
 pub fn validate_mission_return_reason(f: &MissionFleet) -> Result<(), InvariantError> {
     if f.return_reason.is_some()
         && matches!(

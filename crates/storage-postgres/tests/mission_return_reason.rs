@@ -1,12 +1,14 @@
-//! Regression: legacy deployment returns must not disclose recalls or hide failed
-//! arrivals. Migration uses exact successful journal evidence, never timing/reports.
+//! Regression: a disabled feature must not prevent mixed-version writers or
+//! startup with unknown causes, including old serde losing fields on replacement.
 use orbit_application::*;
 use orbit_engine::*;
 use orbit_storage_postgres::PgStore;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
-const MIGRATION: &str = include_str!("../migrations/0033_mission_return_reason.sql");
+#[path = "support/legacy_mission_fleet.rs"]
+mod legacy_writer;
+use legacy_writer::LegacyMissionFleet;
 
 async fn fixture() -> (PgStore, PgPool, UniverseId, Vec<MissionFleet>) {
     let url = std::env::var("TEST_DATABASE_URL").unwrap();
@@ -58,11 +60,6 @@ async fn fixture() -> (PgStore, PgPool, UniverseId, Vec<MissionFleet>) {
         1,
         "scenario export preserves recall provenance"
     );
-    // Model the retained pre-upgrade table, not an edit of immutable journals.
-    sqlx::raw_sql("ALTER TABLE mission_fleets DROP CONSTRAINT mission_return_reason_valid")
-        .execute(&pool)
-        .await
-        .unwrap();
     (store, pool, universe, fleets)
 }
 async fn legacy(pool: &PgPool, f: &mut MissionFleet) {
@@ -81,100 +78,128 @@ async fn legacy(pool: &PgPool, f: &mut MissionFleet) {
         .await
         .unwrap();
 }
-async fn evidence(
+
+// Exact changed-fleet persistence statement from the pre-cause world::save.
+// The before/after comparison matters: unchanged old reads do not rewrite rows.
+async fn save_old(
     pool: &PgPool,
-    universe: UniverseId,
-    f: &MissionFleet,
-    recall: bool,
-    cursor: i64,
+    u: UniverseId,
+    before: &LegacyMissionFleet,
+    after: &LegacyMissionFleet,
 ) {
-    let mut before = f.clone();
-    before.leg = MissionLeg::Outbound;
-    before.generation = 0;
-    before.revision = 0;
-    let payload = if recall {
-        Input::Command(Command::World {
-            action: WorldAction::RecallMission { fleet: f.id },
-        })
-    } else {
-        Input::Event(ScheduledEvent::FleetLegDue {
-            fleet: f.id,
-            generation: 0,
-            expected_leg: MissionLeg::Outbound,
-        })
-    };
-    let input = json!({"payload":payload});
-    sqlx::query("INSERT INTO transition_journal(universe,cursor,input_id,input,facts,outcome) VALUES($1,$2,$3,$4,$5,$6)")
-        .bind(universe.0).bind(cursor).bind(Uuid::new_v4()).bind(input)
-        .bind(json!({"world":{"records":{"fleets":{f.id.to_string():before}}}}))
-        .bind(json!({"Applied":{"world":{"records":{"fleets":{f.id.to_string():f}}}}}))
-        .execute(pool).await.unwrap();
+    if before != after {
+        sqlx::query("INSERT INTO mission_fleets(universe,id,owner,data) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET data=excluded.data WHERE mission_fleets.universe=excluded.universe")
+            .bind(u.0).bind(after.id.0).bind(after.owner.0).bind(sqlx::types::Json(after)).execute(pool).await.unwrap();
+    }
 }
+async fn read(pool: &PgPool, fleet: FleetId) -> Value {
+    sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
+        .bind(fleet.0)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
 #[tokio::test]
-async fn exact_journal_causes_backfill_only_active_deployments_and_preserve_history() {
+async fn rolling_startup_and_legacy_full_record_writes_accept_unknown_causes_with_scans_disabled() {
     let (store, pool, u, mut fleets) = fixture().await;
-    for (i, f) in fleets.iter_mut().take(2).enumerate() {
-        legacy(&pool, f).await;
-        evidence(&pool, u, f, i == 0, i as i64 + 1).await;
-    }
-    let before: Value = sqlx::query_scalar(
-        "SELECT jsonb_agg(to_jsonb(j) ORDER BY cursor) FROM transition_journal j",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    let untouched: Value = sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
-        .bind(fleets[2].id.0)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    let mut tx = pool.begin().await.unwrap();
-    sqlx::raw_sql(MIGRATION).execute(&mut *tx).await.unwrap();
-    tx.commit().await.unwrap();
-    for (i, f) in fleets.iter_mut().take(2).enumerate() {
-        let value: Value = sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
-            .bind(f.id.0)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        let restored: MissionFleet = serde_json::from_value(value).unwrap();
-        f.return_reason = Some(if i == 0 {
-            MissionReturnReason::VoluntaryRecall
-        } else {
-            MissionReturnReason::InvalidTarget
-        });
-        assert_eq!(
-            &restored, f,
-            "only the causal fact changes; terms, deadlines and revisions stay intact"
-        );
-        let mut invalid = serde_json::to_value(&restored).unwrap();
-        invalid.as_object_mut().unwrap().remove("return_reason");
-        assert!(
-            sqlx::query("UPDATE mission_fleets SET data=$2 WHERE id=$1")
-                .bind(f.id.0)
-                .bind(invalid)
-                .execute(&pool)
-                .await
-                .is_err()
-        );
-    }
+    legacy(&pool, &mut fleets[0]).await;
+    let f = &fleets[0];
     assert_eq!(
-        sqlx::query_scalar::<_, Value>(
-            "SELECT jsonb_agg(to_jsonb(j) ORDER BY cursor) FROM transition_journal j"
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap(),
-        before
-    );
-    assert_eq!(
-        sqlx::query_scalar::<_, Value>("SELECT data FROM mission_fleets WHERE id=$1")
-            .bind(fleets[2].id.0)
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM transition_journal")
             .fetch_one(&pool)
             .await
             .unwrap(),
-        untouched
+        0
     );
+    // Missing historical evidence is an activation concern, never a startup task.
+    store.migrate().await.unwrap();
+    let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    reopened.migrate().await.unwrap();
+    assert_eq!(read(&pool, f.id).await, serde_json::to_value(f).unwrap());
+    assert_eq!(
+        validate_phalanx_scan_readiness(true, true, [f]),
+        Err(PhalanxReadinessError::UnknownDeploymentReturn)
+    );
+    assert_eq!(
+        validate_phalanx_scan_readiness(false, true, [f]),
+        Err(PhalanxReadinessError::LegacyWritersMayWrite)
+    );
+
+    // A new writer emits the causal field using the same JSON persistence format.
+    let mut known = f.clone();
+    known.return_reason = Some(MissionReturnReason::VoluntaryRecall);
+    sqlx::query("UPDATE mission_fleets SET data=$2 WHERE id=$1")
+        .bind(known.id.0)
+        .bind(sqlx::types::Json(&known))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let saved = read(&pool, f.id).await;
+    let before: LegacyMissionFleet = serde_json::from_value(saved.clone()).unwrap();
+    assert!(
+        serde_json::to_value(&before)
+            .unwrap()
+            .get("return_reason")
+            .is_none()
+    );
+    save_old(&pool, u, &before, &before).await;
+    assert_eq!(
+        read(&pool, f.id).await,
+        saved,
+        "an unchanged fleet is not written by world::save"
+    );
+
+    // Actual old FleetLegDue/terminal_return mutates these three fleet fields.
+    // It can read a new fleet, settle it normally, and erase the unknown field.
+    let mut after = before.clone();
+    after.leg = MissionLeg::Returned;
+    after.generation += 1;
+    after.revision += 1;
+    save_old(&pool, u, &before, &after).await;
+    let rewritten = read(&pool, f.id).await;
+    assert_eq!(rewritten, serde_json::to_value(&after).unwrap());
+    assert!(
+        rewritten.get("return_reason").is_none(),
+        "full JSON replacement really loses the cause"
+    );
+    let terminal: MissionFleet = serde_json::from_value(rewritten).unwrap();
+    assert_eq!(terminal.terms, known.terms);
+    assert_eq!(
+        validate_phalanx_scan_readiness(true, true, [&terminal]),
+        Ok(())
+    );
+
+    // Old outbound recall persists an active unknown return without schema failure.
+    let mut outbound = before.clone();
+    outbound.leg = MissionLeg::Outbound;
+    outbound.generation = 0;
+    outbound.revision = 0;
+    sqlx::query("UPDATE mission_fleets SET data=$2 WHERE id=$1")
+        .bind(f.id.0)
+        .bind(sqlx::types::Json(&outbound))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut recalled = outbound.clone();
+    recalled.leg = MissionLeg::Returning;
+    recalled.generation += 1;
+    recalled.revision += 1;
+    save_old(&pool, u, &outbound, &recalled).await;
+    let unknown: MissionFleet = serde_json::from_value(read(&pool, f.id).await).unwrap();
+    assert_eq!(unknown.return_reason, None);
+    assert_eq!(
+        validate_phalanx_scan_readiness(true, true, [&unknown]),
+        Err(PhalanxReadinessError::UnknownDeploymentReturn)
+    );
+    store.migrate().await.unwrap();
+}
+
+#[tokio::test]
+async fn new_writer_causes_round_trip_through_bound_world_and_schema_has_no_history_backfill() {
+    let (store, pool, u, fleets) = fixture().await;
     let auth = SessionService::new(store.clone())
         .login("return-owner", "password", None)
         .await
@@ -185,61 +210,30 @@ async fn exact_journal_causes_backfill_only_active_deployments_and_preserve_hist
         .unwrap()
         .binding;
     let loaded = store.bound_world(binding).await.unwrap();
-    for f in fleets.iter().take(2) {
+    for f in &fleets {
         assert_eq!(
             loaded.facts.0.state.world.as_ref().unwrap().records.fleets[&f.id],
             *f
         );
     }
-    // A reopened storage connection reads exactly the migrated record format.
-    let reopened = PgPool::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+    let before: Vec<Value> = sqlx::query_scalar("SELECT data FROM mission_fleets ORDER BY id")
+        .fetch_all(&pool)
         .await
         .unwrap();
-    let restored: Value = sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
-        .bind(fleets[0].id.0)
-        .fetch_one(&reopened)
-        .await
-        .unwrap();
+    store.migrate().await.unwrap();
     assert_eq!(
-        serde_json::from_value::<MissionFleet>(restored).unwrap(),
-        fleets[0]
-    );
-}
-#[tokio::test]
-async fn missing_stale_or_conflicting_evidence_blocks_atomically_without_timing_guess() {
-    for mode in ["missing", "stale", "conflicting"] {
-        let (_store, pool, u, mut fleets) = fixture().await;
-        legacy(&pool, &mut fleets[0]).await;
-        evidence(&pool, u, &fleets[0], true, 1).await;
-        legacy(&pool, &mut fleets[1]).await;
-        if mode == "stale" {
-            let mut stale = fleets[1].clone();
-            stale.revision += 1;
-            evidence(&pool, u, &stale, false, 2).await;
-        } else if mode == "conflicting" {
-            evidence(&pool, u, &fleets[1], false, 2).await;
-            evidence(&pool, u, &fleets[1], true, 3).await;
-        }
-        let mut tx = pool.begin().await.unwrap();
-        let error = sqlx::raw_sql(MIGRATION)
-            .execute(&mut *tx)
+        sqlx::query_scalar::<_, Value>("SELECT data FROM mission_fleets ORDER BY id")
+            .fetch_all(&pool)
             .await
-            .unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .contains("Unclassified active returning deployment"),
-            "{error}"
-        );
-        tx.rollback().await.unwrap();
-        let untouched: Value = sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
-            .bind(fleets[0].id.0)
+            .unwrap(),
+        before
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM _sqlx_migrations WHERE version=33")
             .fetch_one(&pool)
             .await
-            .unwrap();
-        assert!(
-            untouched.get("return_reason").is_none(),
-            "classification must roll back with unresolved evidence"
-        );
-    }
+            .unwrap(),
+        0,
+        "unpublished backfill migration is removed"
+    );
 }

@@ -90,24 +90,82 @@ Historical omitted causes remain omitted on JSON round-trip and mean unknown.
 They are never inferred from timing. Non-deploy observation does not require a
 cause; terminal fleets are hidden. An active returning Deploy without a known
 recall/invalid-target cause is an explicit invariant error at the scan boundary.
-The lineage audit rejects contradictory known causes while accepting omissions
-needed to interpret old journals. Live PostgreSQL constraints additionally reject
-unclassified active returning deployments.
+The lineage audit rejects contradictory known causes while accepting omissions.
+Routine deployment accepts unknown active returns too: the unpublished migration
+0033 was removed. There is no startup journal traversal, backfill, fleet constraint
+or history-dependent migration failure for this feature.
 
-Migration 0033 classifies legacy active returning deployments only from an applied
-journal transition whose prior fleet was Outbound and whose resulting fleet JSON
-exactly matches the retained fleet. A matching RecallMission proves voluntary
-recall; a matching outbound FleetLegDue proves invalid target, because a successful
-deployment terminalizes as Deployed. This examines retained transition journals,
-not expiring reports or elapsed-time heuristics. Conflicting, stale or missing
-evidence aborts the migration transaction with a concrete diagnostic. Restore
-conclusive historical evidence before retrying; do not assign a default cause.
-No production database was inspected as part of this implementation.
+### Ordinary rolling deployment
 
-The migration adds only the proven causal field. It preserves accepted terms and
-hashes, deadlines, revisions, historical journal bytes and terminal fleets.
-Quiesce old writers during this schema upgrade: binaries that cannot write causes
-must not create new returning deployments after the constraint is installed.
+Deploy this binary with scans disabled through the normal rolling process. No
+fleet drain, writer quiescence or classification is required for this deployment.
+New return transitions record causes. Legacy workers accept the extra field when
+deserializing but do not retain it in their typed struct. Their persistence code
+writes a changed fleet with `ON CONFLICT ... SET data=excluded.data`: the full JSON
+replacement loses the cause. Unchanged fleets are skipped by the old equality
+check, so simply reading a fleet does not erase it. In particular, old workers can
+complete new returning fleets and write terminal records without the cause, and
+can create unknown active returns themselves. Neither write is a schema error.
+Do not treat an observed cause, a momentary lack of unknown fleets, or one new
+process reporting healthy as proof that the rolling upgrade is complete.
+
+### Explicit activation boundary for parts 2 and 3
+
+The building and scan capability remain disabled. `validate_phalanx_scan_readiness`
+is a pure boundary for the future coordinator, not a wired activation mechanism
+or a saved readiness flag. Part 2 must implement the following contract before
+part 3 enables the feature:
+
+1. Finish the ordinary rolling deployment. Establish that every writer that can
+   commit to this universe understands return causes (workers, admission/API,
+   editors, tools and rollback binaries). Drain/fence old claims and prevent old
+   binaries from reacquiring work. This operational exclusion is an activation
+   prerequisite; current rules revisions alone do not attest binary versions.
+2. Extend the existing rules prepare/apply paths, including both serial
+   `apply_rules` and `apply_scoped_rules`, to gate scan-capability activation.
+   Prepare may report blockers, but the apply path must recheck under its universe
+   barrier and commit fencing. Load complete active fleet membership with covered
+   absence. Do not reuse a stale preparation snapshot, a count from an index, or
+   the viewer's scoped fleet collection as readiness proof.
+3. Call `validate_phalanx_scan_readiness` with derived writer-exclusion and coverage
+   proofs and that complete collection. Unknown active returning Deploy blocks
+   activation. Either let it reach its already committed terminal deadline through
+   ordinary gameplay, or explicitly classify and repair it from authoritative
+   evidence. Never guess from timing/reports, discard the fleet, retime it, assume
+   recall, show it, or silently omit it. Terminal unknowns need no classification.
+   Outbound legacy fleets acquire a cause at their next new-writer transition.
+4. If classification is chosen, run an explicitly requested operational job with
+   bounded batches outside ordinary schema preparation. A trusted loader must
+   establish successful Applied journal provenance and complete candidate
+   evidence. `classify_legacy_deployment_return` consumes that supplied evidence
+   without querying or mutating anything. It requires an Outbound-to-Returning
+   transition matching the retained fleet and checks the actual RecallMission or
+   outbound FleetLegDue input. Known causes in newer journals must agree. Missing,
+   stale, invalid or conflicting evidence returns typed fixed-message diagnostics;
+   no raw SQL/driver error data is surfaced. The helper does not certify loader
+   completeness or grant readiness. The operational loader/writer is not shipped
+   in part 1; unresolved evidence is a real activation blocker until natural
+   settlement or a reviewed repair.
+5. Any future explicit backfill must compare-and-set the exact inspected fleet
+   under the operational barrier, adding only the proven cause. Preserve terms,
+   hashes, deadlines, revisions and historical journal bytes. Handle old-writer
+   field loss and concurrent settlement by reloading, not overwriting newer facts.
+   Recheck complete readiness in the activation transaction before publishing the
+   versioned scan rules/capability through the existing rules-activation mechanism.
+6. Every accepted scan must also check all relevant return facts on its complete
+   ordered scan snapshot before charge/report storage. Unknown causes refuse the
+   whole scan, including hidden-only candidate collections; do not publish partial
+   rows. Keep detailed readiness/evidence diagnostics private to operators, using
+   a generic unavailable capability response for players. If legacy writers are
+   reintroduced, disable scans through the same coordinated activation boundary
+   before admitting them. Rollback while scans are enabled is not supported merely
+   because the JSON schema remains readable.
+
+This increment supplies the deterministic readiness and classification checks,
+not the capability gate, fleet loader, operational backfill, process-version
+exclusion proof or API handling. Production evidence and volume have not been
+inspected. Their absence cannot block this disabled-feature deployment; proving
+those activation prerequisites is required work for part 2.
 
 For journals produced before causal returns, explicitly select
 `replay_legacy_mission_transition` by producing release. It reproduces the old

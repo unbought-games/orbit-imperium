@@ -1,5 +1,10 @@
 # Sensor Phalanx foundations verification — 2026-11-03
 
+This records original commit `a5a5f11ccd712f52b61821a81cc949756cbb26d7`.
+Its automatic migration and quiescence requirement were superseded by the
+[rolling-deployment compatibility repair](sensor-phalanx-rollout.md). The original
+measurements and failure history below are retained as historical evidence.
+
 Base: `cfe36bccf8d80c77ed2897cb3e2a0bcde74aeb6c`.
 Local branch: `emick/sensor-phalanx-foundations`.
 Tested source SHA-256:
