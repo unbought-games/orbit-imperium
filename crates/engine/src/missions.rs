@@ -238,16 +238,6 @@ pub fn estimate_fleet(
 ) -> Result<FleetEstimate, GameError> {
     let estimate = || -> Result<FleetEstimate, Fault> {
         let origin = body(s, intent.origin, r)?;
-        require_operational_body(origin)?;
-        if matches!(
-            intent.destination,
-            MissionDestination::Body {
-                expected_kind: BodyKind::Moon,
-                ..
-            }
-        ) {
-            return Err(GameError::UnavailableContent.into());
-        }
         if origin.owner != owner || intent.ships.iter().any(|ship| ship.owner != owner) {
             return Err(GameError::NotOwned.into());
         }
@@ -304,16 +294,6 @@ fn quote_inner(
     r: &Ruleset,
 ) -> Result<FleetTerms, Fault> {
     let b = body(s, intent.origin, r)?;
-    require_operational_body(b)?;
-    if matches!(
-        intent.destination,
-        MissionDestination::Body {
-            expected_kind: BodyKind::Moon,
-            ..
-        }
-    ) {
-        return Err(GameError::UnavailableContent.into());
-    }
     if b.owner != owner {
         return Err(GameError::NotOwned.into());
     }
@@ -331,7 +311,7 @@ fn quote_inner(
         && !matches!(
             intent.destination,
             MissionDestination::Body {
-                expected_kind: BodyKind::Planet,
+                expected_kind: BodyKind::Planet | BodyKind::Moon,
                 ..
             }
         )
@@ -535,16 +515,27 @@ pub(crate) fn mission_report(
         },
     );
 }
-fn own_report_payload(i: &OrderedInput, f: &MissionFleet, kind: &str) -> serde_json::Value {
-    json!({"kind":kind,"fleet":f.id,"origin":f.intent.origin,"destination":f.intent.destination,"origin_coordinates":f.origin_coordinates,"destination_coordinates":f.destination_coordinates,"cargo":wire_resources(f.cargo),"ships":f.ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>(),"at":i.at})
+fn own_report_payload(
+    s: &GameState,
+    i: &OrderedInput,
+    f: &MissionFleet,
+    kind: &str,
+) -> serde_json::Value {
+    json!({"kind":kind,"fleet":f.id,"origin":f.intent.origin,"origin_kind":s.bodies.get(&f.intent.origin).map(|b|b.kind),"destination":f.intent.destination,"target_kind":match f.intent.destination { MissionDestination::Body {expected_kind,..} => Some(expected_kind), _ => None },"origin_coordinates":f.origin_coordinates,"destination_coordinates":f.destination_coordinates,"cargo":wire_resources(f.cargo),"ships":f.ships.iter().map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>(),"at":i.at})
 }
-pub(crate) fn own_report(w: &mut WorldRecords, i: &OrderedInput, f: &MissionFleet, kind: &str) {
+pub(crate) fn own_report(
+    s: &GameState,
+    w: &mut WorldRecords,
+    i: &OrderedInput,
+    f: &MissionFleet,
+    kind: &str,
+) {
     mission_report(
         w,
         i,
         f,
         kind,
-        std::collections::BTreeMap::from([(f.owner, own_report_payload(i, f, kind))]),
+        std::collections::BTreeMap::from([(f.owner, own_report_payload(s, i, f, kind))]),
     );
 }
 pub(crate) fn schedule(c: &mut ChangeSet, i: &OrderedInput, f: &MissionFleet) {
@@ -605,7 +596,7 @@ fn terminal_return(
     f.leg = MissionLeg::Returned;
     signal(w, home.id, i, ActivityCause::Return);
     if !is_probe_only_espionage(f) {
-        own_report(w, i, f, "Returned");
+        own_report(s, w, i, f, "Returned");
     }
     Ok(())
 }
@@ -987,12 +978,12 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             if return_duration == 0 {
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
                 if is_probe_only_espionage(&f) {
-                    own_report(&mut w, i, &f, "Recalled");
+                    own_report(s, &mut w, i, &f, "Recalled");
                 }
             } else {
                 f.due_at = deadline(i.at, return_duration)?;
                 schedule(&mut c, i, &f);
-                own_report(&mut w, i, &f, "Recalled");
+                own_report(s, &mut w, i, &f, "Recalled");
             }
             c.affected_viewers.insert(f.owner);
             if let Some(owner) = f.authorization.target_owner {
@@ -1033,7 +1024,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 let physical = target(s, &f.intent.destination, r);
                 match physical {
                     Err(Fault::Game(GameError::NotFound)) => {
-                        own_report(&mut w, i, &f, "MissionFailed")
+                        own_report(s, &mut w, i, &f, "MissionFailed")
                     }
                     Err(e) => return Err(e),
                     Ok((_, target_owner)) => {
@@ -1070,7 +1061,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                     w.lots.extend(lots);
                                 }
                                 f.cargo = cargo;
-                                own_report(&mut w, i, &f, "Deployed");
+                                own_report(s, &mut w, i, &f, "Deployed");
                                 f.cargo = Resources::default();
                                 f.leg = MissionLeg::Deployed;
                             }
@@ -1106,6 +1097,10 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                         {
                                             payload[key] = json!(name);
                                         }
+                                    }
+                                    payload["target_kind"] = json!(s.bodies[&id].kind);
+                                    if let Some(origin) = s.bodies.get(&f.intent.origin) {
+                                        payload["origin_kind"] = json!(origin.kind);
                                     }
                                     payloads.insert(owner, payload);
                                 }
@@ -1149,7 +1144,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                 let harvested =
                                     Resources::from_values([m * SCALE, k * SCALE, d * SCALE]);
                                 f.cargo = resources(f.cargo, harvested, true)?;
-                                let mut payload = own_report_payload(i, &f, "Harvested");
+                                let mut payload = own_report_payload(s, i, &f, "Harvested");
                                 // Capture the collection at arrival: total cargo also includes
                                 // resources loaded at launch and cannot stand in for this fact.
                                 payload["harvested"] = wire_resources(harvested);

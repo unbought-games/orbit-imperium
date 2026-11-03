@@ -90,12 +90,8 @@ export function destinationError(
   if (destination.type !== 'Body') return ''
   if (mission === 'Colonize')
     return 'This position is occupied. Choose an empty position.'
-  if (
-    mission === 'Hold' &&
-    (destination.expected_owner === player ||
-      destination.expected_kind !== 'Planet')
-  )
-    return 'Hold requires another player’s planet. Choose an ally or accepted friend.'
+  if (mission === 'Hold' && destination.expected_owner === player)
+    return 'Hold requires another player’s planet or moon. Choose an ally or accepted friend.'
   if (mission === 'Deploy' && destination.expected_owner !== player)
     return 'Deploy requires another planet or moon that you own.'
   if (

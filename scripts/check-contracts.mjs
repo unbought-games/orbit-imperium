@@ -76,7 +76,8 @@ assert.equal(combatPayload({ ...battle, target_name: 42 }), false);
 assert.equal(combatPayload({ ...battle, target_kind: 'Unknown' }), false);
 assert.equal(reportPreview({ kind: 'ContactLost', target: battle.target, target_name: 'Hidden' }), false);
 assert.ok(espionage({ ...observed, target: { ...observed.target, kind: 'Moon', name: 'Luna' } }));
-console.log('Combat body identity is optional for legacy payloads and absent from restricted previews.');
+assert.ok(reportPreview({ kind: 'ContactLost', target: battle.target, target_kind: 'Moon' }));
+console.log('Historical reports retain endpoint kinds; restricted previews exclude defender names.');
 const participant = { owner: id, origin: { Fleet: id }, side: 'Attacker', units: [], technology: [0, 0, 0] };
 const location = { coordinates: battle.target, name: 'Launch colony', kind: 'Moon' };
 for (const evidence of [{}, { location }, { location: { coordinates: battle.target, name: null, kind: null } }]) {

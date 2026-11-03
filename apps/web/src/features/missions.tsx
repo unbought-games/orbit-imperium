@@ -283,19 +283,19 @@ export function Dispatch({
               value={destinationText}
               universe={universeName}
               error={Object.values(coordinateProblems).find(Boolean)}
-              planets={
+              bodies={
                 mission === 'Transport' || mission === 'Deploy'
-                  ? destination.planets
+                  ? destination.bodies
                   : undefined
               }
-              selectedPlanet={destination.selectedPlanet?.id}
-              onSelectPlanet={(id) => {
-                const planet = destination.planets.find(
+              selectedBody={destination.selectedBody?.id}
+              onSelectBody={(id) => {
+                const planet = destination.bodies.find(
                   (candidate) => candidate.id === id,
                 )
                 if (!planet) return
                 setDestinationText(coordinateText(planet.coordinates))
-                setTargetKind('planet')
+                setTargetKind(planet.kind === 'Moon' ? 'moon' : 'planet')
                 clear()
               }}
               onChange={(text, kind) => {

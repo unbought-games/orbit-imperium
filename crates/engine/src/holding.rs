@@ -49,6 +49,37 @@ pub fn held_at(f: &MissionFleet, body: BodyId) -> bool {
     f.leg == MissionLeg::Holding
         && matches!(f.intent.destination, MissionDestination::Body { id, .. } if id == body)
 }
+/// The planet whose depot serves this body. Never infer lunar ancestry from coordinates.
+pub fn depot_source_for_body(s: &GameState, id: BodyId) -> Result<BodyId, GameError> {
+    if !s.coverage.bodies.contains(&id) {
+        return Err(GameError::PolicyUnavailable);
+    }
+    let body = s.bodies.get(&id).ok_or(GameError::NotFound)?;
+    if body.kind == BodyKind::Planet {
+        return Ok(id);
+    }
+    let w = world_facts(s).map_err(|_| GameError::PolicyUnavailable)?;
+    let genesis = w
+        .records
+        .moons
+        .get(&id)
+        .ok_or(GameError::PolicyUnavailable)?;
+    if !s.coverage.bodies.contains(&genesis.parent) {
+        return Err(GameError::PolicyUnavailable);
+    }
+    let parent = s
+        .bodies
+        .get(&genesis.parent)
+        .ok_or(GameError::PolicyUnavailable)?;
+    if parent.kind != BodyKind::Planet
+        || parent.owner != body.owner
+        || parent.coordinates != body.coordinates
+    {
+        return Err(GameError::PolicyUnavailable);
+    }
+    Ok(parent.id)
+}
+
 pub fn holding_rate(ships: &[ShipStack], terms: &HoldingTerms) -> Result<i64, GameError> {
     let rate = ships.iter().try_fold(0i128, |total, ship| {
         let rate = terms
@@ -147,7 +178,7 @@ pub(crate) fn arrive(
     let mut owners: BTreeSet<_> = visitors.iter().map(|v| v.owner).collect();
     owners.extend([expected_owner, f.owner]);
     if visitors.len() >= 16 || owners.len() > 5 {
-        crate::missions::own_report(w, i, f, "MissionFailed");
+        crate::missions::own_report(s, w, i, f, "MissionFailed");
         let report = ReportId(derived_id(i.id, &format!("report:MissionFailed:{}", f.id)));
         if let Some(r) = w.reports.get_mut(&report) {
             r.payloads.get_mut(&f.owner).unwrap()["reason"] =
@@ -260,8 +291,19 @@ pub fn quote_depot_supply(
         .records
         .fleets
         .get(&intent.fleet)
-        .filter(|f| held_at(f, source.id) && at < f.due_at && !f.ships.is_empty())
+        .filter(|f| f.leg == MissionLeg::Holding && at < f.due_at && !f.ships.is_empty())
         .ok_or(GameError::HoldingUnavailable)?;
+    let MissionDestination::Body {
+        id: host,
+        expected_owner,
+        ..
+    } = fleet.intent.destination
+    else {
+        return Err(GameError::HoldingUnavailable);
+    };
+    if expected_owner != owner || depot_source_for_body(s, host)? != source.id {
+        return Err(GameError::HoldingUnavailable);
+    }
     can_hold(s, fleet.owner, owner)?;
     for player in [owner, fleet.owner] {
         let policy = w

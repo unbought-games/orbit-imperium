@@ -301,6 +301,24 @@ pub(crate) async fn load(
     load_bodies(tx, u, &bodies, &mut refs).await?;
     if let Some(body) = holding_target {
         refs.holding = crate::holding::participant_scopes(tx, u, body).await?;
+        if matches!(
+            input,
+            Input::Command(Command::World {
+                action: WorldAction::AbandonPlanet { .. }
+            })
+        ) {
+            let moons: Vec<uuid::Uuid> =
+                sqlx::query_scalar("SELECT id FROM moon_genesis WHERE universe=$1 AND parent=$2")
+                    .bind(u.0)
+                    .bind(body.0)
+                    .fetch_all(&mut **tx)
+                    .await
+                    .map_err(db_error)?;
+            for moon in moons {
+                refs.holding
+                    .extend(crate::holding::participant_scopes(tx, u, BodyId(moon)).await?);
+            }
+        }
     }
     Ok(refs)
 }

@@ -83,13 +83,11 @@ export function OperationsScreen({
           model={model}
           universe={universeName}
           origin={body.id}
-          onDraft={(coordinates, mission) =>
-            prepareDispatch({ coordinates, mission })
+          onDraft={(coordinates, mission, targetKind) =>
+            prepareDispatch({ coordinates, mission, targetKind })
           }
         />
       )
-    if (route.page === 'dispatch' && body.kind === 'Moon')
-      return <Text>Moon fleet operations are not available yet.</Text>
     if (route.page === 'dispatch')
       return (
         <Dispatch

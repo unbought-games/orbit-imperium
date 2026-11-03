@@ -21,9 +21,9 @@ export async function sendGalaxyProbe(
   if (blocked) throw Error(blocked)
   if (!binding || !current()) return
   if (target.owner === binding.player)
-    throw Error('You cannot spy on your own planet.')
+    throw Error('You cannot spy on your own body.')
   if (!target.espionage_eligible)
-    throw Error('Espionage is unavailable for this planet.')
+    throw Error('Espionage is unavailable for this body.')
   if (pendingProbe(state, origin, target.id)) return
   const intent: S['FleetIntent4'] = {
     origin,

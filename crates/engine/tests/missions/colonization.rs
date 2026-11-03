@@ -179,7 +179,35 @@ fn arrive(s: &mut GameState, r: &Ruleset, f: &MissionFleet, n: u128) -> ChangeSe
 }
 #[test]
 fn success_consumes_one_ship_deposits_grant_and_cargo_returns_escorts_once() {
-    let (mut s, r, p, b, _) = setup();
+    colonize_and_return(false);
+}
+#[test]
+fn moon_origin_colonizes_planet_slot_and_returns_escorts_to_moon() {
+    colonize_and_return(true);
+}
+fn colonize_and_return(lunar: bool) {
+    let (mut s, r, p, planet, _) = setup();
+    let b = if lunar {
+        let moon = moons::add_moon(&mut s, planet, 28900);
+        s.bodies.get_mut(&moon).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+        set_units(
+            &mut s,
+            &r,
+            moon,
+            ManufacturedItem::Ship(ShipType::ColonyShip),
+            3,
+        );
+        set_units(
+            &mut s,
+            &r,
+            moon,
+            ManufacturedItem::Ship(ShipType::SmallCargo),
+            1,
+        );
+        moon
+    } else {
+        planet
+    };
     let mut intent = colony(p, b, 8, 2);
     intent.ships.push(ManifestStack {
         owner: p,
@@ -853,9 +881,21 @@ fn abandonment_rejects_homeworld_foreign_body_changed_losses_and_dependent_fligh
 }
 #[test]
 fn foreign_inbound_transport_survives_abandonment_and_returns_without_delivering() {
+    removed_target_transport(false);
+}
+#[test]
+fn lunar_target_transport_returns_intact_after_parent_abandonment() {
+    removed_target_transport(true);
+}
+fn removed_target_transport(lunar: bool) {
     let (mut s, r, p, _, id, at) = abandonment_fixture();
+    let target = if lunar {
+        moons::add_moon(&mut s, id, 29100)
+    } else {
+        id
+    };
     let foreign = s.bodies.values().find(|b| b.owner != p).unwrap().clone();
-    let intent = super::intent(&s, foreign.owner, foreign.id, id);
+    let intent = super::intent(&s, foreign.owner, foreign.id, target);
     let fleet = launch(&mut s, &r, foreign.owner, foreign.id, intent, at, 9200);
     let q = quote_abandonment(&s, p, id, at, &r).unwrap();
     assert!(q.blockers.is_empty());

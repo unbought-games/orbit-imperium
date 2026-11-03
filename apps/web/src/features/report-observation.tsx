@@ -247,8 +247,8 @@ function ReportObservationContent({
           {Number(payload.diameter_km).toLocaleString()} km diameter · 1 field
         </Text>
         <Text>
-          The debris remains available to recycle. Moon operations are not
-          available yet.
+          The debris remains available to recycle. Ships and resources can be
+          sent to your new moon.
         </Text>
       </Panel>
     )
@@ -284,8 +284,17 @@ function ReportObservationContent({
         <Heading level={3}>Missile impact</Heading>
         <Text>
           <PlayerName player={text(payload.attacker)} names={playerNames} /> ·{' '}
-          <CoordinateLink at={payload.origin} label="origin" /> →{' '}
-          <CoordinateLink at={payload.target} label="target" />
+          <CoordinateLink
+            at={payload.origin}
+            target={payload.origin_kind === 'Moon' ? 'moon' : 'planet'}
+            label="origin"
+          />{' '}
+          →{' '}
+          <CoordinateLink
+            at={payload.target}
+            target={payload.target_kind === 'Moon' ? 'moon' : 'planet'}
+            label="target"
+          />
         </Text>
         {payload.outcome === 'NoTarget' ? (
           <Text>
@@ -473,8 +482,18 @@ function ReportObservationContent({
         <Text>
           <PlayerName player={text(payload.sender)} names={playerNames} /> made
           espionage contact from{' '}
-          <CoordinateLink at={payload.origin} label="origin" /> at{' '}
-          <CoordinateLink at={payload.target} label="target" />.
+          <CoordinateLink
+            at={payload.origin}
+            target={payload.origin_kind === 'Moon' ? 'moon' : 'planet'}
+            label="origin"
+          />{' '}
+          at{' '}
+          <CoordinateLink
+            at={payload.target}
+            target={payload.target_kind === 'Moon' ? 'moon' : 'planet'}
+            label="target"
+          />
+          .
         </Text>
         <Risk value={payload} />
         <Text>The observer’s acquired intelligence is private.</Text>
@@ -488,6 +507,12 @@ function ReportObservationContent({
             Combat report ·{' '}
             <BodyIdentity
               at={payload.target}
+              kind={
+                payload.target_kind === 'Moon' ||
+                payload.target_kind === 'Planet'
+                  ? payload.target_kind
+                  : undefined
+              }
               label="target"
               coordinatesHidden={shared && !payload.target}
             />
@@ -554,6 +579,7 @@ function ReportObservationContent({
                     ? payload.origin
                     : payload.origin_coordinates
                 }
+                target={payload.origin_kind === 'Moon' ? 'moon' : 'planet'}
                 label="origin"
               />
               {' → '}
@@ -565,6 +591,18 @@ function ReportObservationContent({
                   kind === 'Delivered'
                     ? payload.target
                     : payload.destination_coordinates
+                }
+                target={
+                  payload.target_kind === 'Moon' ||
+                  (
+                    payload.destination as
+                      | { expected_kind?: string }
+                      | undefined
+                  )?.expected_kind === 'Moon'
+                    ? 'moon'
+                    : kind === 'Harvested'
+                      ? 'debris'
+                      : 'planet'
                 }
                 label="destination"
               />

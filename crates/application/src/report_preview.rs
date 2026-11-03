@@ -26,18 +26,30 @@ pub fn report_preview(payload: &Value) -> Value {
             "defenses",
             "counterespionage",
         ],
-        Some("SpyContact") => &["origin", "target", "detected"],
-        Some("Delivered") => &["origin", "target", "origin_name", "target_name", "cargo"],
+        Some("SpyContact") => &["origin", "target", "origin_kind", "target_kind", "detected"],
+        Some("Delivered") => &[
+            "origin",
+            "target",
+            "origin_kind",
+            "target_kind",
+            "origin_name",
+            "target_name",
+            "cargo",
+        ],
         Some("Harvested") => &[
             "origin_coordinates",
+            "origin_kind",
             "destination_coordinates",
+            "target_kind",
             "cargo",
             "harvested",
             "ships",
         ],
         Some("Returned" | "Recalled" | "MissionFailed" | "Deployed") => &[
             "origin_coordinates",
+            "origin_kind",
             "destination_coordinates",
+            "target_kind",
             "cargo",
             "ships",
         ],
@@ -50,7 +62,7 @@ pub fn report_preview(payload: &Value) -> Value {
             "debris",
             "mission",
         ],
-        Some("ContactLost") => &["target", "own_lost_ships", "own_cargo_loss"],
+        Some("ContactLost") => &["target", "target_kind", "own_lost_ships", "own_cargo_loss"],
         Some("Colonized" | "ColonizationFailed") => &["destination_coordinates", "reason"],
         _ => &[],
     };
@@ -95,6 +107,8 @@ mod tests {
         assert_eq!(report_preview(&payload), payload);
         payload["origin_name"] = json!("Old homeworld name");
         payload["target_name"] = json!("Trading colony");
+        payload["origin_kind"] = json!("Planet");
+        payload["target_kind"] = json!("Moon");
         assert_eq!(report_preview(&payload), payload);
     }
 
@@ -151,7 +165,7 @@ mod tests {
         let restricted = json!({"kind":"ContactLost","target":payload["target"],"target_name":"Hidden","target_kind":"Moon"});
         assert_eq!(
             report_preview(&restricted),
-            json!({"kind":"ContactLost","target":payload["target"]})
+            json!({"kind":"ContactLost","target":payload["target"],"target_kind":"Moon"})
         );
         let legacy = json!({"kind":"Combat","target":payload["target"]});
         assert_eq!(report_preview(&legacy), legacy);

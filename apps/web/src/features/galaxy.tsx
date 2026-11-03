@@ -1,3 +1,4 @@
+import { publicMoonBody } from './galaxy-body'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
 import { playerLabel } from './player-label'
@@ -20,7 +21,7 @@ import {
   currentServerTime,
   occupiedFleetSlots,
 } from '../client-model/game-projection'
-import { galaxyFlights, pendingProbe } from '../client-model/galaxy-fleets'
+import { galaxyFlights } from '../client-model/galaxy-fleets'
 import { useGalaxyEspionage } from './use-galaxy-espionage'
 type System = components['schemas']['GalaxySystem4']
 export function Galaxy({
@@ -35,6 +36,7 @@ export function Galaxy({
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
+    targetKind?: DispatchDraft['targetKind'],
   ) => void
 }) {
   const espionage = useGalaxyEspionage(model, origin)
@@ -153,6 +155,7 @@ export function Galaxy({
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
     opener?: HTMLElement | null,
+    targetKind?: DispatchDraft['targetKind'],
   ) => {
     if (mission === 'Harvest') {
       const position = data?.positions.find(
@@ -174,7 +177,7 @@ export function Galaxy({
         return
       }
     }
-    onDraft(coordinates, mission)
+    onDraft(coordinates, mission, targetKind)
   }
   const missions = galaxyMissionCapabilities(model.view)
   useProfileSource(
@@ -241,12 +244,10 @@ export function Galaxy({
                   </p>
                 )}
                 <GalaxyPosition
-                  readOnly={
-                    model.view?.bodies.find((b) => b.id === origin)?.kind ===
-                    'Moon'
-                  }
                   position={position}
                   missileAction={
+                    model.view?.bodies.find((b) => b.id === origin)?.kind ===
+                      'Planet' &&
                     position.body &&
                     position.body.owner !== model.binding?.player &&
                     model.view?.capabilities.some(
@@ -289,28 +290,12 @@ export function Galaxy({
                   now={currentServerTime(espionage.state)}
                   espionage={
                     position.body
-                      ? {
-                          send: () => void espionage.send(position.body!),
-                          paused: espionage.state.rateLimited,
-                          busy:
-                            espionage.sending === position.body.id ||
-                            pendingProbe(
-                              espionage.state,
-                              origin,
-                              position.body.id,
-                            ),
-                          reason: espionage.sending
-                            ? 'Sending a probe…'
-                            : espionage.reason,
-                          error:
-                            espionage.error?.target === position.body.id
-                              ? espionage.error.message
-                              : null,
-                          notice:
-                            espionage.localError?.target === position.body.id
-                              ? espionage.localError.message
-                              : null,
-                        }
+                      ? espionage.forTarget(position.body)
+                      : undefined
+                  }
+                  moonEspionage={
+                    publicMoonBody(position)
+                      ? espionage.forTarget(publicMoonBody(position)!)
                       : undefined
                   }
                 />

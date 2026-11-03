@@ -24,7 +24,7 @@ for (const width of [1440, 390]) {
     test.use({viewport: {width, height: 900}, hasTouch: width < 600, reducedMotion: 'reduce'})
     // Regression: a moon sharing its planet's coordinates must remain selectable
     // without exposing planet mutations or sending construction requests.
-    test('selects a moon and inspects buildings while all lunar actions stay unavailable', async ({page}) => {
+    test('selects a moon and inspects buildings while lunar construction stays unavailable', async ({page}) => {
       await installGameFixture(page, {protocol: 4, bodies: [body, moon], catalog, sampledAt: now, missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}, extraCapabilities: ['Attack', 'Espionage', 'Reports']})
       const mutations: string[] = []
       page.on('request', request => {
@@ -56,8 +56,10 @@ for (const width of [1440, 390]) {
       await expect(detail.getByRole('button', {name: /Confirm upgrade/})).toHaveCount(0)
       await diagnosticScreenshot(page, {path: `test-results/moon-building-detail-${width}x900.png`, fullPage: true})
       await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${moon.id}/dispatch`))
-      await expect(page.locator('main')).toContainText('Moon fleet operations are not available yet.')
-      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toHaveCount(0)
+      await expect(page.locator('main h1')).toHaveText('Dispatch')
+      await expect(page.getByRole('status').filter({hasText: 'No ships available here.'})).toBeVisible()
+      await expect(page.getByRole('button', {name: 'Add all ships', exact: true})).toBeDisabled()
+      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeEnabled()
       await diagnosticScreenshot(page, {path: `test-results/moon-dispatch-${width}x900.png`, fullPage: true})
       // Extra screenshots are optional visual evidence, not test readiness.
       if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
@@ -67,10 +69,10 @@ for (const width of [1440, 390]) {
           await diagnosticScreenshot(page, {path: `test-results/moon-${destination}-${width}x900.png`, fullPage: true})
         }
       }
-      // An owned planet must also be unable to send a fleet to its moon.
-      await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${body.id}/dispatch?galaxy=1&system=371&position=12&target=moon&mission=Attack`))
-      await expect(page.getByRole('region', {name: 'Flight timing'})).toContainText('Moon fleet operations are not available yet.')
-      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeDisabled()
+      // Same-coordinate moon targeting remains distinct from the planet.
+      await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${body.id}/dispatch?galaxy=1&system=371&position=12&target=moon&mission=Transport`))
+      await expect(page.getByLabel('Destination preview')).toContainText('Your moon')
+      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeEnabled()
       expect(mutations).toEqual([])
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     })
@@ -115,7 +117,7 @@ for (const width of [1440, 390]) {
       }
       await moonControl.click()
       await expect(details).toContainText('Diameter: 8,366 km')
-      await expect(details).toContainText('Moon operations are not available yet.')
+      await expect(details.getByRole('button', {name: 'Actions for moon [1:371:12]', exact: true})).toBeEnabled()
       await diagnosticScreenshot(page, {path: `test-results/moon-galaxy-details-${width}x900.png`})
       await page.keyboard.press('Escape')
       await expect(details).toBeHidden()

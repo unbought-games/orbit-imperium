@@ -14768,6 +14768,20 @@
           },
           "detected": {
             "type": "boolean"
+          },
+          "origin_kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              null
+            ]
+          },
+          "target_kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              null
+            ]
           }
         },
         "required": [
@@ -14816,6 +14830,20 @@
           "target_name": {
             "type": "string",
             "description": "Planet name observed at delivery; absent on older reports."
+          },
+          "origin_kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              null
+            ]
+          },
+          "target_kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              null
+            ]
           }
         },
         "required": [
@@ -14878,6 +14906,20 @@
           },
           "reason": {
             "type": "string"
+          },
+          "origin_kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              null
+            ]
+          },
+          "target_kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              null
+            ]
           }
         },
         "required": [
@@ -15344,6 +15386,13 @@
           },
           "own_cargo_loss": {
             "$ref": "#/components/schemas/Resources"
+          },
+          "target_kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              null
+            ]
           }
         },
         "required": [
@@ -16659,6 +16708,20 @@
               },
               "detected": {
                 "type": "boolean"
+              },
+              "target_kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
+              },
+              "origin_kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
               }
             },
             "required": [
@@ -16688,6 +16751,20 @@
               "target_name": {
                 "type": "string",
                 "description": "Planet name observed at delivery; absent on older reports."
+              },
+              "target_kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
+              },
+              "origin_kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
               }
             },
             "required": [
@@ -16725,6 +16802,20 @@
               "harvested": {
                 "$ref": "#/components/schemas/Resources",
                 "description": "Resources newly collected at harvest arrival. Absent on historical reports that recorded only total cargo."
+              },
+              "target_kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
+              },
+              "origin_kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
               }
             },
             "required": [
@@ -16823,6 +16914,13 @@
               },
               "own_cargo_loss": {
                 "$ref": "#/components/schemas/Resources"
+              },
+              "target_kind": {
+                "enum": [
+                  "Planet",
+                  "Moon",
+                  null
+                ]
               }
             },
             "required": [
@@ -21373,6 +21471,12 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 4294967295
+          },
+          "name": {
+            "type": "string"
+          },
+          "activity": {
+            "$ref": "#/components/schemas/PublicActivity4"
           }
         },
         "required": [

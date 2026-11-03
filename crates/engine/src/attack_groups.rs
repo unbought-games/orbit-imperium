@@ -340,7 +340,7 @@ pub(crate) fn arrive(
         crate::missions::signal(w, target, i, ActivityCause::Contact);
     } else {
         for f in &fleets {
-            crate::missions::own_report(w, i, f, "MissionFailed");
+            crate::missions::own_report(s, w, i, f, "MissionFailed");
         }
     }
     for mut f in fleets {

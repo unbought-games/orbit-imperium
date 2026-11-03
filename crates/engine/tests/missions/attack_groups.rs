@@ -88,7 +88,33 @@ fn exact_join_boundary_compounds_without_floating_point() {
 }
 #[test]
 fn joined_fleets_fight_once_and_return_independently() {
-    let (mut s, r, p, b, t) = ready();
+    joined_fleets(false);
+}
+#[test]
+fn planet_and_moon_attackers_fight_a_moon_once_and_return_independently() {
+    joined_fleets(true);
+}
+fn joined_fleets(lunar: bool) {
+    let (mut s, r, p, b, planet) = ready();
+    let t = if lunar {
+        moons::add_moon(&mut s, planet, 28800)
+    } else {
+        planet
+    };
+    let second_origin = if lunar {
+        let moon = moons::add_moon(&mut s, b, 28801);
+        s.bodies.get_mut(&moon).unwrap().checkpoint.amounts = Resources::all(100_000 * SCALE);
+        set_units(
+            &mut s,
+            &r,
+            moon,
+            ManufacturedItem::Ship(ShipType::SmallCargo),
+            1,
+        );
+        moon
+    } else {
+        b
+    };
     let first = launch(&mut s, &r, p, b, t, (1000, 700), None);
     let created = command(
         &mut s,
@@ -109,7 +135,7 @@ fn joined_fleets_fight_once_and_return_independently() {
         .next()
         .unwrap();
     let original = s.world.as_ref().unwrap().records.attack_groups[&group].arrival_at;
-    let second = launch(&mut s, &r, p, b, t, (1002, 702), Some(group));
+    let second = launch(&mut s, &r, p, second_origin, t, (1002, 702), Some(group));
     let w = &s.world.as_ref().unwrap().records;
     let due = w.attack_groups[&group].arrival_at;
     let generation = w.attack_groups[&group].generation;

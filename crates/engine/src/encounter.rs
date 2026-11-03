@@ -336,7 +336,7 @@ pub(crate) fn spy_encounter(
         "SpyContact",
         BTreeMap::from([(
             expected_owner,
-            json!({"kind":"SpyContact","sender":f.owner,"origin":f.origin_coordinates,"target":target.coordinates,"at":i.at,"probability_ppm":detection.probability_ppm,"detected":detection.detected}),
+            json!({"kind":"SpyContact","sender":f.owner,"origin":f.origin_coordinates,"origin_kind":s.bodies.get(&f.intent.origin).map(|b|b.kind),"target":target.coordinates,"target_kind":target.kind,"at":i.at,"probability_ppm":detection.probability_ppm,"detected":detection.detected}),
         )]),
     );
     audits.push(json!({"kind":"EspionageRisk","result":detection}));
@@ -708,7 +708,7 @@ fn combat_encounters(
             .iter()
             .any(|p| p.owner == owner && p.side == BattleSide::Defender);
         let mut payload = if contact_lost && !defender {
-            json!({"kind":"ContactLost","at":i.at,"target":target.coordinates,"own_lost_ships":own.iter().flat_map(|f| before[&f.id].1.iter()).map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>()})
+            json!({"kind":"ContactLost","at":i.at,"target":target.coordinates,"target_kind":target.kind,"own_lost_ships":own.iter().flat_map(|f| before[&f.id].1.iter()).map(|s|json!({"ship_type":s.ship_type,"count":s.count.to_string()})).collect::<Vec<_>>()})
         } else {
             full.clone()
         };

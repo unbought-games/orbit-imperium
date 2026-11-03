@@ -329,9 +329,11 @@ it('keeps legacy combat coordinates and never borrows identity for contact-lost 
     target_name: 'Hidden',
     target_kind: 'Moon',
   })
-  expect(restricted).toContain('Combat report · [2:3:4]')
+  expect(restricted).toContain('Combat report · Moon · [2:3:4]')
   expect(restricted).not.toContain('Hidden')
-  expect(restricted).not.toContain('Moon')
+  expect(render({ kind: 'ContactLost', target: targetCoordinates })).toContain(
+    'Combat report · [2:3:4]',
+  )
 })
 
 it('shows newly collected resources and preserves explicit zero harvests', () => {

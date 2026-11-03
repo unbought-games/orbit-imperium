@@ -330,3 +330,10 @@ test-oidc-provider:
 .PHONY: qualify-runtime
 qualify-runtime:
 	$(TIMEOUT) runtime-qualification sh scripts/qualify-runtime.sh
+
+# Moon movement, combat, holding and lifecycle regression coverage.
+.PHONY: test-moon-fleets
+test-moon-fleets:
+	cargo nextest run -p orbit-engine --test missions
+	cargo nextest run -p orbit-application --lib
+	npm test

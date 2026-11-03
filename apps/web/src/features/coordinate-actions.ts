@@ -13,7 +13,7 @@ export function coordinateMissions(
     debris?: boolean
   },
 ) {
-  if (view.protocol !== 4 || kind === 'moon') return []
+  if (view.protocol !== 4) return []
   const own = view.bodies.find(
     (b) =>
       b.kind.toLowerCase() === kind &&

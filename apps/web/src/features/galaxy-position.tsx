@@ -39,6 +39,7 @@ export function GalaxyPosition({
   flights = [],
   now,
   espionage,
+  moonEspionage,
   missileAction,
 }: {
   readOnly?: boolean
@@ -53,11 +54,20 @@ export function GalaxyPosition({
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
     opener?: HTMLElement | null,
+    targetKind?: DispatchDraft['targetKind'],
   ) => void
   flights?: GalaxyFlight[]
   now?: number
   missileAction?: ComponentProps<typeof GalaxyActionMenu>['missileAction']
   espionage?: {
+    send: () => void
+    busy: boolean
+    paused?: boolean
+    reason: string | null
+    error: string | null
+    notice?: string | null
+  }
+  moonEspionage?: {
     send: () => void
     busy: boolean
     paused?: boolean
@@ -171,6 +181,19 @@ export function GalaxyPosition({
             </div>
           )}
           <GalaxyFlightSummary flights={flights} now={now} target={target} />
+          {moonEspionage?.error && (
+            <ErrorBannerMessage>
+              <p role="alert">
+                Espionage at moon{' '}
+                <CoordinateLink
+                  at={position.coordinates}
+                  origin={origin}
+                  target="moon"
+                />{' '}
+                · {moonEspionage.error}
+              </p>
+            </ErrorBannerMessage>
+          )}
           {espionage?.notice && (
             <ErrorBannerMessage>
               <p role="alert">
@@ -182,7 +205,16 @@ export function GalaxyPosition({
           )}
         </div>
         {position.moon && (
-          <GalaxyMoon moon={position.moon} coordinates={coordinates} />
+          <GalaxyMoon
+            position={position}
+            player={player}
+            origin={origin}
+            missions={missions}
+            colony={colony}
+            readOnly={readOnly}
+            onDraft={onDraft}
+            espionage={moonEspionage}
+          />
         )}
         {debris && (
           <GalaxyDebris

@@ -148,7 +148,9 @@ export function reportPreview(
       : identity,
     coordinates: at,
     ...(preview.kind === 'MoonCreated' ||
-    (preview.kind === 'Combat' && preview.target_kind === 'Moon') ||
+    (preview.kind === 'Returned' || preview.kind === 'Recalled'
+      ? preview.origin_kind === 'Moon'
+      : 'target_kind' in preview && preview.target_kind === 'Moon') ||
     (preview.kind === 'Espionage' && preview.target?.kind === 'Moon')
       ? { targetKind: 'moon' as const }
       : {}),
