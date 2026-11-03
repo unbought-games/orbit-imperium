@@ -40,8 +40,8 @@ pub fn solar_satellite_rule(rules: &Ruleset) -> Option<&SolarSatelliteRule> {
 /// Full output of one satellite in micro-energy, before the group setting.
 pub fn solar_satellite_unit_energy(body: &Body, rules: &Ruleset) -> Result<i64, GameError> {
     let rule = solar_satellite_rule(rules).ok_or(GameError::UnavailableContent)?;
-    if body.kind != BodyKind::Planet {
-        return Err(GameError::UnavailableContent);
+    if body.kind == BodyKind::Moon {
+        return Ok(0);
     }
     let temperature = i64::from(body.max_temperature)
         .checked_add(rule.temperature_offset)

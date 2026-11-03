@@ -125,7 +125,7 @@ fn terraformer_checks_gross_power_completed_gates_and_rechecks_before_payment() 
         (0, 12, 100, BodyKind::Planet, GameError::PrerequisiteMissing),
         (1, 11, 100, BodyKind::Planet, GameError::PrerequisiteMissing),
         (1, 12, 90, BodyKind::Planet, GameError::EnergyRequired),
-        (1, 12, 100, BodyKind::Moon, GameError::BodyKindNotAllowed),
+        (1, 12, 100, BodyKind::Moon, GameError::UnavailableContent),
     ] {
         let mut missing = s.clone();
         missing

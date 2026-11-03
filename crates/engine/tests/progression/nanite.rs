@@ -530,7 +530,7 @@ fn nanite_locks_are_planet_local_and_research_can_overlap() {
             body: target,
             building: Building::NaniteFactory,
         },
-        GameError::BodyKindNotAllowed,
+        GameError::UnavailableContent,
     );
     s.bodies.get_mut(&target).unwrap().kind = BodyKind::Planet;
     s.bodies.get_mut(&target).unwrap().fields = s.bodies[&target].levels.values().sum();

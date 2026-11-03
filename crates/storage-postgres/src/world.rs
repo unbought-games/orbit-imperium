@@ -302,6 +302,29 @@ pub(crate) async fn load_selected(
         }
         s.coverage.bodies.insert(id);
     }
+    if let Some(input_id) = input_id
+        && rules.artifact.world.as_ref().is_some_and(|w| w.moons)
+        && matches!(
+            input,
+            Input::Event(
+                ScheduledEvent::FleetLegDue {
+                    expected_leg: MissionLeg::Outbound,
+                    ..
+                } | ScheduledEvent::AttackGroupDue { .. }
+            )
+        )
+    {
+        let id = BodyId(derived_id(input_id, "moon:0"));
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE id=$1)")
+            .bind(id.0)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(db_error)?;
+        if exists {
+            return Err(StoreError::CorruptData);
+        }
+        s.coverage.bodies.insert(id);
+    }
     for f in &fleets {
         if selected.owners.contains(&f.owner) {
             s.coverage.bodies.insert(f.intent.origin);
@@ -452,6 +475,17 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
             }
         }
     }
+    let moons: Vec<MoonGenesis> = sqlx::query_scalar(
+        "SELECT data FROM moon_genesis WHERE universe=$1 AND id=ANY($2) ORDER BY id",
+    )
+    .bind(u.0)
+    .bind(&body_ids)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?
+    .into_iter()
+    .map(decode)
+    .collect::<Result<_, _>>()?;
     let colonies: Vec<ColonyGenesis> = sqlx::query_scalar(
         "SELECT data FROM colony_genesis WHERE universe=$1 AND id=ANY($2) ORDER BY id",
     )
@@ -574,6 +608,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
         homeworlds,
         planet_slots,
         records: WorldRecords {
+            moons: moons.into_iter().map(|m| (m.body, m)).collect(),
             attack_groups: attack_groups.into_iter().map(|g| (g.id, g)).collect(),
             depot_supplies: depot_supplies.into_iter().map(|s| (s.id, s)).collect(),
             abandonments: abandonments.into_iter().map(|t| (t.body, t)).collect(),
@@ -736,6 +771,20 @@ pub(crate) async fn save(
         put(tx, u, "planet_abandonments", id.0, t).await?;
         sqlx::query("INSERT INTO planet_slot_revisions VALUES($1,$2,$3,$4,2) ON CONFLICT(universe,galaxy,system,position) DO UPDATE SET revision=planet_slot_revisions.revision+1")
             .bind(u.0).bind(t.coordinates.galaxy as i32).bind(t.coordinates.system as i32).bind(t.coordinates.position as i32).execute(&mut **tx).await.map_err(db_error)?;
+    }
+    for (id, genesis) in &c.records.moons {
+        if !old.moons.contains_key(id) {
+            sqlx::query("INSERT INTO moon_genesis(universe,id,parent,data) VALUES($1,$2,$3,$4)")
+                .bind(u.0)
+                .bind(id.0)
+                .bind(genesis.parent.0)
+                .bind(sqlx::types::Json(genesis))
+                .execute(&mut **tx)
+                .await
+                .map_err(db_error)?;
+        } else if old.moons.get(id) != Some(genesis) {
+            return Err(StoreError::CorruptData);
+        }
     }
     for (id, genesis) in &c.records.colonies {
         if !old.colonies.contains_key(id) {

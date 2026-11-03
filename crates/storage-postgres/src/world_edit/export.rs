@@ -113,6 +113,9 @@ impl PgStore {
         )
         .await?;
         let w = &s.world.as_ref().ok_or("missing world")?.records;
+        if !w.moons.is_empty() {
+            return Err("scenario export does not yet support moons; use a database backup to preserve the complete world".into());
+        }
         let (_, manifest) = crate::bootstrap::load_manifest(&mut tx, u).await?;
         let mut edits = Vec::new();
         let names: BTreeMap<_, _> = manifest

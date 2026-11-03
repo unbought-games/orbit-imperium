@@ -316,6 +316,7 @@ pub(crate) fn finalize(
     c.research.push(research);
     w.lots.retain(|lot| lot.owner != player);
     w.colonies.retain(|id, _| !bodies.contains(id));
+    w.moons.retain(|id, _| !bodies.contains(id));
     w.activity.retain(|id, _| !bodies.contains(id));
     let p = w
         .policies

@@ -241,6 +241,10 @@ export function Galaxy({
                   </p>
                 )}
                 <GalaxyPosition
+                  readOnly={
+                    model.view?.bodies.find((b) => b.id === origin)?.kind ===
+                    'Moon'
+                  }
                   position={position}
                   missileAction={
                     position.body &&

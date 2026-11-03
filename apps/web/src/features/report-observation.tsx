@@ -231,6 +231,27 @@ function ReportObservationContent({
   shared = false,
 }: ObservationProps) {
   const kind = payload.kind
+  if (kind === 'MoonCreated')
+    return (
+      <Panel
+        as="section"
+        aria-label="Report observation"
+        className={styles.observation}
+      >
+        <Heading level={3}>Moon created</Heading>
+        <Text>
+          A moon formed from the debris of a battle at{' '}
+          <CoordinateLink at={payload.coordinates} target="moon" />.
+        </Text>
+        <Text>
+          {Number(payload.diameter_km).toLocaleString()} km diameter · 1 field
+        </Text>
+        <Text>
+          The debris remains available to recycle. Moon operations are not
+          available yet.
+        </Text>
+      </Panel>
+    )
   if (kind === 'PlanetAbandoned') {
     const abandonment =
       payload.abandonment as components['schemas']['Abandonment4']

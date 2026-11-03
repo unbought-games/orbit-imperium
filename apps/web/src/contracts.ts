@@ -6168,7 +6168,7 @@ export interface components {
             };
         };
         BodyV3: {
-            /** @description Planet diameter from saved homeworld or colony creation metadata. Omitted when unavailable and for moons. */
+            /** @description Body diameter from authoritative creation metadata. Omitted when unavailable. */
             diameter_km?: number;
             /** @description Minimum planet temperature in degrees Celsius, derived from authoritative current climate. Omitted for moons and older servers. */
             min_temperature?: number;
@@ -6191,6 +6191,7 @@ export interface components {
             /** @description Public planet name; omitted until named. Display the body kind as the fallback. */
             name?: string;
             silo?: components["schemas"]["SiloCapacity4"];
+            moon?: components["schemas"]["Moon4"];
         };
         BoundView3: {
             viewer_revision: components["schemas"]["Decimal"];
@@ -6798,6 +6799,7 @@ export interface components {
             body: components["schemas"]["PublicBody4"] | null;
             debris: components["schemas"]["PublicDebris4"] | null;
             abandoned_until?: number;
+            moon?: components["schemas"]["PublicMoon4"];
         };
         GalaxySystem4: {
             galaxy: number;
@@ -7149,6 +7151,7 @@ export interface components {
                 return_at: number;
                 loot: components["schemas"]["Resources"];
             }[];
+            moon_creation?: components["schemas"]["MoonCreation4"];
         };
         ContactLostPayload4: {
             /** @constant */
@@ -7158,7 +7161,7 @@ export interface components {
             own_lost_ships: components["schemas"]["PublicShip4"][];
             own_cargo_loss: components["schemas"]["Resources"];
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -7541,6 +7544,11 @@ export interface components {
             kind: "PlanetAbandoned";
             coordinates: components["schemas"]["Coordinates"];
             release_at: number;
+        } | {
+            /** @constant */
+            kind: "MoonCreated";
+            coordinates: components["schemas"]["Coordinates"];
+            diameter_km: number;
         };
         RankingPlayer: {
             /** Format: uuid */
@@ -8561,6 +8569,33 @@ export interface components {
                 /** Format: uuid */
                 body: string | null;
             }[];
+        };
+        Moon4: {
+            /** Format: uuid */
+            parent: string;
+            created_at: number;
+        };
+        PublicMoon4: {
+            /** Format: uuid */
+            id: string;
+            diameter_km: number;
+        };
+        MoonCreation4: {
+            chance_percent: number;
+            /** Format: uuid */
+            moon?: string;
+            diameter_km?: number;
+        };
+        MoonCreatedPayload4: {
+            /** @constant */
+            kind: "MoonCreated";
+            at: number;
+            /** Format: uuid */
+            body: string;
+            /** Format: uuid */
+            parent: string;
+            coordinates: components["schemas"]["Coordinates"];
+            diameter_km: number;
         };
     };
     responses: never;

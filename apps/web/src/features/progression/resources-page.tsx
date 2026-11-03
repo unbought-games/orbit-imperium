@@ -9,7 +9,10 @@ import { label } from '../../ui/format'
 import type { components } from '../../contracts'
 import type { ProgressionProps } from './shared'
 import { resourceBuildings } from './resource-buildings'
-import { buildingUnavailableReason } from './building-availability'
+import {
+  buildingUnavailableReason,
+  visibleMoonBuilding,
+} from './building-availability'
 import { requirementKey, technologyLevel } from './technology-dialog'
 import { BuildingDetails } from './building-details'
 import { WorkSummaries } from '../work-summaries'
@@ -36,6 +39,12 @@ export function ResourcesPage(props: ProgressionProps) {
     )
   return (
     <>
+      {body.kind === 'Moon' && (
+        <p role="status">
+          Moon construction is not available yet. You can inspect building
+          details.
+        </p>
+      )}
       <WorkSummaries
         view={view}
         body={body}
@@ -46,53 +55,60 @@ export function ResourcesPage(props: ProgressionProps) {
       <CatalogSection
         title="Resource buildings"
         actions={
-          <ButtonLink
-            variant="ghost"
-            size="icon-small"
-            aria-label="Resource settings"
-            title="Resource settings"
-            {...routeTarget(universeName, 'resource-settings', body.id)}
-          >
-            <Settings size={14} aria-hidden="true" />
-          </ButtonLink>
+          body.kind === 'Planet' && (
+            <ButtonLink
+              variant="ghost"
+              size="icon-small"
+              aria-label="Resource settings"
+              title="Resource settings"
+              {...routeTarget(universeName, 'resource-settings', body.id)}
+            >
+              <Settings size={14} aria-hidden="true" />
+            </ButtonLink>
+          )
         }
       >
         <ImageCatalog>
-          {resourceBuildings.map((building) => {
-            const level = body.levels[building.id as keyof typeof body.levels]
-            const catalog = view.catalog.find(
-              (c) => c.key.kind === 'Building' && c.key.id === building.id,
-            )
-            return (
-              <ProgressionTile
-                key={building.id}
-                model={model}
-                view={view}
-                request={{
-                  type: 'Upgrade',
-                  body: body.id,
-                  building: building.id as components['schemas']['BuildingId3'],
-                }}
-                title={label(building.id)}
-                aria-label={`Upgrade ${label(building.id)}`}
-                level={level ?? 0}
-                progress={progress?.building === building.id ? progress : null}
-                art={building.art}
-                locked={catalog?.requirements.some(
-                  (r) => technologyLevel(requirementKey(r), props) < r.level,
-                )}
-                disabled={
-                  !!buildingUnavailableReason(catalog, body, building.id)
-                }
-                disabledReason={buildingUnavailableReason(
-                  catalog,
-                  body,
-                  building.id,
-                )}
-                {...selection.link(building.id)}
-              />
-            )
-          })}
+          {resourceBuildings
+            .filter((b) => body.kind !== 'Moon' || visibleMoonBuilding(b.id))
+            .map((building) => {
+              const level = body.levels[building.id as keyof typeof body.levels]
+              const catalog = view.catalog.find(
+                (c) => c.key.kind === 'Building' && c.key.id === building.id,
+              )
+              return (
+                <ProgressionTile
+                  key={building.id}
+                  model={model}
+                  view={view}
+                  request={{
+                    type: 'Upgrade',
+                    body: body.id,
+                    building:
+                      building.id as components['schemas']['BuildingId3'],
+                  }}
+                  title={label(building.id)}
+                  aria-label={`Upgrade ${label(building.id)}`}
+                  level={level ?? 0}
+                  progress={
+                    progress?.building === building.id ? progress : null
+                  }
+                  art={building.art}
+                  locked={catalog?.requirements.some(
+                    (r) => technologyLevel(requirementKey(r), props) < r.level,
+                  )}
+                  disabled={
+                    !!buildingUnavailableReason(catalog, body, building.id)
+                  }
+                  disabledReason={buildingUnavailableReason(
+                    catalog,
+                    body,
+                    building.id,
+                  )}
+                  {...selection.link(building.id)}
+                />
+              )
+            })}
         </ImageCatalog>
       </CatalogSection>
     </>

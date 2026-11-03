@@ -1,3 +1,4 @@
+import { MoonCreationSummary } from './moon-creation-summary'
 import { ResourceSummary } from '../ui/number-value'
 import type { ReactNode } from 'react'
 import { BodyIdentity } from './body-identity'
@@ -283,6 +284,7 @@ export function CombatReport({
           </p>
         )}
       </header>
+      <MoonCreationSummary value={payload.moon_creation} />
       {actions && <div className={styles.actions}>{actions}</div>}
       <div className={styles.resources}>
         {report.resources.map((group) => (

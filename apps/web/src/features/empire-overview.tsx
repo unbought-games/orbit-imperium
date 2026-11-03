@@ -554,6 +554,18 @@ function PlanetDossier({
             {body.fields_used}/{body.fields} fields · {body.fields_reserved}{' '}
             reserved
           </span>
+          {body.kind === 'Moon' &&
+            'diameter_km' in body &&
+            body.diameter_km !== undefined && (
+              <span className={styles.bodyFacts}>
+                {body.diameter_km.toLocaleString()} km diameter
+              </span>
+            )}
+          {body.kind === 'Moon' && 'moon' in body && body.moon && (
+            <span className={styles.bodyFacts}>
+              Created {new Date(body.moon.created_at).toLocaleDateString()}
+            </span>
+          )}
           {body.kind === 'Planet' && (
             <span className={styles.bodyFacts}>
               {physicalFacts.diameter && `${physicalFacts.diameter} · `}
@@ -580,7 +592,13 @@ function PlanetDossier({
           <PlanetActions model={model} body={body} />
         )}
       </header>
-      <dl className={styles.resources} aria-label="Planet resources">
+      {body.kind === 'Moon' && (
+        <p>
+          Moon operations are not available yet. Buildings are available to
+          inspect.
+        </p>
+      )}
+      <dl className={styles.resources} aria-label={`${body.kind} resources`}>
         {resourceNames.map((name) => (
           <div
             key={name}

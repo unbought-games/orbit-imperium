@@ -52,6 +52,8 @@ export function EconomyScreen() {
 export function ResourceSettingsScreen() {
   const { view, body, model } = useGameScreen()
   if (!body || view.protocol === 2) return null
+  if (body.kind === 'Moon')
+    return <Text>Moons have no resource production.</Text>
   return (
     <Production
       key={`${bindingKey(view.binding)}:${body.id}`}
@@ -86,6 +88,8 @@ export function OperationsScreen({
           }
         />
       )
+    if (route.page === 'dispatch' && body.kind === 'Moon')
+      return <Text>Moon fleet operations are not available yet.</Text>
     if (route.page === 'dispatch')
       return (
         <Dispatch

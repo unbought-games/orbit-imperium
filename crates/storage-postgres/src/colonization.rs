@@ -53,11 +53,20 @@ pub(crate) async fn insert_colony(
     {
         return Err(StoreError::CorruptData);
     }
-    sqlx::query("INSERT INTO bodies(id,universe,owner,kind,galaxy,system,position,fields,max_temperature,amounts,carry,checkpoint_at,revision,name) VALUES($1,$2,$3,'Planet',$4,$5,$6,$7,$8,$9,$10,$11,0,$12)")
+    insert_body(tx, i, body).await
+}
+
+/// Initialize local collections and owned membership for either kind of body.
+pub(crate) async fn insert_body(
+    tx: &mut Tx<'_>,
+    i: &OrderedInput,
+    body: &Body,
+) -> Result<(), StoreError> {
+    sqlx::query("INSERT INTO bodies(id,universe,owner,kind,galaxy,system,position,fields,max_temperature,amounts,carry,checkpoint_at,revision,name) VALUES($1,$2,$3,$13,$4,$5,$6,$7,$8,$9,$10,$11,0,$12)")
         .bind(body.id.0).bind(i.universe.0).bind(body.owner.0)
         .bind(body.coordinates.galaxy as i32).bind(body.coordinates.system as i32).bind(body.coordinates.position as i32)
         .bind(i64::from(body.fields)).bind(body.max_temperature).bind(sqlx::types::Json(body.checkpoint.amounts))
-        .bind(sqlx::types::Json(body.checkpoint.carry)).bind(body.checkpoint.at).bind(&body.name).execute(&mut **tx).await.map_err(db_error)?;
+        .bind(sqlx::types::Json(body.checkpoint.carry)).bind(body.checkpoint.at).bind(&body.name).bind(match body.kind { BodyKind::Planet => "Planet", BodyKind::Moon => "Moon" }).execute(&mut **tx).await.map_err(db_error)?;
     for (building, level) in &body.levels {
         sqlx::query("INSERT INTO building_levels(body,building,level) VALUES($1,$2,$3)")
             .bind(body.id.0)

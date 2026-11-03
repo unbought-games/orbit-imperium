@@ -159,6 +159,8 @@ pub struct BoundProgressionOptions {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BodyV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub moon: Option<MoonDto>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diameter_km: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_temperature: Option<i32>,
@@ -181,6 +183,11 @@ pub struct BodyV3 {
     pub fields_reserved: u32,
     pub energy: EnergyDto,
     pub inventories: Vec<InventoryDto>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MoonDto {
+    pub parent: BodyId,
+    pub created_at: i64,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ColonyDto {
@@ -424,6 +431,7 @@ pub(crate) fn progression_projection(
         let energy = &economy.energy;
         let rate = economy.gross;
         bodies.push(BodyV3 {
+            moon: None,
             diameter_km: facts
                 .homeworld
                 .as_ref()
@@ -431,6 +439,7 @@ pub(crate) fn progression_projection(
                 .map(|(_, homeworld)| homeworld.diameter_km),
             min_temperature: (b.kind == BodyKind::Planet).then_some(b.max_temperature - 40),
             silo: missile_rules(&facts.rules)
+                .filter(|_| b.kind == BodyKind::Planet)
                 .map(|r| silo_capacity(s, b, r))
                 .transpose()
                 .map_err(|_| ServiceError::InvariantFailure)?,
@@ -509,6 +518,7 @@ pub(crate) fn progression_projection(
             .into_iter()
             .chain(satellite_editable.then_some("solar_satellite"))
             .chain(fusion_rule(&facts.rules).map(|_| "fusion_reactor"))
+            .filter(|_| b.kind == BodyKind::Planet)
             .map(str::to_owned)
             .collect(),
             gross_per_hour: rate.into(),

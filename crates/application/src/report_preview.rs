@@ -7,6 +7,7 @@ pub fn report_preview(payload: &Value) -> Value {
         return serde_json::json!({"kind":"PlanetAbandoned", "coordinates":payload["abandonment"]["coordinates"], "release_at":payload["abandonment"]["release_at"]});
     }
     let fields: &[&str] = match payload["kind"].as_str() {
+        Some("MoonCreated") => &["coordinates", "diameter_km"],
         Some("MissileImpact") => &[
             "attacker",
             "origin",

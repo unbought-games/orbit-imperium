@@ -95,8 +95,8 @@ export function useDispatch({
   )?.body
   const colony = colonizationStatus(view, Number(position))
   const localTargetProblem =
-    targetKind === 'moon' && (mission === 'Colonize' || mission === 'Harvest')
-      ? 'Choose a planet position for colonization or debris for harvesting.'
+    body.kind === 'Moon' || targetKind === 'moon'
+      ? 'Moon fleet operations are not available yet.'
       : targetKind === 'debris' && mission !== 'Harvest'
         ? 'Choose Harvest for a debris field.'
         : mission === 'Colonize' && colony.reason

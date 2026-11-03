@@ -22,6 +22,7 @@ import {
   useRole,
   FloatingFocusManager,
   FloatingPortal,
+  type Placement,
 } from '@floating-ui/react'
 import styles from './popover.module.css'
 
@@ -36,6 +37,7 @@ export function Popover({
   link,
   surfaceClassName,
   showTitle = true,
+  placement = 'bottom',
   triggerRef,
 }: {
   label: string
@@ -45,6 +47,7 @@ export function Popover({
   triggerRef?: Ref<HTMLButtonElement>
   surfaceClassName?: string
   showTitle?: boolean
+  placement?: Placement
   link?: ReactElement<ComponentPropsWithRef<'a'>>
 }) {
   const [open, setOpen] = useState(false)
@@ -55,7 +58,7 @@ export function Popover({
       if (reason === 'escape-key') event?.preventDefault()
       setOpen(next)
     },
-    placement: 'bottom',
+    placement,
     middleware: [offset(8), flip(), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
   })

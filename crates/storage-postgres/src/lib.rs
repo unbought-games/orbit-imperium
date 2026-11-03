@@ -5,6 +5,7 @@ mod colonization;
 mod empire_deletion;
 mod holding;
 mod insignias;
+mod moons;
 mod public_universe;
 pub use public_universe::PublicationClaim;
 mod rankings;

@@ -100,6 +100,7 @@ pub fn take_asset_lots(
 pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
     let w = world_facts(s)?;
     validate_colonies(s)?;
+    validate_moons(s)?;
     for (&owner, player) in &s.players {
         let policy = w
             .records

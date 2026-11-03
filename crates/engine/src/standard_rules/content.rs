@@ -60,6 +60,17 @@ fn unit(out: &mut Vec<Patch>, kind: &str, id: &str, content: &Value) {
 
 pub(super) fn patches() -> Vec<Patch> {
     let mut out = Vec::new();
+    out.push(Patch::field("/world/moons", json!(true)));
+    for id in ["LunarBase", "SensorPhalanx", "JumpGate"] {
+        out.push(Patch::entry(
+            "/catalog",
+            "key",
+            json!({
+                "key":{"kind":"Building","id":id}, "body_kinds":["Moon"],
+                "enabled":false, "mobile":false, "requirements":[]
+            }),
+        ));
+    }
     // Earlier released content is included so the original signup baseline can upgrade too.
     let impulse = read(include_bytes!(
         "../../../../rules/content/impulse-drive.json"

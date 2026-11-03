@@ -1,5 +1,31 @@
 # PR and main test performance audit
 
+## November 2, 2026: creation-only moon expectations
+
+PR #321 CI run 41573755527 exposed two obsolete browser expectations after moon
+creation was enabled. The simulator journey expected an operational moon-bound
+fleet estimate after entering Dispatch; the creation-only boundary correctly
+returned “Moon fleet operations are not available yet.” The empire viewport
+case looked for “Planet resources” on all four bodies, including its moon.
+
+Inspected both scenarios and their history before this single repair. The
+simulator journey now uses a planet while preserving its hypothetical estimates,
+response ordering, draft transfer and authoritative launch rejection assertions.
+The existing pure draft test retains observed-moon identity coverage. The moon
+browser journey additionally checks that a planet cannot dispatch to its moon;
+engine coverage checks both moon quotes and estimates. The empire case uses each
+fixture body's exact kind for its resource label and retains all viewport and
+content assertions.
+
+The caller audit also found two existing `dispatch-validation.spec.ts` moon
+scenarios awaiting `ResolveDestination` or clicking a now-disabled Review
+control. Shard 4 remained running because those requests cannot occur in this
+release. Cancelled that obsolete run and replaced both waits with explicit moon
+identity, blocked-state, no-quote/no-launch assertions. The coordinate-edit case
+still switches back to a real colony. No timeout or retry was added. This PR
+owns this one repair attempt and focused verification for all four scenarios;
+no separate follow-up is left unassigned.
+
 ## November 2, 2026: startup lock-isolation checks
 
 PR #319 merge-group run 41563892537 failed

@@ -83,6 +83,21 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
         }
         assert_eq!(next.artifact.ships[&ShipType::LargeCargo].capacity, 25000);
         assert!(next.colonization());
+        assert!(next.artifact.world.as_ref().unwrap().moons);
+        for id in [
+            Building::LunarBase,
+            Building::SensorPhalanx,
+            Building::JumpGate,
+        ] {
+            let entry = next
+                .artifact
+                .catalog
+                .iter()
+                .find(|entry| entry.key == CatalogKey::Building(id))
+                .unwrap();
+            assert!(!entry.enabled);
+            assert_eq!(entry.body_kinds, [BodyKind::Moon].into());
+        }
         assert!(
             next.artifact
                 .progression

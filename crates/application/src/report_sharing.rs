@@ -234,6 +234,10 @@ pub fn project_shared_report_with_identity(
     let mut payload = fields(source, &["kind", "at", "observed_at"]);
     match kind {
         "Combat" => {
+            if let Some(creation) = source.get("moon_creation") {
+                // Public outcome only: never share the internal body ID or random evidence.
+                payload["moon_creation"] = fields(creation, &["chance_percent", "diameter_km"]);
+            }
             for key in ["outcome", "mission", "target_kind"] {
                 if let Some(value) = fields(source, &[key]).get(key) {
                     payload[key] = value.clone();
@@ -544,7 +548,7 @@ mod tests {
         let owner = PlayerId(uuid::Uuid::from_u128(1));
         let fleet = uuid::Uuid::from_u128(2);
         let p = json!({"owner":owner,"origin":{"Fleet":fleet,"secret":"SECRET"},"side":"Attacker","technology":[1,2,3],"units":[{"item":{"kind":"Ship","id":"LightFighter","secret":"SECRET"},"count":"9007199254740991999","private":"SECRET"}]});
-        let source = json!({"kind":"Combat","participants":[p.clone()],"survivors":[p.clone()],"rounds":[{"number":1,"start":[p.clone()],"end":[p.clone()],"fire":[p]}],"return_at":999999,"private":"SECRET","loot":{"metal":"9007199254740991999"}});
+        let source = json!({"kind":"Combat","moon_creation":{"chance_percent":20,"diameter_km":8366,"moon":"SECRET","draw":0},"participants":[p.clone()],"survivors":[p.clone()],"rounds":[{"number":1,"start":[p.clone()],"end":[p.clone()],"fire":[p]}],"return_at":999999,"private":"SECRET","loot":{"metal":"9007199254740991999"}});
         let report = project_shared_report(
             ReportId::default(),
             1000,
@@ -556,6 +560,10 @@ mod tests {
             },
         )
         .unwrap();
+        assert_eq!(
+            report.payload["moon_creation"],
+            json!({"chance_percent":20,"diameter_km":8366})
+        );
         let text = serde_json::to_string(&report).unwrap();
         for private in [
             owner.to_string(),

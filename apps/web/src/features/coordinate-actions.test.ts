@@ -24,11 +24,7 @@ it('derives missions from ownership, occupancy, target kind and enabled capabili
     coordinateMissions(view, { ...at, position: 4 }, 'planet', { empty: true }),
   ).toEqual(['Colonize'])
   expect(coordinateMissions(view, at, 'debris')).toEqual(['Harvest'])
-  expect(coordinateMissions(view, at, 'moon', { owner: 'other' })).toEqual([
-    'Attack',
-    'Espionage',
-    'Transport',
-  ])
+  expect(coordinateMissions(view, at, 'moon', { owner: 'other' })).toEqual([])
   expect(
     coordinateMissions({ ...view, capabilities: [] }, at, 'planet'),
   ).toEqual([])

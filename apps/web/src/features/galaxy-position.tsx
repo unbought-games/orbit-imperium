@@ -11,6 +11,7 @@ import { dispatchFailure } from '../client-model/dispatch-validation'
 import { classes } from '../ui/classes'
 import type { GalaxyFlight } from '../client-model/galaxy-fleets'
 import { GalaxyFlightSummary } from './galaxy-flight-summary'
+import { GalaxyMoon } from './galaxy-moon'
 import { GalaxyDebris } from './galaxy-debris'
 import { GalaxySpyButton } from './galaxy-spy-button'
 import { GalaxyActionMenu } from './galaxy-action-menu'
@@ -27,6 +28,7 @@ import { InfoTooltip } from '../ui/info-tooltip'
 
 export function GalaxyPosition({
   position,
+  readOnly = false,
   player,
   playerNames,
   playerIdentity,
@@ -39,6 +41,7 @@ export function GalaxyPosition({
   espionage,
   missileAction,
 }: {
+  readOnly?: boolean
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
   playerIdentity?: ReactNode
@@ -178,6 +181,9 @@ export function GalaxyPosition({
             </ErrorBannerMessage>
           )}
         </div>
+        {position.moon && (
+          <GalaxyMoon moon={position.moon} coordinates={coordinates} />
+        )}
         {debris && (
           <GalaxyDebris
             debris={debris}
@@ -185,36 +191,40 @@ export function GalaxyPosition({
             onHarvest={
               actions.some(
                 (action) => action.mission === 'Harvest' && !action.reason,
-              )
+              ) && !readOnly
                 ? (opener) => onDraft(coordinates, 'Harvest', opener)
                 : undefined
             }
           />
         )}
-        <div className={styles.quickActions}>
-          {canTarget && !owned && (
-            <GalaxySpyButton
-              key={`${origin}:${body.id}`}
-              name={body.name ?? target}
-              reason={spyReason}
-              busy={espionage?.busy}
-              paused={espionage?.paused}
-              error={espionage?.error}
-              onSend={() =>
-                espionage ? espionage.send() : onDraft(coordinates, 'Espionage')
-              }
+        {!readOnly && (
+          <div className={styles.quickActions}>
+            {canTarget && !owned && (
+              <GalaxySpyButton
+                key={`${origin}:${body.id}`}
+                name={body.name ?? target}
+                reason={spyReason}
+                busy={espionage?.busy}
+                paused={espionage?.paused}
+                error={espionage?.error}
+                onSend={() =>
+                  espionage
+                    ? espionage.send()
+                    : onDraft(coordinates, 'Espionage')
+                }
+              />
+            )}
+            <GalaxyActionMenu
+              missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
+              target={target}
+              coordinates={coordinates}
+              actions={actions}
+              missileAction={missileAction}
+              colonyNote={colony.reason ?? colony.warning}
+              onDraft={onDraft}
             />
-          )}
-          <GalaxyActionMenu
-            missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
-            target={target}
-            coordinates={coordinates}
-            actions={actions}
-            missileAction={missileAction}
-            colonyNote={colony.reason ?? colony.warning}
-            onDraft={onDraft}
-          />
-        </div>
+          </div>
+        )}
       </div>
     </article>
   )

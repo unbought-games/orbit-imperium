@@ -267,6 +267,8 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub moons: BTreeMap<BodyId, MoonGenesis>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub attack_groups: BTreeMap<OperationId, AttackGroup>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub depot_supplies: BTreeMap<InputId, DepotSupply>,
@@ -376,7 +378,6 @@ impl WorldRules {
             || self.rng != "oi-hmac-sha256-stream-v1"
             || self.protection != "exact-invested-5to1-5000-v1"
             || self.debris_cleanup != "monday-utc-existing-marker-v1"
-            || self.moons
         {
             return Err(RulesError::InvalidReference);
         }

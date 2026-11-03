@@ -101,6 +101,8 @@ mod building_benefit;
 pub use building_benefit::*;
 mod building_energy;
 pub use building_energy::*;
+mod moons;
+pub use moons::*;
 mod colonization;
 pub use colonization::*;
 

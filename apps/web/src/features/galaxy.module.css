@@ -41,10 +41,9 @@
 .positionList {
   list-style: none;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) minmax(180px, 0.7fr) var(
-      --galaxy-actions-width,
-      156px
-    );
+  grid-template-columns:
+    52px minmax(0, max-content) minmax(44px, 1fr) minmax(180px, 0.7fr)
+    var(--galaxy-actions-width, 156px);
   column-gap: 14px;
   row-gap: 0;
   margin: 0;
@@ -204,7 +203,7 @@
   font-size: 0.7rem;
 }
 .debris {
-  grid-column: 3;
+  grid-column: 4;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -235,7 +234,7 @@
   min-width: 0;
 }
 .quickActions {
-  grid-column: 4;
+  grid-column: 5;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -433,11 +432,11 @@
     width: 100%;
   }
   .positionList {
-    grid-template-columns: 45px minmax(0, 1fr) 112px 44px;
-    column-gap: 8px;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 96px 32px;
+    column-gap: 4px;
   }
   .positionSummary {
-    gap: 8px;
+    gap: 4px;
     padding: 12px;
   }
   .planet,
@@ -446,7 +445,7 @@
     height: 30px;
   }
   .quickActions {
-    grid-column: 4;
+    grid-column: 5;
     flex-direction: column;
     justify-self: end;
     gap: 2px;
@@ -518,4 +517,18 @@
   white-space: nowrap;
   font-size: 0.875rem;
   color: var(--text-muted);
+}
+
+.moonTrigger {
+  grid-column: 3;
+  justify-self: start;
+  width: 44px;
+  min-height: 44px;
+  padding: 6px;
+}
+.moonArt {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
