@@ -246,6 +246,10 @@ fn foreign_hold_returns_safely_and_its_original_departure_is_stale() {
     let deletion = apply(&mut s, result);
     let returning = &s.world.as_ref().unwrap().records.fleets[&held.id];
     assert_eq!(returning.leg, MissionLeg::Returning);
+    assert_eq!(
+        returning.return_reason,
+        Some(MissionReturnReason::InvalidTarget)
+    );
     assert_eq!(returning.ships, held.ships);
     assert_eq!(returning.cargo, held.cargo);
     assert_eq!(returning.due_at, cutoff + held.terms.duration_ms);

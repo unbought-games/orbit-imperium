@@ -925,6 +925,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 w.lots.extend(lots);
             }
             let f = MissionFleet {
+                return_reason: None,
                 id,
                 owner,
                 intent: q.intent.clone(),
@@ -1004,6 +1005,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 i.at - f.launched_at
             };
             f.leg = MissionLeg::Returning;
+            f.return_reason = Some(MissionReturnReason::VoluntaryRecall);
             if return_duration == 0 {
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
                 if is_probe_only_espionage(&f) {
@@ -1044,6 +1046,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
             } else if f.leg == MissionLeg::Holding {
                 f.leg = MissionLeg::Returning;
+                f.return_reason = Some(MissionReturnReason::MissionComplete);
                 f.due_at = deadline(i.at, f.terms.duration_ms)?;
                 schedule(&mut c, i, &f);
                 if let Some(host) = f.authorization.target_owner {
@@ -1051,6 +1054,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 }
             } else if f.leg == MissionLeg::Outbound {
                 let physical = target(s, &f.intent.destination, r);
+                let invalid_target = matches!(physical, Err(Fault::Game(GameError::NotFound)));
                 match physical {
                     Err(Fault::Game(GameError::NotFound)) => {
                         own_report(s, &mut w, i, &f, "MissionFailed")
@@ -1218,6 +1222,11 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     f.leg = MissionLeg::Destroyed;
                 } else {
                     f.leg = MissionLeg::Returning;
+                    f.return_reason = Some(if invalid_target {
+                        MissionReturnReason::InvalidTarget
+                    } else {
+                        MissionReturnReason::MissionComplete
+                    });
                     f.due_at = deadline(i.at, f.terms.duration_ms)?;
                     schedule(&mut c, i, &f);
                 }

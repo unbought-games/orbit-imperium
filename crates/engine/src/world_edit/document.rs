@@ -58,6 +58,7 @@ impl WorldEdit {
                 "resources",
                 "arrives_in",
                 "returning",
+                "return_reason",
                 "travel_time",
                 "valuation",
             ],
@@ -89,6 +90,9 @@ impl WorldEdit {
             {
                 return Err(format!("{key} is not supported by {op}"));
             }
+        }
+        if !self.returning && self.return_reason.is_some() {
+            return Err("return_reason requires a returning mission".into());
         }
         if self.all_planets && (self.planet.is_some() || self.user.is_none()) {
             return Err("all_planets requires user and cannot be combined with planet".into());
@@ -122,6 +126,7 @@ mod tests {
     #[test]
     fn wrong_fields_and_ambiguous_targets_fail() {
         for text in [
+            r#"{"op":"transport","return_reason":"VoluntaryRecall"}"#,
             r#"{"op":"message","user":"bob","ships":{"cruiser":1}}"#,
             r#"{"op":"set","planet":"home"}"#,
             r#"{"op":"set","all_planets":true}"#,

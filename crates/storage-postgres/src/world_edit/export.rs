@@ -371,6 +371,7 @@ impl PgStore {
                     .map(|(k, v)| (k.into(), v / SCALE))
                     .collect(),
                 returning: f.leg == MissionLeg::Returning,
+                return_reason: f.return_reason,
                 travel_time: Some(format!("{}ms", f.terms.duration_ms)),
                 arrives_in: Some(format!("{}ms", (f.due_at - at).max(1))),
                 valuation: Some(values(&w.lots, f.owner, AssetLocation::Fleet(f.id))),

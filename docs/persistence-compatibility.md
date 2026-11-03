@@ -92,3 +92,12 @@ compatibility/retry/commit tests; `make _db-corruption` covers integrity and loc
 unsupported-state handling. `scripts/test-db.sh` also accepts an optional native
 nextest filter expression as its second argument. Each run still owns and cleans
 up its own disposable database.
+
+## Mission return causes
+
+Causal `MissionFleet.return_reason` facts are independent of accepted terms.
+Migration 0033 proves active returning deployment causes from exact successful
+transition journals and refuses unclassifiable history. Old journals remain
+unchanged and use an explicit legacy replay adapter. See the
+[Sensor Phalanx compatibility contract](architecture/sensor-phalanx.md#causal-returns-and-compatibility)
+for upgrade ordering, omitted legacy fields and replay selection.

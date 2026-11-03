@@ -135,8 +135,18 @@ pub struct MissionAuthorization {
     pub input: InputId,
     pub policy_hash: Hash,
 }
+/// Causal transition evidence, independent of reports and timing. Missing means
+/// historical unknown, never an inferred recall or natural return.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MissionReturnReason {
+    VoluntaryRecall,
+    InvalidTarget,
+    MissionComplete,
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissionFleet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_reason: Option<MissionReturnReason>,
     pub id: FleetId,
     pub owner: PlayerId,
     pub intent: FleetIntent,
@@ -420,4 +430,23 @@ pub fn world_facts(s: &GameState) -> Result<&WorldFacts, InvariantError> {
     s.world
         .as_ref()
         .ok_or_else(|| InvariantError("missing mandatory R3 facts".into()))
+}
+
+/// None is retained historical unknown. Live storage migration resolves active
+/// returning Deploy before admission; scans must never guess this category.
+pub fn validate_mission_return_reason(f: &MissionFleet) -> Result<(), InvariantError> {
+    if f.return_reason.is_some()
+        && matches!(
+            f.leg,
+            MissionLeg::Outbound
+                | MissionLeg::Holding
+                | MissionLeg::Deployed
+                | MissionLeg::Colonized
+        )
+        || f.intent.mission == Mission::Deploy
+            && f.return_reason == Some(MissionReturnReason::MissionComplete)
+    {
+        return Err(InvariantError("inconsistent mission return reason".into()));
+    }
+    Ok(())
 }

@@ -332,10 +332,11 @@ pub(crate) fn arrive(
     else {
         return Err(invariant("group target"));
     };
-    if s.bodies
+    let valid_target = s
+        .bodies
         .get(&target)
-        .is_some_and(|b| b.owner == expected_owner && b.kind == expected_kind)
-    {
+        .is_some_and(|b| b.owner == expected_owner && b.kind == expected_kind);
+    if valid_target {
         crate::encounter::attack_group_encounter(s, i, &mut fleets, r, c, w, audits)?;
         crate::missions::signal(w, target, i, ActivityCause::Contact);
     } else {
@@ -350,6 +351,11 @@ pub(crate) fn arrive(
             f.leg = MissionLeg::Destroyed;
         } else {
             f.leg = MissionLeg::Returning;
+            f.return_reason = Some(if valid_target {
+                MissionReturnReason::MissionComplete
+            } else {
+                MissionReturnReason::InvalidTarget
+            });
             f.due_at = deadline(i.at, f.terms.duration_ms)?;
             crate::missions::schedule(c, i, &f);
         }
