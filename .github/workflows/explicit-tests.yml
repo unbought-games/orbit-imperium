@@ -43,6 +43,10 @@ env:
   CI: 'true'
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: '0'
+  # Keep source backtraces without duplicating dependency type/variable debug data
+  # in every test binary. These CARGO values also partition the Rust cache.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  CARGO_PROFILE_TEST_DEBUG: line-tables-only
   ORBIT_RULES_PREVIOUS_REF: ${{ inputs.previous_ref }}
 
 jobs:
@@ -100,6 +104,13 @@ jobs:
         env:
           SUITE: ${{ inputs.suite }}
         run: make test-explicit SUITE="$SUITE"
+      - name: Report Rust build disk usage
+        if: always()
+        run: |
+          df -h .
+          for path in target "$HOME/.cargo"; do
+            if [ -d "$path" ]; then du -sh "$path"; fi
+          done
       - name: Remove disposable containers and test files
         if: always()
         timeout-minutes: 10
