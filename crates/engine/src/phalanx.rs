@@ -1,4 +1,4 @@
-//! Paid-scan foundations. No command, charging, membership loader or live endpoint.
+//! Pure paid-scan eligibility and historical observation projection.
 //! Callers must settle earlier events and provide complete, snapshot-consistent facts.
 use crate::*;
 use serde::{Deserialize, Serialize};
@@ -137,6 +137,16 @@ pub fn phalanx_endpoints(
         .get(&fleet.intent.origin)
         .map(PhalanxEndpoint::from_body)
         .ok_or_else(|| InvariantError("missing phalanx origin binding".into()))?;
+    phalanx_endpoints_from_origin(fleet, origin)
+}
+/// Identity-only origin lookup for scan loaders; no foreign economy is needed.
+pub fn phalanx_endpoints_from_origin(
+    fleet: &MissionFleet,
+    origin: PhalanxEndpoint,
+) -> Result<PhalanxEndpoints, InvariantError> {
+    if origin.body != Some(fleet.intent.origin) || origin.coordinates != fleet.origin_coordinates {
+        return Err(InvariantError("phalanx origin identity mismatch".into()));
+    }
     let destination = match fleet.intent.destination {
         MissionDestination::Body {
             id, expected_kind, ..

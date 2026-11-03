@@ -314,6 +314,13 @@ fn world_capabilities(
             reason: "Available".into(),
         });
     }
+    if phalanx_enabled(rules) {
+        capabilities.push(CapabilityState {
+            capability: "ScanPlanet".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+    }
     if rules.attacks() {
         capabilities.push(CapabilityState {
             capability: "Attack".into(),

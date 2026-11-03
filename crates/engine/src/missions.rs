@@ -646,6 +646,16 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
     {
         return Err(invariant("invalid R3 binding"));
     }
+    if let Input::Command(Command::World {
+        action:
+            WorldAction::ScanPlanet {
+                source_moon,
+                target_planet,
+            },
+    }) = &i.payload
+    {
+        return crate::phalanx_command::resolve(s, i, r, *source_moon, *target_planet);
+    }
     let facts = world_facts(s)?;
     validate_asset_lineage(s)?;
     let mut w = facts.records.clone();

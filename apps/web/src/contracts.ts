@@ -6519,6 +6519,13 @@ export interface components {
         } | {
             /** @constant */
             type: "ExitVacation";
+        } | {
+            /** @constant */
+            type: "ScanPlanet";
+            /** Format: uuid */
+            source_moon: string;
+            /** Format: uuid */
+            target_planet: string;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -6565,6 +6572,7 @@ export interface components {
             executed_at: number;
             /** @constant */
             status: "Committed";
+            /** @description For ScanPlanet, exactly one ID: the committed recipient-only Phalanx report. Duplicate command delivery returns this same historical ID. */
             result_ids: string[];
             minimum_viewer_revision: components["schemas"]["Decimal"];
             /** @constant */
@@ -6746,14 +6754,14 @@ export interface components {
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -7175,7 +7183,7 @@ export interface components {
             /** @enum {unknown} */
             target_kind?: "Planet" | "Moon" | null;
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"] | components["schemas"]["PhalanxPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -7577,6 +7585,14 @@ export interface components {
             kind: "MoonCreated";
             coordinates: components["schemas"]["Coordinates"];
             diameter_km: number;
+        } | {
+            /** @constant */
+            kind: "Phalanx";
+            source: components["schemas"]["PhalanxEndpoint4"];
+            target: components["schemas"]["PhalanxEndpoint4"];
+            at: number;
+            /** @constant */
+            cost: "5000000000";
         };
         RankingPlayer: {
             /** Format: uuid */
@@ -8626,6 +8642,74 @@ export interface components {
             parent: string;
             coordinates: components["schemas"]["Coordinates"];
             diameter_km: number;
+        };
+        PhalanxEndpoint4: {
+            coordinates: components["schemas"]["Coordinates"];
+            /** @enum {unknown} */
+            kind: "Planet" | "Moon" | "Debris" | "EmptyPosition";
+            body: string | null;
+        };
+        PhalanxEndpoints4: {
+            original_origin: components["schemas"]["PhalanxEndpoint4"];
+            original_destination: components["schemas"]["PhalanxEndpoint4"];
+            effective_origin: components["schemas"]["PhalanxEndpoint4"];
+            effective_destination: components["schemas"]["PhalanxEndpoint4"];
+        };
+        PhalanxOwner4: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        PhalanxDeadline4: {
+            /** @enum {unknown} */
+            kind: "Arrival" | "Return" | "HoldEnd";
+            at: number;
+        };
+        PhalanxRow4: {
+            /** @constant */
+            kind: "Fleet";
+            owner: components["schemas"]["PhalanxOwner4"];
+            /** @enum {unknown} */
+            mission: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize" | "Hold";
+            /** @enum {unknown} */
+            phase: "Outbound" | "Holding" | "Returning";
+            endpoints: components["schemas"]["PhalanxEndpoints4"];
+            ships: {
+                ship_type: components["schemas"]["ShipId3"];
+                count: components["schemas"]["Decimal"];
+            }[];
+            deadline: components["schemas"]["PhalanxDeadline4"];
+        } | {
+            /** @constant */
+            kind: "Missile";
+            attacker: components["schemas"]["PhalanxOwner4"];
+            source: components["schemas"]["Coordinates"];
+            target: components["schemas"]["PhalanxEndpoint4"];
+            count: components["schemas"]["Decimal"];
+            deadline: {
+                /** @constant */
+                kind: "Impact";
+                at: number;
+            };
+        };
+        PhalanxReport4: {
+            /** @constant */
+            version: "V1";
+            report: {
+                /** Format: uuid */
+                id: string;
+                at: number;
+                source: components["schemas"]["PhalanxEndpoint4"];
+                target: components["schemas"]["PhalanxEndpoint4"];
+                /** @constant */
+                cost: "5000000000";
+                rows: components["schemas"]["PhalanxRow4"][];
+            };
+        };
+        PhalanxPayload4: {
+            /** @constant */
+            kind: "Phalanx";
+            observation: components["schemas"]["PhalanxReport4"];
         };
     };
     responses: never;

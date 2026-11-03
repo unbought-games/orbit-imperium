@@ -173,6 +173,10 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    ScanPlanet {
+        source_moon: BodyId,
+        target_planet: BodyId,
+    },
     RequestEmpireDeletion,
     CancelEmpireDeletion,
     EnterVacation,
@@ -299,6 +303,8 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phalanx: Option<PhalanxScanFacts>,
     /// Complete own missiles and foreign holding fleets, including covered absence.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub covered_vacation_players: BTreeSet<PlayerId>,
@@ -330,6 +336,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phalanx: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attack_groups: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub holding: Option<String>,
@@ -354,6 +362,13 @@ fn default_beginner_protection_multiplier() -> u32 {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if self
+            .phalanx
+            .as_deref()
+            .is_some_and(|p| p != PHALANX_PROFILE_V1)
+        {
+            return Err(RulesError::Unsupported);
+        }
         if self
             .attack_groups
             .as_deref()

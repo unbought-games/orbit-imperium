@@ -228,6 +228,7 @@ pub(crate) async fn publish(
         at,
         sequence,
     } = boundary;
+    crate::phalanx::activation(tx, universe, &current.rules, next).await?;
     match plan.impact {
         RulesUpdateImpact::Unchanged => {
             return Ok(RulesApplyOutcome::AlreadyActive {

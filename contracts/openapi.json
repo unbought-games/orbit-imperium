@@ -12622,6 +12622,28 @@
               "type"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "ScanPlanet"
+              },
+              "source_moon": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "target_planet": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "source_moon",
+              "target_planet"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -12839,7 +12861,8 @@
                 "items": {
                   "type": "string",
                   "format": "uuid"
-                }
+                },
+                "description": "For ScanPlanet, exactly one ID: the committed recipient-only Phalanx report. Duplicate command delivery returns this same historical ID."
               },
               "minimum_viewer_revision": {
                 "$ref": "#/components/schemas/Decimal"
@@ -13597,7 +13620,8 @@
                   "Deploy",
                   "Missiles",
                   "Hold",
-                  "AllianceAttacks"
+                  "AllianceAttacks",
+                  "ScanPlanet"
                 ]
               },
               "enabled": {
@@ -13635,7 +13659,8 @@
                   "Deploy",
                   "Missiles",
                   "Hold",
-                  "AllianceAttacks"
+                  "AllianceAttacks",
+                  "ScanPlanet"
                 ]
               },
               "enabled": {
@@ -15438,6 +15463,9 @@
           },
           {
             "$ref": "#/components/schemas/MoonCreatedPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/PhalanxPayload4"
           }
         ]
       },
@@ -17058,6 +17086,36 @@
               "kind",
               "coordinates",
               "diameter_km"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "Phalanx"
+              },
+              "source": {
+                "$ref": "#/components/schemas/PhalanxEndpoint4"
+              },
+              "target": {
+                "$ref": "#/components/schemas/PhalanxEndpoint4"
+              },
+              "at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "cost": {
+                "const": "5000000000"
+              }
+            },
+            "required": [
+              "kind",
+              "source",
+              "target",
+              "at",
+              "cost"
             ],
             "additionalProperties": false
           }
@@ -21543,6 +21601,284 @@
           "parent",
           "coordinates",
           "diameter_km"
+        ],
+        "additionalProperties": false
+      },
+      "PhalanxEndpoint4": {
+        "type": "object",
+        "properties": {
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "kind": {
+            "enum": [
+              "Planet",
+              "Moon",
+              "Debris",
+              "EmptyPosition"
+            ]
+          },
+          "body": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "coordinates",
+          "kind",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "PhalanxEndpoints4": {
+        "type": "object",
+        "properties": {
+          "original_origin": {
+            "$ref": "#/components/schemas/PhalanxEndpoint4"
+          },
+          "original_destination": {
+            "$ref": "#/components/schemas/PhalanxEndpoint4"
+          },
+          "effective_origin": {
+            "$ref": "#/components/schemas/PhalanxEndpoint4"
+          },
+          "effective_destination": {
+            "$ref": "#/components/schemas/PhalanxEndpoint4"
+          }
+        },
+        "required": [
+          "original_origin",
+          "original_destination",
+          "effective_origin",
+          "effective_destination"
+        ],
+        "additionalProperties": false
+      },
+      "PhalanxOwner4": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "PhalanxDeadline4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Arrival",
+              "Return",
+              "HoldEnd"
+            ]
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "at"
+        ],
+        "additionalProperties": false
+      },
+      "PhalanxRow4": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "Fleet"
+              },
+              "owner": {
+                "$ref": "#/components/schemas/PhalanxOwner4"
+              },
+              "mission": {
+                "enum": [
+                  "Transport",
+                  "Harvest",
+                  "Espionage",
+                  "Attack",
+                  "Deploy",
+                  "Colonize",
+                  "Hold"
+                ]
+              },
+              "phase": {
+                "enum": [
+                  "Outbound",
+                  "Holding",
+                  "Returning"
+                ]
+              },
+              "endpoints": {
+                "$ref": "#/components/schemas/PhalanxEndpoints4"
+              },
+              "ships": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ship_type": {
+                      "$ref": "#/components/schemas/ShipId3"
+                    },
+                    "count": {
+                      "$ref": "#/components/schemas/Decimal"
+                    }
+                  },
+                  "required": [
+                    "ship_type",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "deadline": {
+                "$ref": "#/components/schemas/PhalanxDeadline4"
+              }
+            },
+            "required": [
+              "kind",
+              "owner",
+              "mission",
+              "phase",
+              "endpoints",
+              "ships",
+              "deadline"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "Missile"
+              },
+              "attacker": {
+                "$ref": "#/components/schemas/PhalanxOwner4"
+              },
+              "source": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "target": {
+                "$ref": "#/components/schemas/PhalanxEndpoint4"
+              },
+              "count": {
+                "$ref": "#/components/schemas/Decimal"
+              },
+              "deadline": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "Impact"
+                  },
+                  "at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "kind",
+                  "at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "attacker",
+              "source",
+              "target",
+              "count",
+              "deadline"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PhalanxReport4": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "const": "V1"
+          },
+          "report": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "source": {
+                "$ref": "#/components/schemas/PhalanxEndpoint4"
+              },
+              "target": {
+                "$ref": "#/components/schemas/PhalanxEndpoint4"
+              },
+              "cost": {
+                "const": "5000000000"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PhalanxRow4"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "at",
+              "source",
+              "target",
+              "cost",
+              "rows"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "version",
+          "report"
+        ],
+        "additionalProperties": false
+      },
+      "PhalanxPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "Phalanx"
+          },
+          "observation": {
+            "$ref": "#/components/schemas/PhalanxReport4"
+          }
+        },
+        "required": [
+          "kind",
+          "observation"
         ],
         "additionalProperties": false
       }

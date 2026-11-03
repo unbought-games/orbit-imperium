@@ -138,6 +138,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         }
     }
     s.world = Some(WorldFacts {
+        phalanx: None,
         covered_vacation_players: s.players.keys().copied().collect(),
         alliance_leaders: Some(Default::default()),
         holding_relationships: None,
@@ -3419,3 +3420,6 @@ mod vacation;
 
 #[path = "missions/moons.rs"]
 mod moons;
+
+#[path = "missions/phalanx_command.rs"]
+mod phalanx_command;

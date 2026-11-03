@@ -109,3 +109,18 @@ for (const metal of ['0', '9007199254740993']) {
 assert.equal(missionOutcome({ ...harvestReport, harvested: null }), false);
 assert.equal(reportPreview({ kind: 'Harvested', harvested: { metal: '-1', crystal: '0', deuterium: '0' } }), false);
 console.log('Harvest reports preserve historical cargo and optionally record exact newly collected resources.');
+
+const scanAction = ajv.compile({components:schema.components,$ref:'#/components/schemas/WorldAction4'});
+assert.ok(scanAction({type:'ScanPlanet',source_moon:id,target_planet:id}));
+assert.equal(scanAction({type:'ScanPlanet',source_moon:id,target_planet:{galaxy:1,system:1,position:1}}),false);
+const phalanx = ajv.compile({components:schema.components,$ref:'#/components/schemas/PhalanxPayload4'});
+const scanEndpoint={coordinates:{galaxy:1,system:1,position:8},kind:'Planet',body:id};
+const scanPayload={kind:'Phalanx',observation:{version:'V1',report:{id,at:1000,source:{...scanEndpoint,kind:'Moon'},target:scanEndpoint,cost:'5000000000',rows:[]}}};
+assert.ok(phalanx(scanPayload));
+assert.equal(phalanx({...scanPayload,observation:{...scanPayload.observation,version:'V2'}}),false);
+const missileRow={kind:'Missile',attacker:{id,name:'Historical'},source:scanEndpoint.coordinates,target:scanEndpoint,count:'7',deadline:{kind:'Impact',at:2000}};
+const withRow=row=>({...scanPayload,observation:{version:'V1',report:{...scanPayload.observation.report,rows:[row]}}});
+assert.ok(phalanx(withRow(missileRow)));
+assert.equal(phalanx(withRow({...missileRow,private_fleet_id:id})),false);
+assert.equal(phalanx(withRow({...missileRow,deadline:{kind:'Impact',at:2000,return_at:3000}})),false);
+console.log('Paid phalanx commands bind stable IDs and versioned reports reject extra private fields.');

@@ -55,6 +55,8 @@ pub enum RulesApplyOutcome {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum RulesUpdateError {
+    #[error("sensor phalanx activation blocked: {0}")]
+    PhalanxActivationBlocked(PhalanxReadinessError),
     #[error(transparent)]
     StandardContent(#[from] StandardRulesError),
     #[error("invalid rules update: {reason}")]
@@ -140,6 +142,11 @@ impl<S: RulesStore> RulesService<S> {
                 expected_revision: document.base_revision,
                 actual_revision: current.revision,
             });
+        }
+        if phalanx_enabled(&next) && !phalanx_enabled(&current.rules) {
+            return Err(RulesUpdateError::PhalanxActivationBlocked(
+                PhalanxReadinessError::LegacyWritersMayWrite,
+            ));
         }
         let plan = plan_rules_update(&current.rules, &next)?;
         let mut changes = vec![];

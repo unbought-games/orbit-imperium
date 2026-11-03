@@ -310,6 +310,7 @@ fn snapshot() -> ViewerSnapshot {
     coverage.research_slot_players.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            phalanx: None,
             covered_vacation_players: [research.owner].into_iter().collect(),
             alliance_leaders: Some(Default::default()),
             holding_relationships: None,

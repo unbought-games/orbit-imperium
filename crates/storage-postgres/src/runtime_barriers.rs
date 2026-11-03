@@ -49,6 +49,9 @@ impl PgStore {
             });
         }
         validate_rules_update(&current.rules, next)?;
+        // Do not enqueue an unfulfillable barrier that would prevent ordinary
+        // legacy settlement. Execution independently rechecks in publish().
+        crate::phalanx::activation(&mut tx, u, &current.rules, next).await?;
         let pending = sqlx::query("SELECT id,expected_revision,rules FROM runtime_barriers WHERE universe=$1 AND NOT done")
             .bind(u.0).fetch_optional(&mut *tx).await.map_err(db_error)?;
         let id = if let Some(pending) = pending {

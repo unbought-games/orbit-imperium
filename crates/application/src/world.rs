@@ -530,3 +530,41 @@ mod tests {
         assert!(serde_json::from_value::<WorldQuery>(extra).is_err());
     }
 }
+
+#[cfg(test)]
+mod phalanx_contract_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn scan_is_only_a_bound_command_and_preview_does_not_copy_rows_or_private_metadata() {
+        let id = uuid::Uuid::from_u128(1);
+        let binding = Binding {
+            account: AccountId(id),
+            player: PlayerId(id),
+            universe: UniverseId(id),
+            epoch: Epoch(id),
+        };
+        let value = json!({"protocol":4,"binding":binding,"command_id":id,"command":{"type":"World","action":{"type":"ScanPlanet","source_moon":id,"target_planet":id}}});
+        let envelope: CommandEnvelopeV4 = serde_json::from_value(value).unwrap();
+        assert!(matches!(
+            envelope.domain().unwrap(),
+            Command::World {
+                action: WorldAction::ScanPlanet { .. }
+            }
+        ));
+        assert!(
+            serde_json::from_value::<WorldQueryKind>(
+                json!({"type":"ScanPlanet","source_moon":id,"target_planet":id})
+            )
+            .is_err()
+        );
+        let payload = json!({"kind":"Phalanx","observation":{"version":"V1","report":{"id":id,"source":{},"target":{},"at":1000,"cost":"5000000000","rows":[{"owner":{"id":id,"name":"Historical"}}]}},"private_revision":99});
+        let preview = crate::report_preview(&payload);
+        assert_eq!(
+            preview,
+            json!({"kind":"Phalanx","source":{},"target":{},"at":1000,"cost":"5000000000"})
+        );
+        assert!(public_players::report_players(&payload).is_empty());
+        assert!(!crate::shareable_report(&payload));
+    }
+}

@@ -1,8 +1,9 @@
-# Sensor Phalanx foundations
+# Sensor Phalanx backend contract
 
-This increment supplies pure eligibility and observation rules and causal fleet
-return facts. It does not enable Sensor Phalanx, add a command or endpoint, spend
-resources, store reports, or change player UI. `sensor-phalanx-v1` fixes range to
+Part 1 supplies pure eligibility, observation rules and causal fleet return facts.
+Part 2 adds the ordered paid command, endpoint loader, historical report storage
+and API contracts. Live activation remains blocked on writer exclusion, and
+standard rules, construction and player UI remain disabled. `sensor-phalanx-v1` fixes range to
 `level² - 1` and cost to 5,000,000,000 local deuterium micro-units.
 
 ## Integration contract
@@ -20,13 +21,13 @@ Actor vacation, deletion draining/removal, own targets, target vacation/removal,
 wrong body kinds, other galaxies, range failures and insufficient fuel reject.
 Foreign allied, inactive and beginner-protected planets are allowed: scanning
 has no hostile-launch score restriction. Validation never mutates either body.
-Missing source/target lookup and collection coverage belong to the future loader.
+The ordered loader supplies source/target lookup and collection coverage.
 
 `project_phalanx_fleet` and `project_phalanx_missile` return an optional
 `PhalanxObservationV1`. There is no observer permission parameter: the same
 traffic is observed regardless of ownership, alliance or espionage research.
-The eventual loader should iterate unique fleet/missile identities, collect only
-`Some` rows and supply public name snapshots only for visible participants.
+The loader iterates unique fleet/missile identities, collects only
+`Some` rows and exposes public name snapshots only for visible participants.
 Never include hidden membership counts, private revisions or raw fleets in the
 receipt. With the same receipt metadata, empty and hidden-only collections must
 serialize identically.
@@ -112,9 +113,9 @@ process reporting healthy as proof that the rolling upgrade is complete.
 ### Explicit activation boundary for parts 2 and 3
 
 The building and scan capability remain disabled. `validate_phalanx_scan_readiness`
-is a pure boundary for the future coordinator, not a wired activation mechanism
-or a saved readiness flag. Part 2 must implement the following contract before
-part 3 enables the feature:
+is a pure validator, not an exclusion proof or a saved readiness flag. The
+coordinator must satisfy the following contract before part 3 enables the
+feature; the part 2 fail-closed implementation and remaining blocker are below:
 
 1. Finish the ordinary rolling deployment. Establish that every writer that can
    commit to this universe understands return causes (workers, admission/API,
@@ -161,9 +162,9 @@ part 3 enables the feature:
    before admitting them. Rollback while scans are enabled is not supported merely
    because the JSON schema remains readable.
 
-This increment supplies the deterministic readiness and classification checks,
-not the capability gate, fleet loader, operational backfill, process-version
-exclusion proof or API handling. Production evidence and volume have not been
+Part 1 supplied the deterministic readiness and classification checks. Part 2
+adds the gate, loader and API handling described below, but cannot establish the
+missing process-version exclusion proof and supplies no operational backfill. Production evidence and volume have not been
 inspected. Their absence cannot block this disabled-feature deployment; proving
 those activation prerequisites is required work for part 2.
 
@@ -184,3 +185,64 @@ current engine recalls outbound fleets using elapsed time since launch, includin
 ACS delay, and completes zero-elapsed recalls inline. It does not apply the older
 proposed capped ACS recall formula. This change observes actual commitments and
 does not retime existing or newly recalled fleets.
+
+
+## Part 2 implementation and part 3 handoff
+
+`WorldAction::ScanPlanet { source_moon, target_planet }` uses the existing
+protocol-4 foreground pair, actor/body binding, admission hash, command ID,
+ordered transition, atomic persistence, and receipt recovery. The dedicated
+resolver reuses the eligibility and observation functions above. It materializes
+source-local economy, validates, projects once, debits exactly 5,000 deuterium,
+and inserts one `MissionReport` with kind `Phalanx`, one recipient, and payload
+`{ kind: "Phalanx", observation: PhalanxReport::V1(...) }`. Accepted empty scans
+pay. Any rejection produces no debit or report. The committed receipt's
+`result_ids` contains exactly that report ID, including on uncertain retry.
+
+The dedicated PostgreSQL loader loads the actor's existing economy closure, the
+bound target body/policy, all active ship records with that stable origin or
+body destination across owners, and all in-flight missiles bound to that target.
+Foreign origins load identity columns only. Active ACS groups are selected by
+member IDs, including initiating fleets whose intent has no group ID. Holds use
+committed fleet deadlines. Endpoint indexes select candidates; only pure
+projection authorizes rows. The complete candidate collection and covered absence
+are part of the claim snapshot and are reloaded for hash validation at commit.
+No per-scan universe economy or universe fleet traversal is performed.
+
+Scan scopes include actor, source location, target location, and current target
+owner. Existing launch/recall/arrival/return, group, depot, missile, and lifecycle
+scopes intersect these dependencies. Source ordering serializes competing fuel
+spends; target location ordering closes addition/removal membership races. Normal
+serial and scoped barriers protect rules changes. Only the scanner is added to
+`affected_viewers`; dependencies and private fact hashes do not become viewer
+revisions or report metadata. Presence follows the existing explicit actor gesture
+contract and creates no target activity signal.
+
+Report detail is recipient-authorized and immutable, with no live enrichment of
+observed owner names. Preview contains only source, target, observation time, and
+cost. Existing report pagination, retention and metadata actions apply. The
+sharing allowlist rejects Phalanx. Generated client contracts include the paid
+action, `ScanPlanet` capability for enabled custom rules, report envelope, and
+single `{ kind, at }` deadline representation. No UI implementation is included.
+
+The explicit activation boundary above remains binding. The current runtime has
+**no enforceable proof excluding incompatible writers**. Prepare refuses that
+proposal, serial/scoped apply independently refuses it, and scenario installation
+cannot bypass it. Admission rejects new scan commands while disabled or while a
+deactivation barrier is pending, after checking original receipt recovery. A
+single active/queued-rules read prevents publication races from admitting new
+command vocabulary to a rollback worker. Publication loads complete active membership but supplies no
+invented exclusion proof to `validate_phalanx_scan_readiness`. Scoped preflight
+avoids leaving a blocked barrier that would prevent natural legacy settlement.
+This is an explicit blocker, not a claim that production activation is ready.
+There is no startup history gate, data constraint, backfill, process registry, or
+saved readiness bit. See the [operator guide](../operations/sensor-phalanx.md).
+
+Before part 3 enables standard construction and scan rules, integration must
+establish the missing writer-exclusion boundary and revalidate readiness under
+apply. Part 3 then owns lunar catalog enablement, Facilities/Galaxy UI, immutable
+report rendering, and desktop/mobile visual validation. Use the receipt's report
+ID directly; do not race an inbox refresh or turn route loading into a command.
+Keep retry on the original ID and make another observation an explicit new paid
+action. Moon removal/fallback, jump gates, expeditions and sharing remain separate
+work. No production acceptance or deployment claim is made by this increment.

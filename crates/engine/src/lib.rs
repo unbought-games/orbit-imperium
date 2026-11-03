@@ -129,3 +129,6 @@ pub use mission_replay::*;
 
 mod phalanx_readiness;
 pub use phalanx_readiness::*;
+
+mod phalanx_command;
+pub use phalanx_command::*;
