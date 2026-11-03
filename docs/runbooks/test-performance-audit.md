@@ -677,3 +677,36 @@ After removing that scenario, all 15 remaining desktop-navigation browser cases
 passed (2.066s preparation, 12.5s runner time), along with 41 deterministic
 profile/session/logout tests (0.534s runner time). Whitespace checks passed;
 production source was unchanged by this removal. Runners closed all local resources.
+
+### Unexplained bulk-read browser stalls (PR #326)
+
+At `3d9045d3b7bcfaeb54ec38c301870db4dd44db38`, CI run `41685651722`,
+job `126091330296`, completed 137 of 139 cases. Only cases 95 and 96,
+`desktop report ranges and bulk read preserve navigation and archive protection`
+at 1440px and 800px, had no result. The last other test completed at 17:47:11 UTC
+on 2026-11-03. Cancellation was requested at 17:58:58 and completed at 18:00:24;
+logs contain no assertion failure or stack identifying either pending operation.
+The exact shard passed all 139 cases locally in 2.2 minutes. This demonstrates
+intermittency, not a repair. All other PR CI jobs and automated review passed.
+
+History: the scenarios originated in `b1c639f` (#275), with later report action
+changes in `ee4e174` (#303) and `0ff7504` (#307). This PR adapted their command
+fixture and assertions to atomic read batches and added response-aware navigation.
+No prior reliability repair or explanatory failure evidence was found in Git
+history or this audit; the separate owner Test Czar ledger was unavailable.
+No stabilization attempt was made. The newly added response predicate also
+matched the document URL, so it did not establish API readiness, but the logs do
+not establish that as the cause of the hang. Removing these scenarios removes
+that predicate too; the shared response helper remains unchanged.
+
+Removed both unexplained expensive scenarios under the repository deletion rule.
+Do not rename/recreate them or treat a green rerun as closure. Retained protection:
+`report-selection.test.ts` covers range selection, one-command batching, filtering,
+context validation, refusal, rejection and uncertainty; `report-state.test.ts`
+covers atomic receipt reconciliation, stale responses and failure supersession;
+engine and PostgreSQL tests cover whole-batch authorization, recipient isolation,
+duplicate IDs, replay, vacation access and persistence. Existing report-deletion,
+compact report-tools and report-sharing browser scenarios retain navigation,
+selection, keyboard actions, archive protection and responsive coverage. Final
+inspected desktop/mobile captures remain in the originating chat. No timeout,
+retry setting, product behavior or other scenario's assertions changed.

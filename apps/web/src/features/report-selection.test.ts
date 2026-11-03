@@ -108,3 +108,41 @@ it('rejects submission without a ready player context', async () => {
   }
   expect(send).not.toHaveBeenCalled()
 })
+
+it.each(['rejected', 'uncertain'] as const)(
+  'does not claim success for a %s bulk read',
+  async (status) => {
+    const store = fixture()
+    const send = vi.fn(async () => {
+      store.setState({
+        attempts: new Map([
+          [
+            'submitted',
+            {
+              envelope: {
+                protocol: 4,
+                binding: store.getState().binding!,
+                command_id: 'submitted',
+                presence: null,
+                command: {
+                  type: 'World',
+                  action: { type: 'MarkReportsRead', reports: ['b', 'c'] },
+                },
+              },
+              status,
+              receipt: null,
+              reconciled: false,
+            },
+          ],
+        ]),
+      })
+      return 'submitted'
+    })
+    await expect(
+      markReportSelectionRead({ store, send }, ['b', 'c']),
+    ).rejects.toThrow('not confirmed')
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(store.getState().reportHeaders.get('b')?.header.read).toBe(false)
+    expect(store.getState().reportHeaders.get('c')?.header.read).toBe(false)
+  },
+)
