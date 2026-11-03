@@ -259,7 +259,8 @@ impl ChangeSet {
                 state
                     .collection_revisions
                     .insert(format!("inventory:{}:{}", body.id, body.owner), 0);
-                if let Some(w) = &mut state.world
+                if body.kind == BodyKind::Planet
+                    && let Some(w) = &mut state.world
                     && let Some(slot) = w
                         .planet_slots
                         .iter_mut()

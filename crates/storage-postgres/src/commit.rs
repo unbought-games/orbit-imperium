@@ -265,7 +265,12 @@ pub(crate) async fn persist_changes(
     let mut result_ids = Vec::new();
     for body in &change.bodies {
         let Some(previous) = facts.bodies.get(&body.id) else {
-            crate::colonization::insert_colony(tx, i, facts, change, body).await?;
+            match body.kind {
+                BodyKind::Planet => {
+                    crate::colonization::insert_colony(tx, i, facts, change, body).await?
+                }
+                BodyKind::Moon => crate::moons::insert_moon(tx, i, facts, change, body).await?,
+            }
             result_ids.push(body.id.to_string());
             continue;
         };

@@ -235,7 +235,8 @@ pub fn production_economy(
     technology: u32,
     rules: &Ruleset,
 ) -> Result<ProductionEconomy, GameError> {
-    if fusion_rule(rules).is_none()
+    if body.kind == BodyKind::Moon
+        || fusion_rule(rules).is_none()
         || body
             .levels
             .get(&Building::FusionReactor)
@@ -302,12 +303,13 @@ pub fn settle_fusion(
     at: Timestamp,
     rules: &Ruleset,
 ) -> Result<ResourceCheckpoint, InvariantError> {
-    if body
-        .levels
-        .get(&Building::FusionReactor)
-        .copied()
-        .unwrap_or(0)
-        == 0
+    if body.kind == BodyKind::Moon
+        || body
+            .levels
+            .get(&Building::FusionReactor)
+            .copied()
+            .unwrap_or(0)
+            == 0
         || settings.fusion_reactor == 0
     {
         return crate::economy::settle_rates(

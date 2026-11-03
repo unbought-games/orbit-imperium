@@ -262,6 +262,7 @@ pub(crate) fn abandon(
         w.lots
             .retain(|lot| lot.location != AssetLocation::Body(loss.id));
         w.colonies.remove(&loss.id);
+        w.moons.remove(&loss.id);
         w.activity.remove(&loss.id);
     }
     let coordinates = s.bodies[&id].coordinates;

@@ -9,6 +9,12 @@ export type CatalogContent = {
   description: string
 }
 const content: Record<string, string> = {
+  LunarBase:
+    'Expands the usable space on a moon. Each completed level adds three fields, with one field occupied by the base itself.',
+  SensorPhalanx:
+    'Observes fleet movements involving planets within range. Lunar intelligence operations are not available yet.',
+  JumpGate:
+    'Transfers ships instantly between two owned moons with completed gates. Gate transfers are not available yet.',
   MissileSilo:
     'Stores offensive missiles and automatic interceptors. Each completed level adds silo capacity. The planet’s interceptors will also defend its future moon.',
   AntiBallisticMissile:

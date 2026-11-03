@@ -3,6 +3,21 @@ type S = components['schemas']
 
 // Retained rulesets tag these unimplemented placeholders as Planet. This is
 // display classification only; enabled content still follows server metadata.
+const moonBuildings = new Set([
+  'LunarBase',
+  'SensorPhalanx',
+  'JumpGate',
+  'RoboticsFactory',
+  'Shipyard',
+  'MetalStorage',
+  'CrystalStorage',
+  'DeuteriumTank',
+])
+
+export function visibleMoonBuilding(id: string) {
+  return moonBuildings.has(id)
+}
+
 const moonOnlyPlaceholders = new Set(['LunarBase', 'SensorPhalanx', 'JumpGate'])
 
 /** Inspection stays available even when the catalog cannot offer construction. */
@@ -11,6 +26,7 @@ export function buildingUnavailableReason(
   body: Pick<S['BodyV3'], 'kind' | 'levels'>,
   buildingId: string | undefined = entry?.key.id,
 ): string | undefined {
+  if (body.kind === 'Moon') return 'Moon construction is not available yet.'
   if (entry && !entry.enabled) return 'Unavailable in this universe.'
   if (entry && !entry.body_kinds.includes(body.kind))
     return `Unavailable on this ${body.kind.toLowerCase()}.`
@@ -23,6 +39,7 @@ export function visibleFacility(
   entry: S['CatalogEntry3'],
   body: Pick<S['BodyV3'], 'kind'>,
 ) {
+  if (body.kind === 'Moon') return visibleMoonBuilding(entry.key.id)
   return !(
     body.kind === 'Planet' &&
     ((entry.body_kinds.length > 0 &&

@@ -203,6 +203,7 @@ fn run(
     s.coverage
         .bodies
         .insert(BodyId(derived_id(i.id, "colony:0")));
+    s.coverage.bodies.insert(BodyId(derived_id(i.id, "moon:0")));
     if matches!(i.payload, Input::Command(_)) {
         s.world.as_mut().unwrap().records.presence.insert(
             i.id,
@@ -3330,3 +3331,6 @@ mod empire_deletion;
 
 #[path = "missions/vacation.rs"]
 mod vacation;
+
+#[path = "missions/moons.rs"]
+mod moons;

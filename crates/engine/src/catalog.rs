@@ -66,7 +66,15 @@ pub(crate) fn validate_catalog(a: &RulesArtifact) -> Result<(), RulesError> {
         return Err(RulesError::InvalidReference);
     }
     for entry in &a.catalog {
-        if entry.body_kinds != BTreeSet::from([BodyKind::Planet])
+        let lunar_placeholder = !entry.enabled
+            && matches!(
+                entry.key,
+                CatalogKey::Building(
+                    Building::LunarBase | Building::SensorPhalanx | Building::JumpGate
+                )
+            )
+            && entry.body_kinds == BTreeSet::from([BodyKind::Moon]);
+        if (!lunar_placeholder && entry.body_kinds != BTreeSet::from([BodyKind::Planet]))
             || (entry.mobile && !matches!(entry.key, CatalogKey::Ship(_)))
         {
             return Err(RulesError::InvalidReference);

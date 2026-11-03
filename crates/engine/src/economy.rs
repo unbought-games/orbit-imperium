@@ -50,6 +50,13 @@ pub fn energy_with_settings(
     satellites: i64,
     rules: &Ruleset,
 ) -> Result<EnergyStats, GameError> {
+    if body.kind == BodyKind::Moon {
+        return Ok(EnergyStats {
+            supply: 0,
+            demand: 0,
+            utilization: SCALE,
+        });
+    }
     let output = output_factors(body, settings, rules)?;
     let (supply, demand, utilization) = energy_ratios(
         &output,
@@ -71,6 +78,9 @@ pub fn production_rates_with_settings(
     satellites: i64,
     rules: &Ruleset,
 ) -> Result<Resources, GameError> {
+    if body.kind == BodyKind::Moon {
+        return Ok(Resources::default());
+    }
     let r = &rules.artifact;
     let output = output_factors(body, settings, rules)?;
     let (_, _, utilization) = energy_ratios(

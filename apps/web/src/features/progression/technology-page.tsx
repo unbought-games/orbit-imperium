@@ -103,6 +103,11 @@ export function TechnologyPage(props: ProgressionProps) {
   }
   return (
     <>
+      {body.kind === 'Moon' && (
+        <p role="status">
+          Moon operations are not available yet. You can inspect the catalog.
+        </p>
+      )}
       <WorkSummaries
         view={view}
         body={body}
@@ -177,7 +182,8 @@ export function TechnologyPage(props: ProgressionProps) {
                       disabled={
                         entry.key.kind === 'Building'
                           ? !!buildingUnavailableReason(entry, body)
-                          : !entry.enabled ||
+                          : body.kind === 'Moon' ||
+                            !entry.enabled ||
                             !entry.body_kinds.includes(body.kind)
                       }
                       disabledReason={
@@ -215,6 +221,7 @@ function TechnologyInspector({
   const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
   const [quantity, setQuantity] = useState('1')
   const request =
+    body.kind !== 'Moon' &&
     selected.enabled &&
     selected.body_kinds.includes(body.kind) &&
     !(

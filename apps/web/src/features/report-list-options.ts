@@ -33,4 +33,5 @@ export const reportTypes = [
   'ColonizationFailed',
   'MissileImpact',
   'PlanetAbandoned',
+  'MoonCreated',
 ] as const

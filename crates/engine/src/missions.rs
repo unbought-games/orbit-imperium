@@ -238,6 +238,16 @@ pub fn estimate_fleet(
 ) -> Result<FleetEstimate, GameError> {
     let estimate = || -> Result<FleetEstimate, Fault> {
         let origin = body(s, intent.origin, r)?;
+        require_operational_body(origin)?;
+        if matches!(
+            intent.destination,
+            MissionDestination::Body {
+                expected_kind: BodyKind::Moon,
+                ..
+            }
+        ) {
+            return Err(GameError::UnavailableContent.into());
+        }
         if origin.owner != owner || intent.ships.iter().any(|ship| ship.owner != owner) {
             return Err(GameError::NotOwned.into());
         }
@@ -294,6 +304,16 @@ fn quote_inner(
     r: &Ruleset,
 ) -> Result<FleetTerms, Fault> {
     let b = body(s, intent.origin, r)?;
+    require_operational_body(b)?;
+    if matches!(
+        intent.destination,
+        MissionDestination::Body {
+            expected_kind: BodyKind::Moon,
+            ..
+        }
+    ) {
+        return Err(GameError::UnavailableContent.into());
+    }
     if b.owner != owner {
         return Err(GameError::NotOwned.into());
     }

@@ -376,6 +376,10 @@ pub fn inspect_progression(
         out.blockers.push(block(GameError::NotOwned));
         return Ok(out);
     }
+    if let Err(error) = require_operational_body(b) {
+        out.blockers.push(block(error));
+        return Ok(out);
+    }
     validate_progression_collections(s, b)?;
     if s.world
         .as_ref()
@@ -800,6 +804,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             expected_settings_revision,
         }) => {
             let b = owned(s, *body, i, r)?;
+            require_operational_body(b)?;
             settings.validate(r)?;
             if solar_satellite_rule(r).is_some() || fusion_rule(r).is_some() {
                 production_economy(

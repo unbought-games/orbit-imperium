@@ -11154,7 +11154,7 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 4294967295,
-            "description": "Planet diameter from saved homeworld or colony creation metadata. Omitted when unavailable and for moons."
+            "description": "Body diameter from authoritative creation metadata. Omitted when unavailable."
           },
           "min_temperature": {
             "type": "integer",
@@ -11225,6 +11225,9 @@
           },
           "silo": {
             "$ref": "#/components/schemas/SiloCapacity4"
+          },
+          "moon": {
+            "$ref": "#/components/schemas/Moon4"
           }
         },
         "required": [
@@ -13814,6 +13817,9 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "moon": {
+            "$ref": "#/components/schemas/PublicMoon4"
           }
         },
         "required": [
@@ -15296,6 +15302,9 @@
               ],
               "additionalProperties": false
             }
+          },
+          "moon_creation": {
+            "$ref": "#/components/schemas/MoonCreation4"
           }
         },
         "required": [
@@ -15377,6 +15386,9 @@
           },
           {
             "$ref": "#/components/schemas/PlanetAbandonedPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/MoonCreatedPayload4"
           }
         ]
       },
@@ -16926,6 +16938,28 @@
               "kind",
               "coordinates",
               "release_at"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "MoonCreated"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "diameter_km": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295
+              }
+            },
+            "required": [
+              "kind",
+              "coordinates",
+              "diameter_km"
             ],
             "additionalProperties": false
           }
@@ -21306,6 +21340,105 @@
           "entered_at",
           "earliest_exit_at",
           "blockers"
+        ],
+        "additionalProperties": false
+      },
+      "Moon4": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "parent",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "PublicMoon4": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "id",
+          "diameter_km"
+        ],
+        "additionalProperties": false
+      },
+      "MoonCreation4": {
+        "type": "object",
+        "properties": {
+          "chance_percent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20
+          },
+          "moon": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "chance_percent"
+        ],
+        "additionalProperties": false
+      },
+      "MoonCreatedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "MoonCreated"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "kind",
+          "at",
+          "body",
+          "parent",
+          "coordinates",
+          "diameter_km"
         ],
         "additionalProperties": false
       }

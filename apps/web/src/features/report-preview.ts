@@ -37,6 +37,11 @@ export function reportPreview(
   let at: S['Coordinates'] | undefined
   let identity = ''
   switch (preview.kind) {
+    case 'MoonCreated':
+      at = preview.coordinates
+      identity = 'Moon'
+      facts.push(`${preview.diameter_km.toLocaleString()} km diameter`)
+      break
     case 'MissileImpact':
       at = preview.target
       facts.push(
@@ -142,7 +147,8 @@ export function reportPreview(
       ? [identity, coordinates({ coordinates: at })].filter(Boolean).join(' · ')
       : identity,
     coordinates: at,
-    ...((preview.kind === 'Combat' && preview.target_kind === 'Moon') ||
+    ...(preview.kind === 'MoonCreated' ||
+    (preview.kind === 'Combat' && preview.target_kind === 'Moon') ||
     (preview.kind === 'Espionage' && preview.target?.kind === 'Moon')
       ? { targetKind: 'moon' as const }
       : {}),

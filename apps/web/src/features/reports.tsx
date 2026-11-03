@@ -287,6 +287,20 @@ export function Reports({
             }
           />
 
+          {detail.payload.kind === 'MoonCreated' &&
+            model.view?.bodies.some(
+              (body) =>
+                detail.payload.kind === 'MoonCreated' &&
+                body.id === detail.payload.body,
+            ) && (
+              <div className={styles.controls}>
+                <Link
+                  {...routeTarget(universe, 'facilities', detail.payload.body)}
+                >
+                  Inspect moon buildings
+                </Link>
+              </div>
+            )}
           {detail.payload.kind === 'Colonized' && (
             <div className={styles.controls}>
               <Link

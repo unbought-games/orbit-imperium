@@ -13,6 +13,13 @@ pub(super) fn world_projection(
         .ok_or(ServiceError::InvariantFailure)?;
     let world = world_facts(state).map_err(|_| ServiceError::InvariantFailure)?;
     for body in &mut progression.bodies {
+        if let Some(genesis) = world.records.moons.get(&body.id) {
+            body.diameter_km = Some(genesis.diameter_km);
+            body.moon = Some(crate::progression::MoonDto {
+                parent: genesis.parent,
+                created_at: genesis.created_at,
+            });
+        }
         if let Some(genesis) = world.records.colonies.get(&body.id) {
             let source = state
                 .bodies

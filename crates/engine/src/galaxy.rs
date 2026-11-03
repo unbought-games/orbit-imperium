@@ -4,9 +4,16 @@ use serde::{Deserialize, Serialize};
 pub struct GalaxyPosition {
     pub coordinates: Coordinates,
     pub body: Option<PublicBody>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub moon: Option<PublicMoon>,
     pub debris: Option<PublicDebris>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub abandoned_until: Option<Timestamp>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PublicMoon {
+    pub id: BodyId,
+    pub diameter_km: u32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicBody {
@@ -128,7 +135,11 @@ pub fn galaxy_system(
         if !w.covered_coordinates.contains(&(galaxy, system, position)) {
             return Err(GameError::InvalidInput);
         }
-        let body = if let Some(b) = s.bodies.values().find(|b| b.coordinates == coordinates) {
+        let body = if let Some(b) = s
+            .bodies
+            .values()
+            .find(|b| b.coordinates == coordinates && b.kind == BodyKind::Planet)
+        {
             let p = w
                 .records
                 .policies
@@ -185,7 +196,18 @@ pub fn galaxy_system(
                 crystal: (f.crystal / SCALE).to_string(),
                 deuterium: (f.deuterium / SCALE).to_string(),
             });
+        let moon = body.as_ref().and_then(|parent| {
+            w.records
+                .moons
+                .values()
+                .find(|m| m.parent == parent.id && s.bodies.contains_key(&m.body))
+                .map(|m| PublicMoon {
+                    id: m.body,
+                    diameter_km: m.diameter_km,
+                })
+        });
         positions.push(GalaxyPosition {
+            moon,
             coordinates,
             body,
             debris,

@@ -653,6 +653,8 @@ fn combat_encounters(
             .ok_or(GameError::NumericRange)?;
     }
 
+    let moon_creation = create_moon(s, i, target, debris, r, c, w, audits)?;
+
     let permanent: Vec<_> = result
         .battle
         .destroyed
@@ -674,6 +676,9 @@ fn combat_encounters(
     let mut full = json!({"kind":"Combat","at":i.at,"target":target.coordinates,"outcome":result.battle.outcome,"participants":result.battle.participants.iter().map(|p| participant_observation(s, p, f, id)).collect::<Vec<_>>(),"rounds":result.battle.rounds.iter().map(|round|json!({"number":round.number,"start":public_counts(&round.start),"end":public_counts(&round.end),"fire":round.fire})).collect::<Vec<_>>(),"survivors":public_counts(&result.battle.survivors),"gross_losses":public_counts(&result.battle.destroyed),"recovered":public_counts(&result.recovery),"permanent_losses":public_counts(&permanent),"debris":wire_resources(debris),"loot":wire_resources(loot)});
     // Capture the identity at contact, not when the report is read. The restricted
     // ContactLost observation below deliberately does not inherit defender facts.
+    if let Some(outcome) = moon_creation {
+        full["moon_creation"] = json!(outcome);
+    }
     full["target_name"] = json!(target.name);
     full["target_kind"] = json!(target.kind);
     if r.attacks() {

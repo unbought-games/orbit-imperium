@@ -30,7 +30,7 @@ describe('building inspection availability', () => {
       'Unavailable in this universe.',
     )
     expect(buildingUnavailableReason(entry, { ...body, kind: 'Moon' })).toBe(
-      'Unavailable on this moon.',
+      'Moon construction is not available yet.',
     )
     expect(buildingUnavailableReason(entry, { ...body, levels: {} })).toBe(
       'Building level unavailable on this body.',
