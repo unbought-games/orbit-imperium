@@ -97,3 +97,33 @@ removing the project's container, volume and network. Other services were unchan
 Browser fixtures closed their Vite/browser processes. No production data or
 deployment was involved. PR/queue validation and merge timing are recorded in
 the originating chat after this local verification record.
+
+## First PR CI revision
+
+PR #327 head `32bdd0787510bab3150d4950ac101df96829f9f3`, run
+`41718588991`: native checks, all eight browser shards, rules PostgreSQL and
+world-editor PostgreSQL passed. The remaining PostgreSQL group stopped on a
+Linux stack overflow in
+`holding_supply_combat_scope_growth_and_durable_retries_in_both_runtimes`
+(job `126205315518`, 6.872s before SIGABRT). No queue enrollment had occurred.
+
+The test history (`b5cd9cc`, `bc93670`, `5b529e4`) and vacation verification record
+were inspected. Its previous fixture repair is documented in
+`docs/verification/vacation.md` (command/input identity corrections). Under the
+one-repair policy the combined journey and its private social/launch helpers were
+removed, not boxed or given another stabilization patch. The shared drain/binding/
+command helpers remain for the independent vacation persistence regression.
+
+Retained deterministic holding coverage includes launch fuel, owner/cargo/slot
+preservation, original return commitments, supply budgets and rounding, stale
+events, combat participants, host blocks, and lunar parent-depot separation in
+`crates/engine/tests/missions/holding.rs`. The phalanx database suite covers held
+deadline projection and changed hold membership revalidation. Existing group
+database checks cover participant scope expansion; they passed in the failed
+group before its remaining running binaries completed. No production behavior
+changed in this repair.
+
+The retained `holding` database binary passed locally (one test, 1.947s execution,
+6.82s wall); focused all-warning Clippy passed in 15.00s wall. This repair reused
+only the dedicated disposable Compose project and cleaned it up afterward. A
+new PR revision must pass CI; the earlier group's partial result is not success.
