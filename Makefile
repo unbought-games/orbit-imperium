@@ -361,5 +361,5 @@ test-lunar-industry-db:
 
 .PHONY: test-phalanx
 test-phalanx:
-	cargo nextest run -p orbit-engine --lib --test phalanx --test missions --test persistence --test debris
+	cargo nextest run -p orbit-engine --lib --test phalanx --test missions --test persistence --test debris --test replay
 	cargo nextest run -p orbit-application --lib

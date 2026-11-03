@@ -19,7 +19,8 @@ async fn fusion_activates_builds_consumes_fuel_and_restarts_in_both_runtimes() {
                 Building::Terraformer,
                 Building::MissileSilo,
                 Building::AllianceDepot,
-                Building::LunarBase
+                Building::LunarBase,
+                Building::SensorPhalanx
             ]
         );
         service.apply(&plan.document).await.unwrap();

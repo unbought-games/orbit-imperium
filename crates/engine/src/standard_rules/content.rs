@@ -123,16 +123,14 @@ pub(super) fn patches() -> Vec<Patch> {
             "enabled":false,"mobile":false,"requirements":[]
         })),
     );
-    for id in ["JumpGate"] {
-        out.push(Patch::entry(
-            "/catalog",
-            "key",
-            json!({
-                "key":{"kind":"Building","id":id}, "body_kinds":["Moon"],
-                "enabled":false, "mobile":false, "requirements":[]
-            }),
-        ));
-    }
+    out.push(Patch::entry(
+        "/catalog",
+        "key",
+        json!({
+            "key":{"kind":"Building","id":"JumpGate"}, "body_kinds":["Moon"],
+            "enabled":false, "mobile":false,"requirements":[]
+        }),
+    ));
     // Earlier released content is included so the original signup baseline can upgrade too.
     let impulse = read(include_bytes!(
         "../../../../rules/content/impulse-drive.json"

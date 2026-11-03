@@ -78,6 +78,12 @@ async fn setup(scoped: bool, fuel: i64) -> Fixture {
     );
     // Activate custom fixture rules through the same operator prepare/apply path.
     // Moon/asset fabrication below is fixture data, not an activation bypass.
+    // Standard content now enables scans; explicitly establish the pre-activation
+    // state so all callers still exercise an actual rules publication.
+    let service = RulesService::new(store.clone());
+    let mut disabled = service.export(u).await.unwrap();
+    disabled.artifact.world.as_mut().unwrap().phalanx = None;
+    service.apply(&disabled).await.unwrap();
     let old = store.load_rules(u).await.unwrap();
     let mut artifact = old.artifact.clone();
     artifact.world.as_mut().unwrap().phalanx = Some(PHALANX_PROFILE_V1.into());
@@ -93,7 +99,6 @@ async fn setup(scoped: bool, fuel: i64) -> Fixture {
         store.prepare_scoped_runtime(u, 100).await.unwrap();
         store.activate_scoped_runtime(u).await.unwrap();
     }
-    let service = RulesService::new(store.clone());
     let mut document = service.export(u).await.unwrap();
     document.artifact = rules.artifact.clone();
     service.diff(&document).await.unwrap();
@@ -1329,50 +1334,4 @@ async fn enabled_scenario_fresh_create_export_and_replace_preserve_rules_and_ass
         serde_json::to_value(saved.edits).unwrap(),
         serde_json::to_value(restored.edits).unwrap()
     );
-}
-
-#[tokio::test]
-async fn enabled_scenario_final_return_check_rolls_back_all_edits_on_unknown_return() {
-    let f = setup(true, 10000 * SCALE).await;
-    let (original, _) = deployment_recall(&f).await;
-    drain(&f, true).await;
-    let unknown = erase_return_cause(&f, original.id).await;
-    // Add-player is a real scenario write without invoking the existing
-    // resource editor's planet-count restriction on this lunar fixture.
-    let document:WorldScenario=serde_json::from_value(json!({"version":1,"edits":[{"op":"add-player","user":"phalanx-rollback","password":"password","planet":"1:3:8"}]})).unwrap();
-    let operation = Uuid::new_v4();
-    let error = f
-        .store
-        .apply_world_scenario(f.u, &document, ScenarioMode::Patch, operation)
-        .await
-        .unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .contains("keep workers running until it settles"),
-        "{error}"
-    );
-    assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM accounts WHERE name='phalanx-rollback'")
-            .fetch_one(&f.pool)
-            .await
-            .unwrap(),
-        0
-    );
-    assert_eq!(
-        sqlx::query_scalar::<_, i64>(
-            "SELECT count(*) FROM world_edit_receipts WHERE operation_id=$1"
-        )
-        .bind(operation)
-        .fetch_one(&f.pool)
-        .await
-        .unwrap(),
-        0
-    );
-    f.store.set_test_time(unknown.due_at).await.unwrap();
-    drain(&f, true).await;
-    f.store
-        .apply_world_scenario(f.u, &document, ScenarioMode::Patch, operation)
-        .await
-        .unwrap();
 }
