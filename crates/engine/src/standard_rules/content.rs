@@ -101,7 +101,29 @@ pub(super) fn patches() -> Vec<Patch> {
             "enabled":false, "mobile":false, "requirements":[]
         })),
     );
-    for id in ["SensorPhalanx", "JumpGate"] {
+    let phalanx = read(include_bytes!(
+        "../../../../rules/content/sensor-phalanx.json"
+    ));
+    out.push(Patch::field("/world/phalanx", json!("sensor-phalanx-v1")));
+    out.push(Patch::field(
+        "/buildings/SensorPhalanx",
+        phalanx["building"].clone(),
+    ));
+    out.push(
+        Patch::entry(
+            "/catalog",
+            "key",
+            json!({
+                "key":{"kind":"Building","id":"SensorPhalanx"}, "body_kinds":["Moon"],
+                "enabled":true,"mobile":false,"requirements":phalanx["requirements"]
+            }),
+        )
+        .with_previous(json!({
+            "key":{"kind":"Building","id":"SensorPhalanx"}, "body_kinds":["Moon"],
+            "enabled":false,"mobile":false,"requirements":[]
+        })),
+    );
+    for id in ["JumpGate"] {
         out.push(Patch::entry(
             "/catalog",
             "key",

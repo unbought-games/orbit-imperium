@@ -437,3 +437,52 @@ fn lunar_industry_parent_resources_facilities_and_queue_are_independent() {
         1
     );
 }
+
+#[test]
+fn phalanx_requires_lunar_base_and_constructs_with_local_payment() {
+    let (mut s, old, p, b) = fixture();
+    let mut artifact = old.artifact.clone();
+    let content: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../../rules/content/sensor-phalanx.json"
+    ))
+    .unwrap();
+    artifact.buildings.insert(
+        Building::SensorPhalanx,
+        serde_json::from_value(content["building"].clone()).unwrap(),
+    );
+    let entry = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::SensorPhalanx))
+        .unwrap();
+    entry.enabled = true;
+    entry.body_kinds = [BodyKind::Moon].into();
+    entry.requirements = serde_json::from_value(content["requirements"].clone()).unwrap();
+    let r = Ruleset::from_artifact(artifact, 1).unwrap();
+    s.profile_hash = r.hash.clone();
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::SensorPhalanx, 0);
+    let request = upgrade(b, Building::SensorPhalanx);
+    let blocked = inspect_progression(&s, Actor::Player(p), &request, 0, &r).unwrap();
+    assert!(!blocked.blockers.is_empty());
+    s.bodies
+        .get_mut(&b)
+        .unwrap()
+        .levels
+        .insert(Building::LunarBase, 1);
+    let quote = inspect_progression(&s, Actor::Player(p), &request, 0, &r).unwrap();
+    assert!(quote.blockers.is_empty());
+    assert_eq!(
+        quote.terms.as_ref().unwrap().paid(),
+        Resources::from_values([20000, 40000, 20000].map(|n| n * SCALE))
+    );
+    let cmd = command(&s, &r, p, 0, request);
+    let changes = run(&mut s, &r, Actor::Player(p), 0, 99000, Input::Command(cmd));
+    assert_eq!(s.bodies[&b].levels[&Building::SensorPhalanx], 0);
+    assert_eq!(reserved_fields(&s, b).unwrap(), 1);
+    complete(&mut s, &r, &changes, 99001);
+    assert_eq!(s.bodies[&b].levels[&Building::SensorPhalanx], 1);
+}

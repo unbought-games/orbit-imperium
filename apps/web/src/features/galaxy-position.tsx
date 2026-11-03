@@ -41,7 +41,9 @@ export function GalaxyPosition({
   espionage,
   moonEspionage,
   missileAction,
+  scanAction,
 }: {
+  scanAction?: ReactNode
   readOnly?: boolean
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
@@ -246,6 +248,7 @@ export function GalaxyPosition({
                 }
               />
             )}
+            {scanAction}
             <GalaxyActionMenu
               missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
               target={target}

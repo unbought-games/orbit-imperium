@@ -1,3 +1,4 @@
+import { PhalanxReport } from './phalanx-report'
 import { debrisResourceKinds, resourceKinds } from './debris-resources'
 import { AbandonmentLosses } from './abandonment-losses'
 import type { components } from '../contracts'
@@ -231,6 +232,14 @@ function ReportObservationContent({
   shared = false,
 }: ObservationProps) {
   const kind = payload.kind
+  if (kind === 'Phalanx')
+    return (
+      <PhalanxReport
+        observation={
+          payload.observation as components['schemas']['PhalanxReport4']
+        }
+      />
+    )
   if (kind === 'MoonCreated')
     return (
       <Panel

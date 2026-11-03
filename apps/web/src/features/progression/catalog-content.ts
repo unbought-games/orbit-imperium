@@ -12,7 +12,7 @@ const content: Record<string, string> = {
   LunarBase:
     'Expands the usable space on a moon. Each completed level adds three fields and occupies one. One free field is required to start. Lunar Base cannot be demolished.',
   SensorPhalanx:
-    'Observes fleet movements involving planets within range. Lunar intelligence operations are not available yet.',
+    'Observes fleet movements involving planets within range. Each scan costs 5,000 deuterium from this moon, including empty results. Range is the completed level squared minus one system. Lunar Base level 1 is required.',
   JumpGate:
     'Transfers ships instantly between two owned moons with completed gates. Gate transfers are not available yet.',
   MissileSilo:

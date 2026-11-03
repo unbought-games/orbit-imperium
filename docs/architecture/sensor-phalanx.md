@@ -3,8 +3,7 @@
 Part 1 supplies pure eligibility, observation rules and causal fleet return facts.
 Part 2 adds the ordered paid command, endpoint loader, historical report storage
 and API contracts. Activation follows normal rules prepare/apply after deployment
-to all processes; standard rules, construction and player UI remain disabled
-until part 3. `sensor-phalanx-v1` fixes range to `level² - 1` and cost to
+to all processes; standard rules now enable lunar construction and the player scan/report UI. `sensor-phalanx-v1` fixes range to `level² - 1` and cost to
 5,000,000,000 local deuterium micro-units.
 
 ## Integration contract
@@ -117,8 +116,7 @@ Orbit does not detect replica versions or attest database credential exclusion.
 ### Explicit activation boundary for parts 2 and 3
 
 1. Complete binary rollout using the existing deployment process, then use normal
-   rules prepare/apply. Standard upgrade will enable phalanx only when part 3 adds
-   it to the standard content bundle; custom fixture rules can activate it now.
+   rules prepare/apply. Standard upgrade enables the bundled phalanx profile and construction catalog.
    No registry, checkbox, override flag or new orchestration service is required.
 2. Preview is advisory. Both serial and scoped publication recheck complete current
    active fleet membership under their existing barriers and commit fences.
@@ -209,7 +207,7 @@ observed owner names. Preview contains only source, target, observation time, an
 cost. Existing report pagination, retention and metadata actions apply. The
 sharing allowlist rejects Phalanx. Generated client contracts include the paid
 action, `ScanPlanet` capability for enabled custom rules, report envelope, and
-single `{ kind, at }` deadline representation. No UI implementation is included.
+single `{ kind, at }` deadline representation. The player UI uses this contract without live report enrichment.
 
 The activation boundary above uses the existing deploy-everywhere → normal rules
 upgrade flow. Complete current return membership is revalidated at publication,
@@ -219,7 +217,7 @@ process registry or stored readiness bit. Admission refuses new scans while
 disabled or while deactivation is pending, after original receipt recovery; active
 and queued rules are read atomically. See the [operator guide](../operations/sensor-phalanx.md).
 
-Part 3 owns standard lunar catalog/rules enablement, Facilities/Galaxy UI,
+The player implementation includes standard lunar catalog/rules enablement, Facilities/Galaxy UI,
 immutable report rendering and desktop/mobile visual validation. The backend
 activation path is usable now through normal custom-rules apply. Use the
 receipt's report ID directly; do not race an inbox refresh or turn route loading

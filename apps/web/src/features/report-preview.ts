@@ -37,6 +37,13 @@ export function reportPreview(
   let at: S['Coordinates'] | undefined
   let identity = ''
   switch (preview.kind) {
+    case 'Phalanx':
+      at = preview.target.coordinates
+      facts.push({
+        resources: { metal: '0', crystal: '0', deuterium: preview.cost },
+        label: 'Scan cost',
+      })
+      break
     case 'MoonCreated':
       at = preview.coordinates
       identity = 'Moon'

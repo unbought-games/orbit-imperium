@@ -6,13 +6,10 @@ normal rules upgrade. Deployment tooling/operator owns rollout completion. Orbit
 does not detect replica versions or require a capability registry, attestation,
 credential change, override flag or separate phalanx preparation command.
 
-The backend supports activation now. Standard `world.phalanx` and construction
-remain disabled until part 3 adds the standard content and UI. Until then, custom
-rules and tests use the ordinary rules export/diff/apply interface with
-`world.phalanx: "sensor-phalanx-v1"`. Scenario create/replace also accepts enabled rules and validates the final active
-return facts after all edits in its existing exclusive transaction. Enabled
-scenario exports can be loaded normally, subject to existing export limitations. Once
-bundled in the standard release, the normal commands are:
+Standard rules now enable `world.phalanx: "sensor-phalanx-v1"` and moon-only
+Sensor Phalanx construction. Lunar Base level 1 is required. Level 1 costs
+20,000 metal, 40,000 crystal and 20,000 deuterium; each level doubles the cost.
+Use the normal commands after completing deployment everywhere:
 
 ```sh
 orbit rules upgrade --dry-run
@@ -102,3 +99,14 @@ Every scan independently rejects relevant unknown return facts before any debit
 or report as generic `UnavailableContent`. It returns no partial rows or
 fleet-dependent player diagnostic. Operator diagnostics remain private; do not
 infer causes from timing or reports.
+
+## Player flow
+
+Open Sensor Phalanx in lunar Facilities for construction and range guidance.
+Choose a planet in Galaxy with the source moon selected, then select **Scan planet**.
+The confirmation shows the local fuel balance and exact 5,000 deuterium charge.
+A scan uses the ordinary command ledger and recovery; **Check scan status** recovers
+an uncertain command instead of purchasing a second observation. **Open saved scan**
+uses the report ID in the committed receipt. Reports also remain accessible through
+the normal inbox. Reopening or refreshing a report never scans. **Scan again** is
+an explicit additional purchase.

@@ -74,19 +74,22 @@ pub(crate) fn validate_catalog(a: &RulesArtifact) -> Result<(), RulesError> {
                 )
             )
             && entry.body_kinds == BTreeSet::from([BodyKind::Moon]);
-        let body_kinds_allowed =
-            if entry.enabled && entry.key == CatalogKey::Building(Building::LunarBase) {
-                entry.body_kinds == BTreeSet::from([BodyKind::Moon])
-            } else {
-                lunar_placeholder
-                    || entry.body_kinds == BTreeSet::from([BodyKind::Planet])
-                    || (matches!(
-                        entry.key,
-                        CatalogKey::Building(Building::RoboticsFactory | Building::Shipyard)
-                            | CatalogKey::Ship(_)
-                            | CatalogKey::Defense(_)
-                    ) && entry.body_kinds == BTreeSet::from([BodyKind::Planet, BodyKind::Moon]))
-            };
+        let body_kinds_allowed = if entry.enabled
+            && matches!(
+                entry.key,
+                CatalogKey::Building(Building::LunarBase | Building::SensorPhalanx)
+            ) {
+            entry.body_kinds == BTreeSet::from([BodyKind::Moon])
+        } else {
+            lunar_placeholder
+                || entry.body_kinds == BTreeSet::from([BodyKind::Planet])
+                || (matches!(
+                    entry.key,
+                    CatalogKey::Building(Building::RoboticsFactory | Building::Shipyard)
+                        | CatalogKey::Ship(_)
+                        | CatalogKey::Defense(_)
+                ) && entry.body_kinds == BTreeSet::from([BodyKind::Planet, BodyKind::Moon]))
+        };
         if !body_kinds_allowed || (entry.mobile && !matches!(entry.key, CatalogKey::Ship(_))) {
             return Err(RulesError::InvalidReference);
         }

@@ -1,3 +1,4 @@
+import { PhalanxFacility } from '../phalanx-facility'
 import { AllianceDepot } from '../alliance-depot'
 import { SiloSummary } from '../missile-inventory'
 import {
@@ -357,6 +358,7 @@ export function BuildingDetails({
       {building.id === 'AllianceDepot' && view.protocol === 4 && (
         <AllianceDepot model={model} view={view} body={body} showEmpty />
       )}
+      {building.id === 'SensorPhalanx' && <PhalanxFacility body={body} />}
       {building.id === 'MissileSilo' && <SiloSummary body={body} />}
       {entry && (
         <TechnicalData
