@@ -1,3 +1,4 @@
+import { createElement } from 'react'
 import { expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { PhalanxReport } from './phalanx-report'
@@ -19,7 +20,9 @@ const observation: components['schemas']['PhalanxReport4'] = {
   },
 }
 it('renders an empty paid observation without claiming the absence of hidden fleets', () => {
-  const html = renderToStaticMarkup(<PhalanxReport observation={observation} />)
+  const html = renderToStaticMarkup(
+    createElement(PhalanxReport, { observation }),
+  )
   expect(html).toContain('No visible movements were observed')
   expect(html).toContain('Hidden movements are not disclosed')
   expect(html).toContain('5,000')
@@ -27,8 +30,8 @@ it('renders an empty paid observation without claiming the absence of hidden fle
 })
 it('uses historical owner names and exactly the supplied deadline', () => {
   const html = renderToStaticMarkup(
-    <PhalanxReport
-      observation={{
+    createElement(PhalanxReport, {
+      observation: {
         ...observation,
         report: {
           ...observation.report,
@@ -43,8 +46,8 @@ it('uses historical owner names and exactly the supplied deadline', () => {
             },
           ],
         },
-      }}
-    />,
+      },
+    }),
   )
   expect(html).toContain('Historical name')
   expect(html).toContain('Impact:')
