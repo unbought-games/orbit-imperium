@@ -7,6 +7,13 @@ export function SatelliteOutput({
   view,
   body,
 }: Pick<ProgressionProps, 'view' | 'body'>) {
+  if (body.kind === 'Moon')
+    return (
+      <p className={styles.note}>
+        Solar Satellites produce no energy on moons. They remain stationary and
+        can be destroyed in combat.
+      </p>
+    )
   const production = view.progression.production.find((p) => p.body === body.id)
   const output = production?.solar_satellite
   if (!output)

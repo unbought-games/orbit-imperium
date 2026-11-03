@@ -33,5 +33,6 @@ fn without_ship(mut artifact: RulesArtifact, ship: ShipType) -> RulesArtifact {
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     artifact
 }

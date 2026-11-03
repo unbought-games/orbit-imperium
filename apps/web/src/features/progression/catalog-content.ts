@@ -27,7 +27,8 @@ const content: Record<string, string> = {
     'Transforms uninhabitable terrain into room for development. Each completed level adds five planet fields and occupies one. Construction requires one free field and enough gross energy at the start. Terraformer cannot be demolished.',
   NaniteFactory:
     'Nanite assemblers accelerate construction and manufacturing on this planet. Each completed level halves raw build time. Research is unaffected. Factory upgrades and demolition cannot overlap manufacturing.',
-  RoboticsFactory: 'Robotic workers accelerate construction on this planet.',
+  RoboticsFactory:
+    'Robotic workers accelerate construction on this body. They do not speed up ship or defense production.',
   Shipyard:
     'Builds ships and defensive structures. Higher levels reduce manufacturing time.',
   ResearchLab:
@@ -47,10 +48,11 @@ const content: Record<string, string> = {
   ColonyShip:
     'Establishes a planet at an eligible empty position. Requires Shipyard 4 and Impulse Drive 3. Success consumes one ship and deposits cargo; escorts and extra Colony Ships return. Uses impulse propulsion with 7,500 cargo capacity shared with mission fuel.',
   SmallCargo:
-    'Transports resources between planets. Cargo capacity is shared by resources and mission fuel.',
+    'Transports resources between planets and moons. Cargo capacity is shared by resources and mission fuel.',
   LargeCargo:
-    'A bulk transport powered by combustion engines for moving large resource shipments between planets. Cargo capacity is shared by resources and mission fuel.',
-  LightFighter: 'A small combat ship for attacking and defending planets.',
+    'A bulk transport powered by combustion engines for moving large resource shipments between planets and moons. Cargo capacity is shared by resources and mission fuel.',
+  LightFighter:
+    'A small combat ship for attacking and defending planets and moons.',
   HeavyFighter:
     'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
   Cruiser:
@@ -66,15 +68,15 @@ const content: Record<string, string> = {
   Recycler:
     'Collects resources from debris fields, including deuterium where available.',
   EspionageProbe:
-    'Gathers intelligence about another planet on an espionage mission.',
+    'Gathers intelligence about another planet or moon on an espionage mission.',
   RocketLauncher:
-    'A stationary missile battery that defends this planet against attacking fleets.',
+    'A stationary missile battery that defends its planet or moon against attacking fleets.',
   LightLaser:
-    'A stationary laser battery that defends this planet against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
+    'A stationary laser battery that defends its planet or moon against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
   HeavyLaser:
-    'A stationary heavy laser battery that defends this planet against attacking fleets. Requires Shipyard 4, Energy Technology 3 and Laser Technology 6.',
+    'A stationary heavy laser battery that defends its planet or moon against attacking fleets. Requires Shipyard 4, Energy Technology 3 and Laser Technology 6.',
   IonCannon:
-    'A stationary cannon with strong shields that defends this planet against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
+    'A stationary cannon with strong shields that defends its planet or moon against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
   GaussCannon:
     'A stationary electromagnetic cannon with powerful attacks against enemy fleets. Requires Shipyard 6, Energy Technology 6, Weapons Technology 3 and Shielding Technology 1.',
   PlasmaTurret:

@@ -175,8 +175,8 @@ pub(crate) fn create_moon(
     Ok(Some(outcome))
 }
 
-/// Planet-only progression and production settings. Lunar Base construction
-/// uses its explicit catalog eligibility; fleet operations have separate guards.
+/// Planet-only production settings and retained progression. Enabled lunar
+/// progression uses explicit catalog eligibility; fleets have separate guards.
 pub fn require_operational_body(body: &Body) -> Result<(), GameError> {
     if body.kind == BodyKind::Moon {
         Err(GameError::UnavailableContent)

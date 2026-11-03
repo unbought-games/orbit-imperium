@@ -269,6 +269,16 @@ export function BuildingDetails({
                   </DetailRow>
                 )}
               </dl>
+              {body.kind === 'Moon' &&
+                action === 'Upgrade' &&
+                building.id !== 'LunarBase' &&
+                body.fields - body.fields_used - body.fields_reserved === 1 && (
+                  <p className={styles.note}>
+                    This upgrade uses the last free field. Expand Lunar Base
+                    first to leave room for more construction, or demolish a
+                    facility before expanding later.
+                  </p>
+                )}
               {BigInt(terms.required_energy) > 0n && (
                 <p className={styles.note}>
                   Required at the start only; energy is not consumed or

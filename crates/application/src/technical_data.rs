@@ -122,13 +122,14 @@ pub(crate) fn technical_data(
                 data.fact("Recovery after combat", format!("{n} / {d} chance for each destroyed defense to recover independently; not a guaranteed fraction of losses."));
             }
             if defense.is_shield_dome() {
-                data.fact("Planet limit", "One completed or queued dome of this type per planet. Its shield protects itself, not other units.");
+                data.fact("Body limit", "One completed or queued dome of this type per planet or moon. Its shield protects itself, not other units.");
             }
         }
         CatalogKey::Ship(ShipType::SolarSatellite) => {
             let rule = solar_satellite_rule(rules).ok_or(ServiceError::InvariantFailure)?;
             data.fact("Energy per satellite", format!("floor((planet maximum temperature + {}) / {}). Total energy is multiplied by completed satellite count and the production setting; economy speed does not multiply energy.", rule.temperature_offset, rule.temperature_divisor));
-            data.fact("Stationary ship", "Cannot fly or carry cargo. Uses no fuel or building fields. Defends the planet and can be destroyed; destroyed satellites do not recover.");
+            data.fact("Lunar energy", "Solar Satellites produce exactly zero energy on moons, regardless of temperature or count.");
+            data.fact("Stationary ship", "Cannot fly or carry cargo. Uses no fuel or building fields. Defends its planet or moon and can be destroyed; destroyed satellites do not recover.");
         }
         _ => return Ok(None),
     }
@@ -324,14 +325,9 @@ mod tests {
         let r = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
         for defense in [DefenseId::SmallShieldDome, DefenseId::LargeShieldDome] {
             let projected = data(&r, CatalogKey::Defense(defense));
-            assert!(
-                projected
-                    .facts
-                    .iter()
-                    .any(|fact| fact.label == "Planet limit"
-                        && fact.value.contains("of this type")
-                        && fact.value.contains("not other units"))
-            );
+            assert!(projected.facts.iter().any(|fact| fact.label == "Body limit"
+                && fact.value.contains("of this type")
+                && fact.value.contains("not other units")));
             assert!(
                 projected
                     .facts

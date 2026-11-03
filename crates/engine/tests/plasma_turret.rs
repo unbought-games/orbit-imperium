@@ -124,6 +124,7 @@ fn turret_only_upgrade_preserves_existing_rules_without_initialization() {
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     let old = Ruleset::from_artifact(old, latest.speed).unwrap();
     let next = upgrade_standard_rules(&old).unwrap();
     // Upgrades preserve existing collection order; re-added units append after

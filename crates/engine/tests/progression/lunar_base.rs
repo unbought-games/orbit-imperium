@@ -1,6 +1,6 @@
 use super::*;
 
-fn lunar_fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
+pub(super) fn lunar_fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     let (mut s, old, p, b) = prepared();
     let mut artifact = old.artifact.clone();
     artifact.universe = None;

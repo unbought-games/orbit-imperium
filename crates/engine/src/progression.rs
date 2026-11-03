@@ -377,6 +377,11 @@ pub fn inspect_progression(
         return Ok(out);
     }
     if key != CatalogKey::Building(Building::LunarBase)
+        // Retained planet-only rules preserve their original rejection. New
+        // lunar work is enabled by the validated catalog, never body kind alone.
+        && !r.artifact.catalog.iter().any(|entry| {
+            entry.key == key && entry.enabled && entry.body_kinds.contains(&BodyKind::Moon)
+        })
         && let Err(error) = require_operational_body(b)
     {
         out.blockers.push(block(error));

@@ -171,6 +171,7 @@ fn bomber_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
         .unwrap();
     entry.enabled = false;
     entry.requirements.clear();
+    entry.body_kinds = [BodyKind::Planet].into();
     let previous = Ruleset::from_artifact(previous, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);

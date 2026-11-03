@@ -103,13 +103,17 @@ export function TechnologyPage(props: ProgressionProps) {
   }
   return (
     <>
-      {body.kind === 'Moon' && page !== 'facilities' && (
-        <p role="status">
-          {page === 'research'
-            ? 'Research cannot be conducted on moons. You can inspect the catalog.'
-            : 'Manufacturing on moons is not available yet. You can inspect the catalog.'}
-        </p>
-      )}
+      {body.kind === 'Moon' &&
+        page !== 'facilities' &&
+        !entries.some(
+          (entry) => entry.enabled && entry.body_kinds.includes(body.kind),
+        ) && (
+          <p role="status">
+            {page === 'research'
+              ? 'Research cannot be conducted on moons. You can inspect the catalog.'
+              : 'Manufacturing on moons is not available yet. You can inspect the catalog.'}
+          </p>
+        )}
       <WorkSummaries
         view={view}
         body={body}
@@ -184,8 +188,7 @@ export function TechnologyPage(props: ProgressionProps) {
                       disabled={
                         entry.key.kind === 'Building'
                           ? !!buildingUnavailableReason(entry, body)
-                          : body.kind === 'Moon' ||
-                            !entry.enabled ||
+                          : !entry.enabled ||
                             !entry.body_kinds.includes(body.kind)
                       }
                       disabledReason={
@@ -203,7 +206,7 @@ export function TechnologyPage(props: ProgressionProps) {
           </CatalogSection>
         ))}
       </div>
-      {!entries.length && <p>No catalog is available for this planet.</p>}
+      {!entries.length && <p>No catalog is available for this body.</p>}
       {page === 'shipyard' && (
         <ShipComparison catalog={view.catalog} research={view.research} />
       )}
@@ -223,7 +226,6 @@ function TechnologyInspector({
   const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
   const [quantity, setQuantity] = useState('1')
   const request =
-    (body.kind !== 'Moon' || selected.key.kind === 'Building') &&
     selected.enabled &&
     selected.body_kinds.includes(body.kind) &&
     !(

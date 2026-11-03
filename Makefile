@@ -347,3 +347,14 @@ test-lunar-base:
 
 test-lunar-base-db:
 	sh scripts/test-db.sh moons
+
+# Lunar Robotics and Shipyard: shared construction, paid production and UI wiring.
+.PHONY: test-lunar-industry test-lunar-industry-db
+test-lunar-industry:
+	cargo nextest run -p orbit-engine -p orbit-application --all-targets
+	npm test
+	npm run test:ui -- moons.spec.ts industrial-buildings.spec.ts
+
+test-lunar-industry-db:
+	sh scripts/test-db.sh moons
+	sh scripts/test-db.sh rules_updates
