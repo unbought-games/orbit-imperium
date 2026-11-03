@@ -73,7 +73,9 @@ export function PhalanxAction({
           <p role="alert">
             {error ||
               (receipt?.status === 'Rejected'
-                ? dispatchFailure(receipt.code)
+                ? receipt.code === 'InsufficientResources'
+                  ? 'This moon needs 5,000 deuterium locally.'
+                  : dispatchFailure(receipt.code)
                 : '')}
           </p>
         )}

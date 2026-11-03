@@ -105,6 +105,22 @@ for (const width of [1440, 390]) {
             target_planet: id(81),
           })
           expect(pair.presence.command.action.body).toBe(moon.id)
+          // A stale local balance may let the player attempt another scan;
+          // a server rejection must preserve access to the earlier paid result.
+          if (scans === 2) {
+            await route.fulfill({
+              json: {
+                protocol: 4,
+                binding,
+                command_id: e.command_id,
+                admitted_at: now,
+                executed_at: now,
+                status: 'Rejected',
+                code: 'InsufficientResources',
+              },
+            })
+            return
+          }
         }
         await route.fulfill({
           json: {
@@ -218,6 +234,21 @@ for (const width of [1440, 390]) {
       expect(scans).toBe(1)
       await withFixtureResponse(
         page,
+        (r) => r.request().method() === 'POST' && r.url().endsWith('/commands'),
+        () =>
+          dialog
+            .getByRole('button', { name: 'Scan again — spend 5,000 deuterium' })
+            .click(),
+      )
+      await expect(dialog.getByRole('alert')).toBeVisible()
+      await expect(dialog.getByRole('link', { name: 'Open saved scan' })).toBeVisible()
+      await diagnosticScreenshot(page, {
+        path: `test-results/phalanx-rescan-rejected-${width}x900.png`,
+        fullPage: true,
+      })
+      expect(scans).toBe(2)
+      await withFixtureResponse(
+        page,
         (r) =>
           r.request().method() === 'POST' &&
           r.url().endsWith(`/reports/${id(90)}`),
@@ -243,7 +274,7 @@ for (const width of [1440, 390]) {
       await expect(
         page.getByRole('region', { name: 'Report observation' }),
       ).toContainText('historical observation')
-      expect(scans).toBe(1)
+      expect(scans).toBe(2)
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

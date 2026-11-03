@@ -1,6 +1,31 @@
 import type { components } from '../contracts'
+import type { Attempt } from '../client-model/commands'
 type S = components['schemas']
 export const scanCost = '5000000000'
+/** A new attempt changes status feedback, but does not replace a saved observation. */
+export function scanAttempts(
+  attempts: Iterable<Attempt>,
+  source: string,
+  target: string | undefined,
+) {
+  let attempt: Attempt | undefined
+  let report: string | undefined
+  for (const candidate of attempts) {
+    const command = candidate.envelope.command
+    if (
+      command.type !== 'World' ||
+      command.action.type !== 'ScanPlanet' ||
+      command.action.source_moon !== source ||
+      command.action.target_planet !== target
+    )
+      continue
+    attempt = candidate
+    const receipt = candidate.receipt
+    if (receipt?.status === 'Committed' && 'result_ids' in receipt)
+      report = receipt.result_ids[0] ?? report
+  }
+  return { attempt, report }
+}
 export function phalanxRange(level: number) {
   return BigInt(level) ** 2n - 1n
 }
