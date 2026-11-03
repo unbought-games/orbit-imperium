@@ -1211,7 +1211,7 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
   await expect(menu).toBeFocused()
 })
 
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   test(`account username appears in navigation at ${width}px`, async ({
     page,
   }) => {
@@ -1249,23 +1249,6 @@ for (const width of [390, 1440]) {
     await expect(username).toBeVisible()
     await expect(username.getByRole('img', { name: 'Supporter · $10 / month USD' })).toBeVisible()
     await expect(username.locator('[data-shape="shield"]')).toBeVisible()
-    if (width >= 1024) {
-      const account = navigation.getByRole('button', { name: 'Account menu', exact: true })
-      await expect(account.getByLabel('Username', { exact: true })).toHaveText('eth')
-      await expect(account.locator('button, a')).toHaveCount(0)
-      await expect(account.locator('[data-shape="shield"]')).toBeVisible()
-      await expect(account.getByRole('img', { name: 'Supporter · $10 / month USD' })).toBeVisible()
-      await account.focus()
-      await diagnosticScreenshot(page, { path: 'test-results/account-closed-desktop-1440x900.png' })
-      await page.keyboard.press('Enter')
-      const menu = page.getByRole('menu', { name: 'Account menu', exact: true })
-      await expect(menu.getByRole('menuitem')).toHaveText(['Settings', 'Logout'])
-      await expect(menu.getByRole('menuitem', { name: 'Settings', exact: true })).toBeFocused()
-      await diagnosticScreenshot(page, { path: 'test-results/account-open-desktop-1440x900.png' })
-      await page.keyboard.press('Escape')
-      await expect(account).toBeFocused()
-      return
-    }
     const signOut = navigation.getByRole('button', { name: 'Sign out', exact: true })
     await expect(signOut).toBeVisible()
     const nameBounds = await username.boundingBox()

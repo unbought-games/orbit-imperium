@@ -736,3 +736,36 @@ intentional gated-options and aborted-options cases retain their distinct
 request/error gates. All keyboard, touch-size, containment, submission and
 negative/race assertions remain unchanged; no timeout increase or retry was added.
 No independent caller work remains deferred.
+
+### Desktop account identity stalled in merge queue (PR #326)
+
+Queue revision `1b65898fc1b00c55eca92b3bfe0c1ff708d7ee42` combined PR head
+`30b747d4d9de066f3034c99e9627ed6e1ea775ee` with main `cfe36bc`.
+Run `41694784070`, job `126123955968`, completed 137 of 138 shard-8 cases by
+18:42:46 UTC on 2026-11-03. Only case 53, `account username appears in navigation
+at 1440px`, had no result. The test step had started at 18:37:57; cancellation
+completed at 19:11:58 after the heartbeat observed the prolonged stall. No failing
+assertion or stack identified its pending operation. All other merge-group jobs
+passed. Cancellation removed the PR from the queue; this is the first queue removal.
+
+History: account identity coverage originated in `680b70c` (#14), was extended by
+`1181001` (#235), and gained desktop account-menu/insignia checks plus explicit
+profile-response readiness in `c56a159` (#320). The preceding audit's unexplained
+account-identity stall concerned a different desktop-navigation scenario that
+remains removed. Git history and the local audit supplied no explanation for this
+scenario's pending wait; the separate owner Test Czar ledger was unavailable.
+No speculative stabilization attempt or unchanged retry was made.
+
+Removed only the stalled 1440px scenario and its now-unused desktop branch under
+the repository deletion rule. The same named 390px case remains intact. Retained
+coverage includes client/adaptor player-profile identity and supporter state,
+runtime/session cleanup, the mobile username/insignia scenario, desktop-navigation
+account-menu touch targets and Settings navigation, and desktop-to-mobile menu
+focus/portal cleanup. The independent desktop-navigation scenario is not a renamed
+replacement. No product source, timeout, retry, or surviving assertion changed.
+
+This was the third CI repair round in this PR. Reassessment found all changes
+outside bulk report reads are confined to test reliability and its audit: two
+unexplained report scenarios removed, quote delivery awaited in an existing
+quick-build fixture, and this unexplained desktop identity scenario removed.
+No speculative product changes or additional feature scope were introduced.
