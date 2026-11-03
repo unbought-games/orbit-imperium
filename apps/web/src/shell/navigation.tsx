@@ -1,5 +1,6 @@
 import { useUniverseName } from './session-context'
 import { PlayerName } from '../features/player-name'
+import { Menu as AccountMenu } from '@base-ui/react/menu'
 import {
   Orbit,
   Blocks,
@@ -11,6 +12,8 @@ import {
   X,
   LogOut,
   ArrowUpRight,
+  ChevronsUpDown,
+  Settings,
 } from 'lucide-react'
 import styles from './navigation.module.css'
 import { Button } from '../ui/button'
@@ -235,20 +238,56 @@ export function Navigation({
           {destination('high-scores')}
         </nav>
         <div className={styles.sidebarAccount}>
-          {destination('settings')}
-          <div className={styles.sidebarPlayer}>
-            <span className={styles.username} aria-label="Username">
-              <PlayerName player={view.binding.player} fallback="Commander" />
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-small"
-              aria-label="Sign out"
-              onClick={onLogout}
+          <AccountMenu.Root>
+            <AccountMenu.Trigger
+              render={
+                <Button variant="ghost" className={styles.sidebarPlayer} />
+              }
+              aria-label="Account menu"
             >
-              <LogOut size={17} aria-hidden="true" />
-            </Button>
-          </div>
+              <span className={styles.username} aria-label="Username">
+                <PlayerName
+                  player={view.binding.player}
+                  fallback="Commander"
+                  interactive={false}
+                  linkAlliance={false}
+                />
+              </span>
+              <ChevronsUpDown size={16} aria-hidden="true" />
+            </AccountMenu.Trigger>
+            <AccountMenu.Portal>
+              <AccountMenu.Positioner
+                positionMethod="fixed"
+                side="top"
+                align="start"
+                sideOffset={8}
+                collisionPadding={12}
+                className={styles.accountPositioner}
+              >
+                <AccountMenu.Popup
+                  className={styles.accountMenu}
+                  aria-label="Account menu"
+                >
+                  <AccountMenu.Item
+                    render={
+                      <Link {...routeTarget(universeName, 'settings', body)} />
+                    }
+                    className={styles.accountMenuItem}
+                    data-analytics="navigate_settings"
+                    onClick={() => onVisit?.('settings')}
+                  >
+                    <Settings size={16} aria-hidden="true" /> Settings
+                  </AccountMenu.Item>
+                  <AccountMenu.Item
+                    className={styles.accountMenuItem}
+                    onClick={onLogout}
+                  >
+                    <LogOut size={16} aria-hidden="true" /> Logout
+                  </AccountMenu.Item>
+                </AccountMenu.Popup>
+              </AccountMenu.Positioner>
+            </AccountMenu.Portal>
+          </AccountMenu.Root>
         </div>
       </aside>
       <div className={styles.topBar} data-sticky-navigation>

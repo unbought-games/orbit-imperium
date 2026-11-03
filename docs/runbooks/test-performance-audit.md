@@ -516,3 +516,37 @@ fixture-browser cases in 24 files; 37 spec files use the failure fixture and
 The benchmark tables above describe their recorded pre-integration snapshots.
 They are not measurements of the integrated PR revision; its validation and CI
 results are tracked separately on the PR.
+
+## Desktop account menu validation — 2026-11-02
+
+The sidebar account-menu change updates existing navigation coverage for Settings,
+logout, keyboard focus, touch targets, long names, and supporter/insignia identity.
+The first local command could not start because this checkout had no dependencies;
+`npm ci --no-audit --no-fund` completed in 3s.
+
+A newly authored combined scenario, `desktop account menu supports keyboard settings
+navigation, dismissal and logout`, was interrupted after 40.1s when it tried to click
+the visually hidden route H1 underneath the sticky HUD. Its one repair clicked
+visible content. The next run was interrupted after 40.4s when the absolute-positioned
+popup detached during scrolling. Removed that new scenario rather than stabilizing
+it again. Fixed the product popup to use fixed positioning, matching its sidebar
+anchor. Existing touch navigation, long-name/logout, and account-identity keyboard
+checks retain the browser wiring protection. No existing test was deleted, assertion
+weakened, timeout increased, or retry added.
+
+Adding the insignia fixture initially failed both account-identity viewport cases
+(7.4s each): its asset URL did not match the contract's content-hash URL pattern.
+The single repair uses the actual bundled free asset's SHA-256 URL. Both cases passed
+(2.5s/2.9s; 1.821s module preparation; 3.9s runner time). Profile reloads subscribe to
+successful complete responses before checking identity. Screenshot-only scrolling
+remains gated by `ORBIT_TEST_SCREENSHOTS`.
+
+Final pre-publication verification on base `d3dab11936a8d9767e41d6673c646aaf2fcac9ea`
+plus this change: 18 focused browser checks passed (2.148s module preparation,
+15.6s runner time); 18 navigation unit tests passed (0.704s runner time); TypeScript,
+canonical lint/format and whitespace checks passed. The browser run logged refused
+local API connections during fixture teardown without failing assertions. Desktop
+1440×900 and mobile 390×900 captures, plus touch and long-name states, were inspected
+and displayed in the implementation chat. Each runner closed its Vite server,
+browsers and port lease; no database or Docker setup was used. Remote CI and queue
+verification are tracked on the PR, separately from these local timings.

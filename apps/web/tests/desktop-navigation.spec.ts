@@ -2,6 +2,7 @@ import { expect, test } from './fixtures/test'
 import { body, binding, id, playerProfilesFixture, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import { openNavigation, signOut } from './fixtures/navigation'
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440, 700, 2], [2560, 1100, 1]]) {
@@ -60,7 +61,7 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
     expect((await sidebar.boundingBox())!.y).toBe(0)
     expect((await world.boundingBox())!.y).toBe(0)
-    const settings = sidebar.getByRole('link', { name: 'Settings', exact: true })
+    const settings = sidebar.getByRole('button', { name: 'Account menu', exact: true })
     await settings.scrollIntoViewIfNeeded()
     await expect(settings).toBeInViewport({ ratio: 1 })
     await settings.focus()
@@ -85,20 +86,22 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
   })
 }
 
-test('sidebar account identity wraps without moving sign out outside the viewport', async ({ page }) => {
+test('sidebar account identity wraps inside its full-width menu trigger', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 600 })
   await shellFixture(page)
   await playerProfilesFixture(page, () => [{ player: binding.player, username: 'CommanderWithAnExceptionallyLongName', supporter_tier: 2 }])
-  await page.reload()
+  await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), () => page.reload())
   const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
   const username = sidebar.getByLabel('Username', { exact: true })
   await expect(username).toContainText('CommanderWithAnExceptionallyLongName')
   await expect(username.getByRole('img', { name: /Supporter/ })).toBeVisible()
-  const exit = sidebar.getByRole('button', { name: 'Sign out', exact: true })
+  const exit = sidebar.getByRole('button', { name: 'Account menu', exact: true })
   await exit.scrollIntoViewIfNeeded()
   await expect(exit).toBeInViewport({ ratio: 1 })
   const name = (await username.boundingBox())!, button = (await exit.boundingBox())!
-  expect(name.x + name.width).toBeLessThanOrEqual(button.x)
+  expect(name.x).toBeGreaterThanOrEqual(button.x)
+  expect(name.x + name.width).toBeLessThanOrEqual(button.x + button.width)
+  await diagnosticScreenshot(page, { path: 'test-results/account-long-name-1024x600.png' })
   expect(await sidebar.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   await signOut(page)
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
@@ -113,10 +116,16 @@ test('sidebar uses full touch targets on a large touch viewport', async ({ brows
     const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
     const small = await sidebar.locator('a, button').evaluateAll(nodes => nodes.filter(node => node.getBoundingClientRect().height < 44).map(node => node.textContent))
     expect(small).toEqual([])
-    await sidebar.getByRole('button', {name: 'Commander profile details'}).tap()
-    await expect(page.getByRole('dialog', {name: 'Commander profile'})).toBeVisible()
-    await diagnosticScreenshot(page, {path: 'test-results/profile-sidebar-touch-1024x900.png'})
-    await page.keyboard.press('Escape')
+    await sidebar.getByRole('button', {name: 'Account menu', exact: true}).tap()
+    const accountMenu = page.getByRole('menu', {name: 'Account menu', exact: true})
+    await expect(accountMenu).toBeVisible()
+    await expect(accountMenu.getByRole('menuitem')).toHaveText(['Settings', 'Logout'])
+    for (const item of await accountMenu.getByRole('menuitem').all())
+      expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await diagnosticScreenshot(page, {path: 'test-results/account-sidebar-touch-1024x900.png'})
+    await accountMenu.getByRole('menuitem', { name: 'Settings', exact: true }).tap()
+    await expect(page.getByRole('heading', { name: 'Universe settings', exact: true })).toBeVisible()
+    await expect(accountMenu).toBeHidden()
     await sidebar.getByRole('link', { name: 'Facilities', exact: true }).tap()
     await expect(page.locator('main h1')).toHaveText('Facilities')
   } finally { await context.close() }
@@ -171,6 +180,7 @@ test('mobile navigation keeps the player dossier inside the modal top layer', as
   await playerProfilesFixture(page, () => [{player:binding.player, username:'Aurelia', alliance:{id:id(90),universe:binding.universe,name:'Astral Accord',tag:'ASTRA'}}])
   await page.reload()
   const menu = await openNavigation(page)
+  await diagnosticScreenshot(page, {path:'test-results/account-navigation-mobile-390x1000.png'})
   await menu.getByRole('button', {name:'Aurelia profile details'}).click()
   const popup = menu.getByRole('dialog', {name:'Aurelia profile'})
   await expect(popup).toBeVisible()

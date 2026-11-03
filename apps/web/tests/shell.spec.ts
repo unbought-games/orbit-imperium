@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -1209,7 +1212,7 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
 })
 
 for (const width of [390, 1440]) {
-  test(`account username appears beside sign out in navigation at ${width}px`, async ({
+  test(`account username appears in navigation at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -1222,14 +1225,47 @@ for (const width of [390, 1440]) {
         },
       }),
     )
+    const insigniaAsset = readFileSync('crates/application/assets/insignias/compass.svg')
+    const assetUrl = `/api/media/insignias/compass/${createHash('sha256').update(insigniaAsset).digest('hex')}.svg`
+    await page.route(`**${assetUrl}`, route => route.fulfill({
+      contentType: 'image/svg+xml',
+      body: insigniaAsset,
+    }))
     await playerProfilesFixture(page, () => [
-      { player: binding.player, username: 'eth' },
+      {
+        player: binding.player,
+        username: 'eth',
+        supporter_tier: 1,
+        insignia: {
+          recipe: { version: 1, symbol: 'compass', foreground: '#159600', background: '#f7ffd6' },
+          asset_url: assetUrl,
+        },
+      },
     ])
-    await page.reload()
+    await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), () => page.reload())
     const navigation = await openNavigation(page)
     const username = navigation.getByLabel('Username', { exact: true })
     await expect(username).toHaveText('eth')
     await expect(username).toBeVisible()
+    await expect(username.getByRole('img', { name: 'Supporter · $10 / month USD' })).toBeVisible()
+    await expect(username.locator('[data-shape="shield"]')).toBeVisible()
+    if (width >= 1024) {
+      const account = navigation.getByRole('button', { name: 'Account menu', exact: true })
+      await expect(account.getByLabel('Username', { exact: true })).toHaveText('eth')
+      await expect(account.locator('button, a')).toHaveCount(0)
+      await expect(account.locator('[data-shape="shield"]')).toBeVisible()
+      await expect(account.getByRole('img', { name: 'Supporter · $10 / month USD' })).toBeVisible()
+      await account.focus()
+      await diagnosticScreenshot(page, { path: 'test-results/account-closed-desktop-1440x900.png' })
+      await page.keyboard.press('Enter')
+      const menu = page.getByRole('menu', { name: 'Account menu', exact: true })
+      await expect(menu.getByRole('menuitem')).toHaveText(['Settings', 'Logout'])
+      await expect(menu.getByRole('menuitem', { name: 'Settings', exact: true })).toBeFocused()
+      await diagnosticScreenshot(page, { path: 'test-results/account-open-desktop-1440x900.png' })
+      await page.keyboard.press('Escape')
+      await expect(account).toBeFocused()
+      return
+    }
     const signOut = navigation.getByRole('button', { name: 'Sign out', exact: true })
     await expect(signOut).toBeVisible()
     const nameBounds = await username.boundingBox()
@@ -1239,6 +1275,8 @@ for (const width of [390, 1440]) {
     expect(nameBounds!.y + nameBounds!.height).toBeLessThanOrEqual(
       buttonBounds!.y + buttonBounds!.height,
     )
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await username.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: 'test-results/account-identity-mobile-390x900.png' })
   })
 }
 

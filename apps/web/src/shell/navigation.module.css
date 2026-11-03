@@ -285,7 +285,6 @@
   }
   .sidebarDestinations > a,
   .sidebarDevelop a,
-  .sidebarAccount > a,
   .sidebarDestinations button {
     position: relative;
     display: flex;
@@ -298,13 +297,11 @@
     font-size: 0.875rem;
     text-decoration: none;
   }
-  .sidebarDestinations a:hover,
-  .sidebarAccount > a:hover {
+  .sidebarDestinations a:hover {
     color: var(--champagne-light);
     background: var(--surface-navigation-hover);
   }
-  .sidebarDestinations a[aria-current='page'],
-  .sidebarAccount > a[aria-current='page'] {
+  .sidebarDestinations a[aria-current='page'] {
     color: var(--champagne-light);
     background: var(--surface-navigation-selected);
     box-shadow: inset 2px 0 var(--accent);
@@ -349,21 +346,20 @@
   }
   .sidebarAccount {
     margin-top: auto;
-    padding-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-navigation);
   }
   .sidebarPlayer {
-    border-top: 1px solid var(--border-navigation);
-    margin: 8px 6px 0;
-    padding-top: 8px;
+    width: 100%;
+    min-height: var(--control-size);
+    padding: 8px 10px;
+    text-align: left;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     color: var(--text-muted);
-    font-size: 0.75rem;
-  }
-  .sidebarPlayer > button {
-    flex-shrink: 0;
+    font-size: var(--font-size-sm);
   }
 }
 
@@ -372,9 +368,7 @@
   .sidebarDestinations button,
   .sidebar .sidebarDevelop a,
   .sidebar .sidebarDevelop button,
-  .sidebarAccount > a,
-  .sidebarPlayer > button,
-  .sidebarPlayer .username > button {
+  .sidebarPlayer {
     min-height: var(--control-size);
   }
 }
@@ -422,5 +416,40 @@
     position: absolute;
     top: 0;
     right: max(0px, calc(50% - 34px));
+  }
+}
+
+.accountPositioner {
+  z-index: 100;
+}
+.accountMenu {
+  width: var(--anchor-width);
+  min-width: 190px;
+  max-width: calc(100vw - 24px);
+  padding: 5px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  box-shadow: 0 12px 32px #0008;
+}
+.accountMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+.accountMenuItem[data-highlighted] {
+  background: var(--surface-selected);
+  outline: none;
+}
+@media (pointer: coarse) {
+  .accountMenuItem {
+    min-height: var(--control-size);
   }
 }
