@@ -221,7 +221,16 @@ async fn simultaneous_battles_create_one_moon_with_atomic_restart_and_view_deliv
     assert_eq!(m.amounts.metal, "0");
     assert_eq!(m.amounts.crystal, "0");
     assert_eq!(m.amounts.deuterium, "0");
-    exercise_moon_fleets(&reopened, binding, parent, moon, now + 86_400_001).await;
+    // Keep the large staged journey futures off the enclosing test future.
+    // Nesting them inline overflows the Linux test thread's stack in debug builds.
+    Box::pin(exercise_moon_fleets(
+        &reopened,
+        binding,
+        parent,
+        moon,
+        now + 86_400_001,
+    ))
+    .await;
     reopened.audit_universe(u).await.unwrap();
 }
 
@@ -396,7 +405,7 @@ async fn exercise_moon_fleets(
             .any(|f| f.intent.origin == moon && f.active())
     );
     validate_asset_lineage(&state).unwrap();
-    exercise_lunar_holding(store, binding, parent, moon).await;
+    Box::pin(exercise_lunar_holding(store, binding, parent, moon)).await;
 }
 
 async fn exercise_lunar_holding(store: &PgStore, host: Binding, parent: BodyId, moon: BodyId) {
