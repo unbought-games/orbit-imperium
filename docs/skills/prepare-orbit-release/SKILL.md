@@ -19,6 +19,15 @@ an existing announcement in `docs/news/releases/vVERSION.md`. Edit that file in
 place so the announcement and technical notes form one post with one stable ID.
 Remove `draft: true` only when the notes are ready for the intended release PR.
 
+Follow the contributor credit process in `docs/operations/open-source-releases.md`.
+Audit the full release range, including PR authors, coauthors, and verified non-code
+contributions; generated feature/fix bullets are not a complete contributor list.
+Add every external contributor to the version's Contributors section with public
+profile and contribution links. Carry forward build-note and unreleased changelog
+credits, moving only included entries out of Unreleased after recording them in
+the version's notes. Repeat the audit on refresh, preserve credits in summaries,
+and verify them in the rendered notes before declaring the release ready.
+
 Apply the editorial prompt before proposing the PR. For patch versions, proceed
 without asking for extra commentary by default. For minor/major versions (including
 0.1.0), show a useful draft and ask once whether the owner wants to add editorial

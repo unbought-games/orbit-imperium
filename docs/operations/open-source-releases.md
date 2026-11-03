@@ -50,6 +50,50 @@ an existing record must match exactly. Staging `build-<run>-<arch>` tags
 are implementation artifacts, not supported release references. Their names stay
 stable across attempts so rerunning only failed jobs can reuse successful builds.
 
+## Contributor credit
+
+Every release with external contributions must acknowledge all of those
+contributors. Credit code and coauthorship as well as documentation, testing,
+artwork, translations, and verified reports or reviews that led to included changes.
+An editorial decision to omit a maintenance change must not omit its contributor.
+
+When a contribution lands, add a linked acknowledgment to its build note in
+`docs/news/changes/` and the `Unreleased` section of `CHANGELOG.md`. State what the
+person contributed; preserve original authorship and coauthor trailers when
+integrating or squashing their work. Maintainer follow-up does not replace the
+original contributor's credit.
+
+During release preparation and every refresh of an existing release draft:
+
+1. Audit the complete range from the previous release tag to the proposed source
+   revision (all reachable history for the first release). Inspect commit authors,
+   coauthor trailers, associated PR authors and commits, and linked issues or
+   reviews. Do not rely only on first-parent subjects, `feat`/`fix` filtering, or
+   the person who merged the PR. Paginate GitHub results where needed.
+2. Resolve identities against public contribution evidence and deduplicate people
+   across aliases. Use their public name or handle, a profile link, a short
+   description of their contribution, and a PR/issue/commit link. Do not publish
+   commit email addresses, guess identities, or credit bots as external people.
+   Verify prior history before calling someone a first-time contributor. If
+   attribution cannot be verified, report the specific gap before finalizing notes.
+3. Include a `Contributors` section in `docs/news/releases/vVERSION.md` listing
+   every external contributor in that range. Preserve credit beside a feature
+   when useful, and thank first-time contributors explicitly. Reconcile the section
+   against the full audit, existing build notes, and unreleased changelog credits.
+   Remove credits for work excluded from the release; retain them as unreleased.
+4. Once included credits are in the version's notes, remove only the corresponding
+   entries from `CHANGELOG.md`'s `Unreleased` section, removing the section if empty.
+   The numbered changelog entry links to those canonical notes. Preparation
+   preserves existing text; the agent performs this reconciliation, not the script.
+5. Check that the rendered notes retain the acknowledgments and links. GitHub
+   Releases and the website use the same version post; preserve its credits in
+   announcements and summaries, too. A source-comparison link or generic thanks
+   is not a substitute for naming contributors.
+
+Use the actual release range, not a cumulative roster or the latest merge alone.
+Do not add a contribution to a version that predates it, move published tags, or
+republish old assets to backfill credit.
+
 ## Release assets
 
 Content additions also update the compiled recipe in
