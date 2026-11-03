@@ -265,6 +265,7 @@ export function canSubmitIntent(
         'RecordForegroundPresence',
         'RenamePlanet',
         'MarkReportRead',
+        'MarkReportsRead',
         'SetReportHidden',
         'SetReportsHidden',
         'SetReportStarred',

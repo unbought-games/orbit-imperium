@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
@@ -409,7 +410,7 @@ for (const width of [1440, 800]) {
       preview: {kind: 'Espionage', target: {body: id(80 + i), name: ['Nova Roma', 'Churak', 'Luna', 'New Alexandria', 'Kepler'][i], owner: id(9), kind: 'Planet', coordinates: {galaxy: 1, system: 24, position: i + 1}}, resources: {visibility: 'Known', value: {metal: '18372000', crystal: '5832000', deuterium: '1347000'}}},
     }))
     await shellFixture(page, {protocol: 4, sampledAt: now, viewerRevision: () => String(revision), extraCapabilities: ['Reports'], hasUnreadReports: () => items.some(r => !r.hidden && !r.read), missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}})
-    const readRequests: string[] = []
+    const readRequests: string[][] = []
     let rejectRead = false
     await page.route('**/api/**/reports', async route => {
       const {context} = route.request().postDataJSON()
@@ -418,9 +419,9 @@ for (const width of [1440, 800]) {
     await page.route('**/commands', async route => {
       const envelope = route.request().postDataJSON().gameplay
       const action = envelope.command.action
-      if (action.type === 'MarkReportRead') {
-        readRequests.push(action.report)
-        if (!rejectRead) items.find(r => r.id === action.report)!.read = true
+      if (action.type === 'MarkReportsRead') {
+        readRequests.push(action.reports)
+        if (!rejectRead) for (const report of action.reports) items.find(r => r.id === report)!.read = true
       } else if (action.type === 'SetReportsHidden') {
         for (const report of action.reports) items.find(r => r.id === report)!.hidden = action.hidden
       } else throw Error(`Unexpected command: ${action.type}`)
@@ -429,7 +430,7 @@ for (const width of [1440, 800]) {
         ...(rejectRead ? {status: 'Rejected', code: 'NotFound'} : {status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision)})}})
     })
     const inbox = `/u/andromeda/b/${body.id}/reports`
-    await page.goto(inbox)
+    await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/reports'), () => page.goto(inbox))
     const rows = page.locator('main article')
     const checkboxes = rows.getByRole('checkbox')
     const selection = page.getByRole('group', {name: 'Report selection'})
@@ -469,7 +470,9 @@ for (const width of [1440, 800]) {
     rejectRead = true
     await selection.getByRole('button', {name: 'Mark as read', exact: true}).click()
     await expect(page.getByText('Could not mark all selected reports as read. Retry the remaining unread reports.')).toBeVisible()
-    expect(readRequests).toEqual([id(70)])
+    expect(readRequests).toEqual([[id(70), id(72), id(73), id(74)]])
+    await expect(rows.getByLabel('Unread', {exact: true})).toHaveCount(4)
+    await diagnosticScreenshot(page, {path: `test-results/reports-bulk-read-error-${width}x1000.png`})
     await expect(selection).toContainText('5 selected')
     await selection.getByRole('button', {name: 'Cancel selection'}).click()
     await expect(page.getByText('Could not mark all selected reports as read. Retry the remaining unread reports.')).toHaveCount(0)
@@ -478,7 +481,9 @@ for (const width of [1440, 800]) {
     await selection.getByRole('button', {name: 'Mark as read', exact: true}).click()
     await expect(selection).toContainText('0 selected')
     await expect(rows.getByLabel('Unread', {exact: true})).toHaveCount(0)
-    expect(readRequests).toEqual([id(70), id(70), id(72), id(73), id(74)])
+    expect(readRequests).toEqual([[id(70), id(72), id(73), id(74)], [id(70), id(72), id(73), id(74)]])
+    await expect(page.getByRole('button', {name: 'Dismiss notice'})).toHaveCount(0)
+    await diagnosticScreenshot(page, {path: `test-results/reports-bulk-read-complete-${width}x1000.png`})
     await expect(page).toHaveURL(inbox)
     await selection.getByRole('button', {name: 'Select all matching (5)'}).click()
     await expect(selection.getByRole('button', {name: 'Mark as read', exact: true})).toBeDisabled()

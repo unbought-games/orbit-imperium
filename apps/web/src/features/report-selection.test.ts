@@ -71,12 +71,16 @@ it('marks unread selections including starred and archived reports, skipping dup
     'c',
   ])
   expect(send.mock.calls).toEqual([
-    [{ type: 'World', action: { type: 'MarkReportRead', report: 'b' } }],
-    [{ type: 'World', action: { type: 'MarkReportRead', report: 'c' } }],
+    [
+      {
+        type: 'World',
+        action: { type: 'MarkReportsRead', reports: ['b', 'c'] },
+      },
+    ],
   ])
 })
 
-it('stops on a refused submission instead of continuing through the selection', async () => {
+it('reports a refused bulk submission', async () => {
   const store = fixture()
   const send = vi.fn(async () => undefined)
   await expect(
@@ -85,32 +89,22 @@ it('stops on a refused submission instead of continuing through the selection', 
   expect(send).toHaveBeenCalledTimes(1)
 })
 
-it('rechecks live read state between sequential commands', async () => {
+it('skips empty selections and selections containing no unread reports', async () => {
   const store = fixture()
-  const send = vi.fn(async () => {
-    store.setState((s) => ({
-      reportHeaders: mergeReportHeaders(
-        s.reportHeaders,
-        [{ ...s.reportHeaders.get('c')!.header, read: true }],
-        '2',
-      ),
-    }))
-    return 'submitted'
-  })
-  await markReportSelectionRead({ store, send }, ['b', 'c'])
-  expect(send).toHaveBeenCalledTimes(1)
+  const send = vi.fn(async () => 'submitted')
+  await markReportSelectionRead({ store, send }, [])
+  await markReportSelectionRead({ store, send }, ['a', 'missing'])
+  expect(send).not.toHaveBeenCalled()
 })
 
-it('stops the batch if the player context changes', async () => {
+it('rejects submission without a ready player context', async () => {
   const store = fixture()
-  const send = vi.fn(async () => {
-    store.setState({
-      binding: { ...store.getState().binding!, player: 'different-player' },
-    })
-    return 'submitted'
-  })
-  await expect(
-    markReportSelectionRead({ store, send }, ['b', 'c']),
-  ).rejects.toThrow('context changed')
-  expect(send).toHaveBeenCalledTimes(1)
+  const send = vi.fn(async () => 'submitted')
+  for (const context of [{ ready: false }, { ready: true, binding: null }]) {
+    store.setState(context)
+    await expect(
+      markReportSelectionRead({ store, send }, ['b', 'c']),
+    ).rejects.toThrow('context changed')
+  }
+  expect(send).not.toHaveBeenCalled()
 })

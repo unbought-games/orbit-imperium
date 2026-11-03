@@ -270,3 +270,56 @@ it('single and bulk archive receipts preserve active sharing without reviving re
     }
   }
 })
+
+it('bulk reads acknowledge every selected report only on commitment and survive stale observations', () => {
+  const read = attempt('pending')
+  read.envelope.command = {
+    type: 'World',
+    action: { type: 'MarkReportsRead', reports: ['report', 'second'] },
+  }
+  for (const id of ['report', 'second'])
+    expect(projectedReportHeader(batchHeaders, [read], id)?.read).toBe(false)
+  expect(
+    acceptReportVisibility(batchHeaders, read, {
+      ...receipt,
+      status: 'Rejected',
+      code: 'NotFound',
+    }),
+  ).toBe(batchHeaders)
+  const accepted = acceptReportVisibility(batchHeaders, read, receipt)
+  const stale = mergeReportHeaders(
+    accepted,
+    [...batchHeaders.values()].map((v) => v.header),
+    '1',
+  )
+  for (const id of ['report', 'second']) {
+    expect(stale.get(id)?.header.read).toBe(true)
+    expect(stale.get(id)?.revision).toBe('2')
+    expect(stale.get(id)?.header.hidden).toBe(false)
+  }
+  expect(stale.get('unselected')?.header.read).toBe(false)
+  expect(batchHeaders.get('report')?.header.read).toBe(false)
+})
+
+it('clears a rejected read batch only when all its reports have later confirmed reads', () => {
+  const failed = bulkAttempt('rejected')
+  failed.envelope.command = {
+    type: 'World',
+    action: { type: 'MarkReportsRead', reports: ['report', 'second'] },
+  }
+  const single = { ...attempt('committed'), reconciled: true }
+  single.envelope.command = {
+    type: 'World',
+    action: { type: 'MarkReportRead', report: 'report' },
+  }
+  const ledger = new Map([
+    ['failed', failed],
+    ['single', single],
+  ])
+  ledger.set('archive', { ...bulkAttempt('committed'), reconciled: true })
+  expect(supersededReportFailures(ledger)).toEqual([])
+  ledger.set('retry', { ...failed, status: 'committed', reconciled: false })
+  expect(supersededReportFailures(ledger)).toEqual([])
+  ledger.set('retry', { ...failed, status: 'committed', reconciled: true })
+  expect(supersededReportFailures(ledger).map(([id]) => id)).toEqual(['failed'])
+})
