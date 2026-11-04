@@ -88,8 +88,8 @@ test('iOS installed app keeps scrolling, fixed navigation and menu taps after re
     }
   }
   expect(exercisedScroll).toBe(true)
-  await dock.getByRole('button', { name: 'Menu', exact: true }).tap()
-  const menu = page.getByRole('dialog', { name: 'Navigation', exact: true })
+  await dock.getByRole('link', { name: 'Menu', exact: true }).tap()
+  const menu = page.getByRole('navigation', { name: 'Menu destinations', exact: true })
   await expect(menu).toBeVisible()
   await menu.getByRole('link', { name: 'Settings', exact: true }).tap()
   await expect(page.locator('main h1')).toHaveText('Settings')
@@ -166,9 +166,9 @@ test('mobile game navigation stays in the same document and app scope', async ({
     ['Empire', `/u/andromeda/b/${body.id}/overview`],
   ]) {
     if (destination === 'Settings') {
-      await page.getByRole('button', { name: 'Menu', exact: true }).tap()
+      await page.getByRole('link', { name: 'Menu', exact: true }).tap()
       await page
-        .getByRole('dialog', { name: 'Navigation', exact: true })
+        .getByRole('navigation', { name: 'Menu destinations', exact: true })
         .getByRole('link', { name: destination, exact: true })
         .tap()
     } else {

@@ -213,6 +213,7 @@ function GameShellContent() {
       page === 'fleets' ||
       (page === 'dispatch' && view.protocol === 4) ||
       page === 'settings' ||
+      page === 'menu' ||
       (view.protocol === 4 && (page === 'reports' || page === 'messages')))
   const title = !available
     ? 'Destination unavailable'

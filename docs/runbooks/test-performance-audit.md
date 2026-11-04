@@ -797,3 +797,45 @@ logout cases, and player-profile UI cases retain browser wiring. No product code
 execution deadline, retry, or surviving assertion changed. This additional removal
 addresses recorded failure evidence after the third-round reassessment, rather
 than expanding feature scope or retrying unchanged intermittent cases.
+
+## Mobile menu page design — 2026-11-03
+
+Validated the uncommitted design on base
+`34c36a1e63198ee0dd7988f813bc0eca063f5cd1`. SHA-256 of the sorted changed
+`apps/web` file names and contents (NUL separated) was
+`a203df31230690b90166e3fbca15776a2786d16ff05b0fe2c342753dc44ea8ae`.
+The menu now owns a route; primary and Develop links are no longer duplicated.
+Updated the common navigation fixture and audited its callers, including the
+explicit-only signup, MVP and responsive journeys. Those explicit suites were
+not run. The implementation owner owns these fixture changes in this working tree.
+
+Removed the obsolete mobile-dialog resize/focus-lock case because there is no
+navigation dialog. Retained route persistence on resize, keyboard activation,
+Back, Settings, logout, touch targets and desktop account-menu focus in the
+navigation tests. Replaced the unit assertion that every destination appears in
+the menu with assertions that secondary destinations appear once and primary
+navigation is excluded. Capability and universe checks remain deterministic.
+
+The initial browser command could not start without node_modules; npm ci completed
+in 2s. Two before-change visual-reference cases passed (1.326s Vite preparation,
+3.1s browser runner). Initial new-page checks passed twice (1.218s preparation,
+6.5s runner). The broader navigation/iOS run had 22 passes and one failure
+(1.314s preparation, 18.5s runner): the dossier test still asserted containment
+inside the removed dialog, comparing the viewport popup's x=12 against the main
+column's x=18. Inspected the failure pixels and history through #320, #259 and
+#256 and this repair ledger; the separate Test Czar ledger was unavailable.
+Its one repair asserts viewport containment while preserving visible content,
+clickability and Escape dismissal. No timeout or retry was added.
+
+The affected navigation, protocol, identity, unread, text-size and motion set then
+passed all 23 cases (1.293s preparation, 22.2s runner). Fifteen deterministic
+navigation/route cases passed (0.111s); TypeScript, canonical ESLint and Prettier
+checks passed. Inspected fresh mobile 320×844 and 390×844, desktop 1440×900,
+unread 390×900 and player-dossier 390×1000 captures. Browser runners close their
+Vite server, contexts and port lease. No Docker/database setup, CI queue wait,
+push or merge was involved; queue and merge delay are not applicable.
+
+The remaining changed resource-settings entry and dispatch recovery callers passed
+all three focused cases (1.253s preparation, 4.2s runner), preserving form saves
+and pending-order recovery without navigating away from local edits. Final
+whitespace validation passed. No additional failures or repairs occurred.

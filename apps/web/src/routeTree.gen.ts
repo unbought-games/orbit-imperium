@@ -23,6 +23,7 @@ import { Route as UUniverseDispatchRouteImport } from './routes/u.$universe.disp
 import { Route as UUniverseFleetsRouteImport } from './routes/u.$universe.fleets'
 import { Route as UUniverseGalaxyRouteImport } from './routes/u.$universe.galaxy'
 import { Route as UUniverseHighScoresRouteImport } from './routes/u.$universe.high-scores'
+import { Route as UUniverseMenuRouteImport } from './routes/u.$universe.menu'
 import { Route as UUniverseMessagesRouteImport } from './routes/u.$universe.messages'
 import { Route as UUniverseOverviewRouteImport } from './routes/u.$universe.overview'
 import { Route as UUniverseReportsRouteImport } from './routes/u.$universe.reports'
@@ -123,6 +124,11 @@ const UUniverseGalaxyRoute = UUniverseGalaxyRouteImport.update({
 const UUniverseHighScoresRoute = UUniverseHighScoresRouteImport.update({
   id: '/high-scores',
   path: '/high-scores',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseMenuRoute = UUniverseMenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseMessagesRoute = UUniverseMessagesRouteImport.update({
@@ -302,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
   '/u/$universe/high-scores': typeof UUniverseHighScoresRoute
+  '/u/$universe/menu': typeof UUniverseMenuRoute
   '/u/$universe/messages': typeof UUniverseMessagesRoute
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/reports': typeof UUniverseReportsRouteWithChildren
@@ -346,6 +353,7 @@ export interface FileRoutesByTo {
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
   '/u/$universe/high-scores': typeof UUniverseHighScoresRoute
+  '/u/$universe/menu': typeof UUniverseMenuRoute
   '/u/$universe/messages': typeof UUniverseMessagesRoute
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/research': typeof UUniverseResearchRoute
@@ -390,6 +398,7 @@ export interface FileRoutesById {
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
   '/u/$universe/high-scores': typeof UUniverseHighScoresRoute
+  '/u/$universe/menu': typeof UUniverseMenuRoute
   '/u/$universe/messages': typeof UUniverseMessagesRoute
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/reports': typeof UUniverseReportsRouteWithChildren
@@ -438,6 +447,7 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets'
     | '/u/$universe/galaxy'
     | '/u/$universe/high-scores'
+    | '/u/$universe/menu'
     | '/u/$universe/messages'
     | '/u/$universe/overview'
     | '/u/$universe/reports'
@@ -482,6 +492,7 @@ export interface FileRouteTypes {
     | '/u/$universe/dispatch'
     | '/u/$universe/galaxy'
     | '/u/$universe/high-scores'
+    | '/u/$universe/menu'
     | '/u/$universe/messages'
     | '/u/$universe/overview'
     | '/u/$universe/research'
@@ -525,6 +536,7 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets'
     | '/u/$universe/galaxy'
     | '/u/$universe/high-scores'
+    | '/u/$universe/menu'
     | '/u/$universe/messages'
     | '/u/$universe/overview'
     | '/u/$universe/reports'
@@ -665,6 +677,13 @@ declare module '@tanstack/react-router' {
       path: '/high-scores'
       fullPath: '/u/$universe/high-scores'
       preLoaderRoute: typeof UUniverseHighScoresRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/menu': {
+      id: '/u/$universe/menu'
+      path: '/menu'
+      fullPath: '/u/$universe/menu'
+      preLoaderRoute: typeof UUniverseMenuRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/messages': {
@@ -1012,6 +1031,7 @@ interface UUniverseRouteChildren {
   UUniverseFleetsRoute: typeof UUniverseFleetsRouteWithChildren
   UUniverseGalaxyRoute: typeof UUniverseGalaxyRoute
   UUniverseHighScoresRoute: typeof UUniverseHighScoresRoute
+  UUniverseMenuRoute: typeof UUniverseMenuRoute
   UUniverseMessagesRoute: typeof UUniverseMessagesRoute
   UUniverseOverviewRoute: typeof UUniverseOverviewRoute
   UUniverseReportsRoute: typeof UUniverseReportsRouteWithChildren
@@ -1040,6 +1060,7 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseFleetsRoute: UUniverseFleetsRouteWithChildren,
   UUniverseGalaxyRoute: UUniverseGalaxyRoute,
   UUniverseHighScoresRoute: UUniverseHighScoresRoute,
+  UUniverseMenuRoute: UUniverseMenuRoute,
   UUniverseMessagesRoute: UUniverseMessagesRoute,
   UUniverseOverviewRoute: UUniverseOverviewRoute,
   UUniverseReportsRoute: UUniverseReportsRouteWithChildren,
