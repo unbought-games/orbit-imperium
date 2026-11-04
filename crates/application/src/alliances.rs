@@ -1,5 +1,8 @@
 use crate::*;
-pub use orbit_engine::alliances::{AllianceAction, AlliancePermission, AllianceRecruitment};
+pub use orbit_engine::alliances::{
+    AllianceAction, AlliancePermission, AllianceRecruitment, RecruitmentActivity,
+    RecruitmentExperience, RecruitmentProfile,
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -31,6 +34,8 @@ pub struct AllianceSummary {
     pub name: String,
     pub member_count: u64,
     pub recruitment: AllianceRecruitment,
+    #[serde(default)]
+    pub recruitment_profile: RecruitmentProfile,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ranking: Option<AllianceScore>,
 }
@@ -97,6 +102,8 @@ pub struct AllianceAudit {
 pub struct AllianceDetail {
     pub summary: AllianceSummary,
     pub public_text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invitation: Option<Option<Uuid>>,
     pub revision: u64,
     pub leader: PlayerId,
     pub permissions: Vec<AlliancePermission>,
@@ -120,6 +127,35 @@ pub struct AllianceDetail {
 pub struct PublicAlliance {
     pub summary: AllianceSummary,
     pub public_text: String,
+    pub universe_name: String,
+    pub enrollment_open: bool,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RecruitmentSearch {
+    pub search: String,
+    pub language: Option<String>,
+    pub beginners: Option<RecruitmentExperience>,
+    pub activity: Option<RecruitmentActivity>,
+    pub offset: u64,
+}
+impl RecruitmentSearch {
+    pub fn validate(&self) -> Result<(), StoreError> {
+        if self.search.chars().count() > 48 || self.offset > i64::MAX as u64 {
+            return Err(StoreError::Conflict);
+        }
+        RecruitmentProfile {
+            languages: self.language.clone().map(|s| vec![s]),
+            ..Default::default()
+        }
+        .validate()
+        .map_err(|_| StoreError::Conflict)
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RecruitmentDirectory {
+    pub alliances: Vec<PublicAlliance>,
+    pub total: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -189,6 +225,27 @@ impl<S: GameStore> GameService<S> {
     ) -> Result<AllianceCommandResult, ServiceError> {
         Self::principal(p, q.context.binding)?;
         self.store.alliance_command(q).await.map_err(Into::into)
+    }
+    pub async fn recruitment_directory(
+        &self,
+        universe: UniverseId,
+        query: RecruitmentSearch,
+    ) -> Result<RecruitmentDirectory, ServiceError> {
+        query.validate().map_err(ServiceError::from)?;
+        self.store
+            .recruitment_directory(universe, query)
+            .await
+            .map_err(Into::into)
+    }
+    pub async fn alliance_invitation(
+        &self,
+        universe: UniverseId,
+        token: Uuid,
+    ) -> Result<PublicAlliance, ServiceError> {
+        self.store
+            .alliance_invitation(universe, token)
+            .await
+            .map_err(Into::into)
     }
     pub async fn public_alliance(
         &self,

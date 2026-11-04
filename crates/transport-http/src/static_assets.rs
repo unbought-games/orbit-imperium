@@ -47,7 +47,10 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
     let Ok(path) = percent_encoding::percent_decode_str(request.uri().path()).decode_utf8() else {
         return StatusCode::NOT_FOUND.into_response();
     };
-    let public_document = path.starts_with("/reports/shared/") || path.starts_with("/alliances/");
+    let public_document = path.starts_with("/reports/shared/")
+        || path.starts_with("/alliances/")
+        || path == "/alliances"
+        || path.starts_with("/invite/");
     let namespace = path.split('/').nth(1).unwrap_or_default();
     if matches!(namespace, "api" | "health")
         || matches!(path.as_ref(), "/homepage.html" | "/homepage-closed.html")

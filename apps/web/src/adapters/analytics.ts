@@ -16,6 +16,11 @@ const routes = [
   '/login',
   '/signup',
   '/join/:universe',
+  '/alliances',
+  '/alliances/:universe',
+  '/alliances/:universe/:alliance',
+  '/invite/:universe/:token',
+  '/u/:universe/alliance',
   '/updates/:article',
   '/u/:universe',
   '/u/:universe/overview',
@@ -263,4 +268,10 @@ export function disableAnalytics(disable: boolean) {
     persistentAttribution: !disable,
   })
   boundVisit = undefined
+}
+
+export function trackRecruitment(action: 'enrolled' | 'applied' | 'joined') {
+  // Aggregate journey stages only: never send invitation tokens, application
+  // text, or the manager who created a reusable alliance link.
+  client?.track(`alliance_recruitment_${action}`)
 }

@@ -69,3 +69,45 @@ export async function readPublicAlliance(
     )
   return validate<S['PublicAlliance']>('PublicAlliance', await response.json())
 }
+
+export async function readAllianceInvitation(
+  universe: string,
+  invitation: string,
+  signal: AbortSignal,
+): Promise<S['PublicAlliance']> {
+  return readRecruitment(
+    'PublicAlliance',
+    `/api/v4/universes/${encodeURIComponent(universe)}/invitations/${encodeURIComponent(invitation)}`,
+    signal,
+  )
+}
+export async function readRecruitmentDirectory(
+  universe: string,
+  search: URLSearchParams,
+  signal: AbortSignal,
+): Promise<S['RecruitmentDirectory']> {
+  return readRecruitment(
+    'RecruitmentDirectory',
+    `/api/v4/universes/${encodeURIComponent(universe)}/recruitment?${search}`,
+    signal,
+  )
+}
+async function readRecruitment<T>(
+  schema: string,
+  path: string,
+  signal: AbortSignal,
+): Promise<T> {
+  const response = await fetch(path, {
+    signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
+    credentials: 'omit',
+    cache: 'no-store',
+    referrerPolicy: 'no-referrer',
+  })
+  if (!response.ok)
+    throw new Error(
+      response.status === 404
+        ? 'This invitation or universe is no longer available. Ask for a new link or browse recruiting alliances.'
+        : 'Unable to load recruitment. Please try again.',
+    )
+  return validate<T>(schema, await response.json())
+}

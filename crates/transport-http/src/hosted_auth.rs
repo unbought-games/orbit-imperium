@@ -133,6 +133,10 @@ mod tests {
         let universe = UniverseId(uuid::Uuid::from_u128(7));
         for (path, configured) in [
             ("/u/andromeda/overview".into(), Some(universe)),
+            (
+                format!("/join/{}?alliance={}", universe.0, uuid::Uuid::from_u128(9)),
+                Some(universe),
+            ),
             ("/".into(), Some(universe)),
             (return_path(Some(universe)), None),
             (

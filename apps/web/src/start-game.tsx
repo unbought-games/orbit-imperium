@@ -39,10 +39,35 @@ export async function startGame() {
     root.render(<DetailPlayground />)
     return
   }
+  const invitation = /^\/invite\/([^/]+)\/([^/]+)\/?$/i.exec(location.pathname)
+  if (invitation) {
+    const { PublicAlliancePage } = await import(
+      './features/alliances/public-page'
+    )
+    root.render(
+      <PublicAlliancePage
+        universe={invitation[1]}
+        alliance={invitation[2]}
+        invitation={invitation[2]}
+      />,
+    )
+    void startAnalytics()
+    return
+  }
+  const directory = /^\/alliances(?:\/([^/]+))?\/?$/i.exec(location.pathname)
+  if (directory) {
+    const { PublicRecruitmentDirectory } = await import(
+      './features/alliances/recruitment-directory'
+    )
+    root.render(<PublicRecruitmentDirectory universe={directory[1]} />)
+    void startAnalytics()
+    return
+  }
   const publicAlliance = /^\/alliances\/([^/]+)\/([^/]+)\/?$/i.exec(
     location.pathname,
   )
   if (publicAlliance) {
+    void startAnalytics()
     const { PublicAlliancePage } = await import(
       './features/alliances/public-page'
     )

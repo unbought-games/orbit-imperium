@@ -14,7 +14,7 @@ pub(super) struct Card {
     pub target: Target,
     pub owner: Option<(String, Option<u8>)>,
 }
-fn escape(s: &str) -> String {
+pub(super) fn escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
@@ -32,7 +32,7 @@ fn bounded(s: &str, max: usize) -> String {
 }
 // Measure with the same bundled fonts as the final SVG. Counting code points
 // underestimates wide letters/emoji and overestimates joined emoji sequences.
-fn size(
+pub(super) fn size(
     text: &str,
     max: f32,
     width: f32,
@@ -60,7 +60,7 @@ fn asset(root: &Path, name: &str, mime: &str) -> Result<String, String> {
 }
 // Keep the font database identical on developer machines and minimal server images.
 // Only bundled fonts participate in selection and glyph fallback.
-fn render_options() -> resvg::usvg::Options<'static> {
+pub(super) fn render_options() -> resvg::usvg::Options<'static> {
     let mut options = resvg::usvg::Options {
         font_family: "IBM Plex Sans".into(),
         ..Default::default()

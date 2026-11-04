@@ -1,3 +1,4 @@
+import { RecruitmentSettings } from './recruitment-settings'
 import { PlayerName } from '../player-name'
 import { can, type AllianceDetail } from '../../client-model/alliances'
 import { Button } from '../../ui/button'
@@ -237,6 +238,7 @@ export function Settings({
           )}
         </ActionForm>
       )}
+      <RecruitmentSettings detail={detail} run={run} busy={busy} />
       <div className={styles.card}>
         <h4>{leader ? 'Leadership' : 'Leave alliance'}</h4>
         {leader ? (

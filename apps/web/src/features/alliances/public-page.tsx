@@ -1,57 +1,36 @@
-import { useEffect, useState } from 'react'
-import { createStore } from 'zustand/vanilla'
-import { useStore } from 'zustand'
-import type { components } from '../../contracts'
-import { readPublicAlliance } from '../../adapters/alliances'
+import { recruitmentEntryPath } from '../../client-model/recruitment'
+import { usePublicAlliance } from '../../client-model/use-public-alliance'
+import { useEffect } from 'react'
 import { Button, ButtonLinkAnchor } from '../../ui/button'
 import { Markdown, Summary } from './shared'
+import { RecruitmentImage } from './recruitment-image'
 import styles from './alliances.module.css'
-export function usePublicAlliance(universe: string, alliance?: string) {
-  const [store] = useState(() =>
-    createStore<{
-      data: components['schemas']['PublicAlliance'] | null
-      error: string
-    }>(() => ({ data: null, error: '' })),
-  )
-  const [retry, setRetry] = useState(0)
-  useEffect(() => {
-    const abort = new AbortController()
-    store.setState({ data: null, error: '' })
-    if (alliance)
-      void readPublicAlliance(universe, alliance, abort.signal)
-        .then((data) => {
-          if (!abort.signal.aborted) store.setState({ data })
-        })
-        .catch((error: unknown) => {
-          if (!abort.signal.aborted)
-            store.setState({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : 'Alliance unavailable.',
-            })
-        })
-    return () => abort.abort()
-  }, [store, universe, alliance, retry])
-  return { ...useStore(store), retry: () => setRetry((n) => n + 1) }
-}
 export function PublicAlliancePage({
   universe,
   alliance,
+  invitation,
 }: {
   universe: string
   alliance: string
+  invitation?: string
 }) {
-  const { data, error, retry } = usePublicAlliance(universe, alliance)
+  const { data, error, retry } = usePublicAlliance(
+    universe,
+    alliance,
+    invitation,
+  )
   useEffect(() => {
-    document.title = `${data?.summary.name ?? 'Alliance'} · Orbit Imperium`
+    document.title = `${data?.summary.name ?? 'Alliance invitation'} · Orbit Imperium`
   }, [data?.summary.name])
+  const destination = data
+    ? recruitmentEntryPath({ universe, alliance: data.summary.id, invitation })
+    : ''
   return (
     <main id="main-content" className={styles.publicPage}>
       <a className={styles.brand} href="/">
         Orbit Imperium
       </a>
-      <h1>Alliance recruitment</h1>
+      <h1>{invitation ? 'You’re invited' : 'Alliance recruitment'}</h1>
       {error ? (
         <>
           <p role="alert">{error}</p>
@@ -59,6 +38,11 @@ export function PublicAlliancePage({
         </>
       ) : data ? (
         <>
+          <p>
+            Build an empire among the stars in a fair browser strategy game.
+            Find your people in{' '}
+            <strong>{data.universe_name ?? 'this universe'}</strong>.
+          </p>
           <Summary summary={data.summary} />
           <section className={styles.card}>
             <Markdown
@@ -68,15 +52,37 @@ export function PublicAlliancePage({
               }
             />
           </section>
+          {data.enrollment_open === false && (
+            <p>
+              New enrollment is currently unavailable in this universe. Existing
+              players can still sign in.
+            </p>
+          )}
           <p>
-            Already playing in this universe? Sign in to join or apply. Joining
-            requires an existing universe membership.
+            {data.summary.recruitment === 'Closed'
+              ? 'This alliance is not accepting new members right now. You can still play independently.'
+              : data.summary.recruitment === 'Open'
+                ? 'Join this universe, then choose whether to join the alliance. Membership is optional.'
+                : 'Join this universe, then send an application if you’d like to join the alliance. Approval is required.'}
           </p>
           <ButtonLinkAnchor
-            href={`/u/${encodeURIComponent(universe)}/alliance?alliance=${encodeURIComponent(alliance)}`}
+            href={`/login?${new URLSearchParams({ redirect: destination })}`}
           >
-            Open alliance in game
+            Continue to {data.universe_name ?? 'this universe'}
           </ButtonLinkAnchor>
+          <p className={styles.meta}>
+            Sign in or create an account to continue. Ordinary enrollment and
+            joining rules apply.
+          </p>
+          <RecruitmentImage
+            path={
+              invitation
+                ? `/invite/${universe}/${invitation}`
+                : `/alliances/${universe}/${alliance}`
+            }
+            name={data.summary.name}
+            tag={data.summary.tag}
+          />
           <p className={styles.meta}>
             The roster, member activity and alliance noticeboard are private.
           </p>
@@ -84,6 +90,9 @@ export function PublicAlliancePage({
       ) : (
         <p role="status">Loading alliance…</p>
       )}
+      <a className={styles.brand} href={`/alliances/${universe}`}>
+        Browse recruiting alliances
+      </a>
     </main>
   )
 }

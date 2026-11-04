@@ -1,3 +1,4 @@
+import { allianceBodySearch } from '../client-model/recruitment'
 import { VacationNotice } from '../features/vacation'
 import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
@@ -66,6 +67,8 @@ function GameShellContent() {
   const search = leaf.search as {
     body?: string
     alliance?: string
+    welcome?: string
+    invitation?: string
     player?: string
   }
   const route = resolveNamedDestination(
@@ -131,7 +134,7 @@ function GameShellContent() {
             : page === 'messages'
               ? { search: { body: body.id, player: search.player } }
               : page === 'alliance'
-                ? { search: { body: body.id, alliance: search.alliance } }
+                ? { search: allianceBodySearch(body.id, leaf.search) }
                 : {}),
         replace: true,
       })

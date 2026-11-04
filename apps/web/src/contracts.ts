@@ -5260,6 +5260,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/universes/{universe}/recruitment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
+        get: operations["alliance_recruitment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required. */
+        get: operations["alliance_invitations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7782,6 +7816,7 @@ export interface components {
             member_count: number;
             recruitment: components["schemas"]["AllianceRecruitment"];
             ranking?: components["schemas"]["AllianceScore"];
+            recruitment_profile?: components["schemas"]["RecruitmentProfile"];
         };
         AllianceRole: {
             /** Format: uuid */
@@ -7848,10 +7883,13 @@ export interface components {
             posts?: components["schemas"]["AlliancePost"][];
             next_post_before?: string | null;
             audit?: components["schemas"]["AllianceAudit"][];
+            invitation?: string | null;
         };
         PublicAlliance: {
             summary: components["schemas"]["AllianceSummary"];
             public_text: string;
+            universe_name?: string;
+            enrollment_open?: boolean;
         };
         AllianceQuery: {
             /** @constant */
@@ -8005,6 +8043,18 @@ export interface components {
             /** Format: uuid */
             post: string;
             pinned: boolean;
+        } | {
+            /** @constant */
+            type: "SetRecruitmentProfile";
+            /** Format: uuid */
+            alliance: string;
+            profile: components["schemas"]["RecruitmentProfile"];
+        } | {
+            /** @constant */
+            type: "SetInvitation";
+            /** Format: uuid */
+            alliance: string;
+            enabled: boolean;
         };
         AllianceCommandRequest: {
             context: components["schemas"]["QueryContext"];
@@ -8714,6 +8764,20 @@ export interface components {
             /** @constant */
             kind: "Phalanx";
             observation: components["schemas"]["PhalanxReport4"];
+        };
+        /** @enum {string} */
+        RecruitmentExperience: "Welcome" | "Experienced";
+        /** @enum {string} */
+        RecruitmentActivity: "Flexible" | "Weekly" | "Daily";
+        RecruitmentProfile: {
+            listed: boolean;
+            languages: string[] | null;
+            beginners: components["schemas"]["RecruitmentExperience"] | null;
+            activity: components["schemas"]["RecruitmentActivity"] | null;
+        };
+        RecruitmentDirectory: {
+            alliances: components["schemas"]["PublicAlliance"][];
+            total: number;
         };
     };
     responses: never;
@@ -9593,6 +9657,237 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    alliance_recruitment: {
+        parameters: {
+            query?: {
+                search?: string;
+                language?: string;
+                beginners?: components["schemas"]["RecruitmentExperience"];
+                activity?: components["schemas"]["RecruitmentActivity"];
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bound response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecruitmentDirectory"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+        };
+    };
+    alliance_invitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                universe: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bound response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAlliance"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
             };
         };
     };

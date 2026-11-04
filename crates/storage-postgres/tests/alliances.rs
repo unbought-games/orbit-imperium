@@ -215,7 +215,15 @@ async fn atomic_retries_races_privacy_history_and_revocation() {
     .unwrap();
     assert!(public.get("leader").is_none());
     assert!(public.get("members").is_none());
-    assert_eq!(public.as_object().unwrap().len(), 2);
+    assert_eq!(
+        public
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        vec!["enrollment_open", "public_text", "summary", "universe_name"]
+    );
     let old = f.detail(leader, won).await;
     let stale = f.request(
         leader,
@@ -737,7 +745,7 @@ async fn http_authentication_csrf_origin_scope_and_anonymous_privacy() {
             .keys()
             .cloned()
             .collect::<Vec<_>>(),
-        vec!["public_text", "summary"]
+        vec!["enrollment_open", "public_text", "summary", "universe_name"]
     );
     let binding = f.bindings[0];
     let ranks = GameService::new(f.store.clone())
@@ -1132,5 +1140,344 @@ async fn leadership_changes_invalidate_deletion_guards_without_creating_presence
             snap.state.world.unwrap().records.policies[&b.player].last_presence_at,
             1000
         );
+    }
+}
+
+#[tokio::test]
+async fn recruitment_discovery_is_opt_in_filtered_and_never_exposes_private_fields() {
+    let f = Fixture::new().await;
+    let u = f.bindings[0].universe;
+    let alliance = f.create(0, "Welcoming Stars", "WEL").await;
+    let other = f.create(1, "Hidden Stars", "HID").await;
+    assert_eq!(
+        f.store
+            .recruitment_directory(u, RecruitmentSearch::default())
+            .await
+            .unwrap()
+            .total,
+        0
+    );
+    let profile = RecruitmentProfile {
+        listed: true,
+        languages: Some(vec!["en".into(), "fr".into()]),
+        beginners: Some(RecruitmentExperience::Welcome),
+        activity: Some(RecruitmentActivity::Weekly),
+    };
+    let d = f.detail(0, alliance).await;
+    f.command(
+        0,
+        AllianceAction::SetRecruitmentProfile { alliance, profile },
+        Some(d.revision),
+    )
+    .await;
+    for query in [
+        RecruitmentSearch::default(),
+        RecruitmentSearch {
+            language: Some("fr".into()),
+            beginners: Some(RecruitmentExperience::Welcome),
+            activity: Some(RecruitmentActivity::Weekly),
+            ..Default::default()
+        },
+    ] {
+        let result = f.store.recruitment_directory(u, query).await.unwrap();
+        assert_eq!(result.total, 1);
+        assert_eq!(result.alliances[0].summary.id, alliance);
+        let json = serde_json::to_value(&result.alliances[0]).unwrap();
+        for key in [
+            "leader",
+            "members",
+            "applications",
+            "posts",
+            "audit",
+            "invitation",
+        ] {
+            assert!(json.get(key).is_none());
+        }
+    }
+    for query in [
+        RecruitmentSearch {
+            language: Some("de".into()),
+            ..Default::default()
+        },
+        RecruitmentSearch {
+            beginners: Some(RecruitmentExperience::Experienced),
+            ..Default::default()
+        },
+        RecruitmentSearch {
+            activity: Some(RecruitmentActivity::Daily),
+            ..Default::default()
+        },
+        RecruitmentSearch {
+            search: "missing".into(),
+            ..Default::default()
+        },
+    ] {
+        assert_eq!(
+            f.store.recruitment_directory(u, query).await.unwrap().total,
+            0
+        );
+    }
+    assert_eq!(
+        f.store.public_alliance(u, other).await.unwrap().summary.id,
+        other
+    );
+    f.update(0, alliance, AllianceRecruitment::Closed).await;
+    assert_eq!(
+        f.store
+            .recruitment_directory(u, RecruitmentSearch::default())
+            .await
+            .unwrap()
+            .total,
+        0
+    );
+    assert_eq!(
+        f.store
+            .public_alliance(u, alliance)
+            .await
+            .unwrap()
+            .summary
+            .recruitment_profile
+            .beginners,
+        Some(RecruitmentExperience::Welcome)
+    );
+    f.update(0, alliance, AllianceRecruitment::Open).await;
+    assert_eq!(
+        f.store
+            .recruitment_directory(u, RecruitmentSearch::default())
+            .await
+            .unwrap()
+            .total,
+        1
+    );
+}
+#[tokio::test]
+async fn recruitment_invitation_rotation_is_atomic_idempotent_and_permission_scoped() {
+    let f = Fixture::new().await;
+    let u = f.bindings[0].universe;
+    let alliance = f.create(0, "Link Stars", "LNK").await;
+    let d = f.detail(0, alliance).await;
+    let request = f.request(
+        0,
+        AllianceAction::SetInvitation {
+            alliance,
+            enabled: true,
+        },
+        Some(d.revision),
+    );
+    let result = f.store.alliance_command(request.clone()).await.unwrap();
+    let token = f.detail(0, alliance).await.invitation.unwrap().unwrap();
+    let replay = f.store.alliance_command(request.clone()).await.unwrap();
+    assert_eq!(result.revision, replay.revision);
+    assert_eq!(f.detail(0, alliance).await.invitation, Some(Some(token)));
+    assert_eq!(
+        f.store
+            .alliance_invitation(u, token)
+            .await
+            .unwrap()
+            .summary
+            .id,
+        alliance
+    );
+    let d = f.detail(0, alliance).await;
+    assert!(
+        f.store
+            .alliance_command(f.request(
+                1,
+                AllianceAction::SetInvitation {
+                    alliance,
+                    enabled: false
+                },
+                Some(d.revision)
+            ))
+            .await
+            .is_err()
+    );
+    f.command(
+        0,
+        AllianceAction::SetInvitation {
+            alliance,
+            enabled: true,
+        },
+        Some(d.revision),
+    )
+    .await;
+    let next = f.detail(0, alliance).await.invitation.unwrap().unwrap();
+    assert_ne!(next, token);
+    assert!(matches!(
+        f.store.alliance_invitation(u, token).await,
+        Err(StoreError::NotFound)
+    ));
+    f.store.alliance_command(request).await.unwrap();
+    assert_eq!(f.detail(0, alliance).await.invitation, Some(Some(next)));
+    // A live invitation does not bypass application recruitment.
+    assert!(
+        f.store
+            .alliance_command(f.request(1, AllianceAction::Join { alliance }, None))
+            .await
+            .is_err()
+    );
+    f.update(0, alliance, AllianceRecruitment::Open).await;
+    f.command(1, AllianceAction::Join { alliance }, None).await;
+    assert_eq!(f.detail(1, alliance).await.invitation, None);
+    let d = f.detail(0, alliance).await;
+    f.command(
+        0,
+        AllianceAction::SetInvitation {
+            alliance,
+            enabled: false,
+        },
+        Some(d.revision),
+    )
+    .await;
+    assert!(matches!(
+        f.store.alliance_invitation(u, next).await,
+        Err(StoreError::NotFound)
+    ));
+    assert!(f.store.public_alliance(u, alliance).await.is_ok());
+}
+
+#[tokio::test]
+async fn recruitment_http_previews_use_current_public_identity_and_revoke_old_links() {
+    let f = Fixture::new().await;
+    let u = f.bindings[0].universe;
+    let alliance = f.create(0, "Recruitment Preview", "PRV").await;
+    let d = f.detail(0, alliance).await;
+    f.command(
+        0,
+        AllianceAction::SetRecruitmentProfile {
+            alliance,
+            profile: RecruitmentProfile {
+                listed: true,
+                ..Default::default()
+            },
+        },
+        Some(d.revision),
+    )
+    .await;
+    let d = f.detail(0, alliance).await;
+    f.command(
+        0,
+        AllianceAction::SetInvitation {
+            alliance,
+            enabled: true,
+        },
+        Some(d.revision),
+    )
+    .await;
+    let token = f.detail(0, alliance).await.invitation.unwrap().unwrap();
+    struct Assets(std::path::PathBuf);
+    impl Drop for Assets {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let assets =
+        Assets(std::env::temp_dir().join(format!("orbit-recruitment-preview-{}", Uuid::new_v4())));
+    std::fs::create_dir(&assets.0).unwrap();
+    std::fs::write(assets.0.join("index.html"),r#"<html><head><!--orbit-page-metadata:start--><title>Old</title><!--orbit-page-metadata:end--></head><body><script id="orbit-bootstrap" type="application/json"></script><div id="root"></div></body></html>"#).unwrap();
+    let config = orbit_transport_http::HttpConfig {
+        origin: "https://game.test".into(),
+        assets: assets.0.to_string_lossy().into_owned(),
+        login_per_minute: 30,
+        signup: None,
+        signup_per_minute: 5,
+        legacy_signup_enabled: true,
+        wake: None,
+        observer: None,
+    };
+    let app = orbit_transport_http::router(f.store.clone(), config);
+    let listing = http(
+        &app,
+        &format!("/api/v4/universes/{u}/recruitment"),
+        None,
+        None,
+        None,
+        false,
+    )
+    .await;
+    assert_eq!(listing.0, StatusCode::OK);
+    assert_eq!(listing.1["total"], 1);
+    let resolved = http(
+        &app,
+        &format!("/api/v4/universes/{u}/invitations/{token}"),
+        None,
+        None,
+        None,
+        false,
+    )
+    .await;
+    assert_eq!(resolved.0, StatusCode::OK);
+    assert_eq!(resolved.1["summary"]["id"], alliance.to_string());
+    for path in [
+        format!("/invite/{u}/{token}"),
+        format!("/alliances/{u}/{alliance}"),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::get(&path)
+                    .header("cookie", format!("orbit_session={}", f.sessions[0].token))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        let html = String::from_utf8(
+            response
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes()
+                .to_vec(),
+        )
+        .unwrap();
+        assert!(html.contains("Recruitment Preview"));
+        assert!(html.contains("og:image"));
+        assert!(html.contains("\"status\":\"anonymous\""));
+        assert!(!html.contains(&f.sessions[0].csrf));
+        let response = app
+            .clone()
+            .oneshot(
+                Request::get(format!("{path}/image"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["content-type"], "image/png");
+        assert!(
+            response
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes()
+                .starts_with(b"\x89PNG\r\n\x1a\n")
+        );
+    }
+    let d = f.detail(0, alliance).await;
+    f.command(
+        0,
+        AllianceAction::SetInvitation {
+            alliance,
+            enabled: false,
+        },
+        Some(d.revision),
+    )
+    .await;
+    for path in [
+        format!("/invite/{u}/{token}"),
+        format!("/invite/{u}/{token}/image"),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(Request::get(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }

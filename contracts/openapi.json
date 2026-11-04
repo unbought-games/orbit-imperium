@@ -7278,6 +7278,327 @@
           }
         }
       }
+    },
+    "/api/v4/universes/{universe}/recruitment": {
+      "get": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string",
+              "maxLength": 48
+            }
+          },
+          {
+            "in": "query",
+            "name": "language",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{2,3}$"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beginners",
+            "schema": {
+              "$ref": "#/components/schemas/RecruitmentExperience"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activity",
+            "schema": {
+              "$ref": "#/components/schemas/RecruitmentActivity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruitmentDirectory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "x-bot-category": "public",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.",
+        "operationId": "alliance_recruitment"
+      }
+    },
+    "/api/v4/universes/{universe}/invitations/{token}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicAlliance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "x-bot-category": "public",
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.",
+        "operationId": "alliance_invitations"
+      }
     }
   },
   "components": {
@@ -18017,6 +18338,9 @@
           },
           "ranking": {
             "$ref": "#/components/schemas/AllianceScore"
+          },
+          "recruitment_profile": {
+            "$ref": "#/components/schemas/RecruitmentProfile"
           }
         },
         "required": [
@@ -18304,6 +18628,17 @@
             "items": {
               "$ref": "#/components/schemas/AllianceAudit"
             }
+          },
+          "invitation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -18324,6 +18659,12 @@
           },
           "public_text": {
             "type": "string"
+          },
+          "universe_name": {
+            "type": "string"
+          },
+          "enrollment_open": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -18921,6 +19262,50 @@
               "alliance",
               "post",
               "pinned"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "SetRecruitmentProfile"
+              },
+              "alliance": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/RecruitmentProfile"
+              }
+            },
+            "required": [
+              "type",
+              "alliance",
+              "profile"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "SetInvitation"
+              },
+              "alliance": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "alliance",
+              "enabled"
             ]
           }
         ]
@@ -21902,6 +22287,93 @@
           "observation"
         ],
         "additionalProperties": false
+      },
+      "RecruitmentExperience": {
+        "type": "string",
+        "enum": [
+          "Welcome",
+          "Experienced"
+        ]
+      },
+      "RecruitmentActivity": {
+        "type": "string",
+        "enum": [
+          "Flexible",
+          "Weekly",
+          "Daily"
+        ]
+      },
+      "RecruitmentProfile": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "listed": {
+            "type": "boolean"
+          },
+          "languages": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z]{2,3}$"
+                },
+                "maxItems": 12,
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "beginners": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecruitmentExperience"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecruitmentActivity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "listed",
+          "languages",
+          "beginners",
+          "activity"
+        ]
+      },
+      "RecruitmentDirectory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "alliances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicAlliance"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "alliances",
+          "total"
+        ]
       }
     },
     "securitySchemes": {

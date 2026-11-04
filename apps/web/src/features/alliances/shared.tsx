@@ -1,3 +1,4 @@
+import { RecruitmentPreferences } from './recruitment-fields'
 import { useAllianceDraft } from './drafts'
 import { useMemo, useState, type ReactNode } from 'react'
 import type { components } from '../../contracts'
@@ -56,6 +57,7 @@ export function Summary({
           </>
         )}
       </div>
+      <RecruitmentPreferences profile={summary.recruitment_profile} />
     </header>
   )
 }

@@ -138,6 +138,20 @@ impl GameStore for PgStore {
     ) -> Result<AllianceCommandResult, StoreError> {
         self.commit_alliance(q).await
     }
+    async fn recruitment_directory(
+        &self,
+        universe: UniverseId,
+        query: RecruitmentSearch,
+    ) -> Result<RecruitmentDirectory, StoreError> {
+        self.read_recruitment_directory(universe, query).await
+    }
+    async fn alliance_invitation(
+        &self,
+        universe: UniverseId,
+        token: uuid::Uuid,
+    ) -> Result<PublicAlliance, StoreError> {
+        self.read_alliance_invitation(universe, token).await
+    }
     async fn public_alliance(
         &self,
         universe: UniverseId,

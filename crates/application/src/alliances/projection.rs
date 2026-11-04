@@ -10,6 +10,7 @@ pub fn alliance_summary(universe: UniverseId, state: &AllianceState) -> Alliance
         name: state.name.clone(),
         member_count: state.members.len() as u64,
         recruitment: state.recruitment,
+        recruitment_profile: state.recruitment_profile.clone(),
         ranking: None,
     }
 }
@@ -121,6 +122,7 @@ pub fn alliance_detail(
     Ok(Some(AllianceDetail {
         summary: alliance_summary(universe, state),
         public_text: state.public_text.clone(),
+        invitation: has(AlliancePermission::ManageRecruitment).then_some(state.invitation),
         revision: state.revision,
         leader: state.leader,
         permissions: rights.iter().copied().collect(),
@@ -258,6 +260,8 @@ mod tests {
         let public = serde_json::to_value(PublicAlliance {
             summary: alliance_summary(UniverseId(Uuid::nil()), &s),
             public_text: s.public_text.clone(),
+            universe_name: "Test".into(),
+            enrollment_open: false,
         })
         .unwrap();
         assert!(public.get("leader").is_none());

@@ -93,6 +93,14 @@ pub enum AllianceAction {
         public_text: String,
         recruitment: AllianceRecruitment,
     },
+    SetRecruitmentProfile {
+        alliance: Uuid,
+        profile: RecruitmentProfile,
+    },
+    SetInvitation {
+        alliance: Uuid,
+        enabled: bool,
+    },
     SaveRole {
         alliance: Uuid,
         role: Option<Uuid>,
@@ -148,6 +156,8 @@ impl AllianceAction {
             | Self::Leave { alliance }
             | Self::Kick { alliance, .. }
             | Self::Update { alliance, .. }
+            | Self::SetRecruitmentProfile { alliance, .. }
+            | Self::SetInvitation { alliance, .. }
             | Self::SaveRole { alliance, .. }
             | Self::DeleteRole { alliance, .. }
             | Self::AssignRoles { alliance, .. }
@@ -170,6 +180,8 @@ impl AllianceAction {
             Self::Leave { .. } => "Leave",
             Self::Kick { .. } => "Kick",
             Self::Update { .. } => "Update",
+            Self::SetRecruitmentProfile { .. } => "SetRecruitmentProfile",
+            Self::SetInvitation { .. } => "SetInvitation",
             Self::SaveRole { .. } => "SaveRole",
             Self::DeleteRole { .. } => "DeleteRole",
             Self::AssignRoles { .. } => "AssignRoles",
@@ -245,6 +257,10 @@ pub struct AllianceState {
     pub leader: PlayerId,
     pub recruitment: AllianceRecruitment,
     pub public_text: String,
+    #[serde(default)]
+    pub recruitment_profile: RecruitmentProfile,
+    #[serde(default)]
+    pub invitation: Option<Uuid>,
     pub revision: u64,
     pub roles: Vec<StateRole>,
     pub members: Vec<StateMember>,
@@ -327,6 +343,8 @@ impl AllianceState {
             leader,
             recruitment: AllianceRecruitment::Application,
             public_text: String::new(),
+            recruitment_profile: RecruitmentProfile::default(),
+            invitation: None,
             revision: 1,
             members: vec![StateMember {
                 player: leader,
@@ -551,6 +569,15 @@ impl AllianceState {
                 self.tag = tag.trim().into();
                 self.public_text = public_text.clone();
                 self.recruitment = *recruitment;
+            }
+            SetRecruitmentProfile { profile, .. } => {
+                self.require(actor, P::ManageRecruitment)?;
+                profile.validate()?;
+                self.recruitment_profile = profile.clone();
+            }
+            SetInvitation { enabled, .. } => {
+                self.require(actor, P::ManageRecruitment)?;
+                self.invitation = enabled.then_some(new_id);
             }
             SaveRole {
                 role,
@@ -826,6 +853,46 @@ impl AllianceState {
                 }
                 policy::dependencies(&new.into_iter().collect::<Vec<_>>())?;
                 policy::dependencies(&new_grants.into_iter().collect::<Vec<_>>())?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Authored preferences, not derived eligibility. Unspecified values stay unspecified.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RecruitmentProfile {
+    pub listed: bool,
+    pub languages: Option<Vec<String>>,
+    pub beginners: Option<RecruitmentExperience>,
+    pub activity: Option<RecruitmentActivity>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecruitmentExperience {
+    Welcome,
+    Experienced,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecruitmentActivity {
+    Flexible,
+    Weekly,
+    Daily,
+}
+impl RecruitmentProfile {
+    pub fn validate(&self) -> Result<(), AllianceError> {
+        if let Some(languages) = &self.languages {
+            let unique: std::collections::BTreeSet<_> = languages.iter().collect();
+            if languages.is_empty()
+                || languages.len() > 12
+                || unique.len() != languages.len()
+                || languages.iter().any(|s| {
+                    !(2..=3).contains(&s.len()) || !s.bytes().all(|c| c.is_ascii_lowercase())
+                })
+            {
+                return Err(AllianceError::InvalidInput(
+                    "choose up to twelve distinct language codes, or leave languages unset".into(),
+                ));
             }
         }
         Ok(())
