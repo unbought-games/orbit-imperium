@@ -864,3 +864,31 @@ five green browser shards and one failed shard (136 passing, three failing cases
 7.5m browser execution), with shards 6/7 still executing when the corrected head
 was prepared. Native setup took 82s and checks 249s; runners started 13–51s after
 workflow creation. No merge queue enrollment or removal had occurred.
+
+### Unexplained planet-rename browser stall found during PR #330
+
+After the corrected head superseded run `41754058662`, its shard 7 job
+`126325923557` logs showed 137/138 cases completed. Only
+`rename persists in the shell and public galaxy at 390px` had no result; its
+1280px counterpart finished at 01:28:40 UTC, the last other case at 01:34:25,
+and cancellation completed at 01:38:05 on 2026-11-04 UTC (November 3 locally).
+There is no failing assertion, locator stack or diagnostic identifying the pending
+operation. Read the scenario and history: introduced in `6296d14` (#50), with
+Galaxy response-readiness repair in `996bfc5` (#305). This ledger contains no
+further repair; the separate Test Czar ledger is unavailable. Do not treat a
+passing run on the next head as closure of this unexplained stall.
+
+Removed the shared two-viewport scenario under the repository's unexplained-test
+rule, rather than recreating the same journey or adding timeouts/retries. Retained
+`planet-name.test.ts` for Unicode trimming, scalar limits, command/presence pairing
+and pending/reconciled saves; engine `planet_renaming_is_public_free_repeatable_and_owner_only`
+for authorization/public projection; PostgreSQL
+`planet_names_survive_restart_publish_to_other_players_and_retry_once` for persistence
+and idempotency. The five surviving planet-name browser cases cover rejection and
+preserved edits, current names in fleets, explicit fallback naming, closed edits
+after reconciliation and shared control states. All five passed (1.610s preparation,
+6.0s runner); the two deterministic client cases passed (0.163s). No product code
+or surviving assertion changed. Local browser/Vite resources closed normally.
+The second CI run `41755257641` is superseded by this documented removal; no queue
+entry or removal has occurred. This PR's implementation owner owns the repair
+and retained-coverage audit; there is no independent follow-up to hand off.
