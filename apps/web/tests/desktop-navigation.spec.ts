@@ -1,8 +1,7 @@
 import { withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
-import { body, binding, id, playerProfilesFixture, shellFixture, refreshGame } from './fixtures/game'
+import { body, id, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
-import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440, 700, 2], [2560, 1100, 1]]) {
@@ -151,32 +150,6 @@ test('tablet brand keeps a full touch target without overlapping resource contro
   } finally { await context.close() }
 })
 
-
-test('menu page keeps the player dossier accessible above its rows', async ({page}) => {
-  await page.setViewportSize({width:390,height:1000})
-  await shellFixture(page, {protocol:4})
-  await playerProfilesFixture(page, () => [{player:binding.player, username:'Aurelia', alliance:{id:id(90),universe:binding.universe,name:'Astral Accord',tag:'ASTRA'}}])
-  await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), () => page.reload())
-  const menu = await openNavigation(page)
-  await diagnosticScreenshot(page, {path:'test-results/account-navigation-mobile-390x1000.png'})
-  await menu.getByRole('button', {name:'Aurelia profile details'}).click()
-  const popup = page.getByRole('dialog', {name:'Aurelia profile'})
-  await expect(popup).toBeVisible()
-  const alliance = popup.getByRole('link', {name:'Alliance Astral Accord [ASTRA]'})
-  await expect(alliance).toBeVisible()
-  await alliance.click({trial:true})
-  // This is a viewport-positioned dossier now that navigation is a page.
-  const cardBounds = (await popup.boundingBox())!
-  expect(cardBounds.x).toBeGreaterThanOrEqual(0)
-  expect(cardBounds.x + cardBounds.width).toBeLessThanOrEqual(390)
-  expect(cardBounds.y).toBeGreaterThanOrEqual(0)
-  expect(cardBounds.y + cardBounds.height).toBeLessThanOrEqual(1000)
-  await diagnosticScreenshot(page, {path:'test-results/profile-navigation-mobile-390x1000.png'})
-  await page.keyboard.press('Escape')
-  await expect(popup).toHaveCount(0)
-  await expect(menu).toBeVisible()
-
-})
 
 for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
   test(`navigation always uses a bottom bar or sidebar at ${width}px`, async ({ page }) => {

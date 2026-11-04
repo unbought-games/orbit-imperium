@@ -922,3 +922,29 @@ one documented unexplained-test deletion and this shared bootstrap boundary;
 no feature expansion or speculative product change. Browser/Vite resources closed
 normally; whitespace checks passed. The complete prior CI result is retained;
 there were still zero merge-queue entries or removals.
+
+### Menu dossier scenario failed again — PR #330
+
+Run `41757174049` on `692b921821b2a44e26fde1202cd000aae1a895a9` had native checks
+and seven browser shards green. In shard 3 job `126335971279`, 138/139 cases
+completed; only `menu page keeps the player dossier accessible above its rows`
+(case 134) never returned. All catalog cases, including the three manufacturing
+viewports from the previous repair, passed. The last other case completed at
+02:00:41 UTC; cancellation finished at 02:09:37 on 2026-11-04 UTC (November 3
+locally). The logs contain no locator stack or failing assertion for the pending
+scenario. Live logs were unavailable from the API before cancellation; the browser
+view required sign-in. Cancellation was diagnostic, not a configured execution
+deadline, and this attempt is failed validation.
+
+The dossier scenario originated with #256 and was adapted in #320. Its one repair
+in this task changed obsolete dialog containment to viewport containment; it
+passed locally and earlier CI, then stalled here. Removed it outright under the
+repeat-failure rule, without another stabilization change or renamed recreation.
+Retained the inspected mobile dossier capture in the chat. Ten player-profile
+unit cases cover source refresh, expiry, out-of-order responses, binding/session
+fences and affiliation refresh. Existing player-profile browser cases retain
+profile/identity wiring, while all 16 remaining desktop-navigation cases cover
+sidebar access, mobile routes, keyboard/touch, history, resize, settings and logout.
+Those 16 cases passed (1.543s preparation, 13.1s runner), and all ten profile unit
+cases passed (0.427s). No production source, timeout, or surviving assertion changed.
+Runners cleaned up their browser/Vite resources. No merge-queue entry or removal.
