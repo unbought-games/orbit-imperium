@@ -18,6 +18,7 @@ mod shared_report_preview;
 mod simulation;
 mod social;
 pub use player_profiles::AccountProfiles;
+mod client_build;
 mod rate_limit;
 mod signup_config;
 mod static_assets;
@@ -182,6 +183,7 @@ where
         signup_budget: Mutex::new(rate_limit::LoginBudget::new()),
         password_work: Arc::new(Semaphore::new(2)),
     });
+    let client_build = client_build::read(&state.config.assets);
     Router::new()
         .route(
             "/api/public/v1/universes/{id}/players",
@@ -343,6 +345,10 @@ where
         .layer(DefaultBodyLimit::max(16 * 1024))
         .with_state(state.clone())
         .fallback_service(static_assets::router(state))
+        .layer(axum::middleware::from_fn_with_state(
+            client_build,
+            client_build::advertise,
+        ))
 }
 async fn observe_request(
     State(observer): State<Arc<dyn RuntimeObserver>>,

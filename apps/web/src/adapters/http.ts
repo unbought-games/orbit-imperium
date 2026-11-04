@@ -1,4 +1,5 @@
 import { progressionOptionsLoader } from './progression-options'
+import { checkClientBuild } from './client-update'
 import { socialQuery, socialCommand } from './social'
 import { allianceQuery, allianceCommand } from './alliances'
 import { resetAnalytics } from './optional-services'
@@ -54,6 +55,7 @@ export async function request(
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   })
+  checkClientBuild(res)
   if (!res.ok) {
     const problem: unknown = await res.json().catch(() => null)
     const error = new HttpError(

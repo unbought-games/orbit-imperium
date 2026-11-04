@@ -1,7 +1,14 @@
 import type { GameState } from './game-store'
+import { incompatibleResponseMessage } from './schema'
 
 /** Keep transport failures separate from data freshness and server throttling. */
 export function connectionStatus(state: GameState) {
+  if (state.incompatibleSchema)
+    return {
+      kind: 'incompatible' as const,
+      message: incompatibleResponseMessage,
+      announcement: incompatibleResponseMessage,
+    }
   const seconds = Math.max(0, Math.ceil((state.retryAt - state.now) / 1000))
   const cooldown = state.rateLimited && seconds > 0
   const paused =

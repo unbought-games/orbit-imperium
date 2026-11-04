@@ -106,6 +106,7 @@ export interface GameUpdatesPort {
     after: string | null,
     options: {
       signal: AbortSignal
+      onConnect?(): void
       onUpdate(update: GameUpdate): void | Promise<void>
       onDisconnect(): void
     },

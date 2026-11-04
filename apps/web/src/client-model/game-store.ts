@@ -37,6 +37,7 @@ export type GameState = {
   retryAt: number
   rateLimited: boolean
   connectionInterrupted: boolean
+  incompatibleSchema: string | null
 }
 
 // One store per session/coordinator; never share account state across sessions.
@@ -62,5 +63,6 @@ export function createGameStore() {
     retryAt: 0,
     rateLimited: false,
     connectionInterrupted: false,
+    incompatibleSchema: null,
   }))
 }

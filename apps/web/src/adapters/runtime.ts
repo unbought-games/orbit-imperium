@@ -5,7 +5,8 @@ import {
   type Session,
 } from '../client-model/bootstrap'
 import type { ClientPlatform } from '../client-model/commands'
-import { validate } from '../client-model/schema'
+import { ContractDataError, validate } from '../client-model/schema'
+import { clientUpdate } from './client-update'
 import { attemptStorage, prepareSession } from './attempt-storage'
 import { gamePort, http } from './http'
 import { readEmbeddedBootstrap } from './bootstrap'
@@ -85,7 +86,8 @@ export async function prepareRuntime(
   let snapshot
   try {
     snapshot = validateInitialGame(result.session, result.game.snapshot)
-  } catch {
+  } catch (error) {
+    if (error instanceof ContractDataError) clientUpdate.incompatible()
     return {
       ...base,
       game: { status: 'unavailable', code: 'InvalidBootstrap' },
@@ -102,6 +104,7 @@ export async function prepareRuntime(
       deps.createUpdates?.(),
     )
     await model.initialize(result.session, snapshot)
+    clientUpdate.compatible()
     return { ...base, game: { status: 'ready', model } }
   } catch {
     model?.invalidate()
@@ -120,7 +123,8 @@ export async function loadInitialRuntime(
       'document',
       deps,
     )
-  } catch {
+  } catch (error) {
+    if (error instanceof ContractDataError) clientUpdate.incompatible()
     return { status: 'unavailable', signupEnabled: false }
   }
 }

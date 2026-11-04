@@ -4,6 +4,7 @@ import { atmosphereArt, resolvePlanetArt } from '../ui/artwork'
 import styles from './public-frame.module.css'
 import { BetaNotice } from '../ui/beta-notice'
 import { PolicyLinks } from '../ui/policy-links'
+import { ClientUpdateNotice } from '../ui/client-update-notice'
 
 const publicWorld = resolvePlanetArt(4)
 
@@ -96,6 +97,7 @@ export function PublicFrame({
           </div>
         )}
         <section className={styles.content}>
+          <ClientUpdateNotice />
           {variant !== 'landing' && <BetaNotice />}
           {children}
         </section>

@@ -6,6 +6,7 @@ import {
 } from '../client-model/commands'
 import { validate } from '../client-model/schema'
 import { HttpError } from './http'
+import { checkClientBuild } from './client-update'
 
 const maximumFrame = 256 * 1024
 function message(frame: string, binding: Binding): GameUpdate | null {
@@ -51,6 +52,7 @@ export function createGameUpdatesPort(baseUrl = ''): GameUpdatesPort {
             },
           },
         )
+        checkClientBuild(response)
         if (!response.ok)
           throw new HttpError(response.status, 'UpdateStreamUnavailable')
         if (
@@ -61,6 +63,7 @@ export function createGameUpdatesPort(baseUrl = ''): GameUpdatesPort {
         reader = response.body.getReader()
         options.signal.addEventListener('abort', cancel, { once: true })
         if (options.signal.aborted) return
+        options.onConnect?.()
         const decoder = new TextDecoder()
         let buffer = ''
         while (!options.signal.aborted) {

@@ -30,7 +30,7 @@ import {
   sameBinding,
   terminal,
 } from './commands'
-import { validate } from './schema'
+import { ContractDataError, validate } from './schema'
 import { ReportEngine } from './report-engine'
 import {
   acceptReportVisibility,
@@ -177,7 +177,9 @@ export class Coordinator {
         [...this.attempts.values()].some(
           (attempt) => !terminal(attempt) && attempt.status !== 'submitting',
         ),
-      needsSnapshot: () => this.pendingMinimum !== undefined,
+      needsSnapshot: () =>
+        !this.store.getState().incompatibleSchema &&
+        (this.pendingMinimum !== undefined || this.stale),
       nextWorkDelay: () => nextWorkDelay(this.store.getState()),
       isCurrent: () => this.ready && this.current(generation, binding),
     })
@@ -251,6 +253,7 @@ export class Coordinator {
       retryAt: 0,
       rateLimited: false,
       connectionInterrupted: false,
+      incompatibleSchema: null,
       binding: null,
       view: null,
       settings: null,
@@ -458,7 +461,11 @@ export class Coordinator {
     } else {
       this.store.setState({
         stale: true,
-        ...(f.status !== 429 ? { connectionInterrupted: true } : {}),
+        ...(e instanceof ContractDataError
+          ? { incompatibleSchema: e.schemaName, connectionInterrupted: false }
+          : f.status !== 429
+            ? { connectionInterrupted: true }
+            : {}),
       })
       this.delivery?.pending()
     }
@@ -573,6 +580,7 @@ export class Coordinator {
       this.store.setState({
         stale: false,
         connectionInterrupted: false,
+        incompatibleSchema: null,
         ...(now >= this.retryAt ? { rateLimited: false } : {}),
       })
       await this.reconcile()

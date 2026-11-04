@@ -797,3 +797,44 @@ logout cases, and player-profile UI cases retain browser wiring. No product code
 execution deadline, retry, or surviving assertion changed. This additional removal
 addresses recorded failure evidence after the third-round reassessment, rather
 than expanding feature scope or retrying unchanged intermittent cases.
+
+## Deployment recovery validation (2026-11-03)
+
+- The new deterministic keepalive-only reconnect test exposed initialization
+  overwriting the immediate reconnect poll. Queue the initial idle poll before
+  opening delivery. The existing healthy-stream test now explicitly opens the
+  connection and asserts the new initial reconciliation before its unchanged
+  idle cadence/disposal checks. History: delivery tests last changed in #32;
+  no previous repair for this scenario was found in this ledger. No retries or
+  timeouts were added.
+- The new asset-build test initially failed on macOS because Vite resolved
+  `/var` to `/private/var`, making the HTML output appear outside the temporary
+  root. Resolve the temporary root with `realpathSync` before invoking Vite.
+  This is the first repair of this new test; both independent-build identity
+  and bundle/metadata agreement assertions remain.
+- The new deployment browser scenario was interrupted after 54 seconds while
+  awaiting its first overview response: foregrounding schedules a zero-delay
+  reconciliation, but the test had paused the page clock without running that
+  scheduled task. Its first repair advances one millisecond after foregrounding,
+  with the response listener already registered, then awaits the HTTP response
+  and visible update notice before advancing to the reload. The unpaused
+  cooldown scenarios passed. Existing paused bootstrap recovery callers already
+  run their scheduled tasks before awaiting responses; no shared helper change
+  is needed. The implementation owner retains this fix in the deployment
+  recovery PR, with deterministic controller coverage of the quiet period.
+- Final local coverage: 1,328 client tests, 68 HTTP tests, and 124 tooling tests
+  passed (one tooling test deliberately skipped). Client execution was 7.21s;
+  HTTP preparation 10.66s and execution 16.34s; tooling execution 14.91s.
+  Six browser checks passed in 9.2s after module preparation, including real
+  reload navigation and manual recovery at 1440×1000 and 390×844. Screenshots
+  remain local chat artifacts. A later button-layout correction reran the two
+  affected incompatible-data browser scenarios and refreshed their captures.
+- Explicit local browser validation used the real Rust server, PostgreSQL and
+  production frontend. Same-build SIGTERM/restart recovered in 1.29s without a
+  browser reload. A replacement frontend build took 16.66s; after server restart,
+  version detection and automatic reload restored the authenticated URL in 3.07s.
+  The first direct-server harness attempt incorrectly awaited the proxy's HTTP
+  500 instead of a failed TCP request; that diagnostic assumption was corrected
+  before successful validation. Both server processes exited and the isolated
+  Compose project's container, network and volume were removed. Local setup
+  phases preceding the measured builds were not separately instrumented.
