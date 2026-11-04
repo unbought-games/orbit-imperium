@@ -17,6 +17,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     const path = `/u/andromeda/b/${body.id}/overview`
     await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(path))
     await expect(page.locator('main h1')).toContainText('Empire —')
+    await expect(page.getByTestId('client-update-announcement')).not.toHaveAttribute('role')
     const announcement = await page.getByTestId('client-update-announcement').elementHandle()
     expect(announcement).not.toBeNull()
     const originalUrl = page.url()
@@ -28,6 +29,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.clock.runFor(1)
     expect((await mismatch).status()).toBe(200)
     await expect(page.getByText('An update is available. Refreshing…', { exact: true })).toBeVisible()
+    await expect(page.getByTestId('client-update-announcement')).toHaveAttribute('role', 'status')
     expect(await announcement!.evaluate(node => node.isConnected)).toBe(true)
     expect(documents).toBe(1)
     await diagnosticScreenshot(page, { path: info.outputPath(`empire-refreshing-${size}.png`) })

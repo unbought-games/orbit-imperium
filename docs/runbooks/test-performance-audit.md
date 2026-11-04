@@ -850,3 +850,13 @@ than expanding feature scope or retrying unchanged intermittent cases.
   Added deterministic real-adapter logout and login/signup controller coverage.
   All 1,331 client tests passed in 4.46s, followed by lint, formatting and a
   production build. No browser test was added for this state/authorization rule.
+- CI run 41755598283 at 2dbad15 failed the two hosted-enrollment retry viewports
+  in browser shard 6: `getByRole('status')` matched the new empty update region
+  as well as “Joining the current universe.” The source fix retains a primed
+  aria-live region but exposes its status role only while a message exists.
+  The original enrollment assertions are unchanged. History: the scenarios came
+  from #300, with no prior repair recorded here. Audited global status-role
+  callers (including Galaxy and action-sheet notices); other callers are scoped
+  to their component or text, and the shared inactive-role fix covers the
+  affected surface. All 18 recovery/hosted-auth browser cases passed in 21.4s,
+  with fresh screenshots and explicit inactive/active status-role coverage.

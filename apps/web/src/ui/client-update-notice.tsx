@@ -8,7 +8,7 @@ export function ClientUpdateNotice() {
   const state = useStore(clientUpdate.store)
   return (
     <div
-      role="status"
+      role={state.status === 'current' ? undefined : 'status'}
       aria-live="polite"
       aria-atomic="true"
       data-testid="client-update-announcement"
