@@ -838,3 +838,8 @@ than expanding feature scope or retrying unchanged intermittent cases.
   before successful validation. Both server processes exited and the isolated
   Compose project's container, network and volume were removed. Local setup
   phases preceding the measured builds were not separately instrumented.
+- Final bundle inspection found the public recovery notice pulling in the full
+  OpenAPI validator through its shared error text. Extracted dependency-free
+  contract error definitions; the public shared chunk fell from 586.96kB to
+  259.28kB. The production build, 137 affected unit tests (0.85s), and all ten
+  built-homepage checks (0.66s preparation, 3.2s execution) passed after this fix.

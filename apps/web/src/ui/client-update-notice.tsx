@@ -1,6 +1,6 @@
 import { useStore } from 'zustand'
 import { clientUpdate } from '../adapters/client-update'
-import { incompatibleResponseMessage } from '../client-model/schema'
+import { incompatibleResponseMessage } from '../client-model/contract-error'
 import { Button } from './button'
 import styles from './client-update-notice.module.css'
 

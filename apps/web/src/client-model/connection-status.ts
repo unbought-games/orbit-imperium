@@ -1,5 +1,5 @@
 import type { GameState } from './game-store'
-import { incompatibleResponseMessage } from './schema'
+import { incompatibleResponseMessage } from './contract-error'
 
 /** Keep transport failures separate from data freshness and server throttling. */
 export function connectionStatus(state: GameState) {
