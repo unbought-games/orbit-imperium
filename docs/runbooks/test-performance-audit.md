@@ -839,3 +839,12 @@ The remaining changed resource-settings entry and dispatch recovery callers pass
 all three focused cases (1.253s preparation, 4.2s runner), preserving form saves
 and pending-order recovery without navigating away from local edits. Final
 whitespace validation passed. No additional failures or repairs occurred.
+
+PR preparation rebased onto `283c5be` and validated
+`86a1a6698ea55ecf78d9fc316e7b25e250dd6ee5`. Preserved main's deliberate removal of
+the account-identity cases when resolving the shell-test conflict, and retained
+both audit entries. The 15 affected navigation/iOS/browser checks passed (2.509s
+preparation, 20.7s runner); 29 navigation/route/report-state unit cases passed
+(0.217s). Production build, TypeScript, lint, formatting and whitespace checks
+passed. Refreshed and inspected desktop/mobile and relevant interaction captures.
+No new test failures; test servers, browsers and port leases were cleaned up.
