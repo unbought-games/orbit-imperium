@@ -56,6 +56,11 @@ pub(crate) async fn load(
         leader: PlayerId(row.try_get("leader").map_err(db_error)?),
         recruitment: recruitment(&row)?,
         public_text: row.try_get("public_text").map_err(db_error)?,
+        recruitment_profile: row
+            .try_get::<sqlx::types::Json<_>, _>("recruitment_profile")
+            .map_err(db_error)?
+            .0,
+        invitation: row.try_get("invitation").map_err(db_error)?,
         revision: row.try_get::<i64, _>("revision").map_err(db_error)? as u64,
         roles: row
             .try_get::<sqlx::types::Json<_>, _>("roles")
@@ -89,6 +94,13 @@ pub(crate) async fn save(tx: &mut Tx<'_>, b: Binding, s: &AllianceState) -> Resu
     };
     sqlx::query("INSERT INTO alliances(universe,epoch,id,name,tag,leader,recruitment,public_text,revision,roles,posts,audit) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,tag=EXCLUDED.tag,leader=EXCLUDED.leader,recruitment=EXCLUDED.recruitment,public_text=EXCLUDED.public_text,revision=EXCLUDED.revision,roles=EXCLUDED.roles,posts=EXCLUDED.posts,audit=EXCLUDED.audit")
         .bind(b.universe.0).bind(b.epoch.0).bind(s.id).bind(&s.name).bind(&s.tag).bind(s.leader.0).bind(recruitment).bind(&s.public_text).bind(i64::try_from(s.revision).map_err(|_|StoreError::Conflict)?).bind(sqlx::types::Json(&s.roles)).bind(sqlx::types::Json(&s.posts)).bind(sqlx::types::Json(&s.audit)).execute(&mut **tx).await.map_err(db_error)?;
+    sqlx::query("UPDATE alliances SET recruitment_profile=$2,invitation=$3 WHERE id=$1")
+        .bind(s.id)
+        .bind(sqlx::types::Json(&s.recruitment_profile))
+        .bind(s.invitation)
+        .execute(&mut **tx)
+        .await
+        .map_err(db_error)?;
     sqlx::query("DELETE FROM alliance_memberships WHERE alliance=$1")
         .bind(s.id)
         .execute(&mut **tx)

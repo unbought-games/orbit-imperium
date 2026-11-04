@@ -1,3 +1,5 @@
+import { RecruitmentEntryPage } from './features/alliances/recruitment-entry'
+import { recruitmentEntry } from './client-model/recruitment'
 import { HostedJoin } from './features/hosted-join'
 import { hostedJoinUniverse } from './client-model/use-hosted-join'
 import { Provider } from 'jotai'
@@ -25,6 +27,9 @@ export function App() {
   const joinUniverse = useLocation({
     select: (location) => hostedJoinUniverse(location.pathname),
   })
+  const allianceEntry = useLocation({
+    select: (location) => recruitmentEntry(location.href),
+  })
   const session = useAppSession()
   const { runtime, busy, message, errorRef, commands, logout, retry } = session
   return (
@@ -32,6 +37,12 @@ export function App() {
       <SkipLink />
       {runtime.status === 'anonymous' ? (
         <Outlet />
+      ) : runtime.status === 'authenticated' && allianceEntry ? (
+        <RecruitmentEntryPage
+          key={`${allianceEntry.universe}:${allianceEntry.alliance}:${allianceEntry.invitation ?? ''}`}
+          entry={allianceEntry}
+          memberships={runtime.session.memberships}
+        />
       ) : runtime.status === 'authenticated' && joinUniverse ? (
         <HostedJoin
           universe={joinUniverse}

@@ -36,3 +36,58 @@ criteria. Members pending deletion cannot acquire leadership. Voluntary empire
 deletion requires transferring leadership or disbanding first. See
 [Empire deletion and inactivity cleanup](empire-deletion.md) for exact selection,
 fleet handling, and retention rules. Successor nominations remain deferred.
+
+## Recruitment and invitations
+
+Alliances can opt into recruitment discovery with optional languages, new-player
+preferences and activity expectations. Existing alliances start unlisted and all
+preferences start unset. Unset preferences do not match a specific filter.
+`ManageRecruitment` controls these settings and invitation links; public profile
+text retains its existing `EditProfile` permission. Activity expectations are
+self-described, not enforced attendance requirements.
+
+The public directory at `/alliances` selects a universe; `/alliances/{universe}`
+and in-game discovery list only opted-in alliances whose recruitment is Open or
+Application. Closed alliances keep their preferences but disappear from this
+list. Public pages and explicit in-game name/tag lookup remain available for
+unlisted groups. The directory uses the existing public description, not a
+second recruitment biography.
+
+Each alliance can have one active, reusable invitation. Managers create, replace
+or disable it. It has no expiry, use cap, creator affiliation requirement or
+membership privilege. Replacing or disabling invalidates the old link, while
+the public alliance page and normal joining rules remain available. The current
+token is visible in private detail only with `ManageRecruitment`. Receipt replay
+never creates a second link or resurrects a disabled one. Links resolve against
+the current universe epoch and alliance, so renames preserve them and disband or
+reset invalidates them.
+
+An invitation identifies the alliance and universe. Its public page carries that
+destination through signup/sign-in and explicit ordinary universe enrollment.
+Existing members of the universe skip enrollment. The game welcome offers an
+explicit join, or an editable application requiring submission and approval,
+plus Start playing to reach the overview. Existing alliance membership and pending
+applications are respected. Neither an invitation nor viewing its welcome creates
+a membership, application or friendship. Admission and recruitment eligibility
+are rechecked by the existing transactions.
+
+Anonymous reads are rate-limited and omit private membership/application content.
+The HTTP API adds `GET /api/v4/universes/{id}/recruitment` (search, language,
+beginners, activity, offset) and `GET /api/v4/universes/{id}/invitations/{token}`.
+The invitation page is `/invite/{universe}/{token}`. Both it and the public
+alliance page provide crawler metadata and a downloadable PNG at `/image`.
+Rendering uses one deterministic template, bundled fonts and public name/tag;
+it does not publish restricted cosmetic originals or introduce alliance insignias.
+
+Migration `0035_alliance_recruitment.sql` adds authored preference JSON and the
+current invitation token. Counts, eligibility, universe availability, filtering,
+and previews are derived. Recruitment definitions use stable values separate
+from UI labels; add future fields/options through the domain model, contract,
+shared UI definitions and tests. No generic form-builder or reward system is
+required. Personal friend invitations remain separate work under issue #201;
+recruitment discovery extends issue #202.
+
+Optional analytics distinguish invitation/directory page views and confirmed
+enrollment, application and joining events. Tokens, application text and link
+creator identity are not included in those custom events. These observations
+are not referral entitlements or an authoritative record of player retention.

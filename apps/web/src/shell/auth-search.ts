@@ -1,6 +1,17 @@
+import {
+  recruitmentEntry,
+  recruitmentEntryPath,
+} from '../client-model/recruitment'
 export function validateAuthSearch(search: Record<string, unknown>): {
   redirect?: string
 } {
+  if (
+    typeof search.redirect === 'string' &&
+    search.redirect.startsWith('/join/')
+  ) {
+    const entry = recruitmentEntry(search.redirect)
+    return { redirect: entry ? recruitmentEntryPath(entry) : undefined }
+  }
   if (typeof search.redirect !== 'string' || !search.redirect.startsWith('/u/'))
     return { redirect: undefined }
   const destination = new URL(search.redirect, 'https://orbit.invalid')

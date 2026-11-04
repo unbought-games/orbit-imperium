@@ -1,3 +1,4 @@
+mod alliance_preview;
 mod insignias;
 pub use insignias::Customization;
 mod alliances;
@@ -312,6 +313,30 @@ where
         .route(
             "/api/v4/universes/{id}/alliances/commands",
             post(alliances::command::<S>).layer(DefaultBodyLimit::max(128 * 1024)),
+        )
+        .route(
+            "/alliances/{universe}/{alliance}",
+            get(alliance_preview::page::<S>),
+        )
+        .route(
+            "/alliances/{universe}/{alliance}/image",
+            get(alliance_preview::image::<S>),
+        )
+        .route(
+            "/invite/{universe}/{token}",
+            get(alliance_preview::invitation_page::<S>),
+        )
+        .route(
+            "/invite/{universe}/{token}/image",
+            get(alliance_preview::invitation_image::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/recruitment",
+            get(alliances::directory::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/invitations/{token}",
+            get(alliances::invitation::<S>),
         )
         .route(
             "/api/v4/universes/{id}/alliances/{alliance}",

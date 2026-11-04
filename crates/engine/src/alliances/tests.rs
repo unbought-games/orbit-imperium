@@ -1017,3 +1017,145 @@ fn ordinary_protocol_words_remain_valid_alliance_prose() {
     .unwrap();
     assert_eq!(s.applications.last().unwrap().text, text);
 }
+
+#[test]
+fn recruitment_preferences_are_optional_and_require_manage_recruitment() {
+    let mut s = state();
+    assert_eq!(s.recruitment_profile, RecruitmentProfile::default());
+    assert_eq!(s.invitation, None);
+    join(&mut s, 2);
+    let profile = RecruitmentProfile {
+        listed: true,
+        languages: Some(vec!["en".into(), "fr".into()]),
+        beginners: Some(RecruitmentExperience::Welcome),
+        activity: Some(RecruitmentActivity::Weekly),
+    };
+    denied(
+        &mut s,
+        2,
+        AllianceAction::SetRecruitmentProfile {
+            alliance: id(10),
+            profile: profile.clone(),
+        },
+    );
+    denied(
+        &mut s,
+        2,
+        AllianceAction::SetInvitation {
+            alliance: id(10),
+            enabled: true,
+        },
+    );
+    let recruiter = role(
+        &mut s,
+        "Invitation steward",
+        vec![ManageRecruitment],
+        vec![],
+    );
+    assign(&mut s, 2, vec![recruiter]);
+    run(
+        &mut s,
+        2,
+        AllianceAction::SetRecruitmentProfile {
+            alliance: id(10),
+            profile: profile.clone(),
+        },
+    )
+    .unwrap();
+    assert_eq!(s.recruitment_profile, profile);
+    for languages in [
+        vec![],
+        vec!["EN".into()],
+        vec!["en".into(), "en".into()],
+        vec!["<script>".into()],
+    ] {
+        denied(
+            &mut s,
+            2,
+            AllianceAction::SetRecruitmentProfile {
+                alliance: id(10),
+                profile: RecruitmentProfile {
+                    languages: Some(languages),
+                    ..profile.clone()
+                },
+            },
+        );
+    }
+    run(
+        &mut s,
+        2,
+        AllianceAction::SetRecruitmentProfile {
+            alliance: id(10),
+            profile: RecruitmentProfile::default(),
+        },
+    )
+    .unwrap();
+    assert_eq!(s.recruitment_profile.languages, None);
+    assert!(!s.recruitment_profile.listed);
+}
+#[test]
+fn alliance_links_survive_creator_departure_and_never_bypass_joining_rules() {
+    let mut s = state();
+    join(&mut s, 2);
+    let recruiter = role(
+        &mut s,
+        "Invitation steward",
+        vec![ManageRecruitment],
+        vec![],
+    );
+    assign(&mut s, 2, vec![recruiter]);
+    run(
+        &mut s,
+        2,
+        AllianceAction::SetInvitation {
+            alliance: id(10),
+            enabled: true,
+        },
+    )
+    .unwrap();
+    let original = s.invitation.unwrap();
+    run(&mut s, 2, AllianceAction::Leave { alliance: id(10) }).unwrap();
+    assert_eq!(s.invitation, Some(original));
+    s.recruitment = AllianceRecruitment::Application;
+    denied(&mut s, 3, AllianceAction::Join { alliance: id(10) });
+    run(
+        &mut s,
+        3,
+        AllianceAction::Apply {
+            alliance: id(10),
+            text: "I'd like to join.".into(),
+        },
+    )
+    .unwrap();
+    assert!(!s.is_member(player(3)));
+    assert_eq!(s.applications.len(), 1);
+    s.recruitment = AllianceRecruitment::Closed;
+    denied(
+        &mut s,
+        4,
+        AllianceAction::Apply {
+            alliance: id(10),
+            text: "Hi".into(),
+        },
+    );
+    run(
+        &mut s,
+        1,
+        AllianceAction::SetInvitation {
+            alliance: id(10),
+            enabled: true,
+        },
+    )
+    .unwrap();
+    assert_ne!(s.invitation, Some(original));
+    run(
+        &mut s,
+        1,
+        AllianceAction::SetInvitation {
+            alliance: id(10),
+            enabled: false,
+        },
+    )
+    .unwrap();
+    assert_eq!(s.invitation, None);
+}

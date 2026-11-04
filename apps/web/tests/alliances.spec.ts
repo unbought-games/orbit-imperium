@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, refreshGame, binding, id } from './fixtures/game'
@@ -53,6 +54,8 @@ async function fixture(page: Page, initial: S['AllianceDetail'] | null) {
 test('discovery applications preserve rejected drafts, withdraw and create an alliance', async ({ page }) => {
   const f = await fixture(page, null)
   await page.goto('/u/andromeda/alliance')
+  await page.getByLabel('Find an alliance', { exact: true }).fill('STAR')
+  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.getByRole('button', { name: 'Search alliances', exact: true }).click())
   await page.getByRole('button', { name: 'View STAR', exact: true }).click()
   await page.getByLabel('Application message').fill('I explore distant stars.')
   f.rejectNext()
@@ -158,11 +161,13 @@ test('public recruitment bypasses bootstrap, exposes only public data and opens 
     return route.fulfill({ status: 500 })
   })
   await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: { summary, public_text: '**Explore** together.\n\n[Bad](javascript:alert(1)) ![image](https://example.com/a.png)\n\n<script>alert(1)</script>' } }))
-  await page.goto(`/alliances/${binding.universe}/${alliance}`)
+  await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith(`/alliances/${alliance}`), () => page.goto(`/alliances/${binding.universe}/${alliance}`))
   await expect(page.getByRole('heading', { name: summary.name })).toBeVisible()
   await expect(page.getByText('24,000')).toBeVisible()
   expect(bootstraps).toBe(0)
-  await expect(page.locator('main img, main iframe, main script')).toHaveCount(0)
+  await expect(page.locator('main iframe, main script')).toHaveCount(0)
+  await expect(page.locator('main img')).toHaveCount(1)
+  await expect(page.getByRole('img', { name: `${summary.name} recruitment poster` })).toHaveAttribute('src', `/alliances/${binding.universe}/${alliance}/image`)
   await expect(page.getByRole('button', { name: 'Members', exact: true })).toHaveCount(0)
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 })
@@ -170,7 +175,7 @@ test('public recruitment bypasses bootstrap, exposes only public data and opens 
     await diagnosticScreenshot(page, { path: `test-results/alliance-${width}-${page.url().includes('/alliances/') ? 'public' : 'board'}.png`, fullPage: true })
   }
   await fixture(page, null)
-  await page.getByRole('link', { name: 'Open alliance in game' }).click()
+  await page.getByRole('link', { name: 'Continue to this universe' }).click()
   await expect(page).toHaveURL(new RegExp(`/u/andromeda/alliance\\?.*alliance=${alliance}`))
   await expect(page.getByLabel('Application message')).toBeVisible()
 })

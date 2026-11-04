@@ -229,6 +229,20 @@ pub trait GameStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<AllianceCommandResult, StoreError>> + Send {
         async { Err(StoreError::UnsupportedProtocol) }
     }
+    fn recruitment_directory(
+        &self,
+        _universe: UniverseId,
+        _query: RecruitmentSearch,
+    ) -> impl std::future::Future<Output = Result<RecruitmentDirectory, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
+    fn alliance_invitation(
+        &self,
+        _universe: UniverseId,
+        _token: uuid::Uuid,
+    ) -> impl std::future::Future<Output = Result<PublicAlliance, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
     fn public_alliance(
         &self,
         _universe: UniverseId,

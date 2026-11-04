@@ -29,3 +29,13 @@ export function resetAnalytics(): void {
     // Signing out must work even when the SDK fails.
   }
 }
+
+export function trackRecruitment(
+  action: 'enrolled' | 'applied' | 'joined',
+): void {
+  try {
+    analytics?.trackRecruitment(action)
+  } catch {
+    /* Optional measurement cannot interrupt play. */
+  }
+}

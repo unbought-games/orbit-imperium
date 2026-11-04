@@ -11,7 +11,7 @@ export const permissionLabels: Record<AlliancePermission, string> = {
   ViewApplications: 'View applications',
   ProcessApplications: 'Accept and reject applications',
   EditProfile: 'Edit alliance profile',
-  ManageRecruitment: 'Change recruitment mode',
+  ManageRecruitment: 'Manage recruitment',
   PublishPosts: 'Publish notices',
   SendCircular: 'Send alliance circulars',
   ManagePosts: 'Edit and delete others’ notices',

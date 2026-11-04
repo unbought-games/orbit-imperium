@@ -56,6 +56,9 @@ export function HomeLanding({ signupEnabled }: { signupEnabled: boolean }) {
               </svg>
               View on GitHub
             </a>
+            <a className={styles.updates} href="/alliances">
+              Find an alliance <span aria-hidden="true">→</span>
+            </a>
             <DiscordLink />
           </nav>
         </HomeDetails>
