@@ -85,3 +85,23 @@ Hosting requires PostgreSQL, a `DATABASE_URL`, and an `ORBIT_ORIGIN` matching th
 
 
 Provision PostgreSQL before starting the application. See [deployment requirements](architecture/deployment.md) for process lifetime, persistence, and migration behavior.
+
+### Clients during deployments
+
+Each frontend build includes a unique identity in its JavaScript and
+`client-build.json`. Ship that metadata with the rest of the immutable asset
+bundle. The server advertises the installed identity in
+`X-Orbit-Client-Build` response headers; existing API and live-stream requests
+check it before decoding game data. Custom or older bundles without the metadata
+continue to work without automatic version detection. Vite's development proxy
+removes the header because HMR owns the development client.
+
+A different build triggers a brief update notice and reloads the current URL.
+The tab records the attempt in session storage first, allowing at most one
+automatic reload per ten minutes, including during rolling deployments. If
+storage is unavailable or a recent refresh did not resolve the mismatch, the
+notice offers a manual reload. Network outages continue to reconnect without
+reloading; incompatible data without a new build is reported separately.
+Existing tabs from before this recovery feature need one manual refresh to
+receive it. Pending orders retain their saved identities and are reconciled
+without automatically resubmitting them.

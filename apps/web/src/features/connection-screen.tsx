@@ -2,6 +2,8 @@ import { Button } from '../ui/button'
 import { Eyebrow, Heading, Text } from '../ui/typography'
 import { PublicFrame } from './public-frame'
 import styles from './connection-screen.module.css'
+import { useStore } from 'zustand'
+import { clientUpdate } from '../adapters/client-update'
 export function ConnectionScreen({
   stale,
   message,
@@ -15,14 +17,22 @@ export function ConnectionScreen({
   busy?: boolean
   logout?: () => Promise<void>
 }) {
+  const updating = useStore(
+    clientUpdate.store,
+    (state) => state.status !== 'current',
+  )
   const failed = !busy && (stale || message)
   return (
     <PublicFrame variant="recovery">
       <Eyebrow className={styles.eyebrow}>Orbit Imperium</Eyebrow>
       <Heading level={1} className={styles.title}>
-        {failed ? 'A moment between worlds.' : 'Opening your universe.'}
+        {updating
+          ? 'Updating your universe.'
+          : failed
+            ? 'A moment between worlds.'
+            : 'Opening your universe.'}
       </Heading>
-      {failed ? (
+      {updating ? null : failed ? (
         <>
           <Text role="alert" className={styles.message}>
             {stale

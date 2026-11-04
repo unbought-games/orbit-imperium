@@ -1374,6 +1374,24 @@ it('refreshes speed and settings atomically after a rules activation', async () 
   expect(c.stale).toBe(false)
 })
 
+it('distinguishes unreadable deployment data from a lost connection and clears it after a valid snapshot', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const original = port.view,
+    previous = c.view
+  port.view = async (context) => ({
+    ...view(context.request_id),
+    new_deployment_field: [],
+  })
+  await c.refresh()
+  expect(c.view).toBe(previous)
+  expect(connectionStatus(c.store.getState())?.kind).toBe('incompatible')
+  expect(c.store.getState().connectionInterrupted).toBe(false)
+  port.view = original
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
 it('retains a coherent snapshot if rules change again between view and settings', async () => {
   const { c, port } = setup()
   await c.connect(binding.account, binding.universe)

@@ -2,6 +2,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { mkdirSync } from 'node:fs'
 import { shellFixture, binding, body, id } from './fixtures/game'
+import { withFixtureResponse } from './fixtures/responses'
 
 const output = 'test-results/combat-redesign'
 const defenses = new Set([
@@ -250,7 +251,11 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espiona
         },
       })
     })
-    await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
+    await withFixtureResponse(
+      page,
+      response => new URL(response.url()).pathname === `/api/v4/universes/${binding.universe}/reports/${header.id}`,
+      () => page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`),
+    )
     const report = page.getByRole('region', { name: 'Report observation' })
     await expect(report.getByRole('heading', { level: 2 })).toHaveText(
       size === 'defender' ? '✕ Defeat' : '✓ Victory',
@@ -401,7 +406,11 @@ test.describe('explosion counter explanation', () => {
         } },
       } })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
+    await withFixtureResponse(
+      page,
+      response => new URL(response.url()).pathname === `/api/v4/universes/${binding.universe}/reports/${header.id}`,
+      () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
+    )
     const round = page.getByRole('region', { name: 'Report observation' }).locator('details').first()
     await expect(round).toBeVisible()
     await round.locator('summary').click()
@@ -469,7 +478,11 @@ for (const visible of [false, true]) {
         participants, survivors: participants, recovered: [], rounds: [],
       },
     } }))
-    await page.goto(`/reports/shared/${token}`)
+    await withFixtureResponse(
+      page,
+      response => new URL(response.url()).pathname === `/api/v4/shared-reports/${token}`,
+      () => page.goto(`/reports/shared/${token}`),
+    )
     const forces = page.getByRole('region', { name: 'Forces and losses' })
     await expect(forces.getByRole('article')).toHaveCount(3)
     for (const [index, location] of locations.entries()) {

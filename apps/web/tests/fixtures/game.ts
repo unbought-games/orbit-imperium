@@ -48,6 +48,7 @@ export const body: components['schemas']['BodyV3'] = {
 export async function installGameFixture(
   page: Page,
   options: {
+    snapshotHeaders?: () => Record<string, string>
     vacation?: () => components['schemas']['VacationView4']
     universeName?: string
     dimensions?: { galaxies: number; systems_per_galaxy: number }
@@ -294,6 +295,7 @@ export async function installGameFixture(
 
     if (url.pathname === '/api/v1/bootstrap')
       return route.fulfill({
+        headers: options.snapshotHeaders?.(),
         json: {
           version: 1,
           signup_enabled: false,
@@ -321,7 +323,7 @@ export async function installGameFixture(
       return route.fulfill({ json: session })
     if (url.pathname.endsWith('/settings'))
       return route.fulfill({ json: settings })
-    if (url.pathname.endsWith('/overview')) return route.fulfill({ json: view })
+    if (url.pathname.endsWith('/overview')) return route.fulfill({ json: view, headers: options.snapshotHeaders?.() })
     if (url.pathname.endsWith('/presence'))
       return route.fulfill({
         json: {

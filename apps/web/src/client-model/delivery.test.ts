@@ -15,12 +15,83 @@ const platform = {
     return () => clearTimeout(timer)
   },
 }
+it('reconciles a reconnected stream that only sends keepalives, preserving the applied cursor', async () => {
+  vi.useFakeTimers()
+  const cursors: (string | null)[] = []
+  let close!: () => void
+  const reconcile = vi.fn(async () => {})
+  const delivery = startGameDelivery({
+    binding,
+    platform,
+    reconcile,
+    onUpdate: async () => {},
+    hasPending: () => false,
+    isCurrent: () => true,
+    updates: {
+      async subscribe(_, cursor, o) {
+        cursors.push(cursor)
+        o.onConnect?.()
+        if (cursors.length === 1)
+          await o.onUpdate({
+            binding,
+            cursor: 'applied',
+            event: { type: 'Reset' },
+          })
+        await new Promise<void>((resolve) => {
+          close = resolve
+          o.signal.addEventListener('abort', () => resolve(), { once: true })
+        })
+        o.onDisconnect()
+      },
+    },
+  })
+  await vi.advanceTimersByTimeAsync(0)
+  expect(reconcile).toHaveBeenCalledTimes(1)
+  close()
+  await vi.advanceTimersByTimeAsync(1001)
+  expect(cursors).toEqual([null, 'applied'])
+  expect(reconcile).toHaveBeenCalledTimes(2)
+  delivery.stop()
+})
+
+it('does not postpone a stale snapshot retry when unrelated updates keep arriving', async () => {
+  vi.useFakeTimers()
+  let options!: Parameters<GameUpdatesPort['subscribe']>[2]
+  const reconcile = vi.fn(async () => {})
+  const delivery = startGameDelivery({
+    binding,
+    platform,
+    reconcile,
+    onUpdate: async () => {},
+    hasPending: () => false,
+    needsSnapshot: () => true,
+    isCurrent: () => true,
+    updates: {
+      async subscribe(_, __, o) {
+        options = o
+        await new Promise<void>((resolve) =>
+          o.signal.addEventListener('abort', () => resolve(), { once: true }),
+        )
+      },
+    },
+  })
+  await vi.advanceTimersByTimeAsync(500)
+  await options.onUpdate({
+    binding,
+    cursor: 'one',
+    event: { type: 'Invalidate', minimum_viewer_revision: '0' },
+  })
+  await vi.advanceTimersByTimeAsync(500)
+  expect(reconcile).toHaveBeenCalledOnce()
+  delivery.stop()
+})
 it('healthy streams use local ticks and a 30–60 second idle reconciliation, then cancel on disposal', async () => {
   vi.useFakeTimers()
   let options!: Parameters<GameUpdatesPort['subscribe']>[2]
   const updates: GameUpdatesPort = {
     async subscribe(_, __, o) {
       options = o
+      o.onConnect?.()
       await new Promise<void>((resolve) =>
         o.signal.addEventListener('abort', () => resolve(), { once: true }),
       )
@@ -38,18 +109,20 @@ it('healthy streams use local ticks and a 30–60 second idle reconciliation, th
     isCurrent: () => true,
   })
   await options.onUpdate({ binding, cursor: 'one', event: { type: 'Reset' } })
+  await vi.advanceTimersByTimeAsync(0)
+  expect(reconcile).toHaveBeenCalledTimes(1)
   delivery.pending()
   await vi.advanceTimersByTimeAsync(2000)
-  expect(reconcile).not.toHaveBeenCalled()
-  await vi.advanceTimersByTimeAsync(28000)
   expect(reconcile).toHaveBeenCalledTimes(1)
+  await vi.advanceTimersByTimeAsync(28000)
+  expect(reconcile).toHaveBeenCalledTimes(2)
   delivery.wake()
   await vi.advanceTimersByTimeAsync(0)
-  expect(reconcile).toHaveBeenCalledTimes(2)
+  expect(reconcile).toHaveBeenCalledTimes(3)
   delivery.stop()
   expect(options.signal.aborted).toBe(true)
   await vi.advanceTimersByTimeAsync(60000)
-  expect(reconcile).toHaveBeenCalledTimes(2)
+  expect(reconcile).toHaveBeenCalledTimes(3)
 })
 it('reconnects from the applied cursor and quietly reconciles while an old endpoint is unavailable', async () => {
   vi.useFakeTimers()

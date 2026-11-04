@@ -88,6 +88,15 @@ export function startGameDelivery(options: Options): DeliveryController {
     try {
       await options.updates.subscribe(options.binding, cursor, {
         signal: controller.signal,
+        onConnect: () => {
+          if (!current()) return
+          connected = true
+          retry = 1000
+          // A resumed stream may only send keepalives. Reconcile immediately,
+          // without waiting for a new event or resetting an earlier poll.
+          if (polling) reconcileAgain = true
+          else queuePoll(0)
+        },
         onUpdate: async (update) => {
           if (!current()) return
           await options.onUpdate(update)
@@ -95,7 +104,7 @@ export function startGameDelivery(options: Options): DeliveryController {
           cursor = update.cursor ?? cursor
           connected = true
           retry = 1000
-          queuePoll(nextPollDelay())
+          queuePoll(nextPollDelay(), true)
         },
         onDisconnect: () => {
           connected = false
@@ -121,8 +130,8 @@ export function startGameDelivery(options: Options): DeliveryController {
     }
   }
   if (options.updates) {
-    void open()
     queuePoll(nextPollDelay())
+    void open()
   } else queuePoll(0)
   return {
     stop() {
