@@ -860,3 +860,20 @@ than expanding feature scope or retrying unchanged intermittent cases.
   to their component or text, and the shared inactive-role fix covers the
   affected surface. All 18 recovery/hosted-auth browser cases passed in 21.4s,
   with fresh screenshots and explicit inactive/active status-role coverage.
+- CI run 41757041553 at cb612b9 exposed an existing combat-report navigation
+  readiness race: the “capture current small combat report” heading assertion
+  expired after HTML navigation, while the failure screenshot/error context
+  already contained the expected Victory report. The fixture never awaited the
+  lazy report response. History (#315 diagnostic gating and #292 participant
+  locations) and this ledger showed no prior readiness repair for that scenario.
+  Its first repair uses `withFixtureResponse` with the exact API detail URL before
+  navigation, verifies HTTP success and complete delivery, then retains every
+  content/layout assertion. Audited all three report-navigation sites in this
+  file and applied the same boundary to the six combat variants, explosion
+  interaction and two shared-redaction cases. No sleeps, retries, deadline
+  changes, or screenshot-based readiness were added. The implementation owner
+  delivers this shared fixture repair in the current recovery PR.
+  All nine cases passed after the exact-API response boundary in 8.8s. The other
+  seven CI browser shards, native checks and all PostgreSQL groups passed on the
+  preceding head; this was its only failed test. No production code changed in
+  the repair.
