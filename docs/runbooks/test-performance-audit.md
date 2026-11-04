@@ -892,3 +892,33 @@ or surviving assertion changed. Local browser/Vite resources closed normally.
 The second CI run `41755257641` is superseded by this documented removal; no queue
 entry or removal has occurred. This PR's implementation owner owns the repair
 and retained-coverage audit; there is no independent follow-up to hand off.
+
+### Catalog bootstrap boundary repair — PR #330
+
+Run `41755590187` on `04fe49aa948bff4a82f4a35bb433b1d23c89a2c3` completed with
+native checks and seven browser shards green. Shard 3 (`126331427547`) had 137
+passes and two failures in `manufacturing stacks every exact resource cost in
+compact rows` at 320/390px (6.9m execution). Both failed in shared catalog `setup`,
+before the scenario assertions: the H1 was still `Opening your universe.` and
+then absent. Failure images show the empty shell during startup. The fixture
+awaited HTML navigation and immediately began its five-second rendered assertion,
+without establishing successful complete bootstrap delivery.
+
+History: layout scenario introduced in `af980a1` (#176); shared setup introduced
+in `19ee32c` (#80). No earlier repair for this scenario appears in history or this
+ledger. Its one repair registers the existing `withFixtureResponse` helper before
+navigation and verifies `/api/v1/bootstrap` success/completion, then retains the
+same observable heading assertion. Audited all 46 setup call sites: they require
+healthy startup and install held/error/command overrides after it; intentional
+negative and race cases are unchanged. This common fixture repair belongs to this
+PR's implementation owner; no separate caller follow-up is outstanding.
+
+All 116 catalog cases passed locally (1.242s preparation, 1.9m runner), including
+all three manufacturing viewports and the preserved submission/race/error checks.
+No timeout, retry, assertion or product code changed. This is a response-readiness
+repair, not a green retry of the same fixture. Reassessed after three CI repair
+rounds: the changes remain one menu implementation, its stale-selector updates,
+one documented unexplained-test deletion and this shared bootstrap boundary;
+no feature expansion or speculative product change. Browser/Vite resources closed
+normally; whitespace checks passed. The complete prior CI result is retained;
+there were still zero merge-queue entries or removals.
