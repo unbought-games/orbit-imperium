@@ -848,3 +848,19 @@ preparation, 20.7s runner); 29 navigation/route/report-state unit cases passed
 (0.217s). Production build, TypeScript, lint, formatting and whitespace checks
 passed. Refreshed and inspected desktop/mobile and relevant interaction captures.
 No new test failures; test servers, browsers and port leases were cleaned up.
+
+PR #330 run `41754058662` on `e3ae1cba8c91316a3adc5df5424ab4bc96d34351`
+exposed three stale Galaxy navigation expectations (320/390/768px), all in shard
+5 job `126325923358`. Each expected four mobile links and received the same four
+plus Menu, which changed from a button to a route link. History traces the
+scenario to `ad9e6e6` (#207); no earlier reliability repair for it appears in this
+ledger. Updated the one shared expected list, retaining all Galaxy/Fleets/Dispatch
+routing, history, focus and layout assertions. Audited other main-navigation
+link/count and Menu-button expectations; no further stale lists found.
+The four viewport cases passed locally (1.401s preparation, 7.1s runner). Product
+source and inspected screenshots are unchanged. This is the scenario's one
+repair; no timeout/retry adjustment or test deletion. The first CI attempt had
+five green browser shards and one failed shard (136 passing, three failing cases;
+7.5m browser execution), with shards 6/7 still executing when the corrected head
+was prepared. Native setup took 82s and checks 249s; runners started 13–51s after
+workflow creation. No merge queue enrollment or removal had occurred.
