@@ -3,6 +3,9 @@ import { request } from './http'
 import { createGameUpdatesPort } from './updates'
 import { clientUpdate, ClientUpdateRequired } from './client-update'
 import { readyFixture } from '../test-support/bootstrap'
+import { bootstrapFixture, memoryStorage } from '../test-support/bootstrap'
+import { browserDependencies, prepareRuntime } from './runtime'
+import { RuntimeController } from './runtime-controller'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -42,6 +45,34 @@ it('does not reload into a failed deployment and retains the original HTTP failu
     code: 'Unavailable',
   })
   expect(observe).not.toHaveBeenCalled()
+})
+
+it('preserves successful bodyless session changes while announcing a new build', async () => {
+  const observe = vi.spyOn(clientUpdate, 'observe').mockReturnValue(true)
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(null, {
+          status: 204,
+          headers: { 'X-Orbit-Client-Build': 'new-build' },
+        }),
+    ),
+  )
+  const deps = browserDependencies()
+  Object.defineProperty(deps, 'storage', { value: memoryStorage() })
+  const initial = await prepareRuntime(bootstrapFixture(), 'document', deps)
+  const owner = new RuntimeController(initial, deps)
+  await expect(owner.logout()).resolves.toBe(true)
+  expect(owner.store.getState()).toMatchObject({
+    runtime: { status: 'anonymous' },
+    message: '',
+    busy: false,
+  })
+  if (initial.status !== 'authenticated' || initial.game.status !== 'ready')
+    throw Error('fixture')
+  expect(initial.game.model.ready).toBe(false)
+  expect(observe).toHaveBeenCalledWith('new-build')
 })
 
 it('checks streaming headers before opening delivery or consuming events', async () => {

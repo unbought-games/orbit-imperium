@@ -1,5 +1,6 @@
 import { createStore } from 'zustand/vanilla'
 import { http, HttpError } from './http'
+import { ClientUpdateRequired } from './client-update'
 import {
   prepareRuntime,
   disposeRuntime,
@@ -165,7 +166,17 @@ export class RuntimeController {
       )
     } catch (error) {
       if (g === this.generation) {
-        this.store.setState({ message: authMessage(error, signup) })
+        if (error instanceof ClientUpdateRequired) {
+          // The server accepted the credentials and changed the session cookie.
+          // Discard any previous account until the new bundle/bootstrap can read it.
+          this.retryAt =
+            this.deps.platform.monotonicNowMs() + error.retryAfterMs
+          this.replace({
+            status: 'unavailable',
+            signupEnabled: this.store.getState().runtime.signupEnabled,
+          })
+          this.clearMessage()
+        } else this.store.setState({ message: authMessage(error, signup) })
       }
     } finally {
       if (g === this.generation) this.store.setState({ busy: false })
@@ -188,8 +199,11 @@ export class RuntimeController {
       if (g === this.generation) {
         this.retryAt =
           this.deps.platform.monotonicNowMs() +
-          (error instanceof HttpError ? error.retryAfterMs : 0)
-        if (source === 'manual')
+          (error instanceof HttpError || error instanceof ClientUpdateRequired
+            ? error.retryAfterMs
+            : 0)
+        if (error instanceof ClientUpdateRequired) this.clearMessage()
+        else if (source === 'manual')
           this.store.setState({ message: 'Unable to connect. Please retry.' })
       }
     } finally {

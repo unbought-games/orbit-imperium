@@ -27,6 +27,9 @@ export function checkClientBuild(response: Response) {
     response.ok &&
     clientUpdate.observe(response.headers.get('X-Orbit-Client-Build'))
   ) {
+    // Logout and renewal already succeeded and carry no contract to decode.
+    // Still announce the update, but let callers apply the confirmed result.
+    if (response.status === 204) return
     void response.body?.cancel().catch(() => {})
     throw new ClientUpdateRequired()
   }

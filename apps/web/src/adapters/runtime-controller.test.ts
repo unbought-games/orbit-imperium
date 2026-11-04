@@ -4,6 +4,36 @@ import { browserDependencies, prepareRuntime } from './runtime'
 import { bootstrapFixture, memoryStorage } from '../test-support/bootstrap'
 import type { Bootstrap } from '../client-model/bootstrap'
 import { HttpError } from './http'
+import { ClientUpdateRequired } from './client-update'
+
+it.each([false, true])(
+  'a completed authentication requiring a new client suspends the old account without a credential error (signup=%s)',
+  async (signup) => {
+    const deps = browserDependencies()
+    Object.defineProperty(deps, 'storage', { value: memoryStorage() })
+    const initial = await prepareRuntime(bootstrapFixture(), 'document', deps)
+    const accepted = vi.fn(async () => {
+      throw new ClientUpdateRequired()
+    })
+    const owner = new RuntimeController(initial, deps, {
+      bootstrap: accepted,
+      loginBootstrap: accepted,
+      signupBootstrap: accepted,
+      logout: vi.fn(),
+    })
+    await owner.authenticate(signup, 'other-player', 'password')
+    expect(owner.store.getState()).toMatchObject({
+      runtime: { status: 'unavailable' },
+      busy: false,
+      message: '',
+    })
+    if (initial.status !== 'authenticated' || initial.game.status !== 'ready')
+      throw Error('fixture')
+    expect(initial.game.model.ready).toBe(false)
+    await owner.retry()
+    expect(owner.store.getState().message).toBe('')
+  },
+)
 
 it('does not infer closed signup from a forbidden request', async () => {
   const owner = new RuntimeController(

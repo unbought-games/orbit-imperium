@@ -843,3 +843,10 @@ than expanding feature scope or retrying unchanged intermittent cases.
   contract error definitions; the public shared chunk fell from 586.96kB to
   259.28kB. The production build, 137 affected unit tests (0.85s), and all ten
   built-homepage checks (0.66s preparation, 3.2s execution) passed after this fix.
+- Automated review identified successful auth mutations being reported as failures
+  when their response advertised a new build. Bodyless 204 responses now still
+  announce the update but preserve the confirmed result; login/signup suspend any
+  previous account and await readable bootstrap data without credential errors.
+  Added deterministic real-adapter logout and login/signup controller coverage.
+  All 1,331 client tests passed in 4.46s, followed by lint, formatting and a
+  production build. No browser test was added for this state/authorization rule.
