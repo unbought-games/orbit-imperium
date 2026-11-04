@@ -14,9 +14,7 @@
 .primary a,
 .primary button,
 .secondary a,
-.secondary button,
-.groups a,
-.groups button {
+.secondary button {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -33,8 +31,7 @@
   padding-inline: clamp(8px, 1vw, 16px);
 }
 .primary a,
-.secondary a,
-.groups a {
+.secondary a {
   color: var(--text-muted);
 }
 .primary svg {
@@ -52,8 +49,7 @@
   background: var(--accent);
 }
 .primary a:hover,
-.secondary a:hover,
-.groups a:hover {
+.secondary a:hover:hover {
   color: var(--accent-hover);
 }
 .secondary {
@@ -80,64 +76,6 @@
 .activityBadge[data-blocked] {
   background: #596168;
 }
-.dialog {
-  width: min(680px, calc(100% - 32px));
-  max-height: calc(100dvh - 48px);
-  padding: 28px;
-  color: var(--text);
-  background: var(--surface-page);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-panel);
-  box-shadow: 0 24px 100px #0008;
-}
-.dialog::backdrop {
-  background: var(--surface-backdrop);
-  backdrop-filter: blur(5px);
-}
-.dialog[open] {
-}
-.heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 0.875rem;
-  letter-spacing: 2px;
-}
-.dialog h2 {
-  font: 2.5rem/1.2 var(--font-editorial);
-  color: var(--champagne-light);
-  margin-block: 28px;
-}
-.groups {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  margin-bottom: 28px;
-}
-.groups h3 {
-  margin: 0 0 10px;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  font-size: 0.75rem;
-}
-.groups a,
-.groups button {
-  width: 100%;
-  border-bottom: 1px solid var(--border);
-}
-.account {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
 .username {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -154,13 +92,6 @@
     z-index: 9;
     align-self: start;
     margin-inline: calc(-1 * var(--shell-inline-gutter));
-  }
-  .dialog {
-    padding: 20px;
-    max-height: calc(100dvh - 32px);
-  }
-  .groups {
-    gap: 24px 16px;
   }
   .secondary {
     border-top: 0;
@@ -194,9 +125,6 @@
   }
 }
 
-.groups a.unread {
-  color: var(--champagne-light);
-}
 .unreadBadge,
 .menuAlert {
   display: inline-flex;

@@ -1,3 +1,4 @@
+import { signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {test,expect} from './fixtures/test';
 import {readFileSync} from 'node:fs';
@@ -36,8 +37,7 @@ test('five private accounts see only their starter, build, and switch safely at 
    await expect(page.getByText('Action confirmed.',{exact:true})).toHaveCount(0);
    await expect(page.getByRole('region',{name:'Upgrade quote'})).toHaveCount(0);
   }
-  if(await page.getByRole('button',{name:'Menu',exact:true}).isVisible()) await page.getByRole('button',{name:'Menu',exact:true}).click();
-  await page.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page.getByLabel('Password')).toBeVisible();
+  await signOut(page);await expect(page.getByLabel('Password')).toBeVisible();
   await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toHaveCount(0);
   expect(await page.getByLabel('Password').inputValue()).toBe('');
  }

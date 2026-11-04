@@ -5,56 +5,33 @@ import {
   navigationAnchor,
   navigationGroups,
 } from './navigation-model'
-it('keeps the same five anchor meanings across every implemented route', () => {
+
+it('keeps primary destinations and their details under the same mobile tabs', () => {
   expect(navigationAnchor('overview')).toBe('Empire')
-  for (const page of buildPages) expect(navigationAnchor(page)).toBe('Develop')
-  expect(navigationAnchor('resource-settings')).toBe('Develop')
-  for (const page of ['dispatch', 'fleets'] as const)
-    expect(navigationAnchor(page)).toBe('Fleets')
-  for (const page of [
-    'reports',
-    'settings',
-    'high-scores',
-    'alliance',
-  ] as const)
-    expect(navigationAnchor(page)).toBe('Menu')
+  for (const page of [...buildPages, 'resource-settings'] as const)
+    expect(navigationAnchor(page)).toBe('Develop')
+  for (const page of fleetPages) expect(navigationAnchor(page)).toBe('Fleets')
   expect(navigationAnchor('galaxy')).toBe('Galaxy')
-  expect(buildPages[0]).toBe('resources')
-  expect(
-    navigationGroups.find((group) => group.title === 'Develop')?.pages,
-  ).toEqual(buildPages)
+  expect(navigationAnchor('menu')).toBe('Menu')
+  for (const page of navigationGroups.flatMap((group) => group.pages))
+    expect(navigationAnchor(page)).toBe('Menu')
 })
-it('keeps Dispatch under Fleets and Galaxy independently accessible', () => {
-  expect(fleetPages).toEqual(['fleets', 'dispatch'])
-  expect(
-    navigationGroups.find((group) => group.title === 'Fleet & intelligence')
-      ?.pages,
-  ).toEqual(['galaxy', 'fleets', 'dispatch', 'reports', 'combat-simulator'])
-  expect(
-    navigationGroups.find((group) => group.title === 'Empire')?.pages,
-  ).toEqual(['overview', 'resource-settings'])
-})
-it('places every real destination exactly once in the grouped menu', () => {
+
+it('keeps secondary destinations discoverable without repeating primary navigation', () => {
+  expect(navigationGroups).toEqual([
+    { title: 'Community', pages: ['messages', 'alliance', 'high-scores'] },
+    { title: 'Tools', pages: ['reports', 'combat-simulator'] },
+    { title: 'Settings', pages: ['settings'] },
+  ])
   const pages = navigationGroups.flatMap((group) => group.pages)
   expect(new Set(pages).size).toBe(pages.length)
-  expect(pages.sort()).toEqual(
-    [
-      'overview',
-      'resources',
-      'resource-settings',
-      'facilities',
-      'research',
-      'shipyard',
-      'defense',
-      'fleets',
-      'dispatch',
-      'galaxy',
-      'reports',
-      'combat-simulator',
-      'settings',
-      'high-scores',
-      'alliance',
-      'messages',
-    ].sort(),
-  )
+  for (const page of [
+    'overview',
+    ...buildPages,
+    ...fleetPages,
+    'resource-settings',
+    'galaxy',
+    'menu',
+  ])
+    expect(pages).not.toContain(page)
 })

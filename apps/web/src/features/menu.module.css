@@ -1,0 +1,55 @@
+.page {
+  max-width: 40rem;
+  margin-inline: auto;
+  padding-block: var(--space-5);
+}
+.groups {
+  display: grid;
+  gap: var(--space-5);
+}
+.groups h2 {
+  margin: 0 0 var(--space-2);
+  font: 400 1.25rem var(--font-editorial);
+  color: var(--champagne-light);
+}
+.row {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  text-align: left;
+  justify-content: flex-start;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+}
+.row > svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.chevron {
+  margin-left: auto;
+}
+.unread {
+  color: var(--champagne-light);
+  font-size: var(--font-size-xs);
+}
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid var(--border-navigation);
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+}
+.username {
+  min-width: 0;
+  font-size: var(--font-size-sm);
+}
+.logout {
+  min-height: 44px;
+  padding-inline: var(--space-3);
+  font-size: var(--font-size-sm);
+}

@@ -42,6 +42,15 @@ patterns unless the user provides guidance to do so.
   accessible; never substitute M/C/D. Compact summaries may abbreviate quantities,
   while spending decisions retain exact values.
 
+- Treat a persistent navigation tab as a destination: open a page and keep the
+  navigation available. Reserve popovers and sheets for contextual actions.
+- Overflow navigation should collect secondary destinations, not repeat primary
+  tabs and their subnavigation. Put frequent social destinations first, group
+  related links under descriptive headings, and keep account actions at the end.
+- For navigation lists, follow the messages view: quiet section headings and
+  full-width rows. Avoid a redundant visible page title when section headings
+  already explain the content; retain an accessible page heading.
+
 ## Interaction and state
 
 - Keep the shell, controls, focus, and user edits stable as data loads or filters

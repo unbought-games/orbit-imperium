@@ -8,17 +8,13 @@ export const buildPages: Page[] = [
   'defense',
 ]
 export const fleetPages: Page[] = ['fleets', 'dispatch']
-export const navigationGroups: { title: string; pages: Page[] }[] = [
-  { title: 'Empire', pages: ['overview', 'resource-settings'] },
-  { title: 'Develop', pages: buildPages },
-  {
-    title: 'Fleet & intelligence',
-    pages: ['galaxy', ...fleetPages, 'reports', 'combat-simulator'],
-  },
-  { title: 'Community', pages: ['high-scores', 'alliance', 'messages'] },
-  { title: 'Account', pages: ['settings'] },
-]
+export const navigationGroups = [
+  { title: 'Community', pages: ['messages', 'alliance', 'high-scores'] },
+  { title: 'Tools', pages: ['reports', 'combat-simulator'] },
+  { title: 'Settings', pages: ['settings'] },
+] satisfies { title: string; pages: Page[] }[]
 export const pageTitles: Record<Page, string> = {
+  menu: 'Menu',
   overview: 'Empire',
   resources: 'Resources',
   'resource-settings': 'Resource settings',

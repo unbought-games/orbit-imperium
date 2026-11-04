@@ -126,6 +126,8 @@ export function routeTarget(
       return linkOptions({ to: '/u/$universe/alliance', params, search })
     case 'high-scores':
       return linkOptions({ to: '/u/$universe/high-scores', params, search })
+    case 'menu':
+      return linkOptions({ to: '/u/$universe/menu', params, search })
     case 'settings':
       return linkOptions({ to: '/u/$universe/settings', params, search })
     case 'reports':

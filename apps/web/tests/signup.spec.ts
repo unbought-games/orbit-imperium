@@ -19,8 +19,7 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible();
  const session=await(await page.request.get('/api/v1/session')).json();
  expect(session.memberships).toHaveLength(1);
- await page.getByRole('button',{name:'Menu',exact:true}).last().click();
- await page.getByRole('dialog').getByRole('link',{name:'Resources',exact:false}).click();
+ await page.getByRole('link',{name:'Develop',exact:true}).click();
  await expect(async()=>{
   await page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).click();
   await expect(page.getByRole('button',{name:'Confirm upgrade',exact:true})).toBeVisible({timeout:1000});
@@ -32,8 +31,8 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  await page.reload();
  await expect(page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).getByLabel('Construction progress')).toBeVisible();
  expect(startupReads).toEqual([]);
- await page.getByRole('button',{name:'Menu',exact:true}).click();
- await page.getByRole('dialog',{name:'Navigation'}).getByRole('button',{name:'Sign out',exact:true}).click();
+ await page.getByRole('link',{name:'Menu',exact:true}).click();
+ await page.getByRole('main').getByRole('button',{name:'Log out',exact:true}).click();
  await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
  await page.getByRole('link',{name:'Create an account',exact:true}).click();
  await expect(page.getByRole('button',{name:'Create account',exact:true})).toBeVisible();
@@ -47,7 +46,7 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  await page.getByLabel('Password',{exact:true}).fill('simple-password');
  await page.getByRole('button',{name:'Sign in',exact:true}).click();
  await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Menu',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Menu',exact:true})).toBeVisible();
  expect((await(await page.request.get('/api/v1/session')).json()).account).toBe(session.account);
  await diagnosticScreenshot(page, {path:'target/signup-mobile.png',fullPage:true});
 });

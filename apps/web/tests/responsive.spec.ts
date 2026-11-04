@@ -1,7 +1,7 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { openProductionSettings } from './fixtures/production-settings'
 import {universeSlug} from '../src/client-model/universe-name'
-import {navigate,foreground} from './fixtures/navigation'
+import {navigate,foreground,menuDestination} from './fixtures/navigation'
 import { test, expect } from './fixtures/test';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -33,8 +33,8 @@ test('routed progression shell: viewport matrix, keyboard, history, invalid IDs 
   await diagnosticScreenshot(page, {path:`test-results/responsive-${width}x${height}.png`,fullPage:true});await page.getByRole('link',{name:/^Back to /}).click();
  }
  await page.setViewportSize({width:390,height:844});await go('overview');
- await page.getByRole('button',{name:'Menu',exact:true}).last().focus();await page.keyboard.press('Enter');await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Menu',exact:true}).last()).toBeFocused();
- await page.keyboard.press('Enter');await page.getByRole('dialog',{name:'Navigation'}).getByRole('link',{name:'Research'}).focus();await page.keyboard.press('Enter');await expect(page.locator('main h1')).toBeFocused();
+ await page.getByRole('link',{name:'Menu',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('navigation',{name:'Menu destinations'})).toBeVisible();await expect(page.locator('main h1')).toBeFocused();
+ await (await menuDestination(page,'Research')).focus();await page.keyboard.press('Enter');await expect(page.locator('main h1')).toBeFocused();
  await go('facilities');await page.goBack();await expect(page.locator('main h1')).toHaveText('Research');await page.goForward();await expect(page.locator('main h1')).toHaveText('Facilities');await page.reload();await expect(page.locator('main h1')).toHaveText('Facilities');
  for(const invalid of [`/u/${universeSlug(session.memberships[0].universe_name)}/b/${randomUUID()}/resources`,`/u/${randomUUID()}/overview`,`/u/${universeSlug(session.memberships[0].universe_name)}/galaxy`,`/u/${universeSlug(session.memberships[0].universe_name)}/fleets`]){await page.goto(invalid);await expect(page.locator('main h1')).toHaveText('Destination unavailable');await expect(page.getByRole('link',{name:'Upgrade Metal Mine',exact:true})).toHaveCount(0)}
  await go('shipyard');await page.getByRole('link',{name:'Build Small Cargo',exact:true}).click();await page.getByLabel('Shipyard quantity').fill('9007199254740993');expect(await page.getByLabel('Shipyard quantity').inputValue()).toBe('9007199254740993');await expect(page.getByLabel('Action blockers')).toContainText('Numeric Range');await page.getByRole('link',{name:/^Back to /}).click();
@@ -70,7 +70,7 @@ test('keyboard purchase, disconnected countdown and authoritative reconnect pres
 
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8'));
  await page.setViewportSize({width:390,height:844});await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill(accounts[2].name);await page.keyboard.press('Tab');await page.keyboard.type(accounts[2].password);await page.keyboard.press('Enter');await expect(page.locator('main h1')).toHaveText(/^Empire —/);
- await page.getByRole('button',{name:'Menu',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('dialog',{name:'Navigation'}).getByRole('link',{name:'Resources',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.locator('main h1')).toBeFocused();await page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('region',{name:'Progression quote'})).toBeFocused();await page.getByRole('button',{name:'Confirm upgrade'}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('region',{name:'Buildings',exact:true})).toBeVisible();await expect(page.getByRole('region',{name:'Buildings',exact:true}).getByRole('link',{name:/^Metal Mine · Level \d+$/})).toBeVisible();
+ await page.getByRole('link',{name:'Develop',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.locator('main h1')).toBeFocused();await page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('region',{name:'Progression quote'})).toBeFocused();await page.getByRole('button',{name:'Confirm upgrade'}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('region',{name:'Buildings',exact:true})).toBeVisible();await expect(page.getByRole('region',{name:'Buildings',exact:true}).getByRole('link',{name:/^Metal Mine · Level \d+$/})).toBeVisible();
  const session=await(await page.request.get('/api/v1/session')).json(),u=session.memberships[0].universe,binding=await(await page.request.get(`/api/v3/universes/${u}/binding?request_id=${randomUUID()}`)).json();
  const read=async()=>{for(let retry=0;retry<50;retry++){const response=await page.request.post(`/api/v3/universes/${u}/overview`,{headers:{Origin:process.env.ORBIT_TEST_BASE_URL!,'X-CSRF-Token':session.csrf},data:{binding:binding.binding,request_id:randomUUID()}});if(response.status()===503){await page.waitForTimeout(50);continue}expect(response.ok()).toBe(true);return response.json()}throw Error('Authoritative view did not catch up')};
  const before=await read();const announcement=await page.locator('[role="status"][aria-live="polite"]').textContent();await page.getByRole('link',{name:/^Back to /,exact:true}).click();await page.getByRole('link',{name:'Upgrade Metal Mine',exact:true}).focus();await context.setOffline(true);
@@ -83,7 +83,7 @@ test('keyboard completes production, facility, research and shared ship/defense 
 
  const accounts=JSON.parse(readFileSync(process.env.ORBIT_MVP_ACCOUNTS_FILE!,'utf8'));
  const press=async(name:string)=>{await expect(page.getByRole('button',{name,exact:true})).toBeEnabled();await page.getByRole('button',{name,exact:true}).focus();await page.keyboard.press('Enter')};
- const navigate=async(name:string)=>{await press('Menu');await page.getByRole('dialog',{name:'Navigation'}).getByRole('link',{name,exact:false}).focus();await page.keyboard.press('Enter')};
+ const navigate=async(name:string)=>{await (await menuDestination(page,name)).focus();await page.keyboard.press('Enter')};
  await page.setViewportSize({width:390,height:844});await page.goto('/login');await page.getByLabel('Account',{exact:true}).focus();await page.keyboard.type(accounts[0].name);await page.keyboard.press('Tab');await page.keyboard.type(accounts[0].password);await page.keyboard.press('Enter');await expect(page.locator('main h1')).toHaveText(/^Empire —/);
  const session=await(await page.request.get('/api/v1/session')).json(),u=session.memberships[0].universe,binding=await(await page.request.get(`/api/v3/universes/${u}/binding?request_id=${randomUUID()}`)).json();
  const read=async()=>{for(let retry=0;retry<50;retry++){const response=await page.request.post(`/api/v3/universes/${u}/overview`,{headers:{Origin:process.env.ORBIT_TEST_BASE_URL!,'X-CSRF-Token':session.csrf},data:{binding:binding.binding,request_id:randomUUID()}});if(response.status()===503){await page.waitForTimeout(50);continue}expect(response.ok()).toBe(true);return response.json()}throw Error('Authoritative view did not catch up')};

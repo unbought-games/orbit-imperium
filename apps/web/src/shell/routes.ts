@@ -2,6 +2,7 @@ import { catalogPages, resolveCatalogItem } from './catalog-routes'
 import { universeSlug } from '../client-model/universe-name'
 import type { BoundView } from '../client-model/commands'
 export type Page =
+  | 'menu'
   | 'overview'
   | 'resources'
   | 'resource-settings'
@@ -129,6 +130,7 @@ export function resolveDestination(
     )
   if (
     !body &&
+    page !== 'menu' &&
     page !== 'settings' &&
     page !== 'combat-simulator' &&
     page !== 'high-scores' &&

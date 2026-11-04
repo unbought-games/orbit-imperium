@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { navigate } from './fixtures/navigation'
@@ -326,7 +327,11 @@ async function installCatalogFixture(page: Page, blocked = false, unitCost?: S['
 
 async function setup(page: Page, blocked = false, unitCost?: S['Resources'], options: Parameters<typeof shellFixture>[1] = {}) {
   const fixture = await installCatalogFixture(page, blocked, unitCost, options)
-  await page.goto(`/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`)
+  await withFixtureResponse(
+    page,
+    response => new URL(response.url()).pathname === '/api/v1/bootstrap',
+    () => page.goto(`/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`),
+  )
   await expect(page.locator('main h1')).toContainText('Empire —')
   return fixture
 }

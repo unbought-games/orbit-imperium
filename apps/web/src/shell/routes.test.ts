@@ -219,3 +219,17 @@ it('opens the simulator for protocol-4 players without reports, capabilities or 
   ).toMatchObject({ page: 'combat-simulator', available: true, body: null })
   expect(resolveDestination(destination, view).available).toBe(false)
 })
+
+it('keeps the menu available without a planet while rejecting foreign context', () => {
+  const empty = { ...view, bodies: [] }
+  expect(
+    resolveDestination({ universe: 'u', page: 'menu' }, empty),
+  ).toMatchObject({ page: 'menu', available: true, body: null })
+  expect(
+    resolveDestination({ universe: 'foreign', page: 'menu' }, empty).available,
+  ).toBe(false)
+  expect(
+    resolveDestination({ universe: 'u', page: 'menu', body: 'removed' }, empty)
+      .available,
+  ).toBe(false)
+})

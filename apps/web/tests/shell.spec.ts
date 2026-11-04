@@ -1007,7 +1007,7 @@ test('planet ledger retains its borders beside the desktop sidebar', async ({
   ).toHaveText(['Resources', 'Facilities', 'Research', 'Shipyard', 'Defense'])
 })
 
-test('shell fits desktop and touch viewports with keyboard menu restoration', async ({
+test('shell fits desktop and touch viewports with keyboard menu navigation', async ({
   page,
 }) => {
   await shellFixture(page)
@@ -1072,15 +1072,13 @@ test('shell fits desktop and touch viewports with keyboard menu restoration', as
     })
   }
   await page.setViewportSize({ width: 390, height: 844 })
-  const menu = page.getByRole('button', { name: 'Menu', exact: true })
+  const menu = page.getByRole('link', { name: 'Menu', exact: true })
   await menu.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('dialog', { name: 'Navigation' })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(menu).toBeFocused()
-  await menu.click()
+  await expect(page.getByRole('navigation', { name: 'Menu destinations' })).toBeVisible()
+  await expect(page.locator('main h1')).toBeFocused()
   await page
-    .getByRole('dialog', { name: 'Navigation' })
+    .getByRole('navigation', { name: 'Menu destinations' })
     .getByRole('link', { name: 'Settings', exact: true })
     .click()
   await expect(page.locator('main h1')).toBeFocused()
@@ -1170,7 +1168,7 @@ test('world shell omits the utility row and opens defense production from its su
   await expect(page.locator('main h1')).toHaveText('Defense')
 })
 
-test('phone has a stable thumb dock and a modal grouped menu with focus restoration', async ({
+test('phone keeps the thumb dock and world controls usable on the menu page', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -1179,8 +1177,8 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
     name: 'Main navigation',
     exact: true,
   })
-  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop'])
-  await expect(nav.getByRole('button')).toHaveText(['Galaxy', 'Fleets', 'Menu'])
+  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop', 'Menu'])
+  await expect(nav.getByRole('button')).toHaveText(['Galaxy', 'Fleets'])
   const dock = await nav.boundingBox()
   expect(dock!.y + dock!.height).toBe(844)
   const metal = await page
@@ -1191,61 +1189,34 @@ test('phone has a stable thumb dock and a modal grouped menu with focus restorat
   expect(
     Math.abs(planet!.y + planet!.height / 2 - metal!.y - metal!.height / 2),
   ).toBeLessThan(2)
-  const menu = nav.getByRole('button', { name: 'Menu', exact: true })
+  const menu = nav.getByRole('link', { name: 'Menu', exact: true })
   await menu.click()
-  const drawer = page.getByRole('dialog', { name: 'Navigation' })
+  const drawer = page.getByRole('navigation', { name: 'Menu destinations' })
   await expect(drawer).toBeVisible()
-  await expect(drawer.getByRole('button', { name: 'Sign out' })).toBeVisible()
-  const close = drawer.getByRole('button', { name: 'Close menu' })
-  await expect(close).toBeFocused()
-  await page.locator('main h1').focus()
-  await expect(close).toBeFocused()
-  await page.keyboard.press('Escape')
-  await expect(menu).toBeFocused()
-  await menu.click()
-  await page.mouse.click(2, 2)
-  await expect(drawer).not.toBeVisible()
-  await expect(menu).toBeFocused()
-})
-
-test('resizing an open mobile sidebar releases modal focus and scroll locking', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await shellFixture(page)
-  const menu = page.getByRole('button', { name: 'Menu', exact: true })
-  await menu.click()
-  const drawer = page.getByRole('dialog', { name: 'Navigation' })
-  await expect(drawer).toBeVisible()
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await expect(drawer).not.toBeVisible()
-  await expect(page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name: 'Empire', exact: true })).toBeFocused()
-  await navigate(page, 'Settings')
+  await expect(page.getByRole('main').getByRole('button', { name: 'Log out' })).toBeVisible()
   await expect(page.locator('main h1')).toBeFocused()
-  await page.setViewportSize({ width: 390, height: 844 })
-  await menu.click()
-  await expect(drawer).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(menu).toBeFocused()
-  expect(
-    await page.evaluate(() => getComputedStyle(document.body).overflow),
-  ).not.toBe('hidden')
+  await expect(nav).toBeInViewport({ ratio: 1 })
+  await nav.getByRole('link', { name: 'Empire', exact: true }).click()
+  await expect(drawer).toHaveCount(0)
+
 })
 
-test('mobile sidebar signs out through the existing account session', async ({
+// The old modal focus-lock/resize scenario was removed with the dialog.
+// desktop-navigation.spec.ts covers route persistence on resize and Back.
+test('mobile menu page signs out through the existing account session', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await shellFixture(page)
-  await page.getByRole('button', { name: 'Menu', exact: true }).click()
+  await page.getByRole('link', { name: 'Menu', exact: true }).click()
   await page
-    .getByRole('dialog', { name: 'Navigation' })
-    .getByRole('button', { name: 'Sign out' })
+    .getByRole('main')
+    .getByRole('button', { name: 'Log out' })
     .click()
   await expect(
     page.getByRole('button', { name: 'Sign in', exact: true }),
   ).toBeVisible()
-  await expect(page.getByRole('dialog', { name: 'Navigation' })).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Menu destinations' })).toHaveCount(0)
   await expect(page.getByLabel('Current resources')).toHaveCount(0)
 })
 
@@ -1863,7 +1834,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expect(bounds.noticeBottom).toBeLessThanOrEqual(bounds.introTop)
     for (const control of [
       page.getByRole('combobox', { name: 'Selected body' }),
-      width >= 1024 ? page.getByRole('button', { name: 'Account menu', exact: true }) : page.getByRole('button', { name: 'Menu', exact: true }),
+      width >= 1024 ? page.getByRole('button', { name: 'Account menu', exact: true }) : page.getByRole('link', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleets', exact: true }),
     ]) {
       await expect(control).toBeInViewport()
@@ -1878,8 +1849,9 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
         }),
       ).toBe(true)
     }
-    await expect(await openNavigation(page)).toBeVisible()
-    if (width < 1024) await page.keyboard.press('Escape')
+    // Menu is a destination now; verify its hit target without leaving edits.
+    if (width < 1024) await page.getByRole('link', { name: 'Menu', exact: true }).click({ trial: true })
+    else await expect(await openNavigation(page)).toBeVisible()
     const resolve = recovery.getByRole('button', {
       name: 'Retry order',
       exact: true,
@@ -2254,17 +2226,14 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       }
       await assertStill()
       for (const [name, heading] of [['Resources', 'Resources'], ['Fleets', 'Fleets'], ['Empire', 'Empire']]) {
-        const drawer = await openNavigation(page)
-        await expect(drawer).toBeVisible()
-        await assertStill()
-        const link = drawer.getByRole('link', { name, exact: true })
+        const link = name === 'Resources'
+          ? page.getByRole('link', { name: 'Develop', exact: true })
+          : page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name, exact: true })
         await link.hover()
         await assertStill()
         await link.click()
         await expect(page.locator('main h1')).toContainText(heading)
         await expect(page.locator('main h1')).toBeFocused()
-        if (width < 1024) await expect(drawer).not.toBeVisible()
-        else await expect(drawer).toBeVisible()
         await assertStill()
       }
       await assertStill()
@@ -2287,7 +2256,7 @@ for (const width of [320, 390, 768]) {
         viewerRevision: () => String(revision),
       })
       await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
-      const menu = page.getByRole('button', { name: 'Menu', exact: true })
+      const menu = page.getByRole('link', { name: 'Menu', exact: true })
       const alert = menu.getByRole('status', { name: 'Unread reports' })
       const assertLayout = async () => {
         const target = (await menu.boundingBox())!
@@ -2324,8 +2293,8 @@ for (const width of [320, 390, 768]) {
       await diagnosticScreenshot(page, { path: `test-results/unread-report-menu-${width}-${textScale}.png` })
       await reports.focus()
       await expect(reports).toBeFocused()
-      await page.keyboard.press('Escape')
-      await expect(menu).toBeFocused()
+      await page.goBack()
+      await expect(page.locator('main h1')).toBeFocused()
       await page.reload()
       await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
       await expect(alert).toBeVisible()

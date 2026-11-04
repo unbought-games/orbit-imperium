@@ -1,7 +1,7 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
-import { body, binding, id, playerProfilesFixture, shellFixture, refreshGame } from './fixtures/game'
+import { body, id, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
-import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440, 700, 2], [2560, 1100, 1]]) {
@@ -30,7 +30,7 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
     const develop = page.getByRole('navigation', { name: 'Develop navigation', exact: true })
     await expect(main).toHaveCount(1)
     await expect(sidebar).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Menu', exact: true })).toBeHidden()
+    await expect(page.getByRole('link', { name: 'Menu', exact: true })).toBeHidden()
     await expect(sidebar.getByText('Andromeda')).toHaveCount(0)
     await expect(sidebar.getByText('Resource settings', { exact: true })).toHaveCount(0)
     await expect(develop.getByRole('link')).toHaveText(['Resources', 'Facilities', 'Research', 'Shipyard', 'Defense'])
@@ -151,30 +151,6 @@ test('tablet brand keeps a full touch target without overlapping resource contro
 })
 
 
-test('mobile navigation keeps the player dossier inside the modal top layer', async ({page}) => {
-  await page.setViewportSize({width:390,height:1000})
-  await shellFixture(page, {protocol:4})
-  await playerProfilesFixture(page, () => [{player:binding.player, username:'Aurelia', alliance:{id:id(90),universe:binding.universe,name:'Astral Accord',tag:'ASTRA'}}])
-  await page.reload()
-  const menu = await openNavigation(page)
-  await diagnosticScreenshot(page, {path:'test-results/account-navigation-mobile-390x1000.png'})
-  await menu.getByRole('button', {name:'Aurelia profile details'}).click()
-  const popup = menu.getByRole('dialog', {name:'Aurelia profile'})
-  await expect(popup).toBeVisible()
-  const alliance = popup.getByRole('link', {name:'Alliance Astral Accord [ASTRA]'})
-  await expect(alliance).toBeVisible()
-  await alliance.click({trial:true})
-  const cardBounds = (await popup.boundingBox())!, menuBounds = (await menu.boundingBox())!
-  expect(cardBounds.x).toBeGreaterThanOrEqual(menuBounds.x)
-  expect(cardBounds.x + cardBounds.width).toBeLessThanOrEqual(menuBounds.x + menuBounds.width)
-  await diagnosticScreenshot(page, {path:'test-results/profile-navigation-mobile-390x1000.png'})
-  await page.keyboard.press('Escape')
-  await expect(popup).toHaveCount(0)
-  await expect(menu).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(menu).toBeHidden()
-})
-
 for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
   test(`navigation always uses a bottom bar or sidebar at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -198,8 +174,8 @@ for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
       await page.evaluate(() => window.scrollTo(0, 0))
       if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await expect(page.getByTestId('orb-caption')).toHaveCount(0, { timeout: 10000 })
       await diagnosticScreenshot(page, { path: `test-results/navigation-bottom-${width}x900.png`, fullPage: false })
-      await navigation.getByRole('button', { name: 'Menu', exact: true }).click()
-      await expect(page.getByRole('dialog', { name: 'Navigation', exact: true })).toBeVisible()
+      await navigation.getByRole('link', { name: 'Menu', exact: true }).click()
+      await expect(page.getByRole('navigation', { name: 'Menu destinations', exact: true })).toBeVisible()
     } else {
       const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
       await expect(sidebar).toBeVisible()
@@ -218,13 +194,59 @@ test('shrinking the desktop account menu closes its portal and focuses the mobil
   await expect(popup).toBeVisible()
   await page.setViewportSize({ width: 390, height: 900 })
   await expect(popup).toBeHidden()
-  const mobileMenu = page.getByRole('button', { name: 'Menu', exact: true })
+  const mobileMenu = page.getByRole('link', { name: 'Menu', exact: true })
   await expect(mobileMenu).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('dialog', { name: 'Navigation', exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Menu destinations', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(account).toHaveAttribute('aria-expanded', 'false')
   await account.click()
   await expect(popup).toBeVisible()
 })
+
+for (const width of [390, 320]) {
+  test(`menu page preserves tab navigation, history and settings access at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height:844})
+    await page.emulateMedia({reducedMotion:'reduce'})
+    await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => shellFixture(page, {
+      protocol:4,
+      missions:{fleets:[],incoming:[],fleet_slots:'8',score_value_micro:'0'},
+    }))
+    const tab = page.getByRole('link', {name:'Menu',exact:true})
+    await tab.focus()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(new RegExp(`/menu\\?body=${body.id}$`))
+    await expect(page.locator('main h1')).toBeFocused()
+    const menu = page.getByRole('navigation', {name:'Menu destinations'})
+    await expect(menu).toBeVisible()
+    await expect(tab).toHaveAttribute('aria-current','page')
+    await expect(page.getByRole('dialog', {name:'Navigation'})).toHaveCount(0)
+    await expect(menu.getByRole('link')).toHaveText(['Messages','Alliance','High Scores','Reports','Combat Simulator','Settings'])
+    const main = page.getByRole('main')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    for (const row of await menu.getByRole('link').all())
+      expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    const logout = main.getByRole('button', {name:'Log out',exact:true})
+    await expect(logout).toBeInViewport({ratio:1})
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await expect(page.getByTestId('orb-caption')).toHaveCount(0, {timeout:10000})
+      await tab.blur()
+    }
+    await diagnosticScreenshot(page, {path:`test-results/menu-page-${width}x844.png`})
+    await menu.getByRole('link', {name:'Settings',exact:true}).click()
+    await expect(page.getByRole('heading', {name:'Universe settings',exact:true})).toBeVisible()
+    await expect(tab).toHaveAttribute('aria-current','page')
+    await page.goBack()
+    await expect(menu).toBeVisible()
+    await page.setViewportSize({width:1440,height:900})
+    await expect(page.getByRole('complementary', {name:'Game navigation'})).toBeVisible()
+    await expect(tab).toBeHidden()
+    await expect(menu).toBeVisible()
+    if (width === 390) await diagnosticScreenshot(page, {path:'test-results/menu-page-desktop-1440x900.png'})
+    await page.setViewportSize({width,height:844})
+    await logout.click()
+    await expect(page.getByRole('button', {name:'Sign in',exact:true})).toBeVisible()
+    await expect(menu).toHaveCount(0)
+  })
+}

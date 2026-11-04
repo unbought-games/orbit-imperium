@@ -9,19 +9,16 @@ import {
   Swords,
   Menu,
   Mail,
-  X,
   LogOut,
-  ArrowUpRight,
   ChevronsUpDown,
   Settings,
 } from 'lucide-react'
 import styles from './navigation.module.css'
 import { Button } from '../ui/button'
-import { Brand, BrandLogo, BrandWordmark } from '../ui/brand'
+import { Brand } from '../ui/brand'
 import { Link } from '../ui/link'
 import {
   useEffect,
-  useId,
   useRef,
   useState,
   type ReactNode,
@@ -30,12 +27,7 @@ import {
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from './route-target'
 import { resolveDestination, type Page } from './routes'
-import {
-  buildPages,
-  navigationAnchor,
-  navigationGroups,
-  pageTitles,
-} from './navigation-model'
+import { buildPages, navigationAnchor, pageTitles } from './navigation-model'
 
 function revealFocusedDestination(event: FocusEvent<HTMLElement>) {
   event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
@@ -63,32 +55,16 @@ export function Navigation({
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
-  const dialog = useRef<HTMLDialogElement>(null)
-  const sidebar = useRef<HTMLElement>(null)
-  const mobileMenu = useRef<HTMLButtonElement>(null)
+  const mobileMenu = useRef<HTMLAnchorElement>(null)
   const [accountOpen, setAccountOpen] = useState(false)
-  const opener = useRef<HTMLElement | null>(null)
-  const menuId = useId()
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 1024px)')
     const closeHiddenNavigation = () => {
-      if (!desktop.matches) {
-        setAccountOpen(false)
-        return
-      }
-      if (!dialog.current?.open) return
-      // The menu button disappears at this breakpoint. Restore focus to the
-      // equivalent visible navigation instead of its now-hidden opener.
-      opener.current =
-        sidebar.current?.querySelector(
-          '[data-analytics][aria-current="page"]',
-        ) ?? null
-      dialog.current.close()
+      if (!desktop.matches) setAccountOpen(false)
     }
     desktop.addEventListener('change', closeHiddenNavigation)
     return () => desktop.removeEventListener('change', closeHiddenNavigation)
   }, [])
-  const close = () => dialog.current?.close()
   const selected = navigationAnchor(page)
   const destination = (
     p: Page,
@@ -153,8 +129,6 @@ export function Navigation({
             !event.altKey
           ) {
             onVisit?.(p)
-            opener.current = null
-            close()
           }
         }}
       >
@@ -181,19 +155,13 @@ export function Navigation({
       {destination('resources', 'Develop', Blocks, true)}
       {destination('galaxy', 'Galaxy', Telescope, true)}
       {destination('fleets', 'Fleets', Radar, true)}
-      <Button
+      <Link
         ref={mobileMenu}
-        variant="ghost"
-        type="button"
+        {...routeTarget(universeName, 'menu', body)}
+        data-analytics="navigate_menu"
         aria-label="Menu"
         aria-description={hasUnreadReports ? 'Unread reports' : undefined}
-        aria-haspopup="dialog"
-        aria-controls={menuId}
         aria-current={selected === 'Menu' ? 'page' : undefined}
-        onClick={(event) => {
-          opener.current = event.currentTarget
-          dialog.current?.showModal()
-        }}
       >
         <Menu size={21} aria-hidden="true" />
         <span>Menu</span>
@@ -207,16 +175,12 @@ export function Navigation({
             <span className={styles.srOnly}>Unread reports</span>
           </span>
         )}
-      </Button>
+      </Link>
     </nav>
   )
   return (
     <>
-      <aside
-        ref={sidebar}
-        className={styles.sidebar}
-        aria-label="Game navigation"
-      >
+      <aside className={styles.sidebar} aria-label="Game navigation">
         <div className={styles.sidebarIdentity}>
           <Brand
             className={styles.sidebarBrand}
@@ -326,70 +290,6 @@ export function Navigation({
           </nav>
         )}
       </div>
-      <dialog
-        id={menuId}
-        className={styles.dialog}
-        ref={dialog}
-        aria-labelledby={`${menuId}-title`}
-        onClose={() => opener.current?.focus()}
-        onClick={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect()
-          if (
-            event.target === event.currentTarget &&
-            (event.clientX < rect.left ||
-              event.clientX > rect.right ||
-              event.clientY < rect.top ||
-              event.clientY > rect.bottom)
-          )
-            close()
-        }}
-      >
-        <div className={styles.heading} data-touch-control="">
-          <div className={styles.brand}>
-            <BrandLogo alt="" />
-            <BrandWordmark />
-          </div>
-          <Button
-            autoFocus
-            aria-label="Close menu"
-            variant="secondary"
-            size="icon"
-            onClick={close}
-          >
-            <X size={20} aria-hidden="true" />
-          </Button>
-        </div>
-        <h2 id={`${menuId}-title`}>Navigation</h2>
-        <nav
-          className={styles.groups}
-          aria-label="Menu destinations"
-          data-touch-control=""
-        >
-          {navigationGroups.map((group) => (
-            <section key={group.title}>
-              <h3>{group.title}</h3>
-              {group.pages.map((p) =>
-                destination(p, pageTitles[p], ArrowUpRight),
-              )}
-            </section>
-          ))}
-        </nav>
-        <div className={styles.account}>
-          <span className={styles.username} aria-label="Username">
-            <PlayerName player={view.binding.player} fallback="You" />
-          </span>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              opener.current = null
-              close()
-              onLogout()
-            }}
-          >
-            <LogOut size={18} aria-hidden="true" /> Sign out
-          </Button>
-        </div>
-      </dialog>
     </>
   )
 }
