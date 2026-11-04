@@ -120,9 +120,20 @@ impl PgStore {
         .map_err(db_error)?;
         let rows = sqlx::query(&format!("SELECT a.epoch,a.id,a.name,a.tag,a.recruitment,a.recruitment_profile,a.public_text,(SELECT count(*) FROM alliance_memberships m WHERE m.alliance=a.id) AS member_count FROM alliances a JOIN universes u ON u.id=a.universe WHERE {filter} ORDER BY lower(a.name),a.id LIMIT 20 OFFSET $6"))
             .bind(universe.0).bind(&search).bind(&query.language).bind(&beginners).bind(&activity).bind(query.offset as i64).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let scores = if let Some(row) = rows.first() {
+            let epoch = Epoch(row.try_get("epoch").map_err(db_error)?);
+            crate::rankings::alliance_scores_in_snapshot(&mut tx, universe, epoch).await?
+        } else {
+            BTreeMap::new()
+        };
         let alliances = rows
             .iter()
-            .map(|row| public_projection(row, universe, &universe_name, enrollment_open))
+            .map(|row| {
+                let mut alliance =
+                    public_projection(row, universe, &universe_name, enrollment_open)?;
+                alliance.summary.ranking = scores.get(&alliance.summary.id).cloned();
+                Ok(alliance)
+            })
             .collect::<Result<_, _>>()?;
         tx.commit().await.map_err(db_error)?;
         Ok(RecruitmentDirectory {

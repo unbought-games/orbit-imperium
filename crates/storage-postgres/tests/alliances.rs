@@ -1182,6 +1182,12 @@ async fn recruitment_discovery_is_opt_in_filtered_and_never_exposes_private_fiel
         let result = f.store.recruitment_directory(u, query).await.unwrap();
         assert_eq!(result.total, 1);
         assert_eq!(result.alliances[0].summary.id, alliance);
+        let public = f.store.public_alliance(u, alliance).await.unwrap();
+        assert!(public.summary.ranking.is_some());
+        assert_eq!(
+            serde_json::to_value(&result.alliances[0].summary.ranking).unwrap(),
+            serde_json::to_value(&public.summary.ranking).unwrap()
+        );
         let json = serde_json::to_value(&result.alliances[0]).unwrap();
         for key in [
             "leader",

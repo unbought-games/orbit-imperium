@@ -1,4 +1,5 @@
 import { openNavigation } from './fixtures/navigation'
+import { withFixtureResponse } from './fixtures/responses'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { binding, body, id, shellFixture } from './fixtures/game'
@@ -331,7 +332,11 @@ for (const touch of [true, false]) {
             },
           })
         })
-        await page.goto('/u/andromeda/alliance')
+        await page.route(/\/recruitment(?:\?|$)/, route =>
+          route.fulfill({ json: { alliances: [], total: 0 } }),
+        )
+        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/recruitment'), () => page.goto('/u/andromeda/alliance'))
+        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/alliances/query'), () => page.getByRole('button', { name: 'Search alliances', exact: true }).click())
         const alliancePages = page.getByRole('navigation', {
           name: 'Alliance directory pages',
           exact: true,

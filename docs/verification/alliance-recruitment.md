@@ -130,3 +130,43 @@ image decoding, download filename and responsive width at 1440 × 900 and
 server sample PNG as their image response and were inspected at both sizes.
 The settings captures were refreshed as full pages to avoid a sticky header
 overlapping a cropped screenshot. Vite and Chromium were closed.
+
+## PR #339 review and CI repair
+
+Initial head `ca60e26eb76bb6e6d24e2cf90f6d6fe680c57524`, CI run
+`41865427159`, failed in two jobs. GitHub's Actions incident delayed status
+visibility; the completed logs subsequently showed deterministic test assumptions,
+not infrastructure failures requiring retries.
+
+- `rankings::alliance_scores_capture_membership_and_assets_together_and_keep_source_history`
+  still expected two public response fields (actual four). Its first repair now
+  checks the exact four-field allowlist, retaining private-member exclusions and
+  all score/history assertions. Audited the other public response allowlists.
+- Both viewport instances of `mixed navigation content and public links retain
+  native selection` expected ordinary alliance lookup pagination before search.
+  Their first repair supplies the recruitment response, explicitly submits the
+  ordinary search, and gates both transitions on successful response delivery.
+  Native text-selection and touch-control assertions are unchanged. Audited all
+  `Alliance directory pages`/`0 alliances` callers; these were the only callers.
+- Review thread `PRRT_kwDOVRgPYs6zsEFz` correctly identified missing ranking
+  enrichment in recruitment discovery. Nonempty pages now derive the global
+  alliance score map once in the same database snapshot as the listing. Existing
+  database coverage compares filtered and unfiltered results with public-page
+  scores. Empty listings avoid unnecessary score calculation.
+
+Test history and the local Test Czar audit were checked before repair. No tests
+were removed, assertions weakened, retries added or deadlines changed in this
+repair. Local checks: 10 alliance database cases passed (6.68 s compilation,
+34.884 s execution), 2 rankings cases passed (11.67 s compilation, 4.844 s
+execution), and both affected browser cases passed (1.957 s preparation, 4.5 s
+execution). `make _static` and PostgreSQL Clippy all-target checks passed
+(Clippy 28.24 s). The two initial failed CI jobs remain recorded; no queue removal
+has occurred. The original CI also passed the build/unit job, the other database
+jobs and seven browser shards.
+
+Inspected updated public and in-game directory captures with rank/points at
+1440 × 900 and 390 × 900. Images are local
+`test-results/recruitment-ranked-{directory,game-discovery}-{width}x900.png`.
+The browser review uses controlled HTTP data; native tests verify actual score
+enrichment. Browser/Vite processes were closed and the task-specific disposable
+Compose database, network and volume were removed after verification.

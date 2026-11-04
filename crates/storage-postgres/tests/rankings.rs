@@ -499,7 +499,15 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
         assert_eq!(score.baseline_at, before.alliance_baseline_at);
         assert_eq!(public.summary.member_count, u64::from(row.member_count));
         let public_json = serde_json::to_value(&public).unwrap();
-        assert_eq!(public_json.as_object().unwrap().len(), 2);
+        assert_eq!(
+            public_json
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            vec!["enrollment_open", "public_text", "summary", "universe_name"]
+        );
         for field in ["members", "leader", "roles", "activity"] {
             assert!(public_json["summary"].get(field).is_none());
         }
