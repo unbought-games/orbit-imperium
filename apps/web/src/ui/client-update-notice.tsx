@@ -7,7 +7,12 @@ import styles from './client-update-notice.module.css'
 export function ClientUpdateNotice() {
   const state = useStore(clientUpdate.store)
   return (
-    <div role="status" aria-live="polite" aria-atomic="true">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      data-testid="client-update-announcement"
+    >
       {state.status !== 'current' && (
         <div className={styles.notice} data-client-update="">
           <p>

@@ -17,15 +17,16 @@ export function ConnectionNotice({
     clientUpdate.store,
     (state) => state.status !== 'current',
   )
-  if (updating) return <ClientUpdateNotice />
+  const visibleStatus = updating ? null : status
   return (
     <>
-      {status && (
+      <ClientUpdateNotice />
+      {visibleStatus && (
         <p data-error-entry="" className={className} aria-live="off">
-          {status.message}
+          {visibleStatus.message}
         </p>
       )}
-      {status?.kind === 'incompatible' && (
+      {visibleStatus?.kind === 'incompatible' && (
         <div>
           <Button variant="secondary" onClick={clientUpdate.reload}>
             Reload app
@@ -33,10 +34,12 @@ export function ConnectionNotice({
         </div>
       )}
       <VisuallyHidden aria-live="assertive" aria-atomic="true">
-        {status?.kind === 'connection' ? status.announcement : ''}
+        {visibleStatus?.kind === 'connection' ? visibleStatus.announcement : ''}
       </VisuallyHidden>
       <VisuallyHidden role="status" aria-live="polite" aria-atomic="true">
-        {status?.kind !== 'connection' ? (status?.announcement ?? '') : ''}
+        {visibleStatus?.kind !== 'connection'
+          ? (visibleStatus?.announcement ?? '')
+          : ''}
       </VisuallyHidden>
     </>
   )
