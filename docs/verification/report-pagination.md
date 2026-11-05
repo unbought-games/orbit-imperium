@@ -55,11 +55,11 @@ A disposable PostgreSQL 16 dataset contained 50,000 reports, 100 recipients and
 500 reports per recipient. EXPLAIN ANALYZE/BUFFERS of the candidate and count
 queries selected the new indexes without disabling sequential scans:
 
-| Query | Before buffer hits | After buffer hits | Before ms | After ms |
-| --- | ---: | ---: | ---: | ---: |
-| Inbox candidate page | 776 | 404 | 0.859 | 0.376 |
-| Capped unread count | 536 | 83 | 0.408 | 0.058 |
-| Starred candidate page | 521 | 62 | 0.446 | 0.051 |
+| Query                  | Before buffer hits | After buffer hits | Before ms | After ms |
+| ---------------------- | -----------------: | ----------------: | --------: | -------: |
+| Inbox candidate page   |                776 |               404 |     0.859 |    0.376 |
+| Capped unread count    |                536 |                83 |     0.408 |    0.058 |
+| Starred candidate page |                521 |                62 |     0.446 |    0.051 |
 
 These are local warm-cache observations, not production end-to-end benchmarks.
 The plan JSON is retained locally in `test-results/report-query-plans.json`.
@@ -219,3 +219,18 @@ Clippy also passed (27.89 seconds for the integrated storage Clippy check).
 The disposable PostgreSQL project was removed after these checks. The production frontend build passed (4.01 seconds client bundling and 0.32
 seconds prerender bundling). Current desktop/mobile screenshots were refreshed
 and inspected against the integrated main UI before publishing.
+
+### Historical resource sort repair
+
+The integrated head `28265e192b0b136847e24b2b9b4f650e45b47c99` passed CI run
+`42105372909`. Automated review thread `PRRT_kwDOVRgPYs60Q7sL` found a real
+failure path: a Known resource section containing a nonnumeric string could
+abort the resource-sort SQL cast. Resource metrics now validate each fixed-point
+integer before casting and treat malformed or out-of-range values as unknown.
+The database regression traverses seven-row pages containing malformed text,
+NaN, i64 overflow, a 140,000-digit value, a JSON number, and null across all three
+resources, asserting complete ordering with invalid observations last.
+
+The focused database suite passed (3.73 seconds compilation, 5.19 seconds
+execution). This backend-only repair does not change the captured UI. Storage
+Clippy and formatting checks passed; the disposable database was removed.

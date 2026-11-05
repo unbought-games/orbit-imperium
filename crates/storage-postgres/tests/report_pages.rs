@@ -193,6 +193,48 @@ async fn filtered_pages_are_bounded_ordered_private_and_cursor_scoped() {
     }
     assert_eq!(last.items.last().unwrap().id.0.as_u128(), 598);
     assert!(last.items.last().unwrap().fleet_investment.is_none());
+    // Regression: malformed historical resource values must sort as unknown,
+    // never abort the SQL cast or rank NaN/overflow ahead of valid observations.
+    let invalid = [
+        json!("bad"),
+        json!("NaN"),
+        json!("9223372036854775808"),
+        json!("9".repeat(140_000)),
+        json!(12),
+        json!(null),
+    ];
+    let bad_ids = [598u128, 594, 590, 586, 582, 578];
+    for (index, (id, value)) in bad_ids.into_iter().zip(invalid).enumerate() {
+        let resource = ["metal", "crystal", "deuterium"][index % 3];
+        sqlx::query("UPDATE mission_reports SET data=jsonb_set(data,ARRAY['payloads',$1,'resources'], $2) WHERE id=$3")
+            .bind(b.player.to_string()).bind(json!({"visibility":"Known","value":{"metal":"0","crystal":"0","deuterium":"0"}})).bind(Uuid::from_u128(id)).execute(&pool).await.unwrap();
+        sqlx::query("UPDATE mission_reports SET data=jsonb_set(data,ARRAY['payloads',$1,'resources','value',$2], $3) WHERE id=$4")
+            .bind(b.player.to_string()).bind(resource).bind(value).bind(Uuid::from_u128(id)).execute(&pool).await.unwrap();
+    }
+    let mut q = query.clone();
+    q.kind = Some("Espionage".into());
+    q.filter.sort = ReportSort4::Total;
+    q.limit = 7;
+    let mut ids = Vec::new();
+    loop {
+        let page = game
+            .reports4(principal, q.clone())
+            .await
+            .unwrap()
+            .facts
+            .data;
+        ids.extend(page.items.iter().map(|h| h.id.0.as_u128()));
+        if !page.has_more {
+            break;
+        }
+        q.cursor = page.next_cursor;
+    }
+    let mut expected: Vec<u128> = (1..=600).filter(|i| i % 2 == 0 && i % 4 != 0).collect();
+    expected.sort_by_key(|i| (i % 10 == 0 || bad_ids.contains(i), std::cmp::Reverse(*i)));
+    assert_eq!(
+        ids, expected,
+        "invalid resources stay last across cursor boundaries"
+    );
     // No recipient rows -> no visibility even though all reports are in the universe.
     let auth = SessionService::new(store.clone())
         .login(&accounts[1].name, &accounts[1].password, None)

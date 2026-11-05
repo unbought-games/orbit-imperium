@@ -10,9 +10,18 @@ fn metric(sort: ReportSort4) -> String {
     let payload = "r.data->'payloads'->(p.recipient::text)";
     match sort {
         ReportSort4::Newest | ReportSort4::Oldest => "NULL::numeric".into(),
-        ReportSort4::Total => format!(
-            "CASE WHEN ({payload})->>'kind'='Espionage' AND ({payload})->'resources'->>'visibility'='Known' THEN (({payload})->'resources'->'value'->>'metal')::numeric + (({payload})->'resources'->'value'->>'crystal')::numeric + (({payload})->'resources'->'value'->>'deuterium')::numeric END"
-        ),
+        ReportSort4::Total => {
+            let values = ["metal", "crystal", "deuterium"].map(|resource| {
+                let value = format!("({payload})->'resources'->'value'->'{resource}'");
+                // Validate before casting: historical JSON is not guaranteed to
+                // contain a valid fixed-point i64, even when marked Known.
+                format!("CASE WHEN jsonb_typeof({value})='string' AND ({value})#>>'{{}}' ~ '^[0-9]{{1,19}}$' THEN CASE WHEN (({value})#>>'{{}}')::numeric <= 9223372036854775807 THEN (({value})#>>'{{}}')::numeric END END")
+            });
+            format!(
+                "CASE WHEN ({payload})->>'kind'='Espionage' AND ({payload})->'resources'->>'visibility'='Known' THEN ({}) + ({}) + ({}) END",
+                values[0], values[1], values[2]
+            )
+        }
         ReportSort4::Fleet | ReportSort4::Defenses => {
             let section = if sort == ReportSort4::Fleet {
                 "fleet"
