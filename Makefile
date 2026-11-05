@@ -367,5 +367,5 @@ test-phalanx:
 .PHONY: test-empire-identity
 test-empire-identity:
 	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(empire_identity) | test(insignia)'
-	npm test -- empire-identity player-profiles
+	npm test -- deadline-timer empire-identity player-profiles
 	npm run test:ui -- empire-identity.spec.ts

@@ -1,4 +1,9 @@
-import { expect, type Page, type Response } from '@playwright/test'
+import {
+  expect,
+  type Page,
+  type Response,
+  type Request,
+} from '@playwright/test'
 import type { components } from '../../src/contracts'
 
 /** Subscribe before starting navigation. HTTP success and complete delivery
@@ -38,4 +43,24 @@ export function withProgressionResponse(
     },
     navigate,
   )
+}
+
+/** Drain requests chosen by the previous fixture phase before changing its
+ * response policy. The listener lives with the Page; no polling or sleeps. */
+export function trackFixtureResponses(
+  page: Page,
+  matches: (request: Request) => boolean,
+) {
+  const pending = new Set<Promise<unknown>>()
+  page.on('request', (request) => {
+    if (!matches(request)) return
+    const delivered = request
+      .response()
+      .then((response) => response?.finished())
+      .finally(() => pending.delete(delivered))
+    pending.add(delivered)
+  })
+  return async () => {
+    while (pending.size) await Promise.all([...pending])
+  }
 }
