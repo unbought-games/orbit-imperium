@@ -162,7 +162,7 @@ test('mobile game navigation stays in the same document and app scope', async ({
     ['Develop', `/u/andromeda/b/${body.id}/resources`],
     ['Facilities', `/u/andromeda/b/${body.id}/facilities`],
     ['Fleets', `/u/andromeda/b/${body.id}/fleets`],
-    ['Settings', '/u/andromeda/settings'],
+    ['Settings', `/u/andromeda/b/${body.id}/settings`],
     ['Empire', `/u/andromeda/b/${body.id}/overview`],
   ]) {
     if (destination === 'Settings') {
