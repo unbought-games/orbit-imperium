@@ -142,6 +142,7 @@ async fn visible_names_are_batched_scoped_current_and_separate_from_report_histo
         kind: None,
         limit: 100,
         include_hidden: false,
+        filter: Default::default(),
     };
     let page = game.reports4(principal, report_query()).await.unwrap();
     assert_eq!(

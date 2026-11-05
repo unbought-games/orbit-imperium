@@ -1,7 +1,7 @@
 import type { BoundReports } from './commands'
 import type { ReportPage } from './report-state'
 
-/** Shared archive membership, including hidden reports, from one server revision. */
+/** Query membership from one server revision. */
 export type ReportInbox = ReportPage & { revision: string }
 type Read = (cursor: string | null) => Promise<BoundReports | null>
 
@@ -25,7 +25,6 @@ export function appendInboxPage(
  */
 export async function readReportInbox(read: Read, minimumItems = 0) {
   let inbox: ReportInbox | null = null
-  const unread = new Set<string>()
   const cursors = new Set<string>()
   let cursor: string | null = null
   while (true) {
@@ -35,21 +34,14 @@ export async function readReportInbox(read: Read, minimumItems = 0) {
       // A cursor fixes archive ordering, not recipient preferences. Restart if
       // read/deletion state changed between pages rather than mixing revisions.
       inbox = null
-      unread.clear()
       cursors.clear()
       cursor = null
       continue
     }
     inbox = appendInboxPage(inbox, response)
-    for (const header of response.data.items) {
-      if (header.hidden || header.read) unread.delete(header.id)
-      else unread.add(header.id)
-    }
-    if (
-      !inbox.has_more ||
-      (unread.size >= 99 && inbox.items.length >= minimumItems)
-    )
-      return inbox
+    if (inbox.has_more && !inbox.next_cursor)
+      throw new Error('Report pagination changed. Try again.')
+    if (!inbox.has_more || inbox.items.length >= minimumItems) return inbox
     cursor = inbox.next_cursor
     if (!cursor || cursors.has(cursor))
       throw new Error('Report pagination changed. Try again.')

@@ -1,3 +1,5 @@
+import { reportQuery } from '../client-model/report-query'
+import { useReportPagination } from './use-report-pagination'
 import { useReportReturn } from './use-report-return'
 import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
@@ -64,13 +66,6 @@ export function Reports({
   const { selected, select: setSelected } = selection
   const cleanup = useReportCleanup(model, () => setSelected(new Set()))
   const filtered = options.status !== 'all' || options.kind !== 'all'
-  const allReports =
-    (!mobile && !item) ||
-    selecting ||
-    panel !== null ||
-    filtered ||
-    options.sort !== 'newest' ||
-    archived
   const now = useStore(model.store, currentServerTime)
   const {
     page,
@@ -81,7 +76,33 @@ export function Reports({
     changingVisibility,
     more,
     retry,
-  } = useReports(model, item, allReports, cleanup.submitting, archived)
+  } = useReports(
+    model,
+    item,
+    reportQuery(options, archived),
+    cleanup.submitting,
+  )
+  const cleanupReports = useReports(
+    model,
+    null,
+    reportQuery(defaultReportOptions, false),
+    panel !== 'cleanup' || cleanup.submitting,
+    true,
+  )
+  const sentinel = useReportPagination(
+    !item &&
+      !!page?.has_more &&
+      !loading &&
+      !loadingMore &&
+      !changingVisibility &&
+      !error &&
+      !cleanup.submitting &&
+      !selection.markingRead &&
+      panel === null,
+    page?.next_cursor,
+    more,
+  )
+
   const visible = triageReports(
     page?.items ?? [],
     options.sort,
@@ -93,9 +114,8 @@ export function Reports({
   )
   const folderCount =
     page?.items.filter((r) => r.hidden === archived).length ?? 0
-  // Background reads retain an atomic snapshot. Its completeness, rather than
-  // the next request's status, determines whether selection can use it.
-  const complete = !!page && !page.has_more
+  // Selection operates on loaded rows and stays usable during background reads.
+  const complete = !!page
   const busy = cleanup.submitting || changingVisibility || selection.markingRead
   const selectionBar = (
     <ReportSelectionBar
@@ -114,9 +134,7 @@ export function Reports({
     />
   )
   const loadingList =
-    (loading || loadingMore) &&
-    (!page || page.has_more) &&
-    (allReports || !visible.length)
+    (loading || loadingMore) && (!page || page.has_more) && !visible.length
 
   useProfileSource(
     detail && detail.header.id === item
@@ -181,8 +199,8 @@ export function Reports({
             }}
             archived={archived}
             disabled={busy}
-            complete={complete}
-            reports={page?.items ?? []}
+            complete={!!cleanupReports.page && !cleanupReports.page.has_more}
+            reports={cleanupReports.page?.items ?? []}
             cleanup={cleanup}
             now={now}
           />
@@ -359,6 +377,12 @@ export function Reports({
               {archived ? 'Loading archived reports…' : 'Loading reports…'}
             </Text>
           )}
+          {cleanupReports.error && panel === 'cleanup' && (
+            <Text tone="danger" role="alert">
+              Unable to load reports for cleanup.{' '}
+              <Button onClick={cleanupReports.retry}>Retry cleanup</Button>
+            </Text>
+          )}
           {filtered && (
             <div
               className={controlStyles.filters}
@@ -414,19 +438,19 @@ export function Reports({
               icon={FileText}
               eyebrow={archived ? 'Archived' : 'Inbox'}
               title={
-                folderCount
+                folderCount || filtered
                   ? 'No reports match these filters.'
                   : 'No reports to show.'
               }
               description={
-                folderCount
+                folderCount || filtered
                   ? 'Try a different filter.'
                   : archived
                     ? 'Reports you archive appear here. Use Move to inbox to restore them.'
                     : 'Fleet arrivals, espionage findings, and battle outcomes will appear here as your missions unfold.'
               }
               actions={
-                folderCount ? (
+                folderCount || filtered ? (
                   <Button
                     onClick={() => {
                       setOptions(defaultReportOptions)
@@ -478,28 +502,28 @@ export function Reports({
                       )
                   : undefined
               }
-              selectionDisabled={
-                loadingMore || ((!mobile || selecting) && !complete) || busy
-              }
+              selectionDisabled={!complete || busy}
               disabled={
-                (mobile && (loadingMore || (selecting && !complete))) ||
+                (mobile && selecting && !complete) ||
                 cleanup.submitting ||
                 selection.markingRead
               }
             />
           ))}
-          {page.has_more && page.next_cursor && !allReports && (
-            <Button
-              disabled={loading || loadingMore || changingVisibility}
-              onClick={() => void more()}
-            >
-              Load more reports
-            </Button>
+          {page.has_more && page.next_cursor && (
+            <div ref={sentinel}>
+              <Button
+                disabled={loading || loadingMore || changingVisibility}
+                onClick={() => void more()}
+              >
+                {loadingMore ? 'Loading reports…' : 'Load more reports'}
+              </Button>
+            </div>
           )}
         </>
-      ) : (
-        <Text>Loading report history…</Text>
-      )}
+      ) : error === null ? (
+        <Text role="status">Loading report history…</Text>
+      ) : null}
     </Section>
   )
 }

@@ -226,7 +226,7 @@ export function gamePort(
         ),
       )
     },
-    async reports(context, cursor, includeHidden = false) {
+    async reports(context, cursor, includeHidden = false, query) {
       return validate(
         'BoundReports4',
         await request(
@@ -235,9 +235,10 @@ export function gamePort(
           {
             context,
             cursor,
-            kind: null,
+            kind: query?.kind ?? null,
+            filter: query?.filter,
             limit: 50,
-            include_hidden: includeHidden,
+            include_hidden: includeHidden || query?.filter.hidden === true,
           },
           csrf,
         ),

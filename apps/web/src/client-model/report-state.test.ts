@@ -375,3 +375,42 @@ it('clears a rejected read batch only when all its reports have later confirmed 
   ledger.set('retry', { ...failed, status: 'committed', reconciled: true })
   expect(supersededReportFailures(ledger).map(([id]) => id)).toEqual(['failed'])
 })
+
+it('uses the server unread count without loading the remaining report pages', () => {
+  const state = createGameStore().getState()
+  state.reportInbox = {
+    revision: '1',
+    items: [],
+    has_more: true,
+    next_cursor: 'next',
+    as_of_ms: 1,
+    unread_count: 80,
+  }
+  expect(unreadReportCount(state)).toBe(80)
+})
+
+it('derives optimistic and confirmed removals from the unread page without changing the server count', () => {
+  const state = createGameStore().getState()
+  state.reportHeaders = headers
+  state.reportInbox = {
+    revision: '1',
+    items: ['report'],
+    unread_count: 80,
+    has_more: true,
+    next_cursor: 'older',
+    as_of_ms: 1,
+  }
+  state.attempts.set('archive', attempt('pending'))
+  expect(unreadReportCount(state)).toBe(79)
+  expect(state.reportInbox.unread_count).toBe(80)
+  state.attempts.set('archive', attempt('rejected'))
+  expect(unreadReportCount(state)).toBe(80)
+  state.reportHeaders = mergeReportHeaders(
+    headers,
+    [{ ...header, read: true }],
+    '2',
+  )
+  expect(unreadReportCount(state)).toBe(79)
+  state.reportInbox.unread_count = 99
+  expect(unreadReportCount(state)).toBe(99)
+})

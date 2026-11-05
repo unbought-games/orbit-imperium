@@ -22,6 +22,8 @@ export function useCommandHud(model: Coordinator) {
   const [notices, setNotices] = useState<HudNotice[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
   const [selection, select] = useState<HudTarget | 'inbox' | null>(null)
+  const expanded = useRef(false)
+  expanded.current = selection !== null
   const [mailboxError, setMailboxError] = useState('')
   const refresh = useRef<() => void>(() => {})
   useEffect(() => {
@@ -61,7 +63,7 @@ export function useCommandHud(model: Coordinator) {
       }
       busy = true
       const results = await Promise.allSettled([
-        model.refreshReportInbox(),
+        model.reports.refreshInbox(false, expanded.current),
         model.refreshMailbox(),
       ])
       if (active)

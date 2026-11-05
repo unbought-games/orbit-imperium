@@ -14850,6 +14850,11 @@
           },
           "player_names": {
             "$ref": "#/components/schemas/PublicPlayerNames4"
+          },
+          "unread_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99
           }
         },
         "required": [
@@ -14938,6 +14943,9 @@
           },
           "include_hidden": {
             "type": "boolean"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/ReportFilter4"
           }
         },
         "required": [
@@ -22875,6 +22883,34 @@
           "action"
         ],
         "additionalProperties": false
+      },
+      "ReportFilter4": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "hidden": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "unread_only": {
+            "type": "boolean"
+          },
+          "starred_only": {
+            "type": "boolean"
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "newest",
+              "oldest",
+              "total",
+              "fleet",
+              "defenses"
+            ]
+          }
+        }
       }
     },
     "securitySchemes": {

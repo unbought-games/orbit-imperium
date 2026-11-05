@@ -118,23 +118,20 @@ function fixture() {
 }
 const hundred = Array.from({ length: 100 }, (_, i) => String(i))
 
-it('deduplicates consumers and publishes one complete traversal for the tab, panel and badge', async () => {
+it('deduplicates consumers and publishes the first page without traversing history', async () => {
   const h = fixture()
   const load = h.engine.ensureInbox()
   expect(h.engine.ensureInbox()).toBe(load)
   expect(h.engine.refreshInbox()).toBe(load)
   h.pages[0].resolve(h.page(['a', 'b'], 'next'))
-  await vi.waitFor(() => expect(h.pages).toHaveLength(2))
-  expect(h.store.getState().reportInbox).toBeNull()
-  h.pages[1].resolve(h.page(['b', 'c']))
   await load
-  expect(h.pages.map((p) => p.cursor)).toEqual([null, 'next'])
+  expect(h.pages.map((p) => p.cursor)).toEqual([null])
   expect(
     projectedReportInbox(h.store.getState())?.items.map((h) => h.id),
-  ).toEqual(['a', 'b', 'c'])
-  expect(unreadBadgeCount(h.store.getState())).toBe(3)
+  ).toEqual(['a', 'b'])
+  expect(unreadBadgeCount(h.store.getState())).toBe(2)
   await h.engine.ensureInbox()
-  expect(h.pages).toHaveLength(2)
+  expect(h.pages).toHaveLength(1)
 })
 
 it('shares pagination, keeps earlier names, and deduplicates overlapping IDs', async () => {
@@ -179,27 +176,16 @@ it('reconciles external deletion for all surfaces, retaining cached details outs
   expect(projectedReportDetail(h.store.getState(), 'b')?.header.id).toBe('b')
 })
 
-it('retains a complete inbox until a growing background refresh is complete', async () => {
+it('bounds passive refreshes to one page even after previously reaching the end', async () => {
   const h = fixture()
   const initial = h.engine.ensureInbox()
   h.pages[0].resolve(h.page(hundred))
   await initial
-  const previous = h.store.getState().reportInbox
-
   const refresh = h.engine.refreshInbox()
   h.pages[1].resolve(h.page(['new', ...hundred.slice(0, 99)], 'older'))
-  await vi.waitFor(() => expect(h.pages).toHaveLength(3))
-  expect(h.store.getState().reportInbox).toBe(previous)
-  expect(reportLoad(h.store.getState()).pending).toBe(true)
-  expect(projectedReportInbox(h.store.getState())?.has_more).toBe(false)
-
-  h.pages[2].resolve(h.page(['99']))
   await refresh
-  expect(
-    projectedReportInbox(h.store.getState())?.items.map((h) => h.id),
-  ).toEqual(['new', ...hundred])
-  expect(projectedReportInbox(h.store.getState())?.has_more).toBe(false)
-  expect(reportLoad(h.store.getState()).pending).toBe(false)
+  expect(h.pages).toHaveLength(2)
+  expect(h.store.getState().reportInbox?.has_more).toBe(true)
 })
 
 it('retains the last good inbox on failure and exposes the same retry state to both surfaces', async () => {
@@ -549,4 +535,64 @@ it('does not carry queued pagination into a different binding', async () => {
   await expect(refresh).rejects.toThrow('Unable to confirm your reports')
   await more
   expect(h.pages).toHaveLength(2)
+})
+
+it('isolates query membership, cursors and errors while sharing authoritative headers', async () => {
+  const h = fixture()
+  const inbox = h.engine.forQuery({
+    kind: null,
+    filter: { hidden: false, sort: 'newest' },
+  })
+  const archived = h.engine.forQuery({
+    kind: 'Espionage',
+    filter: { hidden: true, starred_only: true, sort: 'oldest' },
+  })
+  const first = inbox.ensureInbox()
+  const other = archived.ensureInbox()
+  h.pages[1].resolve(h.page(['archived'], 'archive-next'))
+  await other
+  h.pages[0].resolve(h.page(['visible'], 'inbox-next'))
+  await first
+  expect(h.store.getState().reportInbox).toBeNull()
+  expect(
+    projectedReportInbox(h.store.getState(), true, inbox.queryKey)?.items.map(
+      (h) => h.id,
+    ),
+  ).toEqual(['visible'])
+  expect(
+    projectedReportInbox(
+      h.store.getState(),
+      true,
+      archived.queryKey,
+    )?.items.map((h) => h.id),
+  ).toEqual(['archived'])
+  const more = inbox.refreshInbox(true)
+  expect(h.pages[2].cursor).toBe('inbox-next')
+  h.pages[2].reject(Error('pagination failed'))
+  await expect(more).rejects.toThrow('pagination failed')
+  expect(
+    reportLoad(h.store.getState(), null, archived.queryKey).error,
+  ).toBeNull()
+  expect(h.store.getState().reportHeaders.size).toBe(2)
+})
+
+it('revalidates only the open HUD window and returns to one-page refreshes when closed', async () => {
+  const h = fixture()
+  const initial = h.engine.ensureInbox()
+  h.pages[0].resolve(h.page(hundred.slice(0, 50), 'older'))
+  await initial
+  const more = h.engine.refreshInbox(true)
+  h.pages[1].resolve(h.page(hundred.slice(50), 'last'))
+  await more
+  const visible = h.engine.refreshInbox(false, true)
+  h.pages[2].resolve(h.page(hundred.slice(0, 50), 'older'))
+  await vi.waitFor(() => expect(h.pages).toHaveLength(4))
+  h.pages[3].resolve(h.page(hundred.slice(50), 'last'))
+  await visible
+  expect(h.store.getState().reportInbox?.items).toHaveLength(100)
+  const closed = h.engine.refreshInbox()
+  h.pages[4].resolve(h.page(hundred.slice(0, 50), 'older'))
+  await closed
+  expect(h.pages).toHaveLength(5)
+  expect(h.store.getState().reportInbox?.items).toHaveLength(50)
 })

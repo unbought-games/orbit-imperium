@@ -72,7 +72,7 @@ export class Coordinator {
   private mailboxRequest: Promise<void> | null = null
   readonly store = createGameStore()
   readonly reports = new ReportEngine(this.store, {
-    page: (cursor) => this.readReportPage(cursor, true),
+    page: (cursor, query) => this.readReportPage(cursor, false, query),
     detail: (id) => this.readReportDetail(id),
   })
   private get attempts() {
@@ -280,6 +280,7 @@ export class Coordinator {
       binding: null,
       view: null,
       settings: null,
+      reportQueries: new Map(),
       reportInbox: null,
       reportInboxLoad: null,
       reportDetails: new Map(),
@@ -952,13 +953,14 @@ export class Coordinator {
   private async readReportPage(
     cursor: string | null = null,
     includeHidden = false,
+    query?: import('./report-query').ReportQuery,
   ) {
     if (!this.port.reports || this.protocol !== 4) return null
     const pending = this.captureRequest()
     if (!pending) return null
     const result = validate<import('./commands').BoundReports>(
       'BoundReports4',
-      await this.port.reports(pending.context, cursor, includeHidden),
+      await this.port.reports(pending.context, cursor, includeHidden, query),
     )
     return this.responseMatches(pending, result) ? result : null
   }

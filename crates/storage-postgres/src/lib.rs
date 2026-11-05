@@ -220,3 +220,5 @@ mod world_edit;
 mod attack_groups;
 
 mod phalanx;
+
+mod report_pages;

@@ -236,6 +236,9 @@ pub struct ReportDetail4 {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportsPage4 {
+    /// Unread Inbox count, capped at the badge limit, independent of this page.
+    #[serde(default)]
+    pub unread_count: u32,
     #[serde(default)]
     pub player_names: PublicPlayerNames,
     pub items: Vec<ReportHeader4>,
@@ -251,6 +254,27 @@ pub struct ReportsQuery4 {
     pub kind: Option<String>,
     pub limit: u32,
     pub include_hidden: bool,
+    #[serde(default)]
+    pub filter: ReportFilter4,
+}
+/// Optional filters preserve the legacy include_hidden query semantics.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default, deny_unknown_fields)]
+pub struct ReportFilter4 {
+    pub hidden: Option<bool>,
+    pub unread_only: bool,
+    pub starred_only: bool,
+    pub sort: ReportSort4,
+}
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ReportSort4 {
+    #[default]
+    Newest,
+    Oldest,
+    Total,
+    Fleet,
+    Defenses,
 }
 impl<S: GameStore> GameService<S> {
     pub async fn world_presence(

@@ -20,6 +20,10 @@ export type GameState = {
     string,
     Omit<components['schemas']['ReportShareStatus'], 'header'>
   >
+  reportQueries: Map<
+    string,
+    { inbox: ReportInbox | null; load: ReportLoad | null }
+  >
   reportInbox: ReportInbox | null
   reportInboxLoad: ReportLoad | null
   reportDetails: Map<string, ReportDetail>
@@ -48,6 +52,7 @@ export function createGameStore() {
     binding: null,
     view: null,
     settings: null,
+    reportQueries: new Map(),
     reportInbox: null,
     reportInboxLoad: null,
     reportDetails: new Map(),

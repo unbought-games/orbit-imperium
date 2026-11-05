@@ -1,3 +1,4 @@
+import type { ReportQuery } from '../client-model/report-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
@@ -18,10 +19,13 @@ type ReportsSource = Pick<
 export function useReports(
   model: ReportsSource,
   item: string | null,
-  all = false,
+  query?: ReportQuery,
   holdInbox = false,
-  includeHidden = false,
+  all = false,
 ) {
+  const engine = query
+    ? model.reports.forQuery(query, all ? 'cleanup' : 'list')
+    : model.reports
   const state = useStore(model.store)
   const scope = reportRequestScope(state)
   const binding = state.binding && bindingKey(state.binding)
@@ -56,33 +60,33 @@ export function useReports(
           /* The shared request state exposes the error. */
         })
     } else if (!holdInbox) {
-      void model.reports.ensureInbox().catch(() => {})
+      void engine.ensureInbox().catch(() => {})
     }
     return () => {
       active = false
     }
-  }, [model, binding, item, scope, retryKey, holdInbox])
+  }, [model, engine, binding, item, scope, retryKey, holdInbox])
 
   // Opening cleanup explicitly requests a fresh complete archive. Releasing
   // a submitted batch uses ensureInbox above, joining any existing refresh.
   useLayoutEffect(() => {
-    if (all) void model.reports.refreshInbox().catch(() => {})
-  }, [model, all])
+    if (all && !holdInbox) void engine.refreshInbox().catch(() => {})
+  }, [engine, all, holdInbox])
 
-  const inboxLoad = reportLoad(state)
-  const load = reportLoad(state, item)
+  const inboxLoad = reportLoad(state, null, engine.queryKey)
+  const inbox = engine.queryKey
+    ? state.reportQueries.get(engine.queryKey)?.inbox
+    : state.reportInbox
+  const load = reportLoad(state, item, engine.queryKey)
   const canLoadMore =
-    !item &&
-    !inboxLoad.pending &&
-    !changingVisibility &&
-    !!state.reportInbox?.has_more
+    !item && !inboxLoad.pending && !changingVisibility && !!inbox?.has_more
   useLayoutEffect(() => {
     if (all && !holdInbox && canLoadMore && !inboxLoad.error)
-      void model.reports.refreshInbox(true).catch(() => {})
-  }, [model, all, holdInbox, canLoadMore, inboxLoad.error, state.reportInbox])
+      void engine.refreshInbox(true).catch(() => {})
+  }, [engine, all, holdInbox, canLoadMore, inboxLoad.error, inbox])
 
   return {
-    page: projectedReportInbox(state, includeHidden),
+    page: projectedReportInbox(state, true, engine.queryKey),
     detail: item ? projectedReportDetail(state, item) : null,
     error: load.error,
     loading: load.pending && load.kind !== 'more',
@@ -91,12 +95,12 @@ export function useReports(
     canLoadMore,
     retry: () => {
       if (item) setRetryKey((n) => n + 1)
-      else void model.reports.refreshInbox().catch(() => {})
+      else void engine.refreshInbox().catch(() => {})
     },
     more: () => {
       if (!canLoadMore || reportRequestScope(model.store.getState()) !== scope)
         return false
-      void model.reports.refreshInbox(true).catch(() => {})
+      void engine.refreshInbox(true).catch(() => {})
       return true
     },
   }

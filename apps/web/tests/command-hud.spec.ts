@@ -72,11 +72,12 @@ async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'
   const reportQueries:Array<string|null>=[]
   await installGameFixture(page,{protocol:4,bodies,destinations,playerNames,missions,sampledAt:baseTime,viewerRevision:()=>String(revision),hasUnreadReports:()=>headers.some(h=>!h.read&&!h.hidden),extraCapabilities:['Reports','Espionage',...(attack ? ['Attack' as const] : [])]})
   await page.route('**/api/**/reports',route=>{
-    const {context,cursor}=route.request().postDataJSON()
+    const {context,cursor,filter,kind}=route.request().postDataJSON()
     reportQueries.push(cursor)
-    const start=cursor?headers.findIndex(h=>h.id===cursor)+1:0
-    const hasMore=start+50<headers.length
-    return route.fulfill({json:{protocol:4,...context,viewer_revision:String(revision),sampled_at:baseTime,as_of_ms:baseTime,data:{items:headers.slice(start,start+50),has_more:hasMore,next_cursor:hasMore?headers[start+49].id:null,as_of_ms:baseTime}}})
+    const rows=headers.filter(h=>(!filter||h.hidden===filter.hidden)&&(!filter?.unread_only||!h.read)&&(!filter?.starred_only||h.starred)&&(!kind||h.kind===kind))
+    const start=cursor?rows.findIndex(h=>h.id===cursor)+1:0
+    const hasMore=start+50<rows.length
+    return route.fulfill({json:{protocol:4,...context,viewer_revision:String(revision),sampled_at:baseTime,as_of_ms:baseTime,data:{items:rows.slice(start,start+50),unread_count:Math.min(99,headers.filter(h=>!h.hidden&&!h.read).length),has_more:hasMore,next_cursor:hasMore?rows[start+49].id:null,as_of_ms:baseTime}}})
   })
   await page.route('**/api/**/reports/*',route=>{
     const context=route.request().postDataJSON()
@@ -498,21 +499,6 @@ test('HUD details return to the list without closing, even after scrolling a rep
   await page.setViewportSize({width:1440,height:900})
   await expect(page.getByTestId('command-orb')).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/back-list-desktop-1440x900.png`})
-})
-
-test('unread badge traverses older reports and caps the visible count at 99', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  await page.emulateMedia({reducedMotion:'reduce'})
-  const f = await intelligenceFixture(page)
-  f.headers.push(...Array.from({length:170},(_,i)=>({id:id(1000+i),kind:'Espionage',observed_at:baseTime-i,read:i<50,hidden:false})))
-  await page.goto(`/u/andromeda/b/${body.id}/overview`)
-  await expect(page.getByTestId('unread-count')).toHaveText('99')
-  await expect(page.getByTestId('command-orb')).toHaveAccessibleName('99 or more unread items. Open command HUD')
-  await diagnosticScreenshot(page,{path:`${output}/unread-99-390x844.png`})
-  for(const header of f.headers)header.read=true
-  await f.refresh()
-  await expect(page.getByTestId('unread-count')).toHaveCount(0)
-  await expect(page.getByTestId('command-orb')).toHaveAttribute('data-tone','ice')
 })
 
 for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 900}]) {
@@ -1588,47 +1574,6 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 }
 
 
-for (const [width, height] of [[390, 844], [1440, 900]]) {
-  test(`reports tab and orb share archive pages and read acknowledgements at ${width}x${height}`, async ({ page }) => {
-    await page.setViewportSize({ width, height })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const f = await intelligenceFixture(page)
-    f.headers.push(...Array.from({ length: 51 }, (_, i) => ({
-      id: id(5000 + i), kind: 'Espionage', observed_at: baseTime - i, read: i < 50, hidden: false,
-    })))
-    await page.goto(`/u/andromeda/b/${body.id}/reports`)
-    await expect(page.getByRole('heading', { level: 1, name: 'Reports', exact: true })).toBeVisible()
-    const rows = page.locator('main article')
-    await expect(rows).toHaveCount(51)
-    await expect(rows.getByLabel('Unread', { exact: true })).toHaveCount(1)
-    await expect(page.getByTestId('unread-count')).toHaveText('1')
-    await expect(page.getByRole('button', { name: 'Load more reports' })).toHaveCount(0)
-    // Both mounted consumers share one fetch for each page, including the unread
-    // report beyond the first page; opening the panel never creates another list.
-    expect(f.reportQueries).toEqual([null, id(5049)])
-    await rows.last().scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, { path: `${output}/shared-archive-tab-${width}x${height}.png` })
-    await page.getByTestId('command-orb').click()
-    const panel = page.getByRole('dialog')
-    await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(1)
-    expect(f.reportQueries).toEqual([null, id(5049)])
-    await diagnosticScreenshot(page, { path: `${output}/shared-archive-panel-${width}x${height}.png` })
-    await panel.getByRole('button', { name: /Espionage report/ }).click()
-    await expect(panel.getByRole('region', { name: 'Report observation' })).toBeVisible()
-    await expect.poll(() => f.reads.filter(r => r === 'MarkReportRead').length).toBe(1)
-    await expect(page.getByTestId('unread-count')).toHaveCount(0)
-    await panel.getByRole('link', { name: 'Open full report' }).click()
-    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
-    await page.getByRole('link', { name: 'Back to reports' }).click()
-    await expect(rows).toHaveCount(51)
-    await expect(rows.getByLabel('Unread', { exact: true })).toHaveCount(0)
-    await expect(page.getByRole('status', { name: 'Unread reports', exact: true })).toHaveCount(0)
-    expect(f.reads.filter(r => r === 'MarkReportRead')).toHaveLength(1)
-    await rows.last().scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, { path: `${output}/shared-archive-read-${width}x${height}.png` })
-  })
-}
-
 for (const width of [1440, 390]) {
   test(`background HUD refresh preserves settled status and focus at ${width}px`, async ({page}) => {
     await page.setViewportSize({width, height: 900})
@@ -1715,23 +1660,23 @@ for (const width of [1440, 390]) {
       await more.focus()
       await expect(more).toBeFocused()
       await expect(list).toHaveAttribute('aria-busy', 'false')
-      for (const count of [40, 60, 80, 100]) {
+      for (const count of [40]) {
         await more.click()
         await expect(entries).toHaveCount(count)
         await expect(more).toBeEnabled()
       }
-      expect(f.reportQueries).not.toContain(id(4099))
+      expect(f.reportQueries).not.toContain(id(4049))
       await more.scrollIntoViewIfNeeded()
       await diagnosticScreenshot(page, {path: `test-results/background-hud-buffered-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
       await more.click()
       await expect(list).toHaveAttribute('aria-busy', 'true')
       await expect(panel.getByText('Loading intelligence…', {exact: true})).toBeVisible()
-      expect(f.reportQueries).not.toContain(id(4099))
+      expect(f.reportQueries).not.toContain(id(4049))
       await diagnosticScreenshot(page, {path: `test-results/background-hud-queued-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
     } finally {release()}
-    await expect(entries).toHaveCount(120)
+    await expect(entries).toHaveCount(60)
     await expect.poll(() => refreshes).toBe(2)
-    expect(f.reportQueries.filter(cursor => cursor === id(4099))).toHaveLength(1)
+    expect(f.reportQueries.filter(cursor => cursor === id(4049))).toHaveLength(1)
     await expect(list).toHaveAttribute('aria-busy', 'false')
   })
 }
@@ -1770,21 +1715,21 @@ for (const width of [1440, 390]) {
       await expect(entries).toHaveCount(count)
     }
     // Reading an item lowers the target count below the already satisfied
-    // display limit. The passive refresh still has 99 unread in its first 100.
+    // display limit. Server filtering fills the displayed window with 100 unread rows.
     await entries.first().click()
     await expect.poll(() => f.reads).toContain('MarkReportRead')
     await panel.getByRole('button', {name: 'Back to list'}).click()
-    await expect(entries).toHaveCount(99)
+    await expect(entries).toHaveCount(100)
     await expect(more).toBeEnabled()
     await page.clock.runFor(15000)
-    await expect(entries).toHaveCount(99)
+    await expect(entries).toHaveCount(100)
     await expect(list).toHaveAttribute('aria-busy', 'false')
-    expect(f.reportQueries).not.toContain(id(5099))
+    expect(f.reportQueries).not.toContain(id(5100))
     await more.scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, {path: `test-results/background-hud-read-${width}x900.png`})
     // A new gesture still loads the next page.
     await more.click()
     await expect(entries).toHaveCount(120)
-    expect(f.reportQueries.filter(cursor => cursor === id(5099))).toHaveLength(1)
+    expect(f.reportQueries.filter(cursor => cursor === id(5100))).toHaveLength(1)
   })
 }

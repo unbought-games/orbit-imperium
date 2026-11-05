@@ -38,8 +38,8 @@ export function useHudInbox(
   const loading =
     changingVisibility ||
     (!state.reportInbox && request.pending) ||
-    (!buffered &&
-      (pageIntent !== null || (request.pending && request.kind === 'more')))
+    pageIntent !== null ||
+    (!buffered && request.pending && request.kind === 'more')
   // Only a pagination gesture creates an outstanding page intent. A change in
   // the unread count must not turn the settled display limit into new work.
   useEffect(() => {
@@ -61,7 +61,8 @@ export function useHudInbox(
   }, [model, pageIntent])
   const loadTo = (nextLimit: number) => {
     if (!visible || changingVisibility || nextLimit <= limit) return
-    if (buffered) setLimit((value) => Math.max(value, nextLimit))
+    if (nextLimit <= targets.length || !state.reportInbox?.has_more)
+      setLimit((value) => Math.max(value, nextLimit))
     else setPageIntent(nextLimit)
   }
   const loadMore = () => loadTo(limit + batchSize)
