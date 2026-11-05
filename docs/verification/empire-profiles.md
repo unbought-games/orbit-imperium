@@ -159,3 +159,11 @@ browser tests (2.114s module preparation; 39.4s runner execution). A pre-existin
 unmocked overview request logged a proxy refusal during a routing fixture; all
 assertions passed and no test retry or timeout change was made. Relevant dossier
 and navigation captures were refreshed against this base.
+
+Publication review found that the optional viewer lookup rejected an expired
+browser cookie even for a public profile. It now falls back to anonymous only
+for an unauthenticated browser session; invalid explicit bearer credentials and
+other authentication failures still fail closed. The HTTP test checks expired
+cookies against private/public profiles and owner-only history, plus invalid
+bearer rejection. All four history database tests passed (22.58s preparation,
+9.211s execution); the change does not alter rendered UI.

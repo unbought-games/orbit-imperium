@@ -6,7 +6,17 @@ async fn viewer<S: IdentityStore>(
     h: &HeaderMap,
 ) -> Result<Option<AccountId>, Problem> {
     if token(h).is_some() || h.contains_key(header::AUTHORIZATION) {
-        Ok(Some(authenticate(s, h, false).await?.account))
+        match authenticate(s, h, false).await {
+            Ok(session) => Ok(Some(session.account)),
+            // Public archives remain public after a browser session expires.
+            // Invalid explicit machine credentials must never become anonymous.
+            Err(Problem(ServiceError::Unauthenticated))
+                if !h.contains_key(header::AUTHORIZATION) =>
+            {
+                Ok(None)
+            }
+            Err(error) => Err(error),
+        }
     } else {
         Ok(None)
     }

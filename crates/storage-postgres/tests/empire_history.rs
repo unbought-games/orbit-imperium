@@ -483,6 +483,18 @@ async fn http_requires_origin_csrf_and_owner_and_never_bootstraps_anonymous_game
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let expired_private = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(&uri)
+                .header("cookie", "orbit_session=expired")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(expired_private.status(), StatusCode::NOT_FOUND);
     for csrf in [false, true] {
         let mut req = Request::builder()
             .uri(&uri)
@@ -514,6 +526,40 @@ async fn http_requires_origin_csrf_and_owner_and_never_bootstraps_anonymous_game
         serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
     assert_eq!(data["owner"], false);
     assert!(data.get("account").is_none());
+    for (path, header_name, header_value, expected) in [
+        (
+            uri.clone(),
+            "cookie",
+            "orbit_session=expired",
+            StatusCode::OK,
+        ),
+        (
+            format!("{uri}?library=true"),
+            "cookie",
+            "orbit_session=expired",
+            StatusCode::NOT_FOUND,
+        ),
+        (
+            uri.clone(),
+            "authorization",
+            "Bearer invalid",
+            StatusCode::UNAUTHORIZED,
+        ),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(path)
+                    .header(header_name, header_value)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected);
+    }
+
     let request=Request::builder().uri(&uri).method("POST").header("content-type","application/json").header("cookie",format!("orbit_session={}",f.login.token)).header("origin","http://evil.example").header("x-csrf-token",&f.login.session.csrf).body(Body::from(json!({"command_id":Uuid::new_v4(),"expected_revision":1,"action":{"type":"Visibility","public":false}}).to_string())).unwrap();
     assert_eq!(
         app.oneshot(request).await.unwrap().status(),
