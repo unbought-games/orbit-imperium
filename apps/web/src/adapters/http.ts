@@ -4,7 +4,7 @@ import { socialQuery, socialCommand } from './social'
 import { allianceQuery, allianceCommand } from './alliances'
 import { resetAnalytics } from './optional-services'
 import type { Bootstrap } from '../client-model/bootstrap'
-import { validate } from '../client-model/schema'
+import { ContractDataError, validate } from '../client-model/schema'
 import type {
   GamePort,
   BoundQuote,
@@ -26,7 +26,7 @@ export class HttpError extends Error {
   }
 }
 /** Retry-After permits delay-seconds or an HTTP date. Invalid values must not poison deadlines. */
-function retryDelay(value: string | null) {
+export function retryDelay(value: string | null) {
   if (!value) return 0
   if (/^\d+(?:\.\d+)?$/.test(value.trim())) {
     const delay = Number(value) * 1000
@@ -70,7 +70,12 @@ export async function request(
     throw error
   }
   if (res.status === 204) return null
-  return res.json()
+  try {
+    return await res.json()
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new ContractDataError('JSON')
+    throw error
+  }
 }
 export const http = {
   async bootstrap() {

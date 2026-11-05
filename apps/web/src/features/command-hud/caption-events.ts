@@ -46,9 +46,7 @@ export function lostSpyProbes(header: Header, state: GameState) {
 }
 export function initialCaptionEvents(state: GameState): CaptionEvent[] {
   const connection = connectionStatus(state)
-  if (connection?.kind === 'connection')
-    return [{ id: 'initial:disconnected', kind: 'disconnected' }]
-  if (connection) return []
+  if (connection || state.stale) return []
   if (incomingThreats(state).length) return []
   return [
     {
@@ -62,13 +60,8 @@ export function captionEvents(
   after: GameState,
 ): CaptionEvent[] {
   const events: CaptionEvent[] = []
-  const wasDisconnected = connectionStatus(before)?.kind === 'connection'
-  const disconnected = connectionStatus(after)?.kind === 'connection'
-  if (wasDisconnected !== disconnected)
-    events.push({
-      id: `connection:${disconnected}:${after.now}`,
-      kind: disconnected ? 'disconnected' : 'reconnected',
-    })
+  // The shared error banner owns connection status (including inside the HUD).
+  // A timed caption can outlive recovery or interrupt unrelated gameplay news.
   if (!hasUnreadIntelligence(before) && hasUnreadIntelligence(after))
     events.push({ id: 'explain:unread', kind: 'unread' })
   for (const target of changedHudTargets(before, after)) {

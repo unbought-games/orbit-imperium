@@ -93,3 +93,151 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await diagnosticScreenshot(page, { path: info.outputPath(`empire-incompatible-${viewport.width}x${viewport.height}.png`) })
   })
 }
+
+for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  const size = `${viewport.width}x${viewport.height}`
+  test(`foreground recovery preserves edits and only announces verified failures (${size})`, async ({ page }, info) => {
+    await page.setViewportSize(viewport)
+    await installGameFixture(page, { protocol: 4 })
+    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+    await expect(page.locator('main h1')).toContainText('Empire —')
+    await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
+    const draft = page.getByRole('textbox', { name: 'Planet name' })
+    await draft.fill('Homeward')
+    // Observe every rendered notice, not just the final recovered screen.
+    await page.evaluate(() => {
+      const notices: string[] = []
+      Object.assign(window, { recoveryNotices: notices })
+      new MutationObserver(() => {
+        const text = document.querySelector('[data-testid="game-error-banner"]')?.textContent ?? ''
+        if (text) notices.push(text)
+      }).observe(document.body, { subtree: true, childList: true, characterData: true })
+    })
+    let failures = 1
+    await page.route('**/api/**/overview', route => failures-- > 0
+      ? route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+      : route.fallback())
+    await withFixtureResponse(page, response => response.url().endsWith('/overview') && response.ok(), () => refreshGame(page))
+    await expect(draft).toHaveValue('Homeward')
+    expect(await page.evaluate(() => (window as unknown as { recoveryNotices: string[] }).recoveryNotices)).toEqual([])
+    await diagnosticScreenshot(page, { path: info.outputPath(`quiet-recovery-${size}.png`) })
+
+    // A hidden tab may be suspended indefinitely. Resume must replace its stream
+    // and refresh without either reloading the document or replacing the draft.
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }))
+    await expect(draft).toHaveValue('Homeward')
+    expect(await page.evaluate(() => (window as unknown as { recoveryNotices: string[] }).recoveryNotices)).toEqual([])
+
+    failures = Infinity
+    const unavailable = page.waitForResponse(response => response.url().endsWith('/overview') && response.status() === 503)
+    await refreshGame(page)
+    expect(await (await unavailable).finished()).toBeNull()
+    const warning = page.locator('[data-error-entry]').filter({ hasText: 'Unable to refresh your empire.' })
+    await expect(warning).toBeVisible()
+    await expect(draft).toHaveValue('Homeward')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: info.outputPath(`service-unavailable-${size}.png`) })
+    await page.getByTestId('command-orb').click()
+    const hud = page.getByRole('dialog', { name: 'Command uplink', exact: true })
+    await expect(hud).toBeVisible()
+    await expect(hud.locator('[data-error-entry]').filter({ hasText: 'Unable to refresh your empire.' })).toBeVisible()
+    await expect(hud.getByText('SECURE CONNECTION', { exact: true })).toHaveCount(0)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await expect(hud).toHaveCSS('opacity', '1')
+    await diagnosticScreenshot(page, { path: info.outputPath(`hud-unavailable-${size}.png`) })
+    failures = 0
+    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
+    await expect(warning).toHaveCount(0)
+    await expect(hud.getByText('SECURE CONNECTION', { exact: true })).toBeVisible()
+    await diagnosticScreenshot(page, { path: info.outputPath(`hud-recovered-${size}.png`) })
+    await page.getByRole('button', { name: 'Close command HUD' }).click()
+    await expect(hud).toHaveCount(0)
+
+    await expect(draft).toHaveValue('Homeward')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await diagnosticScreenshot(page, { path: info.outputPath(`service-recovered-${size}.png`) })
+  })
+
+  test(`offline actions and uncertain orders stay actionable after recovery (${size})`, async ({ page }, info) => {
+    await page.setViewportSize(viewport)
+    await installGameFixture(page, { protocol: 4 })
+    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+    await expect(page.locator('main h1')).toContainText('Empire —')
+    await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
+    const draft = page.getByRole('textbox', { name: 'Planet name' })
+    await draft.fill('Homeward')
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: false })
+      window.dispatchEvent(new Event('offline'))
+    })
+    await expect(page.locator('[data-error-entry]').filter({ hasText: 'You’re offline.' })).toBeVisible()
+    await page.getByRole('button', { name: 'Save name' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'Connect before confirming an action.' })).toBeVisible()
+    await expect(draft).toHaveValue('Homeward')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: info.outputPath(`offline-action-${size}.png`) })
+    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => page.evaluate(() => {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true })
+      window.dispatchEvent(new Event('online'))
+    }))
+    await expect(page.locator('[data-error-entry]').filter({ hasText: 'You’re offline.' })).toHaveCount(0)
+    const ids: string[] = []
+    await page.route('**/commands', route => {
+      ids.push(route.request().postDataJSON().gameplay.command_id)
+      return route.abort('failed')
+    })
+    await page.route('**/commands/*?epoch=*', route => route.fulfill({ status: 404, json: { code: 'NotFound' } }))
+    await page.getByRole('button', { name: 'Save name' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'We’re checking whether this order went through.' })).toBeVisible()
+    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
+    await expect(page.getByRole('button', { name: 'Retry order', exact: true })).toBeVisible()
+    await expect(draft).toHaveValue('Homeward')
+    expect(ids).toHaveLength(1)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: info.outputPath(`uncertain-order-${size}.png`) })
+
+  })
+}
+
+for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  test(`session rotation recovers quietly but a refused action remains explicit (${viewport.width}x${viewport.height})`, async ({ page }, info) => {
+    await page.setViewportSize(viewport)
+    await installGameFixture(page, { protocol: 4 })
+    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+    await expect(page.locator('main h1')).toContainText('Empire —')
+    let refreshing = true
+    await page.route('**/api/**/overview', route => refreshing
+      ? route.fulfill({ status: 503, headers: { 'Retry-After': '1' }, json: { code: 'SessionRefreshing' } })
+      : route.fallback())
+    const pending = page.waitForResponse(response => response.url().endsWith('/overview') && response.status() === 503)
+    await refreshGame(page)
+    expect(await (await pending).finished()).toBeNull()
+    await expect(page.locator('[data-error-entry]')).toHaveCount(0)
+    refreshing = false
+    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
+    await expect(page.locator('[data-error-entry]')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
+    const draft = page.getByRole('textbox', { name: 'Planet name' })
+    await draft.fill('Homeward')
+    let submissions = 0
+    await page.route('**/commands', route => {
+      submissions++
+      return route.fulfill({ status: 503, headers: { 'Retry-After': '1' }, json: { code: 'SessionRefreshing' } })
+    })
+    await page.getByRole('button', { name: 'Save name' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'Your session is refreshing. This action was not sent. Try again.' })).toBeVisible()
+    await expect(draft).toHaveValue('Homeward')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: info.outputPath(`session-refresh-action-${viewport.width}x${viewport.height}.png`) })
+    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
+    expect(submissions).toBe(1)
+    await expect(draft).toHaveValue('Homeward')
+    await expect(page.getByRole('alert').filter({ hasText: 'This action was not sent.' })).toBeVisible()
+  })
+}
