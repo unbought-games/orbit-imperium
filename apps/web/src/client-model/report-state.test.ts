@@ -1,10 +1,12 @@
 import { expect, it } from 'vitest'
+import { createGameStore } from './game-store'
 import type { Attempt, BoundReceipt } from './commands'
 import {
   acceptReportVisibility,
   mergeReportHeaders,
   projectedReportHeader,
   supersededReportFailures,
+  unreadReportCount,
 } from './report-state'
 
 const header = {
@@ -15,6 +17,56 @@ const header = {
   hidden: false,
 }
 const headers = mergeReportHeaders(new Map(), [header], '1')
+
+it('counts only visible unread inbox members and derives archive, rejection and read changes', () => {
+  const state = createGameStore().getState()
+  state.reportHeaders = mergeReportHeaders(
+    new Map(),
+    [
+      header,
+      { ...header, id: 'read', read: true },
+      { ...header, id: 'hidden', hidden: true },
+      { ...header, id: 'cached-detail' },
+    ],
+    '1',
+  )
+  expect(unreadReportCount(state)).toBe(0)
+  state.reportInbox = {
+    items: ['report', 'read', 'hidden'],
+    revision: '1',
+    next_cursor: null,
+    has_more: false,
+    as_of_ms: 1000,
+  }
+  expect(unreadReportCount(state)).toBe(1)
+  state.attempts.set('archive', attempt('pending'))
+  expect(unreadReportCount(state)).toBe(0)
+  state.attempts.set('archive', attempt('rejected'))
+  expect(unreadReportCount(state)).toBe(1)
+  state.reportHeaders = mergeReportHeaders(
+    state.reportHeaders,
+    [{ ...header, read: true }],
+    '2',
+  )
+  expect(unreadReportCount(state)).toBe(0)
+})
+
+it('caps the badge count at the shared inbox loading limit', () => {
+  const state = createGameStore().getState()
+  const rows = Array.from({ length: 125 }, (_, i) => ({
+    ...header,
+    id: String(i),
+  }))
+  state.reportHeaders = mergeReportHeaders(new Map(), rows, '1')
+  state.reportInbox = {
+    items: rows.map((row) => row.id),
+    revision: '1',
+    next_cursor: 'next',
+    has_more: true,
+    as_of_ms: 1000,
+  }
+  expect(unreadReportCount(state)).toBe(99)
+})
 function attempt(
   status: Attempt['status'],
   hidden = true,

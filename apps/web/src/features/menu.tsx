@@ -9,7 +9,10 @@ import {
   Trophy,
 } from 'lucide-react'
 import { useStore } from 'zustand'
-import { hasUnreadReports } from '../client-model/report-state'
+import {
+  hasUnreadReports,
+  unreadReportCount,
+} from '../client-model/report-state'
 import { navigationGroups, pageTitles } from '../shell/navigation-model'
 import { routeTarget } from '../shell/route-target'
 import { resolveDestination, type Page } from '../shell/routes'
@@ -30,6 +33,7 @@ const icons = {
 export function MenuScreen() {
   const { universeName, view, body, model, logout } = useGameScreen()
   const unread = useStore(model.store, hasUnreadReports)
+  const count = useStore(model.store, unreadReportCount)
   const available = (page: Page) =>
     resolveDestination(
       { universe: view.binding.universe, page, body: body?.id },
@@ -70,21 +74,23 @@ export function MenuScreen() {
                       }}
                     >
                       <Icon size={16} aria-hidden="true" />
-                      <span>{pageTitles[page]}</span>
+                      <span className={styles.rowLabel}>
+                        {pageTitles[page]}
+                      </span>
                       {page === 'reports' && unread && (
                         <span
                           className={styles.unread}
-                          aria-label="Unread reports"
+                          aria-label={
+                            count
+                              ? `${count === 99 ? '99 or more' : count} unread reports`
+                              : 'Unread reports'
+                          }
                           role="status"
                         >
-                          Unread
+                          {count ? (count === 99 ? '99+' : count) : null}
                         </span>
                       )}
-                      <ChevronRight
-                        size={16}
-                        aria-hidden="true"
-                        className={styles.chevron}
-                      />
+                      <ChevronRight size={16} aria-hidden="true" />
                     </ButtonLink>
                   )
                 })}

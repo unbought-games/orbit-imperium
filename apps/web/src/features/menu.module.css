@@ -27,12 +27,31 @@
   flex-shrink: 0;
   color: var(--text-muted);
 }
-.chevron {
-  margin-left: auto;
+.rowLabel {
+  flex: 1;
+  min-width: 0;
 }
 .unread {
-  color: var(--champagne-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--champagne);
+  color: var(--surface-page);
   font-size: var(--font-size-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.unread:empty {
+  min-width: 8px;
+  min-height: 8px;
+  padding: 0;
 }
 .account {
   display: flex;
