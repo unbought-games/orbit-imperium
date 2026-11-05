@@ -1,4 +1,3 @@
-import { allianceBodySearch } from '../client-model/recruitment'
 import { VacationNotice } from '../features/vacation'
 import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
@@ -6,7 +5,7 @@ import { useStore } from 'zustand'
 import { hasUnreadReports } from '../client-model/report-state'
 import { ContentColumn } from '../ui/content-column'
 import { CommandHud } from '../features/command-hud/command-hud'
-import { dispatchSearch, validateDispatchSearch } from './dispatch-location'
+import { dispatchSearch } from './dispatch-location'
 import {
   Outlet,
   useMatches,
@@ -20,7 +19,7 @@ import {
   resolveDestination,
   resolveNamedDestination,
 } from './routes'
-import { validateGalaxySearch } from './galaxy-location'
+import { withoutBodySearch } from './page-search'
 import { routeTarget } from './route-target'
 import { catalogSlug } from './catalog-routes'
 import styles from './game-shell.module.css'
@@ -115,36 +114,31 @@ function GameShellContent() {
   }, [abandonment, requestedBody, view, navigate, universeName])
   const heading = useRef<HTMLHeadingElement>(null)
   const previousPathname = useRef(location.pathname)
+  const canonicalizing =
+    available &&
+    !params.coordinates &&
+    !!body &&
+    (page === 'menu'
+      ? !params.body && !search.body
+      : !params.body || search.body !== undefined)
   // Default context is recorded once; later view changes must not silently select another planet.
   useEffect(() => {
-    if (
-      available &&
-      !params.coordinates &&
-      body &&
-      ((!params.body && bodyPages.includes(page)) ||
-        (!params.body && !search.body) ||
-        (!!params.body && !!search.body && bodyPages.includes(page)))
-    ) {
+    if (canonicalizing && body) {
       void navigate({
         ...routeTarget(universeName, page, body.id, route.item ?? undefined),
-        ...(page === 'galaxy'
-          ? { search: validateGalaxySearch(leaf.search) }
-          : page === 'dispatch'
-            ? { search: validateDispatchSearch(leaf.search) }
-            : page === 'messages'
-              ? { search: { body: body.id, player: search.player } }
-              : page === 'alliance'
-                ? { search: allianceBodySearch(body.id, leaf.search) }
-                : {}),
+        search:
+          page === 'menu'
+            ? { ...withoutBodySearch(location.search), body: body.id }
+            : withoutBodySearch(location.search),
+        hash: location.hash,
         replace: true,
       })
     }
   }, [
-    available,
+    canonicalizing,
     body?.id,
-    params.body,
-    params.coordinates,
-    search.body,
+    location.search,
+    location.hash,
     page,
     route.item,
     universeName,
@@ -203,8 +197,14 @@ function GameShellContent() {
         id,
         available ? (route.item ?? undefined) : undefined,
       ),
-      ...(available && page === 'messages'
-        ? { search: { body: id, player: search.player } }
+      ...(available
+        ? {
+            search:
+              page === 'menu'
+                ? { ...withoutBodySearch(location.search), body: id }
+                : withoutBodySearch(location.search),
+            hash: location.hash,
+          }
         : {}),
     })
   }
@@ -366,6 +366,7 @@ function GameShellContent() {
             {view.protocol === 4 && (
               <EmpireDeletionNotice
                 deletion={view.empire_deletion}
+                body={body?.id}
                 universeName={universeName}
               />
             )}
@@ -420,9 +421,11 @@ function GameShellContent() {
                 )}
                 <VacationNotice
                   vacation={view.protocol === 4 ? view.vacation : undefined}
+                  body={body?.id}
                   universeName={universeName}
                 />
-                <Outlet />
+                {/* Mount once at the canonical route, avoiding duplicate reads during redirects. */}
+                {!canonicalizing && <Outlet />}
               </ScreenContext.Provider>
             )}
           </ContentColumn>

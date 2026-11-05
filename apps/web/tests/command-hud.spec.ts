@@ -140,6 +140,7 @@ test('live mobile HUD receives reports, messages and threats across navigation a
   const message=page.getByLabel('Recent game events').getByRole('button',{name:/Message received/})
   await expect(message).toBeVisible();await message.click()
   await expect(page.getByRole('dialog').locator('strong',{hasText:'Scouts are ready.'})).toBeVisible()
+  await expect(page.getByRole('dialog').getByRole('link', { name: 'Open conversation', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/messages?player=${id(99)}`)
   await diagnosticScreenshot(page,{path:`${output}/message-open-390x844.png`})
   await expect.poll(()=>f.reads).toContain('Read')
   await expect(page.getByRole('button',{name:'Mark read',exact:true})).toHaveCount(0)

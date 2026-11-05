@@ -113,9 +113,11 @@ export function EmpireDeletion() {
 export function EmpireDeletionNotice({
   deletion,
   universeName,
+  body,
 }: {
   deletion?: components['schemas']['EmpireDeletionStatus4']
   universeName: string
+  body?: string
 }) {
   if (!deletion) return null
   return (
@@ -123,7 +125,7 @@ export function EmpireDeletionNotice({
       <Text role="status">
         Your empire in {universeName} is scheduled for removal on{' '}
         {new Date(deletion.due_at).toLocaleString()}.{' '}
-        <Link {...routeTarget(universeName, 'settings')}>
+        <Link {...routeTarget(universeName, 'settings', body)}>
           Review deletion in Settings
         </Link>
       </Text>

@@ -10,7 +10,6 @@ export function routeTarget(
 ) {
   const universe = universeSlug(universeName)
   const params = { universe }
-  const search = body ? { body } : {}
   const planetParams = () => {
     if (!body) throw new Error('Planet routes require a planet.')
     return { universe, body }
@@ -114,22 +113,56 @@ export function routeTarget(
         params: planetParams(),
         search: {},
       })
-    case 'combat-simulator':
-      return linkOptions({
-        to: '/u/$universe/combat-simulator',
-        params,
-        search,
-      })
     case 'messages':
-      return linkOptions({ to: '/u/$universe/messages', params, search })
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/messages',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({ to: '/u/$universe/messages', params, search: {} })
     case 'alliance':
-      return linkOptions({ to: '/u/$universe/alliance', params, search })
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/alliance',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({ to: '/u/$universe/alliance', params, search: {} })
     case 'high-scores':
-      return linkOptions({ to: '/u/$universe/high-scores', params, search })
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/high-scores',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({ to: '/u/$universe/high-scores', params, search: {} })
     case 'menu':
-      return linkOptions({ to: '/u/$universe/menu', params, search })
+      return linkOptions({
+        to: '/u/$universe/menu',
+        params,
+        search: body ? { body } : {},
+      })
     case 'settings':
-      return linkOptions({ to: '/u/$universe/settings', params, search })
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/settings',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({ to: '/u/$universe/settings', params, search: {} })
+    case 'combat-simulator':
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/combat-simulator',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/combat-simulator',
+            params,
+            search: {},
+          })
     case 'reports':
       return item
         ? linkOptions({

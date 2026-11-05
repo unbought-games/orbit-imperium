@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, binding, id } from './fixtures/game'
@@ -448,7 +449,7 @@ test('Galaxy message shortcut preserves the selected player through route normal
       },
     })
   })
-  await page.goto('/u/andromeda/galaxy')
+  await withFixtureResponse(page, response => response.url().endsWith('/world') && response.request().postDataJSON().type === 'Galaxy', () => page.goto(`/u/andromeda/b/${id(6)}/galaxy`))
   await page
     .getByRole('region', { name: 'Galaxy positions' })
     .getByRole('button', { name: 'Nova profile details' })
@@ -456,13 +457,13 @@ test('Galaxy message shortcut preserves the selected player through route normal
   const link = page
     .getByRole('dialog', { name: 'Nova profile' })
     .getByRole('link', { name: /^Message / })
-  await expect(link).toHaveAttribute('href', new RegExp(`player=${peer}`))
+  await expect(link).toHaveAttribute('href', `/u/andromeda/b/${id(6)}/messages?player=${peer}`)
   await link.click()
   await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
   expect(
     f.requests.some((q) => q.type === 'Messages' && q.player === peer),
   ).toBe(true)
-  await expect(page).toHaveURL(new RegExp(`player=${peer}`))
+  await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/messages?player=${peer}`)
 })
 
 for (const viewport of [

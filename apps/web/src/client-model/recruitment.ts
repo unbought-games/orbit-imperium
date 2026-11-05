@@ -105,9 +105,3 @@ export function allianceSearch(search: Record<string, unknown>): {
     invitation: search.invitation as string | undefined,
   }
 }
-export function allianceBodySearch(
-  body: string,
-  search: Record<string, unknown>,
-) {
-  return { body, ...allianceSearch(search) }
-}

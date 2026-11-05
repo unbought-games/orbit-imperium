@@ -8,7 +8,8 @@ import { EmptyState } from '../../ui/empty-state'
 import { ConversationList } from './conversation-list'
 import { ThreadActions } from './thread-actions'
 import { MessageHistory } from './history'
-import { universeSlug } from '../../client-model/universe-name'
+import { routeTarget } from '../../shell/route-target'
+import { useGameScreen } from '../../shell/screen-context'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { bindingKey } from '../../client-model/commands'
@@ -62,10 +63,9 @@ function useReadPosition(
   }, [controller, player, latest, history, busy])
 }
 function Workspace() {
-  const { view, universeName } = useGameSession()
+  const { view, universeName, body } = useGameScreen()
   const search = useSearch({ strict: false }) as {
     player?: string
-    body?: string
   }
   const navigate = useNavigate()
   const [selectedTab, setTab] = useState<Tab>('Conversations')
@@ -83,9 +83,9 @@ function Workspace() {
   const select = (player?: string) => {
     setTab('Conversations')
     void navigate({
-      to: '/u/$universe/messages',
-      params: { universe: universeSlug(universeName) },
-      search: { body: search.body, player },
+      ...routeTarget(universeName, 'messages', body?.id),
+      search: { player },
+      hash: true,
     })
   }
   useReadPosition(controller, search.player, history, busy)

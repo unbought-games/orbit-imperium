@@ -1,5 +1,6 @@
 import styles from './social.module.css'
-import { universeSlug } from '../../client-model/universe-name'
+import { routeTarget } from '../../shell/route-target'
+import { useParams } from '@tanstack/react-router'
 import { useContext } from 'react'
 import { SessionContext } from '../../shell/session-context'
 import { Link } from '../../ui/link'
@@ -11,6 +12,7 @@ export function MessagePlayerLink({
   name: string
 }) {
   const session = useContext(SessionContext)
+  const { body } = useParams({ strict: false })
   if (
     !session ||
     session.view.protocol !== 4 ||
@@ -21,8 +23,11 @@ export function MessagePlayerLink({
     <Link
       data-message-player
       className={styles.playerLink}
-      to="/u/$universe/messages"
-      params={{ universe: universeSlug(session.universeName) }}
+      {...routeTarget(
+        session.universeName,
+        'messages',
+        body ?? session.view.bodies[0]?.id,
+      )}
       search={{ player }}
       title={`Message ${name}`}
       aria-label={`Message ${name}`}
