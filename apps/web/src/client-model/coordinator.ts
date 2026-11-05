@@ -983,7 +983,10 @@ export class Coordinator {
       return
     }
     this.tick()
-    if (this.platform.monotonicNowMs() < this.retryAt) return
+    if (this.platform.monotonicNowMs() < this.retryAt) {
+      this.explainUnsentDuringRecovery(command)
+      return
+    }
     this.message = ''
     const state = this.store.getState()
     if (pendingCommand(state, command)) return
@@ -1096,11 +1099,22 @@ export class Coordinator {
       return false
     }
   }
+  private explainUnsentDuringRecovery(command: Command) {
+    if (
+      !this.store.getState().rateLimited &&
+      (command.type !== 'World' ||
+        command.action.type !== 'RecordForegroundPresence')
+    )
+      this.message = 'This action was not sent. Please try again shortly.'
+  }
   private async deliver(a: Attempt, g: number, firstDelivery = false) {
     // A concurrent request can start a cooldown while this order is being saved.
     // A brand-new order has not reached the server and must not be queued.
     if (this.platform.monotonicNowMs() < this.retryAt) {
-      if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+      if (firstDelivery && (await this.forgetUnsent(a, g))) {
+        this.explainUnsentDuringRecovery(a.envelope.command)
+        return false
+      }
       await this.uncertain(a, g)
       return true
     }

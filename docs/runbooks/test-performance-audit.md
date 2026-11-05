@@ -947,3 +947,20 @@ No CI deadline, routine acceptance job, or scheduled monitor was added.
   zero reloads. The script's server/browser cleanup completed. The isolated
   Compose project, container, network and volume were then removed explicitly.
   Screenshots are retained under `test-results/connection-126-evidence` locally.
+- PR #348 first head `dd26274f` received one valid automated finding: a prior
+  quiet SessionRefreshing deadline made `send` return without feedback. Added
+  explicit unsent-action feedback both before persistence and when a concurrent
+  deadline starts during persistence; background presence stays quiet. Two
+  deterministic tests cover the orderings. Coordinator tests passed (71 in
+  0.597 s); both desktop/mobile click-during-recovery browser cases passed in
+  3.2 s with a frozen clock and applied-state assertion, never advancing across
+  the retry deadline.
+- First PR CI run `42051661889` failed two report-cleanup viewport cases because
+  they still required the removed literal “Connection lost. Reconnecting…”.
+  Downloaded/retained failure artifacts, inspected history and this ledger, and
+  updated the expected notice while retaining countdown, explicit retry, portal
+  identity and live-region assertions. Both repaired cases passed in 18.8 s.
+  Audited all remaining old-copy references: updated the incompatible-data
+  negative assertion and the explicit-only malformed-response expectation.
+  The full explicit core suite was not rerun; HTTP/unit and fixture schema
+  coverage passed. No test was deleted, retried for luck, or given more time.

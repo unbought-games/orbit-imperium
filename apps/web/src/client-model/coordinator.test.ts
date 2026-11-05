@@ -1990,3 +1990,48 @@ it('does not alarm for a background presence refusal during rotation, but expire
   expect(c.accessLost).toBe(true)
   expect(c.message).toContain('Sign in again')
 })
+
+it('explains an action blocked by an earlier quiet session refresh without queueing it', async () => {
+  const { c, port, sent, saved } = setup()
+  await c.connect(binding.account, binding.universe)
+  port.view = async () => {
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
+  }
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  await c.send({ type: 'CancelConstruction', operation: id(40) })
+  expect(c.message).toBe('This action was not sent. Please try again shortly.')
+  expect(sent).toHaveLength(0)
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
+})
+
+it('explains a session refresh that starts while an unsent action is being saved', async () => {
+  const { c, port, storage, saved, sent } = setup()
+  await c.connect(binding.account, binding.universe)
+  const put = storage.put
+  let release!: () => void
+  let saving!: () => void
+  const started = new Promise<void>((resolve) => {
+    saving = resolve
+  })
+  storage.put = async (attempt) => {
+    saving()
+    await new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await put(attempt)
+  }
+  const send = c.send({ type: 'CancelConstruction', operation: id(40) })
+  await started
+  port.view = async () => {
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
+  }
+  await c.refresh()
+  release()
+  expect(await send).toBeUndefined()
+  expect(c.message).toBe('This action was not sent. Please try again shortly.')
+  expect(sent).toHaveLength(0)
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
+})
