@@ -1,5 +1,80 @@
 # PR and main test performance audit
 
+## November 5, 2026: recovery fixture teardown after its first repair
+
+[Main CI run 42114714101](https://github.com/unbought-games/orbit-imperium/actions/runs/42114714101)
+tested `8fcb4dcff5771c10bbce5027fef098ab1c982600`. Browser shard 3/8 failed
+`session rotation recovers quietly but a refused action remains explicit
+(1440x1000)` with `Error: Test ended.` at `fixtures/responses.ts:59`, inside
+`response.finished()`. The scenario ran for 11.318s; the other 140 shard cases
+passed. Native checks, all database groups, and the other seven browser shards
+passed. The final required-check failure only propagated that browser failure.
+The downloaded JSON report contains no assertion failure, retry or attachment.
+
+Inspected Git history and the available repair records, including
+[`empire-identity-pr.md`](../verification/empire-identity-pr.md). No separate
+owner Test Czar ledger was available in this checkout. PR #353 (`c199b798`) had
+already repaired this scenario's response-phase ordering while repairing the
+foreground-recovery case. **Removed the failing desktop variant outright** under
+the one-repair rule. It was not rerun, renamed, skipped or replaced with another
+browser scenario. The passing mobile variant remains.
+
+The shared defect was an unowned promise: the page-lifetime `request` listener
+started `request.response().then(response.finished)` for every matching request,
+even after the last awaited drain. Its `finally` removed the promise but did not
+handle rejection when Playwright ended the test. A new request racing with
+teardown could therefore fail an otherwise completed scenario.
+
+The caller audit found exactly two call sites: foreground recovery (both
+viewports) and session rotation (now mobile only). This change owns the entire
+audit and repair; no independent follow-up remains. For these retained callers,
+the helper now tracks `requestfinished`/`requestfailed` events instead of creating
+background response promises. It waits for terminal delivery, including requests
+started during a drain, removes listeners at page close, and rejects any active
+drain on close rather than claiming success. HTTP and rendered-state assertions
+remain in the callers. Intentional 503 responses, failed-request handling,
+recovery, and action-refusal assertions remain intact. No sleep, retry, timeout
+increase or CI deadline was introduced.
+
+Four deterministic tooling tests cover held body delivery, requests arriving
+during a drain, concurrent drains, intentional failures, subsequent phases, and
+teardown with/without an active drain. Existing coordinator tests retain quiet
+rotation, server-deadline recovery and action-admission coverage. Extended the
+existing refused-action unit test with a controlled clock to assert that a
+healthy refresh preserves its message, sends no second command and leaves no
+queued or persisted action. The remaining browser case covers form edits and
+rendered error persistence; separate desktop/mobile click-during-recovery cases
+remain.
+
+Validation used base `8fcb4dcff5771c10bbce5027fef098ab1c982600` plus the four-file
+implementation/test diff with SHA-256
+`c82eaedbf49af66a0f98641361f6e544a533be68761197dffa452d52a0e7a108`
+(`git diff --` the coordinator test, client-update browser test, response helper,
+and response-readiness tooling test). This ledger entry is documentation-only.
+
+- Dependency setup: `npm ci`, 3.99s.
+- `make test-tooling`: 129 passed, zero failed, 12.74s wall time. The one existing
+  explicit-only Docker isolation test remained skipped; no Docker suite was
+  requested or run.
+- `npm test -- apps/web/src/client-model/coordinator.test.ts
+  apps/web/src/client-model/delivery.test.ts`: 81 passed, 0.708s runner duration,
+  1.66s wall time.
+- `npm run test:ui -- client-update.spec.ts --workers=3`: all 13 retained cases
+  passed on their first attempt, zero retries/skips; 2.155s module preparation,
+  13.3s browser execution, 16.39s wall time including runner setup/cleanup.
+- `npm run lint`: passed, 5.04s. `npm run format:check`: passed, 7.18s.
+  Changed fixture/tooling files were formatted; `git diff --check` passed.
+- Local runner queue wait: none. Original CI runner wait after scope selection:
+  3s; shard setup 84s, browser step 496s, cleanup/artifact tail 3s. Original total
+  workflow elapsed time: 10m 53s. One original failed case; zero local failed
+  attempts. No rerun-for-luck, queue entry, queue removal or merge occurred.
+- Cleanup: the UI runner exited successfully after stopping its browser and Vite
+  and releasing its port. No persistent server or disposable database was started.
+  Logs remain locally in `/tmp/orbit-main-ci-*.log`, the downloaded CI report in
+  `/tmp/orbit-ci-42114714101`, and the focused browser JSON in
+  `test-results/browser-ui/results.json`. Remote main has not been rerun by this
+  local repair. No product UI changed; visual validation is not applicable.
+
 ## November 2, 2026: creation-only moon expectations
 
 PR #321 CI run 41573755527 exposed two obsolete browser expectations after moon

@@ -46,21 +46,48 @@ export function withProgressionResponse(
 }
 
 /** Drain requests chosen by the previous fixture phase before changing its
- * response policy. The listener lives with the Page; no polling or sleeps. */
+ * response policy. Terminal request events include complete body delivery (or
+ * intentional failure), without creating response promises during teardown.
+ * Callers still validate expected HTTP outcomes and rendered state separately. */
 export function trackFixtureResponses(
   page: Page,
   matches: (request: Request) => boolean,
 ) {
-  const pending = new Set<Promise<unknown>>()
-  page.on('request', (request) => {
-    if (!matches(request)) return
-    const delivered = request
-      .response()
-      .then((response) => response?.finished())
-      .finally(() => pending.delete(delivered))
-    pending.add(delivered)
+  const pending = new Set<Request>()
+  const waiters = new Set<{
+    resolve: () => void
+    reject: (error: Error) => void
+  }>()
+  let closed = false
+  const closedError = () =>
+    new Error('Fixture page closed before requests settled')
+  const started = (request: Request) => {
+    if (matches(request)) pending.add(request)
+  }
+  const finished = (request: Request) => {
+    pending.delete(request)
+    if (pending.size) return
+    for (const waiter of waiters) waiter.resolve()
+    waiters.clear()
+  }
+  page.on('request', started)
+  page.on('requestfinished', finished)
+  page.on('requestfailed', finished)
+  page.once('close', () => {
+    closed = true
+    page.off('request', started)
+    page.off('requestfinished', finished)
+    page.off('requestfailed', finished)
+    pending.clear()
+    for (const waiter of waiters) waiter.reject(closedError())
+    waiters.clear()
   })
   return async () => {
-    while (pending.size) await Promise.all([...pending])
+    if (closed) throw closedError()
+    while (pending.size) {
+      await new Promise<void>((resolve, reject) =>
+        waiters.add({ resolve, reject }),
+      )
+    }
   }
 }
