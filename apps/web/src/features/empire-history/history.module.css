@@ -101,7 +101,7 @@
   justify-content: space-between;
 }
 .featured {
-  border-color: var(--accent) 99;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   background:
     radial-gradient(ellipse at top left, #cbb68d12, transparent 70%), #10202c;
   padding-block: 2rem;

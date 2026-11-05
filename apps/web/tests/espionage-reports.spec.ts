@@ -197,9 +197,9 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
       expect((await report.locator('footer').boundingBox())!.y).toBeGreaterThanOrEqual((await research.boundingBox())!.y + (await research.boundingBox())!.height)
       await expect(report.locator('footer')).toContainText('Activity before contact')
       await expect(report.locator('footer')).toContainText('Counterespionage')
-      if (variant === 'expanded' && width === 390) {
+      if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && variant === 'expanded' && [1440, 390].includes(width)) {
         await page.evaluate(() => window.scrollTo(0, 0))
-        await diagnosticScreenshot(page, { path: 'test-results/espionage-layout-390.png' })
+        await diagnosticScreenshot(page, { path: `test-results/espionage-layout-${width}.png` })
       }
       if (variant === 'hidden') {
         await expect(buildings).toContainText(
@@ -278,8 +278,8 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true)
-      await page.evaluate(() => document.fonts.ready)
-      if (variant === 'expanded') {
+      if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && variant === 'expanded') {
+        await page.evaluate(() => document.fonts.ready)
         for (const [name, section] of [['buildings', buildings], ['research', research]] as const) {
           await section.evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 80))
           await page.mouse.move(0, 0)

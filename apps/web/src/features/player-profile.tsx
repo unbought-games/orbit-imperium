@@ -15,6 +15,7 @@ export function PlayerProfile({
   alliance,
   bot,
   historical,
+  density = 'normal',
   children,
   triggerRef,
 }: {
@@ -24,6 +25,7 @@ export function PlayerProfile({
   alliance?: AllianceIdentity | null
   bot: boolean
   historical: boolean
+  density?: 'normal' | 'compact'
   triggerRef?: Ref<HTMLElement>
   children: ReactNode
 }) {
@@ -40,7 +42,11 @@ export function PlayerProfile({
         ) : undefined
       }
       triggerRef={triggerRef}
-      className={styles.trigger}
+      className={
+        density === 'compact'
+          ? `${styles.trigger} ${styles.compact}`
+          : styles.trigger
+      }
       surfaceClassName={styles.profile}
       showTitle={false}
     >

@@ -106,3 +106,12 @@
 .actions a:hover {
   background: #a4dbef20;
 }
+
+/* Compact text contexts use the same trigger treatment for links and buttons. */
+.trigger.compact {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  min-height: 0;
+}

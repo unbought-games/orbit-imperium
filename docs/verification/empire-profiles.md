@@ -167,3 +167,22 @@ other authentication failures still fail closed. The HTTP test checks expired
 cookies against private/public profiles and owner-only history, plus invalid
 bearer rejection. All four history database tests passed (22.58s preparation,
 9.211s execution); the change does not alter rendered UI.
+
+The first complete CI run on `01ace34d` passed native checks, all PostgreSQL groups,
+and seven browser shards. Shard 5 failed three espionage-layout cases: the new
+anchor bypassed a pre-existing button-only compact-target override, producing a
+9.75px name/location gap against the existing 5px maximum. The product repair
+moves that treatment into an explicit shared compact identity variant and removes
+the screen's button selector. All four espionage cases and both profile cases
+passed locally (2.056s preparation, 11.9s execution), with assertions unchanged.
+The common PlayerName/PlayerProfile path was audited; other contexts retain normal
+density. Screenshot-only scrolling/font preparation now runs only with capture
+explicitly enabled.
+
+Automated review `PRRT_kwDOVRgPYs60LI2J` correctly identified invalid featured-border
+CSS (`var(--accent) 99`). Replaced it with a valid 60% accent color mix, verified
+its computed browser color, and refreshed the affected timeline/battle/closed/
+removed captures at desktop and mobile sizes. Espionage target captures were also
+refreshed at 1440×1000 and 390×1000. The expanded-report capture run passed in 7.5s;
+eight focused identity unit tests, TypeScript, lint and formatting passed.
+No tests were deleted or weakened for these CI/review repairs.
