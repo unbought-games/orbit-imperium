@@ -1,4 +1,5 @@
-import { universeSlug } from '../client-model/universe-name'
+import { routeTarget } from './route-target'
+import { withoutBodySearch } from './page-search'
 import { Navigate, useLocation } from '@tanstack/react-router'
 import { useAuthSession } from './auth-context'
 import { GameShell } from './game-shell'
@@ -6,7 +7,8 @@ import { InvalidRoute } from './invalid-route'
 
 export function ProtectedGame() {
   const { runtime } = useAuthSession()
-  const href = useLocation({ select: (location) => location.href })
+  const location = useLocation()
+  const { href } = location
   if (runtime.status === 'anonymous') {
     if (href === '/index.html') return <Navigate to="/" replace />
     return href.startsWith('/u/') ? (
@@ -17,7 +19,7 @@ export function ProtectedGame() {
   }
   // Public recruitment URLs carry stable universe IDs. Resolve only this
   // explicit entry point to the current name after authentication.
-  const allianceEntry = /^\/u\/([0-9a-f-]{36})\/alliance(?:\?|$)/i.exec(href)
+  const allianceEntry = /^\/u\/([0-9a-f-]{36})\/alliance(?:[?#]|$)/i.exec(href)
   if (allianceEntry && runtime.status === 'authenticated') {
     const membership = runtime.session.memberships.find(
       (m) => m.universe === allianceEntry[1],
@@ -25,13 +27,13 @@ export function ProtectedGame() {
     if (membership)
       return (
         <Navigate
-          to="/u/$universe/alliance"
-          params={{ universe: universeSlug(membership.universe_name) }}
-          search={{
-            alliance:
-              new URLSearchParams(href.split('?')[1]).get('alliance') ??
-              undefined,
-          }}
+          {...routeTarget(
+            membership.universe_name,
+            'alliance',
+            location.search.body,
+          )}
+          search={withoutBodySearch(location.search)}
+          hash={location.hash}
           replace
         />
       )

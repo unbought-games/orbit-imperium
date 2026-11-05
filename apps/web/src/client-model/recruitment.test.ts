@@ -2,7 +2,8 @@ import {
   defaultParseSearch,
   defaultStringifySearch,
 } from '@tanstack/react-router'
-import { allianceSearch, allianceBodySearch } from './recruitment'
+import { allianceSearch } from './recruitment'
+import { withoutBodySearch } from '../shell/page-search'
 import { describe, it, expect } from 'vitest'
 import {
   recruitmentEntry,
@@ -65,11 +66,11 @@ it('retains the welcome when query parsing and planet selection normalize the ga
   for (const welcome of [1, '1']) {
     const search = allianceSearch({ alliance, invitation, welcome })
     expect(search.welcome).toBe('1')
-    const normalized = allianceBodySearch('planet', search)
+    const normalized = withoutBodySearch({ body: 'planet', ...search })
     expect(
       allianceSearch(defaultParseSearch(defaultStringifySearch(normalized))),
     ).toEqual(search)
-    expect(normalized.body).toBe('planet')
+    expect(normalized.body).toBeUndefined()
   }
   expect(allianceSearch({ alliance }).welcome).toBeUndefined()
   expect(() => allianceSearch({ alliance, invitation: 'invalid' })).toThrow(
