@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Deployment shows an estimated arrival date and time instead of a duplicate
+  duration. Thanks to [Gh0stP1rate](https://discord.com/users/343178308164255744)
+  and [sumdeos](https://discord.com/users/181133185491402753) for independently
+  requesting it. Read the [build note](docs/news/changes/2026-11-05-deployment-arrival.md).
+
 - Thanks to [Gh0stP1rate](https://discord.com/users/343178308164255744) for the
   verified report of frequent connection warnings, and Ethan Mick for confirming
   it. Read the [connection recovery build note](docs/news/changes/2026-11-05-connection-recovery.md).
