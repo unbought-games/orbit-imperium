@@ -125,7 +125,7 @@
 .playerStatus {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   gap: 4px 9px;
   min-width: 0;
 }
@@ -133,7 +133,7 @@
   max-width: 100%;
   display: inline-flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   gap: 5px;
   min-width: 0;
   color: #f4f4f2;

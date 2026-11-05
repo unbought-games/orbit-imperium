@@ -29,6 +29,23 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn empire_identities(
+        &self,
+        players: Vec<PlayerId>,
+    ) -> Result<std::collections::BTreeMap<PlayerId, EmpireIdentityRecord>, StoreError> {
+        self.read_empire_identities(players).await
+    }
+    async fn edit_empire_identity(
+        &self,
+        account: AccountId,
+        player: uuid::Uuid,
+        command: ProfileCommand,
+        access: IdentityAccess<'_>,
+    ) -> Result<(), StoreError> {
+        self.write_empire_profile(account, player, command, Some(access))
+            .await
+    }
+
     async fn empire_profile(
         &self,
         viewer: Option<AccountId>,
@@ -58,7 +75,8 @@ impl IdentityStore for PgStore {
         player: uuid::Uuid,
         command: ProfileCommand,
     ) -> Result<(), StoreError> {
-        self.write_empire_profile(account, player, command).await
+        self.write_empire_profile(account, player, command, None)
+            .await
     }
 
     async fn recent_authentication(&self, digest: &str) -> Result<bool, StoreError> {

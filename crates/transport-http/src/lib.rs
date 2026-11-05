@@ -1,5 +1,6 @@
 mod alliance_preview;
 mod empire_history;
+mod empire_identity;
 mod insignias;
 pub use insignias::Customization;
 mod alliances;

@@ -17,6 +17,11 @@ export async function startGame() {
   configureInstalledViewport()
   const root = createRoot(document.getElementById('root')!)
   // Local UX playground; no session, membership, or backend changes.
+  if (import.meta.env.DEV && location.pathname === '/identity-playground') {
+    const { IdentityPlayground } = await import('./dev/identity-playground')
+    root.render(<IdentityPlayground />)
+    return
+  }
   if (import.meta.env.DEV && location.pathname === '/supporter-preview') {
     const { SupporterPreview } = await import('./features/supporter-preview')
     root.render(<SupporterPreview />)

@@ -423,11 +423,7 @@ function ReportObservationContent({
               )}
               <div className={styles.targetInfo}>
                 <span className={styles.targetName}>
-                  <PlayerName
-                    player={text(target.owner)}
-                    names={playerNames}
-                    density="compact"
-                  />
+                  <PlayerName player={text(target.owner)} names={playerNames} />
                 </span>
                 <span className={styles.targetDetails}>
                   <BodyIdentity

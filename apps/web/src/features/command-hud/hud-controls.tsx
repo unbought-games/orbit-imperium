@@ -1,3 +1,4 @@
+import { addressCaption } from '../../client-model/empire-identity'
 import { useState, type CSSProperties } from 'react'
 import {
   Atom,
@@ -169,10 +170,17 @@ function OrbSymbol({ kind }: { kind: HudIcon | null }) {
   )
 }
 
-export function CommandOrb({ hud }: { hud: CommandHudState }) {
+export function CommandOrb({
+  hud,
+  address = 'Commander',
+}: {
+  hud: CommandHudState
+  address?: string
+}) {
   const [pressed, setPressed] = useState(false)
   const appearance = orbAppearance(hud.state, hud.recent)
   const caption = hud.caption
+  const captionText = caption ? addressCaption(caption.text, address) : ''
   const unread = hasUnreadIntelligence(hud.state)
   const unreadCount = unreadBadgeCount(hud.state)
   const used = occupiedFleetSlots(hud.state)
@@ -190,7 +198,7 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
         role="status"
         aria-atomic="true"
       >
-        {caption?.category === 'updated' ? caption.text : ''}
+        {caption?.category === 'updated' ? captionText : ''}
       </span>
       {caption && (
         <span
@@ -200,14 +208,14 @@ export function CommandOrb({ hud }: { hud: CommandHudState }) {
           data-category={caption.category}
           style={
             {
-              '--caption-chars': caption.text.length,
-              '--caption-width': `${caption.text.length}ch`,
+              '--caption-chars': captionText.length,
+              '--caption-width': `${captionText.length}ch`,
               '--caption-typing': `${caption.typingMs}ms`,
               '--caption-life': `${caption.lifetimeMs}ms`,
             } as CSSProperties
           }
         >
-          <span>{caption.text}</span>
+          <span>{captionText}</span>
         </span>
       )}
       <button

@@ -89,9 +89,10 @@ the installed free items to everyone and installed supporter items to supporters
 at tiers 1–3 or holders of permanent grants. Unrestricted only unlocks installed
 items; it does not fetch or reveal official content.
 
-Permanent grants are Orbit-owned records in `insignia_grants` keyed by local
-account UUID and stable catalog symbol ID. A future verified purchase can write
-one grant using `ON CONFLICT DO NOTHING`. For an intentional operator grant,
+Permanent grants are Orbit-owned records in `cosmetic_grants` keyed by local
+account UUID, item kind and stable catalog item ID. The `insignia_grants` view
+preserves legacy readers. Use the trusted award function described below for
+idempotent new grants. For an intentional operator grant,
 use parameterized SQL with the **verified local account ID**, the installed symbol ID,
 and an audit reason. This is not a browser API and never uses a display name as
 identity. Granting a symbol unlocks all its color combinations, not one saved
@@ -226,3 +227,78 @@ than loading a library they cannot faithfully edit. Profile clients send
 `X-Orbit-Insignia: 4` to receive shapes; version 3 still receives unshaped layered
 recipes, and earlier clients receive compatible free fallbacks. Saved recipes
 and grants remain unchanged by fallback projection.
+
+## Empire names, taglines and titles
+
+Owners edit their active empire from **My Orbit profile → Explore this empire →
+Edit identity**. Empire names (60 Unicode characters) and taglines (160) are plain
+text and free for everyone. Empty fields use the normal game defaults. Names are
+not unique account identifiers. The username stays visible. Titles are selected
+independently for each empire; permanent unlocks belong to the local account.
+Removed or concluded empires retain their identity as readable archives.
+
+Community builds include Commander, Captain, Admiral, Marshal, Governor,
+Chancellor, Consul, Director, Overseer, Steward, Navigator and Explorer. Official
+supporter title definitions are distributed separately, never in community builds.
+
+Version-1 insignia manifests remain supported. Version 2 adds an optional `titles`
+array alongside `insignias`. This independently authored example is a free fixture,
+not an official supporter title:
+
+```json
+{"version":2,"insignias":[],"titles":[{"id":"sample-curator","label":"Sample curator","address":"Curator","access":"free"}]}
+```
+
+Each title has a stable 1–64-character lowercase/digit/hyphen ID, nonempty `label`
+and `address` strings of up to 40 characters, and `access` set to `free`,
+`supporter`, or `earned`. Control characters and bidi override/isolate characters
+are rejected. Up to 256 additional titles are allowed. Duplicate and bundled IDs
+cannot be replaced. The entire immutable manifest remains bounded to 256 KiB and
+uses the existing `insignias/catalogs/<sha256>.json` pin. Titles need no SVG object.
+
+- `supporter`: free titles, fresh supporter access, and permanent grants apply.
+  Supporter membership never unlocks earned titles.
+- `unrestricted` (default): installed supporter cosmetics are available without
+  Accounts. Earned titles still require a permanent grant.
+- `all`: explicitly unlock every installed cosmetic, including earned titles.
+  This creates no achievement facts, supporter badges, or permanent grants.
+
+A saved title survives membership expiry and catalog removal. The effective title
+falls back to Commander until access returns. Owners can still edit their name
+and tagline while retaining an unavailable title. Changing to a different locked
+or missing title is rejected. Viewing another player's title does not require
+membership. The title library is only returned to the owner.
+
+### Permanent awards
+
+Migration 0037 generalizes existing grants into `cosmetic_grants`, keyed by
+`(account, kind, item_id)`, retaining `granted_at`, `reason`, and `source`.
+`insignia_grants` remains an updatable compatibility view for older readers and
+simple operator inserts. There is one underlying grant table. Use the trusted
+`orbit_storage_postgres::grant_cosmetic` function inside an authoritative award
+transaction. Pass the verified local account UUID, item kind (`title` or
+`insignia`), stable item ID, stable source event reference, and audit reason.
+The first award wins; retries do not duplicate or rewrite provenance. There is no
+browser grant endpoint. Never award based on client-supplied achievement claims.
+Awards may refer to temporarily absent content and survive membership removal.
+A future achievement evaluator calls this hook after verifying its own criteria;
+this release does not fabricate achievements or backfill unverifiable awards.
+
+### Compatibility, history and rollout
+
+New clients negotiate identity fields with `X-Orbit-Identity: 1`. Older profile
+and dossier clients retain their original response shape. New clients accept old
+responses and hide the editor when its title library is absent. Deploy migration
+0037 and the new binary/frontend before pinning a version-2 manifest. Older API
+binaries cannot load version-2 manifests: retain the previous catalog pin for
+rollback. Never delete prior objects during rollout.
+
+Identity observations are retained from the time they are authored. Historical
+facts capture event-time empire text and selected title references, including
+recipient-visible combat participants. Current edits do not rewrite those facts;
+older unknown identity remains unknown. Saved choices and awards reference stable
+IDs rather than copying separately distributed content into application artifacts.
+
+Focused checks: `make test-empire-identity`; disposable database checks:
+`make _db-empire_history _db-insignias _db-empire_history_upgrade` using the standard
+isolated Compose configuration. Back up the database and pinned catalog together.

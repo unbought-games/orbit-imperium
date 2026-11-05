@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 fn catalog() -> InsigniaCatalog {
     InsigniaCatalog::with_manifest(InsigniaManifest {
+        titles: vec![],
         version: 1,
         insignias: vec![InsigniaSymbol {
             group: InsigniaGroup::Legacy,

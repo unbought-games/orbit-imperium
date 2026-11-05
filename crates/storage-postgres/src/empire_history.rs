@@ -53,6 +53,15 @@ async fn identity(
         epoch: row.try_get("epoch").map_err(db_error)?,
         universe_name: row.try_get("universe_name").map_err(db_error)?,
         username: row.try_get("username").map_err(db_error)?,
+        identity: EmpireIdentity {
+            name: row.try_get("empire_name").map_err(db_error)?,
+            tagline: row.try_get("tagline").map_err(db_error)?,
+            title_id: row.try_get("title_id").map_err(db_error)?,
+        },
+        title: TitleDisplay::default(),
+        title_choices: None,
+        title_grants: sqlx::query_scalar("SELECT item_id FROM cosmetic_grants WHERE account=$1 AND kind='title'")
+            .bind(account).fetch_all(&mut **tx).await.map_err(db_error)?,
         display: None,
         alliance: sqlx::query_scalar::<_,sqlx::types::Json<AllianceIdentity>>("SELECT jsonb_build_object('id',a.id,'universe',a.universe,'tag',a.tag,'name',a.name) FROM alliance_memberships m JOIN alliances a ON a.id=m.alliance AND a.epoch=m.epoch JOIN empire_profiles p ON p.player=m.player AND p.epoch=m.epoch WHERE m.player=$1")
             .bind(player).fetch_optional(&mut **tx).await.map_err(db_error)?.map(|j|j.0),
@@ -223,6 +232,7 @@ impl PgStore {
         account: AccountId,
         player: Uuid,
         q: ProfileCommand,
+        access: Option<IdentityAccess<'_>>,
     ) -> Result<(), StoreError> {
         q.validate().map_err(|_| StoreError::Conflict)?;
         let mut tx = self.begin_tx(self.admission_pool()?).await?;
@@ -264,6 +274,37 @@ impl PgStore {
             return Err(StoreError::Conflict);
         }
         match q.action {
+            ProfileAction::Identity { identity } => {
+                if !profile.owner || profile.removed || profile.closed {
+                    return Err(StoreError::NotFound);
+                }
+                let access = access.ok_or(StoreError::NotFound)?;
+                // Preserve an unavailable saved choice when editing unrelated text.
+                if identity.title_id != profile.identity.title_id {
+                    let now: i64 = sqlx::query_scalar(
+                        "SELECT floor(extract(epoch FROM clock_timestamp()))::bigint",
+                    )
+                    .fetch_one(&mut *tx)
+                    .await
+                    .map_err(db_error)?;
+                    match title_access(
+                        access.catalog,
+                        &identity.title_id,
+                        access.policy,
+                        &profile.title_grants,
+                        access.evidence,
+                        now,
+                    ) {
+                        TitleAccess::Available => {}
+                        TitleAccess::NotInstalled => return Err(StoreError::NotFound),
+                        TitleAccess::Unavailable => return Err(StoreError::Unavailable),
+                        _ => return Err(StoreError::CosmeticDenied),
+                    }
+                }
+                sqlx::query("UPDATE empire_profiles SET empire_name=$2,tagline=$3,title_id=$4 WHERE player=$1")
+                    .bind(player).bind(identity.name.trim()).bind(identity.tagline.trim()).bind(identity.title_id)
+                    .execute(&mut *tx).await.map_err(db_error)?;
+            }
             ProfileAction::Visibility { public } => {
                 if !profile.owner || (public && profile.removed) {
                     return Err(StoreError::NotFound);
@@ -342,7 +383,7 @@ pub(crate) async fn append(
     report: Option<ReportId>,
 ) -> Result<(), StoreError> {
     // Non-account scenario actors have no profile. Never invent ownership.
-    sqlx::query("INSERT INTO empire_history(player,source,kind,at_ms,facts,report) SELECT e.player,$2,$3,$4,$5 || jsonb_build_object('commander_name',n.name,'appearance_ref',a.recipe),$6 FROM empire_profiles e JOIN orbit_profiles p ON p.id=e.profile LEFT JOIN LATERAL (SELECT name FROM orbit_name_history WHERE account=p.account AND observed_at<=$4 ORDER BY observed_at DESC LIMIT 1) n ON true LEFT JOIN LATERAL (SELECT recipe FROM orbit_appearance_history WHERE player=e.player AND observed_at<=$4 ORDER BY observed_at DESC LIMIT 1) a ON true WHERE e.player=$1 ON CONFLICT(player,source) DO NOTHING")
+    sqlx::query("INSERT INTO empire_history(player,source,kind,at_ms,facts,report) SELECT e.player,$2,$3,$4,$5 || jsonb_build_object('commander_name',n.name,'appearance_ref',a.recipe,'empire_identity',ci.identity),$6 FROM empire_profiles e JOIN orbit_profiles p ON p.id=e.profile LEFT JOIN LATERAL (SELECT name FROM orbit_name_history WHERE account=p.account AND observed_at<=$4 ORDER BY observed_at DESC LIMIT 1) n ON true LEFT JOIN LATERAL (SELECT recipe FROM orbit_appearance_history WHERE player=e.player AND observed_at<=$4 ORDER BY observed_at DESC LIMIT 1) a ON true LEFT JOIN LATERAL (SELECT identity FROM empire_identity_history WHERE player=e.player AND observed_at<=$4 ORDER BY observed_at DESC LIMIT 1) ci ON true WHERE e.player=$1 ON CONFLICT(player,source) DO NOTHING")
         .bind(player.0).bind(source).bind(kind).bind(at).bind(facts).bind(report.map(|r|r.0)).execute(&mut **tx).await.map_err(db_error)?;
     Ok(())
 }
@@ -389,7 +430,9 @@ pub(crate) async fn capture_report(
             let values = |lots: &[orbit_engine::AssetLot]| {
                 lots.iter().filter(|l|l.owner==*recipient).map(|l|json!({"item":l.item,"quantity":l.quantity,"unit_value_micro":l.unit_value_micro,"location":l.location})).collect::<Vec<_>>()
             };
-            facts = json!({"names":names,"appearance_refs":appearance_refs,"alliances":alliances,"outcome":payload.get("outcome"),"significance_version":1,
+            let identities: Value = sqlx::query_scalar("SELECT COALESCE(jsonb_object_agg(player,identity),'{}'::jsonb) FROM (SELECT DISTINCT ON(player) player,identity FROM empire_identity_history WHERE player=ANY($1) AND observed_at<=$2 ORDER BY player,observed_at DESC) i")
+                .bind(&ids).bind(report.at).fetch_one(&mut **tx).await.map_err(db_error)?;
+            facts = json!({"empire_identities":identities,"names":names,"appearance_refs":appearance_refs,"alliances":alliances,"outcome":payload.get("outcome"),"significance_version":1,
                 "valuation_before":values(before),"valuation_after":values(&c.records.lots),"origins":payload["participants"].as_array().into_iter().flatten().filter(|p|p["owner"].as_str()==Some(&recipient.to_string())).map(|p|p["origin"].clone()).collect::<Vec<_>>()});
         } else {
             for key in [

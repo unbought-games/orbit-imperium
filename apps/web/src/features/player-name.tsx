@@ -22,7 +22,6 @@ export function PlayerName({
   linkAlliance = true,
   showInsignia = true,
   interactive = true,
-  density = 'normal',
   triggerRef,
 }: {
   player: string
@@ -32,7 +31,6 @@ export function PlayerName({
   linkAlliance?: boolean
   showInsignia?: boolean
   triggerRef?: Ref<HTMLElement>
-  density?: 'normal' | 'compact'
   interactive?: boolean
 }) {
   const profile = usePlayerDisplay(player)
@@ -48,29 +46,41 @@ export function PlayerName({
   const bot = (profile?.kind ?? kinds[player]) === 'bot'
   const identity = (
     <span className={styles.identity}>
-      <span className={styles.name}>
-        {showInsignia && profile?.insignia && (
-          <EmpireInsignia appearance={profile.insignia} />
-        )}
-        <SupporterIdentity name={name} tier={profile?.supporter_tier} />
-      </span>
+      <SupporterIdentity
+        name={name}
+        tier={profile?.supporter_tier}
+        mark={
+          showInsignia && profile?.insignia ? (
+            <EmpireInsignia appearance={profile.insignia} size="inline" />
+          ) : undefined
+        }
+      />
       {bot && (
-        <span title="Automated player" aria-label="Bot" className={styles.bot}>
-          Bot
-        </span>
+        <>
+          {' '}
+          <span
+            title="Automated player"
+            aria-label="Bot"
+            className={styles.bot}
+          >
+            Bot
+          </span>
+        </>
       )}
       {affiliation && (
-        <AllianceTag
-          alliance={affiliation}
-          linked={!interactive && linkAlliance}
-        />
+        <>
+          {' '}
+          <AllianceTag
+            alliance={affiliation}
+            linked={!interactive && linkAlliance}
+          />
+        </>
       )}
     </span>
   )
   return interactive ? (
     <PlayerProfile
       triggerRef={triggerRef}
-      density={density}
       player={player}
       name={name}
       profile={profile}

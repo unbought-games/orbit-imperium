@@ -16990,6 +16990,12 @@
           },
           "insignia": {
             "$ref": "#/components/schemas/InsigniaAppearance"
+          },
+          "identity": {
+            "$ref": "#/components/schemas/EmpireIdentity"
+          },
+          "title": {
+            "$ref": "#/components/schemas/TitleDisplay"
           }
         },
         "required": [
@@ -22711,6 +22717,18 @@
           },
           "alliance": {
             "$ref": "#/components/schemas/AllianceIdentity"
+          },
+          "identity": {
+            "$ref": "#/components/schemas/EmpireIdentity"
+          },
+          "title": {
+            "$ref": "#/components/schemas/TitleDisplay"
+          },
+          "title_choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TitleChoice"
+            }
           }
         },
         "required": [
@@ -22851,6 +22869,22 @@
               "event"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "Identity"
+              },
+              "identity": {
+                "$ref": "#/components/schemas/EmpireIdentity"
+              }
+            },
+            "required": [
+              "type",
+              "identity"
+            ]
           }
         ]
       },
@@ -22875,6 +22909,108 @@
           "action"
         ],
         "additionalProperties": false
+      },
+      "EmpireIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "tagline": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
+          }
+        },
+        "required": [
+          "name",
+          "tagline",
+          "title_id"
+        ]
+      },
+      "EmpireTitle": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "free",
+              "supporter",
+              "earned"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "address",
+          "access"
+        ]
+      },
+      "TitleDisplay": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "address",
+          "expires_at"
+        ]
+      },
+      "TitleChoice": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/EmpireTitle"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "supporter_required",
+              "earned_required",
+              "unavailable",
+              "not_installed"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "availability"
+        ]
       }
     },
     "securitySchemes": {

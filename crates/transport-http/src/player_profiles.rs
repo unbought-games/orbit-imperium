@@ -12,6 +12,10 @@ pub struct PlayerDisplay {
     #[serde(skip)]
     access_known: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    identity: Option<EmpireIdentity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    title: Option<TitleDisplay>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     insignia: Option<super::insignias::InsigniaAppearance>,
     pub(super) kind: PlayerKind,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -207,6 +211,8 @@ impl AccountProfiles {
                 };
                 let profile = source.and_then(|entry| entry.profile.as_ref());
                 PlayerDisplay {
+                    identity: None,
+                    title: None,
                     access_known: source.is_some(),
                     insignia: None,
                     kind: identity.kind,
@@ -266,6 +272,8 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         identities
             .into_iter()
             .map(|i| PlayerDisplay {
+                identity: None,
+                title: None,
                 access_known: false,
                 insignia: None,
                 kind: i.kind,
@@ -289,7 +297,33 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
     } else {
         Default::default()
     };
+    let identities = if h.get("x-orbit-identity").is_some_and(|v| v == "1") {
+        s.updates
+            .empire_identities(players.iter().map(|p| p.player).collect())
+            .await
+            .map_err(ServiceError::from)?
+    } else {
+        Default::default()
+    };
+    let fallback = InsigniaCatalog::default();
+    let (catalog, policy) = s
+        .customization
+        .as_ref()
+        .map_or((&fallback, CosmeticPolicy::Unrestricted), |c| {
+            (&c.catalog, c.policy)
+        });
     for player in &mut players {
+        if let Some(record) = identities.get(&player.player) {
+            player.identity = Some(record.identity.clone());
+            player.title = Some(effective_title(
+                catalog,
+                &record.identity.title_id,
+                policy,
+                &record.grants,
+                player.evidence(),
+                unbought_auth::now(),
+            ));
+        }
         if let Some(c) = &s.customization
             && include_insignia
         {
@@ -341,6 +375,8 @@ pub(super) async fn archive_display<S: GameStore + IdentityStore>(
         identities
             .into_iter()
             .map(|i| PlayerDisplay {
+                identity: None,
+                title: None,
                 access_known: false,
                 insignia: None,
                 alliance: None,

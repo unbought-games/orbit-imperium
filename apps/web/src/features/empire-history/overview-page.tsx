@@ -1,5 +1,6 @@
 import { ShareLink } from './share-link'
-import type { OrbitProfile } from '../../adapters/empire-history'
+import { useIdentityTitle } from '../../client-model/use-identity-title'
+import type { EmpireProfile, OrbitProfile } from '../../adapters/empire-history'
 import { useArchive } from '../../client-model/use-empire-history'
 import { Button, ButtonLinkAnchor } from '../../ui/button'
 import styles from './history.module.css'
@@ -51,7 +52,7 @@ export function OrbitProfilePage({ profile }: { profile?: string }) {
                       : 'Universe'}
                 </p>
                 <h2>{empire.universe_name}</h2>
-                <p>{empire.username}</p>
+                <EmpireSummaryIdentity empire={empire} />
                 {data.owner && (
                   <p>
                     {empire.removed
@@ -82,5 +83,20 @@ export function OrbitProfilePage({ profile }: { profile?: string }) {
         </ButtonLinkAnchor>
       </div>
     </main>
+  )
+}
+
+function EmpireSummaryIdentity({ empire }: { empire: EmpireProfile }) {
+  const title = useIdentityTitle(empire.title)
+  return (
+    <>
+      {empire.identity?.name && <p>{empire.identity.name}</p>}
+      <p>
+        {title.label} {empire.username}
+      </p>
+      {empire.identity?.tagline && (
+        <p className={styles.lede}>{empire.identity.tagline}</p>
+      )}
+    </>
   )
 }

@@ -284,6 +284,13 @@ async fn curated_history_survives_report_cleanup_empire_removal_closure_and_acco
         late_results, 0,
         "a result retry cannot admit later players into the historical roster"
     );
+    // Remove the synthetic late entrant's new observation before fixture cleanup.
+    // Real archive deletion must continue to respect retained identity facts.
+    sqlx::query("DELETE FROM empire_identity_history WHERE player=$1")
+        .bind(late)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
     sqlx::query("DELETE FROM empire_profiles WHERE player=$1")
         .bind(late)
         .execute(&mut *tx)
@@ -662,4 +669,340 @@ async fn alliance_transitions_capture_real_join_kick_and_disband_reasons_once() 
             .count(),
         1
     );
+}
+
+#[tokio::test]
+async fn empire_identity_enforces_ownership_revision_grants_and_retains_missing_selections() {
+    let f = Fixture::new().await;
+    let catalog = InsigniaCatalog::with_manifest(InsigniaManifest {
+        version: 2,
+        insignias: vec![],
+        titles: vec![EmpireTitle {
+            id: "fixture-earned".into(),
+            label: "Fixture laureate".into(),
+            address: "Laureate".into(),
+            access: CosmeticRequirement::Earned,
+        }],
+    })
+    .unwrap();
+    let access = || IdentityAccess {
+        catalog: &catalog,
+        policy: CosmeticPolicy::Supporter,
+        evidence: SupporterEvidence::default(),
+    };
+    let command = |revision, title: &str| ProfileCommand {
+        command_id: Uuid::new_v4(),
+        expected_revision: revision,
+        action: ProfileAction::Identity {
+            identity: EmpireIdentity {
+                name: "  Roman Empire  ".into(),
+                tagline: "Many worlds. One people.".into(),
+                title_id: title.into(),
+            },
+        },
+    };
+    let initial = f.profile(false).await;
+    assert!(
+        f.store
+            .edit_empire_identity(
+                f.b.account,
+                f.a.player.0,
+                command(initial.revision, "consul"),
+                access()
+            )
+            .await
+            .is_err()
+    );
+    assert!(
+        f.store
+            .edit_empire_identity(
+                f.a.account,
+                f.a.player.0,
+                command(initial.revision, "fixture-earned"),
+                access()
+            )
+            .await
+            .is_err()
+    );
+    assert!(
+        f.store
+            .edit_empire_profile(
+                f.a.account,
+                f.a.player.0,
+                command(initial.revision, "consul")
+            )
+            .await
+            .is_err()
+    );
+    let cmd = command(initial.revision, "consul");
+    f.store
+        .edit_empire_identity(f.a.account, f.a.player.0, cmd.clone(), access())
+        .await
+        .unwrap();
+    f.store
+        .edit_empire_identity(f.a.account, f.a.player.0, cmd.clone(), access())
+        .await
+        .unwrap();
+    assert!(
+        f.store
+            .edit_empire_identity(
+                f.a.account,
+                f.a.player.0,
+                command(initial.revision, "captain"),
+                access()
+            )
+            .await
+            .is_err()
+    );
+    let p = f.profile(false).await;
+    assert_eq!(p.revision, initial.revision + 1);
+    assert_eq!(p.identity.name, "Roman Empire");
+    assert_eq!(
+        f.store.empire_identities(vec![f.a.player]).await.unwrap()[&f.a.player]
+            .identity
+            .title_id,
+        "consul"
+    );
+    assert_eq!(
+        f.store
+            .empire_profile(Some(f.b.account), f.b.player.0, HistoryQuery::default())
+            .await
+            .unwrap()
+            .identity
+            .title_id,
+        "commander"
+    );
+    let mut tx = f.pool.begin().await.unwrap();
+    for _ in 0..2 {
+        orbit_storage_postgres::grant_cosmetic(
+            &mut tx,
+            f.a.account,
+            "title",
+            "fixture-earned",
+            "fixture:achievement",
+            "Verified fixture achievement",
+        )
+        .await
+        .unwrap();
+    }
+    tx.commit().await.unwrap();
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM cosmetic_grants WHERE account=$1 AND kind='title'",
+    )
+    .bind(f.a.account.0)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 1);
+    f.store
+        .edit_empire_identity(
+            f.a.account,
+            f.a.player.0,
+            command(p.revision, "fixture-earned"),
+            access(),
+        )
+        .await
+        .unwrap();
+    let p = f.profile(false).await;
+    // Removing a catalog never deletes choices or awards; unrelated edits still work.
+    let free = InsigniaCatalog::default();
+    let missing = IdentityAccess {
+        catalog: &free,
+        policy: CosmeticPolicy::Supporter,
+        evidence: SupporterEvidence::default(),
+    };
+    f.store
+        .edit_empire_identity(
+            f.a.account,
+            f.a.player.0,
+            command(p.revision, "fixture-earned"),
+            missing,
+        )
+        .await
+        .unwrap();
+    assert_eq!(f.profile(false).await.identity.title_id, "fixture-earned");
+    // The old view remains writable and new grants have one authoritative table.
+    sqlx::query("INSERT INTO insignia_grants(account,symbol,reason) VALUES($1,'fixture-symbol','old operator')").bind(f.a.account.0).execute(&f.pool).await.unwrap();
+    let kind: String = sqlx::query_scalar(
+        "SELECT kind FROM cosmetic_grants WHERE account=$1 AND item_id='fixture-symbol'",
+    )
+    .bind(f.a.account.0)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(kind, "insignia");
+}
+
+#[tokio::test]
+async fn empire_identity_history_preserves_event_time_text_and_archive_on_removal() {
+    let f = Fixture::new().await;
+    let catalog = InsigniaCatalog::default();
+    let command = |revision, name: &str| ProfileCommand {
+        command_id: Uuid::new_v4(),
+        expected_revision: revision,
+        action: ProfileAction::Identity {
+            identity: EmpireIdentity {
+                name: name.into(),
+                tagline: "Our story".into(),
+                title_id: "consul".into(),
+            },
+        },
+    };
+    let access = || IdentityAccess {
+        catalog: &catalog,
+        policy: CosmeticPolicy::Unrestricted,
+        evidence: SupporterEvidence::default(),
+    };
+    f.store
+        .edit_empire_identity(
+            f.a.account,
+            f.a.player.0,
+            command(0, "Old empire"),
+            access(),
+        )
+        .await
+        .unwrap();
+    // Controlled observation times avoid relying on wall-clock spacing.
+    sqlx::query(
+        "UPDATE empire_identity_history SET observed_at=observed_at-100000 WHERE player=$1",
+    )
+    .bind(f.a.player.0)
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    let at: i64 = sqlx::query_scalar(
+        "SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint-50000",
+    )
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    let mut tx = f.pool.begin().await.unwrap();
+    record_campaign_result(
+        &mut tx,
+        f.a.universe,
+        f.a.epoch,
+        Uuid::new_v4(),
+        at,
+        "Victory",
+        &[f.a.player],
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    f.store
+        .edit_empire_identity(
+            f.a.account,
+            f.a.player.0,
+            command(1, "New empire"),
+            access(),
+        )
+        .await
+        .unwrap();
+    let p = f.profile(true).await;
+    let event = p
+        .entries
+        .iter()
+        .find(|e| e.kind == "CampaignResult")
+        .unwrap();
+    assert_eq!(event.facts["empire_identity"]["name"], "Old empire");
+    assert_eq!(event.facts["empire_identity"]["title_id"], "consul");
+    assert_eq!(p.identity.name, "New empire");
+    sqlx::query("DELETE FROM universe_memberships WHERE universe=$1 AND account=$2")
+        .bind(f.a.universe.0)
+        .bind(f.a.account.0)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(f.profile(false).await.identity.name, "New empire");
+    assert!(
+        f.store
+            .edit_empire_identity(
+                f.a.account,
+                f.a.player.0,
+                command(3, "Rewrite archive"),
+                access()
+            )
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn identity_http_edit_and_public_read_negotiate_catalog_and_reject_invalid_text() {
+    let f = Fixture::new().await;
+    let app = orbit_transport_http::router(
+        f.store.clone(),
+        orbit_transport_http::HttpConfig {
+            origin: "http://localhost".into(),
+            assets: "/absent".into(),
+            login_per_minute: 100,
+            signup: None,
+            signup_per_minute: 100,
+            legacy_signup_enabled: false,
+            wake: None,
+            observer: None,
+        },
+    );
+    let uri = format!("/api/v4/empire-profiles/{}", f.a.player);
+    let post = |name: &str, revision| {
+        Request::builder().uri(&uri).method("POST")
+        .header("content-type", "application/json").header("cookie", format!("orbit_session={}", f.login.token))
+        .header("origin", "http://localhost").header("x-csrf-token", &f.login.session.csrf)
+        .body(Body::from(json!({"command_id":Uuid::new_v4(),"expected_revision":revision,"action":{"type":"Identity","identity":{"name":name,"tagline":"A shared story","title_id":"consul"}}}).to_string())).unwrap()
+    };
+    assert_eq!(
+        app.clone()
+            .oneshot(post("Empire\nControl", 0))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
+        app.clone()
+            .oneshot(post("Roman Empire", 0))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::OK
+    );
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(&uri)
+                .header("cookie", format!("orbit_session={}", f.login.token))
+                .header("x-orbit-identity", "1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let data: serde_json::Value =
+        serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(data["identity"]["name"], "Roman Empire");
+    assert_eq!(data["title"]["address"], "Consul");
+    assert_eq!(data["title_choices"].as_array().unwrap().len(), 12);
+    f.edit(ProfileAction::Visibility { public: true }).await;
+    for negotiated in [false, true] {
+        let mut req = Request::builder().uri(&uri);
+        if negotiated {
+            req = req.header("x-orbit-identity", "1");
+        }
+        let response = app
+            .clone()
+            .oneshot(req.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let data: serde_json::Value =
+            serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes())
+                .unwrap();
+        assert_eq!(data.get("identity").is_some(), negotiated);
+        assert!(
+            data.get("title_choices").is_none(),
+            "visitors do not receive an owner's title library"
+        );
+        assert!(data.get("title_grants").is_none());
+    }
 }

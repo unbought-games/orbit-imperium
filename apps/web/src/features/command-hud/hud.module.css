@@ -159,6 +159,9 @@
   display: block;
   box-sizing: content-box;
   width: var(--caption-width);
+  max-width: calc(100vw - 56px);
+  white-space: normal;
+  overflow-wrap: anywhere;
   overflow: hidden;
   border-right: 1ch solid currentColor;
   animation:
@@ -861,12 +864,13 @@
     scale: 0.98;
   }
 }
+/* Reveal a stable text box: animating its width rewraps words on every step. */
 @keyframes typeCaption {
   from {
-    width: 0;
+    clip-path: inset(0 100% 0 0);
   }
   to {
-    width: var(--caption-width);
+    clip-path: inset(0 0 0 0);
   }
 }
 @keyframes cursorBlink {

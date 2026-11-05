@@ -260,7 +260,7 @@ test('orb boots from its center, types the complete label and clears it without 
   const orb = page.getByTestId('command-orb')
   await expect(orb).toBeVisible()
   const caption = page.getByTestId('orb-caption')
-  await expect(caption).toHaveText('Systems Online')
+  await expect(caption).toHaveText('Welcome, Commander.')
   // Sample the real CSS animation at explicit times rather than wall-clock sleeps.
   const frames = await orb.evaluate(el => {
     const animation = el.getAnimations()[0]
@@ -280,6 +280,17 @@ test('orb boots from its center, types the complete label and clears it without 
   await orb.evaluate(el=>{el.getAnimations()[0].currentTime=1400})
   expect(frames.origin).toBe('37px 37px')
   const text = caption.locator('span')
+  const textFrames = await text.evaluate(el => {
+    const animations = el.getAnimations()
+    if (!animations.length) throw new Error('Expected the active caption reveal')
+    for (const animation of animations) animation.pause()
+    return [0, 150, 400, 1000, 1600].map(time => {
+      for (const animation of animations) animation.currentTime = time
+      const rect = el.getBoundingClientRect()
+      return { width: rect.width, height: rect.height }
+    })
+  })
+  for (const frame of textFrames) expect(frame).toEqual(textFrames.at(-1))
   await text.evaluate(el => { for(const animation of el.getAnimations()){animation.pause();animation.currentTime=1600} })
   expect(await text.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   await diagnosticScreenshot(page,{path:`${output}/startup-complete-390x844.png`})
@@ -752,12 +763,12 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   const caption=page.getByTestId('orb-caption')
   const orb=page.getByTestId('command-orb')
-  await expect(caption).toHaveText('Systems Online')
+  await expect(caption).toHaveText('Welcome, Commander.')
   await page.clock.fastForward(6000)
   await expect(caption).toHaveCount(0)
   f.conversations.push({contact:{player:id(99),username:'Nova',blocked:false,request:null,requested_by:null,accepted:false},latest:{id:id(851),sequence:'1',sender:id(99),body:'Scouts are ready.',sent_at:baseTime},unread:true})
   await f.refresh()
-  await expect(caption).toHaveText('Champagne means unread.')
+  await expect(caption).toHaveText('Commander, champagne means unread.')
   await diagnosticScreenshot(page,{path:`${output}/caption-education-390x844.png`})
   await page.clock.fastForward(6000)
   await expect(caption).toHaveCount(0)
@@ -775,7 +786,7 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await f.refresh()
   await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
   await page.clock.fastForward(8000)
-  await expect(caption).toHaveText('Whoops.')
+  await expect(caption).toHaveText('Commander, whoops.')
   await expect(caption).toHaveAttribute('data-category','personality')
   await diagnosticScreenshot(page,{path:`${output}/caption-whoops-390x844.png`})
   // An urgent regular card still appears and interrupts the joke during cooldown.
@@ -804,7 +815,7 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await f.refresh()
   await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
   await page.clock.fastForward(8000)
-  await expect(caption).toHaveText('Good thing we sent the bad one.')
+  await expect(caption).toHaveText('Commander, good thing we sent the bad one.')
   await expect(caption.locator('span')).toHaveCSS('animation-name','none')
   await page.setViewportSize({width:320,height:740})
   const bounds=(await caption.boundingBox())!
@@ -1459,7 +1470,7 @@ test('foreground refresh confirms an accepted response with accessible reduced m
   await page.goto(`/u/andromeda/b/${body.id}/overview`)
   const caption = page.getByTestId('orb-caption')
   const pulse = page.getByTestId('orb-refresh-pulse')
-  await expect(caption).toHaveText('Systems Online')
+  await expect(caption).toHaveText('Welcome, Commander.')
   await page.clock.fastForward(6000)
   await expect(caption).toHaveCount(0)
 
