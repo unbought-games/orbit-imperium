@@ -549,6 +549,7 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
         kind: None,
         limit: 1,
         include_hidden: true,
+        filter: Default::default(),
     };
     let mut archived = Vec::new();
     loop {

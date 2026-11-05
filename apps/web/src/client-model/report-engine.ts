@@ -1,3 +1,8 @@
+import {
+  reportQueryKey,
+  unreadReportQuery,
+  type ReportQuery,
+} from './report-query'
 import type { StoreApi } from 'zustand/vanilla'
 import type { GameState } from './game-store'
 import type { BoundReport, BoundReports } from './commands'
@@ -27,46 +32,108 @@ export function reportRequestScope(state: GameState) {
       .sort(),
   ])
 }
-export function reportLoad(state: GameState, item?: string | null) {
-  const load = item ? state.reportDetailLoads.get(item) : state.reportInboxLoad
+export function reportLoad(
+  state: GameState,
+  item?: string | null,
+  queryKey?: string,
+) {
+  const load = item
+    ? state.reportDetailLoads.get(item)
+    : queryKey
+      ? state.reportQueries.get(queryKey)?.load
+      : state.reportInboxLoad
   return load?.scope === reportRequestScope(state) ? load : idle
 }
 
 type Work<T> = { scope: string; promise: Promise<T> }
-/** One archive and request owner for every report surface in a game session. */
+/** One request owner per report query, with shared authoritative headers. */
 export class ReportEngine {
+  private queries = new Map<string, ReportEngine>()
   private inboxWork: Work<void> | null = null
   private detailWork = new Map<string, Work<BoundReport['data'] | null>>()
   constructor(
     private store: StoreApi<GameState>,
     private port: {
-      page: (cursor: string | null) => Promise<BoundReports | null>
+      page: (
+        cursor: string | null,
+        query: ReportQuery,
+      ) => Promise<BoundReports | null>
       detail: (id: string) => Promise<BoundReport | null>
     },
+    readonly query?: ReportQuery,
+    private purpose = 'list',
   ) {}
+  get queryKey() {
+    return this.query
+      ? `${this.purpose}:${reportQueryKey(this.query)}`
+      : undefined
+  }
+  forQuery(query: ReportQuery, purpose = 'list') {
+    const key = `${purpose}:${reportQueryKey(query)}`
+    let engine = this.queries.get(key)
+    if (!engine) {
+      engine = new ReportEngine(this.store, this.port, query, purpose)
+      this.queries.set(key, engine)
+    }
+    return engine
+  }
+  private inbox(state: GameState) {
+    return this.queryKey
+      ? (state.reportQueries.get(this.queryKey)?.inbox ?? null)
+      : state.reportInbox
+  }
+  private load(state: GameState) {
+    return this.queryKey
+      ? state.reportQueries.get(this.queryKey)?.load
+      : state.reportInboxLoad
+  }
+  private publish(update: Partial<GameState>) {
+    const key = this.queryKey
+    if (!key) {
+      this.store.setState(update)
+      return
+    }
+    this.store.setState((state) => {
+      const previous = state.reportQueries.get(key)
+      const { reportInbox, reportInboxLoad, ...other } = update
+      return {
+        ...other,
+        reportQueries: new Map(state.reportQueries).set(key, {
+          inbox:
+            reportInbox === undefined ? (previous?.inbox ?? null) : reportInbox,
+          load:
+            reportInboxLoad === undefined
+              ? (previous?.load ?? null)
+              : reportInboxLoad,
+        }),
+      }
+    })
+  }
   invalidate() {
     this.inboxWork = null
     this.detailWork.clear()
+    for (const engine of this.queries.values()) engine.invalidate()
+    this.queries.clear()
   }
   ensureInbox() {
     const state = this.store.getState()
     const scope = reportRequestScope(state)
     if (this.inboxWork?.scope === scope) return this.inboxWork.promise
     if (
-      state.reportInbox &&
-      state.reportInboxLoad?.scope === scope &&
-      !state.reportInboxLoad.error
+      this.inbox(state) &&
+      this.load(state)?.scope === scope &&
+      !this.load(state)?.error
     )
       return Promise.resolve()
     return this.refreshInbox()
   }
-  refreshInbox(more = false): Promise<void> {
+  refreshInbox(more = false, preserveWindow = false): Promise<void> {
     const state = this.store.getState()
     const scope = reportRequestScope(state)
     if (!state.ready || !state.binding) return Promise.resolve()
     if (this.inboxWork?.scope === scope) {
       const pending = this.inboxWork.promise
-      if (more && state.reportInboxLoad?.kind === 'refresh')
+      if (more && this.load(state)?.kind === 'refresh')
         // A refresh cannot satisfy explicit pagination. Re-enter after its full
         // cleanup so another refresh started by a subscriber is waited out too.
         return pending
@@ -82,13 +149,13 @@ export class ReportEngine {
     // Preferences project immediately. Keep membership stable until the command
     // settles; an uncached inbox remains readable during recovery.
     if (
-      state.reportInbox &&
+      this.inbox(state) &&
       pendingReportPreferences(state.attempts.values()).length
     )
       return Promise.resolve()
-    if (more && state.reportInbox && !state.reportInbox.has_more)
+    if (more && this.inbox(state) && !this.inbox(state)?.has_more)
       return Promise.resolve()
-    const inbox = state.reportInbox
+    const inbox = this.inbox(state)
     const minimumRevision = BigInt(reportRevision(state))
     const observed: BoundReports[] = []
     const work: Work<void> = { scope, promise: Promise.resolve() }
@@ -97,7 +164,9 @@ export class ReportEngine {
       this.inboxWork === work &&
       reportRequestScope(this.store.getState()) === scope
     const read = async (cursor: string | null) => {
-      const response = current() ? await this.port.page(cursor) : null
+      const response = current()
+        ? await this.port.page(cursor, this.query ?? unreadReportQuery)
+        : null
       if (!current()) return null
       if (
         response &&
@@ -114,15 +183,15 @@ export class ReportEngine {
         ? extendReportInbox(read, inbox)
         : readReportInbox(
             read,
-            // Once the full archive is loaded, replace it only with another
-            // complete snapshot, even if new reports add pages during refresh.
-            inbox && !inbox.has_more ? Infinity : (inbox?.items.length ?? 0),
+            // Only revalidate the history this surface actually displayed.
+            // Passive HUD refreshes always request one unread page.
+            this.query || preserveWindow ? (inbox?.items.length ?? 0) : 0,
           )
     )
       .then((reportInbox) => {
         if (!current()) return
         this.inboxWork = null
-        this.store.setState({
+        this.publish({
           reportInbox,
           reportHeaders: observed.reduce(
             (headers, response) =>
@@ -138,7 +207,7 @@ export class ReportEngine {
       })
       .catch((error) => {
         if (current())
-          this.store.setState({
+          this.publish({
             reportInboxLoad: { scope, kind, pending: false, error },
           })
         throw error
@@ -146,7 +215,7 @@ export class ReportEngine {
       .finally(() => {
         if (this.inboxWork === work) this.inboxWork = null
       })
-    this.store.setState({
+    this.publish({
       reportInboxLoad: { scope, kind, pending: true, error: null },
     })
     return work.promise

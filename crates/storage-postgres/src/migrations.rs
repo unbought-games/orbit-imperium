@@ -55,6 +55,15 @@ fn database_error(source: sqlx::Error) -> MigrationError {
             "retained runtime indexes are missing or invalid; keep existing servers running, execute scripts/prepare-runtime-indexes.sql outside a transaction, verify index validity, then retry startup",
         );
     }
+    if source
+        .as_database_error()
+        .and_then(|error| error.constraint())
+        == Some("orbit_report_online_indexes")
+    {
+        return error(
+            "retained report indexes are missing or invalid; keep existing servers running, execute scripts/prepare-report-indexes.sql outside a transaction, verify index validity, then retry startup",
+        );
+    }
     match source.as_database_error().and_then(|e| e.code()) {
         Some(code) => error(format!(
             "database operation failed (SQLSTATE {code}); check database permissions and schema"

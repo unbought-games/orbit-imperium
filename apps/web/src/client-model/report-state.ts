@@ -156,11 +156,15 @@ export function pendingReportPreferences(attempts: Iterable<Attempt>) {
 export function projectedReportInbox(
   state: import('./game-store').GameState,
   includeHidden = false,
+  queryKey?: string,
 ) {
+  const inbox = queryKey
+    ? state.reportQueries.get(queryKey)?.inbox
+    : state.reportInbox
   return (
-    state.reportInbox && {
-      ...state.reportInbox,
-      items: state.reportInbox.items.flatMap((id) => {
+    inbox && {
+      ...inbox,
+      items: inbox.items.flatMap((id) => {
         const header = projectedReportHeader(
           state.reportHeaders,
           state.attempts.values(),
@@ -201,6 +205,8 @@ export function reportRevision(state: import('./game-store').GameState) {
 }
 
 export function hasUnreadReports(state: import('./game-store').GameState) {
+  if (state.reportInbox?.unread_count !== undefined)
+    return unreadReportCount(state) > 0
   return (
     !!projectedReportInbox(state)?.items.some((header) => !header.read) ||
     ((!state.reportInbox || state.reportInbox.has_more) &&
@@ -211,6 +217,22 @@ export function hasUnreadReports(state: import('./game-store').GameState) {
 
 /** Count only current, visible inbox members; cached report details are not inbox entries. */
 export function unreadReportCount(state: import('./game-store').GameState) {
+  const inbox = state.reportInbox
+  if (inbox?.unread_count !== undefined) {
+    // The HUD query contains only unread Inbox members at the count's revision.
+    // Derive immediate removals from shared preferences; never store a second count.
+    // A capped count cannot reveal how many remain above 99 until refreshed.
+    if (inbox.unread_count === 99) return 99
+    const removed = inbox.items.filter((id) => {
+      const header = projectedReportHeader(
+        state.reportHeaders,
+        state.attempts.values(),
+        id,
+      )
+      return header && (header.hidden || header.read)
+    }).length
+    return Math.max(0, inbox.unread_count - removed)
+  }
   return Math.min(
     99,
     projectedReportInbox(state)?.items.filter((header) => !header.read)

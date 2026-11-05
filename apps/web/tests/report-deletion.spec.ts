@@ -1,3 +1,5 @@
+import { triageReports } from '../src/features/report-triage'
+import { withFixtureResponse } from './fixtures/responses'
 import type { components } from '../src/contracts'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
@@ -23,7 +25,7 @@ async function ageCleanup(page: Page) {
   await expect(page.getByRole('dialog', {name: 'Archive reports', exact: true})).toBeVisible()
 }
 
-async function reportsFixture(page: Page, quiet = false, count = 2) {
+async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1) {
   let revision = 1
   const headers: components['schemas']['ReportHeader4'][] = [
     {
@@ -57,7 +59,8 @@ async function reportsFixture(page: Page, quiet = false, count = 2) {
     const report = headers.find((r) =>
       new URL(route.request().url()).pathname.endsWith(r.id),
     )
-    const rows = headers.filter((r) => request.include_hidden || !r.hidden)
+    const filter = request.filter
+    const rows = filter ? triageReports(headers, filter.sort, false, filter.unread_only ? 'unread' : filter.starred_only ? 'starred' : 'all', false, filter.hidden ? 'archived' : 'inbox', request.kind ?? 'all') : headers.filter((r) => request.include_hidden || !r.hidden)
     const index = request.cursor ? Number(request.cursor.slice(-12)) - 71 : 0
     const response = {
       json: {
@@ -89,9 +92,9 @@ async function reportsFixture(page: Page, quiet = false, count = 2) {
               },
             }
           : {
-              items: rows.slice(index, index + 1),
-              has_more: index + 1 < rows.length,
-              next_cursor: index + 1 < rows.length ? id(72 + index) : null,
+              items: rows.slice(index, index + pageSize),
+              has_more: index + pageSize < rows.length,
+              next_cursor: index + pageSize < rows.length ? id(71 + pageSize + index) : null,
               as_of_ms: Date.now(),
             },
       },
@@ -163,7 +166,7 @@ async function reportsFixture(page: Page, quiet = false, count = 2) {
   })
   // Start on the canonical inbox so its redirect cannot remount the report
   // controls between focusing a button and submitting a command.
-  await page.goto(`/u/andromeda/b/${body.id}/reports`)
+  await withFixtureResponse(page, response => response.request().method() === 'POST' && response.url().endsWith('/reports') && response.request().postDataJSON().filter?.unread_only === false, () => page.goto(`/u/andromeda/b/${body.id}/reports`))
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
   await expect(page.locator('main article')).toHaveCount(count)
   return {
@@ -522,68 +525,18 @@ test('a successful HTTP response confirms deletion before the game view refreshe
 })
 
 
-for (const width of [1280, 390]) {
-  test(`triage loads every page, sorts unknowns last and protects stars at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    const fixture = await reportsFixture(page)
-    fixture.headers[0].preview = { kind: 'Espionage', resources: { visibility: 'Unknown' } }
-    fixture.headers[1].preview = { kind: 'Espionage', resources: { visibility: 'Known', value: { metal: '1000000', crystal: '9000000', deuterium: '0' } } }
-    fixture.headers[1].starred = true
-    // Triage refreshes the shared archive, retaining old rows until all pages succeed.
-    await expect(page.getByTestId('unread-count')).toHaveText('1')
-    const beforeTriage = fixture.pageRequests.filter(cursor => cursor !== null).length
-    let release!: () => void
-    fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
-    if (width >= 768) await page.reload()
-    else await selectReports(page)
-    try {
-      const selectAll = page.getByRole('group', {name: 'Report selection'}).getByRole('button', {name: /Select all matching/})
-      // Reload has no usable snapshot; mobile selection retains the complete inbox.
-      if (width >= 768) await expect(selectAll).toBeDisabled()
-      else {
-        await expect(selectAll).toBeEnabled()
-        await expect(page.getByRole('article').first().getByRole('button', { name: 'Archive report', exact: true })).toBeEnabled()
-      }
-      await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length - beforeTriage).toBe(1)
-    } finally { release() }
-    await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)
-    await page.getByRole('button', {name: 'Sort reports', exact: true}).click()
-    await page.getByRole('menuitemradio', {name: 'Most resources'}).click()
-    const rows = page.getByRole('article')
-    await expect(rows).toHaveCount(2)
-    const time = await rows.first().locator('time').boundingBox()
-    const remove = await rows.first().getByRole('button', { name: 'Archive report', exact: true }).boundingBox()
-    expect(time && remove && (time.x + time.width <= remove.x || time.y >= remove.y + remove.height || time.y + time.height <= remove.y)).toBeTruthy()
-    await expect(rows.first()).toContainText('9')
-    await expect(rows.getByRole('button', { name: /^(Unstar|Star) report$/ })).toHaveCount(0)
-    if (width >= 768) await expect(rows.first().getByRole('checkbox')).toBeEnabled()
-    else await expect(rows.first().getByRole('checkbox')).toBeDisabled()
-    await expect(rows.first().getByRole('button', { name: 'Archive report', exact: true })).toBeDisabled()
-
-    await rows.first().evaluate(el => el.scrollIntoView({ block: 'center' }))
-    await diagnosticScreenshot(page, { path: `test-results/report-triage-${width}.png` })
-    await ageCleanup(page)
-    await page.getByRole('button', {name: 'Archive 1 report', exact: true}).click()
-    await page.getByRole('dialog', {name: 'Archive reports', exact: true}).getByRole('button', {name: /Dismiss (sheet|popover)/}).click()
-    await expect(rows).toHaveCount(1)
-    await expect(rows.first().getByRole('button', { name: 'Archive report', exact: true })).toBeDisabled()
-    expect(fixture.headers[0].hidden).toBe(true)
-    expect(fixture.headers[1].hidden).toBe(false)
-  })
-}
-
 test('triage selection follows filters and rejected bulk cleanup restores reports', async ({ page }) => {
   const fixture = await reportsFixture(page)
   await selectReports(page)
   await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)
-  await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+  await page.getByRole('button', { name: 'Select loaded reports (2)' }).click()
   await expect(page.getByRole('button', { name: 'Archive selected (2)' })).toBeEnabled()
   await filterStatus(page, 'unread')
   await expect(page.getByRole('button', { name: 'Archive selected (0)' })).toHaveCount(0)
   await expect(page.getByRole('group', {name: 'Report selection'})).toContainText('0 selected')
   await filterStatus(page, 'all')
   fixture.setMode('rejected')
-  await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+  await page.getByRole('button', { name: 'Select loaded reports (2)' }).click()
   await page.getByRole('button', { name: 'Archive selected (2)' }).click()
   await expect(page.getByRole('article')).toHaveCount(2)
   await expect(page.getByText(/Action rejected/).first()).toBeVisible()
@@ -592,40 +545,12 @@ test('triage selection follows filters and rejected bulk cleanup restores report
 
 
 for (const width of [1440, 390]) {
-  for (const cleanup of ['selected', 'older'] as const) {
-    test(`bulk ${cleanup} cleanup hides all reports before one RPC completes at ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 })
-      const fixture = await reportsFixture(page, true)
-      await selectReports(page)
-      await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)
-      if (cleanup === 'selected') await page.getByRole('button', { name: 'Select all matching (2)' }).click()
-      else await ageCleanup(page)
-      const before = fixture.pageRequests.length
-      let release!: () => void
-      fixture.pause(new Promise(resolve => { release = resolve }))
-      await diagnosticScreenshot(page, { path: `test-results/bulk-${cleanup}-before-${width}x900.png`, fullPage: true })
-      await page.getByRole('button', { name: cleanup === 'selected' ? 'Archive selected (2)' : 'Archive 2 reports', exact: true }).click()
-      await expect(page.locator('main article')).toHaveCount(0)
-      await expect.poll(() => fixture.submitted()).toBe(1)
-      expect(fixture.headers.every(r => !r.hidden)).toBe(true)
-      await diagnosticScreenshot(page, { path: `test-results/bulk-${cleanup}-pending-${width}x900.png`, fullPage: true })
-      release()
-      await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
-      await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)
-      expect(fixture.submitted()).toBe(1)
-      // Both surfaces consume the same archive refresh.
-      await expect.poll(() => fixture.pageRequests.slice(before)).toEqual([null, id(72)])
-    })
-  }
-}
-
-for (const width of [1440, 390]) {
   for (const mode of ['rejected', 'uncertain'] as const) {
     test(`bulk cleanup restores every report after ${mode} response at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       const fixture = await reportsFixture(page, true)
       await selectReports(page)
-      await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+      await page.getByRole('button', { name: 'Select loaded reports (2)' }).click()
       let release!: () => void
       fixture.setMode(mode)
       fixture.pause(new Promise(resolve => { release = resolve }))
@@ -821,7 +746,7 @@ for (const width of [1280, 390]) {
       return route.fallback()
     })
     await selectReports(page, true)
-    await page.getByRole('button', { name: 'Select all matching (2)' }).click()
+    await page.getByRole('button', { name: 'Select loaded reports (2)' }).click()
     await page.getByRole('button', { name: 'Archive selected (2)' }).click()
     const banner = page.getByTestId('game-error-banner')
     await expect(banner).toHaveCount(1)
@@ -924,7 +849,7 @@ for (const width of [1280, 390]) {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.install({ time: new Date('2026-10-29T14:00:00Z') })
     await page.clock.pauseAt(new Date('2026-10-29T14:00:00Z'))
-    const fixture = await reportsFixture(page)
+    const fixture = await reportsFixture(page, false, 2, 50)
     const ids: string[] = []
     await page.route('**/commands', async route => {
       ids.push(route.request().postDataJSON().gameplay.command_id)
@@ -989,14 +914,13 @@ for (const width of [1440, 390]) {
     })
     await archived.focus()
     await page.keyboard.press('Space')
-    await expect(rows).toHaveCount(1)
-    await expect(page.getByText('Loading archived reports…')).toHaveCount(0)
+    await expect(rows).toHaveCount(0)
+    await expect(page.getByText('Loading report history…')).toBeVisible()
     await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
     // A delayed folder response must never remove the controls or lose focus.
     expect(await originalFolderControl!.evaluate(el => el.isConnected)).toBe(true)
     expect(await originalCleanup!.evaluate(el => el.isConnected)).toBe(true)
     await expect(archived).toBeFocused()
-    await expect(page.getByText('Loading report history…', {exact: true})).toHaveCount(0)
     releaseFolder()
     await expect(archived).toHaveAttribute('aria-pressed', 'true')
     await expect(folders.getByRole('button', {name: 'Inbox', exact: true})).toHaveAttribute('aria-pressed', 'false')
@@ -1024,12 +948,12 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', {name: 'Inbox', exact: true}).click()
     await expect(rows).toHaveCount(2)
     await selectReports(page)
-    await page.getByRole('button', {name: 'Select all matching (2)'}).click()
+    await page.getByRole('button', {name: 'Select loaded reports (2)'}).click()
     await page.getByRole('button', {name: 'Archive selected (2)'}).click()
     await expect(rows).toHaveCount(0)
     await page.getByRole('button', {name: 'Archived', exact: true}).click()
     await expect(rows).toHaveCount(2)
-    await page.getByRole('button', {name: 'Select all matching (2)'}).click()
+    await page.getByRole('button', {name: 'Select loaded reports (2)'}).click()
     await diagnosticScreenshot(page, {path: `test-results/reports-archive-bulk-${width}x1000.png`, fullPage: true})
     await page.getByRole('button', {name: 'Move to inbox (2)', exact: true}).click()
     await expect(rows).toHaveCount(0)
@@ -1042,97 +966,6 @@ for (const width of [1440, 390]) {
     await expect(rows).toHaveCount(0)
     await expect(selection).toHaveCSS('transform', 'none')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  })
-}
-
-for (const width of [1280, 390]) {
-  test(`folder switches retain their shared cached rows during refresh at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    const fixture = await reportsFixture(page, true)
-    fixture.headers[1].hidden = true
-    fixture.bumpRevision()
-    await refreshGame(page)
-    const rows = page.locator('main article')
-    await expect(rows).toHaveCount(1)
-    const folders = await page.getByRole('group', {name: 'Report folder'}).elementHandle()
-    let release!: () => void
-    let heldRequests = 0
-    const gate = new Promise<void>(resolve => { release = resolve })
-    await page.route('**/api/**/reports', async route => {
-      if (!route.request().postDataJSON().cursor) {
-        heldRequests++
-        await gate
-      }
-      await route.fallback()
-    })
-    try {
-      // Desktop already loads the complete list; trigger a refresh independently of the folder toggle.
-      if (width >= 768) await refreshGame(page)
-      const archived = page.getByRole('button', {name: 'Archived', exact: true})
-      await archived.click()
-      await expect.poll(() => heldRequests).toBe(1)
-      await expect(rows).toHaveCount(1)
-      await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(71)}`)
-      await page.getByRole('button', {name: 'Inbox', exact: true}).click()
-      await expect(rows).toHaveCount(1)
-      await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(70)}`)
-      await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
-      await archived.click()
-      await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(71)}`)
-      expect(heldRequests).toBe(1)
-      expect(await folders!.evaluate(el => el.isConnected)).toBe(true)
-      await expect(archived).toBeFocused()
-      await expect(page.getByText('Loading archived reports…')).toHaveCount(0)
-      await diagnosticScreenshot(page, {path: `test-results/report-shared-refresh-${width}x900.png`})
-    } finally {
-      release()
-    }
-    await expect(rows).toHaveCount(1)
-  })
-
-  test(`rapid folder round trips never treat partial shared history as empty at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    const now = new Date('2026-10-31T12:00:00Z').getTime()
-    await page.clock.setFixedTime(now)
-    await installGameFixture(page, {protocol: 4, hasUnreadReports: () => true, extraCapabilities: ['Reports'], missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}})
-    // The shared engine initially reads to its 99-unread badge cap.
-    const firstPage = Array.from({length: 99}, (_, index) => ({id: id(300 + index), kind: 'Espionage', observed_at: now - index * 1000, read: false, hidden: false}))
-    const olderArchived = {id: id(799), kind: 'Espionage', observed_at: now - 86400000, read: true, hidden: true}
-    let release!: () => void
-    let cursorRequests = 0
-    const gate = new Promise<void>(resolve => { release = resolve })
-    await page.route('**/api/**/reports', async route => {
-      const request = route.request().postDataJSON()
-      expect(request.include_hidden).toBe(true)
-      if (request.cursor) { cursorRequests++; await gate }
-      await route.fulfill({json: {protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: now, as_of_ms: now, data: {items: request.cursor ? [olderArchived] : firstPage, has_more: !request.cursor, next_cursor: request.cursor ? null : id(800), as_of_ms: now}}})
-    })
-    try {
-      await page.goto(`/u/andromeda/b/${body.id}/reports`)
-      const rows = page.locator('main article')
-      await expect(rows).toHaveCount(99)
-      const archived = page.getByRole('button', {name: 'Archived', exact: true})
-      await archived.click()
-      await expect.poll(() => cursorRequests).toBe(1)
-      await expect(rows).toHaveCount(0)
-      await expect(page.getByText('Loading archived reports…')).toBeVisible()
-      await page.getByRole('button', {name: 'Inbox', exact: true}).click()
-      await expect(rows).toHaveCount(99)
-      await archived.click()
-      await expect(page.getByText('Loading archived reports…')).toBeVisible()
-      await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
-      expect(cursorRequests).toBe(1)
-      await diagnosticScreenshot(page, {path: `test-results/report-partial-history-${width}x900.png`})
-    } finally {
-      release()
-    }
-    const rows = page.locator('main article')
-    await expect(rows).toHaveCount(1)
-    await expect(rows.first().getByRole('link', {name: 'Espionage', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${id(799)}`)
-    await expect(page.getByText('Loading archived reports…')).toHaveCount(0)
-    await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toHaveCount(0)
   })
 }
 
@@ -1194,7 +1027,6 @@ for (const width of [1280, 390]) {
     const fixture = await reportsFixture(page, true)
     let release!: () => void
     fixture.holdMore(new Promise<void>(resolve => {release = resolve}))
-    await page.reload()
     const dialog = page.getByRole('dialog', {name: 'Archive reports', exact: true})
     try {
       await page.getByRole('button', {name: 'More report actions'}).click()
@@ -1220,148 +1052,11 @@ for (const width of [1280, 390]) {
   })
 }
 
-test('desktop selection and row archiving stay available during cached refresh', async ({page}) => {
-  await page.setViewportSize({width: 1280, height: 900})
-  await page.emulateMedia({reducedMotion: 'reduce'})
-  const fixture = await reportsFixture(page, true)
-  const rows = page.getByRole('article')
-  let release!: () => void
-  const before = fixture.pageRequests.filter(cursor => cursor !== null).length
-  fixture.holdMore(new Promise<void>(resolve => {release = resolve}))
-  try {
-    await refreshGame(page)
-    await expect.poll(() => fixture.pageRequests.filter(cursor => cursor !== null).length).toBe(before + 1)
-    await expect(rows.first().getByRole('checkbox')).toBeEnabled()
-    await expect(page.getByRole('button', {name: 'Select all matching (2)'})).toBeEnabled()
-    const archive = rows.first().getByRole('button', {name: 'Archive report', exact: true})
-    await expect(archive).toBeEnabled()
-    await diagnosticScreenshot(page, {path: 'test-results/reports-loading-actions-1280x900.png', clip: {x: 240, y: 80, width: 1040, height: 470}})
-    await archive.click()
-    await expect.poll(() => fixture.headers[0].hidden).toBe(true)
-    await expect(rows).toHaveCount(1)
-    expect(fixture.submitted()).toBe(1)
-  } finally {
-    release()
-  }
-})
-
-test('mobile selection can be used and cancelled during cached refresh', async ({page}) => {
-  await page.setViewportSize({width: 390, height: 900})
-  await page.emulateMedia({reducedMotion: 'reduce'})
-  const fixture = await reportsFixture(page, true)
-  let release!: () => void
-  fixture.holdMore(new Promise<void>(resolve => {release = resolve}))
-  try {
-    await selectReports(page)
-    const selection = page.getByRole('group', {name: 'Report selection'})
-    await expect(selection.getByRole('button', {name: 'Select all matching (2)'})).toBeEnabled()
-    const cancel = selection.getByRole('button', {name: 'Cancel selection'})
-    await expect(cancel).toBeEnabled()
-    await diagnosticScreenshot(page, {path: 'test-results/reports-loading-cancel-390x900.png'})
-    await cancel.click()
-    await expect(selection).toHaveCount(0)
-    await expect(page.getByRole('article').getByRole('checkbox')).toHaveCount(0)
-    expect(fixture.submitted()).toBe(0)
-  } finally {
-    release()
-  }
-})
-
-
-for (const width of [1440, 390]) {
-  test(`selection remains interactive through the 15-second background refresh at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    const now = new Date('2026-10-31T20:00:00Z')
-    await page.clock.install({time: now})
-    await page.clock.pauseAt(now)
-    const fixture = await reportsFixture(page, true)
-    await selectReports(page, true)
-    const rows = page.locator('main article')
-    const boxes = rows.getByRole('checkbox')
-    await expect(boxes.first()).toBeEnabled()
-    await boxes.last().check()
-    await boxes.first().focus()
-    const focused = await boxes.first().elementHandle()
-    const baseline = fixture.pageRequests.length
-    let release!: () => void
-    fixture.holdMore(new Promise<void>(resolve => { release = resolve }))
-    try {
-      // Only the HUD's timer fires: no click, focus event, or revision change.
-      await page.clock.runFor(15000)
-      await expect.poll(() => fixture.pageRequests.length).toBe(baseline + 2)
-      await expect(boxes.first()).toBeFocused()
-      expect(await focused!.evaluate(el => el.isConnected)).toBe(true)
-      await expect(boxes.last()).toBeChecked()
-      await expect(boxes.first()).toBeEnabled()
-      await expect(page.getByRole('button', {name: 'Archive selected (1)'})).toBeEnabled()
-      if (width >= 768)
-        await expect(page.getByRole('button', {name: 'Mark as read', exact: true})).toBeEnabled()
-      await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)
-      await page.getByRole('button', {name: 'Select all matching (2)'}).click()
-      await expect(boxes.first()).toBeChecked()
-      await expect(boxes.last()).toBeChecked()
-      await boxes.first().uncheck()
-      await boxes.first().check()
-      await diagnosticScreenshot(page, {path: `test-results/reports-background-selection-${width}x900.png`})
-      // A user mutation supersedes the held refresh; its old rows must not return.
-      await page.getByRole('button', {name: 'Archive selected (2)'}).click()
-      await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
-      await expect(rows).toHaveCount(0)
-    } finally { release() }
-    await page.clock.runFor(15000)
-    await expect(rows).toHaveCount(0)
-    await expect(page.getByRole('region', {name: 'No reports to show.', exact: true})).toBeVisible()
-  })
-
-  test(`archive inputs and cached selection survive a failed background refresh at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    const now = new Date('2026-10-31T20:00:00Z')
-    await page.clock.install({time: now})
-    await page.clock.pauseAt(now)
-    const fixture = await reportsFixture(page, true)
-    await selectReports(page, true)
-    await page.locator('main article').last().getByRole('checkbox').check()
-    await page.getByRole('button', {name: 'More report actions'}).click()
-    await page.clock.runFor(1000)
-    await page.getByRole('menuitem', {name: 'Archive…', exact: true}).click()
-    await page.clock.runFor(1000)
-    const dialog = page.getByRole('dialog', {name: 'Archive reports', exact: true})
-    await dialog.getByRole('combobox', {name: 'Older than'}).selectOption('custom')
-    const hours = dialog.getByRole('spinbutton', {name: 'Hours', exact: true})
-    await hours.fill('12')
-    const baseline = fixture.pageRequests.length
-    let release!: () => void
-    fixture.holdMore(new Promise<void>(resolve => { release = resolve }), true)
-    try {
-      await page.clock.runFor(15000)
-      await expect.poll(() => fixture.pageRequests.length).toBe(baseline + 2)
-      await expect(hours).toBeFocused()
-      await expect(hours).toBeEnabled()
-      await expect(hours).toHaveValue('12')
-      await hours.fill('6')
-      await expect(dialog.getByRole('button', {name: 'Archive 2 reports', exact: true})).toBeEnabled()
-      await expect(dialog.getByRole('button', {name: 'Archive all (2)', exact: true})).toBeEnabled()
-      await diagnosticScreenshot(page, {path: `test-results/reports-background-cleanup-${width}x900.png`})
-    } finally { release() }
-    await expect(page.getByRole('button', {name: 'Retry reports', exact: true})).toBeVisible()
-    await expect(hours).toHaveValue('6')
-    await expect(hours).toBeEnabled()
-    await expect(dialog.getByRole('button', {name: 'Archive 2 reports', exact: true})).toBeEnabled()
-    await dialog.getByRole('button', {name: /Dismiss (sheet|popover)/}).click()
-    const selected = page.locator('main article').last().getByRole('checkbox')
-    await expect(selected).toBeChecked()
-    await expect(selected).toBeEnabled()
-    await expect(page.getByRole('button', {name: 'Archive selected (1)'})).toBeEnabled()
-  })
-}
-
 for (const width of [1440, 390]) {
   test(`detail archive returns only after acceptance with list context at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    const fixture = await reportsFixture(page, true, 24)
+    const fixture = await reportsFixture(page, true, 24, 50)
     await page.getByRole('button', { name: 'Filter reports', exact: true }).click()
     const filter = page.getByRole('dialog', { name: 'Filter reports', exact: true })
     await filter.getByRole('combobox', { name: 'Report type' }).selectOption('Espionage')

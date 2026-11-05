@@ -6,6 +6,7 @@ import { isHostileMission } from '../../client-model/hostile-fleets'
 import {
   projectedReportHeader,
   hasUnreadReports,
+  unreadReportCount,
   projectedReportInbox,
 } from '../../client-model/report-state'
 import { coordinates, label } from '../../ui/format'
@@ -77,7 +78,15 @@ export function unreadTargets(state: GameState): HudTarget[] {
   ]
 }
 export function unreadBadgeCount(state: GameState) {
-  return Math.min(99, new Set(unreadTargets(state).map(noticeKey)).size)
+  return Math.min(
+    99,
+    unreadReportCount(state) +
+      new Set(
+        unreadTargets(state)
+          .filter((target) => target.kind !== 'report')
+          .map(noticeKey),
+      ).size,
+  )
 }
 export function hasUnreadIntelligence(state: GameState) {
   return hasUnreadReports(state) || unreadTargets(state).length > 0

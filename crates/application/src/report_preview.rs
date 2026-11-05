@@ -76,6 +76,27 @@ pub fn report_preview(payload: &Value) -> Value {
             preview.insert((*key).to_owned(), value.clone());
         }
     }
+    // Historical payloads predate the current schema. Never expose malformed
+    // Known resources to consumers that parse fixed-point values for display or
+    // sorting; match the database's unknown-last metric semantics.
+    if payload["kind"] == "Espionage"
+        && payload["resources"]["visibility"] == "Known"
+        && !["metal", "crystal", "deuterium"].iter().all(|key| {
+            payload["resources"]["value"][key]
+                .as_str()
+                .is_some_and(|value| {
+                    !value.is_empty()
+                        && value.len() <= 19
+                        && value.bytes().all(|byte| byte.is_ascii_digit())
+                        && value.parse::<i64>().is_ok()
+                })
+        })
+    {
+        preview.insert(
+            "resources".into(),
+            serde_json::json!({"visibility":"Unknown"}),
+        );
+    }
     if payload["kind"] == "Combat"
         && let Some(participants) = payload["participants"].as_array()
     {
@@ -135,6 +156,35 @@ mod tests {
         assert_eq!(preview["fleet"], payload["fleet"]);
         assert_eq!(preview["target"], payload["target"]);
         assert!(preview.get("research").is_none());
+    }
+
+    #[test]
+    fn malformed_known_resources_are_unknown_before_client_sorting_and_rendering() {
+        for key in ["metal", "crystal", "deuterium"] {
+            for value in [
+                json!("bad"),
+                json!("NaN"),
+                json!("9223372036854775808"),
+                json!("9".repeat(140_000)),
+                json!(12),
+                json!(null),
+                json!("-1"),
+                json!(""),
+            ] {
+                let mut payload = json!({"kind":"Espionage","resources":{"visibility":"Known","value":{"metal":"0","crystal":"0","deuterium":"0"}}});
+                payload["resources"]["value"][key] = value;
+                assert_eq!(
+                    report_preview(&payload)["resources"],
+                    json!({"visibility":"Unknown"})
+                );
+                assert_eq!(
+                    payload["resources"]["visibility"], "Known",
+                    "projection must not mutate history"
+                );
+            }
+        }
+        let payload = json!({"kind":"Espionage","resources":{"visibility":"Known","value":{"metal":"9223372036854775807","crystal":"0","deuterium":"9007199254740993"}}});
+        assert_eq!(report_preview(&payload), payload);
     }
 
     #[test]

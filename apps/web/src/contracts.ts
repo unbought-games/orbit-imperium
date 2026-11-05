@@ -7212,6 +7212,7 @@ export interface components {
             has_more: boolean;
             as_of_ms: number;
             player_names?: components["schemas"]["PublicPlayerNames4"];
+            unread_count?: number;
         };
         BoundReports4: {
             /** @constant */
@@ -7231,6 +7232,7 @@ export interface components {
             kind: string | null;
             limit: number;
             include_hidden: boolean;
+            filter?: components["schemas"]["ReportFilter4"];
         };
         ReportDetail4: {
             header: components["schemas"]["ReportHeader4"];
@@ -9138,6 +9140,13 @@ export interface components {
             title: components["schemas"]["EmpireTitle"];
             /** @enum {string} */
             availability: "available" | "supporter_required" | "earned_required" | "unavailable" | "not_installed";
+        };
+        ReportFilter4: {
+            hidden?: boolean | null;
+            unread_only?: boolean;
+            starred_only?: boolean;
+            /** @enum {string} */
+            sort?: "newest" | "oldest" | "total" | "fleet" | "defenses";
         };
     };
     responses: never;

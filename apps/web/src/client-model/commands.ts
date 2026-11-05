@@ -48,6 +48,7 @@ export interface GamePort {
     context: QueryContext,
     cursor: string | null,
     includeHidden?: boolean,
+    query?: import('./report-query').ReportQuery,
   ): Promise<BoundReports>
   report?(context: QueryContext, id: string): Promise<BoundReport>
 

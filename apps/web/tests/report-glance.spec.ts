@@ -367,7 +367,7 @@ for (const width of [1280, 390]) {
     const selection = page.getByRole('group', {name: 'Report selection'})
     await expect(selection).toContainText('0 selected')
     await expect(selection.getByRole('button', {name: /Archive selected/})).toHaveCount(0)
-    await selection.getByRole('button', {name: `Select all matching (${width >= 768 ? 5 : 4})`}).click()
+    await selection.getByRole('button', {name: `Select loaded reports (${width >= 768 ? 5 : 4})`}).click()
     await expect(selection).toContainText(width >= 768 ? '5 selected' : '4 selected')
     await expect(selection.getByRole('button', {name: 'Archive selected (4)'})).toBeEnabled()
     await diagnosticScreenshot(page, {path: `test-results/report-tools-selection-${width}x900.png`})

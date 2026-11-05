@@ -988,3 +988,71 @@ async fn colony_schema_preserves_old_rows_and_old_writer_slot_creation() {
             .is_err()
     );
 }
+
+#[tokio::test]
+async fn retained_report_filters_require_online_indexes_and_keep_legacy_cursors() {
+    let (store, pool) = fresh().await;
+    let all = sqlx::migrate!("./migrations");
+    let older = sqlx::migrate::Migrator {
+        migrations: all
+            .migrations
+            .iter()
+            .filter(|m| m.version < 38)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into(),
+        ..sqlx::migrate::Migrator::DEFAULT
+    };
+    store.migrate_with_for_test(&older).await.unwrap();
+    // The guard only needs retained membership. Disable referential triggers in
+    // this disposable migration fixture so no gameplay bootstrap is involved.
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role=replica")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO mission_report_recipients(report,recipient,created_revision) VALUES(gen_random_uuid(),gen_random_uuid(),1)").execute(&mut *tx).await.unwrap();
+    tx.commit().await.unwrap();
+    let token = uuid::Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO mission_report_cursors VALUES($1,'{}',NULL,false,1,100,gen_random_uuid())",
+    )
+    .bind(token)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let error = store.migrate().await.unwrap_err();
+    assert!(
+        error.to_string().contains("prepare-report-indexes.sql"),
+        "{error}"
+    );
+    for statement in include_str!("../../../scripts/prepare-report-indexes.sql")
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("--"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .split(';')
+    {
+        if !statement.trim().is_empty() {
+            sqlx::query(statement).execute(&pool).await.unwrap();
+        }
+    }
+    store.migrate().await.unwrap();
+    let filter: serde_json::Value =
+        sqlx::query_scalar("SELECT filters FROM mission_report_cursors WHERE token=$1")
+            .bind(token)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        filter,
+        serde_json::json!({"hidden":null,"unread_only":false,"starred_only":false,"sort":"newest"})
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM mission_report_recipients")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        1
+    );
+}

@@ -375,6 +375,7 @@ async fn report_pagination_and_privacy(fixture: &RuntimeFixture) -> (Binding, sq
         kind: Some("Harvested".into()),
         limit: 100,
         include_hidden: false,
+        filter: Default::default(),
     };
     let first = restored
         .reports4(p, query.clone())
@@ -1759,6 +1760,7 @@ async fn concurrent_report_preferences(
                         kind: Some("Delivered".into()),
                         limit: 100,
                         include_hidden,
+                        filter: Default::default(),
                     },
                 )
                 .await
@@ -1880,6 +1882,7 @@ async fn concurrent_report_preferences(
                     kind: Some("Delivered".into()),
                     limit: 100,
                     include_hidden: true,
+                    filter: Default::default(),
                 },
             )
             .await

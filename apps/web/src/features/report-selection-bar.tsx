@@ -44,12 +44,12 @@ export function ReportSelectionBar({
         variant="ghost"
         size="icon"
         aria-label={
-          all ? 'Clear selection' : `Select all matching (${eligible.length})`
+          all ? 'Clear selection' : `Select loaded reports (${eligible.length})`
         }
         title={
           all
             ? 'Clear selection'
-            : `Select all ${eligible.length} matching reports`
+            : `Select all ${eligible.length} loaded reports`
         }
         aria-pressed={all}
         disabled={busy || !eligible.length}

@@ -201,6 +201,7 @@ describe.each(Object.keys(reads) as (keyof typeof reads)[])(
           expect.anything(),
           id(60),
           true,
+          undefined,
         )
       if (endpoint === 'report')
         expect(port.report).toHaveBeenCalledWith(expect.anything(), id(50))
@@ -524,9 +525,12 @@ it('replaces shared report membership atomically without treating cached details
       },
     }
   })
-  await expect(model.refreshReportInbox()).rejects.toThrow('Unavailable')
-  expect(model.store.getState().reportInbox).toBe(inbox)
-  expect(model.store.getState().reportHeaders.has(id(54))).toBe(false)
+  await model.refreshReportInbox()
+  const firstPage = model.store.getState().reportInbox
+  expect(firstPage?.items).toEqual([id(54)])
+  await expect(model.refreshReportInbox(true)).rejects.toThrow('Unavailable')
+  expect(model.store.getState().reportInbox).toBe(firstPage)
+  expect(model.store.getState().reportHeaders.has(id(54))).toBe(true)
   model.invalidate()
 })
 
@@ -559,4 +563,43 @@ it('does not publish a report page if the session changes between read validatio
   })
   expect(await model.reportPage()).toBeNull()
   expect(model.store.getState().reportHeaders.size).toBe(0)
+})
+
+it('forwards server filters for the visible list separately from the unread HUD query', async () => {
+  const { model, port } = await setup()
+  port.reports.mockImplementation(async (context) => reports(context))
+  const query = {
+    kind: 'Combat',
+    filter: {
+      hidden: true,
+      unread_only: false,
+      starred_only: true,
+      sort: 'oldest' as const,
+    },
+  }
+  await model.reports.forQuery(query).ensureInbox()
+  expect(port.reports).toHaveBeenLastCalledWith(
+    expect.anything(),
+    null,
+    false,
+    query,
+  )
+  await model.reports.ensureInbox()
+  expect(port.reports).toHaveBeenLastCalledWith(
+    expect.anything(),
+    null,
+    false,
+    {
+      kind: null,
+      filter: {
+        hidden: false,
+        unread_only: true,
+        starred_only: false,
+        sort: 'newest',
+      },
+    },
+  )
+  expect(model.store.getState().reportQueries.size).toBe(1)
+  model.invalidate()
+  expect(model.store.getState().reportQueries.size).toBe(0)
 })

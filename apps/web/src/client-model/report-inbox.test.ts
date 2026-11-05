@@ -28,24 +28,24 @@ const page = (
   data: { items, has_more: next !== null, next_cursor: next, as_of_ms: 1 },
 })
 
-it('passes read-only pages and counts unique unread reports up to the badge cap', async () => {
-  const read = vi
-    .fn()
-    .mockResolvedValueOnce(page([header('read', true)], 'next'))
-    .mockResolvedValueOnce(page([header('one'), header('one')], 'older'))
-    .mockResolvedValueOnce(
+it.each([0, 20, 500])(
+  'loads only the first page of 500 reports with %s unread',
+  async (unread) => {
+    const read = vi.fn(async () =>
       page(
-        Array.from({ length: 98 }, (_, i) => header(String(i))),
-        'unused',
+        Array.from({ length: 50 }, (_, i) => header(String(i), i >= unread)),
+        'older',
       ),
     )
-  const inbox = await readReportInbox(read)
-  expect(read.mock.calls).toEqual([[null], ['next'], ['older']])
-  expect(inbox.items).toHaveLength(100)
-  expect(inbox.next_cursor).toBe('unused')
-})
+    const inbox = await readReportInbox(read)
+    expect(read.mock.calls).toEqual([[null]])
+    expect(inbox.items).toHaveLength(50)
+    expect(inbox.has_more).toBe(true)
+    expect(inbox.next_cursor).toBe('older')
+  },
+)
 
-it('refreshes beyond the badge cap to preserve previously loaded history', async () => {
+it('refreshes only the explicitly loaded history', async () => {
   const read = vi
     .fn()
     .mockResolvedValueOnce(
@@ -65,7 +65,7 @@ it('restarts an archive traversal when recipient preferences change between page
     .mockResolvedValueOnce(page([header('deleted')], 'older'))
     .mockResolvedValueOnce(page([header('older')], null, '2'))
     .mockResolvedValueOnce(page([header('survivor', true)], null, '2'))
-  expect(await readReportInbox(read)).toMatchObject({
+  expect(await readReportInbox(read, 2)).toMatchObject({
     revision: '2',
     items: ['survivor'],
     has_more: false,
@@ -99,7 +99,7 @@ it('finishes an empty inbox and rejects interrupted or invalid pagination', asyn
     'Unable to confirm',
   )
   const read = vi.fn().mockResolvedValue(page([], 'same'))
-  await expect(readReportInbox(read)).rejects.toThrow('pagination changed')
+  await expect(readReportInbox(read, 1)).rejects.toThrow('pagination changed')
   expect(read).toHaveBeenCalledTimes(2)
   const initial = {
     revision: '1',
@@ -109,6 +109,14 @@ it('finishes an empty inbox and rejects interrupted or invalid pagination', asyn
     as_of_ms: 1,
   }
   await expect(extendReportInbox(read, initial)).rejects.toThrow(
+    'pagination changed',
+  )
+})
+
+it('rejects an incomplete first page without a continuation cursor', async () => {
+  const response = page([header('one')])
+  response.data.has_more = true
+  await expect(readReportInbox(async () => response)).rejects.toThrow(
     'pagination changed',
   )
 })
