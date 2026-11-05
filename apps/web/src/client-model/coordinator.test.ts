@@ -1932,9 +1932,12 @@ it('treats a live session rotation as coordination, then refreshes at its server
 })
 
 it('does not queue a gameplay action refused before admission by session rotation', async () => {
-  const { c, port, saved } = setup()
+  let now = 0
+  const { c, port, saved } = setup(() => now)
   await c.connect(binding.account, binding.universe)
+  let submissions = 0
   port.submit = async () => {
+    submissions++
     throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 1000 }
   }
   expect(
@@ -1946,6 +1949,17 @@ it('does not queue a gameplay action refused before admission by session rotatio
     'Your session is refreshing. This action was not sent. Try again.',
   )
   expect(connectionStatus(c.store.getState())).toBeNull()
+  // A healthy refresh must preserve the refusal without resending the action.
+  now = 1000
+  await c.refresh()
+  expect(c.stale).toBe(false)
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  expect(c.message).toBe(
+    'Your session is refreshing. This action was not sent. Try again.',
+  )
+  expect(submissions).toBe(1)
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
 })
 
 it('retains an older uncertain order when an explicit resend meets session rotation', async () => {
