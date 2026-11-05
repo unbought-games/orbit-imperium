@@ -246,3 +246,27 @@ The report database suite passed again with the new response assertions
 (16.26 seconds preparation including build-lock wait, 4.68 seconds execution).
 Application/storage Clippy and formatting passed. Disposable database cleanup
 completed. No client presentation code or normal report output changed.
+
+### Coordinate fixture readiness repair
+
+PR run `42108371222` at `e1dc9ac03b276b1f176e11a61e482233b2b41730`
+passed automated review and all jobs except browser shard 3 (`127529812346`).
+Its sole failure was the unrelated `share URLs highlight deleted moon slots and
+preserve moon intent through reload and paste`: after reload, the assertion
+observed “Looking up destination…” before the Galaxy response completed.
+No report product code was implicated and the unchanged failing run was not retried.
+
+History (`05d04170`, `3c4651a3`) and the repository performance-audit ledger
+showed no prior readiness repair for this scenario; no separate owner ledger
+was available. Its one repair uses the existing `withGalaxyResponse` helper for
+navigation, reload and the successful same-server paste. Assertions and timeout
+values remain intact. The reload caller audit found the same missing boundary
+in this file's mission-coordinate and dispatch-copy scenarios, now covered by
+the helper as well. The dispatch-validation identity reload has a deliberate
+profile-response scenario and was left intact; no shared helper or negative
+response behavior changed. This chat owns the repair and complete suite check.
+All 17 coordinate-link browser cases passed (1.95 seconds module preparation,
+19.8 seconds execution). All 11 deterministic location-address and
+dispatch-destination cases passed (449 ms runner duration).
+This is one failed PR validation, additional to the earlier failed queue run;
+queue removals remain two.

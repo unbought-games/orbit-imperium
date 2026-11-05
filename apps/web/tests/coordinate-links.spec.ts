@@ -169,7 +169,7 @@ for (const width of [1280, 390, 320]) {
     await diagnosticScreenshot(page, {
       path: `test-results/coordinate-galaxy-${width}.png`,
     })
-    await page.reload()
+    await withGalaxyResponse(page, () => page.reload())
     await assertLocation(page, 5, 12)
     await page.goBack()
     await expect(page).toHaveURL(path(`fleets/${fleet.id}`))
@@ -469,7 +469,7 @@ test('copy, menus and explicit dispatch actions preserve origin and recent copy'
     .getByRole('button', { name: 'Use destination', exact: true })
     .click()
   await expect(input).toHaveValue('1:5:12')
-  await page.reload()
+  await withGalaxyResponse(page, () => page.reload())
   await expect(input).toHaveValue('1:5:12')
 })
 
@@ -477,7 +477,7 @@ test('share URLs highlight deleted moon slots and preserve moon intent through r
   page,
 }) => {
   await setup(page)
-  await page.goto('/u/andromeda-prime/location/1:5:12?target=moon')
+  await withGalaxyResponse(page, () => page.goto('/u/andromeda-prime/location/1:5:12?target=moon'))
   await expect(page).toHaveURL(
     /galaxy\?galaxy=1&system=5&position=12&target=moon/,
   )
@@ -488,15 +488,15 @@ test('share URLs highlight deleted moon slots and preserve moon intent through r
   await expect(page.locator('li[aria-current="location"]')).toContainText(
     'Empty position',
   )
-  await page.goto(
+  await withGalaxyResponse(page, () => page.goto(
     '/u/andromeda-prime/location/1:5:12?target=moon&mission=transport',
-  )
+  ))
   const input = page.getByLabel('Destination coordinates', { exact: true })
   await expect(input).toHaveValue('1:5:12')
   await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
-  await page.reload()
+  await withGalaxyResponse(page, () => page.reload())
   await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
-  await input.evaluate((element) => {
+  await withGalaxyResponse(page, () => input.evaluate((element) => {
     const data = new DataTransfer()
     data.setData(
       'text/plain',
@@ -509,7 +509,7 @@ test('share URLs highlight deleted moon slots and preserve moon intent through r
         cancelable: true,
       }),
     )
-  })
+  }))
   await expect(input).toHaveValue('1:7:3')
   await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
   await input.evaluate((element) => {
