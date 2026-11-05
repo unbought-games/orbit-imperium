@@ -288,11 +288,3 @@
   align-items: center;
   gap: 2px;
 }
-/* Keep the inline identity on the compact target's existing text baseline. */
-.targetInfo .targetName > button {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0 6px;
-  min-height: 0;
-}

@@ -1,3 +1,4 @@
+import { archivePath } from '../client-model/empire-history-navigation'
 import {
   recruitmentEntry,
   recruitmentEntryPath,
@@ -5,6 +6,7 @@ import {
 export function validateAuthSearch(search: Record<string, unknown>): {
   redirect?: string
 } {
+  if (archivePath(search.redirect)) return { redirect: search.redirect }
   if (
     typeof search.redirect === 'string' &&
     search.redirect.startsWith('/join/')

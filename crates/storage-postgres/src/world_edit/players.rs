@@ -254,7 +254,7 @@ pub(super) async fn alliance(
         [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()],
     )
     .map_err(|e| format!("{e:?}"))?;
-    crate::alliances::persistence::history(tx, b, None, Some(&state), i.at).await?;
+    crate::alliances::persistence::history(tx, b, None, Some(&state), i.at, i.id.0, None).await?;
     crate::alliances::persistence::save(tx, b, &state).await?;
     notify(tx, i, std::collections::BTreeSet::from([owner])).await?;
     Ok(json!({"op":"alliance","name":state.name,"user":e.user}))

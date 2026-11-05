@@ -15,6 +15,7 @@ export function PlayerProfile({
   alliance,
   bot,
   historical,
+  density = 'normal',
   children,
   triggerRef,
 }: {
@@ -24,15 +25,28 @@ export function PlayerProfile({
   alliance?: AllianceIdentity | null
   bot: boolean
   historical: boolean
-  triggerRef?: Ref<HTMLButtonElement>
+  density?: 'normal' | 'compact'
+  triggerRef?: Ref<HTMLElement>
   children: ReactNode
 }) {
   return (
     <Popover
       label={`${name} profile`}
       trigger={children}
+      link={
+        /^[0-9a-f-]{36}$/i.test(player) ? (
+          <a
+            href={`/profiles/empire/${player}`}
+            aria-label={`${name} profile details`}
+          />
+        ) : undefined
+      }
       triggerRef={triggerRef}
-      className={styles.trigger}
+      className={
+        density === 'compact'
+          ? `${styles.trigger} ${styles.compact}`
+          : styles.trigger
+      }
       surfaceClassName={styles.profile}
       showTitle={false}
     >

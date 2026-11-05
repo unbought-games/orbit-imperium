@@ -1,3 +1,4 @@
+import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { openNavigation } from './fixtures/navigation'
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -36,8 +37,8 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   }
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
-    await table.getByRole('button', { name: /A very long commander.*profile details/ }).click()
-    await expect(page.getByRole('dialog')).toBeVisible()
+    await focusPlayerDetails(page, table.getByRole('link', { name: /A very long commander.*profile details/ }))
+    await expect(page.getByRole('tooltip')).toBeVisible()
     await diagnosticScreenshot(page, {path: `test-results/profile-high-scores-${width}x1000.png`})
     await page.keyboard.press('Escape')
   }
@@ -62,7 +63,7 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
   await expect(page.getByRole('searchbox', { name: 'Find a player' })).toHaveValue('')
   await expect(table.locator('tr[data-self]')).toContainText('My Commander')
   await expect(table.getByRole('row').nth(1)).toContainText('Pilot 55')
-  await expect(table.locator('tr[data-self]').getByRole('button', { name: /profile details/ })).toBeFocused()
+  await expect(table.locator('tr[data-self]').getByRole('link', { name: /profile details/ })).toBeFocused()
   await expect(table.locator('tr[data-self]')).toBeInViewport()
   expect(requests).toBe(1)
   failed = true
@@ -208,8 +209,8 @@ test('alliance standings share one snapshot, search names and tags, and navigate
     } })
   })
   await page.goto('/u/andromeda/high-scores')
-  await page.getByRole('table').getByRole('button', { name: 'My Commander profile details' }).click()
-  await expect(page.getByRole('dialog').getByRole('link', { name: /Alliance Étoile/ })).toHaveAttribute('href', `/alliances/${binding.universe}/${alliances[80].alliance.id}`)
+  await focusPlayerDetails(page, page.getByRole('table').getByRole('link', { name: 'My Commander profile details' }))
+  await expect(page.getByRole('tooltip').getByRole('link', { name: /Alliance Étoile/ })).toHaveAttribute('href', `/alliances/${binding.universe}/${alliances[80].alliance.id}`)
   await page.getByRole('button', { name: 'Alliances', exact: true }).click()
   const table = page.getByRole('table', { name: 'Universe alliance total-score rankings' })
   await expect(page.getByRole('button', { name: 'Alliances', exact: true })).toHaveAttribute('aria-pressed', 'true')

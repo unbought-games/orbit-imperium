@@ -7599,6 +7599,192 @@
         "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.",
         "operationId": "alliance_invitations"
       }
+    },
+    "/api/v4/empire-profiles/{player}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Authorized archive projection; never records presence.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmpireProfile"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "player",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "library",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "name": "player",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Authenticated Origin/CSRF protected. Optimistic revision and immutable command ID. Publishing is permanent.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Applied or exact retry"
+          },
+          "409": {
+            "description": "Revision or retry conflict"
+          }
+        }
+      }
+    },
+    "/api/v4/orbit-profiles/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Authorized archive projection; never records presence.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrbitProfile"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v4/my-profile": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Authorized archive projection; never records presence.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrbitProfile"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v4/history/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Authorized archive projection; never records presence.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v4/commemorations/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Authorized archive projection; never records presence.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -22375,6 +22561,315 @@
           "alliances",
           "total"
         ]
+      },
+      "HistoryEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Joined",
+              "Colonized",
+              "Abandoned",
+              "AllianceJoined",
+              "AllianceLeft",
+              "AllianceKicked",
+              "AllianceDisbanded",
+              "Battle",
+              "CampaignResult"
+            ]
+          },
+          "at_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "facts": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "caption": {
+            "type": "string"
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "publication": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "noteworthy": {
+            "type": "boolean"
+          },
+          "correction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at_ms",
+          "facts",
+          "selected",
+          "caption",
+          "featured",
+          "publication",
+          "noteworthy"
+        ],
+        "additionalProperties": false
+      },
+      "EmpireProfile": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profile": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "universe": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "epoch": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "universe_name": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlayerDisplay"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner": {
+            "type": "boolean"
+          },
+          "public": {
+            "type": "boolean"
+          },
+          "removed": {
+            "type": "boolean"
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntry"
+            }
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alliance": {
+            "$ref": "#/components/schemas/AllianceIdentity"
+          }
+        },
+        "required": [
+          "player",
+          "profile",
+          "universe",
+          "epoch",
+          "universe_name",
+          "username",
+          "display",
+          "owner",
+          "public",
+          "removed",
+          "closed",
+          "revision",
+          "entries",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "OrbitProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner": {
+            "type": "boolean"
+          },
+          "empires": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmpireProfile"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "owner",
+          "empires"
+        ],
+        "additionalProperties": false
+      },
+      "HistoricalDetail": {
+        "type": "object",
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/HistoryEntry"
+          },
+          "player": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "universe_name": {
+            "type": "string"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharedReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "entry",
+          "player",
+          "universe_name",
+          "report"
+        ],
+        "additionalProperties": false
+      },
+      "ProfileAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "Visibility"
+              },
+              "public": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "public"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "Select"
+              },
+              "event": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "selected": {
+                "type": "boolean"
+              },
+              "caption": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "featured": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "event",
+              "selected",
+              "caption",
+              "featured"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "Publish"
+              },
+              "event": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "event"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProfileCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "action": {
+            "$ref": "#/components/schemas/ProfileAction"
+          }
+        },
+        "required": [
+          "command_id",
+          "expected_revision",
+          "action"
+        ],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

@@ -319,6 +319,65 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
     }))
 }
 
+/// Decoration only after archive authorization; never resolves arbitrary subjects.
+/// Removed empires use the recorded identity and have no current badge/appearance.
+pub(super) async fn archive_display<S: GameStore + IdentityStore>(
+    s: &HttpState<S>,
+    p: &EmpireProfile,
+) -> Result<Option<serde_json::Value>, Problem> {
+    if p.removed {
+        return Ok(None);
+    }
+    let universe = UniverseId(p.universe);
+    let identities = s
+        .updates
+        .player_identities(universe, vec![PlayerId(p.player)])
+        .await
+        .map_err(ServiceError::from)?;
+    let mut displays = if let Some(profiles) = &s.profiles {
+        profiles.display(identities).await
+    } else {
+        let now = unbought_auth::now();
+        identities
+            .into_iter()
+            .map(|i| PlayerDisplay {
+                access_known: false,
+                insignia: None,
+                alliance: None,
+                kind: i.kind,
+                player: i.player,
+                username: i.username,
+                supporter_tier: None,
+                observed_at: now,
+                expires_at: now + 60,
+            })
+            .collect()
+    };
+    let Some(display) = displays.first_mut() else {
+        return Ok(None);
+    };
+    if let Some(c) = &s.customization {
+        let equipped = s
+            .updates
+            .equipped_insignias(universe, vec![PlayerId(p.player)])
+            .await
+            .map_err(ServiceError::from)?;
+        if let Some((recipe, grants)) = equipped.get(&PlayerId(p.player)) {
+            display.insignia = Some(c.appearance(effective_insignia(
+                &c.catalog,
+                recipe,
+                c.policy,
+                grants,
+                display.evidence(),
+                unbought_auth::now(),
+            )));
+        }
+    }
+    serde_json::to_value(display)
+        .map(Some)
+        .map_err(|_| ServiceError::InvariantFailure.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

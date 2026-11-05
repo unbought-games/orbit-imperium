@@ -1,3 +1,4 @@
+import { archivePath } from '../client-model/empire-history-navigation'
 import { useOidcConfig } from '../client-model/use-oidc'
 import { AuthConfigError, UnboughtLogin } from '../features/oidc'
 import { useEffect } from 'react'
@@ -20,6 +21,12 @@ export function AuthenticationPage({
     document.title = `${signup ? 'Sign up' : 'Sign in'} · Orbit Imperium`
     return clearMessage
   }, [signup, clearMessage])
+  useEffect(() => {
+    if (runtime.status === 'authenticated' && archivePath(redirect))
+      window.location.replace(redirect)
+  }, [runtime.status, redirect])
+  if (runtime.status === 'authenticated' && archivePath(redirect))
+    return <p role="status">Opening your archive…</p>
   if (runtime.status === 'authenticated')
     return redirect ? (
       <Navigate to={redirect} href={redirect} replace />

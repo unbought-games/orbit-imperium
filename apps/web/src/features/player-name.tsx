@@ -22,6 +22,7 @@ export function PlayerName({
   linkAlliance = true,
   showInsignia = true,
   interactive = true,
+  density = 'normal',
   triggerRef,
 }: {
   player: string
@@ -30,7 +31,8 @@ export function PlayerName({
   alliance?: AllianceIdentity | null
   linkAlliance?: boolean
   showInsignia?: boolean
-  triggerRef?: Ref<HTMLButtonElement>
+  triggerRef?: Ref<HTMLElement>
+  density?: 'normal' | 'compact'
   interactive?: boolean
 }) {
   const profile = usePlayerDisplay(player)
@@ -68,6 +70,7 @@ export function PlayerName({
   return interactive ? (
     <PlayerProfile
       triggerRef={triggerRef}
+      density={density}
       player={player}
       name={name}
       profile={profile}

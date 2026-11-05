@@ -57,7 +57,8 @@ it('groups current affiliation into one profile trigger without nested links', (
   expect(html).toContain('Commander')
   expect(html).toContain('[NEW]')
   expect(html).toContain('aria-label="Commander profile details"')
-  expect(html).not.toContain('<a')
+  expect(html.match(/<a /g)).toHaveLength(1)
+  expect(html).toContain(`href="/profiles/empire/${player}"`)
 })
 it('a historical report overrides current affiliation and an old report never guesses it', () => {
   const render = (known: boolean) =>

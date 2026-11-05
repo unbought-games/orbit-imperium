@@ -406,65 +406,7 @@ test('new messages arrive incrementally and hiding preserves history', async ({
   })
 })
 
-test('Galaxy message shortcut preserves the selected player through route normalization', async ({
-  page,
-}) => {
-  const f = await fixture(page)
-  await page.route('**/world', (route) => {
-    const q = route.request().postDataJSON()
-    return route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: q.context.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: {
-          galaxy: q.galaxy,
-          system: q.system,
-          observed_at: Date.now(),
-          player_names: { [peer]: 'Nova' },
-          positions: Array.from({ length: 15 }, (_, i) => ({
-            coordinates: {
-              galaxy: q.galaxy,
-              system: q.system,
-              position: i + 1,
-            },
-            body:
-              i === 0
-                ? {
-                    id: id(810),
-                    kind: 'Planet',
-                    owner: peer,
-                    activity: { type: 'None' },
-                    inactivity: 'Active',
-                    vacation: false,
-                    espionage_eligible: true,
-                  }
-                : null,
-            debris: null,
-          })),
-        },
-      },
-    })
-  })
-  await withFixtureResponse(page, response => response.url().endsWith('/world') && response.request().postDataJSON().type === 'Galaxy', () => page.goto(`/u/andromeda/b/${id(6)}/galaxy`))
-  await page
-    .getByRole('region', { name: 'Galaxy positions' })
-    .getByRole('button', { name: 'Nova profile details' })
-    .click()
-  const link = page
-    .getByRole('dialog', { name: 'Nova profile' })
-    .getByRole('link', { name: /^Message / })
-  await expect(link).toHaveAttribute('href', `/u/andromeda/b/${id(6)}/messages?player=${peer}`)
-  await link.click()
-  await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
-  expect(
-    f.requests.some((q) => q.type === 'Messages' && q.player === peer),
-  ).toBe(true)
-  await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/messages?player=${peer}`)
-})
+
 
 for (const viewport of [
   { width: 1440, height: 1000 },

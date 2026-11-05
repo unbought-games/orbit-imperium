@@ -148,6 +148,11 @@ impl PgStore {
             previous.as_ref(),
             (!disbanded).then_some(&state),
             at,
+            q.command_id,
+            match &q.action {
+                AllianceAction::Kick { player, .. } => Some(*player),
+                _ => None,
+            },
         )
         .await?;
         if disbanded {

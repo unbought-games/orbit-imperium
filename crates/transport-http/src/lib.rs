@@ -1,4 +1,5 @@
 mod alliance_preview;
+mod empire_history;
 mod insignias;
 pub use insignias::Customization;
 mod alliances;
@@ -186,6 +187,20 @@ where
     });
     let client_build = client_build::read(&state.config.assets);
     Router::new()
+        .route(
+            "/api/v4/empire-profiles/{player}",
+            get(empire_history::profile::<S>).post(empire_history::edit::<S>),
+        )
+        .route(
+            "/api/v4/orbit-profiles/{id}",
+            get(empire_history::overview::<S>),
+        )
+        .route("/api/v4/my-profile", get(empire_history::mine::<S>))
+        .route("/api/v4/history/{id}", get(empire_history::detail::<S>))
+        .route(
+            "/api/v4/commemorations/{id}",
+            get(empire_history::publication::<S>),
+        )
         .route(
             "/api/public/v1/universes/{id}/players",
             get(public_universe::players::<S>).options(public_universe::options),

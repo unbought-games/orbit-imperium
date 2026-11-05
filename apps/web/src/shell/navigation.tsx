@@ -247,6 +247,13 @@ export function Navigation({
                 >
                   <AccountMenu.LinkItem
                     closeOnClick
+                    render={<a href="/profile" />}
+                    className={styles.accountMenuItem}
+                  >
+                    My Orbit profile
+                  </AccountMenu.LinkItem>
+                  <AccountMenu.LinkItem
+                    closeOnClick
                     render={
                       <Link {...routeTarget(universeName, 'settings', body)} />
                     }

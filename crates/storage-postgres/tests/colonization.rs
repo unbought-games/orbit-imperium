@@ -459,6 +459,32 @@ async fn colony_creation_is_atomic_replayable_private_and_usable_after_restart()
     .await
     .unwrap();
     assert_eq!(reports, 1);
+    let history = reopened
+        .empire_profile(
+            Some(first.account),
+            first.player.0,
+            HistoryQuery {
+                library: true,
+                before: None,
+            },
+        )
+        .await
+        .unwrap();
+    let colony_entry = history
+        .entries
+        .iter()
+        .find(|e| e.kind == "Colonized")
+        .expect("colony fact retained with the successful transition");
+    assert_eq!(colony_entry.facts["body"], colony.id.to_string());
+    assert_eq!(
+        history
+            .entries
+            .iter()
+            .filter(|e| e.kind == "Colonized")
+            .count(),
+        1
+    );
+
     let returning = &snap.state.world.as_ref().unwrap().records.fleets[&fleet.id];
     assert_eq!(returning.ships[0].count, 1);
     assert_eq!(returning.cargo, Resources::default());
@@ -813,6 +839,31 @@ async fn colony_abandonment_persists_losses_cancels_work_and_releases_slot_after
             .await
             .unwrap();
     assert_eq!(statuses, vec!["BodyAbandoned"]);
+    let history = reopened
+        .empire_profile(
+            Some(b.account),
+            b.player.0,
+            HistoryQuery {
+                library: true,
+                before: None,
+            },
+        )
+        .await
+        .unwrap();
+    assert!(
+        history
+            .entries
+            .iter()
+            .any(|e| e.kind == "Abandoned" && e.facts["body"] == id.to_string())
+    );
+    assert!(
+        history
+            .entries
+            .iter()
+            .any(|e| e.kind == "Colonized" && e.facts["body"] == id.to_string()),
+        "abandonment must not erase colonization history"
+    );
+
     let report: serde_json::Value = sqlx::query_scalar(
         "SELECT data FROM mission_reports WHERE universe=$1 AND kind='PlanetAbandoned'",
     )

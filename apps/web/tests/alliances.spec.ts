@@ -1,3 +1,4 @@
+import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
@@ -201,7 +202,7 @@ test('lost membership clears private board, roster and administration immediatel
   await page.goto('/u/andromeda/alliance')
   await page.getByRole('button', { name: 'Members', exact: true }).click()
   const roster = page.getByRole('region', { name: 'Alliance roster' })
-  await expect(roster.getByRole('button', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
+  await expect(roster.getByRole('link', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
   f.denyReads()
   await page.getByRole('button', { name: 'Refresh alliance' }).click()
   await expect(page.getByRole('alert')).toContainText('Forbidden')
@@ -260,8 +261,8 @@ test('departed notice authors use authorized current profile tags while roster m
   })
   await page.goto('/u/andromeda/alliance')
   const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Welcome aboard' }) })
-  await article.getByRole('button', { name: 'Departed Pilot profile details' }).click()
-  await expect(page.getByRole('dialog').getByRole('link', { name: 'Alliance Other Alliance [AWAY]', exact: true })).toBeVisible()
+  await focusPlayerDetails(page, article.getByRole('link', { name: 'Departed Pilot profile details' }))
+  await expect(page.getByRole('tooltip').getByRole('link', { name: 'Alliance Other Alliance [AWAY]', exact: true })).toBeVisible()
   for (const width of [1440, 390]) {
     await page.setViewportSize({width, height: 1000})
     await diagnosticScreenshot(page, {path: `test-results/profile-alliance-board-${width}x1000.png`})
@@ -269,12 +270,12 @@ test('departed notice authors use authorized current profile tags while roster m
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Members', exact: true }).click()
   const roster = page.getByRole('region', { name: 'Alliance roster' })
-  await expect(roster.getByRole('button', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
+  await expect(roster.getByRole('link', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
   await expect(roster.getByText('[AWAY]', {exact: true})).toHaveCount(0)
   for (const width of [1440, 390]) {
     await page.setViewportSize({width, height: 1000})
-    await roster.getByRole('button', {name: 'Nova profile details'}).click()
-    await expect(page.getByRole('dialog', {name: 'Nova profile'})).toBeVisible()
+    await focusPlayerDetails(page, roster.getByRole('link', {name: 'Nova profile details'}))
+    await expect(page.getByRole('tooltip', {name: 'Nova profile'})).toBeVisible()
     await diagnosticScreenshot(page, {path: `test-results/profile-alliance-members-${width}x1000.png`})
     await page.keyboard.press('Escape')
   }

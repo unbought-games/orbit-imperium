@@ -44,7 +44,7 @@ export function Popover({
   trigger: ReactNode
   children: ReactNode
   className?: string
-  triggerRef?: Ref<HTMLButtonElement>
+  triggerRef?: Ref<HTMLElement>
   surfaceClassName?: string
   showTitle?: boolean
   placement?: Placement
@@ -85,10 +85,13 @@ export function Popover({
       {link ? (
         cloneElement(link, {
           ...linkControlProps,
-          ref: refs.setReference,
+          ref: referenceRef,
           className,
           ...getReferenceProps({
             'aria-label': link.props['aria-label'] ?? label,
+            onKeyUp: (event) => {
+              if (event.key === 'Tab') setOpen(true)
+            },
           }),
           children: trigger,
         })
