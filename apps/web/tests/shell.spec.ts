@@ -635,9 +635,13 @@ for (const width of [320, 390, 1440]) {
         },
       ],
     }
-    await shellFixture(page, options)
+    await installGameFixture(page, options)
     for (const destination of ['overview', 'shipyard', 'defense']) {
-      await page.goto(`/u/andromeda/b/${body.id}/${destination}`)
+      await withFixtureResponse(
+        page,
+        (response) => response.url().endsWith('/bootstrap'),
+        () => page.goto(`/u/andromeda/b/${body.id}/${destination}`),
+      )
       const scope =
         destination === 'overview'
           ? page.getByRole('article', {
@@ -650,7 +654,9 @@ for (const width of [320, 390, 1440]) {
         queue.getByRole('heading', { name: 'Small Cargo' }),
       ).toBeVisible()
       await expect(queue).toContainText('Building now')
-      await expect(queue.getByTitle('Units remaining')).toHaveText('2 remaining')
+      await expect(queue.getByTitle('Units remaining')).toHaveText(
+        '2 remaining',
+      )
       await expect(queue).not.toContainText('remaining in this order')
       const upcoming = queue.getByRole('list', { name: 'Upcoming orders' })
       await expect(upcoming.getByRole('listitem')).toHaveCount(2)
@@ -709,7 +715,8 @@ for (const width of [320, 390, 1440]) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true)
-      await page.evaluate(() => document.fonts.ready)
+      if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
+        await page.evaluate(() => document.fonts.ready)
       await diagnosticScreenshot(
         scope.getByRole('region', { name: 'Shipyard & defense', exact: true }),
         {
@@ -722,8 +729,13 @@ for (const width of [320, 390, 1440]) {
       // Tall narrow queues exceed a viewport; capture the document so sticky
       // navigation does not obscure the top of a scrolled locator capture.
       if (state === 'long-queue' && width === 320) {
-        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
-        await diagnosticScreenshot(page, { path: `test-results/queue-defense-${state}-${width}x900.png`, fullPage: true })
+        await page.evaluate(() =>
+          window.scrollTo({ top: 0, behavior: 'instant' }),
+        )
+        await diagnosticScreenshot(page, {
+          path: `test-results/queue-defense-${state}-${width}x900.png`,
+          fullPage: true,
+        })
         return
       }
       await diagnosticScreenshot(
@@ -749,7 +761,11 @@ for (const width of [320, 390, 1440]) {
         final_due_at: now + 1325000 + index * 1250000,
       })),
     ]
-    await page.reload()
+    await withFixtureResponse(
+      page,
+      (response) => response.url().endsWith('/bootstrap'),
+      () => page.reload(),
+    )
     await expect(
       page.getByRole('list', { name: 'Upcoming orders' }).getByRole('button'),
     ).toHaveCount(12)
@@ -765,20 +781,43 @@ for (const width of [320, 390, 1440]) {
     ).toBe(true)
     await captureState('long-queue')
     options.manufacturing = [batch]
-    await page.reload()
-    await expect(
-      page
-        .locator('dt')
-        .filter({ hasText: /^Entire queue$/ })
-        .locator('..')
-        .getByText('1m 15s', { exact: true }),
-    ).toBeVisible()
-    await captureState('single')
+    // Regression: a lone order repeats the same completion time on every shared surface.
+    for (const destination of ['overview', 'shipyard', 'defense']) {
+      await withFixtureResponse(
+        page,
+        (response) => response.url().endsWith('/bootstrap'),
+        () => page.goto(`/u/andromeda/b/${body.id}/${destination}`),
+      )
+      const summary = page
+        .getByRole('region', { name: 'Shipyard & defense', exact: true })
+        .first()
+      const timers = summary.locator('dl').first()
+      await expect(timers.locator('dt')).toHaveText([
+        'Next unit',
+        'Until complete',
+      ])
+      await expect(timers).toContainText('Until complete1m 15s')
+      await expect(summary.getByRole('progressbar')).toHaveAttribute(
+        'aria-valuenow',
+        '50',
+      )
+      if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
+        await summary
+          .locator('img')
+          .evaluateAll((images) =>
+            Promise.all(
+              images.map((image) => (image as HTMLImageElement).decode()),
+            ),
+          )
+      await diagnosticScreenshot(summary, {
+        path: `test-results/queue-${destination}-single-${width}x900.png`,
+      })
+    }
     await page.clock.fastForward(1000)
     await expect(
       page
         .locator('dt')
-        .filter({ hasText: /^Entire queue$/ })
+        .filter({ hasText: /^Until complete$/ })
         .locator('..')
         .getByText('1m 14s', { exact: true }),
     ).toBeVisible()
@@ -787,21 +826,31 @@ for (const width of [320, 390, 1440]) {
       '52',
     )
     options.sampledAt = now + 75000
-    await page.reload()
+    await withFixtureResponse(
+      page,
+      (response) => response.url().endsWith('/bootstrap'),
+      () => page.reload(),
+    )
     await expect(
       page
         .locator('dt')
-        .filter({ hasText: /^Entire queue$/ })
+        .filter({ hasText: /^Until complete$/ })
         .locator('..')
         .getByText('Pending', { exact: true }),
     ).toBeVisible()
     await captureState('awaiting')
     options.manufacturing = []
-    await page.reload()
+    await withFixtureResponse(
+      page,
+      (response) => response.url().endsWith('/bootstrap'),
+      () => page.reload(),
+    )
     await expect(
       page.getByText('No ships or defenses in production.'),
     ).toBeVisible()
-    await expect(page.getByText('Entire queue', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Until complete', { exact: true })).toHaveCount(
+      0,
+    )
     await captureState('empty')
   })
 }

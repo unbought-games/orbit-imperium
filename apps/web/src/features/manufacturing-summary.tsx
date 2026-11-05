@@ -79,8 +79,14 @@ export function ManufacturingSummary({
                 title={producing ? 'Next unit' : 'Starts in'}
                 value={time(current.due)}
               />
-              <Timer title="This order" value={time(current.finalDue)} />
-              <Timer title="Entire queue" value={time(completion)} total />
+              {upcoming.length > 0 && (
+                <Timer title="This order" value={time(current.finalDue)} />
+              )}
+              <Timer
+                title={upcoming.length > 0 ? 'Entire queue' : 'Until complete'}
+                value={time(completion)}
+                total
+              />
             </WorkTimers>
           </ActiveWorkCard>
         </li>

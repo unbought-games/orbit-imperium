@@ -7,6 +7,10 @@
   insignia composer ([#302](https://github.com/unbought-games/orbit-imperium/pull/302)).
   Read the [build note](docs/news/changes/2026-11-02-layered-insignia-composer.md).
 
+- Thanks to [Gh0stP1rate](https://discord.com/users/343178308164255744) for
+  reporting confusing manufacturing timers. Read the
+  [single-order timer build note](docs/news/changes/2026-11-05-manufacturing-timers.md).
+
 ## 0.6.0
 
 [Announcement and detailed notes](docs/news/releases/v0.6.0.md).
